@@ -82,3 +82,8 @@ kontrollzustand/.leitstand.lock
 # je Prozess-PID) — flüchtiger Zustand für scripts/aufraeumen-nachlauf.mjs,
 # kein Kernartefakt.
 scripts/.aufraeumen-reste/
+
+# F45 P: Heap-Snapshots der Messungen (scripts/messe-chat.mjs, je 15+ MB) — nur die Auswertung in der
+# Messdatei wird committet.
+features/**/*.heapsnapshot
+features/**/*.zwischenstand.json

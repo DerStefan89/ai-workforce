@@ -457,6 +457,7 @@ import { performance } from 'node:perf_hooks'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { readFile as readFileAsync, readdir as readdirAsync, stat as statAsync } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
@@ -515,7 +516,7 @@ import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
 import { erzeugeAktivitaetsSpeicher, kuerze, ZIEL_MAX_ZEICHEN } from './leitstand/lauf-aktivitaet.mjs'
-import { starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
+import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
@@ -1057,17 +1058,24 @@ function sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo) {
  * zwei echte, synchrone Disk-I/O ausführen (sammleLaeufe, sammleWorkflows)
  * und dabei werfen können. Eine defekte Quelle liefert null und einen
  * fehler[]-Eintrag statt den gesamten Aggregatzustand mit 500 zu verweigern.
+ *
+ * F45 P (Teil 1 Punkt 2): die Dauer je Quelle geht an erfasseQuellenDauer (wirksam nur bei
+ * LEITSTAND_ZEITMESSUNG=1, sonst No-op) — Grundlage der Zeile „Zustand-Quellen 60s“. Seit F45 P sind
+ * laeufe, workflows und workitems asynchron (Stempel im Threadpool); gemessen wird die Wartezeit bis zum Wert.
  * @param quelle - Kennung der Quelle für den fehler[]-Eintrag
- * @param fn - () => Wert, wirft im Fehlerfall
+ * @param fn - () => Wert oder Promise des Werts, wirft bzw. lehnt im Fehlerfall ab
  * @param fehlerListe - Sammelliste, in die ein Fehlereintrag gepusht wird
- * @returns der Wert von fn(), oder null bei einem Wurf
+ * @returns Promise des Werts von fn(), oder null bei einem Wurf
  */
-function sammleZustandsQuelle(quelle, fn, fehlerListe) {
+async function sammleZustandsQuelle(quelle, fn, fehlerListe) {
+  const start = performance.now()
   try {
-    return fn()
+    return await fn()
   } catch (fehlerObjekt) {
     fehlerListe.push({ quelle, grund: fehlerObjekt.message })
     return null
+  } finally {
+    erfasseQuellenDauer(quelle, performance.now() - start)
   }
 }
 
@@ -1097,20 +1105,82 @@ const workflowKopfdatenCache = new Map()
  * Billiger Änderungsstempel eines Checkpoint-Verzeichnisses (Dateianzahl + Verzeichnis-mtime) —
  * null, wenn es (noch) nicht existiert.
  *
- * statSync mit throwIfNoEntry:false ersetzt das frühere existsSync+statSync-Paar: der
- * Nichtexistenz-Fall ist derselbe Systemaufruf wie das Lesen der mtime, nicht ein zusätzlicher.
  * Real gemessen gegen den kontrollzustand/-Bestand dieses Repos (654 Verzeichnisse): die
  * Stempelbildung allein kostete 79 ms je Zustandsabfrage, danach 52 ms — sie war damit praktisch
  * die gesamten ~75 ms von sammleLaeufe, auch wenn JEDER Lauf im Cache lag. Die Dateianzahl
- * (readdirSync) bleibt Teil des Stempels: ohne sie hinge die Invalidierung allein an der
- * Verzeichnis-mtime, und eine Änderung innerhalb derselben mtime-Auflösung bliebe unsichtbar.
+ * (readdir) bleibt Teil des Stempels: ohne sie hinge die Invalidierung allein an der
+ * Verzeichnis-mtime — und die ändert sich unter Windows beim Anlegen einer Datei oft NICHT (F45 P,
+ * gemessen 10.10.2026: in 1 310 von 2 000 Fällen unter %TEMP%, in 10 von 2 000 im Repo-Ordner).
+ *
+ * F45 P (F-556): asynchron über fs.promises — stat und readdir laufen im libuv-Threadpool, die
+ * Stempel aller Läufe parallel (sammleLaeufe), die Event-Loop bleibt frei. Gedrosselt gemessen
+ * (Windows-Energiemodus „Beste Energieeffizienz“, F-1018) kosteten die Stempel aller ~280 Läufe
+ * nacheinander ≈ 290 ms je Zustandsabfrage, parallel mit der Existenzprüfung über die
+ * Verzeichnisliste (bildeLaufStempel) ≈ 65 ms. Der Stempelwert ist derselbe wie vorher.
+ *
+ * Restrisiko (Code-Review F45 P): Stempel und Kettenlesen liegen jetzt weiter auseinander (Threadpool,
+ * Scheiben). Schriebe ein ANDERER Prozess eine Kette über Temp-Datei und rename, könnte der Stempel die
+ * Temp-Datei mitzählen und das Lesen sie noch nicht sehen; bliebe die Verzeichnis-mtime dabei gleich, wäre
+ * der Eintrag bis zum nächsten Schreiben veraltet. Heute schreibt nur dieser Prozess (synchron, ARCHITECTURE.md §2).
  * @param verzeichnis - Pfad des checkpoints-Verzeichnisses
- * @returns Stempel-String, oder null
+ * @returns Promise des Stempel-Strings, oder null
  */
-function leseCheckpointVerzeichnisStempel(verzeichnis) {
-  const stat = statSync(verzeichnis, { throwIfNoEntry: false })
-  if (stat === undefined) return null
-  return `${readdirSync(verzeichnis).length}:${stat.mtimeMs}`
+async function leseCheckpointVerzeichnisStempel(verzeichnis) {
+  try {
+    const [stat, eintraege] = await Promise.all([statAsync(verzeichnis), readdirAsync(verzeichnis)])
+    return `${eintraege.length}:${stat.mtimeMs}`
+  } catch (fehler) {
+    if (fehler?.code === 'ENOENT') return null
+    throw fehler
+  }
+}
+
+/**
+ * Ordnernamen direkt unter basisVerzeichnis, sortiert (F45 P: einmal je Sammelaufruf gelesen, asynchron).
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns Promise der Namen; [] wenn das Verzeichnis fehlt
+ */
+async function leseKontrollzustandOrdner(basisVerzeichnis) {
+  try {
+    const eintraege = await readdirAsync(basisVerzeichnis, { withFileTypes: true })
+    return eintraege
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort()
+  } catch (fehler) {
+    if (fehler?.code === 'ENOENT') return []
+    throw fehler
+  }
+}
+
+/**
+ * Verbundstempel eines Laufs aus eigener Kette und entscheidung-Kette (siehe Cache-Abschnittskopf).
+ * F45 P: Die entscheidung-Kette existiert nur für wenige Läufe; ob ihr Ordner existiert, steht schon in
+ * der Verzeichnisliste desselben Aufrufs — fehlt er dort, ist ihr Stempelteil null wie bisher, ohne
+ * Systemaufruf (ein fehlschlagender asynchroner stat erzeugt je Lauf ein Fehlerobjekt und war der
+ * teuerste Teil). Ein Ordner, der erst nach der Liste entsteht, zählt ab dem nächsten Poll.
+ * @param laufId - Lauf-Kennung
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @param ordnerNamen - Set der Ordnernamen unter basisVerzeichnis (leseKontrollzustandOrdner)
+ * @returns Promise des Verbundstempels
+ */
+async function bildeLaufStempel(laufId, basisVerzeichnis, ordnerNamen) {
+  const [eigenePfad, entscheidungPfad] = laufStempelPfade(laufId, basisVerzeichnis, ordnerNamen)
+  const [eigene, entscheidung] = await Promise.all([leseCheckpointVerzeichnisStempel(eigenePfad), entscheidungPfad === null ? null : leseCheckpointVerzeichnisStempel(entscheidungPfad)])
+  return [eigene, entscheidung].join('|')
+}
+
+/**
+ * Die zwei Ketten des Lauf-Stempels — EINE Formel für bildeLaufStempel und sammleLaeufeSync (beide füllen denselben
+ * laufKopfdatenCache; wichen sie ab, verwürfe jeder Wechsel den Cache).
+ * @param laufId - Lauf-Kennung
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @param ordnerNamen - Set der Ordnernamen unter basisVerzeichnis
+ * @returns [checkpoints der eigenen Kette, checkpoints der entscheidung-Kette oder null, wenn ihr Ordner fehlt]
+ */
+function laufStempelPfade(laufId, basisVerzeichnis, ordnerNamen) {
+  const entscheidungOrdner = `lineage-entscheidung-${laufId}`
+  return [join(basisVerzeichnis, laufId, 'checkpoints'), ordnerNamen.has(entscheidungOrdner) ? join(basisVerzeichnis, entscheidungOrdner, 'checkpoints') : null]
 }
 
 /**
@@ -1120,13 +1190,10 @@ function leseCheckpointVerzeichnisStempel(verzeichnis) {
  * @param laufId - Lauf-Kennung
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
  * @param auftragMemo - Request-lokales Memo, unverändert an sammleLaufKopfdaten durchgereicht
+ * @param stempel - Verbundstempel aus bildeLaufStempel, VOR dem Lesen der Kette gebildet
  * @returns wie sammleLaufKopfdaten
  */
-function sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo) {
-  const stempel = [
-    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, laufId, 'checkpoints')),
-    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `lineage-entscheidung-${laufId}`, 'checkpoints')),
-  ].join('|')
+function sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo, stempel) {
   const schluessel = `${basisVerzeichnis}::${laufId}`
   const vorhanden = laufKopfdatenCache.get(schluessel)
   if (vorhanden !== undefined && vorhanden.stempel === stempel) return vorhanden.kopfdaten
@@ -1137,34 +1204,119 @@ function sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo) {
 }
 
 /**
+ * Synchrone Fassung von leseCheckpointVerzeichnisStempel (derselbe Stempelwert) — nur für sammleLaeufeSync.
+ * @param verzeichnis - Pfad des checkpoints-Verzeichnisses
+ * @returns Stempel-String, oder null
+ */
+function leseCheckpointVerzeichnisStempelSync(verzeichnis) {
+  const stat = statSync(verzeichnis, { throwIfNoEntry: false })
+  if (stat === undefined) return null
+  return `${readdirSync(verzeichnis).length}:${stat.mtimeMs}`
+}
+
+/**
+ * Lauf-Kopfdaten synchron, mit demselben Cache und demselben Verbundstempel wie sammleLaeufe — für
+ * GET /api/laeufe (nicht gepollt). F45 P: Diese Route antwortet weiter im selben Takt wie die Anfrage;
+ * scripts/check-f814-host.mjs schickt rohe Anfragen mit Halbschluss (socket.end direkt nach dem Senden), und
+ * Node beendet eine solche Verbindung, bevor eine asynchrone Antwort käme. Das gepollte GET /api/zustand nutzt
+ * die asynchrone Fassung (sammleLaeufe).
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns Liste aller Lauf-Kopfdaten (wie sammleLaeufe)
+ */
+function sammleLaeufeSync(basisVerzeichnis = BASISVERZEICHNIS) {
+  if (!existsSync(basisVerzeichnis)) return []
+  const ordner = readdirSync(basisVerzeichnis, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort()
+  const ordnerNamen = new Set(ordner)
+  const auftragMemo = new Map()
+  return ordner
+    .filter((name) => !name.startsWith('lineage-'))
+    .map((laufId) => {
+      const [eigenePfad, entscheidungPfad] = laufStempelPfade(laufId, basisVerzeichnis, ordnerNamen)
+      const stempel = [leseCheckpointVerzeichnisStempelSync(eigenePfad), entscheidungPfad === null ? null : leseCheckpointVerzeichnisStempelSync(entscheidungPfad)].join('|')
+      return sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo, stempel)
+    })
+    .filter((kopfdaten) => kopfdaten !== null)
+}
+
+/** F45 P (P2): so lange (ms) arbeitet ein Sammelaufruf höchstens am Stück, bevor er die Event-Loop abgibt. */
+const SAMMEL_SCHEIBE_MS = 25
+
+/**
+ * Gibt die Event-Loop ab (setImmediate), wenn seit start mehr als SAMMEL_SCHEIBE_MS vergangen sind —
+ * damit ein Kaltstart (alle Ketten ungecacht, gedrosselt mehrere Sekunden) keine einzelne lange
+ * synchrone Strecke ist (F45 P, P2).
+ * @param start - performance.now() zu Beginn der laufenden Scheibe
+ * @returns Promise des Beginns der nächsten Scheibe
+ */
+async function gibEventLoopFrei(start) {
+  if (performance.now() - start < SAMMEL_SCHEIBE_MS) return start
+  await new Promise((weiter) => setImmediate(weiter))
+  return performance.now()
+}
+
+/**
  * Liefert die Kopfdaten aller echten Läufe unter basisVerzeichnis (AK1,
  * AK2) — reine F2-Lineage-Ketten ohne jede Wirkungsmarke werden
  * inhaltsbasiert ausgefiltert (istLaufkette), nicht über den
  * lauf_id-Präfix. auftragMemo (F-147, Q2) lebt genau einen Aufruf lang —
  * eine von mehreren Läufen geteilte Auftragskette wird pro Poll nur einmal
  * geladen, kein serverübergreifender Cache.
+ *
+ * F45 P (F-556): asynchron — Stempel parallel (bildeLaufStempel), danach die Cache-Prüfung je Lauf in
+ * Scheiben (gibEventLoopFrei). Jeder Stempel entsteht vor dem Lesen seiner Kette; ändert sich eine Kette
+ * dazwischen, trägt der Cache den älteren Stempel und liest beim nächsten Poll neu.
  * @param basisVerzeichnis - Kontrollzustand-Wurzel (Default 'kontrollzustand', überschreibbar für Tests)
- * @returns Liste aller Lauf-Kopfdaten
+ * @returns Promise der Liste aller Lauf-Kopfdaten
  */
-function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
-  if (!existsSync(basisVerzeichnis)) return []
+async function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
+  const ordner = await leseKontrollzustandOrdner(basisVerzeichnis)
+  const ordnerNamen = new Set(ordner)
+  // F-588: Denylist statt Allowlist — "lineage-"-Verzeichnisse (Auftrag/Kontextpaket/
+  // Entscheidung/Workflow) sind nie Laufketten (istLaufkette ist inhaltsbasiert, F-137 AK1;
+  // eine echte laufId trägt kein festes Präfix), wurden aber vor diesem Überspringen für JEDEN
+  // Eintrag gestempelt — Kosten wuchsen dadurch mit der GESAMTEN Verzeichniszahl statt mit der
+  // Zahl echter Läufe. Siehe state/messung-f588-zustand.md.
+  const laufIds = ordner.filter((name) => !name.startsWith('lineage-'))
+  const stempel = await Promise.all(laufIds.map((laufId) => bildeLaufStempel(laufId, basisVerzeichnis, ordnerNamen)))
   const auftragMemo = new Map()
-  return readdirSync(basisVerzeichnis, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    // F-588: Denylist statt Allowlist — "lineage-"-Verzeichnisse (Auftrag/Kontextpaket/
-    // Entscheidung/Workflow) sind nie Laufketten (istLaufkette ist inhaltsbasiert, F-137 AK1;
-    // eine echte laufId trägt kein festes Präfix), werden aber vor diesem Überspringen für JEDEN
-    // Eintrag per sammleLaufKopfdatenGecached gestempelt — Kosten wuchsen dadurch mit der
-    // GESAMTEN Verzeichniszahl statt mit der Zahl echter Läufe. Siehe state/messung-f588-zustand.md.
-    .filter((name) => !name.startsWith('lineage-'))
-    .sort()
-    .map((laufId) => sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo))
-    .filter((kopfdaten) => kopfdaten !== null)
+  const kopfdaten = []
+  let scheibe = performance.now()
+  for (const [index, laufId] of laufIds.entries()) {
+    const eintrag = sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo, stempel[index])
+    if (eintrag !== null) kopfdaten.push(eintrag)
+    scheibe = await gibEventLoopFrei(scheibe)
+  }
+  return kopfdaten
 }
 
 /** Verzeichnispräfix eines Auftrags unter basisVerzeichnis (Abschnitt 0 des Plans — registriereAuftrag→registriereKernArtefakt schreibt real unter lineage-auftrag-<auftragId>, nicht auftrag-<auftragId>). */
 const AUFTRAG_VERZEICHNIS_PRAEFIX = 'lineage-auftrag-'
+
+/**
+ * Kopfdaten-Cache je Auftrag (F45 P, Event-Loop): GET /api/auftraege las bei jedem Aufruf alle
+ * Auftragsketten neu (gedrosselt gemessen ≈ 500 ms synchron je Seitenbetreten). Schlüssel und Stempel nach
+ * dem Muster laufKopfdatenCache: basisVerzeichnis+auftragId, Stempel der Kette lineage-auftrag-<id>.
+ * Der Rückfall erstellt_am aus der Ordner-mtime (Bestandsdaten ohne erstellt_am) wird mitgecacht — der
+ * Ordner trägt nur seine checkpoints/-Kette, deren Stempel ihn abdeckt.
+ */
+const auftragKopfdatenCache = new Map()
+
+/**
+ * Kopfdaten eines Auftrags aus seiner Kette (unverändert aus sammleAuftraege herausgelöst, F45 P).
+ * @param auftragId - Kennung aus dem Verzeichnisnamen
+ * @param verzeichnisName - lineage-auftrag-<auftragId>
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns { auftragId, titel, erstellt_am, workitem_referenz } oder null, wenn die Kette keine gültige Version liefert
+ */
+function baueAuftragKopfdaten(auftragId, verzeichnisName, basisVerzeichnis) {
+  const version = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  if (version === null) return null
+  const erstelltAm = version.daten?.erstellt_am ?? statSync(join(basisVerzeichnis, verzeichnisName)).mtime.toISOString()
+  return { auftragId, titel: version.daten?.titel, erstellt_am: erstelltAm, workitem_referenz: leseWorkitemReferenz(version.daten?.auftragstext) }
+}
 
 /**
  * Kopfdaten aller Aufträge unter basisVerzeichnis (AK4) — es gibt keine
@@ -1174,22 +1326,27 @@ const AUFTRAG_VERZEICHNIS_PRAEFIX = 'lineage-auftrag-'
  * Frage 2) — nur beim Start/in der Detailansicht relevant. Ein Auftrag,
  * dessen Kette keine gültige Version mehr liefert, wird übersprungen statt
  * den gesamten Request 500en zu lassen (Q4).
+ *
+ * F45 P: asynchron mit Kopfdaten-Cache je Auftrag (auftragKopfdatenCache), Stempel parallel, Kettenlesen
+ * in Scheiben (gibEventLoopFrei). Die Antwort ist dieselbe wie vorher.
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
- * @returns Kopfdaten je Auftrag, neueste zuerst (erstellt_am, Fallback Verzeichnis-mtime)
+ * @returns Promise der Kopfdaten je Auftrag, neueste zuerst (erstellt_am, Fallback Verzeichnis-mtime)
  */
-function sammleAuftraege(basisVerzeichnis = BASISVERZEICHNIS) {
-  if (!existsSync(basisVerzeichnis)) return []
+async function sammleAuftraege(basisVerzeichnis = BASISVERZEICHNIS) {
+  const auftragOrdner = (await leseKontrollzustandOrdner(basisVerzeichnis)).filter((name) => name.startsWith(AUFTRAG_VERZEICHNIS_PRAEFIX))
+  const stempel = await Promise.all(auftragOrdner.map((name) => leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, name, 'checkpoints'))))
   const eintraege = []
-  for (const verzeichnisName of readdirSync(basisVerzeichnis, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort()) {
-    if (!verzeichnisName.startsWith(AUFTRAG_VERZEICHNIS_PRAEFIX)) continue
+  let scheibe = performance.now()
+  for (const [index, verzeichnisName] of auftragOrdner.entries()) {
     const auftragId = verzeichnisName.slice(AUFTRAG_VERZEICHNIS_PRAEFIX.length)
-    const version = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-    if (version === null) continue
-    const erstelltAm = version.daten?.erstellt_am ?? statSync(join(basisVerzeichnis, verzeichnisName)).mtime.toISOString()
-    eintraege.push({ auftragId, titel: version.daten?.titel, erstellt_am: erstelltAm, workitem_referenz: leseWorkitemReferenz(version.daten?.auftragstext) })
+    const schluessel = `${basisVerzeichnis}::${auftragId}`
+    let vorhanden = auftragKopfdatenCache.get(schluessel)
+    if (vorhanden === undefined || vorhanden.stempel !== stempel[index]) {
+      vorhanden = { stempel: stempel[index], eintrag: baueAuftragKopfdaten(auftragId, verzeichnisName, basisVerzeichnis) }
+      auftragKopfdatenCache.set(schluessel, vorhanden)
+    }
+    if (vorhanden.eintrag !== null) eintraege.push(vorhanden.eintrag)
+    scheibe = await gibEventLoopFrei(scheibe)
   }
   eintraege.sort((a, b) => (a.erstellt_am < b.erstellt_am ? 1 : a.erstellt_am > b.erstellt_am ? -1 : 0))
   return eintraege
@@ -1333,6 +1490,23 @@ function baueWorkflowKopfdaten(workflowId, version, abnahmeVersion) {
 }
 
 /**
+ * Verbundstempel eines Workflows aus eigener Kette und Abnahme-Kette (siehe baueWorkflowKopfdatenGecached).
+ * F45 P: asynchron; die Abnahme-Kette nur, wenn ihr Ordner in der Verzeichnisliste steht (Muster bildeLaufStempel).
+ * @param workflowId - Kennung aus dem Verzeichnisnamen
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @param ordnerNamen - Set der Ordnernamen unter basisVerzeichnis
+ * @returns Promise des Verbundstempels
+ */
+async function bildeWorkflowStempel(workflowId, basisVerzeichnis, ordnerNamen) {
+  const abnahmeOrdner = `lineage-${abnahmeEntscheidungsId(workflowId)}`
+  const [eigene, abnahme] = await Promise.all([
+    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `${WORKFLOW_VERZEICHNIS_PRAEFIX}${workflowId}`, 'checkpoints')),
+    ordnerNamen.has(abnahmeOrdner) ? leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, abnahmeOrdner, 'checkpoints')) : null,
+  ])
+  return [eigene, abnahme].join('|')
+}
+
+/**
  * Gecachte Variante der Workflow-Kopfdaten (Perf-Fix, siehe Cache-Abschnittskopf bei
  * sammleLaufKopfdatenGecached) — wie beim Lauf ein Verbundstempel aus zwei Ketten:
  * - die eigene lineage-workflow-<id>-Kette (status/aktiver_schritt_id/grund und die lauf_id des
@@ -1343,13 +1517,10 @@ function baueWorkflowKopfdaten(workflowId, version, abnahmeVersion) {
  *   bliebe kopfdaten.abnahme nach einer Abnahme bis zur nächsten Workflow-Version „offen“.
  * @param workflowId - Kennung aus dem Verzeichnisnamen
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @param stempel - Verbundstempel aus bildeWorkflowStempel, VOR dem Lesen der Ketten gebildet (F45 P)
  * @returns Kopfdaten-Objekt, oder null, wenn die Kette keine gültige Version liefert
  */
-function baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis) {
-  const stempel = [
-    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `${WORKFLOW_VERZEICHNIS_PRAEFIX}${workflowId}`, 'checkpoints')),
-    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `lineage-${abnahmeEntscheidungsId(workflowId)}`, 'checkpoints')),
-  ].join('|')
+function baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis, stempel) {
   const schluessel = `${basisVerzeichnis}::${workflowId}`
   const vorhanden = workflowKopfdatenCache.get(schluessel)
   if (vorhanden !== undefined && vorhanden.stempel === stempel) return vorhanden.kopfdaten
@@ -1368,24 +1539,26 @@ function baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis) {
  * Workflow, dessen Kette keine gültige Version mehr liefert, wird
  * übersprungen statt den gesamten Request 500en zu lassen.
  *
- * Sortierung: alphabetisch nach workflowId (readdirSync().sort()) — anders
+ * Sortierung: alphabetisch nach workflowId (Verzeichnisliste sortiert) — anders
  * als sammleAuftraege, das nach erstellt_am sortiert. WORKFLOW_V0 hat kein
  * Zeitfeld; eine Sortierung nach Verzeichnis-mtime wäre genau der
  * Ersatzwert, den E-M2-5/F-141 aus der Laufliste entfernt haben.
+ *
+ * F45 P: asynchron wie sammleLaeufe (Stempel parallel, Cache-Prüfung in Scheiben).
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
- * @returns Kopfdaten je Workflow, alphabetisch nach workflowId
+ * @returns Promise der Kopfdaten je Workflow, alphabetisch nach workflowId
  */
-function sammleWorkflows(basisVerzeichnis = BASISVERZEICHNIS) {
-  if (!existsSync(basisVerzeichnis)) return []
+async function sammleWorkflows(basisVerzeichnis = BASISVERZEICHNIS) {
+  const ordner = await leseKontrollzustandOrdner(basisVerzeichnis)
+  const ordnerNamen = new Set(ordner)
+  const workflowIds = ordner.filter((name) => name.startsWith(WORKFLOW_VERZEICHNIS_PRAEFIX)).map((name) => name.slice(WORKFLOW_VERZEICHNIS_PRAEFIX.length))
+  const stempel = await Promise.all(workflowIds.map((workflowId) => bildeWorkflowStempel(workflowId, basisVerzeichnis, ordnerNamen)))
   const eintraege = []
-  for (const verzeichnisName of readdirSync(basisVerzeichnis, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort()) {
-    if (!verzeichnisName.startsWith(WORKFLOW_VERZEICHNIS_PRAEFIX)) continue
-    const workflowId = verzeichnisName.slice(WORKFLOW_VERZEICHNIS_PRAEFIX.length)
-    const kopfdaten = baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis)
+  let scheibe = performance.now()
+  for (const [index, workflowId] of workflowIds.entries()) {
+    const kopfdaten = baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis, stempel[index])
     if (kopfdaten !== null) eintraege.push(kopfdaten)
+    scheibe = await gibEventLoopFrei(scheibe)
   }
   return eintraege
 }
@@ -1480,34 +1653,71 @@ function findeLetzteRealeBesetzung(rolle, basisVerzeichnis) {
 }
 
 /**
+ * Parse-Cache für sammleWorkitems je repoWurzel (F45 P, Event-Loop): GET /api/workitems parste bei jedem
+ * Aufruf state/findings.md (≈ 13 000 Zeilen) und alle Akten neu — gedrosselt ≈ 130–390 ms synchron je
+ * Seitenbetreten. Stempel ist der INHALT der gelesenen Dateien (asynchron gelesen, Vergleich statt Parsen):
+ * Datei-mtime und -größe taugen unter Windows nicht, beim schnellen Neuschreiben blieb die mtime in ≈ 80 %
+ * der Fälle gleich (gemessen 10.10.2026).
+ */
+const workitemParseCache = new Map()
+
+/**
+ * Liest eine Textdatei asynchron.
+ * @param pfad - Dateipfad
+ * @returns Promise des Inhalts, oder null, wenn die Datei fehlt
+ */
+async function leseTextOderNull(pfad) {
+  try {
+    return await readFileAsync(pfad, 'utf-8')
+  } catch (fehler) {
+    if (fehler?.code === 'ENOENT') return null
+    throw fehler
+  }
+}
+
+/**
  * Liest state/findings.md und alle features/<id>/feature.md unter repoWurzel
  * und parst beide über src/workboard/ (F21 WS-1, AK1/AK2/AK3) — kein zweiter
  * Regelsatz, dieselben reinen Funktionen wie scripts/check-f21-workboard.mjs.
  * Query-Filter werden erst NACH dem Parsen angewendet, damit befunde[] immer
  * den vollen Bestand widerspiegelt statt nur den gefilterten Ausschnitt.
+ *
+ * F45 P: Dateien asynchron gelesen; geparst wird nur, wenn sich ein Inhalt oder die Aktenliste gegenüber
+ * dem letzten Aufruf geändert hat (workitemParseCache). Die Antwort ist dieselbe wie vorher.
  * @param repoWurzel - Repo-Wurzel (Default process.cwd(), Muster erzeugeRequestHandler)
  * @param filter - optional { typ, status, prioritaet }, an baueWorkitemListe durchgereicht
- * @returns { workitems, befunde } — workitems bereits gefiltert/sortiert
+ * @returns Promise von { workitems, befunde } — workitems bereits gefiltert/sortiert
  */
-function sammleWorkitems(repoWurzel, filter = {}) {
-  const findingsPfad = join(repoWurzel, 'state', 'findings.md')
-  const findingsInhalt = existsSync(findingsPfad) ? readFileSync(findingsPfad, 'utf-8') : ''
-  const findingsErgebnis = parseFindings(findingsInhalt)
-
+async function sammleWorkitems(repoWurzel, filter = {}) {
   const featuresDir = join(repoWurzel, 'features')
-  const featureDateien = existsSync(featuresDir)
-    ? readdirSync(featuresDir, { withFileTypes: true })
-        .filter((e) => e.isDirectory())
-        .map((e) => e.name)
-        .sort()
-        .map((ordner) => ({ ordner, pfad: join(featuresDir, ordner, 'feature.md') }))
-        .map((d) => ({ ...d, inhalt: existsSync(d.pfad) ? readFileSync(d.pfad, 'utf-8') : null }))
-    : []
-  const featuresErgebnis = parseFeatureAkten(featureDateien)
+  let ordner = []
+  try {
+    ordner = (await readdirAsync(featuresDir, { withFileTypes: true }))
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort()
+  } catch (fehler) {
+    if (fehler?.code !== 'ENOENT') throw fehler
+  }
+  const pfade = ordner.map((name) => join(featuresDir, name, 'feature.md'))
+  const [findingsRoh, ...featureInhalte] = await Promise.all([leseTextOderNull(join(repoWurzel, 'state', 'findings.md')), ...pfade.map(leseTextOderNull)])
+  const findingsInhalt = findingsRoh ?? ''
+
+  let geparst = workitemParseCache.get(repoWurzel)
+  const unveraendert =
+    geparst !== undefined &&
+    geparst.findingsInhalt === findingsInhalt &&
+    geparst.ordner.length === ordner.length &&
+    ordner.every((name, index) => geparst.ordner[index] === name && geparst.featureInhalte[index] === featureInhalte[index])
+  if (!unveraendert) {
+    const featureDateien = ordner.map((name, index) => ({ ordner: name, pfad: pfade[index], inhalt: featureInhalte[index] }))
+    geparst = { findingsInhalt, ordner, featureInhalte, findingsErgebnis: parseFindings(findingsInhalt), featuresErgebnis: parseFeatureAkten(featureDateien) }
+    workitemParseCache.set(repoWurzel, geparst)
+  }
 
   return {
-    workitems: baueWorkitemListe(findingsErgebnis.workitems, featuresErgebnis.workitems, filter),
-    befunde: [...findingsErgebnis.befunde, ...featuresErgebnis.befunde],
+    workitems: baueWorkitemListe(geparst.findingsErgebnis.workitems, geparst.featuresErgebnis.workitems, filter),
+    befunde: [...geparst.findingsErgebnis.befunde, ...geparst.featuresErgebnis.befunde],
   }
 }
 
@@ -4069,7 +4279,7 @@ export function sammleBestehendeIds(repoWurzel, roadmapPfad) {
  * @param projektId - Projekt-id der bedienenden Handler-Instanz
  * @param nachricht - die vom Menschen eingegebene Nachricht
  * @param laufId - lauf_id des Laufs (geht in 'herkunft')
- * @param misserfolg - F45 B0: { art, grund, zeitgrenzeMs? } — 'unlesbar' (F-506, Grund von
+ * @param misserfolg - F45 B0: { art, grund, code?, zeitgrenzeMs? } — 'unlesbar' (F-506, Grund von
  *   leseRollenChatErgebnisAusLaufakte) oder ein anderer Misserfolg aus beschreibeChatMisserfolg
  * @param profilReferenz - Profilreferenz dieser Serverinstanz
  * @param ladeOptionen - basisVerzeichnis/schreiber
@@ -4091,7 +4301,13 @@ function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, misserfol
         // F45 B0 (F-1008): Kennzeichnung als Fehler (nie eine Antwort) mit Art und Grund — der Client
         // zeigt den Eintrag als „Lauf nicht erfolgreich“, das Verlaufsfenster des Modells lässt ihn aus.
         istFehler: true,
-        fehler: { art: misserfolg.art, grund: misserfolg.grund ?? null, ...(misserfolg.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: misserfolg.zeitgrenzeMs } : {}) },
+        // F45 P (F-1016 c): code — 'unlesbar' (F-506, Nachbereitung) trägt keinen eigenen und wird ergebnis_unlesbar.
+        fehler: {
+          art: misserfolg.art,
+          grund: misserfolg.grund ?? null,
+          code: misserfolg.code ?? (misserfolg.art === 'unlesbar' ? 'ergebnis_unlesbar' : null),
+          ...(misserfolg.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: misserfolg.zeitgrenzeMs } : {}),
+        },
         ...(modus !== undefined ? { modus } : {}),
       },
       undefined,
@@ -4103,6 +4319,9 @@ function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, misserfol
   }
 }
 
+/** F45 P (F-1016 c): Form eines Grund-Codes — Gegenstück zu CODE_MUSTER in public/leitstand/chat-laufstand.js. */
+const CHAT_GRUND_CODE_MUSTER = /^[a-z][a-z0-9_]*$/
+
 /**
  * F45 B0 (F-1008): ordnet das Ende eines Chat-Laufs ein — null bei Erfolg, sonst Art und Grund des
  * Misserfolgs für den Fehler-Eintrag. Reine Funktion (Test: scripts/leitstand-chat-misserfolg.test.mjs).
@@ -4113,23 +4332,29 @@ function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, misserfol
  * @param fehler - Wurf aus dem Lauf oder null
  * @param abbruchAngefordert - true, wenn das Abbruchsignal dieses Laufs ausgelöst wurde
  * @param zeitgrenzeMs - wirksame Zeitgrenze des Laufs (geht in den Text der Zeitgrenze)
- * @returns null oder { art, grund, zeitgrenzeMs? }
+ * @returns null oder { art, grund, code, zeitgrenzeMs? } — F45 P (F-1016 c): code ist der Grund als Code
+ *   (Klassifikationscode, sonst ein fester Code je Ausgang); der Client übersetzt ihn, grund bleibt der
+ *   deutsche Klartext für Laufakte und Rückfall.
  */
 export function beschreibeChatMisserfolg(ergebnis, fehler, abbruchAngefordert, zeitgrenzeMs) {
-  if (fehler !== null && fehler !== undefined) return { art: 'nicht_erfolgreich', grund: String(fehler?.message ?? fehler) }
-  if (ergebnis?.ok === false) return { art: 'nicht_gestartet', grund: beschreibeAblehnung(ergebnis) }
+  if (fehler !== null && fehler !== undefined) return { art: 'nicht_erfolgreich', grund: String(fehler?.message ?? fehler), code: 'ausnahme' }
+  if (ergebnis?.ok === false) return { art: 'nicht_gestartet', grund: beschreibeAblehnung(ergebnis), code: ergebnis.stufe === 'kontextpaket' ? 'kontextpaket_abgelehnt' : 'startfreigabe_abgelehnt' }
   const status = ergebnis?.laufStatus
   if (status?.status === 'ABGESCHLOSSEN' && status.ergebnis === 'ERFOLGREICH') return null
   const klassifikationsGrund = typeof ergebnis?.klassifikation?.grund === 'string' ? ergebnis.klassifikation.grund : null
-  if (klassifikationsGrund === 'abgebrochen_manuell' || (abbruchAngefordert && status?.ergebnis === 'FEHLGESCHLAGEN')) return { art: 'abgebrochen', grund: null }
-  if (klassifikationsGrund === 'timeout') return { art: 'zeitgrenze', grund: null, zeitgrenzeMs }
+  if (klassifikationsGrund === 'abgebrochen_manuell' || (abbruchAngefordert && status?.ergebnis === 'FEHLGESCHLAGEN')) return { art: 'abgebrochen', grund: null, code: 'abgebrochen_manuell' }
+  if (klassifikationsGrund === 'timeout') return { art: 'zeitgrenze', grund: null, code: 'timeout', zeitgrenzeMs }
   if (status?.status === 'ABGESCHLOSSEN' && status.ergebnis === 'VERWEIGERT') {
     const art = ergebnis?.klassifikation?.non_execution_kind
-    return { art: 'verweigert', grund: typeof art === 'string' && art !== '' ? art : 'Werkzeuggrenze abgelehnt' }
+    // F45 P: der Code ist immer werkzeuggrenze_abgelehnt; die Art des Modells (non_execution_kind) bleibt im Grund.
+    return { art: 'verweigert', grund: typeof art === 'string' && art !== '' ? art : 'Werkzeuggrenze abgelehnt', code: 'werkzeuggrenze_abgelehnt' }
   }
-  if (status?.status === 'KLAERUNG_ERFORDERLICH') return { art: 'klaerung', grund: typeof status.grund === 'string' ? status.grund : null }
-  if (status?.status === 'ABGESCHLOSSEN') return { art: 'nicht_erfolgreich', grund: klassifikationsGrund ?? status.ergebnis }
-  return { art: 'nicht_erfolgreich', grund: `unerwarteter Laufstatus ${status?.status ?? 'unbekannt'}` }
+  if (status?.status === 'KLAERUNG_ERFORDERLICH') {
+    const grund = typeof status.grund === 'string' ? status.grund : null
+    return { art: 'klaerung', grund, code: grund !== null && CHAT_GRUND_CODE_MUSTER.test(grund) ? grund : null }
+  }
+  if (status?.status === 'ABGESCHLOSSEN') return { art: 'nicht_erfolgreich', grund: klassifikationsGrund ?? status.ergebnis, code: klassifikationsGrund ?? 'fehlgeschlagen' }
+  return { art: 'nicht_erfolgreich', grund: `unerwarteter Laufstatus ${status?.status ?? 'unbekannt'}`, code: 'unerwarteter_laufstatus' }
 }
 
 /**
@@ -5982,7 +6207,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
 
     if (req.method === 'GET' && pfad === '/api/laeufe') {
-      sendeJson(res, 200, sammleLaeufe(basisVerzeichnis))
+      sendeJson(res, 200, sammleLaeufeSync(basisVerzeichnis))
       return
     }
 
@@ -5992,7 +6217,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
 
     if (req.method === 'GET' && pfad === '/api/auftraege') {
-      sendeJson(res, 200, sammleAuftraege(basisVerzeichnis))
+      sendeJson(res, 200, await sammleAuftraege(basisVerzeichnis))
       return
     }
 
@@ -6549,7 +6774,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
 
     if (req.method === 'GET' && pfad === '/api/workflows') {
-      sendeJson(res, 200, sammleWorkflows(basisVerzeichnis))
+      sendeJson(res, 200, await sammleWorkflows(basisVerzeichnis))
       return
     }
 
@@ -6558,10 +6783,13 @@ export function erzeugeRequestHandler(optionen = {}) {
     // oben — keine neue Projektion, Elementform BYTE-GLEICH. Additiv: keiner der bestehenden
     // Endpunkte ändert sich oder verschwindet (AK1).
     if (req.method === 'GET' && pfad === '/api/zustand') {
+      const zustandStart = performance.now()
       const fehler = []
-      const laeufe = sammleZustandsQuelle('laeufe', () => sammleLaeufe(basisVerzeichnis), fehler)
-      const startfehlerWert = sammleZustandsQuelle('startfehler', () => startfehlerListe, fehler)
-      const workflows = sammleZustandsQuelle('workflows', () => sammleWorkflows(basisVerzeichnis), fehler)
+      // F45 P (F-556): Läufe und Workflows asynchron (Stempel im Threadpool) — dieselben Werte; nacheinander,
+      // damit fehler[] die Reihenfolge laeufe, startfehler, workflows behält.
+      const laeufe = await sammleZustandsQuelle('laeufe', () => sammleLaeufe(basisVerzeichnis), fehler)
+      const startfehlerWert = await sammleZustandsQuelle('startfehler', () => startfehlerListe, fehler)
+      const workflows = await sammleZustandsQuelle('workflows', () => sammleWorkflows(basisVerzeichnis), fehler)
       // F28 WS-1: additiv aktiverLauf, direkt aus dem bereits vorhandenen globalerLaufZustand
       // gespiegelt (Befund der F28-Challenge) — stelleLaufstatusFest (src/checkpoint-store/index.ts)
       // kennt nur KLAERUNG_ERFORDERLICH | ABGESCHLOSSEN | NICHT_GESTARTET; ein GERADE laufender
@@ -6581,6 +6809,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Durchsetzungsort, Senden bleibt möglich. Option startHinweis nur für Tests.
       const startHinweisWert = startHinweis !== undefined ? startHinweis : prozessStartHinweis
       sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert })
+      // F45 P (Teil 1 Punkt 2): Gesamtdauer inkl. Serialisierung — nur bei LEITSTAND_ZEITMESSUNG=1 wirksam.
+      erfasseQuellenDauer('gesamt', performance.now() - zustandStart)
       return
     }
 
@@ -6594,7 +6824,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         if (wert !== null) filter[feld] = wert
       }
       const fehler = []
-      const ergebnis = sammleZustandsQuelle('workitems', () => sammleWorkitems(repoWurzel, filter), fehler)
+      const ergebnis = await sammleZustandsQuelle('workitems', () => sammleWorkitems(repoWurzel, filter), fehler)
       sendeJson(res, 200, { workitems: ergebnis?.workitems ?? null, befunde: ergebnis?.befunde ?? null, fehler })
       return
     }
@@ -7754,7 +7984,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_JARVIS, 30, 40000)
       markiereZeit(zeitmessung, 'verlauf_geladen')
       if (verlaufsfenster.length === 0) {
-        sendeJson(res, 409, { grund: 'kein Verlauf zum Zusammenfassen' })
+        // F45 P (F-1016 c): code, damit der Client diese 409 von „anderer Lauf aktiv“ unterscheidet.
+        sendeJson(res, 409, { grund: 'kein Verlauf zum Zusammenfassen', code: 'kein_verlauf' })
         return
       }
 
@@ -9886,7 +10117,21 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     selbstHandler: defaultHandler,
   })
   for (const [id, handler] of anfangsHandlerKarte) projektHandlerMap.set(id, handler)
-  const server = createServer(erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler))
+  const dispatcher = erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler)
+  // F45 P (Teil 1 Punkt 2): bei LEITSTAND_ZEITMESSUNG=1 misst ein Mantel den synchronen Teil jeder Anfrage
+  // (bis zum ersten await) und meldet Strecken > 200 ms mit Methode und Pfad; sonst der Dispatcher selbst.
+  const server = createServer(
+    process.env.LEITSTAND_ZEITMESSUNG === '1'
+      ? (req, res) => {
+          const start = performance.now()
+          try {
+            return dispatcher(req, res)
+          } finally {
+            meldeSynchroneStrecke(`${req.method} ${(req.url ?? '').split('?')[0]}`, performance.now() - start)
+          }
+        }
+      : dispatcher
+  )
   server.listen(PORT, '127.0.0.1', () => {
     console.log(
       `Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad}, Projekte: ${projekte.map((p) => p.id).join(', ') || '—'})`

@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Ein Baulauf ist aktiv (aktiverLauf) → Senden und Zusammenfassen gesperrt, Sperrgrund „anderer Lauf“",
+    "Sperrgrund sichtbar": true,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": false,
+    "Tipp-Punkte": false,
+    "lang": "en",
+    "Sperrgrund": "Another run is active — you can send again once it ends.",
+    "Senden disabled": "",
+    "Senden title": "Another run is active — you can send again once it ends.",
+    "Zusammenfassen disabled": "",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "(fehlt)",
+    "Seite geladen": true
+  },
+  {
+    "label": "Der Baulauf endet → Senden wieder frei, Sperrgrund weg",
+    "Sperrgrund sichtbar": false,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": false,
+    "Tipp-Punkte": false,
+    "lang": "en",
+    "Sperrgrund": "",
+    "Senden disabled": "null",
+    "Senden title": "null",
+    "Zusammenfassen disabled": "null",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "(fehlt)",
+    "Seite geladen": true
+  }
+]

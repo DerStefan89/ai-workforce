@@ -8662,12 +8662,13 @@ Auswirkung: Leitstand faktisch blockiert.
 Maßnahme: Überlappungsschutz plus Gate (d)/(e).
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/292.
 
-**F-556** · `BUG` · P1 · offen
+**F-556** · `BUG` · P1 · erledigt
 Titel: Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
 Beschreibung: Messung war durch alte Browser-Tab-Verbindungen verfälscht; im Browser 1,7 s, Hypothese Kaspersky-fetch-Hook. Ursache ungeklärt.
 Fundstelle: `GET /api/zustand`.
 Auswirkung: Event-Loop zeitweise blockiert.
 Maßnahme: Saubere Langlauf-Nachmessung ohne Störfaktor (Kaspersky-Ausnahme gesetzt, E-M5-11). Siehe auch F-588: die Verzeichnisanzahl allein erklärt den 1266-ms-Ausreißer vom 22.09.2026 nicht (Messung liefert bei 794 Verzeichnissen nur ~70-80 ms) — Ursache bleibt vermutlich Systemlast, F-556 bleibt offen.
+Status: erledigt (F45 P, 11.10.2026): Ursache zweiteilig. (1) Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor 5–10 (F-1018) — die „Systemlast“; (2) GET /api/zustand stempelte alle ~280 Läufe synchron nacheinander (stat + readdir je Kette). Fix: Stempel asynchron und parallel (fs.promises), entscheidung-/Abnahme-Ketten nur, wenn ihr Ordner in der Verzeichnisliste steht; Kaltstart in 25-ms-Scheiben; Caches für GET /api/auftraege und /api/workitems (scripts/leitstand-server.mjs, Test scripts/leitstand/zustand-caches.test.mjs). Gemessen bei gleichem Energiemodus (features/F45/nachweise/p/messung-vorher-basis60.md gegen messung-nachher-gleich.md): p95 gesamt 125 → 65 ms, frisch 504 → 63 ms, spät 92 → 68 ms (Ziel P1 ≤ 300 ms).
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/293, claude/295, claude/303.
 
 **F-557** · `PROCESS_IMPROVEMENT` · P3 · erledigt (#202)
@@ -12631,13 +12632,13 @@ Maßnahme: Antwortformat „Deine Schritte“ (E-Stefan 02.10.2026): zuerst, was
 Status: offen.
 Feature/Run: Entdeckt: Frage Stefan, 02.10.2026.
 
-**F-999** · `TECH_DEBT` · P3 · offen
+**F-999** · `TECH_DEBT` · P3 · erledigt
 Titel: Test aufraeumen-nachlauf scheitert sporadisch an einem Restordner des f16-Gates.
 Beschreibung: Der Test `aufraeumen-nachlauf` schlug in `npm run check` einmal fehl, weil ein parallel laufendes Gate (f16) einen Restordner `kontrollzustand-test/f16c-…` hinterließ; isoliert und im Wiederholungslauf grün.
 Fundstelle: `scripts/check-f16-codex-gateway.mjs` (Testordner), `scripts/aufraeumen-nachlauf.test.mjs`.
 Auswirkung: Sporadisch rote Kette ohne Codeänderung.
 Maßnahme: Das f16-Gate räumt seine Ordner vor dem Ende auf oder nutzt einen eigenen temporären Ordner (os.tmpdir).
-Status: offen.
+Status: erledigt (F45 P, 11.10.2026): Die Ursache war nicht das f16-Gate (die Gates laufen nacheinander, vor npm run test), sondern der Testfall „F16 AK11“ in src/execution-controller/execution-controller.test.ts (Lauf-Präfix „f16c“), der in npm run test (--test-concurrency=4) parallel zu scripts/aufraeumen-nachlauf.test.mjs läuft: tolerierte raeumeVerzeichnis einen EPERM, schrieb es eine Reste-Meldung ins gemeinsame RESTE_VERZEICHNIS, und der Nachlauf-Test las (und löschte) sie. Fix: fuehreNachlaufAus nimmt ein Reste-Verzeichnis entgegen, der Test arbeitet auf einem eigenen unter os.tmpdir() (scripts/aufraeumen-nachlauf.mjs/.test.mjs). check-f16-codex-gateway.mjs unverändert. Der Restordner kann bei EPERM weiter entstehen; der Nachlauf am Ende von npm run check räumt ihn wie vorgesehen. npm run check dreimal hintereinander grün (Zeitpunkte in features/F45/feature.md, Stand P).
 Feature/Run: Entdeckt: F46 D3, 02.10.2026.
 
 **F-1000** · `TECH_DEBT` · P2 · offen
@@ -12775,13 +12776,13 @@ Maßnahme: Dieselben Marken wie im Claude-Code-Gateway (prozess_gestartet, proze
 Status: offen.
 Feature/Run: Entdeckt: F45 B0, Vorher-Messung 10.10.2026.
 
-**F-1015** · `BUG` · P1 · offen
+**F-1015** · `BUG` · P1 · erledigt
 Titel: Der Speicher der Leitstand-Seite wächst im Langlauf in Stufen.
 Beschreibung: Langlauf F45 B0 (10.10.2026, 30 min Warmlauf mit offener Seite #/chat, Poll alle 2 s, danach 5 Jarvis-Turns): Working Set aller Chromium-Prozesse der Seite 396 MB nach dem Laden (18:37 UTC), Stufen auf 591 MB (18:43) und 707 MB (18:57), dazwischen nur teilweise zurück; am Ende des Warmlaufs 603 MB (+52 %). Der Leitstand-Server blieb nach einer Anlaufphase flach (82 → 113 MB, ab 18:46 konstant). Ob ein Leck (z. B. wachsende Listen, Detached DOM durch innerHTML-Rendern im Poll) oder nur verzögerte Garbage Collection vorliegt, ist nicht belegt. Im Bericht der Messung steht „Chromium 500 %“ — die Basis war eine Probe vor dem Seitenladen (98 MB); seit F45 B0 rechnet scripts/messe-chat.mjs ab der ersten Probe nach dem Laden.
 Fundstelle: features/F45/nachweise/b0/messung-langlauf.md (Speicherverlauf), public/leitstand/zustand.js und die Poll-Abnehmer.
 Auswirkung: Hoch bei Stefans Arbeitsweise (Leitstand stundenlang offen, Rechner mit wenig freiem Speicher — der erste Langlauf wurde wegen Speichermangel abgebrochen).
-Maßnahme: WS P: 2-h-Langlauf mit Heap-Snapshots (Chromium DevTools) vor/nach, Poll-Abnehmer auf wachsende Strukturen prüfen; Ziel: RSS der Seite nach 2 h ≤ 1,2 × Wert nach dem Laden.
-Status: offen.
+Maßnahme: WS P: 2-h-Langlauf mit Heap-Snapshots (Chromium DevTools) vor/nach, Poll-Abnehmer auf wachsende Strukturen prüfen; Ziel: RSS der Seite nach 2 h ≤ 1,2 × Wert nach dem Laden. Zielwert seit Challenger-Entscheidung 11.10.2026: Seitenspeicher (RSS Chromium) am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen) UND JS-Heap, DOM-Knoten und Listener ≤ 1,2 × Wert nach 15 min (docs/projekt/fixpaket-f45.md Abschnitt 2); ausgewertet über Mediane (Minute 15–20 gegen die letzten 5 min).
+Status: erledigt (F45 P, 11.10.2026) — kein Leck, Chromium-Aufwärmphase. 2-h-Leerlauf mit Seitenwechseln und Heap-Snapshots (features/F45/nachweise/p/messung-vorher.md): JS-Heap ≈ 15 MB, DOM-Knoten ≈ 15 000 und Listener 166 über die ganze Zeit flach, kein Detached DOM; RSS Chromium steigt in den ersten ≈ 15 min von 360 auf ≈ 650 MB und bleibt dann auf diesem Plateau. Das Heap-Wachstum Start → Ende (+4,5 MB Strings) sind einmal gefüllte Ansichtsdaten (z. B. 378 KB HTML der Laufliste, je Ansicht eine Workitem-Liste) und der DevTools-Netzwerkpuffer der Messung (blink::NetworkResourcesData, Playwright). Neues Kriterium: Vorher-Basis 0,94 / 0,88 / 1,0 / 1,0, nachher-gleich 1,02 / 0,94 / 1,0 / 1,0 — erfüllt. Grenzen: das Kriterium belegt „kein Leck nach dem Aufwärmen“, kein „behoben“ (vorher schon erfüllt); das ursprüngliche 2-h-Ziel ist ersetzt; die Nachher-Messung lief 60 min (die 2 h vorher endeten nach 63 min in Modern Standby).
 Feature/Run: Entdeckt: F45 B0, Langlauf 10.10.2026.
 
 **F-1016** · `TECH_DEBT` · P3 · offen
@@ -12790,5 +12791,41 @@ Beschreibung: (a) Ein nach Neuladen übernommener Zusammenfassen-Lauf zeigt bis 
 Fundstelle: public/leitstand/views/chat.js (uebernimmLaufendenChatLauf, Sperrgrund), scripts/leitstand-server.mjs (beschreibeChatMisserfolg, ermittleStartHinweis).
 Auswirkung: Gering.
 Maßnahme: (a) Zusammenfassung im Auftrag kennzeichnen; (b) beim Serverstart verwaiste Chat-Läufe mit Fehler-Eintrag abschließen; (c) Gründe als Code mit i18n-Text; (d) Sperre aus aktiverLauf ableiten; (e) Hinweis je Poll; (f) in WS R echten Abbruch und „nie gestartet“ mit messe-chat.mjs messen.
-Status: offen.
+Status: offen — (c) und (d) erledigt (F45 P, 11.10.2026): Fehler-Eintrag trägt fehler.code (beschreibeChatMisserfolg), der Client übersetzt über GRUND_SCHLUESSEL in de/en/tr/ru, unbekannter Code „unbekannt (<code>)“, Deutsch zeigt den Klartext des Servers, en/tr/ru nie deutschen Fließtext (Verweis auf das Lauf-Detail); Senden und Zusammenfassen gesperrt mit Grund, wenn ein anderer Lauf aktiv ist (sperreDurchAnderenLauf: anderer Reiter sofort, Baulauf/anderes Projekt aus aktiverLauf, eigener eben beendeter Lauf 5 s ausgenommen); 409 übersetzt, 409 „kein Verlauf“ mit code kein_verlauf. Nachweis features/F45/nachweise/p/render/. Rest offen: (a), (b), (e), (f), (g); dazu aus dem QA-Pass F45 P: chat.fehler.status/abbruch zeigen bei 400/500 den Servergrund roh, der lokale Rückfall „nie gestartet“ den Startfehler-Text roh, ein Projekt-Aufruf (F43) steht nicht in aktiverLauf.
 Feature/Run: Entdeckt: F45 B0, Prüfpass (qa 5/6/9/11/12/14, code-reviewer 6, design-guardian 10), 10.10.2026.
+
+**F-1017** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Chat-Latenz: ≈ 3 s je Turn sind fester CLI-Start und -Ende.
+Beschreibung: Jarvis antwortet im Median nach 5,2 s (F45 B0, features/F45/nachweise/b0/messung-nachher-jarvis.md); davon entfallen ≈ 3,0–3,7 s je Ein-Schuss-Lauf auf Start und Ende der Claude-CLI (state/nachweis-jarvis-latenz.md, Aufschlüsselung). Hebel wäre ein dauerhaft laufender Chat-Prozess; das berührt die Prozess-Lebensdauer, D13 und die Startfreigabe je Lauf (E-188).
+Fundstelle: state/nachweis-jarvis-latenz.md, src/claude-code-gateway/index.ts (Ein-Schuss-Aufruf je Lauf), scripts/leitstand-server.mjs (starteRollenChatLauf).
+Auswirkung: Gering — K3 ist mit ≈ 5 s erfüllt; spürbar nur als Grundwartezeit je Turn.
+Maßnahme: Nach F30 bewerten, nur bei realem Bedarf; eigene Challenge (Prozess-Lebensdauer, D13, E-188).
+Status: offen.
+Feature/Run: Entdeckt: Frage Stefan 10.10.2026.
+
+**F-1018** · `BUG` · P1 · offen
+Titel: Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor ≈ 5–10.
+Beschreibung: Auf Stefans Rechner (i5-1235U, Netzbetrieb) steht der Energiemodus bei Netzbetrieb auf „Beste Energieeffizienz“ (Registry-Overlay ActiveOverlayAcPowerScheme = 961cc777-2547-4f9d-8174-7d86181b8a7a). Windows drosselt dann Prozesse ohne sichtbares Fenster (Power Throttling/EcoQoS). Nachweis 10.10.2026: eine reine CPU-Schleife in node.exe wird ≈ 3 s nach dem Start 5-fach langsamer (≈ 14 → 63 ms je Runde); dieselbe Zustandsabfrage dauerte im Mess-Leitstand ≈ 320 ms, im Vordergrund-Testprozess ≈ 35 ms; ein prozessweises Opt-out (SetProcessInformation, ProcessPowerThrottling, EXECUTION_SPEED aus — nur am Testprozess gesetzt) hob die Drosselung sofort auf (≈ 63 → 14 ms). Der Leitstand läuft bei Stefan in einem Terminal, das meist nicht im Vordergrund ist; F45 P hat die Arbeit je Poll gesenkt (F-556), die Drosselung bleibt.
+Fundstelle: Windows-Energieeinstellungen (Einstellungen → System → Netzbetrieb und Akku → Energiemodus), scripts/leitstand-server.mjs (CLI-Bindeblock).
+Auswirkung: Hoch — jede Server-Arbeit (Poll, Seitenbetreten, Lauf-Nachbereitung) kostet gedrosselt ein Vielfaches; frühere Langlauf-Werte (F-556, F45 B0) gehen großteils darauf zurück.
+Maßnahme: Offen, Entscheidung Stefan E-F45-4: (A) Energiemodus bei Netzbetrieb „Ausgeglichen“ (keine Codeänderung); (B) der Leitstand nimmt sich beim Start selbst aus der Drosselung (SetProcessInformation über einen kleinen PowerShell-Helfer; Risiko: Virenscanner-Hinweis auf Inline-C#). Vorschlag (nicht gebaut): der Leitstand erkennt die Lage beim Start lesend ohne neue Abhängigkeit über reg.exe query HKLM\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes /v ActiveOverlayAcPowerScheme und warnt bei 961cc777-… (scripts/messe-chat.mjs liest so schon den Modus in jede Messung, leseEnergiemodus). Stefan hat am 11.10.2026 entschieden, den Modus für die F45-P-Messung nicht umzustellen.
+Status: offen.
+Feature/Run: Entdeckt: F45 P, Ursachenanalyse 10.10.2026.
+
+**F-1019** · `TECH_DEBT` · P3 · offen
+Titel: Chat-Fehler-Eintrag: Kopfzeile „Lauf nicht erfolgreich“ auch bei „nicht gestartet“ und „Klärung“; Art einer Verweigerung nicht sichtbar.
+Beschreibung: Über jedem Fehler-Eintrag steht „Lauf nicht erfolgreich“, auch über „Lauf nicht gestartet: …“ und „Lauf hält — Klärung erforderlich: …“ (Render-Nachweis features/F45/nachweise/p/render/fehler-grund-*/02-ganzer-verlauf.webp). Bei „verweigert“ zeigt der Chat seit F45 P den festen Code werkzeuggrenze_abgelehnt; die Art des Modells (non_execution_kind, z. B. permission_denied) steht nur noch im Grund des Eintrags und in der Laufakte.
+Fundstelle: public/leitstand/views/chat.js (renderEintrag, grundText), scripts/leitstand-server.mjs (beschreibeChatMisserfolg).
+Auswirkung: Gering.
+Maßnahme: Kopfzeile je fehler.art; Art der Verweigerung als Zusatz zeigen, wenn sie bekannt ist.
+Status: offen.
+Feature/Run: Entdeckt: F45 P, Prüfpass (design-guardian Nachpass 4, code-reviewer N2), 11.10.2026.
+
+**F-1020** · `TECH_DEBT` · P3 · offen
+Titel: Kaltstart: erster GET /api/chat und der Workitems-Parse bleiben synchrone Strecken.
+Beschreibung: Nachher-Messung F45 P (features/F45/nachweise/p/messung-nachher-gleich.md, gedrosselt): 59 von 60 Minuten-Fenstern Event-Loop ≤ 200 ms; einzige Überschreitung ist das Startfenster mit dem ersten GET /api/chat (1 433 ms synchron, kalter Datei-Cache, ganze Chat-Kette gelesen und gehasht). Der Workitems-Parse (state/findings.md, ≈ 13 000 Zeilen) läuft nach jeder Änderung an findings.md oder einer Akte einmal synchron (Quellen-Zeile workitems bis 718 ms Wartezeit beim ersten Betreten, danach gecacht).
+Fundstelle: scripts/leitstand-server.mjs (GET /api/chat, sammleWorkitems).
+Auswirkung: Gering — einmal nach dem Start bzw. nach einer Änderung; im Normalbetrieb erfüllt P2.
+Maßnahme: Chat-Kette asynchron bzw. gecacht lesen (Stempel der Kette); Workitems-Parse in Scheiben oder im Worker. Prüfen in WS R (P5).
+Status: offen.
+Feature/Run: Entdeckt: F45 P, Nachher-Messung 11.10.2026 (QA-Nachpass Punkt 8).

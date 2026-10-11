@@ -268,13 +268,28 @@ test('Fehler-Einträge gehen nicht als Gesprächskontext an das Modell', async (
 
 test('beschreibeChatMisserfolg ordnet jeden Ausgang ein; Erfolg ist kein Misserfolg', () => {
   assert.equal(beschreibeChatMisserfolg({ ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }, null, false, 180_000), null)
-  assert.deepEqual(beschreibeChatMisserfolg(fehlgeschlagen('timeout'), null, false, 180_000), { art: 'zeitgrenze', grund: null, zeitgrenzeMs: 180_000 })
+  assert.deepEqual(beschreibeChatMisserfolg(fehlgeschlagen('timeout'), null, false, 180_000), { art: 'zeitgrenze', grund: null, code: 'timeout', zeitgrenzeMs: 180_000 })
   assert.equal(beschreibeChatMisserfolg(fehlgeschlagen('abgebrochen_manuell'), null, false, 180_000).art, 'abgebrochen')
   // Abbruch angefordert und Lauf scheitert aus anderem Grund: der Abbruch hat ihn beendet.
   assert.equal(beschreibeChatMisserfolg(fehlgeschlagen('beobachtungsbasis_unvollstaendig'), null, true, 180_000).art, 'abgebrochen')
   assert.equal(beschreibeChatMisserfolg({ ok: false, stufe: 'gateway', grund: 'X' }, null, false, 180_000).art, 'nicht_gestartet')
   assert.equal(beschreibeChatMisserfolg(null, new Error('kaputt'), false, 180_000).art, 'nicht_erfolgreich')
   assert.equal(beschreibeChatMisserfolg({ ok: true, laufStatus: { status: 'KLAERUNG_ERFORDERLICH', grund: 'Blocker' } }, null, false, 180_000).art, 'klaerung')
+})
+
+test('F45 P (F-1016 c): jeder Misserfolg trägt einen Grund-Code, freier Text nie als Code', () => {
+  const code = (...argumente) => beschreibeChatMisserfolg(...argumente).code
+  assert.equal(code(null, new Error('kaputt'), false, 180_000), 'ausnahme')
+  assert.equal(code({ ok: false, stufe: 'gateway', grund: 'F6a-Ablehnung: Arbeitsverzeichnis weicht ab' }, null, false, 180_000), 'startfreigabe_abgelehnt')
+  assert.equal(code({ ok: false, stufe: 'kontextpaket', ergebnis: { grund: 'x' } }, null, false, 180_000), 'kontextpaket_abgelehnt')
+  assert.equal(code(fehlgeschlagen('abgebrochen_manuell'), null, false, 180_000), 'abgebrochen_manuell')
+  assert.equal(code(fehlgeschlagen('beobachtungsbasis_unvollstaendig'), null, false, 180_000), 'beobachtungsbasis_unvollstaendig')
+  assert.equal(code({ ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'FEHLGESCHLAGEN' }, klassifikation: {} }, null, false, 180_000), 'fehlgeschlagen')
+  // die Art des Modells bleibt im Grund, der Code ist fest
+  assert.deepEqual(beschreibeChatMisserfolg({ ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'VERWEIGERT' }, klassifikation: { non_execution_kind: 'permission_denied' } }, null, false, 180_000), { art: 'verweigert', grund: 'permission_denied', code: 'werkzeuggrenze_abgelehnt' })
+  assert.equal(code({ ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'VERWEIGERT' }, klassifikation: {} }, null, false, 180_000), 'werkzeuggrenze_abgelehnt')
+  assert.equal(code({ ok: true, laufStatus: { status: 'KLAERUNG_ERFORDERLICH', grund: 'Blocker mit Text' } }, null, false, 180_000), null)
+  assert.equal(code({ ok: true, laufStatus: { status: 'SONSTWAS' } }, null, false, 180_000), 'unerwarteter_laufstatus')
 })
 
 test('vergleicheStartordner: gleiche Pfade trotz Trenner und Großschreibung, Abweichung mit beiden Pfaden', () => {
@@ -307,6 +322,30 @@ test('Prüfpass: ERFOLGREICH ohne Laufakte endet nicht still — genau ein Fehle
     assert.equal(eintraege[0].istFehler, true)
     assert.equal(eintraege[0].fehler.art, 'unlesbar')
     assert.ok(eintraege[0].fehler.grund.includes('nicht gefunden'))
+  })
+})
+
+test('F45 P (F-1016 c): 409 „kein Verlauf“ trägt code kein_verlauf, damit der Client sie nicht als „anderer Lauf aktiv“ zeigt', async () => {
+  await mitServer({}, async (basisUrl) => {
+    const antwort = await fetch(`${basisUrl}/api/chat/zusammenfassen`, { method: 'POST', body: '{}' })
+    assert.equal(antwort.status, 409)
+    assert.deepEqual(await antwort.json(), { grund: 'kein Verlauf zum Zusammenfassen', code: 'kein_verlauf' })
+  })
+})
+
+test('F45 P (F-1016 c): der Fehler-Eintrag speichert den Grund-Code (Zeitgrenze, nie gestartet)', async () => {
+  await mitServer({ fuehreAufgabeDurchFn: async () => fehlgeschlagen('timeout') }, async (basisUrl) => {
+    assert.equal((await fetch(`${basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'Frage' }) })).status, 202)
+    await warteBisLaufFrei(basisUrl)
+    const eintraege = await verlauf(basisUrl, '/api/chat')
+    assert.equal(eintraege.at(-1).fehler.code, 'timeout')
+  })
+  await mitServer({ fuehreAufgabeDurchFn: async () => ({ ok: false, stufe: 'gateway', grund: 'F6a-Ablehnung: Attrappe' }) }, async (basisUrl) => {
+    assert.equal((await fetch(`${basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'Frage' }) })).status, 202)
+    await warteBisLaufFrei(basisUrl)
+    const fehler = (await verlauf(basisUrl, '/api/chat')).at(-1).fehler
+    assert.equal(fehler.code, 'startfreigabe_abgelehnt')
+    assert.match(fehler.grund, /F6a-Ablehnung/)
   })
 })
 

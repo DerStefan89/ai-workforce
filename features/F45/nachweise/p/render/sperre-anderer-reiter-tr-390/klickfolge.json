@@ -1,0 +1,208 @@
+{
+  "url": "http://127.0.0.1:4199/#/chat",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.8,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "true",
+    "leitstand-chat-modus": "jarvis",
+    "leitstand-sprache": "tr"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true,
+        "startHinweis": null
+      }
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:/Projekte/ai-workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": [
+          {
+            "laufId": "jarvis-alt-1",
+            "nachricht": "Wo steht mein Projekt?",
+            "jarvisAntwort": {
+              "art": "antwort",
+              "antwort": "F45 P ist im Bau."
+            },
+            "istZusammenfassung": false,
+            "istFehler": false,
+            "fehler": null
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "jarvis-jarvis-chat-0f450p00-0000-4000-8000-000000000p01",
+        "auftragId": "x"
+      }
+    },
+    {
+      "muster": "**/laeufe/jarvis-jarvis-chat-0f450p00-0000-4000-8000-000000000p01",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laufId": "jarvis-jarvis-chat-0f450p00-0000-4000-8000-000000000p01",
+        "checkpoints": [],
+        "laufStatus": {
+          "status": "KLAERUNG_ERFORDERLICH",
+          "blockerId": "x",
+          "grund": "RUN_PREPARED ohne Terminalartefakt"
+        },
+        "aktiv": true,
+        "fortschritt": null,
+        "aktivitaet": null,
+        "verweigertDaten": null,
+        "nichtGestartet": null,
+        "startvorlageZeitgrenzeMs": null,
+        "laufZeitgrenzeMs": 180000,
+        "kontextpaket": {
+          "status": "nicht_vorhanden"
+        },
+        "auftrag": {
+          "status": "kein_auftragsbezug"
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "scoutErgebnis": {
+          "status": "nicht_vorhanden"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Sperrgrund",
+        "selector": "#chat-sperrgrund"
+      },
+      {
+        "name": "Senden disabled",
+        "selector": "#chat-senden",
+        "attribut": "disabled"
+      },
+      {
+        "name": "Senden title",
+        "selector": "#chat-senden",
+        "attribut": "title"
+      },
+      {
+        "name": "Zusammenfassen disabled",
+        "selector": "#chat-zusammenfassen-btn",
+        "attribut": "disabled"
+      },
+      {
+        "name": "Fehlerzeile",
+        "selector": "#chat-fehler"
+      },
+      {
+        "name": "Letzter Fehler-Eintrag",
+        "selector": "#chat-verlauf [data-eintrag-art=\"fehler\"]:last-of-type .chat-bubble"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Sperrgrund sichtbar",
+        "id": "chat-sperrgrund"
+      },
+      {
+        "name": "Fehlerzeile sichtbar",
+        "id": "chat-fehler"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Fehler-Eintrag",
+        "selector": "#chat-verlauf [data-eintrag-art=\"fehler\"]"
+      },
+      {
+        "name": "Tipp-Punkte",
+        "selector": "#chat-verlauf .chat-tippindikator"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Jarvis: senden, Lauf läuft",
+      "tippen": {
+        "selector": "#chat-eingabe",
+        "text": "Was ist der Stand von F45?"
+      },
+      "klick": "#chat-senden",
+      "warteAufSelector": {
+        "selector": "#chat-verlauf .chat-tippindikator",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Wechsel zum Reiter Product Coach → Senden gesperrt, Sperrgrund nennt den Reiter Jarvis (ohne auf den Poll zu warten)",
+      "klick": "#chat-modus-sparring-btn",
+      "screenshot": "01-anderer-reiter.webp"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Jarvis: senden, Lauf läuft",
+    "Sperrgrund sichtbar": true,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": false,
+    "Tipp-Punkte": true,
+    "lang": "tr",
+    "Sperrgrund": "Süren yanıt gelince yeniden gönderebilirsiniz.",
+    "Senden disabled": "",
+    "Senden title": "Süren yanıt gelince yeniden gönderebilirsiniz.",
+    "Zusammenfassen disabled": "",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "(fehlt)",
+    "Seite geladen": true
+  },
+  {
+    "label": "Wechsel zum Reiter Product Coach → Senden gesperrt, Sperrgrund nennt den Reiter Jarvis (ohne auf den Poll zu warten)",
+    "Sperrgrund sichtbar": true,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": false,
+    "Tipp-Punkte": false,
+    "lang": "tr",
+    "Sperrgrund": "Jarvis sekmesindeki yanıt gelince yeniden gönderebilirsiniz.",
+    "Senden disabled": "",
+    "Senden title": "Jarvis sekmesindeki yanıt gelince yeniden gönderebilirsiniz.",
+    "Zusammenfassen disabled": "",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "(fehlt)",
+    "Seite geladen": true
+  }
+]

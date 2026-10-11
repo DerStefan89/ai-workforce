@@ -11,7 +11,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { ERSATZ_ZEITGRENZE_MS, ZEITGRENZE_PUFFER_MS, chatModusDesAktivenLaufs, laufstandSignatur, ordneLaufstandEin, warteGrenzeMs, wirksameLaufZeitgrenzeMs, zeitgrenzeUeberschritten } from './chat-laufstand.js'
+import { ERSATZ_ZEITGRENZE_MS, GRUND_SCHLUESSEL, ZEITGRENZE_PUFFER_MS, NACHLAUF_FENSTER_MS, chatModusDesAktivenLaufs, grundCodeDesEintrags, klartextDesEintrags, laufstandSignatur, ordneLaufstandEin, sperreDurchAnderenLauf, warteGrenzeMs, wirksameLaufZeitgrenzeMs, zeitgrenzeUeberschritten } from './chat-laufstand.js'
+import de from './i18n/de.js'
+import en from './i18n/en.js'
+import ru from './i18n/ru.js'
+import tr from './i18n/tr.js'
 
 const GRUND = "Drift im Gültigkeitsschlüssel: 'arbeitsverzeichnis_pfad' (E-188)"
 
@@ -106,4 +110,55 @@ test('F45 B0: chatModusDesAktivenLaufs — Jarvis und Coach aus dem laufId-Präf
   assert.equal(chatModusDesAktivenLaufs({ aktiv: false, laufId: 'jarvis-jarvis-chat-1' }), null)
   assert.equal(chatModusDesAktivenLaufs({ aktiv: true, laufId: null }), null)
   assert.equal(chatModusDesAktivenLaufs(undefined), null)
+})
+
+test('F45 P (F-1016 c): Grund-Code — fehler.code zuerst, sonst ein Grund in Code-Form, nie Fließtext', () => {
+  assert.equal(grundCodeDesEintrags({ art: 'nicht_gestartet', grund: 'F6a-Ablehnung: Text', code: 'startfreigabe_abgelehnt' }), 'startfreigabe_abgelehnt')
+  assert.equal(grundCodeDesEintrags({ art: 'nicht_erfolgreich', grund: 'beobachtungsbasis_unvollstaendig' }), 'beobachtungsbasis_unvollstaendig')
+  assert.equal(grundCodeDesEintrags({ art: 'nicht_gestartet', grund: 'F6a-Ablehnung: Arbeitsverzeichnis weicht ab' }), null)
+  assert.equal(grundCodeDesEintrags({ art: 'klaerung', grund: null, code: null }), null)
+  assert.equal(grundCodeDesEintrags(null), null)
+})
+
+test('F45 P (F-1016 c): jeder bekannte Grund-Code hat einen Text in allen vier Sprachen, jeder Klassifikationscode ist bekannt', () => {
+  for (const schluessel of Object.values(GRUND_SCHLUESSEL)) {
+    for (const [sprache, woerter] of Object.entries({ de, en, tr, ru })) assert.equal(typeof woerter[schluessel], 'string', `${sprache}: ${schluessel}`)
+  }
+  for (const sprache of [de, en, tr, ru]) assert.match(sprache['chat.grund.unbekannt'], /{code}/)
+  // Klassifikationscodes des Auswerters (src/result-evaluator): Drift-Schutz gegen einen neuen Code ohne Text.
+  const auswerter = readFileSync(new URL('../../src/result-evaluator/index.ts', import.meta.url), 'utf8')
+  const codes = new Set([...auswerter.matchAll(/grund: '([a-z_]+)'/g)].map((treffer) => treffer[1]))
+  assert.ok(codes.size >= 8)
+  for (const code of codes) assert.ok(Object.hasOwn(GRUND_SCHLUESSEL, code), `Klassifikationscode ohne Text: ${code}`)
+})
+
+test('F45 P (F-1016 c): Klartext nur, wenn der Grund kein Code ist', () => {
+  assert.equal(klartextDesEintrags({ grund: 'F6a-Ablehnung: Arbeitsverzeichnis weicht ab' }), 'F6a-Ablehnung: Arbeitsverzeichnis weicht ab')
+  assert.equal(klartextDesEintrags({ grund: 'timeout' }), null)
+  assert.equal(klartextDesEintrags({ grund: '  ' }), null)
+  assert.equal(klartextDesEintrags(null), null)
+})
+
+test('F45 P (F-1016 d): Sende-Sperre — anderer Modus lokal, aktiverLauf, Nachlauf-Fenster', () => {
+  const jetzt = 1_000_000
+  const frei = { jarvis: null, sparring: null }
+  const basis = { ausstehend: frei, sendet: { jarvis: false, sparring: false }, kuerzlichBeendet: new Map(), jetzt }
+  assert.equal(sperreDurchAnderenLauf({ aktiv: false, laufId: null }, basis, 'jarvis'), null)
+  assert.equal(sperreDurchAnderenLauf(null, basis, 'jarvis'), null)
+  // eigener ausstehender Lauf im angezeigten Modus: die bestehende Sperre („läuft“) greift, keine zweite
+  assert.equal(sperreDurchAnderenLauf({ aktiv: true, laufId: 'jarvis-jarvis-chat-1' }, { ...basis, ausstehend: { jarvis: 'jarvis-jarvis-chat-1', sparring: null } }, 'jarvis'), null)
+  // anderer Modus hat lokal einen Lauf oder sendet gerade: sofort „anderer Reiter“, ohne Poll
+  assert.deepEqual(sperreDurchAnderenLauf(null, { ...basis, ausstehend: { jarvis: null, sparring: 'product-coach-product-coach-sparring-1' } }, 'jarvis'), { art: 'andererReiter', modus: 'sparring' })
+  assert.deepEqual(sperreDurchAnderenLauf(null, { ...basis, sendet: { jarvis: true, sparring: false } }, 'sparring'), { art: 'andererReiter', modus: 'jarvis' })
+  // aus dem Poll: Baulauf / anderes Projekt, laufId unbekannt
+  assert.deepEqual(sperreDurchAnderenLauf({ aktiv: true, laufId: 'ausfuehrung-123' }, basis, 'jarvis'), { art: 'andererLauf' })
+  assert.deepEqual(sperreDurchAnderenLauf({ aktiv: true, laufId: null }, basis, 'sparring'), { art: 'andererLauf' })
+  // Chat-Lauf aus dem Poll, noch nicht übernommen (Neuladen): gleicher Modus „läuft“, anderer Modus „anderer Reiter“
+  assert.deepEqual(sperreDurchAnderenLauf({ aktiv: true, laufId: 'jarvis-jarvis-chat-fremd' }, basis, 'jarvis'), { art: 'laeuft' })
+  assert.deepEqual(sperreDurchAnderenLauf({ aktiv: true, laufId: 'jarvis-jarvis-chat-fremd' }, basis, 'sparring'), { art: 'andererReiter', modus: 'jarvis' })
+  // eigener, eben beendeter Lauf: frei innerhalb des Nachlauf-Fensters, danach sperrt er wieder (z. B. nach Projektwechsel nicht geleert)
+  const beendet = new Map([['jarvis-jarvis-chat-alt', jetzt - NACHLAUF_FENSTER_MS]])
+  assert.equal(sperreDurchAnderenLauf({ aktiv: true, laufId: 'jarvis-jarvis-chat-alt' }, { ...basis, kuerzlichBeendet: beendet }, 'jarvis'), null)
+  const alt = new Map([['jarvis-jarvis-chat-alt', jetzt - NACHLAUF_FENSTER_MS - 1]])
+  assert.deepEqual(sperreDurchAnderenLauf({ aktiv: true, laufId: 'jarvis-jarvis-chat-alt' }, { ...basis, kuerzlichBeendet: alt }, 'jarvis'), { art: 'laeuft' })
 })

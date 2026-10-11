@@ -1,0 +1,183 @@
+{
+  "url": "http://127.0.0.1:4199/#/chat",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.8,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "true",
+    "leitstand-chat-modus": "jarvis",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": true,
+          "laufId": "ausfuehrung-0f450p00-0000-4000-8000-000000000p02"
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true,
+        "startHinweis": null
+      }
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:/Projekte/ai-workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": [
+          {
+            "laufId": "jarvis-alt-1",
+            "nachricht": "Wo steht mein Projekt?",
+            "jarvisAntwort": {
+              "art": "antwort",
+              "antwort": "F45 P ist im Bau."
+            },
+            "istZusammenfassung": false,
+            "istFehler": false,
+            "fehler": null
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Sperrgrund",
+        "selector": "#chat-sperrgrund"
+      },
+      {
+        "name": "Senden disabled",
+        "selector": "#chat-senden",
+        "attribut": "disabled"
+      },
+      {
+        "name": "Senden title",
+        "selector": "#chat-senden",
+        "attribut": "title"
+      },
+      {
+        "name": "Zusammenfassen disabled",
+        "selector": "#chat-zusammenfassen-btn",
+        "attribut": "disabled"
+      },
+      {
+        "name": "Fehlerzeile",
+        "selector": "#chat-fehler"
+      },
+      {
+        "name": "Letzter Fehler-Eintrag",
+        "selector": "#chat-verlauf [data-eintrag-art=\"fehler\"]:last-of-type .chat-bubble"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Sperrgrund sichtbar",
+        "id": "chat-sperrgrund"
+      },
+      {
+        "name": "Fehlerzeile sichtbar",
+        "id": "chat-fehler"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Fehler-Eintrag",
+        "selector": "#chat-verlauf [data-eintrag-art=\"fehler\"]"
+      },
+      {
+        "name": "Tipp-Punkte",
+        "selector": "#chat-verlauf .chat-tippindikator"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Ein Baulauf ist aktiv (aktiverLauf) → Senden und Zusammenfassen gesperrt, Sperrgrund „anderer Lauf“",
+      "warteAufSelector": {
+        "selector": "#chat-sperrgrund:not([hidden])",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-gesperrt.webp"
+    },
+    {
+      "label": "Der Baulauf endet → Senden wieder frei, Sperrgrund weg",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/zustand",
+          "methode": "GET",
+          "status": 200,
+          "json": {
+            "laeufe": [],
+            "startfehler": [],
+            "workflows": [],
+            "fehler": [],
+            "aktiverLauf": {
+              "aktiv": false,
+              "laufId": null
+            },
+            "pruefbefehl": null,
+            "istAiWorkforce": true,
+            "startHinweis": null
+          }
+        }
+      ],
+      "warteAufSelector": {
+        "selector": "#chat-sperrgrund[hidden]",
+        "zustand": "attached",
+        "timeoutMs": 8000
+      },
+      "screenshot": "02-frei.webp"
+    }
+  ]
+}

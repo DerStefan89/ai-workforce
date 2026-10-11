@@ -31,6 +31,8 @@ Gleichwertigkeit zum heutigen Ablauf:
 - P3 Seitenwechsel der sechs Hauptseiten: Inhalt sichtbar ≤ 500 ms.
 - P4 `npm run check` lokal dreimal hintereinander grün, kein sporadischer Fehler (F-999).
 - P5 Während eines Baulaufs antworten Poll und Seiten in ≤ 1 s.
+- Seitenspeicher (F-1015, Challenger-Entscheidung 11.10.2026): RSS der Seite am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen) UND JS-Heap, DOM-Knoten und Listener ≤ 1,2 × Wert nach 15 min; ausgewertet über Mediane (Minute 15–20 gegen die letzten 5 min, `scripts/messe-chat.mjs`). Ersetzt das frühere Ziel „RSS nach 2 h ≤ 1,2 × Wert nach dem Laden“, das die Aufwärmphase von Chromium mitmaß.
+- Messbedingung (F45 P): Messungen bei gleichem Windows-Energiemodus vergleichen (F-1018, E-F45-4); ein Modern-Standby-Fenster macht den Abschnitt ab dort ungültig.
 
 **Roadmap (WS B5b, erneut in R):**
 - R1 Akten und `docs/projekt/roadmap.json` stimmen überein (Gate): jede Akte steht in der Roadmap, jeder Roadmap-Eintrag hat eine Akte; ein Meilenstein steht nur auf ABGESCHLOSSEN, wenn alle seine Features ABGESCHLOSSEN sind oder eine Begründung tragen.
@@ -89,6 +91,7 @@ Summe Teil 2: ≈ 1,25–1,75 AT.
 ## 5 Offene Entscheidungen
 - **E-F45-2** (fällig nach R): Teil 2 vor F30 wie bisher über Challenger-Bauaufträge (A) oder als erste Aufträge der Workforce an sich selbst, F30-Bau startet nach deren Abnahme (B). Empfehlung Challenger: B.
 - **E-F45-3** (fällig vor B1a): Lauf-Umgebung — eigener Worktree je Lauf oder nur eigener Branch; darf der Lauf im eigenen Worktree löschen (F-715). Vorbereitung in der B1a-Challenge.
+- **E-F45-4** (offen, aus F45 P, F-1018): Windows drosselt den Leitstand im Energiemodus „Beste Energieeffizienz“ um Faktor 5–10. (A) Energiemodus bei Netzbetrieb „Ausgeglichen“ (keine Codeänderung); (B) der Leitstand nimmt sich beim Start selbst aus der Drosselung (SetProcessInformation über einen PowerShell-Helfer). Stefan, 11.10.2026: für die F45-P-Messung nicht umgestellt.
 
 ## 6 Nicht im Fixpaket
 Schreibende oder nach außen wirkende MCPs (bleiben nach E-F36-4 gesperrt; Änderung nur per eigener Entscheidung Stefan) · Terminal-Panel (E-F46-1, eigenes Vorhaben danach) · gestufter Kontext (F-930, nach F30) · großer UX/UI-Durchgang (nach F30, vor V0.9).

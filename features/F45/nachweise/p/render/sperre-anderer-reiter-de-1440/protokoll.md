@@ -1,0 +1,4 @@
+| Aktion | Sperrgrund sichtbar | Fehlerzeile sichtbar | Fehler-Eintrag | Tipp-Punkte | lang | Sperrgrund | Senden disabled | Senden title | Zusammenfassen disabled | Fehlerzeile | Letzter Fehler-Eintrag | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Jarvis: senden, Lauf läuft | true | false | false | true | de | Senden geht wieder, sobald die laufende Antwort da ist. |  | Senden geht wieder, sobald die laufende Antwort da ist. |  |  | (fehlt) | true |
+| Wechsel zum Reiter Product Coach → Senden gesperrt, Sperrgrund nennt den Reiter Jarvis (ohne auf den Poll zu warten) | true | false | false | false | de | Senden geht wieder, sobald die Antwort im Reiter Jarvis da ist. |  | Senden geht wieder, sobald die Antwort im Reiter Jarvis da ist. |  |  | (fehlt) | true |
