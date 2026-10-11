@@ -258,6 +258,22 @@ export function darfFruehAufloesen(lage: { ergebnisZeileBeendet: boolean; zeilen
 }
 
 /**
+ * F45 B1b-1 (Advisor H2): legt ueberschreibungen über basis. Schlüssel aus basis, die sich von einem
+ * Überschreibungsschlüssel nur in Groß-/Kleinschreibung unterscheiden, entfallen — unter Windows sind
+ * Umgebungsnamen nicht case-sensitiv, und spawn nähme sonst den ersten von zwei gleichnamigen (etwa
+ * NPM_CONFIG_IGNORE_SCRIPTS=false aus der Serverumgebung statt npm_config_ignore_scripts=true).
+ * @param basis - Ausgangsumgebung (process.env)
+ * @param ueberschreibungen - Variablen, die gewinnen müssen
+ * @returns neue Umgebung
+ */
+export function fuehreUmgebungZusammen(basis: NodeJS.ProcessEnv, ueberschreibungen: Record<string, string>): NodeJS.ProcessEnv {
+  const namen = new Set(Object.keys(ueberschreibungen).map((name) => name.toLowerCase()))
+  const ergebnis: NodeJS.ProcessEnv = {}
+  for (const [name, wert] of Object.entries(basis)) if (!namen.has(name.toLowerCase())) ergebnis[name] = wert
+  return { ...ergebnis, ...ueberschreibungen }
+}
+
+/**
  * F14 WS-1 (AK1-AK3), seit Schritt 4 über spawn statt execFile (siehe
  * Kopfkommentar): nutzt spawns eingebaute timeout-/signal-Optionen statt
  * eines eigenen Timers — Node killt den Kindprozess selbst, das Ergebnis
@@ -326,7 +342,7 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
         ...(optionen?.umgebungsvariablenVollstaendig !== undefined
           ? { env: optionen.umgebungsvariablenVollstaendig }
           : optionen?.umgebungsvariablen !== undefined
-            ? { env: { ...process.env, ...optionen.umgebungsvariablen } }
+            ? { env: fuehreUmgebungZusammen(process.env, optionen.umgebungsvariablen) }
             : {}),
       })
     } catch (fehler) {

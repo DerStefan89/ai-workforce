@@ -42,6 +42,11 @@
  * (eingaben.claudeAenderungen nicht leer, Laufdiff unter .claude/, F-791 (4b)). Beide tragen ihre
  * Einzelheiten in daten der Terminalmarke. Ohne diese Eingaben bleibt die Reihenfolge wie bisher.
  *
+ * F45 B1b-1 (F-1026): im Claude-Code-Zweig nach kein_ergebnisobjekt und vor VERWEIGERT/ERFOLGREICH der
+ * FEHLGESCHLAGEN-Grund 'hintergrund_ausfuehrung' (daten.hintergrund_aufrufe = Anzahl, daten.bypass_verdacht_anzahl),
+ * sobald der Rohstrom einen angenommenen Hintergrund-Aufruf trägt (ermittleHintergrundAufrufe: tool_use_result.
+ * backgroundTaskId oder run_in_background ohne Fehler). Der Workflow hält dann (KLAERUNG_ERFORDERLICH).
+ *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens/tokenisiereCommand) ist
  * neuer Code (Design-Entscheidung 5): pruefeAufrufparameter (F4) erwartet ein
  * Tokens-Array, tool_input ist ein werkzeugabhängiges Objekt (`{"command":…}`,
@@ -54,7 +59,7 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { leseErgebnisobjekt } from '../claude-code-gateway/index.ts'
+import { leseErgebnisobjekt, zaehleHintergrundAufrufe } from '../claude-code-gateway/index.ts'
 import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
 import { leseCodexEreignisse } from '../codex-gateway/index.ts'
 import { ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
@@ -345,12 +350,27 @@ function ermittleErgebnis(laufakte: LaufakteV0Daten, claudeAenderungen: readonly
 
   const denialsRaw = ergebnisobjekt.permission_denials
   const denials = Array.isArray(denialsRaw) ? denialsRaw.filter(istPermissionDenial) : []
+  const bypassVerdachtAnzahl = zaehleVerbotswerte(denials)
+
+  // F45 B1b-1 (F-1026): ein Befehl im Hintergrund hat sein Ergebnis nie im Strom — die Beobachtungsbasis
+  // ist unvollständig (ARCHITECTURE §4: vor VERWEIGERT und ERFOLGREICH). Nachgerechnet aus dem
+  // hash-geprüften Rohstrom, nicht aus dem Laufakten-Feld (Muster Codex-Zweig: nachrechnen statt glauben).
+  // Ein gleichzeitiger Umgehungsverdacht (E-186) geht nicht verloren, sondern steht in daten — Muster
+  // claude_ordner_veraendert; die Reihenfolge aus §4 (unvollständige Basis vor Verweigerung) bleibt.
+  const hintergrundAufrufe = typeof rohstrom.stdout === 'string' ? zaehleHintergrundAufrufe(rohstrom.stdout.split('\n')) : 0
+  if (hintergrundAufrufe > 0) {
+    return {
+      ergebnis: 'FEHLGESCHLAGEN',
+      grund: 'hintergrund_ausfuehrung',
+      daten: { grund: 'hintergrund_ausfuehrung', hintergrund_aufrufe: hintergrundAufrufe, bypass_verdacht_anzahl: bypassVerdachtAnzahl },
+    }
+  }
 
   if (denials.length === 0) {
     return { ergebnis: 'ERFOLGREICH', ...zusatzFelder }
   }
 
-  return { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: zaehleVerbotswerte(denials), ...zusatzFelder }
+  return { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: bypassVerdachtAnzahl, ...zusatzFelder }
 }
 
 export function klassifiziereLauf(

@@ -1008,3 +1008,89 @@ test('F36 WS-5b: claudeAenderungen nicht leer → FEHLGESCHLAGEN claude_ordner_v
     raeumeKette(laufIdLeer)
   }
 })
+
+// ─── F45 B1b-1 (F-1026): Hintergrund-Ausführung ─────────────────────────────────
+
+/** stream-json-Strom wie im Lauf af862c09: Bash mit run_in_background, Ende „Ich warte auf die Benachrichtigung“. */
+function hintergrundStdout(runInBackground: boolean, denials: unknown[] = []): string {
+  return [
+    JSON.stringify({ type: 'system', subtype: 'init', tools: ['Bash'], agents: [], skills: [], mcp_servers: [] }),
+    JSON.stringify({
+      type: 'assistant',
+      message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_h', name: 'Bash', input: { command: 'npm run check', ...(runInBackground ? { run_in_background: true } : {}) } }] },
+      parent_tool_use_id: null,
+    }),
+    JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'Ich warte auf die Benachrichtigung.', permission_denials: denials }),
+  ].join('\n')
+}
+
+test('F45 B1b-1: Rohstrom mit run_in_background true → FEHLGESCHLAGEN/hintergrund_ausfuehrung, Terminalmarke trägt die Anzahl', () => {
+  const laufId = neueLaufId('hintergrund')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: hintergrundStdout(true), stderr: '', exitCode: 0 })
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'hintergrund_ausfuehrung')
+    const terminal = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS }).find((eintrag) => eintrag.payload.selbst_hash === ergebnis.wirkungsmarke.selbstHash)
+    const daten = (terminal?.payload as { daten?: { grund?: string; hintergrund_aufrufe?: number } }).daten
+    assert.deepEqual(daten, { grund: 'hintergrund_ausfuehrung', hintergrund_aufrufe: 1, bypass_verdacht_anzahl: 0 })
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F45 B1b-1: derselbe Strom ohne run_in_background bleibt ERFOLGREICH (unverändert)', () => {
+  const laufId = neueLaufId('ohne-hintergrund')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: hintergrundStdout(false), stderr: '', exitCode: 0 })
+    assert.equal(klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS }).ergebnis, 'ERFOLGREICH')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F45 B1b-1: Hintergrund schlägt eine gleichzeitige Verweigerung (unvollständige Beobachtungsbasis vor VERWEIGERT)', () => {
+  const laufId = neueLaufId('hintergrund-verweigert')
+  try {
+    const stdout = hintergrundStdout(true, [{ tool_name: 'Bash', tool_use_id: 'x', tool_input: { command: 'npm run dev' } }])
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout, stderr: '', exitCode: 0 })
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'hintergrund_ausfuehrung')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F45 B1b-1 (ARCHITECTURE §4, Muster claude_ordner_veraendert): Hintergrund + Denial mit Verbotswert → FEHLGESCHLAGEN, Umgehungsverdacht in daten', () => {
+  const laufId = neueLaufId('hintergrund-bypass')
+  try {
+    const stdout = hintergrundStdout(true, [{ tool_name: 'Bash', tool_use_id: 'x', tool_input: { command: 'npm run test --dangerously-skip-permissions' } }])
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout, stderr: '', exitCode: 0 })
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'hintergrund_ausfuehrung')
+    const terminal = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS }).find((eintrag) => eintrag.payload.selbst_hash === ergebnis.wirkungsmarke.selbstHash)
+    assert.equal((terminal?.payload as { daten?: { bypass_verdacht_anzahl?: number } }).daten?.bypass_verdacht_anzahl, 1)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F45 B1b-1 (Advisor A1): automatisch verschobener Befehl ohne run_in_background (Form af862c09) → FEHLGESCHLAGEN/hintergrund_ausfuehrung', () => {
+  const laufId = neueLaufId('auto-hintergrund')
+  try {
+    const stdout = [
+      JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_a', name: 'Bash', input: { command: 'npm run check', timeout: 300000 } }] } }),
+      JSON.stringify({
+        type: 'user',
+        message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_a', content: 'moved to the background' }] },
+        tool_use_result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'bs0ztc3f3', timedOutAfterMs: 300000 },
+      }),
+      JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'Ich warte auf die Benachrichtigung.', permission_denials: [] }),
+    ].join('\n')
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout, stderr: '', exitCode: 0 })
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'hintergrund_ausfuehrung')
+  } finally {
+    raeumeKette(laufId)
+  }
+})

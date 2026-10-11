@@ -1620,6 +1620,7 @@ export default {
   'chat.grund.keinErgebnisobjekt': 'çalıştırma çıktısında sonuç yok',
   'chat.grund.initGateVerstoss': 'başlangıç denetimi geçilemedi',
   'chat.grund.claudeOrdnerVeraendert': '.claude harness klasörü çalıştırma sırasında değişti',
+  'chat.grund.hintergrundAusfuehrung': 'çalıştırma komutları arka plana taşıdı — sonuç eksik',
   'chat.grund.werkzeuggrenzeAbgelehnt': 'izin verilen sınırın dışında araç çağrısı',
   'chat.grund.fehlgeschlagen': 'çalıştırma başarısız',
   'chat.grund.unerwarteterLaufstatus': 'beklenmeyen çalıştırma durumu',

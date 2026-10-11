@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
-import { baueOrtBSkillStart, leseProjektSkillNamen, scanneVerschachtelteClaudeOrdner } from './ort-b-start.ts'
+import { baueOrtBSkillStart, INSTALLATIONS_SKELETT_CLAUDE, istInstallationSelbst, leseProjektSkillNamen, scanneVerschachtelteClaudeOrdner } from './ort-b-start.ts'
 import { berechneInhaltHash } from './skill-dateien.ts'
 import type { Ressource } from './types.ts'
 
@@ -252,4 +252,83 @@ test('scanneVerschachtelteClaudeOrdner: Groß-/Kleinschreibung egal (NTFS) — s
   } finally {
     u.ende()
   }
+})
+
+test('F45 B1b-1 (F-818): Projekt = Installation (realpath) → vorlagen/projekt-skelett/.claude kein Treffer, Start nicht blockiert', () => {
+  const u = umgebung()
+  try {
+    mkdirSync(join(u.projekt, 'vorlagen', 'projekt-skelett', '.claude', 'skills', 'ponytail'), { recursive: true })
+    mkdirSync(join(u.projekt, 'vorlagen', 'projekt-skelett', '.claude', 'agents'), { recursive: true })
+    const a = ortBSkill(u.cap, 'fd', 'frontend-design')
+    // Ohne Installationsangabe bleibt der Scan wie bisher (Treffer).
+    assert.match((baueOrtBSkillStart([a], u.projekt, u.cap) as { grund: string }).grund, /vorlagen\/projekt-skelett\/\.claude/)
+    // Projektordner = Installation, auch über einen nicht normalisierten Pfad (realpath).
+    const e = baueOrtBSkillStart([a], u.projekt, u.cap, { projektOrdner: join(u.projekt, 'vorlagen', '..'), installWurzel: u.projekt })
+    assert.ok(e.ok, e.ok ? '' : e.grund)
+    // Scan auf einem Worktree der Installation (eigener Ordner, andere Scan-Wurzel): der Projektordner
+    // entscheidet, nicht die Scan-Wurzel; als Projektordner gilt der Worktree selbst nicht.
+    const worktree = mkdtempSync(join(tmpdir(), 'ws5b-worktree-'))
+    try {
+      mkdirSync(join(worktree, 'vorlagen', 'projekt-skelett', '.claude', 'skills'), { recursive: true })
+      assert.ok(baueOrtBSkillStart([a], worktree, u.cap, { projektOrdner: u.projekt, installWurzel: u.projekt }).ok)
+      assert.equal(baueOrtBSkillStart([a], worktree, u.cap, { projektOrdner: worktree, installWurzel: u.projekt }).ok, false)
+    } finally {
+      raeumeVerzeichnis(worktree)
+    }
+  } finally {
+    u.ende()
+  }
+})
+
+test('F45 B1b-1 (F-818): dieselbe Pfadstruktur in einem Fremdprojekt bleibt blockiert; in der Installation nur genau dieser Pfad frei', () => {
+  const u = umgebung()
+  const installation = mkdtempSync(join(tmpdir(), 'ws5b-installation-'))
+  try {
+    mkdirSync(join(u.projekt, 'vorlagen', 'projekt-skelett', '.claude', 'skills'), { recursive: true })
+    const a = ortBSkill(u.cap, 'fd', 'frontend-design')
+    const fremd = baueOrtBSkillStart([a], u.projekt, u.cap, { projektOrdner: u.projekt, installWurzel: installation })
+    assert.match(fremd.ok ? '' : fremd.grund, /vorlagen\/projekt-skelett\/\.claude\/skills/)
+    // In der Installation: ein anderer verschachtelter Pfad und eine Groß-/Kleinvariante bleiben Treffer.
+    mkdirSync(join(u.projekt, 'vorlagen', 'anderes', '.claude', 'commands'), { recursive: true })
+    mkdirSync(join(u.projekt, 'Vorlagen2', 'projekt-skelett', '.claude', 'agents'), { recursive: true })
+    assert.deepEqual(scanneVerschachtelteClaudeOrdner(u.projekt, ['vorlagen/projekt-skelett/.claude']).sort(), ['Vorlagen2/projekt-skelett/.claude/agents', 'vorlagen/anderes/.claude/commands'])
+    const selbst = baueOrtBSkillStart([a], u.projekt, u.cap, { projektOrdner: u.projekt, installWurzel: u.projekt })
+    assert.match(selbst.ok ? '' : selbst.grund, /vorlagen\/anderes\/\.claude\/commands/)
+    assert.doesNotMatch(selbst.ok ? '' : selbst.grund, /projekt-skelett\/\.claude\/skills/)
+    // Nicht auflösbare Installation → keine Ausnahme (fail-closed).
+    assert.equal(baueOrtBSkillStart([a], u.projekt, u.cap, { projektOrdner: u.projekt, installWurzel: join(installation, 'gibt-es-nicht') }).ok, false)
+  } finally {
+    raeumeVerzeichnis(installation)
+    u.ende()
+  }
+})
+
+test('F45 B1b-1 (F-818, Advisor A5): im Ausnahmefall werden Skelett-Skills/-Commands gesperrt und kollidieren mit Ort-B-Namen', () => {
+  const u = umgebung()
+  try {
+    const skelett = join(u.projekt, 'vorlagen', 'projekt-skelett', '.claude')
+    mkdirSync(join(skelett, 'skills', 'nur-im-skelett'), { recursive: true })
+    writeFileSync(join(skelett, 'skills', 'nur-im-skelett', 'SKILL.md'), '---\nname: nur-im-skelett\ndescription: S.\n---\n')
+    mkdirSync(join(skelett, 'commands'), { recursive: true })
+    writeFileSync(join(skelett, 'commands', 'skelett-befehl.md'), '---\ndescription: B.\n---\n')
+    const installation = { projektOrdner: u.projekt, installWurzel: u.projekt }
+    const e = baueOrtBSkillStart([ortBSkill(u.cap, 'fd', 'frontend-design')], u.projekt, u.cap, installation)
+    assert.ok(e.ok, e.ok ? '' : e.grund)
+    for (const n of ['nur-im-skelett', 'skelett-befehl']) {
+      assert.ok(e.start.disallowedTools.includes(`Skill(${n})`), n)
+      assert.equal(JSON.parse(e.start.settings).skillOverrides[n], 'off')
+    }
+    const kollision = baueOrtBSkillStart([ortBSkill(u.cap, 'nis', 'nur-im-skelett')], u.projekt, u.cap, installation)
+    assert.match(kollision.ok ? '' : kollision.grund, /kollidieren mit Projekt-Skills\/-Commands .*projekt-skelett/)
+  } finally {
+    u.ende()
+  }
+})
+
+test('F45 B1b-1 (F-818): echte Installation ai-workforce — ohne Ausnahme blockiert das Skelett, mit Projektordner = Installation nicht mehr', () => {
+  const installWurzel = join(import.meta.dirname, '..', '..')
+  const skelettTreffer = (treffer: string[]): string[] => treffer.filter((t) => t.startsWith('vorlagen/projekt-skelett/.claude'))
+  assert.ok(skelettTreffer(scanneVerschachtelteClaudeOrdner(installWurzel)).length > 0, 'Vorbedingung: Skelett trägt .claude/skills|agents|commands')
+  assert.ok(istInstallationSelbst(installWurzel, installWurzel))
+  assert.deepEqual(skelettTreffer(scanneVerschachtelteClaudeOrdner(installWurzel, [INSTALLATIONS_SKELETT_CLAUDE])), [])
 })

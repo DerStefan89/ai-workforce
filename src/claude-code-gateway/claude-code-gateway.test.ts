@@ -37,7 +37,7 @@ import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { baueAufruf, leseModellBeobachtet, leseSlashCommandsReferenz, leseVerbrauch, pruefeInitZeile, pruefeUndVerweigereBeiTreffer, starteGateway, validiereLaufakteDaten } from './index.ts'
-import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, pruefeStartziel, starteProzess } from './prozessstart.ts'
+import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, fuehreUmgebungZusammen, pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -219,6 +219,13 @@ test('baueAufruf liefert das erwartete Tokens-Array — Grünfall', () => {
     '-p',
     'Testprompt',
   ])
+})
+
+test('baueAufruf (F45 B1b-1, F-1027 a): nacktes Write/Edit wird in --allowedTools auf den Arbeitsordner begrenzt, --tools behält die Namen', () => {
+  const eingaben = { ...gueltigeEingaben(), werkzeugsatz: { art: 'schreibend', modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Write', 'Edit', 'Bash(npm run check:*)'] } } as AufrufEingaben
+  const tokens = baueAufruf(eingaben)
+  assert.equal(tokens[tokens.indexOf('--tools') + 1], 'Read,Write,Edit,Bash')
+  assert.equal(tokens[tokens.indexOf('--allowedTools') + 1], 'Read,Edit(./**),Bash(npm run check:*)')
 })
 
 test('baueAufruf wirft ohne modell', () => {
@@ -494,7 +501,7 @@ test('starteGateway ohne beiWerkzeugaufruf übergibt kein beiStreamZeile — Reg
   }
 })
 
-test('starteGateway reicht optionen.umgebungsvariablen unverändert an starteProzess durch (Task "Jarvis-Chat-Latenz senken", Schritt 3)', async () => {
+test('starteGateway reicht optionen.umgebungsvariablen an starteProzess durch, ergänzt um WORKFORCE_LAUF_UMGEBUNG (Task "Jarvis-Chat-Latenz senken", Schritt 3; F45 B1b-1)', async () => {
   const laufId = neueLaufId('gateway-umgebungsvariablen')
   let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
   const spyStarter: Starter = async (startziel, tokens, optionen) => {
@@ -512,13 +519,13 @@ test('starteGateway reicht optionen.umgebungsvariablen unverändert an startePro
     })
 
     assert.strictEqual(ergebnis.ok, true)
-    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { MAX_THINKING_TOKENS: '0' })
+    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { MAX_THINKING_TOKENS: '0', CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1', npm_config_ignore_scripts: 'true', BASH_DEFAULT_TIMEOUT_MS: '600000', BASH_MAX_TIMEOUT_MS: '600000' })
   } finally {
     raeumeKette(laufId)
   }
 })
 
-test('starteGateway übergibt kein umgebungsvariablen an starteProzess, wenn optionen.umgebungsvariablen fehlt — Regression (jede Rolle außer jarvis)', async () => {
+test('starteGateway (F45 B1b-1): ohne optionen.umgebungsvariablen trägt der Start genau WORKFORCE_LAUF_UMGEBUNG — Hintergrund aus, npm-Installationsskripte aus', async () => {
   const laufId = neueLaufId('gateway-ohne-umgebungsvariablen')
   let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
   const spyStarter: Starter = async (startziel, tokens, optionen) => {
@@ -535,7 +542,31 @@ test('starteGateway übergibt kein umgebungsvariablen an starteProzess, wenn opt
     })
 
     assert.strictEqual(ergebnis.ok, true)
-    assert.strictEqual(empfangeneOptionen?.umgebungsvariablen, undefined)
+    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1', npm_config_ignore_scripts: 'true', BASH_DEFAULT_TIMEOUT_MS: '600000', BASH_MAX_TIMEOUT_MS: '600000' })
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway (F45 B1b-1): ein Aufrufer kann WORKFORCE_LAUF_UMGEBUNG nicht abwählen', async () => {
+  const laufId = neueLaufId('gateway-umgebung-fest')
+  let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+      umgebungsvariablen: { npm_config_ignore_scripts: 'false', CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '0' },
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.umgebungsvariablen?.npm_config_ignore_scripts, 'true')
+    assert.strictEqual(empfangeneOptionen?.umgebungsvariablen?.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, '1')
   } finally {
     raeumeKette(laufId)
   }
@@ -1395,5 +1426,42 @@ test('F36 WS-5b starteGateway (initGate): tool_use vor init → Abbruch; keine i
     assert.equal('init_gate_verstoss' in r4, false)
   } finally {
     for (const id of ids) raeumeKette(id)
+  }
+})
+
+test('fuehreUmgebungZusammen (F45 B1b-1, Advisor H2): Überschreibung gewinnt auch gegen einen nur in Groß-/Kleinschreibung abweichenden Namen', () => {
+  const env = fuehreUmgebungZusammen({ PATH: 'p', NPM_CONFIG_IGNORE_SCRIPTS: 'false', Claude_Code_Disable_Background_Tasks: '0' }, { npm_config_ignore_scripts: 'true', CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' })
+  assert.deepStrictEqual(env, { PATH: 'p', npm_config_ignore_scripts: 'true', CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' })
+})
+
+test('starteGateway (F45 B1b-1): Bash-Zeitgrenze aus bashZeitgrenzeMs, nie über zeitgrenzeMs, ohne Feld 600000', async () => {
+  for (const [bash, lauf, erwartet] of [
+    [undefined, undefined, '600000'],
+    [1200000, undefined, '1200000'],
+    [1200000, 300000, '300000'],
+    [undefined, 120000, '120000'],
+  ] as const) {
+    const laufId = neueLaufId('gateway-bash-zeitgrenze')
+    let empfangen: Record<string, string> | undefined
+    const spyStarter: Starter = async (startziel, tokens, optionen) => {
+      empfangen = optionen?.umgebungsvariablen
+      return attrappeMitValidemErgebnis(startziel, tokens)
+    }
+    try {
+      const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+        ...startfreigabeOptionen(),
+        basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        starter: spyStarter,
+        schreiber: () => {},
+        ...(bash !== undefined ? { bashZeitgrenzeMs: bash } : {}),
+        ...(lauf !== undefined ? { zeitgrenzeMs: lauf } : {}),
+      })
+      assert.strictEqual(ergebnis.ok, true)
+      assert.strictEqual(empfangen?.BASH_DEFAULT_TIMEOUT_MS, erwartet, `${bash}/${lauf}`)
+      assert.strictEqual(empfangen?.BASH_MAX_TIMEOUT_MS, erwartet, `${bash}/${lauf}`)
+    } finally {
+      raeumeKette(laufId)
+    }
   }
 })

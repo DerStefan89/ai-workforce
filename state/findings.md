@@ -10975,13 +10975,13 @@ Maßnahme: Bei Bedarf das Schema um `wirkung` für Skills erweitern (E-F36-4 ana
 Status: offen.
 Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
 
-**F-818** · `TECH_DEBT` · P2 · offen
+**F-818** · `TECH_DEBT` · P2 · erledigt
 Titel: Vorstart-Scan blockiert Ort-B-Skill-Läufe auf ai-workforce selbst.
 Beschreibung: `vorlagen/projekt-skelett/.claude/skills|agents` ist ein verschachteltes `.claude`. `scanneVerschachtelteClaudeOrdner` bricht deshalb jeden Ort-B-Lauf mit Projektwurzel ai-workforce ab (fail-closed, korrekt).
 Fundstelle: `src/ressourcen/ort-b-start.ts` (`scanneVerschachtelteClaudeOrdner`); `vorlagen/projekt-skelett/.claude`.
 Auswirkung: Mittel — die Workforce kann für den Selbstbau (F30-Dogfooding) keine Ort-B-Skills nutzen.
 Maßnahme: Vor F30 entscheiden, z. B. das Skelett-`.claude` unter anderem Namen ablegen und beim Anlegen umbenennen, oder eine feste, im Repo versionierte Ausnahmeliste mit Begründung.
-Status: offen.
+Status: erledigt (F45 B1b-1, 11.10.2026): Ausnahme genau `vorlagen/projekt-skelett/.claude`, nur wenn der Projektordner (nicht der Worktree) die Installation ist (realpath, unter Windows ohne Groß-/Kleinschreibung); die Skill- und Command-Namen des Skeletts werden dann wie Projekt-Skills gesperrt; Verknüpfungen bleiben Treffer; ein Fremdprojekt mit derselben Struktur bleibt blockiert. Tests `src/ressourcen/ort-b-start.test.ts`.
 Feature/Run: F36 WS-5b Challenger-Verifikation 29.09.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
@@ -12025,13 +12025,13 @@ Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1 (Prüfmaßstab für 
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
-**F-932** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-932** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: Hooks im Workforce-Lauf ungeprüft; PostToolUse-Lint (Harness G7) fehlt auch in ai-workforce.
 Beschreibung: kopiereBaseline kopiert `.claude/settings.json` und alle Hooks in neue Projekte. Nicht belegt ist, ob sie im -p-Lauf mit `--setting-sources project` feuern und ob session-reminder und zwischenstand-* dort sinnvoll sind. Der Lint-Hook aus `docs/harness/HARNESS-OVERVIEW.md` (Ebene 3) steht nicht in `.claude/settings.json`.
 Fundstelle: `src/projekt-anlegen/index.ts:185` (kopiereBaseline), `.claude/settings.json`, `docs/harness/HARNESS-OVERVIEW.md`.
 Auswirkung: Mittel — Schutz- und Komfort-Hooks wirken im Workforce-Lauf womöglich nicht oder falsch; ein behaupteter Lint-Schritt fehlt.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1.
-Status: offen.
+Status: teilweise (F45 B1b-1, 11.10.2026): PreToolUse real belegt — `-p`-Lauf mit `--setting-sources project` und den Skelett-Hooks: ein Edit auf `.claude/settings.json` verweigert der guard-settings-Hook (Grund im tool_result, Datei byte-gleich), `features/F45/nachweise/b1b1/zaehlung-hooks.json`. Offen: commit-guard (Bash) im `-p`-Lauf nicht real ausgelöst (der Werkzeugsatz sperrt git schon vorher), Nutzen von session-reminder/zwischenstand-* im Lauf, PostToolUse-Lint (B3).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-933** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -12070,13 +12070,13 @@ Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 2. Eine Projektkarte (
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
-**F-937** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-937** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: Die Laufakte-Beobachtung (Skill-, Subagent- und MCP-Aufrufe) erreicht weder Review noch Abnahme.
 Beschreibung: Die Laufakte erfasst `skill_aufrufe`, `subagent_aufrufe` und `mcp_aufrufe` (claude-code-gateway). Angezeigt wird das nur im Leitstand. Code-Review und Abnahme bekommen es nicht und können deshalb nicht prüfen, ob die vorgesehenen Skills und Agents benutzt wurden.
 Fundstelle: `public/leitstand/beobachtung-zeile.js`; Laufakte (claude-code-gateway).
 Auswirkung: Mittel. „Harness als Verfahren“ (E-M5-19) ist nicht nachprüfbar.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1. Das Review prüft „vorgesehen gegen benutzt“, die Abnahme zeigt eine Kurzliste der benutzten Fähigkeiten.
-Status: offen.
+Status: teilweise (F45 B1b-1, 11.10.2026): der code-reviewer-Schritt (Claude und Codex) bekommt die Beobachtung des Ausführungslaufs als kurzen, deterministischen Block (geladen gegen aufgerufen: Skills, Subagenten, MCP-Server; Hintergrund-Aufrufe; ohne Beobachtung der Satz „keine Beobachtung“) — `baueBeobachtungsBlock`, Test `scripts/leitstand/review-beobachtung.test.mjs`. Offen: „vorgesehen“ aus dem Arbeitspaket (B2a), Kurzliste in der Abnahme (B1b-2).
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
 **F-938** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12875,22 +12875,22 @@ Maßnahme: Rest beobachten; bei Bedarf `core.longpaths` für die Worktree-Aufruf
 Status: offen (Kern behoben, Rest beobachten).
 Feature/Run: Entdeckt: F45 B1a-1, realer Nachweis 11.10.2026.
 
-**F-1026** · `BUG` · P1 · offen
+**F-1026** · `BUG` · P1 · erledigt
 Titel: Ausführung endet „erfolgreich“, aber unvollständig, wenn ein Prüfbefehl im -p-Lauf in den Hintergrund wandert.
 Beschreibung: Realer Nachweis B1a-1, Lauf af862c09: die Ausführung startete `npm run check` (Zeitgrenze 300 s über dem Vordergrund-Limit), Claude Code schob ihn in den Hintergrund, das Modell beendete den Turn mit „Ich warte auf die Benachrichtigung“. Der Lauf endete ERFOLGREICH ohne Abschluss: der `zu_loeschen`-Block fehlte, die verlangte Löschung unterblieb; der verwaiste Hintergrund-Check lief parallel zum Prüfschritt im selben Arbeitsordner. Der Review (Codex) fing es (BLOCKIERT), der Korrekturlauf holte es nach. Nicht durch B1a-1 entstanden, der Hinweissatz „Kannst du sie selbst ausführen, tu es trotzdem“ (F-652) begünstigt es.
 Fundstelle: Instruktion in `starteWorkflowSchritt` (F-652-Satz), Werkzeugsatz `schreibend` (Bash-Allowlist), Rohstrom `kontrollzustand-roh/af862c09…`.
 Auswirkung: Hoch — Ergebnis wirkt fertig, ist es nicht; jeder Bau mit eigenem Check kann so enden.
 Maßnahme: (B2b) Ende „wartet auf Hintergrund“ als unvollständig werten (Rückfrage/Halt), Hintergrundausführung im Lauf unterbinden oder Bash-Zeitgrenze unter das Vordergrund-Limit legen; Instruktion: Prüfbefehle nur im Vordergrund oder gar nicht.
-Status: offen.
+Status: erledigt (F45 B1b-1, 11.10.2026): (1) jeder Claude-Code-Lauf startet mit `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` (`WORKFORCE_LAUF_UMGEBUNG`, nicht abwählbar; code.claude.com/docs/en/env-vars) — real belegt: der Hintergrund-Parameter entfällt, ein Befehl über seiner Zeitgrenze wird beendet statt verschoben; (2) Netz darunter: der Result Evaluator wertet jeden angenommenen Hintergrund-Aufruf (`tool_use_result.backgroundTaskId` — die reale Form aus af862c09, automatisch verschoben ohne `run_in_background` — oder `run_in_background` ohne Fehler) als FEHLGESCHLAGEN/`hintergrund_ausfuehrung` (Laufakte: `beobachtung.hintergrund_aufrufe`); der Workflow hält mit klarem Grund (KLAERUNG_ERFORDERLICH, Weg Reparaturfassung). Kontrolllauf ohne Variable: beide Formen real erzeugt, echter Evaluator → FEHLGESCHLAGEN. Ein gleichzeitiger Umgehungsverdacht (E-186) steht in `daten` (ARCHITECTURE §4, Muster claude_ordner_veraendert). Nachweis `features/F45/nachweise/b1b1/`. Offen: Codex-Läufe (kein Hintergrund-Mechanismus bekannt); Hintergrund über die Shell selbst (`&`, `nohup`, `Start-Process`) zählt die Regel nicht — die Bash-Allowlist lässt nur npm-Befehle zu, real nicht geprüft.
 Feature/Run: Entdeckt: F45 B1a-1, realer Nachweis 11.10.2026.
 
-**F-1027** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1027** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: Arbeitsordner: Invariante „Projektordner unberührt“ geprüft, nicht ERZWUNGEN — Restgrenzen.
 Beschreibung: Belegt sind Servertest (Arbeitsbaum, Index, Branch, HEAD unverändert) und realer Nachweis. Nicht erzwungen: (a) ein Schreibzugriff von Claude Code aus dem Worktree in den Projektordner (`../<Projekt>/…`) ist nicht als Rot-Fall belegt — die Grenze trägt die Arbeitsverzeichnis-Beschränkung von Claude Code; (b) das `.git` ist geteilt (Konfiguration, Refs); (c) ein späteres `npm install` im Lauf führt Lifecycle-Skripte aus (`prepare` → `git config`); die Vorbereitung selbst nutzt `npm ci --ignore-scripts` — Fremdprojekte mit nötigem postinstall scheitern erst im Prüfschritt; (d) Einzelläufe (POST /api/laeufe) und Chat laufen bewusst weiter im Projektordner.
 Fundstelle: `src/arbeitsordner/index.ts`, `scripts/leitstand-server.mjs` (starteLaufUndVergiss, ermittleLaufort).
 Auswirkung: Mittel.
 Maßnahme: Rot-Fall (a) im nächsten realen Lauf mit eigenem, harmlosen Ziel belegen; (b)/(c) in B1b mit der Harness-Prüfung abgleichen.
-Status: offen.
+Status: teilweise (F45 B1b-1, 11.10.2026): (a) realer Rot-Fall belegt — vor B1b-1 schrieb Write im `-p`-Lauf ohne Rückfrage in den Eltern- und den Projektordner des Worktrees (F-1040); seit B1b-1 begrenzt `--allowedTools` Write/Edit auf `Edit(./**)`: beide Versuche verweigert, Dateien fehlen, Write im Worktree geht; (c) `npm_config_ignore_scripts=true` in jedem Claude-Code-Lauf — real belegt: `npm install` im `-p`-Lauf führte `prepare` mit der Variable nicht aus, ohne sie schon (`zaehlung-npm-mit.json`/`zaehlung-npm-ohne.json`); unter Windows auch gegen einen gleichnamigen Großbuchstaben-Eintrag der Serverumgebung. Offen: (b) `.git` bleibt geteilt (Bash ist auf npm-Befehle begrenzt, git gesperrt); (c′) in Fremdprojekten mit `pre`/`post`-Skripten weicht `npm run <x>` im Lauf vom Prüfschritt ab; (d) Einzelläufe und Chat weiter im Projektordner; Schreiben über ein npm-Skript ist nicht durch die Pfadregel begrenzt. Nachweis `features/F45/nachweise/b1b1/`.
 Feature/Run: Entdeckt: F45 B1a-1, Advisor-Pass 11.10.2026.
 
 **F-1028** · `TECH_DEBT` · P3 · offen
@@ -12956,13 +12956,13 @@ Maßnahme: `pfad` im Fehlerfall `null` bzw. das Feld weglassen.
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
 
-**F-1035** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-1035** · `HARNESS_IMPROVEMENT` · P3 · erledigt
 Titel: Eine Claude-Code-Sitzung hat in B1a-1 einen Branch von Hand mit `git branch -D` gelöscht.
-Beschreibung: Der Arbeitsordner-Code löscht Branches nur mit `-d` (nie `-D`); in der Bausitzung selbst wurde ein Branch trotzdem von Hand mit `-D` entfernt. Kein Hook hindert das.
+Beschreibung: Der Arbeitsordner-Code löscht Branches nur mit `-d` (nie `-D`); in der Bausitzung selbst wurde ein Branch trotzdem von Hand mit `-D` entfernt. Kein Hook hindert das. Zweiter Vorfall (B1a-2): ein `rm -rf` im Scratchpad der Bausitzung.
 Fundstelle: `.claude/hooks/commit-guard.cjs` (keine Regel für `branch -D`).
 Auswirkung: Gering bis mittel — ungemergte Arbeit kann ohne Rückfrage verloren gehen.
 Maßnahme: commit-guard (bzw. eigener Hook) sperrt `git branch -D` und `--delete --force` in Sitzungen; Änderung an Hooks macht Stefan (Team-Policy).
-Status: offen.
+Status: erledigt (F45 B1b-1, 11.10.2026, nur ai-workforce): der Root-commit-guard sperrt rm -rf (alle Schreibweisen), Remove-Item -Recurse -Force, rd /s /q, git branch -D/--delete --force, git reset --hard, git clean -f, git checkout ., git restore ., git stash drop/clear, git worktree remove --force, git update-ref -d (auch mit Optionen vor dem Unterbefehl); Tests `scripts/commit-guard.test.mjs`. Grenzen: das PowerShell-Werkzeug läuft am Bash-Matcher vorbei (F-1042); die Skelett-Fassung bleibt unverändert (F-1038). Der E-183-Hash von ai-workforce ändert sich — Startfreigabe neu erteilen.
 Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
 
 **F-1036** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -12973,3 +12973,57 @@ Auswirkung: Gering — Nacharbeit und Verwechslungsgefahr.
 Maßnahme: Der Challenger führt Kandidaten ohne ID; IDs vergibt Claude Code fortlaufend ab der höchsten vorhandenen ID (so in B1a-2 gehandhabt).
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1037** · `HARNESS_IMPROVEMENT` · P2 · erledigt
+Titel: commit-guard war per Ordnerkopie umgehbar.
+Beschreibung: Der Root-commit-guard erkannte `.claude/settings.json` nur als Teilstring im Befehl. In B1a-2 hat ein `cp -rn .claude …` (Ordnerkopie) den Schutz real umgangen; Verschieben, Löschen oder Überschreiben eines `.claude`-Ordners war ebenso frei.
+Fundstelle: `.claude/hooks/commit-guard.cjs` (Aufgabe 1).
+Auswirkung: Mittel — Team-Policy und Hooks konnten per Shell ersetzt werden.
+Maßnahme: Aufgabe 5 im Root-commit-guard: Kopieren, Verschieben, Löschen, Überschreiben eines `.claude`-Ordners (Quelle oder Ziel; auch Platzhalter, ./-Varianten, Pipeline, Wechsel in `.claude`, Inline-Code, tar) sperren. Grenze: Kopien eines ganzen Ordnerinhalts (`cp -r ../tpl/. ./`), die `.claude` mitnehmen, ohne es zu nennen.
+Status: erledigt (F45 B1b-1, 11.10.2026) für ai-workforce; Tests `scripts/commit-guard.test.mjs`. Template-Repo: F-1038.
+Feature/Run: Entdeckt: F45 B1a-2 (Bausitzung), Bauauftrag F45 B1b-1, 11.10.2026.
+
+**F-1038** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Dieselbe commit-guard-Härtung fehlt im Template-Repo claude-projekt-template.
+Beschreibung: B1b-1 härtet nur den Root-Hook von ai-workforce. Das Projekt-Skelett (`vorlagen/projekt-skelett/.claude/hooks/commit-guard.js`) trägt die Template-Bytes (Drift-Gate `check-skelett-herkunft`) und bleibt bei der schwächeren Fassung (kein Schutz gegen Ordnerkopie, rm -rf, git branch -D, git reset --hard). Neue Projekte bekommen diese Fassung.
+Fundstelle: claude-projekt-template `.claude/hooks/commit-guard.js`; `vorlagen/projekt-skelett/HERKUNFT.md`.
+Auswirkung: Mittel.
+Maßnahme: Stefan zieht die Härtung im Template-Repo nach (Vorlage: Aufgaben 5/6 in `.claude/hooks/commit-guard.cjs` und `scripts/commit-guard.test.mjs`), danach Skelett per Drift-Gate aktualisieren.
+Status: offen.
+Feature/Run: Entdeckt: Bauauftrag F45 B1b-1, 11.10.2026.
+
+**F-1039** · `TECH_DEBT` · P3 · offen
+Titel: projekt-nachruesten.test.mjs setzt voraus, dass os.tmpdir() außerhalb der Nachrüst-Basis liegt.
+Beschreibung: Der Test „Ziel außerhalb der Basis neben der Installation“ (`scripts/projekt-nachruesten.test.mjs:40`) nutzt ein Ziel unter os.tmpdir(); die Basis ist der Elternordner der Installation. Liegt das Repo selbst unter /tmp (Challenger-Clone 11.10.), liegt das Ziel innerhalb der Basis und der Test ist rot.
+Fundstelle: `scripts/projekt-nachruesten.test.mjs:40`.
+Auswirkung: Gering — falsch roter Test in der Cloud-Prüfung.
+Maßnahme: Basis im Test explizit setzen (Testeinspritzung) statt aus der Lage der Installation abzuleiten.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Cloud-Clone 11.10.2026; Bauauftrag F45 B1b-1.
+
+**F-1040** · `BUG` · P1 · erledigt
+Titel: Ein schreibender Workforce-Lauf konnte per Write/Edit außerhalb seines Arbeitsordners schreiben.
+Beschreibung: `baueAufruf` reichte den Werkzeugsatz `schreibend` unverändert an `--allowedTools` weiter; ein nacktes `Write`/`Edit` erlaubt jeden Pfad. Realer Rot-Fall (`-p`-Lauf, Haiku, Wegwerf-Ordner): Write legte ohne Rückfrage eine Datei im Elternordner und eine im Projektordner des Worktrees an.
+Fundstelle: `src/claude-code-gateway/index.ts` (baueAufruf); `features/F45/nachweise/b1b1/zaehlung-haertung-lauf1.json`.
+Auswirkung: Hoch — die Invariante „Projektordner unberührt“ (E-F45-3) hing nur an der Anweisung.
+Maßnahme: `--allowedTools` begrenzt Write/Edit auf `Edit(./**)` (relativ zum cwd; Edit-Regeln gelten für alle Schreibwerkzeuge); `--tools` behält die Namen.
+Status: erledigt (F45 B1b-1, 11.10.2026): realer Grün-/Rot-Lauf danach — beide Versuche außerhalb verweigert (permission_denials), Dateien fehlen, Write im Worktree geht (`zaehlung-haertung.json`). Grenze: Schreiben über npm-Skripte (Bash) begrenzt die Regel nicht.
+Feature/Run: Entdeckt: F45 B1b-1, realer Nachweis 11.10.2026.
+
+**F-1041** · `BUG` · P2 · offen
+Titel: `Bash(npm run check:*)` erlaubt kein `npm run check:<name>` — die Allowlist-Instruktion verspricht es.
+Beschreibung: In der CLI ist `:*` gleichbedeutend mit „Leerzeichen und `*`“ (code.claude.com/docs/en/permissions: `Bash(ls:*)` ≡ `Bash(ls *)`). `Bash(npm run check:*)` passt damit auf `npm run check` und `npm run check <args>`, nicht auf `npm run check:template`. Realer Lauf: `npm run check:schnell` → „This command requires approval“. `baueBashAllowlistSatz` sagt der Ausführung dagegen „bei 'npm run' auch deren Unterskripte wie 'npm run check:<name>'“.
+Fundstelle: `startvorlagen/*.json` (Werkzeugsatz schreibend), `src/architekt/index.ts` (baueBashAllowlistSatz); `features/F45/nachweise/b1b1/zaehlung-haertung-lauf1.json`.
+Auswirkung: Mittel — Unterskript-Aufrufe enden VERWEIGERT (F-760-Halt) statt zu laufen.
+Maßnahme: B2b (Rechte-Rückfrage): Regeln auf die gemeinte Menge bringen (eine Regel je erlaubtem Unterskript oder eine real geprüfte Wildcard-Form) und den Satz an die reale Semantik angleichen; Werkzeugsätze nicht ungeprüft erweitern.
+Status: offen.
+Feature/Run: Entdeckt: F45 B1b-1, realer Nachweis 11.10.2026.
+
+**F-1042** · `HARNESS_IMPROVEMENT` · P2 · teilweise
+Titel: commit-guard greift nicht beim PowerShell-Werkzeug von Claude Code.
+Beschreibung: Der PreToolUse-Matcher in `.claude/settings.json` ist `Bash`. Sitzungen mit dem PowerShell-Werkzeug (Windows) führen Befehle aus, ohne dass commit-guard sie sieht — alle Aufgaben 1–6 sind dort umgehbar.
+Fundstelle: `.claude/settings.json` (hooks.PreToolUse, matcher "Bash"); dasselbe im Template.
+Auswirkung: Mittel — die Bremsen gelten nur für eine von zwei Shells.
+Maßnahme: Stefan setzt den Matcher auf `Bash|PowerShell` (Team-Policy, nur im eigenen Editor), im Template nachziehen; commit-guard liest `tool_input.command` bereits für beide.
+Status: teilweise (F45 B1b-1 Nachtrag, 11.10.2026): Eingabeform des PowerShell-Werkzeugs real belegt (`tool_name` "PowerShell", `tool_input` { command, description }, Kopf-Felder wie Bash; `features/F45/nachweise/b1b1/zaehlung-powershell.json`), commit-guard verweigert dort real `Remove-Item -Recurse -Force`; Rot-/Grün-Tests mit dieser Form in `scripts/commit-guard.test.mjs`; unbekannte Form ohne `tool_input.command` wird verweigert (fail-closed). Offen: Matcher `Bash|PowerShell` in `.claude/settings.json` (Stefan, Teil der neuen Startfreigabe) und im Template (F-1038).
+Feature/Run: Entdeckt: F45 B1b-1 (Bausitzung), 11.10.2026.

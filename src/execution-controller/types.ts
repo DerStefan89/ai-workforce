@@ -69,6 +69,8 @@ export interface AusfuehrungsOptionen {
   startfreigabeRepoWurzel?: string
   /** Nur für F6as starteGateway (via prozessstart.ts' starteProzess) — harte Wanduhr-Grenze in Millisekunden (F14 WS-1, AK2). Kein fachlich fest codierter Default hier; fehlt der Wert, bleibt execFiles eigener Default (kein Timeout) unangetastet — siehe src/claude-code-gateway/prozessstart.ts. */
   zeitgrenzeMs?: number
+  /** F45 B1b-1: nur für F6as starteGateway — Bash-Zeitgrenze im Lauf aus der Startvorlage (bashZeitgrenzeMs), reine Durchreichung (Muster zeitgrenzeMs). */
+  bashZeitgrenzeMs?: number
   /** Nur für F6as starteGateway (via prozessstart.ts' starteProzess) — Signal für einen gezielten manuellen Abbruch derselben Invocation (F14 WS-4, AK7). Folgt demselben Durchreichungsmuster wie zeitgrenzeMs. */
   abbruchSignal?: AbortSignal
   /** Für BEIDE Worker-Zweige (starteGateway UND starteCodexGateway, via prozessstart.ts' starteProzess) — Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3), projektspezifisch aus dem Projektregister gesetzt. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. */

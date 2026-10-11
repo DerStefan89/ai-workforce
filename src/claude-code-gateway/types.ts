@@ -141,6 +141,8 @@ export interface BeobachtungV0 {
   mcp_aufrufe: string[]
   /** F36 WS-5a (E-F36-7): input.url je Aufruf mcp__<server>__browser_navigate, in Reihenfolge. Optional — Laufakten vor WS-5a tragen das Feld nicht. */
   navigate_adressen?: string[]
+  /** F45 B1b-1 (F-1026): Werkzeugname je angenommenem Hintergrund-Aufruf (ermittleHintergrundAufrufe: tool_use_result.backgroundTaskId oder input.run_in_background === true ohne Fehler, jedes Werkzeug), in Reihenfolge; Länge = Anzahl. Optional — Laufakten vor B1b-1 tragen das Feld nicht. */
+  hintergrund_aufrufe?: string[]
 }
 
 export type GatewayErgebnis =

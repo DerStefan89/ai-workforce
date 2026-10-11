@@ -15,7 +15,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { leseBeobachtung, NAVIGATE_OHNE_URL, validiereLaufakteDaten } from './index.ts'
+import { baueBeobachtungsBlock, ermittleHintergrundAufrufe, leseBeobachtung, NAVIGATE_OHNE_URL, validiereLaufakteDaten, zaehleHintergrundAufrufe } from './index.ts'
 
 const INIT = JSON.stringify({
   type: 'system',
@@ -71,6 +71,8 @@ test('leseBeobachtung: realer Rohstrom mit init, Skill ponytail, Agent qa und MC
     subagent_aufrufe: ['qa'],
     mcp_aufrufe: ['mcp__playwright-mcp__browser_navigate'],
     navigate_adressen: ['about:blank'],
+    // F45 B1b-1: AGENT trägt run_in_background: false — zählt nicht.
+    hintergrund_aufrufe: [],
   })
 })
 
@@ -105,6 +107,7 @@ test('leseBeobachtung: init mit fehlenden oder fremdtypisierten Listen → leere
     subagent_aufrufe: [],
     mcp_aufrufe: [],
     navigate_adressen: [],
+    hintergrund_aufrufe: [],
   })
 })
 
@@ -150,10 +153,97 @@ test('leseBeobachtung (F36 WS-5a): input.url je browser_navigate irgendeines Ser
   assert.deepStrictEqual(b?.navigate_adressen, ['http://localhost:5173/', NAVIGATE_OHNE_URL, 'https://example.com'])
 })
 
+/** F45 B1b-1: tool_use mit run_in_background true (Form wie im Lauf af862c09, F-1026). */
+const BASH_HINTERGRUND = JSON.stringify({
+  type: 'assistant',
+  message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_h1', name: 'Bash', input: { command: 'npm run check', run_in_background: true } }] },
+  parent_tool_use_id: null,
+})
+const AGENT_HINTERGRUND = AGENT.replace('"run_in_background":false', '"run_in_background":true')
+
+test('leseBeobachtung (F45 B1b-1): run_in_background true zählt je Werkzeug, false/fehlend nicht', () => {
+  const b = leseBeobachtung([INIT, BASH, BASH_HINTERGRUND, AGENT, AGENT_HINTERGRUND, RESULT])
+  assert.deepStrictEqual(b?.hintergrund_aufrufe, ['Bash', 'Agent'])
+  assert.deepStrictEqual(leseBeobachtung([INIT, BASH, AGENT, RESULT])?.hintergrund_aufrufe, [])
+})
+
+test('zaehleHintergrundAufrufe (F45 B1b-1): zählt auch ohne init-Zeile, String "true" zählt nicht, wirft nie', () => {
+  assert.strictEqual(zaehleHintergrundAufrufe([BASH_HINTERGRUND, AGENT_HINTERGRUND, BASH]), 2)
+  assert.strictEqual(zaehleHintergrundAufrufe([BASH_HINTERGRUND.replace('"run_in_background":true', '"run_in_background":"true"')]), 0)
+  assert.strictEqual(zaehleHintergrundAufrufe(['', 'kein json', '{"type":"assistant"']), 0)
+})
+
+/** user-Zeile mit tool_result zu toolUseId; zusatz z. B. tool_use_result. */
+function toolResult(toolUseId: string, fehler: boolean, zusatz: Record<string, unknown> = {}): string {
+  return JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUseId, is_error: fehler, content: 'x' }] }, ...zusatz })
+}
+
+test('ermittleHintergrundAufrufe (F45 B1b-1, Advisor A1): automatisches Verschieben ohne run_in_background zählt über tool_use_result.backgroundTaskId (Form af862c09)', () => {
+  const bashMitZeitgrenze = BASH.replace('"input":{"command":"npm run check"}', '"input":{"command":"npm run check","timeout":300000}')
+  const verschoben = toolResult('toolu_x2', false, { tool_use_result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'bs0ztc3f3', timedOutAfterMs: 300000 } })
+  assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, bashMitZeitgrenze, verschoben, RESULT]), ['Bash'])
+  // Ein leerer oder fehlender backgroundTaskId zählt nicht; Text im tool_result wird nicht gelesen.
+  assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, BASH, toolResult('toolu_x2', false, { tool_use_result: { backgroundTaskId: '' } })]), [])
+  assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, BASH, toolResult('toolu_x2', false)]), [])
+})
+
+test('ermittleHintergrundAufrufe (F45 B1b-1, Advisor A2): abgelehnter Hintergrund-Versuch (is_error) zählt nicht, angenommener zählt', () => {
+  assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, BASH_HINTERGRUND, toolResult('toolu_h1', true)]), [])
+  assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, BASH_HINTERGRUND, toolResult('toolu_h1', false)]), ['Bash'])
+  assert.deepStrictEqual(leseBeobachtung([INIT, BASH_HINTERGRUND, toolResult('toolu_h1', true), RESULT])?.hintergrund_aufrufe, [])
+})
+
+test('ermittleHintergrundAufrufe (F45 B1b-1, Korrekturrunde): mehrere tool_results in einer Zeile mit backgroundTaskId → alle zählen (fail-closed); Subagent-Zeile zählt mit', () => {
+  const zwei = JSON.stringify({
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'tool_use', id: 'a', name: 'Bash', input: { command: 'npm run check' } }, { type: 'tool_use', id: 'b', name: 'Bash', input: { command: 'npm run test' } }] },
+    parent_tool_use_id: 'toolu_sub',
+  })
+  const ergebnisse = JSON.stringify({
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', content: 'x' }, { type: 'tool_result', tool_use_id: 'b', content: 'y' }] },
+    tool_use_result: { backgroundTaskId: 'bg1' },
+    parent_tool_use_id: 'toolu_sub',
+  })
+  assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, zwei, ergebnisse]), ['Bash', 'Bash'])
+})
+
+test('validiereLaufakteDaten (F45 B1b-1): hintergrund_aufrufe optional, falsch typisiert ungültig', () => {
+  const gueltig = leseBeobachtung([INIT, BASH_HINTERGRUND])
+  assert.ok(gueltig !== null)
+  assert.deepStrictEqual(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: gueltig }), [])
+  const { hintergrund_aufrufe: _weg, ...ohne } = gueltig
+  assert.deepStrictEqual(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: ohne }), [])
+  assert.ok(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: { ...gueltig, hintergrund_aufrufe: 1 } }).some((v) => v.includes('hintergrund_aufrufe')))
+})
+
 test('validiereLaufakteDaten (F36 WS-5a): navigate_adressen optional, falsch typisiert ungültig', () => {
   const gueltig = leseBeobachtung([INIT])
   assert.ok(gueltig !== null)
   const { navigate_adressen: _weg, ...ohneAdressen } = gueltig
   assert.deepStrictEqual(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: ohneAdressen }), [])
   assert.ok(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: { ...gueltig, navigate_adressen: [3] } }).some((v) => v.includes('navigate_adressen')))
+})
+
+test('baueBeobachtungsBlock (F45 B1b-1, F-937): geladen gegen aufgerufen, dedupliziert mit Anzahl, keine URLs/Werkzeugliste', () => {
+  const b = leseBeobachtung([INIT, SKILL, AGENT, SUBAGENT_MCP, SKILL, BASH_HINTERGRUND, RESULT])
+  const block = baueBeobachtungsBlock(b)
+  assert.match(block, /^Beobachtung des Ausführungslaufs \(geladen gegen aufgerufen/)
+  assert.match(block, /Skills geladen: advisor-pass, git-flow, ponytail · aufgerufen: ponytail \(2×\)/)
+  assert.match(block, /Subagenten geladen: architecture-advisor, code-reviewer, general-purpose, qa · aufgerufen: qa/)
+  assert.match(block, /MCP-Server geladen: playwright-mcp · aufgerufen \(Server\): playwright-mcp/)
+  assert.match(block, /Hintergrund-Aufrufe: 1/)
+  assert.doesNotMatch(block, /about:blank|Bash|Write|rohstrom/i)
+})
+
+test('baueBeobachtungsBlock (F45 B1b-1): ohne Beobachtung klarer Satz; leere Listen „—“; alte Laufakte ohne Feld; Kürzung ab 21 Namen', () => {
+  for (const fehlt of [null, undefined]) assert.match(baueBeobachtungsBlock(fehlt), /keine Beobachtung \(Codex-Lauf oder Lauf ohne init-Zeile\)/)
+  const leer = leseBeobachtung([JSON.stringify({ type: 'system', subtype: 'init' })])
+  assert.ok(leer !== null)
+  assert.match(baueBeobachtungsBlock(leer), /Skills geladen: — · aufgerufen: —/)
+  assert.match(baueBeobachtungsBlock(leer), /Hintergrund-Aufrufe: 0/)
+  const { hintergrund_aufrufe: _weg, ...alt } = leer
+  assert.match(baueBeobachtungsBlock(alt), /Hintergrund-Aufrufe: nicht erfasst/)
+  const viele = { ...leer, init_skills: Array.from({ length: 25 }, (_, i) => `s${i}`) }
+  assert.match(baueBeobachtungsBlock(viele), /s19 … und 5 weitere · aufgerufen/)
 })

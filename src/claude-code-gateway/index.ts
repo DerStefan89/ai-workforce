@@ -236,6 +236,8 @@ interface GatewayOptionen {
   startfreigabeRepoWurzel?: string
   /** Harte Wanduhr-Grenze für den Prozessstart in Millisekunden (F14 WS-1, AK2) — unverändert an prozessstart.ts' starteProzess durchgereicht. Kein Default hier: fehlt der Wert, bleibt execFiles eigener Default (kein Timeout) unangetastet. */
   zeitgrenzeMs?: number
+  /** F45 B1b-1: Zeitgrenze eines Bash-Befehls im Lauf (Startvorlage bashZeitgrenzeMs); ohne Wert STANDARD_BASH_ZEITGRENZE_MS, nie über zeitgrenzeMs (wirksameBashZeitgrenze). */
+  bashZeitgrenzeMs?: number
   /** Manuelles Abbruchsignal für den Prozessstart (F14 WS-4, AK7) — unverändert an prozessstart.ts' starteProzess durchgereicht, nach demselben Muster wie zeitgrenzeMs. Kein Default hier: fehlt der Wert, bleibt execFiles eigener Default (kein Signal) unangetastet. */
   abbruchSignal?: AbortSignal
   /** Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3) — unverändert an prozessstart.ts' starteProzess durchgereicht, dort natives execFile-cwd. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. Wirkt NUR auf den Kindprozess — F4s Gültigkeitsschlüssel (istUebrigeFelder.arbeitsverzeichnis_pfad unten) und die Laufakte bleiben bewusst bei process.cwd() des Serverprozesses (AK7: kein bestehender Vergleichswert für ai-workforce ändert sich). */
@@ -306,20 +308,20 @@ const ZIEL_PARAMETER = ['file_path', 'pattern', 'path', 'notebook_path', 'url', 
 /**
  * Einzige Stelle, die die tool_use-Blöcke EINER stream-json-Zeile (type "assistant", message.content[]) liest — geteilt von leseWerkzeugaufrufe (F40 WS-1) und leseBeobachtung (F36 WS-4), damit eine Formänderung der CLI beide Pfade gleich trifft. Jede andere Zeile liefert []; wirft nie.
  * @param zeile - eine geparste stream-json-Zeile
- * @returns Name und Eingabeobjekt ({} ohne input) je tool_use-Block
+ * @returns Name, Eingabeobjekt ({} ohne input) und id (null ohne id; F45 B1b-1) je tool_use-Block
  */
-function leseToolUseBloecke(zeile: Record<string, unknown>): Array<{ name: string; eingabe: Record<string, unknown> }> {
+function leseToolUseBloecke(zeile: Record<string, unknown>): Array<{ name: string; eingabe: Record<string, unknown>; id: string | null }> {
   if (zeile.type !== 'assistant') return []
   const message = zeile.message
   if (typeof message !== 'object' || message === null) return []
   const inhalt = (message as Record<string, unknown>).content
   if (!Array.isArray(inhalt)) return []
-  const bloecke: Array<{ name: string; eingabe: Record<string, unknown> }> = []
+  const bloecke: Array<{ name: string; eingabe: Record<string, unknown>; id: string | null }> = []
   for (const block of inhalt) {
     if (typeof block !== 'object' || block === null) continue
     const b = block as Record<string, unknown>
     if (b.type !== 'tool_use' || typeof b.name !== 'string') continue
-    bloecke.push({ name: b.name, eingabe: typeof b.input === 'object' && b.input !== null ? (b.input as Record<string, unknown>) : {} })
+    bloecke.push({ name: b.name, eingabe: typeof b.input === 'object' && b.input !== null ? (b.input as Record<string, unknown>) : {}, id: typeof b.id === 'string' ? b.id : null })
   }
   return bloecke
 }
@@ -448,6 +450,7 @@ function stringListe(wert: unknown): string[] {
  * F36 WS-5a (E-F36-7): zusätzlich navigate_adressen — je Aufruf mcp__<server>__browser_navigate die
  * input.url (ohne url: NAVIGATE_OHNE_URL), in Reihenfolge. Erfasst wird nur der ausdrückliche
  * browser_navigate — ein Seitenwechsel per Klick oder Weiterleitung steht nicht darin.
+ * F45 B1b-1 (F-1026): zusätzlich hintergrund_aufrufe (ermittleHintergrundAufrufe, auch Zeilen vor init).
  * @param zeilen - NDJSON-Zeilen des stdout (einzelne Strings)
  * @returns BeobachtungV0, oder null ohne init-Zeile
  */
@@ -486,7 +489,110 @@ export function leseBeobachtung(zeilen: string[]): BeobachtungV0 | null {
     subagent_aufrufe: subagentAufrufe,
     mcp_aufrufe: mcpAufrufe,
     navigate_adressen: navigateAdressen,
+    hintergrund_aufrufe: ermittleHintergrundAufrufe(zeilen),
   }
+}
+
+/**
+ * F45 B1b-1: tool_result-Blöcke EINER user-Zeile — tool_use_id, is_error und ob die Zeile ein strukturiertes
+ * tool_use_result.backgroundTaskId trägt (bei mehreren tool_result-Blöcken in der Zeile gilt es für alle — fail-closed).
+ * Belegte Form (Rohstrom af862c09, F-1026): automatisch verschobener Bash-Befehl → tool_use_result
+ * { backgroundTaskId, timedOutAfterMs }. Jede andere Zeile liefert []; wirft nie.
+ * @param zeile - eine geparste stream-json-Zeile
+ * @returns je tool_result: toolUseId, fehler, hintergrundId
+ */
+function leseToolResultBloecke(zeile: Record<string, unknown>): Array<{ toolUseId: string; fehler: boolean; hintergrundId: boolean }> {
+  if (zeile.type !== 'user') return []
+  const message = zeile.message
+  if (typeof message !== 'object' || message === null) return []
+  const inhalt = (message as Record<string, unknown>).content
+  if (!Array.isArray(inhalt)) return []
+  const bloecke = inhalt.filter((b): b is Record<string, unknown> => typeof b === 'object' && b !== null && (b as Record<string, unknown>).type === 'tool_result' && typeof (b as Record<string, unknown>).tool_use_id === 'string')
+  const ergebnis = zeile.tool_use_result
+  // Mehrere tool_result-Blöcke mit einem backgroundTaskId sind nicht zuzuordnen — dann gelten alle als verschoben (fail-closed).
+  const traegtHintergrundId =
+    typeof ergebnis === 'object' && ergebnis !== null && typeof (ergebnis as Record<string, unknown>).backgroundTaskId === 'string' && ((ergebnis as Record<string, unknown>).backgroundTaskId as string).length > 0
+  return bloecke.map((b) => ({ toolUseId: b.tool_use_id as string, fehler: b.is_error === true, hintergrundId: traegtHintergrundId }))
+}
+
+/**
+ * F45 B1b-1 (F-1026, Advisor A1/A2): einzige Zählregel für Hintergrund-Ausführung. Ein tool_use zählt, wenn
+ * (a) sein tool_result ein tool_use_result.backgroundTaskId trägt (automatisches Verschieben nach der
+ * Zeitgrenze, ohne run_in_background — der reale F-1026-Fall), oder (b) input.run_in_background genau true ist
+ * und sein tool_result nicht is_error (abgelehnte Versuche — Denial, Hook, abgeschaltete Funktion — liefen nie;
+ * fehlt das tool_result, zählt (b), fail-closed). Zeilen aus Subagenten zählen mit. Kein Konsolentext.
+ * @param zeilen - NDJSON-Zeilen des stdout
+ * @returns Werkzeugname je Hintergrund-Aufruf, in Reihenfolge der tool_use-Blöcke
+ */
+export function ermittleHintergrundAufrufe(zeilen: string[]): string[] {
+  const aufrufe: Array<{ id: string | null; name: string; flagge: boolean }> = []
+  const ergebnisse = new Map<string, { fehler: boolean; hintergrundId: boolean }>()
+  for (const text of zeilen) {
+    const zeile = parseObjekt(text.trim())
+    if (zeile === null) continue
+    for (const { id, name, eingabe } of leseToolUseBloecke(zeile)) aufrufe.push({ id, name, flagge: eingabe.run_in_background === true })
+    for (const { toolUseId, fehler, hintergrundId } of leseToolResultBloecke(zeile)) ergebnisse.set(toolUseId, { fehler, hintergrundId })
+  }
+  return aufrufe
+    .filter((aufruf) => {
+      const ergebnis = aufruf.id !== null ? ergebnisse.get(aufruf.id) : undefined
+      if (ergebnis?.hintergrundId === true) return true
+      return aufruf.flagge && ergebnis?.fehler !== true
+    })
+    .map((aufruf) => aufruf.name)
+}
+
+/**
+ * F45 B1b-1 (F-1026): Anzahl nach ermittleHintergrundAufrufe — auch ohne init-Zeile (anders als
+ * leseBeobachtung). Der Result Evaluator rechnet damit aus dem hash-geprüften Rohstrom nach, statt dem
+ * Laufakten-Feld zu glauben. Wirft nie.
+ * @param zeilen - NDJSON-Zeilen des stdout
+ * @returns Anzahl der Hintergrund-Aufrufe
+ */
+export function zaehleHintergrundAufrufe(zeilen: string[]): number {
+  return ermittleHintergrundAufrufe(zeilen).length
+}
+
+/** F45 B1b-1: höchstens so viele Namen je Liste im Review-Block, Rest als „… und n weitere“. */
+const BLOCK_NAMEN_HOECHSTENS = 20
+
+/**
+ * Namen dedupliziert in Reihenfolge des ersten Auftretens, je mit Anzahl (ab 2), gekürzt.
+ * @param namen - Liste mit Duplikaten
+ * @returns Text, „—“ bei leerer Liste
+ */
+function fasseNamenZusammen(namen: readonly string[]): string {
+  if (namen.length === 0) return '—'
+  const zaehler = new Map<string, number>()
+  for (const name of namen) zaehler.set(name, (zaehler.get(name) ?? 0) + 1)
+  const eintraege = [...zaehler].map(([name, anzahl]) => (anzahl > 1 ? `${name} (${anzahl}×)` : name))
+  const rest = eintraege.length - BLOCK_NAMEN_HOECHSTENS
+  return rest > 0 ? `${eintraege.slice(0, BLOCK_NAMEN_HOECHSTENS).join(', ')} … und ${rest} weitere` : eintraege.join(', ')
+}
+
+/**
+ * F45 B1b-1 (F-937, Teil Review): kurze, deterministische Zusammenfassung der Beobachtung des
+ * Ausführungslaufs für den Auftragstext des code-reviewer-Schritts (Claude und Codex gleich) — geladene
+ * gegen aufgerufene Skills, Subagenten und MCPs sowie Hintergrund-Aufrufe. Nur Namen: keine Werkzeugliste,
+ * keine URLs (navigate_adressen), keine Pfade, kein Rohstrom. „Vorgesehen“ (aus dem Arbeitspaket) kommt
+ * erst mit B2a — der Block vergleicht geladen mit aufgerufen.
+ * @param beobachtung - beobachtung der Laufakte des Ausführungslaufs, oder null/undefined (Codex, keine init-Zeile)
+ * @returns der anzuhängende Block
+ */
+export function baueBeobachtungsBlock(beobachtung: BeobachtungV0 | null | undefined): string {
+  if (beobachtung === null || beobachtung === undefined) {
+    return 'Beobachtung des Ausführungslaufs: keine Beobachtung (Codex-Lauf oder Lauf ohne init-Zeile) — ob vorgesehene Skills und Subagenten benutzt wurden, ist nicht belegt.'
+  }
+  const mcpAufgerufen = beobachtung.mcp_aufrufe.map((name) => name.split('__')[1] ?? name)
+  const hintergrund = beobachtung.hintergrund_aufrufe
+  return [
+    'Beobachtung des Ausführungslaufs (geladen gegen aufgerufen, aus der Laufakte):',
+    `- Skills geladen: ${fasseNamenZusammen(beobachtung.init_skills)} · aufgerufen: ${fasseNamenZusammen(beobachtung.skill_aufrufe)}`,
+    `- Subagenten geladen: ${fasseNamenZusammen(beobachtung.init_agents)} · aufgerufen: ${fasseNamenZusammen(beobachtung.subagent_aufrufe)}`,
+    `- MCP-Server geladen: ${fasseNamenZusammen(beobachtung.init_mcp_server)} · aufgerufen (Server): ${fasseNamenZusammen(mcpAufgerufen)}`,
+    `- Hintergrund-Aufrufe: ${hintergrund === undefined ? 'nicht erfasst (Laufakte vor B1b-1)' : hintergrund.length}`,
+    'Prüfe, ob die für den Auftrag nötigen Fähigkeiten benutzt wurden; eine fehlende oder unerwartete Nutzung nennst du als Befund.',
+  ].join('\n')
 }
 
 /** F36 WS-5a: Werkzeugname eines browser_navigate-Aufrufs irgendeines MCP-Servers. */
@@ -504,6 +610,68 @@ const BEOBACHTUNG_FELDER: readonly string[] = [
   'subagent_aufrufe',
   'mcp_aufrufe',
 ] as const satisfies readonly (keyof BeobachtungV0)[]
+
+/**
+ * F45 B1b-1 (F-1026, F-1027): Umgebung jedes Claude-Code-Laufs der Workforce, über jede vom Aufrufer
+ * übergebene Variable gelegt (nicht abwählbar).
+ * - CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1: schaltet run_in_background (Bash, Subagenten), das automatische
+ *   Verschieben in den Hintergrund und Ctrl+B ab (code.claude.com/docs/en/env-vars; Beleg im realen Lauf:
+ *   features/F45/nachweise/b1b1/). Ein Lauf endete sonst ERFOLGREICH mit „Ich warte auf die Benachrichtigung“.
+ *   Netz darunter: der Result Evaluator wertet jeden Hintergrund-Aufruf als FEHLGESCHLAGEN.
+ * - npm_config_ignore_scripts=true: npm install/ci im Lauf führt keine Lifecycle-Skripte aus (prepare →
+ *   git config im geteilten .git des Worktrees). npm run <skript> läuft, nur ohne pre-/post-Skripte.
+ */
+export const WORKFORCE_LAUF_UMGEBUNG: Readonly<Record<string, string>> = Object.freeze({
+  CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+  npm_config_ignore_scripts: 'true',
+})
+
+/**
+ * F45 B1b-1: Standard-Zeitgrenze eines Bash-Befehls im Lauf — der Höchstwert, den die CLI ohne
+ * BASH_MAX_TIMEOUT_MS zulässt (CLI 2.1.296: `i=600000`, BASH_DEFAULT_TIMEOUT_MS sonst 120000;
+ * code.claude.com/docs/en/env-vars). Ohne Hintergrund wird ein Befehl über der Grenze beendet.
+ */
+export const STANDARD_BASH_ZEITGRENZE_MS = 600000
+
+/**
+ * F45 B1b-1: Umgebungsvariablen der CLI für die Bash-Zeitgrenze — Standard und Höchstwert gleich, damit auch ein
+ * Befehl ohne eigene timeout-Angabe (sonst 120000) die volle Grenze bekommt.
+ * @param ms - wirksame Bash-Zeitgrenze
+ * @returns { BASH_DEFAULT_TIMEOUT_MS, BASH_MAX_TIMEOUT_MS }
+ */
+export function bashZeitgrenzeUmgebung(ms: number): Record<string, string> {
+  return { BASH_DEFAULT_TIMEOUT_MS: String(ms), BASH_MAX_TIMEOUT_MS: String(ms) }
+}
+
+/**
+ * F45 B1b-1: wirksame Bash-Zeitgrenze — bashZeitgrenzeMs (sonst Standard), nie über der Lauf-Zeitgrenze.
+ * @param bashZeitgrenzeMs - aus der Startvorlage, undefined ohne Feld
+ * @param laufZeitgrenzeMs - wirksame Lauf-Zeitgrenze, undefined ohne Grenze
+ * @returns Millisekunden für BASH_DEFAULT_TIMEOUT_MS und BASH_MAX_TIMEOUT_MS
+ */
+export function wirksameBashZeitgrenze(bashZeitgrenzeMs: number | undefined, laufZeitgrenzeMs: number | undefined): number {
+  const wunsch = bashZeitgrenzeMs ?? STANDARD_BASH_ZEITGRENZE_MS
+  return laufZeitgrenzeMs !== undefined ? Math.min(wunsch, laufZeitgrenzeMs) : wunsch
+}
+
+/**
+ * F45 B1b-1 (F-1027 a, realer Rot-Fall features/F45/nachweise/b1b1/): ein nacktes 'Write' oder 'Edit' in
+ * --allowedTools erlaubt jeden Pfad — im -p-Lauf schrieb Write ohne Rückfrage in den Eltern- und den
+ * Projektordner eines Worktrees. Begrenzt auf den Arbeitsordner: Pfadregeln ohne Anker gelten relativ zum
+ * cwd, und Edit-Regeln gelten für alle eingebauten Schreibwerkzeuge (code.claude.com/docs/en/permissions,
+ * „Read and Edit“). Ein Schreibversuch außerhalb ist damit nicht erlaubt und wird im -p-Lauf abgelehnt.
+ * `--tools` behält die Werkzeugnamen.
+ */
+export const SCHREIBREGEL_ARBEITSORDNER = 'Edit(./**)'
+
+/**
+ * Ersetzt eine nackte Schreibregel durch SCHREIBREGEL_ARBEITSORDNER; jede andere Regel bleibt.
+ * @param regel - Eintrag aus erlaubte_werkzeuge
+ * @returns Regel für --allowedTools
+ */
+function begrenzeSchreibregel(regel: string): string {
+  return regel === 'Write' || regel === 'Edit' ? SCHREIBREGEL_ARBEITSORDNER : regel
+}
 
 /** E-F754 (Advisor-Pass K1): Sperrregel für jeden Werkzeugsatz mit Bash-Regel — git bleibt verboten, auch wenn Projekteinstellungen Bash allgemein erlauben. */
 export const BASH_SPERRREGELN = 'Bash(git:*)'
@@ -525,7 +693,8 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     throw new Error('AufrufEingaben.prompt ist Pflichtfeld (F-124) — leer oder fehlend')
   }
   const regeln = eingaben.werkzeugsatz.erlaubte_werkzeuge
-  const werkzeugListe = regeln.join(',')
+  // F45 B1b-1 (F-1027 a): nacktes 'Write'/'Edit' wird für --allowedTools auf SCHREIBREGEL_ARBEITSORDNER begrenzt.
+  const werkzeugListe = [...new Set(regeln.map(begrenzeSchreibregel))].join(',')
   // E-F754: `--tools` kennt nur Werkzeugnamen — 'Bash(npm run check:*)' → 'Bash', dedupliziert, Reihenfolge stabil.
   const werkzeugNamen = [...new Set(regeln.map((regel) => regel.split('(')[0]))].join(',')
   const traegtBashRegel = regeln.some((regel) => regel.startsWith('Bash('))
@@ -793,7 +962,8 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     abbruchSignal,
     cwd: optionen.cwd,
     stdinDaten: promptFuerStdin,
-    umgebungsvariablen: optionen.umgebungsvariablen,
+    // F45 B1b-1: WORKFORCE_LAUF_UMGEBUNG und die Bash-Zeitgrenze zuletzt — ein Aufrufer kann sie nicht abwählen.
+    umgebungsvariablen: { ...optionen.umgebungsvariablen, ...WORKFORCE_LAUF_UMGEBUNG, ...bashZeitgrenzeUmgebung(wirksameBashZeitgrenze(optionen.bashZeitgrenzeMs, optionen.zeitgrenzeMs)) },
     // F40 WS-1: baueAufruf erzeugt immer stream-json — der Starter löst bei der result-Zeile auf
     // statt beim Prozessende (real 590-730ms früher, state/spike-f40-streaming.md Punkt 1).
     // Abbruch/Timeout vor der result-Zeile bleiben unverändert ABBRUCH/TIMEOUT.
@@ -990,7 +1160,7 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     } else {
       const b = beobachtung as Record<string, unknown>
       for (const feld of Object.keys(b)) {
-        if (!BEOBACHTUNG_FELDER.includes(feld) && feld !== 'navigate_adressen') verstoesse.push(`unbekanntes Feld 'beobachtung.${feld}' (additionalProperties: false)`)
+        if (!BEOBACHTUNG_FELDER.includes(feld) && feld !== 'navigate_adressen' && feld !== 'hintergrund_aufrufe') verstoesse.push(`unbekanntes Feld 'beobachtung.${feld}' (additionalProperties: false)`)
       }
       for (const feld of BEOBACHTUNG_FELDER) {
         if (!(feld in b)) verstoesse.push(`Pflichtfeld 'beobachtung.${feld}' fehlt`)
@@ -1001,6 +1171,10 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
       // F36 WS-5a: optional (append-only, ältere Laufakten ohne das Feld bleiben gültig).
       if ('navigate_adressen' in b && (!Array.isArray(b.navigate_adressen) || !b.navigate_adressen.every((e) => typeof e === 'string'))) {
         verstoesse.push("'beobachtung.navigate_adressen' muss, wenn angegeben, ein Array aus Strings sein")
+      }
+      // F45 B1b-1: optional (append-only, Muster navigate_adressen).
+      if ('hintergrund_aufrufe' in b && (!Array.isArray(b.hintergrund_aufrufe) || !b.hintergrund_aufrufe.every((e) => typeof e === 'string'))) {
+        verstoesse.push("'beobachtung.hintergrund_aufrufe' muss, wenn angegeben, ein Array aus Strings sein")
       }
     }
   }

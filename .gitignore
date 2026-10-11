@@ -50,6 +50,10 @@ kontrollzustand-test*/
 # ausschließlich über ihren Inhalts-Hash referenziert.
 kontrollzustand-roh/
 
+# Rohströme realer Nachweisläufe (F45 B1b-1, ARCHITECTURE §4) — bleiben lokal;
+# die Nachweis-Datei referenziert sie über SHA-256, committet werden die Zählungen.
+features/*/nachweise/**/rohstrom-*.json
+
 # Scratch-Zielordner für scripts/verify-f6b-ws-g-schreiblauf.mjs (F6b
 # WS-G, Option A, 03.09.2026) — reale Schreibwirkung eines echten
 # Claude-Code-Laufs, kein Produktzustand. Kein chdir mehr (Option A:

@@ -21,6 +21,7 @@
  *     akzeptanzkriterien-Feld) schließt bei urteil BEREIT normal ab, UND der
  *     Review-Auftragstext bleibt gegenüber dem Ursprungstext bitgenau unverändert (kein
  *     AK-Block) — derselbe Nachweis wie check-f659 (a) für die Korrekturschleife.
+ *     Seit F45 B1b-1 bis auf den angehängten Beobachtungs-Block (F-937).
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -394,7 +395,9 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewErg
       } else {
         const reviewLaufId = daten.schritte?.[1]?.lauf_id ?? null
         const reviewAuftragstext = reviewLaufId !== null ? (auftragstexte.get(reviewLaufId) ?? '') : ''
-        if (reviewAuftragstext !== URSPRUNGS_AUFTRAGSTEXT) {
+        // F45 B1b-1 (F-937): seit B1b-1 hängt jeder Review-Schritt mit gelaufener Ausführung den
+        // Beobachtungs-Block an — geprüft wird, dass davor kein AK-Block steht.
+        if (reviewAuftragstext.split('\n\nBeobachtung des Ausführungslaufs')[0] !== URSPRUNGS_AUFTRAGSTEXT) {
           befunde.push(`(e) ein Auftrag ohne Akzeptanzkriterien sollte den Review-Auftragstext bitgenau unverändert lassen (kein AK-Block), erhalten: ${JSON.stringify(reviewAuftragstext)}`)
         } else {
           console.log('✓ (e) Alt-Verhalten: Auftrag ohne Akzeptanzkriterien schließt normal ab (ABGESCHLOSSEN), der Review-Auftragstext bleibt bitgenau unverändert.')

@@ -2,7 +2,7 @@
   "startvorlage_schema": "v0",
   "profilPfad": "profiles/ai-workforce.json",
   "werkzeugStartziel": ["C:\\Program Files\\claude\\claude.exe"],
-  "werkzeugVersionDeklariert": "2.1.258 (Claude Code)",
+  "werkzeugVersionDeklariert": "2.1.296 (Claude Code)",
   "berechtigungskontext": "profil-standard",
   "modell": "claude-sonnet-5",
   "standardBudget": { "maxElemente": 20, "maxBytes": 200000 },

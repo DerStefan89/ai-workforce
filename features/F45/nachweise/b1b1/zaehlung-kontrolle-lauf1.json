@@ -1,0 +1,50 @@
+{
+  "modell": "claude-haiku-4-5",
+  "exitCode": 0,
+  "dauer_ms_wand": 14697,
+  "verbrauch": {
+    "input_tokens": 18,
+    "output_tokens": 1269,
+    "cache_read_tokens": 14098,
+    "cache_write_tokens": 15113,
+    "dauer_ms": 12362,
+    "dauer_api_ms": 12267,
+    "turns": 3,
+    "quelle": "claude-code"
+  },
+  "werkzeugaufrufe": [
+    {
+      "id": "toolu_01E6Yhfu2grSqfA29pYPaX7S",
+      "name": "Bash",
+      "eingabe": {
+        "command": "npm run check:schnell",
+        "run_in_background": true
+      },
+      "ergebnis": {
+        "is_error": true,
+        "text": "This command requires approval",
+        "backgroundTaskId": null
+      }
+    },
+    {
+      "id": "toolu_01GY4XsxeDfqtnQHuxdhjKsB",
+      "name": "Bash",
+      "eingabe": {
+        "command": "npm run check:langsam",
+        "timeout": 3000
+      },
+      "ergebnis": {
+        "is_error": true,
+        "text": "This command requires approval",
+        "backgroundTaskId": null
+      }
+    }
+  ],
+  "hintergrund_aufrufe": [],
+  "beobachtung_hintergrund": [],
+  "klassifikation": {
+    "ergebnis": "VERWEIGERT",
+    "grund": null
+  },
+  "ergebnistext": "Beide Befehle benötigen Genehmigung durch das System."
+}

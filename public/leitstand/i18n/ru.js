@@ -1633,6 +1633,7 @@ export default {
   'chat.grund.keinErgebnisobjekt': 'в выводе запуска нет результата',
   'chat.grund.initGateVerstoss': 'стартовая проверка не пройдена',
   'chat.grund.claudeOrdnerVeraendert': 'папка harness .claude изменилась во время запуска',
+  'chat.grund.hintergrundAusfuehrung': 'запуск перевёл команды в фоновый режим — результат неполный',
   'chat.grund.werkzeuggrenzeAbgelehnt': 'вызов инструмента за пределами разрешённой границы',
   'chat.grund.fehlgeschlagen': 'запуск не удался',
   'chat.grund.unerwarteterLaufstatus': 'неожиданный статус запуска',
