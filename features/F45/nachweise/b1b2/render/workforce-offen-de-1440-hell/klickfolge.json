@@ -1,0 +1,1249 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": ".harness-abgleich-bereich"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Zählzeile",
+        "selector": "#harness-abgleich .harness-abgleich-zeile"
+      },
+      {
+        "name": "Hinweis offen",
+        "selector": "#harness-abgleich .note.red"
+      },
+      {
+        "name": "erste Zeile",
+        "selector": "#harness-abgleich tbody tr"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "offen-Zeile",
+        "selector": "#harness-abgleich tr[data-status=\"offen\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Fixture: unbekannter Agent",
+      "warteAufSelector": {
+        "selector": "#harness-abgleich tr[data-status=\"offen\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-offen.png"
+    }
+  ],
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/harness",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+        "name": "ai-workforce",
+        "bausteine": [
+          {
+            "id": "regeln",
+            "ort": "/",
+            "eintraege": [
+              {
+                "pfad": "CLAUDE.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 8046,
+                "geaendert": "2026-10-02T15:18:01.959Z"
+              },
+              {
+                "pfad": "ARCHITECTURE.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 10412,
+                "geaendert": "2026-10-11T20:20:53.558Z"
+              },
+              {
+                "pfad": "README.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 5457,
+                "geaendert": "2026-09-03T17:23:07.933Z"
+              }
+            ]
+          },
+          {
+            "id": "wissen",
+            "ort": "docs/",
+            "eintraege": [
+              {
+                "pfad": "docs/STATUS.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 47318,
+                "geaendert": "2026-10-11T15:19:16.502Z"
+              },
+              {
+                "pfad": "docs/adr",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-09-30T05:44:37.450Z",
+                "anzahl": 6,
+                "eintraege": [
+                  {
+                    "name": "TEMPLATE.md",
+                    "art": "datei",
+                    "groesse": 348,
+                    "geaendert": "2026-09-03T17:23:07.942Z"
+                  },
+                  {
+                    "name": "ausfuehrung-bash-allowlist.md",
+                    "art": "datei",
+                    "groesse": 6049,
+                    "geaendert": "2026-09-30T05:44:37.450Z"
+                  },
+                  {
+                    "name": "datenformate-kontrollzustand-und-profile.md",
+                    "art": "datei",
+                    "groesse": 1093,
+                    "geaendert": "2026-09-03T17:23:07.943Z"
+                  },
+                  {
+                    "name": "ein-ebenen-profilmodell.md",
+                    "art": "datei",
+                    "groesse": 1375,
+                    "geaendert": "2026-09-03T17:23:07.944Z"
+                  },
+                  {
+                    "name": "oberflaechentechnik-leitstand.md",
+                    "art": "datei",
+                    "groesse": 988,
+                    "geaendert": "2026-09-03T17:23:07.945Z"
+                  },
+                  {
+                    "name": "technischer-stack.md",
+                    "art": "datei",
+                    "groesse": 1194,
+                    "geaendert": "2026-09-03T17:23:07.946Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": "docs/projekt/kontext",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-11T19:33:15.925Z",
+                "anzahl": 3,
+                "eintraege": [
+                  {
+                    "name": "anweisungen.md",
+                    "art": "datei",
+                    "groesse": 2525,
+                    "geaendert": "2026-09-21T06:12:38.706Z"
+                  },
+                  {
+                    "name": "beschreibung.md",
+                    "art": "datei",
+                    "groesse": 2434,
+                    "geaendert": "2026-09-23T15:28:34.754Z"
+                  },
+                  {
+                    "name": "lagebild.md",
+                    "art": "datei",
+                    "groesse": 13393,
+                    "geaendert": "2026-10-11T19:33:15.946Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": "docs/harness",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-11T19:50:43.967Z",
+                "anzahl": 11,
+                "eintraege": [
+                  {
+                    "name": "HARNESS-CHANGELOG.md",
+                    "art": "datei",
+                    "groesse": 831,
+                    "geaendert": "2026-09-25T22:49:55.648Z"
+                  },
+                  {
+                    "name": "HARNESS-GLOSSARY.md",
+                    "art": "datei",
+                    "groesse": 5186,
+                    "geaendert": "2026-09-28T17:05:29.123Z"
+                  },
+                  {
+                    "name": "HARNESS-LEARNING-STATE.md",
+                    "art": "datei",
+                    "groesse": 4155,
+                    "geaendert": "2026-09-25T22:49:55.667Z"
+                  },
+                  {
+                    "name": "HARNESS-OVERVIEW.md",
+                    "art": "datei",
+                    "groesse": 6253,
+                    "geaendert": "2026-09-11T12:30:26.895Z"
+                  },
+                  {
+                    "name": "geraete-bruecke-verifikation.md",
+                    "art": "datei",
+                    "groesse": 1425,
+                    "geaendert": "2026-09-03T17:23:07.961Z"
+                  },
+                  {
+                    "name": "kandidaten-2026-09-15.md",
+                    "art": "datei",
+                    "groesse": 87715,
+                    "geaendert": "2026-09-16T17:27:22.978Z"
+                  },
+                  {
+                    "name": "programm-historie",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "stack-kandidaten.md",
+                    "art": "datei",
+                    "groesse": 21447,
+                    "geaendert": "2026-09-30T15:24:39.559Z"
+                  },
+                  {
+                    "name": "startfreigabe-erneuern.md",
+                    "art": "datei",
+                    "groesse": 6477,
+                    "geaendert": "2026-10-11T20:35:44.070Z"
+                  },
+                  {
+                    "name": "werkzeug-katalog.md",
+                    "art": "datei",
+                    "groesse": 5547,
+                    "geaendert": "2026-09-16T17:27:23.000Z"
+                  },
+                  {
+                    "name": "zaehne-taxonomie.md",
+                    "art": "datei",
+                    "groesse": 15281,
+                    "geaendert": "2026-09-03T17:23:07.989Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "gedaechtnis",
+            "ort": "state/",
+            "eintraege": [
+              {
+                "pfad": "state/findings.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 1343421,
+                "geaendert": "2026-10-11T21:03:34.444Z"
+              },
+              {
+                "pfad": "state/gates.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 178753,
+                "geaendert": "2026-10-02T15:18:03.309Z"
+              },
+              {
+                "pfad": "state/assumption-ledger.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 1771,
+                "geaendert": "2026-09-03T17:23:08.350Z"
+              },
+              {
+                "pfad": "state/triggers.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 2226,
+                "geaendert": "2026-09-25T22:49:55.795Z"
+              },
+              {
+                "pfad": "state/memory-map.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 11093,
+                "geaendert": "2026-09-29T07:58:55.873Z"
+              },
+              {
+                "pfad": "state/tooling.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 7945,
+                "geaendert": "2026-09-16T17:27:23.073Z"
+              },
+              {
+                "pfad": "state/zwischenstand",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-09-03T17:23:08.521Z",
+                "anzahl": 1,
+                "eintraege": [
+                  {
+                    "name": "VORLAGE.md",
+                    "art": "datei",
+                    "groesse": 656,
+                    "geaendert": "2026-09-03T17:23:08.522Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "rollen",
+            "ort": ".claude/",
+            "eintraege": [
+              {
+                "pfad": ".claude/agents",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:11:54.995Z",
+                "anzahl": 5,
+                "eintraege": [
+                  {
+                    "name": "architecture-advisor.md",
+                    "art": "datei",
+                    "groesse": 2090,
+                    "geaendert": "2026-09-03T17:23:07.894Z"
+                  },
+                  {
+                    "name": "code-reviewer.md",
+                    "art": "datei",
+                    "groesse": 1659,
+                    "geaendert": "2026-09-03T17:23:07.895Z"
+                  },
+                  {
+                    "name": "design-guardian.md",
+                    "art": "datei",
+                    "groesse": 5950,
+                    "geaendert": "2026-10-02T21:11:55.017Z"
+                  },
+                  {
+                    "name": "qa.md",
+                    "art": "datei",
+                    "groesse": 1066,
+                    "geaendert": "2026-09-03T17:23:07.896Z"
+                  },
+                  {
+                    "name": "scout.md",
+                    "art": "datei",
+                    "groesse": 2758,
+                    "geaendert": "2026-09-17T06:47:41.383Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": ".claude/skills",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-08-21T07:28:31.608Z",
+                "anzahl": 7,
+                "eintraege": [
+                  {
+                    "name": "advisor-pass",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "git-flow",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "handoff-vertrag",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "ponytail",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "repo-audit",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "spec-schreiben",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "werkzeug-auswahl",
+                    "art": "ordner"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": ".claude/commands",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-09-03T17:23:07.897Z",
+                "anzahl": 1,
+                "eintraege": [
+                  {
+                    "name": "lessons.md",
+                    "art": "datei",
+                    "groesse": 1095,
+                    "geaendert": "2026-09-03T17:23:07.897Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "bremsen",
+            "ort": ".claude/",
+            "eintraege": [
+              {
+                "pfad": ".claude/settings.json",
+                "art": "datei",
+                "geschuetzt": true,
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 1216,
+                "geaendert": "2026-10-11T19:33:15.922Z"
+              },
+              {
+                "pfad": ".claude/hooks",
+                "art": "ordner",
+                "geschuetzt": true,
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-11T19:33:15.921Z",
+                "anzahl": 5,
+                "eintraege": [
+                  {
+                    "name": "commit-guard.cjs",
+                    "art": "datei",
+                    "groesse": 28274,
+                    "geaendert": "2026-10-11T19:33:15.921Z"
+                  },
+                  {
+                    "name": "guard-settings.js",
+                    "art": "datei",
+                    "groesse": 1934,
+                    "geaendert": "2026-09-03T17:23:07.903Z"
+                  },
+                  {
+                    "name": "session-reminder.cjs",
+                    "art": "datei",
+                    "groesse": 1044,
+                    "geaendert": "2026-09-03T17:23:07.904Z"
+                  },
+                  {
+                    "name": "zwischenstand-laden.cjs",
+                    "art": "datei",
+                    "groesse": 1612,
+                    "geaendert": "2026-09-03T17:23:07.905Z"
+                  },
+                  {
+                    "name": "zwischenstand-pruefen.cjs",
+                    "art": "datei",
+                    "groesse": 2289,
+                    "geaendert": "2026-09-03T17:23:07.907Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "pruefung",
+            "ort": "scripts/ · .github/",
+            "eintraege": [
+              {
+                "pfad": "scripts",
+                "art": "ordner",
+                "muster": "check-*.mjs",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-11T20:10:07.173Z",
+                "anzahl": 78,
+                "eintraege": [
+                  {
+                    "name": "check-akte-meilenstein.mjs",
+                    "art": "datei",
+                    "groesse": 8127,
+                    "geaendert": "2026-10-02T15:18:03.260Z"
+                  },
+                  {
+                    "name": "check-checkpoint-store.mjs",
+                    "art": "datei",
+                    "groesse": 5287,
+                    "geaendert": "2026-10-11T17:24:39.126Z"
+                  },
+                  {
+                    "name": "check-contract.mjs",
+                    "art": "datei",
+                    "groesse": 2259,
+                    "geaendert": "2026-09-03T17:23:08.264Z"
+                  },
+                  {
+                    "name": "check-datenformate.mjs",
+                    "art": "datei",
+                    "groesse": 9282,
+                    "geaendert": "2026-10-11T17:24:39.127Z"
+                  },
+                  {
+                    "name": "check-docs.mjs",
+                    "art": "datei",
+                    "groesse": 11950,
+                    "geaendert": "2026-09-25T22:49:55.686Z"
+                  },
+                  {
+                    "name": "check-f10-leitstand.mjs",
+                    "art": "datei",
+                    "groesse": 49412,
+                    "geaendert": "2026-09-21T13:34:40.657Z"
+                  },
+                  {
+                    "name": "check-f11-auftrag.mjs",
+                    "art": "datei",
+                    "groesse": 21444,
+                    "geaendert": "2026-10-11T16:14:16.754Z"
+                  },
+                  {
+                    "name": "check-f12-leitstand-ansicht.mjs",
+                    "art": "datei",
+                    "groesse": 30084,
+                    "geaendert": "2026-10-11T17:24:39.127Z"
+                  },
+                  {
+                    "name": "check-f13-entscheiden.mjs",
+                    "art": "datei",
+                    "groesse": 42977,
+                    "geaendert": "2026-10-11T17:24:39.128Z"
+                  },
+                  {
+                    "name": "check-f14-abbruch.mjs",
+                    "art": "datei",
+                    "groesse": 22543,
+                    "geaendert": "2026-09-21T13:34:40.717Z"
+                  },
+                  {
+                    "name": "check-f15-automat-real.mjs",
+                    "art": "datei",
+                    "groesse": 69360,
+                    "geaendert": "2026-09-25T18:37:09.668Z"
+                  },
+                  {
+                    "name": "check-f15-instanzlock.mjs",
+                    "art": "datei",
+                    "groesse": 19076,
+                    "geaendert": "2026-09-11T12:30:26.907Z"
+                  },
+                  {
+                    "name": "check-f15-workflow-oberflaeche.mjs",
+                    "art": "datei",
+                    "groesse": 38525,
+                    "geaendert": "2026-10-02T15:18:03.268Z"
+                  },
+                  {
+                    "name": "check-f15-workflow.mjs",
+                    "art": "datei",
+                    "groesse": 206875,
+                    "geaendert": "2026-09-25T19:45:20.407Z"
+                  },
+                  {
+                    "name": "check-f16-codex-gateway.mjs",
+                    "art": "datei",
+                    "groesse": 43674,
+                    "geaendert": "2026-09-23T16:42:54.650Z"
+                  },
+                  {
+                    "name": "check-f17-rollenvertrag.mjs",
+                    "art": "datei",
+                    "groesse": 29209,
+                    "geaendert": "2026-09-25T19:45:20.408Z"
+                  },
+                  {
+                    "name": "check-f18-router.mjs",
+                    "art": "datei",
+                    "groesse": 5062,
+                    "geaendert": "2026-09-11T21:25:50.589Z"
+                  },
+                  {
+                    "name": "check-f19-ressourcen.mjs",
+                    "art": "datei",
+                    "groesse": 9629,
+                    "geaendert": "2026-09-28T17:05:29.141Z"
+                  },
+                  {
+                    "name": "check-f1b-wirkungsmarke.mjs",
+                    "art": "datei",
+                    "groesse": 5485,
+                    "geaendert": "2026-10-11T17:24:39.129Z"
+                  },
+                  {
+                    "name": "check-f20-design-tokens.mjs",
+                    "art": "datei",
+                    "groesse": 30602,
+                    "geaendert": "2026-10-02T15:18:03.269Z"
+                  },
+                  {
+                    "name": "check-f20-leitstand-shell.mjs",
+                    "art": "datei",
+                    "groesse": 32376,
+                    "geaendert": "2026-10-02T15:18:03.270Z"
+                  },
+                  {
+                    "name": "check-f20-zustand-poll.mjs",
+                    "art": "datei",
+                    "groesse": 20694,
+                    "geaendert": "2026-09-21T13:34:40.773Z"
+                  },
+                  {
+                    "name": "check-f21-workboard.mjs",
+                    "art": "datei",
+                    "groesse": 14441,
+                    "geaendert": "2026-09-23T08:02:51.569Z"
+                  },
+                  {
+                    "name": "check-f21-ws2-workboard-oberflaeche.mjs",
+                    "art": "datei",
+                    "groesse": 18602,
+                    "geaendert": "2026-10-02T15:18:03.271Z"
+                  },
+                  {
+                    "name": "check-f22-click-to-work.mjs",
+                    "art": "datei",
+                    "groesse": 24583,
+                    "geaendert": "2026-10-02T15:18:03.275Z"
+                  },
+                  {
+                    "name": "check-f23-abnahme.mjs",
+                    "art": "datei",
+                    "groesse": 59454,
+                    "geaendert": "2026-09-23T16:42:54.652Z"
+                  },
+                  {
+                    "name": "check-f24-capabilities.mjs",
+                    "art": "datei",
+                    "groesse": 6690,
+                    "geaendert": "2026-09-28T18:32:04.425Z"
+                  },
+                  {
+                    "name": "check-f25-projekte.mjs",
+                    "art": "datei",
+                    "groesse": 34113,
+                    "geaendert": "2026-09-21T06:12:38.721Z"
+                  },
+                  {
+                    "name": "check-f26-jarvis.mjs",
+                    "art": "datei",
+                    "groesse": 36129,
+                    "geaendert": "2026-10-10T20:08:16.750Z"
+                  },
+                  {
+                    "name": "check-f27-scout.mjs",
+                    "art": "datei",
+                    "groesse": 21018,
+                    "geaendert": "2026-09-17T06:47:41.434Z"
+                  },
+                  {
+                    "name": "check-f28-persona.mjs",
+                    "art": "datei",
+                    "groesse": 9686,
+                    "geaendert": "2026-09-18T13:41:02.822Z"
+                  },
+                  {
+                    "name": "check-f3-authorization-boundary.mjs",
+                    "art": "datei",
+                    "groesse": 6192,
+                    "geaendert": "2026-10-11T17:24:39.129Z"
+                  },
+                  {
+                    "name": "check-f31-gedaechtnis.mjs",
+                    "art": "datei",
+                    "groesse": 41914,
+                    "geaendert": "2026-10-02T15:18:03.276Z"
+                  },
+                  {
+                    "name": "check-f32-verbrauch-ansicht.mjs",
+                    "art": "datei",
+                    "groesse": 16841,
+                    "geaendert": "2026-09-24T12:32:47.134Z"
+                  },
+                  {
+                    "name": "check-f32-verbrauch.mjs",
+                    "art": "datei",
+                    "groesse": 11041,
+                    "geaendert": "2026-09-20T18:35:09.189Z"
+                  },
+                  {
+                    "name": "check-f33-projektkontext.mjs",
+                    "art": "datei",
+                    "groesse": 17124,
+                    "geaendert": "2026-09-22T10:40:39.740Z"
+                  },
+                  {
+                    "name": "check-f33-roadmap-projektion.mjs",
+                    "art": "datei",
+                    "groesse": 8111,
+                    "geaendert": "2026-09-22T10:40:39.757Z"
+                  },
+                  {
+                    "name": "check-f34-product-coach.mjs",
+                    "art": "datei",
+                    "groesse": 105328,
+                    "geaendert": "2026-10-10T20:08:16.751Z"
+                  },
+                  {
+                    "name": "check-f35-ws1-feature-auftrag.mjs",
+                    "art": "datei",
+                    "groesse": 18344,
+                    "geaendert": "2026-10-02T15:18:03.279Z"
+                  },
+                  {
+                    "name": "check-f35-ws2-urteil-je-ak.mjs",
+                    "art": "datei",
+                    "groesse": 21648,
+                    "geaendert": "2026-10-11T19:33:15.969Z"
+                  },
+                  {
+                    "name": "check-f35-ws3-adjust-automatik.mjs",
+                    "art": "datei",
+                    "groesse": 30985,
+                    "geaendert": "2026-09-28T15:04:32.880Z"
+                  },
+                  {
+                    "name": "check-f36-ws2-laufzeit.mjs",
+                    "art": "datei",
+                    "groesse": 18496,
+                    "geaendert": "2026-09-30T09:44:06.956Z"
+                  },
+                  {
+                    "name": "check-f36-ws3-empfehlung.mjs",
+                    "art": "datei",
+                    "groesse": 26308,
+                    "geaendert": "2026-09-30T09:44:06.957Z"
+                  },
+                  {
+                    "name": "check-f36-ws5a-installation.mjs",
+                    "art": "datei",
+                    "groesse": 37179,
+                    "geaendert": "2026-09-30T14:39:43.769Z"
+                  },
+                  {
+                    "name": "check-f36-ws5b-skill.mjs",
+                    "art": "datei",
+                    "groesse": 48990,
+                    "geaendert": "2026-09-30T09:44:06.959Z"
+                  },
+                  {
+                    "name": "check-f39-architekt.mjs",
+                    "art": "datei",
+                    "groesse": 82530,
+                    "geaendert": "2026-09-25T19:45:20.419Z"
+                  },
+                  {
+                    "name": "check-f4-invocation-policy.mjs",
+                    "art": "datei",
+                    "groesse": 14961,
+                    "geaendert": "2026-10-11T17:24:39.130Z"
+                  },
+                  {
+                    "name": "check-f40-lagebild.mjs",
+                    "art": "datei",
+                    "groesse": 10195,
+                    "geaendert": "2026-09-21T17:47:45.012Z"
+                  },
+                  {
+                    "name": "check-f41-projekt-anlegen.mjs",
+                    "art": "datei",
+                    "groesse": 42868,
+                    "geaendert": "2026-09-25T09:30:10.356Z"
+                  },
+                  {
+                    "name": "check-f42-projekt-harness.mjs",
+                    "art": "datei",
+                    "groesse": 61322,
+                    "geaendert": "2026-10-02T15:18:03.283Z"
+                  },
+                  {
+                    "name": "check-f43-projekt-aufrufen.mjs",
+                    "art": "datei",
+                    "groesse": 33955,
+                    "geaendert": "2026-09-30T14:39:43.770Z"
+                  },
+                  {
+                    "name": "check-f44-i18n.mjs",
+                    "art": "datei",
+                    "groesse": 14152,
+                    "geaendert": "2026-10-02T15:18:03.284Z"
+                  },
+                  {
+                    "name": "check-f46-bestand.mjs",
+                    "art": "datei",
+                    "groesse": 5555,
+                    "geaendert": "2026-10-02T21:12:05.608Z"
+                  },
+                  {
+                    "name": "check-f5-context-builder.mjs",
+                    "art": "datei",
+                    "groesse": 6522,
+                    "geaendert": "2026-10-11T17:24:39.130Z"
+                  },
+                  {
+                    "name": "check-f652-pruefschritt.mjs",
+                    "art": "datei",
+                    "groesse": 39554,
+                    "geaendert": "2026-09-25T19:45:20.425Z"
+                  },
+                  {
+                    "name": "check-f656-pruefung-wiederholen.mjs",
+                    "art": "datei",
+                    "groesse": 23281,
+                    "geaendert": "2026-09-25T19:45:20.427Z"
+                  },
+                  {
+                    "name": "check-f659-review-korrektur-begruendung.mjs",
+                    "art": "datei",
+                    "groesse": 16993,
+                    "geaendert": "2026-09-25T19:45:20.433Z"
+                  },
+                  {
+                    "name": "check-f6a-claude-code-gateway.mjs",
+                    "art": "datei",
+                    "groesse": 13242,
+                    "geaendert": "2026-10-11T17:24:39.131Z"
+                  },
+                  {
+                    "name": "check-f7-result-evaluator.mjs",
+                    "art": "datei",
+                    "groesse": 8894,
+                    "geaendert": "2026-10-11T17:24:39.132Z"
+                  },
+                  {
+                    "name": "check-f8-execution-controller.mjs",
+                    "art": "datei",
+                    "groesse": 4631,
+                    "geaendert": "2026-10-11T17:24:39.132Z"
+                  },
+                  {
+                    "name": "check-f813-csrf.mjs",
+                    "art": "datei",
+                    "groesse": 18237,
+                    "geaendert": "2026-09-29T17:06:03.506Z"
+                  },
+                  {
+                    "name": "check-f814-host.mjs",
+                    "art": "datei",
+                    "groesse": 17592,
+                    "geaendert": "2026-09-30T09:44:06.962Z"
+                  },
+                  {
+                    "name": "check-f9-human-transport.mjs",
+                    "art": "datei",
+                    "groesse": 9473,
+                    "geaendert": "2026-10-11T17:24:39.133Z"
+                  },
+                  {
+                    "name": "check-feature.mjs",
+                    "art": "datei",
+                    "groesse": 4435,
+                    "geaendert": "2026-10-11T17:24:39.133Z"
+                  },
+                  {
+                    "name": "check-fix-f588-sammle-laeufe.mjs",
+                    "art": "datei",
+                    "groesse": 7597,
+                    "geaendert": "2026-09-22T07:52:40.236Z"
+                  },
+                  {
+                    "name": "check-fix-f639-schema-strict-modus.mjs",
+                    "art": "datei",
+                    "groesse": 13192,
+                    "geaendert": "2026-09-23T14:06:12.043Z"
+                  },
+                  {
+                    "name": "check-fix-f676-installwurzel.mjs",
+                    "art": "datei",
+                    "groesse": 16482,
+                    "geaendert": "2026-09-25T05:27:57.979Z"
+                  },
+                  {
+                    "name": "check-fix-zustand-poll-kosten.mjs",
+                    "art": "datei",
+                    "groesse": 10519,
+                    "geaendert": "2026-09-18T05:53:54.701Z"
+                  },
+                  {
+                    "name": "check-fixpaket-f30-vorbedingungen.mjs",
+                    "art": "datei",
+                    "groesse": 34495,
+                    "geaendert": "2026-09-25T22:07:04.395Z"
+                  },
+                  {
+                    "name": "check-fixpaket-f35-reallauf.mjs",
+                    "art": "datei",
+                    "groesse": 53703,
+                    "geaendert": "2026-10-11T19:33:15.970Z"
+                  },
+                  {
+                    "name": "check-fixpaket-f36-nachlauf.mjs",
+                    "art": "datei",
+                    "groesse": 27661,
+                    "geaendert": "2026-09-30T09:44:06.963Z"
+                  },
+                  {
+                    "name": "check-git-starter.mjs",
+                    "art": "datei",
+                    "groesse": 9588,
+                    "geaendert": "2026-10-11T12:45:07.296Z"
+                  },
+                  {
+                    "name": "check-lineage-registry.mjs",
+                    "art": "datei",
+                    "groesse": 6404,
+                    "geaendert": "2026-10-11T17:24:39.134Z"
+                  },
+                  {
+                    "name": "check-rules.mjs",
+                    "art": "datei",
+                    "groesse": 10890,
+                    "geaendert": "2026-09-11T12:30:26.919Z"
+                  },
+                  {
+                    "name": "check-secrets.mjs",
+                    "art": "datei",
+                    "groesse": 1417,
+                    "geaendert": "2026-10-11T17:24:39.134Z"
+                  },
+                  {
+                    "name": "check-skelett-herkunft.mjs",
+                    "art": "datei",
+                    "groesse": 6032,
+                    "geaendert": "2026-10-11T17:24:39.135Z"
+                  },
+                  {
+                    "name": "check-status-akten.mjs",
+                    "art": "datei",
+                    "groesse": 5310,
+                    "geaendert": "2026-09-29T07:58:55.843Z"
+                  },
+                  {
+                    "name": "check-zustand-sichern.mjs",
+                    "art": "datei",
+                    "groesse": 9772,
+                    "geaendert": "2026-09-25T20:39:28.303Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": ".github/workflows",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-09-14T20:11:45.462Z",
+                "anzahl": 1,
+                "eintraege": [
+                  {
+                    "name": "ci.yml",
+                    "art": "datei",
+                    "groesse": 4388,
+                    "geaendert": "2026-09-14T20:11:45.463Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": ".worktreeinclude",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 149,
+                "geaendert": "2026-09-03T17:23:07.928Z"
+              }
+            ]
+          }
+        ],
+        "abgleich": {
+          "status": "ok",
+          "zuordnung_quellen": [
+            {
+              "pfad": "harness-abgleich/standard.json",
+              "sha256": "9659f6542164234e8d04a42cd9183423e1bd68891ccaecfbb33672a79df71e43"
+            }
+          ],
+          "zaehlung": {
+            "wirksam": 3,
+            "wirksam_ohne_beleg": 0,
+            "ersetzt_durch": 1,
+            "bewusst_nicht": 8,
+            "offen": 1
+          },
+          "bestanden": null,
+          "eintraege": [
+            {
+              "art": "agent",
+              "name": "unbekannter-agent",
+              "quelle": ".claude/agents/unbekannter-agent.md",
+              "detail": null,
+              "ereignis": null,
+              "matcher": null,
+              "status": "offen",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": null,
+              "aufrufe": null,
+              "offen_grund": "nicht_in_zuordnung",
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-600f3001",
+              "quelle": "CLAUDE.md",
+              "detail": "Komponenten/Module sind wiederverwendbar",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt.",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-a472b39f",
+              "quelle": "CLAUDE.md",
+              "detail": "Typisiert, kein `any` (oder Sprachäquivalent)",
+              "ereignis": null,
+              "matcher": null,
+              "status": "wirksam",
+              "beleg": {
+                "art": "pruefschritt",
+                "statisch": false,
+                "im_lauf": null,
+                "quelle": null,
+                "lauf_id": null,
+                "ergebnis": null,
+                "skript_sha256": null,
+                "matcher": null
+              },
+              "ersatz": null,
+              "begruendung": "Belegt, soweit der Prüfbefehl des Projekts Typprüfung und Lint enthält — für ai-workforce npm run check mit tsc und Biome (noExplicitAny). Ein Projekt, dessen Prüfbefehl das nicht enthält, überschreibt den Eintrag in seiner Projektdatei (harnessZuordnungPfad).",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-44846f57",
+              "quelle": "CLAUDE.md",
+              "detail": "Fehlerzustände berücksichtigt (catch + Logging)",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt.",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-424cdb7c",
+              "quelle": "CLAUDE.md",
+              "detail": "Leere Zustände berücksichtigt",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt.",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-be1977f5",
+              "quelle": "CLAUDE.md",
+              "detail": "[FÜLLUNG, nur UI] Lange Texte zerstören das Layout nicht",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B2b, B3, F-1031).",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-bef0bed6",
+              "quelle": "CLAUDE.md",
+              "detail": "[FÜLLUNG, nur UI] Mobile Darstellung berücksichtigt; jeder Container mit max-width hat auch width: 100%",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B2b, B3, F-1031).",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-6e75626d",
+              "quelle": "CLAUDE.md",
+              "detail": "[FÜLLUNG, nur UI] Design bleibt treu (Design-Tokens, keine neuen Farben/Schatten ohne Freigabe)",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B2b, B3, F-1031).",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-f409dc65",
+              "quelle": "CLAUDE.md",
+              "detail": "Code ist sinnvoll kommentiert (Datei-Header + Funktionsdoku, siehe `docs/kommentar-standard.md`)",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt.",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-d5021306",
+              "quelle": "CLAUDE.md",
+              "detail": "`npm run check` → Exit 0",
+              "ereignis": null,
+              "matcher": null,
+              "status": "wirksam",
+              "beleg": {
+                "art": "pruefschritt",
+                "statisch": false,
+                "im_lauf": null,
+                "quelle": null,
+                "lauf_id": null,
+                "ergebnis": null,
+                "skript_sha256": null,
+                "matcher": null
+              },
+              "ersatz": null,
+              "begruendung": "Der Kern führt den Prüfbefehl der Startvorlage nach jedem schreibenden Lauf selbst aus (F-652).",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-04a521a7",
+              "quelle": "CLAUDE.md",
+              "detail": "Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, frischer Kontext) vor Freigabe/Commit durchlaufen — nicht optional, nicht retroactiv nachgeholt (F-046)",
+              "ereignis": null,
+              "matcher": null,
+              "status": "ersetzt_durch",
+              "beleg": null,
+              "ersatz": {
+                "rolle": "code-reviewer",
+                "lage": null,
+                "schritt_id": null,
+                "lauf_id": null
+              },
+              "begruendung": "Review ist eigener Workflow-Schritt mit frischem Kontext; qa als Schritt erst mit B2b (F-1031).",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-526c5ddb",
+              "quelle": "CLAUDE.md",
+              "detail": "[FÜLLUNG, nur UI] UI-Workstreams liefern vor Übergabe an Stefan einen Render-Nachweis per `npm run render-nachweis` (Screenshots + Klicktabelle) — ein Reviewer-/QA-Pass allein findet keine real nur im Browser sichtbaren Fehler wie eine überschriebene `[hidden]`-Regel oder eine fehlende `classList`-Mutation (F-622)",
+              "ereignis": null,
+              "matcher": null,
+              "status": "bewusst_nicht",
+              "beleg": null,
+              "ersatz": null,
+              "begruendung": "Render-Nachweis im Lauf erst mit B2b/B3 (Beleg 5).",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            },
+            {
+              "art": "dod",
+              "name": "dod-86559c82",
+              "quelle": "CLAUDE.md",
+              "detail": "KEINE Commits ohne explizite Freigabe",
+              "ereignis": null,
+              "matcher": null,
+              "status": "wirksam",
+              "beleg": {
+                "art": "statisch",
+                "statisch": true,
+                "im_lauf": null,
+                "quelle": "scripts/check-fixpaket-f35-reallauf.mjs",
+                "lauf_id": null,
+                "ergebnis": null,
+                "skript_sha256": null,
+                "matcher": null
+              },
+              "ersatz": null,
+              "begruendung": "Commits durch die Workforce sind bewusst ausgeschlossen (Beleg 12): der schreibende Werkzeugsatz sperrt git (--disallowedTools Bash(git:*), Gate check-fixpaket-f35-reallauf (e) in npm run check); commit-guard sperrt im -p-Lauf zusätzlich destruktive Befehle (Hook-Nachweis B1b-2). Ein verweigerter Commit-Versuch im Lauf ist nicht eigens belegt. Stefan sichert.",
+              "aufrufe": null,
+              "offen_grund": null,
+              "grund": null
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "farbschema": "light"
+}

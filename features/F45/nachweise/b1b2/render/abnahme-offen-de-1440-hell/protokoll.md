@@ -1,0 +1,4 @@
+| Aktion | Tabelle | offen-Zeile | lang | Zählzeile | Hinweis offen | Kurzliste | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Fixture: unbekannter Agent im Lauf (Tabelle aufgeklappt) | true | true | de | Harness: 3 wirksam · 1 ersetzt · 8 bewusst nicht · 1 offen Beleg 12 nicht erfüllt live berechnet (heutiger Harness) | 1 Eintrag ist offen — Grund je Zeile in der Tabelle. | Skillskeine Subagentenkeine MCP-Serverkeine Hintergrund-Aufrufenicht erfasst | false | true |
+| Tabelle zugeklappt | true | true | de | Harness: 3 wirksam · 1 ersetzt · 8 bewusst nicht · 1 offen Beleg 12 nicht erfüllt live berechnet (heutiger Harness) | 1 Eintrag ist offen — Grund je Zeile in der Tabelle. | Skillskeine Subagentenkeine MCP-Serverkeine Hintergrund-Aufrufenicht erfasst | false | true |

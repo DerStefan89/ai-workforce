@@ -1,0 +1,16 @@
+[
+  {
+    "label": "Lauf-Detail geladen",
+    "Harness": "(fehlt)",
+    "Bereich": "Der Ablauf dieses Laufs wird ermittelt …",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Fähigkeiten aufgeklappt",
+    "Harness": "Harness: 5 wirksam · 2 ersetzt · 23 bewusst nicht · 0 offen Beleg 12 erfüllt live berechnet (heutiger Harness)",
+    "Bereich": "Harness: 5 wirksam · 2 ersetzt · 23 bewusst nicht · 0 offen Beleg 12 erfüllt live berechnet (heutiger Harness)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

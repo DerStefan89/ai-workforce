@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gebaut (Branch `feat/f45-b1b1-harness-lauf`, Basis `cf433fd`, nicht committet; Abschnitt „Stand B1b-1“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gebaut (Branch `feat/f45-b1b2-harness-abgleich`, Basis `febcc86`, nicht committet; Abschnitt „Stand B1b-2“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -379,3 +379,67 @@ Gate-Änderungen: `check-f35-ws2` (e) prüft den Review-Text vor dem neuen Beoba
 - **Startfreigabe:** `werkzeugVersionDeklariert` in `startvorlagen/ai-workforce.json` auf die installierte 2.1.296 gezogen;
   neue Baseline/Nachweis, Commit im Autorisierungs-Repo und `state/aktuelle-autorisierung.json` erzeugt Stefan (E3). Kein Nachpass nötig (beide hatten
 freigegeben). design-guardian nicht nötig (keine UI-Änderung).
+
+## Stand B1b-2
+Branch `feat/f45-b1b2-harness-abgleich` (Basis `febcc86` = main mit #321), nicht committet. Bau 11.10.2026.
+Plan `features/F45/plan-b1b2.md` (v1 → Advisor-Pass „tragfähig mit Änderungen“, A0–A5/H1–H8 → v2). A0: Kernmodul,
+Anleitung und Vorher-Messung lagen beim Advisor-Pass schon als Entwurf vor (gegen „erst planen, dann bauen“); der Entwurf
+wurde an v2 angeglichen.
+
+**Beleg 12 (Harness-Abdeckung): Mechanik vorhanden, Erbringung in R.**
+
+**Gebaut:**
+- **Kern** `src/harness-abgleich/`: Inventar des Projekt-Harness (DoD-Punkte aus CLAUDE.md mit ID `dod-<8 Hex>` aus dem
+  normalisierten Text, Hooks aus der settings.json des Projekts mit Ereignis, Matcher und SHA-256 der Skriptdatei, Agents,
+  Skills, Commands; fehlende, kaputte oder nach außen verknüpfte Quellen als eigener Eintrag, nie ein Wurf), versionierte
+  Zuordnung `harness-abgleich/standard.json` (Schema `schemas/harness-zuordnung.schema.json`, je Projekt über
+  `harnessZuordnungPfad` der Startvorlage ergänzbar), Bewertung nach Plan v2: wirksam (statischer Beleg — bei Hooks an Hash
+  und Matcher gebunden — oder Prüfschritt GRÜN), „ohne Beleg“, ersetzt (nur wenn der Schritt der Rolle ERFOLGREICH lief;
+  fehlt er, `fehlt_im_ablauf` → bewusst nicht, sonst offen), bewusst nicht, offen (nicht in der Zuordnung, Quelle fehlerhaft,
+  negativer Beleg, Ersatz nicht gelaufen/fehlt, im Arbeitsordner gegenüber dem Projektordner entfernt). `bestanden` = kein
+  Eintrag offen und keiner ohne Beleg; ohne Laufbelege `null`. Kurzliste der benutzten Fähigkeiten (Skills, Subagenten,
+  MCP-Server, Hintergrund-Aufrufe; Zählregel `zaehleNamen` aus dem Gateway).
+- **Ergebnis-Artefakt** `harness-abgleich-<workflowId>` (Schema `schemas/kontrollzustand-harness-abgleich-payload.schema.json`):
+  am Ende der Kette synchron im Laufende-Rückruf (D13-Bereich ohne verbotene Zeichenketten, `starteWorkflowSchritt(` bleibt
+  6×) und nach „Prüfung wiederholen“ bei Kettenende; Bezug = Ausführungslauf + Inhalts-Hash des Prüfergebnisses.
+  GET `/api/workflows/<id>/harness-abgleich` liefert das Artefakt, wenn der Bezug passt, sonst live (nicht geschrieben).
+  GET `/api/harness` trägt das Feld `abgleich` (ohne Laufbelege). Kein Aufruf im 2-s-Poll.
+- **Anzeige** (`public/leitstand/harness-abgleich-anzeige.js`, de/en/ru/tr): Abnahme (Nachweise im Einzelnen, Vorab- und
+  Entschieden-Block, rote Zeile in der Kachel „Nachweise“ bei nicht bestanden), Lauf-Detail (Bereich „Fähigkeiten“, Kurzliste
+  nur beim Ausführungslauf), Seite Workforce (Abschnitt „Abgleich mit der Zuordnung“ unter dem Harness-Aufbau). Unter 900 px
+  gestapelt (Muster `.library-tabelle`). Geladen einmal je Stand, nicht im Poll.
+- **Kleinpunkte:** `bashZeitgrenzeMs` 1 200 000 (F-1043; kein Feld des Gültigkeitsschlüssels); CLI-Version beim Start
+  (`scripts/leitstand/cli-version.mjs`, einmal asynchron, Feld `cliHinweis` in `/api/zustand` aus dem Speicher, gelbes Band
+  „CLI-Version geändert — Startfreigabe neu erzeugen“, Anleitung `docs/harness/startfreigabe-erneuern.md`, kein Automatismus;
+  F-1044); F-1039 erledigt (CLI-Test ohne Annahme über `os.tmpdir()`).
+
+**Nachweise** `features/F45/nachweise/b1b2/`: realer `-p`-Lauf mit den Root-Hooks (`hooks-nachweis.mjs` →
+`zaehlung-hooks.json`: guard-settings verweigert das Edit auf die settings.json, commit-guard verweigert `rm -rf` (Bash) und
+`Remove-Item -Recurse -Force` (PowerShell), SessionStart feuert ohne Inhalt; 15 s, Haiku); Tabellen
+`abgleich-ai-workforce.md` (5 wirksam · 4 ersetzt · 21 bewusst nicht · 0 offen) und `abgleich-workflow.md` (Workflow
+`b1a1-nachweis-325d2a8f`, live: 5 · 2 · 23 · 0 offen, bestanden); Fall „unbekannter Agent → offen, rot“ als Test-Fixture
+und Render; Render-Nachweis `render/` (28 Bilder: de 1440/390, en, ru 390, hell, 200 %, reduzierte Bewegung, Lage vorab,
+Kachel, Lauf-Detail, Startband); Kettenende über den echten HTTP-Pfad im Servertest
+`scripts/leitstand/routen-harness-abgleich.test.mjs`. `/api/zustand`: `messung-vorher.md` (10 min) und
+`messung-nachher-teil.md` (≈ 7 min — von Claude Code wegen Speicherdrucks beendet; Median 54 → 51 ms, p95 131 → 149 ms im
+gleichen Fenster, 3 Ausreißer bis 1 303 ms kurz vor dem Abbruch; P1 erfüllt).
+
+**Grenzen:**
+- Fremdprojekte tragen die Hook-Baseline von vor B1b-1 (haushaltsbuch2: commit-guard Matcher `Bash`, anderer Hash) → dort
+  „ohne Beleg“, Beleg 12 so nicht erfüllbar (F-1047, Entscheidung vor R).
+- Hooks sind nur statisch belegt; die Laufakte trägt keine Hook-Ereignisse (F-1046).
+- Ein Ablauf ohne Review-Schritt (fast-lane) erfüllt Beleg 12 über `fehlt_im_ablauf` — Entscheidung Stefan.
+- Die Live-Rechnung für Altbestand liest den heutigen Harness, nicht den zur Laufzeit; der b1a1-Nachweis ist live.
+- Neuer ungetrackter Ordner erscheint in der Änderungsübersicht nur als Ordnerpfad (F-1045); Restpunkte F-1048.
+
+**Prüfpass** (frischer Kontext, eine Korrekturrunde): architecture-advisor „tragfähig mit Änderungen“ → Plan v2.
+code-reviewer „freigegeben mit Hinweisen“ (M1 Ordner hinter Verknüpfung, M2 Anleitung, M3 Lauf-Detail-Schlüssel; umgesetzt).
+qa „nicht freigegeben“ (Fremdprojekte, fehlende Nachweise, Prüfung wiederholen, im Lauf entfernter Harness, Sichtbarkeit
+„ohne Beleg“, Texte) und design-guardian „nicht freigegeben“ (Render-Varianten, Workforce-Tabelle, Kachel, Zellrahmen,
+Bandfarbe, Kurzliste im fremden Lauf) — in der Korrekturrunde umgesetzt bzw. als F-1047/F-1048 festgehalten.
+Nachpass qa und design-guardian: beide „freigegeben mit Hinweisen“. Danach noch umgesetzt: Vergleich Projekt- gegen
+Arbeitsordner nur für Quellen, die der Lauf laut Änderungsübersicht geändert hat (sonst galten Stefans nebenher
+ungesicherte Harness-Dateien als „im Lauf entfernt“), Servertests für „Prüfung wiederholen“ am Kettenende und für eine
+ungetrackte Datei im Projektordner, Hinweistexte ohne Laufbezug auf der Seite Workforce, Tabelle im Vorab-Block
+zugeklappt, Kachelzeile als Text mit Marke, keine Kurzliste im Lauf-Detail (die Beobachtungszeile steht darüber).
+Offen als Hinweis: F-1048.

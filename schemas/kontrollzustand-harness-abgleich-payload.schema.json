@@ -1,0 +1,367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-harness-abgleich-payload.schema.json",
+  "title": "Harness-Abgleich-Payload",
+  "description": "F45 B1b-2 (Beleg 12): daten.daten des Kern-Artefakts 'harness-abgleich-<workflowId>' — je Harness-Eintrag des Projekts (Inventar) der Status laut Zuordnung (schemas/harness-zuordnung.schema.json) mit zitierten Laufbelegen, dazu die Kurzliste benutzter Fähigkeiten des Ausführungslaufs. Geschrieben am Ende der Kette (append-only, neue Version je Kettenende); bezug nennt den Stand, zu dem es passt. Handnachbau: src/harness-abgleich/index.ts validiereHarnessAbgleichDaten (prüft zusätzlich: zaehlung passt zu den Einträgen, bestanden ⇔ kein Eintrag offen und keiner ohne Beleg (null ohne Laufbelege), offen_grund genau bei offen).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "harness_abgleich_schema",
+    "workflow_id",
+    "wurzel",
+    "zuordnung_quellen",
+    "bezug",
+    "zaehlung",
+    "bestanden",
+    "eintraege",
+    "faehigkeiten",
+    "geaenderte_harness_dateien",
+    "berechnet_am"
+  ],
+  "$defs": {
+    "nameAnzahl": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "anzahl"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "anzahl": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "zahlOderNull": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "textOderNull": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "properties": {
+    "harness_abgleich_schema": {
+      "const": "v0"
+    },
+    "workflow_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "wurzel": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absoluter Ordner, dessen Harness gelesen wurde (Arbeitsordner des Ablaufs, sonst Projektordner)."
+    },
+    "zuordnung_quellen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pfad",
+          "sha256"
+        ],
+        "properties": {
+          "pfad": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "bezug": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ausfuehrung_lauf_id",
+        "pruefergebnis_hash"
+      ],
+      "properties": {
+        "ausfuehrung_lauf_id": {
+          "$ref": "#/$defs/textOderNull"
+        },
+        "pruefergebnis_hash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Inhalts-Hash der jüngsten Version des Prüfergebnisses (eine wiederholte Prüfung ist eine neue Version)."
+        }
+      }
+    },
+    "zaehlung": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wirksam",
+        "wirksam_ohne_beleg",
+        "ersetzt_durch",
+        "bewusst_nicht",
+        "offen"
+      ],
+      "properties": {
+        "wirksam": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wirksam_ohne_beleg": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ersetzt_durch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bewusst_nicht": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offen": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "bestanden": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Beleg 12: kein Eintrag offen und keiner ohne Beleg; null ohne Laufbelege."
+    },
+    "eintraege": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "art",
+          "name",
+          "quelle",
+          "detail",
+          "ereignis",
+          "matcher",
+          "status",
+          "beleg",
+          "ersatz",
+          "begruendung",
+          "aufrufe",
+          "offen_grund",
+          "grund"
+        ],
+        "properties": {
+          "art": {
+            "enum": [
+              "quelle",
+              "dod",
+              "hook",
+              "agent",
+              "skill",
+              "command"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "quelle": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "DoD: normalisierter Text; sonst null (Hook-Befehle werden nicht übernommen)."
+          },
+          "ereignis": {
+            "$ref": "#/$defs/textOderNull"
+          },
+          "matcher": {
+            "$ref": "#/$defs/textOderNull"
+          },
+          "status": {
+            "enum": [
+              "wirksam",
+              "wirksam_ohne_beleg",
+              "ersetzt_durch",
+              "bewusst_nicht",
+              "offen"
+            ]
+          },
+          "beleg": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "art",
+              "statisch",
+              "im_lauf",
+              "quelle",
+              "lauf_id",
+              "ergebnis",
+              "skript_sha256",
+              "matcher"
+            ],
+            "properties": {
+              "art": {
+                "enum": [
+                  "statisch",
+                  "pruefschritt"
+                ]
+              },
+              "statisch": {
+                "type": "boolean"
+              },
+              "im_lauf": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "quelle": {
+                "$ref": "#/$defs/textOderNull"
+              },
+              "lauf_id": {
+                "$ref": "#/$defs/textOderNull"
+              },
+              "ergebnis": {
+                "$ref": "#/$defs/textOderNull"
+              },
+              "skript_sha256": {
+                "$ref": "#/$defs/textOderNull"
+              },
+              "matcher": {
+                "$ref": "#/$defs/textOderNull"
+              }
+            }
+          },
+          "ersatz": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "rolle",
+              "lage",
+              "schritt_id",
+              "lauf_id"
+            ],
+            "properties": {
+              "rolle": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lage": {
+                "enum": [
+                  "gelaufen",
+                  "nicht_gelaufen",
+                  "nicht_im_ablauf",
+                  null
+                ]
+              },
+              "schritt_id": {
+                "$ref": "#/$defs/textOderNull"
+              },
+              "lauf_id": {
+                "$ref": "#/$defs/textOderNull"
+              }
+            }
+          },
+          "begruendung": {
+            "$ref": "#/$defs/textOderNull"
+          },
+          "aufrufe": {
+            "$ref": "#/$defs/zahlOderNull"
+          },
+          "offen_grund": {
+            "enum": [
+              "nicht_in_zuordnung",
+              "quelle_fehlerhaft",
+              "zuordnung_fehlerhaft",
+              "beleg_negativ",
+              "ersatz_nicht_gelaufen",
+              "ersatz_fehlt",
+              "im_lauf_entfernt",
+              null
+            ]
+          },
+          "grund": {
+            "$ref": "#/$defs/textOderNull"
+          }
+        }
+      }
+    },
+    "faehigkeiten": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "lauf_id",
+        "skills",
+        "subagenten",
+        "mcp_server",
+        "hintergrund"
+      ],
+      "properties": {
+        "lauf_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "skills": {
+          "$ref": "#/$defs/nameAnzahl"
+        },
+        "subagenten": {
+          "$ref": "#/$defs/nameAnzahl"
+        },
+        "mcp_server": {
+          "$ref": "#/$defs/nameAnzahl"
+        },
+        "hintergrund": {
+          "$ref": "#/$defs/zahlOderNull"
+        }
+      }
+    },
+    "geaenderte_harness_dateien": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Harness-Dateien (CLAUDE.md, .claude/**), die der Ausführungslauf laut Änderungsübersicht geändert hat; null ohne Übersicht."
+    },
+    "berechnet_am": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -8,6 +8,9 @@
  * und gekappt (GET /api/harness/datei), Klick auf einen Ordner zeigt seine direkten Einträge (Dateien davon
  * wieder öffenbar). Bremsen tragen ein Schloss und den Satz „Sichtbar, aber nicht direkt änderbar.“
  *
+ * F45 B1b-2 (Beleg 12): darunter der Abgleich des Projekt-Harness mit der Zuordnung (Feld abgleich von GET
+ * /api/harness, harness-abgleich-anzeige.js) — je Eintrag wirksam / ersetzt / bewusst nicht / offen, ohne Laufbelege.
+ *
  * „kommt“ (abgleich-f46.md §4.14/§5): Vergleich mit der Vorlage (Vorlage im Repo nicht eindeutig),
  * „Genutzt von“-Kürzel und „Wer nutzt den Harness?“ (Fixpaket B1), „Änderung vorschlagen“ (E-F46-2) und
  * „Harness bearbeiten“ (01-Bearbeiten). Keine Platzhalter der Vorlage.
@@ -25,6 +28,7 @@
  */
 
 import { holeHarnessDatei } from '../api.js'
+import { renderHarnessAbgleich, renderHarnessAbgleichZustand } from '../harness-abgleich-anzeige.js'
 import { BAUSTEIN_IDS, findeHarnessEintrag, harnessLeer, knotenFuerBaustein } from '../harness-anzeige.js'
 import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
@@ -96,6 +100,25 @@ function spalteHtml(baustein) {
     <div class="harness-spalte-kopf"><h3 id="${titelId}">${tHtml(`harness.baustein.${id}`)}</h3><code>${escapeHtml(baustein.ort ?? '')}</code></div>
     <ul class="harness-knoten-liste">${knoten.map(knotenHtml).join('')}</ul>
   </section>`
+}
+
+/**
+ * F45 B1b-2 (Beleg 12): Abgleich des Projekt-Harness mit der Zuordnung (Feld abgleich von GET /api/harness), ohne
+ * Laufbelege — Zählzeile, roter Hinweis bei offenen Einträgen, aufklappbare Tabelle (aufgeklappt nur, wenn etwas offen
+ * oder ohne Beleg ist — sonst schöbe sie das Detail weit nach unten).
+ */
+function renderAbgleich() {
+  if (letzterHarness === null) return
+  const abgleich = letzterHarness.abgleich
+  if (abgleich === undefined || abgleich === null) setzeAbgleichHtml(`<p class="subtle">${tHtml('harnessAbgleich.keineDaten')}</p>`)
+  else if (abgleich.status !== 'ok') setzeAbgleichHtml(renderHarnessAbgleichZustand({ fehler: String(abgleich.grund ?? '') }))
+  else setzeAbgleichHtml(renderHarnessAbgleich(abgleich, { offen: (abgleich.zaehlung?.offen ?? 0) > 0 || (abgleich.zaehlung?.wirksam_ohne_beleg ?? 0) > 0, quelle: 'zuordnung' }))
+}
+
+/** Schreibt den Abgleich-Container, falls vorhanden (Tests ohne diesen Container bleiben unberührt). @param html - Inhalt */
+function setzeAbgleichHtml(html) {
+  const ziel = document.getElementById('harness-abgleich')
+  if (ziel !== null && ziel !== undefined) ziel.innerHTML = html
 }
 
 /** Rendert das Skelett aus letzterHarness. */
@@ -249,6 +272,7 @@ export function renderHarness(harness) {
   if (!Array.isArray(harness?.bausteine)) throw new Error('Antwort von GET …/harness ohne bausteine')
   letzterHarness = harness
   renderSkelett()
+  renderAbgleich()
   renderDetail()
 }
 
@@ -261,12 +285,14 @@ export function zeigeHarnessFehler(grund) {
   auswahl = null
   detailAnfrage++
   document.getElementById('harness-skelett').innerHTML = `<div class="note red">${tHtml('werkstatt.ladeFehler', { grund })}</div>`
+  setzeAbgleichHtml('')
   zeigeDetailLeer()
 }
 
 /** Ladezustand (Routeneintritt, Neu laden). */
 export function zeigeHarnessLaedt() {
   document.getElementById('harness-skelett').innerHTML = `<p class="leer">${tHtml('werkstatt.laedt')}</p>`
+  setzeAbgleichHtml(renderHarnessAbgleichZustand('laedt'))
 }
 
 /** Projektwechsel: Auswahl, letzte Antwort und Detail verwerfen (alles gehört zum alten Projekt). */

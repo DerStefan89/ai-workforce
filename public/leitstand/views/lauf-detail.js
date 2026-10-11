@@ -32,6 +32,7 @@
  */
 
 import { formatiereBeobachtung } from '../beobachtung-zeile.js'
+import { renderHarnessImLauf } from '../harness-abgleich-anzeige.js'
 import { formatiereDatum, t, tHtml } from '../i18n.js'
 import { kommtBadge } from '../kommt.js'
 import { escapeHtml } from '../render.js'
@@ -598,6 +599,20 @@ export function renderFaehigkeiten(laufakte) {
   const beobachtung = laufakte?.status === 'ok' && laufakte.beobachtung ? formatiereBeobachtung(laufakte.beobachtung) : ''
   const wert = beobachtung ? escapeHtml(beobachtung) : `<span class="unbekannt">${tHtml('lauf.laufakte.nichtBeobachtet')}</span>`
   return `<p class="subtle">${tHtml('lauf.faehigkeiten.hinweis')}</p><p class="lauf-beobachtung"><strong>${tHtml('lauf.laufakte.beobachtung')}:</strong> ${wert}</p>`
+}
+
+/**
+ * F45 B1b-2 (Beleg 12): Harness-Abgleich des Ablaufs, zu dem der Lauf gehört, im Bereich „Fähigkeiten“.
+ * Ohne Kurzliste der Fähigkeiten: die Beobachtung dieses Laufs steht schon darüber (Zeile „Beobachtung“), die Kurzliste
+ * des Ausführungslaufs gehörte bei jedem anderen Lauf des Ablaufs zu einem fremden Lauf.
+ * @param zustand - 'zuordnung' (Ablauf wird ermittelt), 'ohneAblauf' (Einzellauf), undefined (lädt), { fehler } oder
+ *   Antwort von GET /api/workflows/<id>/harness-abgleich
+ * @returns HTML
+ */
+export function renderLaufHarnessAbgleich(zustand) {
+  if (zustand === 'zuordnung') return `<section class="harness-im-lauf"><h3>${tHtml('harnessAbgleich.titel')}</h3><p class="subtle">${tHtml('harnessAbgleich.laufZuordnung')}</p></section>`
+  if (zustand === 'ohneAblauf') return `<section class="harness-im-lauf"><h3>${tHtml('harnessAbgleich.titel')}</h3><p class="subtle">${tHtml('harnessAbgleich.laufOhneAblauf')}</p></section>`
+  return renderHarnessImLauf(zustand, { kurzliste: false })
 }
 
 /**

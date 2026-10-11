@@ -37,7 +37,7 @@
  * anderen Lauf oder Projekt wird verworfen (F-860).
  */
 
-import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage, stoppeWorkflow } from '../api.js'
+import { abbrichLauf, holeHarnessAbgleich, holeLaufDetail, sendeEntscheidungAnfrage, stoppeWorkflow } from '../api.js'
 import { entwicklungsReiterHtml } from '../entwicklung-reiter.js'
 import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
@@ -58,6 +58,7 @@ import {
   renderLaufNotiz,
   renderStartfehlerListe,
   renderWasPassiertIst,
+  renderLaufHarnessAbgleich,
 } from './lauf-detail.js'
 import { wendeWiederaufnahmeAn, zeigeVorbelegungsFehler } from './projekt.js'
 import { oeffneEntwicklungsRegister } from './workboard.js'
@@ -276,6 +277,7 @@ function zeichneLaufDetail(laufId, detail, geladenAm) {
   setzeDetailHtml('lauf-protokoll-inhalt', inhalte.protokoll)
   setzeDetailHtml('lauf-faehigkeiten-inhalt', inhalte.faehigkeiten)
   document.getElementById('lauf-aufklapp').hidden = false
+  zeichneLaufAbgleich()
 
   if (offenerDialog !== null && laufendeDialogBedienung === null && (offenerDialog.laufId !== laufId || offenerDialog.kennzeichen !== kennzeichen)) {
     schliesseDialog()
@@ -358,6 +360,50 @@ export async function ladeLaufDetail(laufId, oeffnen = true, { fokussieren = tru
 /** true, solange eine Meldung „neuer Stand nicht ladbar“ des Auffrischers steht. */
 let auffrischFehler = false
 
+/**
+ * F45 B1b-2 (Beleg 12): Harness-Abgleich des Ablaufs zum gewählten Lauf { laufId, workflowId, stand, wert } — wert
+ * undefined (lädt), { fehler } oder Antwort. Einmal je Lauf, Ablauf und Ablaufstatus (aus dem Poll-Aggregat) geladen,
+ * nicht gepollt: endet die Kette, während das Detail offen ist, kommt der festgehaltene Stand statt des Zwischenstands.
+ * Der Poll-Takt (initLive) holt nur die Anzeige nach, sobald die Zuordnung Lauf → Ablauf feststeht.
+ */
+let laufAbgleich = null
+
+/** Zeichnet den Harness-Abgleich im Bereich „Fähigkeiten“ des gewählten Laufs; stößt das Laden einmal je Ablauf an. */
+function zeichneLaufAbgleich() {
+  const laufId = gewaehlteLaufId
+  if (laufId === null || aktuellesDetail?.laufId !== laufId) return
+  const zuordnung = workflowZuLauf(laufId)
+  let zustand
+  if (zuordnung === undefined) zustand = 'zuordnung'
+  else if (zuordnung === null || typeof zuordnung.workflow?.workflowId !== 'string') zustand = 'ohneAblauf'
+  else {
+    const workflowId = zuordnung.workflow.workflowId
+    const stand = letztesAggregat()?.workflows?.find?.((w) => w?.workflowId === workflowId)?.status ?? '-'
+    if (laufAbgleich?.laufId !== laufId || laufAbgleich.workflowId !== workflowId || laufAbgleich.stand !== stand) void ladeLaufAbgleich(laufId, workflowId, stand)
+    zustand = laufAbgleich.wert
+  }
+  setzeDetailHtml('lauf-harness-abgleich', renderLaufHarnessAbgleich(zustand))
+}
+
+/**
+ * Lädt GET /api/workflows/<id>/harness-abgleich für den Lauf; eine Antwort nach einem Lauf- oder Projektwechsel wird verworfen.
+ * @param laufId - Lauf @param workflowId - Ablauf des Laufs @param stand - Status des Ablaufs beim Laden
+ */
+async function ladeLaufAbgleich(laufId, workflowId, stand) {
+  laufAbgleich = { laufId, workflowId, stand, wert: undefined }
+  const generationBeimStart = laufGeneration
+  let wert
+  try {
+    wert = await holeHarnessAbgleich(workflowId)
+  } catch (fehler) {
+    console.error(`[runs] Harness-Abgleich von '${workflowId}' nicht ladbar: ${fehler.message}`)
+    wert = { fehler: fehler.message }
+  }
+  if (generationBeimStart !== laufGeneration || laufAbgleich?.laufId !== laufId || laufAbgleich.workflowId !== workflowId || laufAbgleich.stand !== stand) return
+  laufAbgleich = { laufId, workflowId, stand, wert }
+  zeichneLaufAbgleich()
+}
+
 /** Zuletzt geschriebenes HTML der Bestandsteile (F46 D5): der Auffrischer schreibt nur bei Änderung — sonst gingen alle 2 s Fokus, Auswahl und aufgeklappte Bereiche verloren. */
 const detailHtml = new Map()
 
@@ -377,6 +423,7 @@ function setzeDetailHtml(id, html) {
 function raeumeLaufZustand() {
   laufGeneration += 1
   detailHtml.clear()
+  laufAbgleich = null
   auffrischFehler = false
   schliesseDialog()
   // Eine laufende Anfrage des alten Laufs sperrt den neuen nicht (ihre Antwort wird ohnehin verworfen).
@@ -767,6 +814,8 @@ export function initRunsView() {
   // F46 D5: #/live folgt dem aktiven Lauf über den Poll; der Auffrischer hält einen aktiven Lauf aktuell.
   initLive((zustand) => {
     if (location.hash === '#/live') wendeLiveAn(zustand)
+    // F45 B1b-2: Zuordnung Lauf → Ablauf steht oft erst nach dem ersten Zeichnen fest — im Takt nachholen (kein eigener Timer).
+    zeichneLaufAbgleich()
   })
   abonniereDetailAuffrischer(frischeAktivenLaufAuf)
 }

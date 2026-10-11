@@ -1,0 +1,4 @@
+| Aktion | Tabelle | offen-Zeile | lang | Zählzeile | Hinweis offen | Kurzliste | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Fixture: unbekannter Agent im Lauf (Tabelle aufgeklappt) | true | true | ru | Harness: действует: 3 · заменено: 1 · сознательно нет: 8 · открыто: 1 Доказательство 12 не выполнено рассчитано сейчас ( | 1 запись открыта — причина в каждой строке таблицы. | Навыкинет Субагентынет MCP-серверынет Фоновые вызовыне записано | false | true |
+| Tabelle zugeklappt | true | true | ru | Harness: действует: 3 · заменено: 1 · сознательно нет: 8 · открыто: 1 Доказательство 12 не выполнено рассчитано сейчас ( | 1 запись открыта — причина в каждой строке таблицы. | Навыкинет Субагентынет MCP-серверынет Фоновые вызовыне записано | false | true |

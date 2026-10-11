@@ -19,6 +19,7 @@ import {
   renderAufklappInhalte,
   renderEinordnung,
   renderLaufDialog,
+  renderLaufHarnessAbgleich,
   renderLaufListe,
   renderLaufNotiz,
   renderStartfehlerListe,
@@ -237,4 +238,11 @@ test('Dialoge: Pflichtfelder für Kenntnisnahme, Klärung, Antwort; Abbruch ohne
     assert.equal(renderLaufDialog(art, { laufId: 'l', lage: falscheLage }), null, `${art} in ${falscheLage}`)
   }
   for (const html of [kenntnis, terminal, antwort, abbruch]) assert.doesNotMatch(html, /aria-live/)
+})
+
+test('F45 B1b-2: Harness-Abgleich im Lauf-Detail — Zuordnung offen, Einzellauf, lädt, Fehler', () => {
+  assert.match(renderLaufHarnessAbgleich('zuordnung'), /Der Ablauf dieses Laufs wird ermittelt/)
+  assert.match(renderLaufHarnessAbgleich('ohneAblauf'), /gehört zu keinem Ablauf/)
+  assert.match(renderLaufHarnessAbgleich(undefined), /Harness-Abgleich lädt/)
+  assert.match(renderLaufHarnessAbgleich({ fehler: '404 weg' }), /nicht ladbar: 404 weg/)
 })

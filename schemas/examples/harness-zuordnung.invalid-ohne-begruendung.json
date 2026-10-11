@@ -1,0 +1,4 @@
+{
+  "harness_zuordnung_schema": "v0",
+  "eintraege": [{ "art": "agent", "name": "qa", "status": "bewusst_nicht" }]
+}

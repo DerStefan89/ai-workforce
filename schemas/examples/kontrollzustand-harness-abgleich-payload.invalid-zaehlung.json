@@ -1,0 +1,113 @@
+{
+  "harness_abgleich_schema": "v0",
+  "workflow_id": "beispiel-workflow",
+  "wurzel": "/home/beispiel/projekt-laeufe/0123456789",
+  "zuordnung_quellen": [
+    {
+      "pfad": "harness-abgleich/standard.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "bezug": {
+    "ausfuehrung_lauf_id": "lauf-1",
+    "pruefergebnis_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "zaehlung": {
+    "wirksam": 1,
+    "wirksam_ohne_beleg": 0,
+    "ersetzt_durch": 1,
+    "bewusst_nicht": 1,
+    "offen": 0
+  },
+  "bestanden": true,
+  "eintraege": [
+    {
+      "art": "agent",
+      "name": "unbekannt",
+      "quelle": ".claude/agents/unbekannt.md",
+      "detail": null,
+      "ereignis": null,
+      "matcher": null,
+      "status": "offen",
+      "beleg": null,
+      "ersatz": null,
+      "begruendung": null,
+      "aufrufe": 0,
+      "offen_grund": "nicht_in_zuordnung",
+      "grund": null
+    },
+    {
+      "art": "dod",
+      "name": "dod-d5021306",
+      "quelle": "CLAUDE.md",
+      "detail": "`npm run check` → Exit 0",
+      "ereignis": null,
+      "matcher": null,
+      "status": "wirksam",
+      "beleg": {
+        "art": "pruefschritt",
+        "statisch": false,
+        "im_lauf": true,
+        "quelle": null,
+        "lauf_id": "lauf-1",
+        "ergebnis": "GRUEN",
+        "skript_sha256": null,
+        "matcher": null
+      },
+      "ersatz": null,
+      "begruendung": null,
+      "aufrufe": null,
+      "offen_grund": null,
+      "grund": null
+    },
+    {
+      "art": "agent",
+      "name": "code-reviewer",
+      "quelle": ".claude/agents/code-reviewer.md",
+      "detail": null,
+      "ereignis": null,
+      "matcher": null,
+      "status": "ersetzt_durch",
+      "beleg": null,
+      "ersatz": {
+        "rolle": "code-reviewer",
+        "lage": "gelaufen",
+        "schritt_id": "schritt-2-review",
+        "lauf_id": "lauf-2"
+      },
+      "begruendung": null,
+      "aufrufe": 0,
+      "offen_grund": null,
+      "grund": null
+    },
+    {
+      "art": "command",
+      "name": "lessons",
+      "quelle": ".claude/commands/lessons.md",
+      "detail": null,
+      "ereignis": null,
+      "matcher": null,
+      "status": "bewusst_nicht",
+      "beleg": null,
+      "ersatz": null,
+      "begruendung": "Teil 2 (F-933)",
+      "aufrufe": null,
+      "offen_grund": null,
+      "grund": null
+    }
+  ],
+  "faehigkeiten": {
+    "lauf_id": "lauf-1",
+    "skills": [],
+    "subagenten": [],
+    "mcp_server": [
+      {
+        "name": "playwright",
+        "anzahl": 2
+      }
+    ],
+    "hintergrund": 0
+  },
+  "geaenderte_harness_dateien": [],
+  "berechnet_am": "2026-10-11T20:00:00.000Z"
+}

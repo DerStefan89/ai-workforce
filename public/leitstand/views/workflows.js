@@ -34,6 +34,7 @@
 
 import {
   holeAbnahme,
+  holeHarnessAbgleich,
   holeLaufDetail,
   holeProjektAufruf,
   holeWorkflowDetail,
@@ -56,7 +57,7 @@ import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzei
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDialog } from './arbeitsordner-anzeige.js'
 import { bedienZustand } from './entscheidung-panel.js'
-import { abnahmeLage, pruefWertText, renderAbnahme, renderAbnahmeBlick } from './workflow-abnahme.js'
+import { abnahmeLage, ausfuehrungGelaufen, pruefWertText, renderAbnahme, renderAbnahmeBlick } from './workflow-abnahme.js'
 import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
 import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen } from './workflow-eingriffe.js'
 import { entscheidungsModus, FREIGABE_OPTIONEN, renderFreigabePanel, renderFreigabeSeite, seitenKopf } from './workflow-entscheiden.js'
@@ -136,15 +137,20 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   // F46 D2: „Produkt öffnen“ braucht die Vorschau des Projekts — einmal je Workflow, sobald die Abnahme entscheidbar ist.
   if (abnahmeLage(abnahme) === 'entscheidbar' && letzteVorschau?.workflowId !== workflowId) void ladeVorschau(workflowId)
   const vorschau = letzteVorschau?.workflowId === workflowId ? letzteVorschau.wert : null
+  // F45 B1b-2 (Beleg 12, F-937): Harness-Abgleich samt Kurzliste — einmal je Stand, sobald die Ausführung gelaufen ist.
+  const schluessel = abgleichSchluessel(workflowId, abnahme)
+  if (ausfuehrungGelaufen(abnahme) && letzterAbgleich?.schluessel !== schluessel) void ladeAbgleich(workflowId, schluessel)
+  const abgleich = letzterAbgleich?.schluessel === schluessel ? letzterAbgleich.wert : undefined
+  const abgleichMarke = abgleich === undefined ? 'laedt' : typeof abgleich.fehler === 'string' ? 'fehler' : `${abgleich.quelle}:${abgleich.daten?.berechnet_am ?? '-'}`
   const e = abnahme.entscheidung ?? {}
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}`
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}`
   if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) {
     zeichneEntscheiden()
     return
   }
   let html
   try {
-    html = renderAbnahme(workflowId, abnahme, vorschau)
+    html = renderAbnahme(workflowId, abnahme, vorschau, abgleich)
   } catch (fehler) {
     // Eine unvollständige Projektion bricht nur die Anzeige ab; der nächste Tick versucht es erneut.
     console.error(`[workflows] Abnahme von '${workflowId}' nicht darstellbar:`, fehler)
@@ -178,6 +184,42 @@ function aktualisiereAbnahme(workflowId, abnahme) {
 
 /** Vorschau des Projekts für „Produkt öffnen“: { workflowId, wert } — wert null (lädt), { fehler: true } oder VorschauStatus. */
 let letzteVorschau = null
+
+/**
+ * F45 B1b-2 (Beleg 12): Harness-Abgleich des angezeigten Ablaufs { workflowId, schluessel, wert } — wert undefined
+ * (lädt), { fehler } oder Antwort von GET …/harness-abgleich. Nicht gepollt: neu geladen nur, wenn sich der Stand
+ * (Ausführungs- und Review-Lauf, Prüfergebnis samt Version, Workflow-Status) ändert.
+ */
+let letzterAbgleich = null
+
+/**
+ * Schlüssel des Stands, zu dem ein Harness-Abgleich gehört.
+ * @param workflowId - Kennung @param abnahme - Antwort von GET …/abnahme
+ * @returns Schlüssel
+ */
+function abgleichSchluessel(workflowId, abnahme) {
+  const p = abnahme.pruefergebnis ?? {}
+  return `${workflowId}|${abnahme.workflowStatus}|${abnahme.aenderungsuebersicht?.laufId ?? '-'}|${abnahme.urteil?.laufId ?? '-'}|${p.status ?? '-'}|${p.ergebnis ?? '-'}|${p.versionSequenz ?? '-'}`
+}
+
+/**
+ * Lädt den Harness-Abgleich einmal je Stand und zeichnet danach die Abnahme neu (er ist Teil ihres Kennzeichens).
+ * Eine Antwort zu einem inzwischen anderen Ablauf oder Stand wird verworfen.
+ * @param workflowId - angezeigter Workflow @param schluessel - abgleichSchluessel
+ */
+async function ladeAbgleich(workflowId, schluessel) {
+  letzterAbgleich = { workflowId, schluessel, wert: undefined }
+  let wert
+  try {
+    wert = await holeHarnessAbgleich(workflowId)
+  } catch (fehler) {
+    console.error(`[workflows] Harness-Abgleich von '${workflowId}' nicht ladbar: ${fehler.message}`)
+    wert = { fehler: fehler.message }
+  }
+  if (gewaehlteWorkflowId !== workflowId || letzterAbgleich?.schluessel !== schluessel) return
+  letzterAbgleich = { workflowId, schluessel, wert }
+  if (letzteAbnahme !== null) aktualisiereAbnahme(workflowId, letzteAbnahme)
+}
 
 /**
  * Lädt die Vorschau des aktiven Projekts (GET /api/projekte/<id>/projekt-aufruf, F43) einmal je
@@ -1043,6 +1085,7 @@ function raeumeWorkflowBedienzustand() {
   bedienungsKennzeichen = null
   abnahmeKennzeichen = null
   letzteAbnahme = null
+  letzterAbgleich = null
   letzterBlick = null
   for (const id of ['workflow-bedienung', 'workflow-aktionen', 'workflow-abnahme', 'workflow-abnahme-stand']) document.getElementById(id).innerHTML = ''
   raeumeEntscheiden()

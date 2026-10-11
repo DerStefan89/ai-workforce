@@ -1,0 +1,45 @@
+{
+  "url": "http://127.0.0.1:4199/#/runs/add92616-c7d2-4e45-ad92-2456b097963e",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#lauf-faehigkeiten"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Harness",
+        "selector": "#lauf-harness-abgleich .harness-abgleich-zeile"
+      },
+      {
+        "name": "Bereich",
+        "selector": "#lauf-harness-abgleich p"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Lauf-Detail geladen",
+      "warteAufSelector": {
+        "selector": "#lauf-aufklapp",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Fähigkeiten aufgeklappt",
+      "klick": "#lauf-faehigkeiten summary",
+      "warteAufSelector": {
+        "selector": "#lauf-harness-abgleich .harness-abgleich-zeile",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-faehigkeiten.png"
+    }
+  ]
+}

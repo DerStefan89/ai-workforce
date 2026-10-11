@@ -49,6 +49,7 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
     'werkzeugsaetze',
     'zeitgrenzeMs',
     'bashZeitgrenzeMs',
+    'harnessZuordnungPfad',
     'worker',
     'pruefbefehl',
     'pruefZeitgrenzeMs',
@@ -114,6 +115,13 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
     } else if (typeof obj.zeitgrenzeMs === 'number' && obj.bashZeitgrenzeMs > obj.zeitgrenzeMs) {
       verstoesse.push(`'bashZeitgrenzeMs' (${obj.bashZeitgrenzeMs}) darf nicht über 'zeitgrenzeMs' (${obj.zeitgrenzeMs}) liegen`)
     }
+  }
+
+  // F45 B1b-2: optional — Projektdatei der Harness-Zuordnung, relativ zur Installation (gleiche Pfadregel wie
+  // pruefketten_pfade, ohne Platzhalter).
+  if ('harnessZuordnungPfad' in obj) {
+    const grund = typeof obj.harnessZuordnungPfad === 'string' && obj.harnessZuordnungPfad.includes('*') ? "ist ein Dateipfad, kein Muster — '*' ist nicht erlaubt" : pruefeRepoRelativenPfad(obj.harnessZuordnungPfad)
+    if (grund !== null) verstoesse.push(`'harnessZuordnungPfad' ${grund}`)
   }
 
   verstoesse.push(...pruefeWorkerBlock(obj.worker))

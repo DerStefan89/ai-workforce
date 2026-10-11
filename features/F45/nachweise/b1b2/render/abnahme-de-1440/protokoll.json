@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Abnahme mit Harness im Lauf",
+    "Tabelle": true,
+    "offen-Zeile": false,
+    "lang": "de",
+    "Zählzeile": "Harness: 5 wirksam · 2 ersetzt · 23 bewusst nicht · 0 offen Beleg 12 erfüllt live berechnet (heutiger Harness)",
+    "Hinweis offen": "(fehlt)",
+    "Kurzliste": "Skillskeine Subagentenkeine MCP-Serverkeine Hintergrund-Aufrufenicht erfasst",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Tabelle aufgeklappt",
+    "Tabelle": true,
+    "offen-Zeile": false,
+    "lang": "de",
+    "Zählzeile": "Harness: 5 wirksam · 2 ersetzt · 23 bewusst nicht · 0 offen Beleg 12 erfüllt live berechnet (heutiger Harness)",
+    "Hinweis offen": "(fehlt)",
+    "Kurzliste": "Skillskeine Subagentenkeine MCP-Serverkeine Hintergrund-Aufrufenicht erfasst",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

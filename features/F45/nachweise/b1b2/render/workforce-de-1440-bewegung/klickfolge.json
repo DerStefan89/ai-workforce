@@ -1,0 +1,58 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": ".harness-abgleich-bereich"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Zählzeile",
+        "selector": "#harness-abgleich .harness-abgleich-zeile"
+      },
+      {
+        "name": "Hinweis offen",
+        "selector": "#harness-abgleich .note.red"
+      },
+      {
+        "name": "erste Zeile",
+        "selector": "#harness-abgleich tbody tr"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "offen-Zeile",
+        "selector": "#harness-abgleich tr[data-status=\"offen\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Harness-Aufbau geladen (nichts offen → Tabelle zu)",
+      "warteAufSelector": {
+        "selector": "#harness-abgleich .harness-abgleich-zeile",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-abgleich.png"
+    },
+    {
+      "label": "Tabelle aufgeklappt",
+      "klick": "#harness-abgleich details summary",
+      "screenshot": "02-aufgeklappt.png"
+    }
+  ],
+  "reduzierteBewegung": true
+}
