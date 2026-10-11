@@ -1,0 +1,6 @@
+
+> ai-workforce@0.1.0 projekt:nachruesten
+> node scripts/projekt-nachruesten.mjs <scratchpad>/nr/alt-projekt
+
+Abgelehnt: '<scratchpad>\nr\alt-projekt' liegt außerhalb der erlaubten Basis 'C:\Users\stefa\Projekte' (Projekte liegen neben der Installation)
+exit=2

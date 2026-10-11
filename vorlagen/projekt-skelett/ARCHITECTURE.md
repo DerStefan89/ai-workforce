@@ -23,7 +23,8 @@ Pflichtlektüre vor jedem Commit. Verbindliche Code-Konventionen.
 
 ## 1. Ordnerstruktur
 
-[FÜLLUNG]
+[FÜLLUNG] Bei Node/TypeScript zusammen mit der Stack-Entscheidung die
+Gate-Vorlage `docs/harness/gate-vorlage-node.md` anwenden.
 
 ## 2. Datenzugriff
 

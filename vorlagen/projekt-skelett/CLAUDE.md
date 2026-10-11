@@ -38,6 +38,11 @@ npm run check     # das Tor vor jedem Commit — Kette siehe package.json
 Regel-Gate, Vertragsprüfung), unabhängig vom Projektstack, und bleibt im
 leeren Template grün.
 
+Node/TypeScript: bei der Stack-Entscheidung die Gate-Vorlage
+`docs/harness/gate-vorlage-node.md` anwenden (Lint, Typprüfung, Tests mit
+Untergrenze). Bis dahin ist `npm run check` absichtlich rot —
+`scripts/check-gates.mjs` meldet die Platzhalter.
+
 ---
 
 ## 📐 Arbeitsweise — IMMER einhalten

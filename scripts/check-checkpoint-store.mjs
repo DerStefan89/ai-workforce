@@ -10,7 +10,7 @@
  * nachgebauter Regelsatz, da dieses Feature erstmals echten src/-Code
  * liefert; Abweichung von F0s D5 mit Begründung).
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-checkpoint-store.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

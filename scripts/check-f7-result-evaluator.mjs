@@ -20,7 +20,7 @@
  * ausschließlich über F1B schreibt (AK6), kein eigener
  * Wirkungsmarken-Schreibcode.
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f7-result-evaluator.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

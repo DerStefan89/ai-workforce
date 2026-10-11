@@ -1,0 +1,68 @@
+Projekt: <scratchpad>\nr\alt-projekt
+Modus: anwenden (nur fehlende Dateien, nichts überschrieben)
+
+Fehlte: 15
+  .claude/commands/lessons.md
+  .claude/hooks/commit-guard.js
+  .claude/hooks/guard-settings.js
+  .claude/hooks/session-reminder.js
+  .claude/hooks/zwischenstand-laden.js
+  .claude/hooks/zwischenstand-pruefen.js
+  .claude/settings.json
+  .claudeignore
+  .github/workflows/ci.yml
+  .worktreeinclude
+  docs/examples/design-guardian.example.md
+  docs/harness/gate-vorlage-node.md
+  scripts/check-gates.mjs
+  scripts/tests-mit-untergrenze.mjs
+  SETUP.md
+Weicht von der Vorlage ab (nur gemeldet, nie überschrieben): 3
+  ARCHITECTURE.md
+  CLAUDE.md
+  package.json
+Hook-Gruppe übersprungen (ganz oder gar nicht): 0
+Fehlt, wird aber nie angelegt (nur Hinweis): 0
+Gleich der Vorlage: 34
+  .claude/agents/architecture-advisor.md
+  .claude/agents/code-reviewer.md
+  .claude/agents/qa.md
+  .claude/skills/advisor-pass/SKILL.md
+  .claude/skills/git-flow/SKILL.md
+  .claude/skills/handoff-vertrag/SKILL.md
+  .claude/skills/ponytail/LICENSE
+  .claude/skills/ponytail/SKILL.md
+  .claude/skills/repo-audit/SKILL.md
+  .claude/skills/spec-schreiben/SKILL.md
+  .claude/skills/werkzeug-auswahl/SKILL.md
+  docs/guide/00-START-HIER.md
+  docs/guide/01-DEEPDIVE-regeln.md
+  docs/guide/02-DEEPDIVE-claude-ordner.md
+  docs/guide/03-DEEPDIVE-gates.md
+  docs/guide/04-DEEPDIVE-gedaechtnis.md
+  docs/guide/05-SKELETT-ODER-FUELLUNG.md
+  docs/guide/06-DER-PROZESS.md
+  docs/guide/07-TOKEN-SPAREN.md
+  docs/guide/08-EIGENES-PROJEKT.md
+  docs/harness/werkzeug-katalog.md
+  docs/kommentar-standard.md
+  docs/STATUS.md
+  scripts/check-contract.mjs
+  scripts/check-docs.mjs
+  scripts/check-rules.mjs
+  state/assumption-ledger.md
+  state/gates.md
+  state/memory-map.md
+  state/reibung.md
+  state/tasks/.gitkeep
+  state/tooling.md
+  state/triggers.md
+  state/zwischenstand/VORLAGE.md
+Kopiert: 15
+
+Hinweise:
+  - package.json: 'check' ruft scripts/check-gates.mjs nicht auf — die Mindest-Gates wirken erst, wenn 'node scripts/check-gates.mjs && ' vorne steht.
+
+.claude/settings.json neu → Startfreigabe für dieses Projekt neu erteilen
+
+[Nachweis] Dateien vorher 37, nachher 52; vorhandene Dateien verändert: keine; neu: 15

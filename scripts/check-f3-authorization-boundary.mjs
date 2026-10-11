@@ -10,7 +10,7 @@
  * Zeilenenden bei korrekt konfiguriertem .gitattributes (Grün — belegt
  * Delta 3/B18).
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f3-authorization-boundary.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

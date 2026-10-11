@@ -9869,22 +9869,22 @@ Maßnahme: Vor einer Challenge/einem Advisor-Pass mit Repo-Bezug den Ordnerzugri
 Status: offen.
 Feature/Run: F42 WS-1, 25.09.2026.
 
-**F-700** · `TECH_DEBT` · P3 · offen
+**F-700** · `TECH_DEBT` · P3 · erledigt
 Titel: Der Skelett-Snapshot (`vorlagen/projekt-skelett/`) kann von seiner Quelle (`claude-projekt-template`) driften — nicht gehasht, kein automatischer Abgleich.
 Beschreibung: `vorlagen/projekt-skelett/` ist ein per `git show 9189959:<pfad>` gezogener, händisch kuratierter Snapshot (Whitelist in `vorlagen/projekt-skelett/HERKUNFT.md`) — kein Submodul, kein Hash-Vergleich gegen die Quelle. Ändert sich `claude-projekt-template` weiter (neue Guides, korrigierte Skills), bleibt `vorlagen/projekt-skelett/` unverändert auf dem Stand von Commit `9189959` stehen, ohne dass irgendein Gate das meldet. Zusätzlich: ein verschachteltes `CLAUDE.md` im Snapshot (`vorlagen/projekt-skelett/CLAUDE.md`) wird geladen, sobald in DIESEM Ordner gearbeitet wird (z. B. bei einer künftigen Pflege des Skeletts selbst) — es beschreibt dann fälschlich die Regeln eines generischen Template-Projekts statt die von ai-workforce.
 Fundstelle: `vorlagen/projekt-skelett/HERKUNFT.md` (Herkunfts-SHA `9189959`, kein automatisierter Abgleich); `vorlagen/projekt-skelett/CLAUDE.md` (verschachteltes Anweisungsdokument).
 Auswirkung: Niedrig — kein aktueller Fehler, aber ein sich langsam vergrößernder Drift zwischen Template und Snapshot, den niemand bemerkt, bis ein neues Projekt spürbar veraltete Skelett-Inhalte bekommt.
 Maßnahme: Bei einer künftigen Pflege des Skeletts die SHA in `HERKUNFT.md` gegen den aktuellen `claude-projekt-template`-Stand abgleichen (manueller Prozess, kein Automatismus in diesem WS). Kein Umbau jetzt (YAGNI — noch kein beobachteter Driftfall).
-Status: offen.
+Status: erledigt (F45 B1a-2, 11.10.2026): HERKUNFT.md trägt je Skelett-Datei SHA-256 und Herkunft (template / lokal geändert / lokal neu); neues Gate `scripts/check-skelett-herkunft.mjs` in `npm run check` wird rot bei fehlender, neuer oder geänderter Datei. Drift Template ↔ Skelett bleibt bewusst manuell (Template ist in der CI nicht vorhanden; Commit `9189959` voll in HERKUNFT.md, Pflege über `--ausgeben`).
 Feature/Run: F42 WS-1, 25.09.2026.
 
-**F-701** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-701** · `HARNESS_IMPROVEMENT` · P3 · erledigt
 Titel: `check:template` in ai-workforce (`package.json`) enthält projektspezifische Gates (`check-f1b…f13` u. a.), obwohl `CLAUDE.md` es als stackunabhängig bezeichnet — ai-workforce ist damit selbst kein Beispiel für ein "leeres Template".
 Beschreibung: `CLAUDE.md` beschreibt `npm run check:template` als "stack-unabhängige Gates … bleibt im leeren Template grün". Der reale `check:template`-Eintrag in ai-workforces eigenem `package.json` ruft aber zusätzlich zu den drei generischen Gates (`check-docs`/`check-rules`/`check-contract`) noch `check-feature.mjs`, `check-datenformate.mjs`, `check-checkpoint-store.mjs`, `check-lineage-registry.mjs`, `check-f1b-wirkungsmarke.mjs`, `check-f3-authorization-boundary.mjs`, `check-f9-human-transport.mjs`, `check-f5-context-builder.mjs`, `check-f4-invocation-policy.mjs`, `check-f6a-claude-code-gateway.mjs`, `check-f7-result-evaluator.mjs`, `check-f8-execution-controller.mjs`, `check-f10-leitstand.mjs`, `check-f11-auftrag.mjs`, `check-f12-leitstand-ansicht.mjs`, `check-f13-entscheiden.mjs` auf — allesamt ai-workforce-eigene, produktspezifische Gates. F42s neu angelegtes Projekt bekommt dagegen sein EIGENES, sauberes `check:template` aus dem Skelett (nur die drei generischen Gates) — der Widerspruch besteht ausschließlich in ai-workforces EIGENER `package.json`.
 Fundstelle: `package.json` (Zeile mit `"check:template"`, im Vergleich zur Beschreibung in `CLAUDE.md`, Abschnitt "Befehle").
 Auswirkung: Niedrig — kein funktionaler Fehler (die zusätzlichen Gates laufen korrekt), aber eine irreführende Selbstbeschreibung: wer `CLAUDE.md` liest und `npm run check:template` gegen ai-workforce selbst ausführt, erwartet einen leeren, stackunabhängigen Lauf und bekommt tatsächlich einen produktspezifischen.
 Maßnahme: `check:template` in ai-workforces `package.json` auf die drei generischen Gates zurückschneiden (Muster: das Skelett unter `vorlagen/projekt-skelett/package.json` zeigt bereits die korrekte Fassung) — die produktspezifischen Gates gehören in `check` (dort bereits vorhanden). Bewusst NICHT in F42 WS-1 umgesetzt (Out of Scope laut Auftrag: "F-701 beheben" explizit ausgeschlossen) — Maßnahme für einen künftigen, eigenen Fixpaket-Auftrag.
-Status: offen.
+Status: erledigt (F45 B1a-2, 11.10.2026): `check:template` = check-docs, check-rules, check-contract; alle 16 entfernten Gates standen schon in `check` (geprüft), CI ruft `npm run check`; Kopfkommentare der Gates nachgezogen.
 Feature/Run: F42 WS-1, 25.09.2026.
 
 **F-702** · `BUG` · P2 · offen
@@ -12088,13 +12088,13 @@ Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 2. Das „Arbeitspaket
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
-**F-939** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-939** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: Das Projekt-Skelett hat keine Mindest-Qualitätsgates.
 Beschreibung: `vorlagen/projekt-skelett` bringt nur check-contract, check-docs und check-rules mit. Lint, Typecheck, Tests mit Untergrenze sowie ein Abhängigkeits- und Sicherheitsscan sind nicht vorgegeben. Der Prüfschritt führt nur aus, was das Fremdprojekt selbst in `npm run check` definiert.
 Fundstelle: `vorlagen/projekt-skelett/scripts`.
 Auswirkung: Mittel. Wie gut der Code wird, hängt davon ab, was der Architekt im Fremdprojekt zufällig einrichtet.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1 bzw. 3. Eine stack-abhängige Gate-Vorlage mit allen vier Gates in `npm run check`, die der Architekt bei der Stack-Entscheidung mit anlegt. Der Prüfschritt bricht bei Rot ab.
-Status: offen.
+Status: teilweise (F45 B1a-2, 11.10.2026): Skelett hat `scripts/check-gates.mjs` in `check` (Platzhalter fail-closed mit Verweis auf die Gate-Vorlage, `npm audit --audit-level=high` mit Lock-Datei, lokaler gitleaks-Scan oder sichtbarer Hinweis, Hook-Probelauf), `scripts/tests-mit-untergrenze.mjs` und `docs/harness/gate-vorlage-node.md` (eslint, tsc --noEmit, node:test mit Untergrenze); Hinweis in Skelett-CLAUDE.md/ARCHITECTURE.md; Template-Hooks, CI mit Secret-Scan, SETUP.md nachgezogen. Offen: nur Node/TS; der Workforce-Prüfschritt neuer Projekte ruft weiter `check:template` (pruefbefehl), die Gates wirken dort erst, wenn die Vorlage angewendet und der pruefbefehl auf `check` umgestellt ist (Schritt der Vorlage); die Architekten-Rolle wendet die Vorlage nicht automatisch an (B2a/B2b).
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
 **F-940** · `HARNESS_IMPROVEMENT` · P2 · erledigt
@@ -12722,13 +12722,13 @@ Maßnahme: F45 B0: Fehler-Eintrag für jeden Misserfolg (F-506-Muster), Lauf nac
 Status: erledigt (F45 B0, 10.10.2026): Jeder nicht erfolgreiche Chat-Lauf (Wurf, nie gestartet, FEHLGESCHLAGEN, VERWEIGERT, Zeitgrenze, Abbruch, Klärung) schreibt über schreibeRollenChatFehlerEintrag genau einen Eintrag mit istFehler und fehler { art, grund } (beschreibeChatMisserfolg, scripts/leitstand-server.mjs); GET /api/chat und /api/sparring projizieren beides (projiziereFehler), das Verlaufsfenster des Modells lässt Fehler-Einträge aus. Der Client lädt den Eintrag nach dem Ende nach und doppelt ihn nicht (beendeMitFehlerEintrag, Ausblenden der lokalen Fehlanzeige gleicher laufId); nach Neuladen übernimmt der Chat einen laufenden Chat-Lauf aus aktiverLauf (uebernimmLaufendenChatLauf). Tests scripts/leitstand-chat-misserfolg.test.mjs, Gates check-f26 (f), check-f34 (h2), Render-Nachweis features/F45/nachweise/b0/render/ (nicht-erfolgreich-einmal, neuladen).
 Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
 
-**F-1009** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1009** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Für ai-workforce gelten je nach Startbefehl zwei verschiedene Startvorlagen.
 Beschreibung: projekte.json trägt für ai-workforce startvorlagen/ai-workforce.json; npm run leitstand ohne LEITSTAND_STARTVORLAGE_PFAD lädt startvorlagen/beispielprojekt.json (STANDARD_STARTVORLAGE_PFAD). Damit hängen Router-Worker (Codex oder claude-code-Rückfall), Chat-Worker und Lauf-Zeitgrenze (30 min oder keine) am Startbefehl. F-391 hat nur eine Warnung eingeführt.
 Fundstelle: scripts/leitstand-server.mjs (STANDARD_STARTVORLAGE_PFAD, CLI-Bindeblock), projekte.json.
 Auswirkung: Mittel — Verhalten und Messwerte sind nicht reproduzierbar.
 Maßnahme: F45 B1a: Standard-Startvorlage des eigenen Projekts aus dem Register; Startvorlage im Leitstand sichtbar.
-Status: offen.
+Status: erledigt (F45 B1a-2, 11.10.2026): ohne `LEITSTAND_STARTVORLAGE_PFAD` gilt `startvorlage_pfad` des Registereintrags mit repo_pfad "." (`scripts/leitstand/startvorlage-wahl.mjs`); die Umgebungsvariable hat Vorrang; ohne Eintrag Standard mit Warnung [F-1009]; ein Eintrag mit fehlender/kaputter Datei bricht den Start sichtbar ab (kein stiller Rückfall). Startzeile nennt Pfad und Herkunft; sichtbar an den vorhandenen Stellen „Womit gearbeitet wird“ und Capability Library. Nachweis `features/F45/nachweise/b1a2/`.
 Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
 
 **F-1010** · `BUG` · P2 · offen
@@ -12857,13 +12857,13 @@ Maßnahme: `-c core.fsmonitor=false` (und ggf. `core.hooksPath`-neutrale Optione
 Status: offen.
 Feature/Run: Entdeckt: F45 S, QA-Nachpass 11.10.2026.
 
-**F-1024** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1024** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Secret-Scan läuft nur in der CI, nicht in npm run check.
 Beschreibung: F45 S lief lokal grün (npm run check, Prüfpass), der gitleaks-Scan der CI (ci.yml „Secret-Scan (gitleaks)“, detect --no-git) fand danach 8 Test-Attrappen (curl-auth-header, stripe-access-token, gitlab-pat, gcp-api-key) in Tests und im Nachweis-Skript. Fehler dieser Art fallen erst nach dem Push auf. Behoben in F45 S (Nachbesserung): die Attrappen werden zur Laufzeit zusammengesetzt; keine Allowlist.
 Fundstelle: `package.json` (Skript „check“), `.github/workflows/ci.yml` (Secret-Scan).
 Auswirkung: Mittel — eine zusätzliche Runde nach dem Push; ohne CI bliebe ein echtes Geheimnis lokal unentdeckt.
 Maßnahme: F45 B1a (Mindest-Gates, auch für das Projekt-Skelett): lokaler Secret-Scan in npm run check, wenn das Werkzeug vorhanden ist (gitleaks bzw. Docker), sonst klarer Hinweis statt stillem Überspringen.
-Status: offen.
+Status: erledigt (F45 B1a-2, 11.10.2026): `scripts/check-secrets.mjs` in `npm run check` (vor `npm run test`) nutzt dieselbe Prüfung wie Teil (c) der Skelett-Gates: gitleaks aus dem PATH (nie aus dem cwd), sonst Docker (gleiche Fassung wie ci.yml), sonst sichtbarer Hinweis. Lokal bei Stefan derzeit Hinweis (weder gitleaks noch Docker); echter Rotfall mit Laufzeit-Attrappe als Test `scripts/check-secrets.test.mjs`, läuft wo ein Werkzeug da ist (CI).
 Feature/Run: Entdeckt: CI #318, 11.10.2026.
 
 **F-1025** · `BUG` · P2 · offen
@@ -12901,3 +12901,75 @@ Auswirkung: Gering.
 Maßnahme: (b) leeren Elternordner nach dem Entfernen löschen (nur wenn leer); (c) optionale versionSequenz im Körper serverseitig prüfen; (d) B2b; (e) je Lauf gegen eine Momentaufnahme vergleichen; (f) Chip der Bereitschaftsliste wiederverwenden, Optionstext anpassen; (g) beobachten (F-1025); (i) Tests ergänzen, Lage „npm ci übersprungen“ anzeigen, eine gemeinsame Regel für „Abnahme offen“; (h) beim Escapen nach `\\` und `/` ein `<wbr>` einfügen.
 Status: offen.
 Feature/Run: Entdeckt: F45 B1a-1, Render-Nachweis 11.10.2026.
+
+**F-1029** · `BUG` · P2 · erledigt
+Titel: Projekt-Skelett verweist auf das nicht kopierte SETUP.md.
+Beschreibung: `vorlagen/projekt-skelett/scripts/check-docs.mjs` (Zeilen 87 und 248), `scripts/check-rules.mjs` (Zeile 88) und die Platzhalter-Skripte in `package.json` verwiesen auf „SETUP.md Punkt …“, SETUP.md stand aber nicht in der Whitelist und wurde nie in neue Projekte kopiert.
+Fundstelle: `vorlagen/projekt-skelett/` (scripts/check-docs.mjs, scripts/check-rules.mjs, package.json).
+Auswirkung: Mittel — wer der Meldung folgt, findet die Anleitung nicht.
+Maßnahme: SETUP.md (Template-Fassung) ins Skelett aufgenommen; Platzhalter verweisen jetzt auf `docs/harness/gate-vorlage-node.md`.
+Status: erledigt (F45 B1a-2, 11.10.2026).
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1030** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Erledigte Findings und Übergaben werden nie aussortiert.
+Beschreibung: `state/findings.md` ist ein reines Anhängeprotokoll und hat rund 1,3 MB; erledigte Einträge und abgeschlossene Übergaben bleiben im selben Dokument wie die offenen. Jede Rolle, die das Register liest, zahlt dafür Kontext.
+Fundstelle: `state/findings.md`.
+Auswirkung: Gering bis mittel — Kontextkosten, schlechtere Auffindbarkeit offener Punkte.
+Maßnahme: Zusammen mit F-930 (gestufter Kontext) nach F30: offene und erledigte Einträge trennen (z. B. Archivdatei je Quartal), Lineage bleibt bewusst unvergesslich (keine Löschung, nur Verschieben mit Verweis).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1031** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Auslöser je Prüfschritt sind nicht festgelegt.
+Beschreibung: design-guardian und qa stehen in keiner workflow-vorlage; der design-guardian von ai-workforce ist auf `public/leitstand` festgelegt. Ob ein Prüfschritt läuft, hängt damit an der Vorlage bzw. an Handarbeit, nicht am tatsächlichen Diff.
+Fundstelle: `workflow-vorlagen/`, `.claude/agents/design-guardian.md`.
+Auswirkung: Mittel — UI-Änderungen in Fremdprojekten werden nicht designgeprüft, qa fehlt in der Kette.
+Maßnahme: B2b: Auslöser aus dem tatsächlichen Diff (UI-Pfade aus der Projektkarte), qa immer zusammen mit code-reviewer, Advisor bei Kontrolltiefe „hoch“ und bei Server/Sicherheit/Architektur; ein übersprungener Prüfschritt steht sichtbar in der Laufakte.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1032** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Prüfer-Agents nur lesend, teils unbefüllt; qa-Testfälle werden nicht ausgeführt.
+Beschreibung: Im Skelett trägt qa noch `[FUELLUNG]` bei den Kernabläufen, code-reviewer zwei `[FUELLUNG, nur UI]`-Stellen. qa definiert Testfälle, die niemand ausführt — sie bleiben Text.
+Fundstelle: `vorlagen/projekt-skelett/.claude/agents/qa.md`, `code-reviewer.md`.
+Auswirkung: Mittel — Prüfung bleibt auf Lesen beschränkt, Randfälle werden benannt, aber nicht belegt.
+Maßnahme: B1b/B2b: Kernabläufe aus den Akzeptanzkriterien befüllen; qa-Testfälle im Prüfschritt als echte Tests anlegen und ausführen; Performance-Budget nur dort, wo es nötig ist.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1033** · `TECH_DEBT` · P3 · offen
+Titel: arbeitsordnerVorStart liest das Arbeitsordner-Artefakt bis zu dreimal je Anfrage.
+Beschreibung: Beim Start bzw. bei der Freigabe eines Ablaufs wird das Kern-Artefakt `arbeitsordner-<workflowId>` mehrfach gelesen, statt einmal gelesen und durchgereicht zu werden.
+Fundstelle: `scripts/leitstand-server.mjs` (arbeitsordnerVorStart und Aufrufer, F45 B1a-1).
+Auswirkung: Gering — zusätzliche Dateizugriffe je Anfrage.
+Maßnahme: Einmal lesen, Ergebnis durchreichen.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1034** · `TECH_DEBT` · P3 · offen
+Titel: bereiteArbeitsordnerVor bildet bei ungültiger Ablauf-ID einen Ersatzpfad im Fehlerergebnis.
+Beschreibung: Bei ungültiger Ablauf-ID steht im Fehlerergebnis weiter `join(repoWurzel, '..')` als `pfad`. Vom Server nicht erreichbar (409 vorher), aber ein Fehlerergebnis sollte keinen Ersatzpfad enthalten, den ein späterer Aufrufer für echt halten könnte.
+Fundstelle: `src/arbeitsordner/index.ts` (~335).
+Auswirkung: Gering.
+Maßnahme: `pfad` im Fehlerfall `null` bzw. das Feld weglassen.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1035** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Eine Claude-Code-Sitzung hat in B1a-1 einen Branch von Hand mit `git branch -D` gelöscht.
+Beschreibung: Der Arbeitsordner-Code löscht Branches nur mit `-d` (nie `-D`); in der Bausitzung selbst wurde ein Branch trotzdem von Hand mit `-D` entfernt. Kein Hook hindert das.
+Fundstelle: `.claude/hooks/commit-guard.cjs` (keine Regel für `branch -D`).
+Auswirkung: Gering bis mittel — ungemergte Arbeit kann ohne Rückfrage verloren gehen.
+Maßnahme: commit-guard (bzw. eigener Hook) sperrt `git branch -D` und `--delete --force` in Sitzungen; Änderung an Hooks macht Stefan (Team-Policy).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.
+
+**F-1036** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Der Challenger hat Finding-IDs ohne Registerstand vergeben — Kollision mit F-1025 bis F-1028.
+Beschreibung: Im Auftrag zu B1a-1 vergab der Challenger IDs, die Claude Code im selben Bau bereits für eigene Funde verwendet hatte.
+Fundstelle: Bauaufträge F45 (Challenger), `state/findings.md`.
+Auswirkung: Gering — Nacharbeit und Verwechslungsgefahr.
+Maßnahme: Der Challenger führt Kandidaten ohne ID; IDs vergibt Claude Code fortlaufend ab der höchsten vorhandenen ID (so in B1a-2 gehandhabt).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1a-2, 11.10.2026.

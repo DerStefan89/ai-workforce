@@ -63,7 +63,7 @@
  * harness.mjs.
  */
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { constants, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, relative, resolve, sep, win32 } from 'node:path'
 import { leseAktuelleAutorisierung } from '../claude-code-gateway/index.ts'
@@ -102,7 +102,7 @@ export const NEUE_PROJEKT_ID_MUSTER = /^[a-z0-9][a-z0-9-]{1,40}$/
  * Sicherheitsgrenze gegen Path-Traversal — deshalb bewusst plattformbedingt
  * statt pauschal.
  */
-function normalisierePfadFuerVergleich(pfad: string): string {
+export function normalisierePfadFuerVergleich(pfad: string): string {
   return process.platform === 'win32' || process.platform === 'darwin' ? pfad.toLowerCase() : pfad
 }
 
@@ -209,7 +209,20 @@ export function kopiereBaseline(quellRepoWurzel: string, zielRepoWurzel: string)
 const SKELETT_ORDNER_RELATIV = join('vorlagen', 'projekt-skelett')
 
 /** Wird beim Kopieren übersprungen — Herkunftsdokumentation des Snapshots selbst, kein Teil des Skeletts. */
-const SKELETT_HERKUNFTSDATEI = 'HERKUNFT.md'
+export const SKELETT_HERKUNFTSDATEI = 'HERKUNFT.md'
+
+/** F45 B1a-2: die Hook-Gruppe — settings.json und die Hook-Dateien, auf die sie zeigt, gehören zusammen. */
+const HOOK_GRUPPE_SETTINGS = join('.claude', 'settings.json')
+const HOOK_GRUPPE_ORDNER = `${join('.claude', 'hooks')}${sep}`
+
+/**
+ * Prüft, ob ein skelett-relativer Pfad zur Hook-Gruppe gehört.
+ * @param relativerPfad - Pfad relativ zur Skelett-Wurzel (plattformeigener Trenner)
+ * @returns true für die settings.json und alles unter .claude/hooks/
+ */
+export function gehoertZurHookGruppe(relativerPfad: string): boolean {
+  return relativerPfad === HOOK_GRUPPE_SETTINGS || relativerPfad.startsWith(HOOK_GRUPPE_ORDNER)
+}
 
 function sammleDateienRekursiv(basis: string, aktuell: string, sammlung: string[]): void {
   for (const eintrag of readdirSync(aktuell, { withFileTypes: true })) {
@@ -223,35 +236,98 @@ function sammleDateienRekursiv(basis: string, aktuell: string, sammlung: string[
 }
 
 /**
+ * Liefert alle Dateien des Skeletts (relativ zur Skelett-Wurzel, sortiert), ohne HERKUNFT.md.
+ * Wirft, wenn die Skelett-Wurzel fehlt (Muster kopiereSkelett).
+ * @param skelettWurzel - absoluter Pfad von vorlagen/projekt-skelett
+ * @returns relative Pfade mit plattformeigenem Trenner
+ */
+export function sammleSkelettDateien(skelettWurzel: string): string[] {
+  const alle: string[] = []
+  sammleDateienRekursiv(skelettWurzel, skelettWurzel, alle)
+  return alle.filter((pfad) => pfad !== SKELETT_HERKUNFTSDATEI).sort()
+}
+
+/**
+ * Existiert ein Eintrag — auch ein verwaister Symlink/eine verwaiste Junction (lstat statt existsSync,
+ * das Links folgt und einen verwaisten Link als „fehlt“ meldete).
+ * @param pfad - absoluter Pfad
+ * @returns true, wenn dort irgendein Eintrag liegt
+ */
+export function existiertEintrag(pfad: string): boolean {
+  try {
+    lstatSync(pfad)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Zustand der Hook-Gruppe im Ziel (planeSkelettKopie). */
+export type HookGruppenZustand = 'kopierbar' | 'vorhanden' | 'teilweise_vorhanden'
+
+export interface SkelettKopiePlan {
+  /** Skelett-Dateien, die im Ziel fehlen und kopiert werden dürfen. */
+  kopieren: string[]
+  /** Skelett-Dateien, die im Ziel schon existieren (werden nie angefasst). */
+  vorhanden: string[]
+  /** Fehlende Dateien der Hook-Gruppe, die wegen der Gruppen-Regel NICHT kopiert werden. */
+  gruppeUebersprungen: string[]
+  hookGruppe: HookGruppenZustand
+}
+
+/**
+ * F45 B1a-2 (Plan v2 P2): plant, welche Skelett-Dateien in ein Ziel kopiert werden. Liest das Ziel
+ * (existiertEintrag, lstat), schreibt nichts. Regel „Hook-Gruppe ganz oder gar nicht“: settings.json und
+ * .claude/hooks/** des Skeletts werden nur kopiert, wenn KEINE dieser Dateien im Ziel liegt — sonst
+ * zeigte eine neue settings.json auf fremde, gleichnamige Hooks, oder fremde Hooks lägen tot neben der
+ * Baseline (neue Projekte bekommen settings.json und Hooks schon aus kopiereBaseline). Existenz über
+ * lstat (ein verwaister Link gilt als vorhanden und wird nie überschrieben). Alle übrigen
+ * Dateien: kopieren, wenn sie fehlen. Gemeinsame Regel für kopiereSkelett und das Nachrüsten.
+ * @param skelettWurzel - absoluter Pfad von vorlagen/projekt-skelett
+ * @param ziel - Repo-Wurzel des Zielprojekts
+ * @returns Plan mit kopieren/vorhanden/gruppeUebersprungen und dem Zustand der Hook-Gruppe
+ */
+export function planeSkelettKopie(skelettWurzel: string, ziel: string): SkelettKopiePlan {
+  const dateien = sammleSkelettDateien(skelettWurzel)
+  const gruppe = dateien.filter(gehoertZurHookGruppe)
+  const gruppeImZiel = gruppe.filter((pfad) => existiertEintrag(join(ziel, pfad)))
+  const hookGruppe: HookGruppenZustand = gruppeImZiel.length === 0 ? 'kopierbar' : gruppeImZiel.includes(HOOK_GRUPPE_SETTINGS) ? 'vorhanden' : 'teilweise_vorhanden'
+
+  const plan: SkelettKopiePlan = { kopieren: [], vorhanden: [], gruppeUebersprungen: [], hookGruppe }
+  for (const pfad of dateien) {
+    if (existiertEintrag(join(ziel, pfad))) plan.vorhanden.push(pfad)
+    else if (gehoertZurHookGruppe(pfad) && hookGruppe !== 'kopierbar') plan.gruppeUebersprungen.push(pfad)
+    else plan.kopieren.push(pfad)
+  }
+  return plan
+}
+
+/**
  * Kopiert Schicht 2 (Skelett, F42 WS-1, E-F41-3 = B) aus dem unter
  * `installWurzel` liegenden Snapshot `vorlagen/projekt-skelett/` in das
- * neue Projekt — NACH kopiereBaseline (Schicht 1 gewinnt jeden Konflikt,
- * es gibt aber keinen realen: Whitelist schließt .claude/settings.json/
- * .claude/hooks/* bewusst aus, siehe HERKUNFT.md). Kopiert nur Dateien, die
- * im Ziel noch NICHT existieren (Auftrag Punkt 3) — copyFileSync wie
- * kopiereBaseline, bytegenau, keine Interpretation. Kein Try/Catch: ein
- * Wurf (fehlendes Quellverzeichnis) propagiert unverändert in den
- * bestehenden try-Block von POST /api/projekte, dessen catch bereits den
+ * neue Projekt — NACH kopiereBaseline (Schicht 1 gewinnt jeden Konflikt).
+ * F45 B1a-2: das Skelett trägt jetzt die Template-Hook-Gruppe; welche
+ * Dateien kopiert werden, entscheidet planeSkelettKopie (Hook-Gruppe ganz
+ * oder gar nicht — nach kopiereBaseline liegt die settings.json schon, die
+ * Gruppe wird also für neue Projekte vollständig übersprungen). Kopiert nur
+ * Dateien, die im Ziel noch NICHT existieren — copyFileSync mit
+ * COPYFILE_EXCL, bytegenau, überschreibt auch bei einem Wettlauf nie. Kein
+ * Try/Catch: ein Wurf (fehlendes Quellverzeichnis) propagiert unverändert in
+ * den bestehenden try-Block von POST /api/projekte, dessen catch bereits den
  * Rückbau übernimmt (kein zweiter Mechanismus, D5).
  * @param installWurzel - Repo-Wurzel des Serverprozesses (Quelle des Snapshots; POST /api/projekte läuft ausschließlich im unpräfigierten defaultHandler, dort ist installWurzel === repoWurzel)
  * @param zielRepoWurzel - Repo-Wurzel des neuen Projekts
- * @returns die Liste der repo-relativen Pfade, die tatsächlich kopiert wurden (übersprungene bereits existierende Dateien fehlen)
+ * @returns die Liste der repo-relativen Pfade, die tatsächlich kopiert wurden (übersprungene Dateien fehlen)
  */
 export function kopiereSkelett(installWurzel: string, zielRepoWurzel: string): string[] {
   const skelettWurzel = join(installWurzel, SKELETT_ORDNER_RELATIV)
-  const alleSkelettDateien: string[] = []
-  sammleDateienRekursiv(skelettWurzel, skelettWurzel, alleSkelettDateien)
-
-  const kopiert: string[] = []
-  for (const relativerPfad of alleSkelettDateien) {
-    if (relativerPfad === SKELETT_HERKUNFTSDATEI) continue
+  const plan = planeSkelettKopie(skelettWurzel, zielRepoWurzel)
+  for (const relativerPfad of plan.kopieren) {
     const zielDatei = join(zielRepoWurzel, relativerPfad)
-    if (existsSync(zielDatei)) continue
     mkdirSync(dirname(zielDatei), { recursive: true })
-    copyFileSync(join(skelettWurzel, relativerPfad), zielDatei)
-    kopiert.push(relativerPfad)
+    copyFileSync(join(skelettWurzel, relativerPfad), zielDatei, constants.COPYFILE_EXCL)
   }
-  return kopiert
+  return plan.kopieren
 }
 
 /**

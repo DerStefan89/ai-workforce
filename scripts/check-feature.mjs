@@ -21,7 +21,7 @@
  * (Rückwärtskompatibilität). Rot-/Grünfälle in
  * src/workboard/feature-abschnitte.test.ts.
  *
- * Aufruf: node scripts/check-feature.mjs   (Teil von npm run check:template)
+ * Aufruf: node scripts/check-feature.mjs   (Teil von npm run check)
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
