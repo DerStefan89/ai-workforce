@@ -1,0 +1,68 @@
+
+> ai-workforce@0.1.0 projekt:nachruesten
+> node scripts/projekt-nachruesten.mjs ../haushaltsbuch2
+
+Projekt: C:\Users\stefa\Projekte\haushaltsbuch2
+Modus: Probelauf (schreibt nichts; --anwenden kopiert die fehlenden Dateien)
+
+Fehlt im Projekt (würde kopiert): 9
+  .claude/commands/lessons.md
+  .claudeignore
+  .github/workflows/ci.yml
+  .worktreeinclude
+  docs/examples/design-guardian.example.md
+  docs/harness/gate-vorlage-node.md
+  scripts/check-gates.mjs
+  scripts/tests-mit-untergrenze.mjs
+  SETUP.md
+Weicht von der Vorlage ab (nur gemeldet, nie überschrieben): 7
+  .claude/hooks/guard-settings.js
+  .claude/settings.json
+  ARCHITECTURE.md
+  CLAUDE.md
+  package.json
+  state/gates.md
+  state/tooling.md
+Hook-Gruppe übersprungen (ganz oder gar nicht): 4
+  .claude/hooks/commit-guard.js
+  .claude/hooks/session-reminder.js
+  .claude/hooks/zwischenstand-laden.js
+  .claude/hooks/zwischenstand-pruefen.js
+Fehlt, wird aber nie angelegt (nur Hinweis): 0
+Gleich der Vorlage: 32
+  .claude/agents/architecture-advisor.md
+  .claude/agents/code-reviewer.md
+  .claude/agents/qa.md
+  .claude/skills/advisor-pass/SKILL.md
+  .claude/skills/git-flow/SKILL.md
+  .claude/skills/handoff-vertrag/SKILL.md
+  .claude/skills/ponytail/LICENSE
+  .claude/skills/ponytail/SKILL.md
+  .claude/skills/repo-audit/SKILL.md
+  .claude/skills/spec-schreiben/SKILL.md
+  .claude/skills/werkzeug-auswahl/SKILL.md
+  docs/guide/00-START-HIER.md
+  docs/guide/01-DEEPDIVE-regeln.md
+  docs/guide/02-DEEPDIVE-claude-ordner.md
+  docs/guide/03-DEEPDIVE-gates.md
+  docs/guide/04-DEEPDIVE-gedaechtnis.md
+  docs/guide/05-SKELETT-ODER-FUELLUNG.md
+  docs/guide/06-DER-PROZESS.md
+  docs/guide/07-TOKEN-SPAREN.md
+  docs/guide/08-EIGENES-PROJEKT.md
+  docs/harness/werkzeug-katalog.md
+  docs/kommentar-standard.md
+  docs/STATUS.md
+  scripts/check-contract.mjs
+  scripts/check-docs.mjs
+  scripts/check-rules.mjs
+  state/assumption-ledger.md
+  state/memory-map.md
+  state/reibung.md
+  state/tasks/.gitkeep
+  state/triggers.md
+  state/zwischenstand/VORLAGE.md
+
+Hinweise:
+  - package.json: 'check' ruft scripts/check-gates.mjs nicht auf — die Mindest-Gates wirken erst, wenn 'node scripts/check-gates.mjs && ' vorne steht.
+exit=0

@@ -1,0 +1,17 @@
+PowerShell (npm.ps1), 11.10.2026 — Argumentweitergabe hinter `--` an scripts/projekt-nachruesten.mjs, ohne zu schreiben:
+
+> npm run projekt:nachruesten -- C:\Users\stefa\Projekte\gibt-es-nicht --unbekannt
+Aufruf: npm run projekt:nachruesten -- <Projektpfad> [--anwenden]
+Unbekannte Option: --unbekannt
+exit=2
+
+> npm run projekt:nachruesten -- ..\haushaltsbuch2 --anwende
+Aufruf: npm run projekt:nachruesten -- <Projektpfad> [--anwenden]
+Unbekannte Option: --anwende
+exit=2
+
+> npm run projekt:nachruesten -- "C:\Users\stefa\Projekte\Pfad mit Leerzeichen"
+Abgelehnt: 'C:\Users\stefa\Projekte\Pfad mit Leerzeichen' ist kein vorhandener Ordner
+exit=2
+
+Ergebnis: Optionen mit `--` erreichen das Skript (also auch `--anwenden`), ein Pfad mit Leerzeichen kommt als ein Argument an.

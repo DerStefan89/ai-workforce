@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gebaut (Branch `feat/f45-b1a1-arbeitsordner`, Basis `387f1a3`, nicht committet; Abschnitt „Stand B1a-1“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gebaut (Branch `feat/f45-b1a2-skelett`, Basis `fde3b06`, nicht committet; Abschnitt „Stand B1a-2“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -23,7 +23,7 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-F45-1 = A** (Stefan, 01.10.2026) — Eine Feature-Akte wird direkt im Leitstand bearbeitet; Wortlaut in `docs/projekt/zielfassung.md` §13.6.
 - **E-F45-2** (offen, fällig nach R) — Teil 2 vor F30 über Challenger-Bauaufträge (A) oder als erste Aufträge der Workforce an sich selbst (B). Empfehlung Challenger: B. Grundlage Abschnitt 5.
 - **E-F45-3 = A** (Stefan, 11.10.2026) — Jeder schreibende Ablauf der Workforce arbeitet in einem eigenen Git-Worktree auf eigenem Branch neben dem Projekt. Stefans Projektordner bleibt unberührt. Im eigenen Worktree darf der Ablauf Dateien löschen — über eine Löschliste, die der Server prüft und ausführt. Wortlaut in `docs/projekt/zielfassung.md` §13.6; Umsetzung B1a-1.
-- **E-F45-5** (offen, aus B1a-1, vor dem Merge zu bestätigen) — Auslegung von E-F39-1=B im Arbeitsordner: Sauberkeit wird beim Anlegen des Worktrees festgestellt; ein schreibender Schritt prüft danach nur, dass der Worktree genau auf `wf/<Ablauf-ID>` steht (der Korrekturlauf findet die Änderungen des ersten Baus vor). Für den Projektordner gilt E-F39-1=B unverändert. Empfehlung: A (so bestätigen). Grundlage `features/F45/plan-b1a1.md` (Plan v3 B6).
+- **E-F45-5 = A** (Stefan, 11.10.2026) — Auslegung von E-F39-1=B im Arbeitsordner: Sauberkeit wird beim Anlegen des Worktrees festgestellt; ein schreibender Schritt prüft danach nur, dass der Worktree genau auf `wf/<Ablauf-ID>` steht (der Korrekturlauf findet die Änderungen des ersten Baus vor). Für den Projektordner gilt E-F39-1=B unverändert. Grundlage `features/F45/plan-b1a1.md` (Plan v3 B6).
 - **E-F45-4** (offen, aus WS P, F-1018) — Energiemodus „Ausgeglichen“ (A) oder der Leitstand nimmt sich selbst aus der Drosselung (B). Grundlage Abschnitt 5.
 - **F-1015-Kriterium** (Challenger, 11.10.2026) — Seitenspeicher, JS-Heap, DOM-Knoten und Listener am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen); Grundlage Abschnitt 2.
 
@@ -244,7 +244,7 @@ ohne Verwerfen 409, mit Verwerfen 200, Branch gelöscht (vor der Korrekturrunde,
   die des Korrekturlaufs (HEAD bleibt die Basis; F-1028 e).
 - Bis „Bereit zum Sichern“ (B2b) liegt das Ergebnis nur im Arbeitsordner auf `wf/<Ablauf-ID>`; Stefan sichert dort.
   Aufräumen ist erst nach der Abnahme (oder bei GESTOPPT/fehlgeschlagener Vorbereitung) möglich.
-- E-F45-5 offen (Stefan).
+- E-F45-5 = A (Stefan, 11.10.2026).
 
 **Prüfpass** (frischer Kontext, eine Korrekturrunde): code-reviewer „freigegeben mit Hinweisen“, qa und design-guardian
 „nicht freigegeben“. Korrigiert: Bestand auch nach ANPASSUNG (Abnahme-Artefakt, Versionsgeschichte), Aufräumen erst nach
@@ -258,3 +258,56 @@ bei fehlgeschlagener Vorbereitung, danger-Knopf im Dialog, Musterpfad bricht um,
 „Auftrag anlegen“, Texte zum Nachsenden ehrlich; Render-Nachweis neu (15 Folgen inkl. 200 %, Bestand, aufgeräumt,
 Dialog 390 px). Rest F-1028.
 
+## Stand B1a-2
+Branch `feat/f45-b1a2-skelett` (Basis `fde3b06` = main mit #319), nicht committet. Bau 11.10.2026.
+Plan `features/F45/plan-b1a2.md` (v1 → Advisor-Pass „tragfähig mit Änderungen“, P1–P4 → v2).
+
+**Gebaut:**
+- **Vorlage nachgezogen** (Template-Commit `9189959`, unverändert `template/main`): Hook-Gruppe (Template-settings.json
+  und fünf `.js`-Hooks), `.claude/commands/lessons.md`, `docs/examples/design-guardian.example.md` (Template-Fassung,
+  nur Beispiel), `.github/workflows/ci.yml` (Check + Secret-Scan), `.worktreeinclude`, `.claudeignore`, `SETUP.md`
+  (behebt die toten Verweise, F-1029). scout weggelassen (im Template nicht vorhanden; ai-workforces scout ist F27-spezifisch).
+  **Hook-Gruppe ganz oder gar nicht** (`planeSkelettKopie`, genutzt von `kopiereSkelett` und Nachrüsten): neue Projekte
+  bekommen settings.json/Hooks weiter aus `kopiereBaseline`, die Template-Gruppe wird dort übersprungen (E-183 unverändert,
+  keine toten Hook-Kopien). Beleg je Hook im `-p`-Lauf: `scripts/skelett-hooks.test.mjs`.
+  HERKUNFT.md mit SHA-256 und Herkunft je Datei; neues Gate `scripts/check-skelett-herkunft.mjs` (F-700).
+- **Mindest-Gates Node/TS:** Skelett-`scripts/check-gates.mjs` (Platzhalter, `npm audit` mit Lock-Datei, gitleaks
+  lokal/Docker/Hinweis, Hook-Probelauf) als erster Schritt von `check`; `scripts/tests-mit-untergrenze.mjs`;
+  `docs/harness/gate-vorlage-node.md`; Hinweis in Skelett-CLAUDE.md/ARCHITECTURE.md. ai-workforce: `scripts/check-secrets.mjs`
+  in `check` (F-1024), dieselbe Prüfung importiert.
+- **check:template** von ai-workforce = check-docs, check-rules, check-contract (F-701).
+- **Startvorlage aus dem Register** (F-1009): `scripts/leitstand/startvorlage-wahl.mjs`; Umgebungsvariable vor Register
+  vor Standard; kaputter Registereintrag bricht sichtbar ab; Startzeile mit Herkunft. Keine UI-Änderung (Pfad steht
+  schon in „Womit gearbeitet wird“ und in der Capability Library). Abweichung von Plan v2: das API-Feld `startvorlage.herkunft` ist
+  weggelassen (kein Verbraucher).
+- **Nachrüsten** `npm run projekt:nachruesten -- <Projektpfad> [--anwenden]` (`src/projekt-anlegen/nachruesten.ts`):
+  Probelauf, nur Fehlendes, nie überschreiben, package.json/.gitignore nie, Pfadprüfung (Basis, Junction, verknüpfter
+  Worktree, `*-laeufe`), Hook-Gruppe nicht bei `"type": "module"`, Kopierfehler je Datei im Bericht, Pflichtzeile
+  Startfreigabe.
+
+**Nachweise** `features/F45/nachweise/b1a2/nachweis.md`: neues Projekt (56 Dateien, `check` rot mit Platzhalter-Meldung,
+`check:template` grün, Mini-Beispiel nach Gate-Vorlage grün), Secret-Scan nur als Hinweis (gitleaks/Docker lokal nicht
+vorhanden, echter Rotfall als Test für die CI), Nachrüsten gegen `387f1a3` (15 kopiert, keine vorhandene Datei verändert),
+Leitstand ohne Umgebungsvariable lädt `startvorlagen/ai-workforce.json`.
+
+**Grenzen:**
+- Lokal bei Stefan läuft kein echter Secret-Scan (weder gitleaks noch Docker) — nur Hinweis; Funde zeigt erst die CI.
+- Die Mindest-Gates wirken im Workforce-Prüfschritt neuer Projekte erst nach Anwenden der Vorlage und Umstellen des
+  `pruefbefehl` auf `check`; der Architekt wendet die Vorlage nicht automatisch an (F-939 teilweise).
+- Template-Hooks sind CommonJS; unter `"type": "module"` stürzen sie ab (check-gates (d) meldet das, Nachrüsten überspringt
+  die Gruppe). Vorbestehend: zwischenstand-Hooks (Template und Baseline) starten bloßes `git`.
+- Der Hook-Probelauf (d) prüft, dass ein Hook lädt und auf harmlose Eingabe nicht abstürzt — nicht, dass er bremst.
+- Nachrüsten: ein eigenständiger Klon von ai-workforce neben der Installation wird nicht erkannt (nur Worktrees);
+  `--anwenden` lief nicht über die echte CLI (die Basis ist fest der Elternordner der Installation), sondern über
+  dieselben Funktionen; scheitert beim Anwenden eine Kopie innerhalb der Hook-Gruppe, meldet der Bericht das ausdrücklich
+  (Gruppe unvollständig, Startfreigabe erst nach Ergänzen).
+- `scripts/check-f11-auftrag.mjs` bleibt wegen der Invariante „check-f11 unverändert“ unangetastet; sein Kopfkommentar
+  nennt noch `npm run check:template` (veraltet, nur Kommentar).
+- In der CI scannt gitleaks jetzt zweimal (in `npm run check` über `check-secrets.mjs` und im eigenen CI-Schritt) —
+  bewusst so gelassen; der CI-Schritt kann später entfallen.
+
+**Prüfpass** (frischer Kontext, eine Korrekturrunde): architecture-advisor „tragfähig mit Änderungen“ (P1–P4 in Plan v2).
+code-reviewer und qa zunächst „nicht freigegeben“ — Nachrüsten legte eine fehlende package.json an (beide), Programmsuche
+host-abhängig (Linux-CI rot), Kopierfehler mittendrin, verwaiste Links, kaputter Registereintrag ungetestet, gitleaks/Docker
+mit falscher Ursache u. a. Alles korrigiert (Plan, „Nachtrag Bau und Korrekturrunde“). Nachpass: code-reviewer und qa
+„freigegeben mit Hinweisen“; Hinweise eingearbeitet bzw. oben als Grenze genannt. design-guardian nicht nötig (keine UI-Änderung).

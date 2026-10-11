@@ -25,7 +25,7 @@
  * ausdrücklich ein Hygiene-Guard, keine Vertrauensgrenze (plan-v2 Delta 3)
  * — die Vertrauensfrage liegt per E2 beim Aufrufer.
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f6a-claude-code-gateway.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

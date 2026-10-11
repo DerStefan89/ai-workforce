@@ -13,7 +13,7 @@
  * features/F8/journal.md). Beide mit Selbsttest, dass das Muster einen
  * simulierten Verstoß tatsächlich erkennt.
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f8-execution-controller.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

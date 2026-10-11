@@ -13,7 +13,7 @@
  * fetch/HTTP-Client/Browsersteuerung in src/human-transport/ (Grep-Nachweis,
  * Muster wie F1Bs TEMP-ROT-FALL-Beleg).
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f9-human-transport.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

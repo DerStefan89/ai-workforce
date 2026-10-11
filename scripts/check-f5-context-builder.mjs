@@ -9,7 +9,7 @@
  * src/context-builder/ importiert (kein zweiter, von Hand nachgebauter
  * Regelsatz, D5-Muster).
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f5-context-builder.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

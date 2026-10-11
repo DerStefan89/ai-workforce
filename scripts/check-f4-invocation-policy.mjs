@@ -17,7 +17,7 @@
  * child_process/spawn/exec/execSync in src/invocation-policy/*.ts
  * (F9-Präzedenz); (f) Temp-Pfad aufräumen.
  *
- * Wird aufgerufen von: `npm run check`, `npm run check:template`
+ * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f4-invocation-policy.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden

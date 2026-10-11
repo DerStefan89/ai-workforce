@@ -8,10 +8,10 @@
   "scripts": {
     "dev": "echo '[FÜLLUNG] Dev-Server-Befehl'",
     "build": "echo '[FÜLLUNG] Build-Befehl'",
-    "lint": "node -e \"console.error('lint: kein Linter ausgewählt — siehe SETUP.md Punkt 3 (Skill werkzeug-auswahl)'); process.exit(1)\"",
-    "typecheck": "node -e \"console.error('typecheck: kein Typechecker ausgewählt — siehe SETUP.md Punkt 3 (Skill werkzeug-auswahl)'); process.exit(1)\"",
-    "test": "node -e \"console.error('test: kein Testrunner ausgewählt — siehe SETUP.md Punkt 3 (Skill werkzeug-auswahl)'); process.exit(1)\"",
-    "check": "npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && npm run test",
+    "lint": "node -e \"console.error('lint: [PLATZHALTER] kein Linter eingerichtet — Gate-Vorlage anwenden: docs/harness/gate-vorlage-node.md (Node/TS), sonst Skill werkzeug-auswahl'); process.exit(1)\"",
+    "typecheck": "node -e \"console.error('typecheck: [PLATZHALTER] kein Typechecker eingerichtet — Gate-Vorlage anwenden: docs/harness/gate-vorlage-node.md (Node/TS), sonst Skill werkzeug-auswahl'); process.exit(1)\"",
+    "test": "node -e \"console.error('test: [PLATZHALTER] kein Testrunner eingerichtet — Gate-Vorlage anwenden: docs/harness/gate-vorlage-node.md (Node/TS), sonst Skill werkzeug-auswahl'); process.exit(1)\"",
+    "check": "node scripts/check-gates.mjs && npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && npm run test",
     "check:template": "node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs"
   }
 }

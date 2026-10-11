@@ -527,6 +527,7 @@ import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordn
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
+import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitstand/startvorlage-wahl.mjs'
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
@@ -10438,7 +10439,41 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // LEITSTAND_PORT oben) — erlaubt Stefan einen realen Lauf gegen z. B.
   // startvorlagen/beispielprojekt-kurze-zeitgrenze.json, ohne startvorlagen/beispielprojekt.json
   // anzufassen: `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/beispielprojekt-kurze-zeitgrenze.json npm run leitstand`.
-  const startvorlagePfad = process.env.LEITSTAND_STARTVORLAGE_PFAD ?? STANDARD_STARTVORLAGE_PFAD
+  //
+  // F25 WS-1 (AK2): Projektregister laden. Fehlt/ungültig: kein Startabbruch (Muster
+  // ressourcen.json unten) — der Leitstand bleibt für ai-workforce über den bestehenden,
+  // unpräfigierten /api/...-Pfad unverändert bedienbar, /api/projekte/<id>/... liefert dann für
+  // jede id 404. F45 B1a-2: vor der Wahl der Startvorlage geladen (sie kommt jetzt aus dem Register).
+  const projekteBasis = process.cwd()
+  const projektePfad = process.env.LEITSTAND_PROJEKTE_PFAD ?? STANDARD_PROJEKTE_PFAD
+  // F41 WS-1 (AK2): additiv zum committeten Register, gitignoriert — überschreibbar für Tests
+  // (Muster LEITSTAND_PROJEKTE_PFAD), Standard ist eine Datei neben projekte.json.
+  const projekteLokalPfad = process.env.LEITSTAND_PROJEKTE_LOKAL_PFAD ?? join(projekteBasis, PROJEKTE_LOKAL_DATEINAME)
+  let projekte = []
+  let registerGeladen = false
+  try {
+    projekte = ladeProjektregisterMitLokal(projektePfad, projekteLokalPfad)
+    registerGeladen = true
+  } catch (fehler) {
+    console.error(`[leitstand] Projektregister '${projektePfad}' nicht geladen — /api/projekte/<id>/... bleibt ohne Registereinträge: ${fehler.message}`)
+  }
+  // F45 B1a-2 (F-1009): Umgebungsvariable vor Registereintrag der Installation (repo_pfad '.') vor
+  // Standard. Ein Registereintrag mit fehlender/kaputter Datei fällt NICHT still auf den Standard
+  // zurück — sichtbarer Startfehler.
+  const startvorlageWahl = ermittleStartvorlage({ umgebungsPfad: process.env.LEITSTAND_STARTVORLAGE_PFAD, projekte, projekteBasis, standardPfad: STANDARD_STARTVORLAGE_PFAD })
+  const startvorlagePfad = startvorlageWahl.pfad
+  if (startvorlageWahl.herkunft === 'register') {
+    try {
+      if (startvorlagePfad === null) throw new Error('der Eintrag nennt kein startvorlage_pfad')
+      ladeStartvorlage(startvorlagePfad)
+    } catch (fehler) {
+      console.error(`[leitstand] Startvorlage '${startvorlagePfad}' aus dem Projektregister (Eintrag '${startvorlageWahl.projektId}') nicht ladbar — Start abgebrochen, kein stiller Rückfall auf '${STANDARD_STARTVORLAGE_PFAD}': ${fehler.message}`)
+      process.exit(1)
+    }
+  } else if (startvorlageWahl.herkunft === 'standard') {
+    const grund = registerGeladen ? `Kein Registereintrag mit repo_pfad '.' in '${projektePfad}'` : `Projektregister '${projektePfad}' nicht geladen (Fehler oben)`
+    console.warn(`[F-1009] ${grund} — Standard-Startvorlage '${startvorlagePfad}' geladen.`)
+  }
   // F-391: Sichtbarkeitswarnung, kein Verhaltensunterschied am Routing. Löst NICHT F-391 durch
   // eine Verhaltensänderung (z. B. STANDARD_STARTVORLAGE_PFAD umstellen) — nur die bisher stille
   // Konsequenz (Router fällt ohne worker.codex auf den fehleranfälligen claude-code-
@@ -10450,7 +10485,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     const codexEintrag = loeseRessourcenAuf(ressourcenRoh.ressourcen, process.cwd(), startvorlagePfad).find((r) => r.id === 'codex')
     if (codexEintrag !== undefined && codexEintrag.verfuegbar !== true) {
       console.warn(
-        `[F-391] Startvorlage '${startvorlagePfad}' geladen — Codex ist nicht verfügbar (${codexEintrag.grund}); der Router fällt auf den fehleranfälligen claude-code-Klassifikationspfad zurück (F-337/F-373). Fix: LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`
+        `[F-391] Startvorlage '${startvorlagePfad}' geladen — Codex ist nicht verfügbar (${codexEintrag.grund}); der Router fällt auf den fehleranfälligen claude-code-Klassifikationspfad zurück (F-337/F-373). Fix: im Projektregister startvorlage_pfad des Eintrags mit repo_pfad '.' auf eine Startvorlage mit worker.codex setzen (z. B. startvorlagen/ai-workforce.json) oder LEITSTAND_STARTVORLAGE_PFAD`
       )
     }
   } catch {
@@ -10477,21 +10512,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     process.exit(1)
   }
 
-  // F25 WS-1 (AK2): Projektregister laden. Fehlt/ungültig: kein Startabbruch (Muster
-  // ressourcen.json oben) — der Leitstand bleibt für ai-workforce über den bestehenden,
-  // unpräfigierten /api/...-Pfad unverändert bedienbar, /api/projekte/<id>/... liefert dann für
-  // jede id 404.
-  const projekteBasis = process.cwd()
-  const projektePfad = process.env.LEITSTAND_PROJEKTE_PFAD ?? STANDARD_PROJEKTE_PFAD
-  // F41 WS-1 (AK2): additiv zum committeten Register, gitignoriert — überschreibbar für Tests
-  // (Muster LEITSTAND_PROJEKTE_PFAD), Standard ist eine Datei neben projekte.json.
-  const projekteLokalPfad = process.env.LEITSTAND_PROJEKTE_LOKAL_PFAD ?? join(projekteBasis, PROJEKTE_LOKAL_DATEINAME)
-  let projekte = []
-  try {
-    projekte = ladeProjektregisterMitLokal(projektePfad, projekteLokalPfad)
-  } catch (fehler) {
-    console.error(`[leitstand] Projektregister '${projektePfad}' nicht geladen — /api/projekte/<id>/... bleibt ohne Registereinträge: ${fehler.message}`)
-  }
+  // F25 WS-1 (AK5): je Registereintrag (oben geladen) dessen basisVerzeichnis sperren.
   for (const projekt of projekte) {
     const repoWurzel = resolve(projekteBasis, projekt.repo_pfad)
     const absBasisVerzeichnis = join(repoWurzel, projekt.basisverzeichnis)
@@ -10543,7 +10564,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   )
   server.listen(PORT, '127.0.0.1', () => {
     console.log(
-      `Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad}, Projekte: ${projekte.map((p) => p.id).join(', ') || '—'})`
+      `Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad} — ${beschreibeStartvorlagenHerkunft(startvorlageWahl)}, Projekte: ${projekte.map((p) => p.id).join(', ') || '—'})`
     )
     console.log('Arbeitsordner je Ablauf: an (eigener Git-Worktree <Projektordner>-laeufe/<Kurzname>, Branch wf/<Ablauf-ID>)')
     // F-849: Registereinträge, deren vorschau_url auf den gebundenen Port zeigt, sichtbar melden —
