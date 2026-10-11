@@ -1,0 +1,34 @@
+{
+  "url": "http://127.0.0.1:4199/#/projekt",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1300
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Wo gearbeitet wird",
+        "selector": "#wo-titel"
+      },
+      {
+        "name": "Felder",
+        "selector": ".umgebung-felder"
+      },
+      {
+        "name": "Warnung",
+        "selector": ".umgebung-warnung"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Auftrag anlegen, Zeile Eigener Arbeitsordner",
+      "warteAufSelector": {
+        "selector": ".arbeitsordner-pfad",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-auftrag-anlegen.webp"
+    }
+  ]
+}

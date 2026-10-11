@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.40 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.41 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -78,6 +78,8 @@ v1.37 → v1.38: **§13.6 Umsetzungsvermerke zu E-F36-6 und E-F36-8** (F36 Revie
 v1.38 → v1.39: **§13.6 um E-M5-18, E-M5-19 und E-F45-1 ergänzt, E-F36-4 geändert** (Stefan, 01.10.2026, Fixpaket „Arbeitsfähigkeit“): E-M5-18 (Fixpaket „Arbeitsfähigkeit“ nach dem Design-Bau, vor F30, Bausteine B1–B5 in der Reihenfolge B1 → B2 → B5 → B3 → B4). E-M5-19 (Claude Code arbeitet innerhalb der Workforce nach dem Harness als Verfahren, nicht nur als Text in CLAUDE.md). E-F36-4 geändert (Web- und kostenpflichtige MCPs zulässig bei Einzelfreigabe, sichtbaren Kosten und rein lesender Nutzung; technisch bis B4 weiter nur „lokal“). E-F45-1 = A (Feature-Akte direkt im Leitstand bearbeiten). Findings F-909 bis F-912.
 
 v1.39 → v1.40: **§13.6 E-M5-18 um die neue Reihenfolge ergänzt, E-F46-1 und E-F46-2 neu** (Stefan, 02.10.2026, F46 D0): E-M5-18 geändert — Design-Nachbau (F46) → Fixpaket „Arbeitsfähigkeit“ (B1 → B2 → B5 → B3 → B4) → F30 mit der Workforce selbst → Flow durchspielen → großes Fixpaket UX/UI → V0.9; der alte Wortlaut bleibt stehen. F44 ist abgenommen (WS-0 bis WS-8b gemergt und verifiziert). E-F46-1 (Terminal-Panel neben Jarvis nicht Teil von F46, eigenes Vorhaben nach dem Fixpaket mit eigener Sicherheitsprüfung; bis dahin bleibt „Ins Terminal“ ein Baustein „kommt“). E-F46-2 (wirksame Konfiguration im Leitstand nur lesbar; Änderungen nur als Vorschlag, wirksam erst durch den Menschen über Git). Feature-Nummer: F45 bleibt nach E-F45-1 dem Fixpaket vorbehalten, der Design-Nachbau ist F46 (`features/F46/feature.md`). Findings F-972 bis F-983.
+
+v1.40 → v1.41: **§13.6 um E-F45-3 = A ergänzt** (Stefan, 11.10.2026, Fixpaket „Arbeitsfähigkeit“, B1a): jeder schreibende Ablauf arbeitet in einem eigenen Git-Worktree auf eigenem Branch neben dem Projekt; der Projektordner bleibt unberührt; Löschen im eigenen Worktree nur über eine vom Server geprüfte Löschliste (F-715). Umsetzung F45 B1a-1.
 
 ---
 
@@ -1013,6 +1015,13 @@ Fixpaket „Arbeitsfähigkeit“ mit eigener Sicherheitsprüfung. Bis dahin blei
 (`.claude/settings.json`, Hooks) ist im Leitstand nur lesbar. Änderungen
 erscheinen nur als Vorschlag; wirksam werden sie erst durch den Menschen über
 Git.
+
+**E-F45-3 = A** *(Stefan, 11.10.2026, Fixpaket „Arbeitsfähigkeit“, B1a)* —
+Jeder schreibende Ablauf der Workforce arbeitet in einem eigenen Git-Worktree
+auf eigenem Branch neben dem Projekt. Stefans Projektordner bleibt unberührt.
+Im eigenen Worktree darf der Ablauf Dateien löschen — über eine Löschliste,
+die der Server prüft und ausführt. Umsetzung F45 B1a-1
+(`features/F45/plan-b1a1.md`).
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

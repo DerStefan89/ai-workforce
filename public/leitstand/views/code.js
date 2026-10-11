@@ -25,15 +25,16 @@
  * - Keine eigene Live-Region (die einzige gehört der Persona).
  */
 
-import { holeCodeDiff } from '../api.js'
+import { holeArbeitsordner, holeCodeDiff } from '../api.js'
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
 import { commitUrl, FREIGABE_MINUTEN, filtereVerlauf, freigabeZustand, gruppiereNachOrdner, nameVon, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from '../code-daten.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
+import { renderArbeitsordnerListe } from './arbeitsordner-anzeige.js'
 import { entwicklungsReiterHtml } from '../entwicklung-reiter.js'
 import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { baueVsCodeLink, pruefeGithubUrl } from '../kopf-werkzeuge.js'
-import { abonniereProjektWechsel } from '../projekt-kontext.js'
+import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { abonniere } from '../zustand.js'
 import { escapeHtml } from '../render.js'
 import { registriere } from '../router.js'
@@ -372,6 +373,29 @@ function spaeterHtml() {
 
 // ─── Laden und Rendern ───────────────────────────────────────────────────────
 
+/** F45 B1a-1: lesende Liste der Arbeitsordner je Ablauf ({ zustand, daten, fehler, projektId }), geladen mit der Seite. */
+let arbeitsordnerStand = { zustand: 'laedt', daten: null, fehler: null, projektId: null }
+
+/** Überholschutz der Arbeitsordner-Liste. */
+let arbeitsordnerNummer = 0
+
+/** Lädt die Liste der Arbeitsordner des aktiven Projekts (GET …/arbeitsordner, aus dem Kontrollzustand, kein Git). */
+async function ladeArbeitsordner() {
+  const nummer = ++arbeitsordnerNummer
+  const projektId = holeAktivesProjekt().id
+  arbeitsordnerStand = { ...arbeitsordnerStand, zustand: 'laedt', projektId, daten: arbeitsordnerStand.projektId === projektId ? arbeitsordnerStand.daten : null }
+  try {
+    const daten = await holeArbeitsordner()
+    if (nummer !== arbeitsordnerNummer) return
+    arbeitsordnerStand = { zustand: 'ok', daten, fehler: null, projektId }
+  } catch (fehler) {
+    if (nummer !== arbeitsordnerNummer) return
+    console.error('GET …/arbeitsordner fehlgeschlagen:', fehler)
+    arbeitsordnerStand = { zustand: 'fehler', daten: null, fehler: fehler instanceof Error ? fehler.message : String(fehler), projektId }
+  }
+  if (seiteAktiv) render()
+}
+
 /** Zeichnet alle Bereiche aus dem aktuellen Code-Stand. */
 function render() {
   const stand = aktuellerCodeStand()
@@ -388,6 +412,7 @@ function render() {
   schreibe('code-freigabe', freigabeHtml(daten, stand.geladenAm))
   schreibe('code-pruefstand', pruefstandHtml(daten))
   schreibe('code-verlauf', verlaufHtml(daten, pruefeGithubUrl(daten?.remoteWebUrl?.url ?? null)))
+  schreibe('code-arbeitsordner', renderArbeitsordnerListe(arbeitsordnerStand))
 }
 
 /**
@@ -414,6 +439,7 @@ async function ladeNeu() {
   diffNummer++
   diff = null
   render()
+  void ladeArbeitsordner()
   await ladeCodeStand({ neu: true })
   if (gewaehlt !== null && !gewaehlt.startsWith('-') && (diff === null || diff.pfad !== gewaehlt)) void ladeDiff(gewaehlt)
 }
@@ -482,6 +508,8 @@ export function initCodeView() {
     diffNummer++
     diff = null
     verlaufFilter = 'alle'
+    arbeitsordnerNummer++
+    arbeitsordnerStand = { zustand: 'laedt', daten: null, fehler: null, projektId: null }
     letztesHtml.clear()
   })
 }

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-ausfuehrung-loeschliste.schema.json",
+  "title": "Löschliste der Ausführung",
+  "description": "F45 B1a-1 (E-F45-3 = A, F-715): Inhalt des einen Codeblocks mit Info-String 'zu_loeschen' im Ergebnistext eines Ausführungslaufs, der in seinem eigenen Arbeitsordner (Git-Worktree) arbeitet. Der Lauf löscht nicht selbst; der Server liest den Block (src/arbeitsordner/index.ts, leseLoeschliste), prüft jeden Pfad (src/arbeitsordner/loeschliste.ts: relativ, ohne '..', innerhalb des Arbeitsordners nach realpath, reguläre Datei, nichts unter .git, .claude/ oder kontrollzustand/) und löscht dann. Ergebnis steht in der Änderungsübersicht (Feld loeschliste). Kein Schema des ganzen Ausführungsergebnisses — die Ausführung liefert weiter Prosa.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["zu_loeschen"],
+  "properties": {
+    "zu_loeschen": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+    }
+  }
+}

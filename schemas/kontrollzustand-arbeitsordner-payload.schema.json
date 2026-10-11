@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-arbeitsordner-payload.schema.json",
+  "title": "Arbeitsordner-Payload",
+  "description": "F45 B1a-1 (E-F45-3 = A): daten.daten des Kern-Artefakts 'arbeitsordner-<workflowId>' — der eigene Git-Worktree eines Workflows mit schreibendem Schritt. Jeder Übergang (IN_VORBEREITUNG → BEREIT/FEHLGESCHLAGEN → ENTFERNT) ist eine neue, append-only Version. Fehlt das Artefakt bei einem Workflow, dessen schreibender Schritt schon lief, ist das der Bestand (Lauf im Projektordner). Handnachbau: src/arbeitsordner/index.ts validiereArbeitsordnerDaten.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["arbeitsordner_schema", "workflow_id", "projekt_wurzel", "pfad", "branch", "basis_commit", "status", "grund", "vorbereitung", "aufraeumen", "aktualisiert_am"],
+  "properties": {
+    "arbeitsordner_schema": { "const": "v0" },
+    "workflow_id": { "type": "string", "minLength": 1 },
+    "projekt_wurzel": { "type": "string", "minLength": 1, "description": "Absoluter Projektordner, neben dem der Arbeitsordner liegt." },
+    "pfad": { "type": "string", "minLength": 1, "description": "Absoluter Pfad <Projektordner>-laeufe/<Kurzname> (10 Hex des SHA-256 der workflowId, F-1025)." },
+    "branch": { "type": "string", "minLength": 1, "description": "wf/<workflowId>." },
+    "basis_commit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40,64}$", "description": "HEAD des Projekts beim Anlegen; null, solange nicht angelegt." },
+    "status": { "enum": ["IN_VORBEREITUNG", "BEREIT", "FEHLGESCHLAGEN", "ENTFERNT"] },
+    "grund": { "type": ["string", "null"], "description": "Grund bei FEHLGESCHLAGEN, sonst null." },
+    "vorbereitung": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["worktree_ms", "npm_ci", "e183_ms"],
+      "properties": {
+        "worktree_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "e183_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "npm_ci": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["ergebnis", "exit_code", "dauer_ms", "ausgabe_ende"],
+          "properties": {
+            "ergebnis": { "enum": ["OK", "FEHLER", "ZEITGRENZE", "UEBERSPRUNGEN"] },
+            "exit_code": { "type": ["integer", "null"] },
+            "dauer_ms": { "type": "integer", "minimum": 0 },
+            "ausgabe_ende": { "type": "string" }
+          }
+        }
+      }
+    },
+    "aufraeumen": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["begruendung", "verworfen", "branch_geloescht", "hinweis", "am"],
+      "properties": {
+        "begruendung": { "type": "string", "minLength": 1 },
+        "verworfen": { "type": "boolean" },
+        "branch_geloescht": { "type": "boolean" },
+        "hinweis": { "type": ["string", "null"] },
+        "am": { "type": "string", "minLength": 1 }
+      }
+    },
+    "aktualisiert_am": { "type": "string", "minLength": 1 }
+  }
+}

@@ -90,7 +90,7 @@ Summe Teil 2: ≈ 1,25–1,75 AT.
 
 ## 5 Offene Entscheidungen
 - **E-F45-2** (fällig nach R): Teil 2 vor F30 wie bisher über Challenger-Bauaufträge (A) oder als erste Aufträge der Workforce an sich selbst, F30-Bau startet nach deren Abnahme (B). Empfehlung Challenger: B.
-- **E-F45-3** (fällig vor B1a): Lauf-Umgebung — eigener Worktree je Lauf oder nur eigener Branch; darf der Lauf im eigenen Worktree löschen (F-715). Vorbereitung in der B1a-Challenge.
+- **E-F45-3 = A** (Stefan, 11.10.2026, entschieden): eigener Git-Worktree auf eigenem Branch je schreibendem Ablauf; Löschen im Worktree über eine vom Server geprüfte Löschliste (F-715). Umsetzung B1a-1; Folgeentscheidung E-F45-5 (Sauberkeit im Worktree nur beim Anlegen) offen.
 - **E-F45-4** (offen, aus F45 P, F-1018): Windows drosselt den Leitstand im Energiemodus „Beste Energieeffizienz“ um Faktor 5–10. (A) Energiemodus bei Netzbetrieb „Ausgeglichen“ (keine Codeänderung); (B) der Leitstand nimmt sich beim Start selbst aus der Drosselung (SetProcessInformation über einen PowerShell-Helfer). Stefan, 11.10.2026: für die F45-P-Messung nicht umgestellt.
 
 ## 6 Nicht im Fixpaket

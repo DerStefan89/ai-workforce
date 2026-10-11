@@ -1,0 +1,56 @@
+{
+  "url": "http://127.0.0.1:4199/#/workflows/b1a1-render-8f4cb092",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1100
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Karte",
+        "selector": "#freigabe-arbeitsordner"
+      },
+      {
+        "name": "Lage",
+        "selector": ".arbeitsordner-karte .arbeitsordner-lage"
+      },
+      {
+        "name": "Aktion",
+        "selector": ".arbeitsordner-aktion"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte Wo gearbeitet wird",
+        "selector": ".arbeitsordner-karte"
+      },
+      {
+        "name": "Knopf aufräumen",
+        "selector": "[data-aktion=\"aufraeumen-oeffnen\"]"
+      },
+      {
+        "name": "Dialog Begründung",
+        "selector": "#wf-aufraeumen-begruendung"
+      },
+      {
+        "name": "Dialog verwerfen",
+        "selector": "#wf-aufraeumen-verwerfen"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Freigabe, Arbeitsordner noch nicht angelegt (echt)",
+      "warteAufSelector": {
+        "selector": ".arbeitsordner-karte",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-noch-nicht-angelegt.webp"
+    }
+  ]
+}

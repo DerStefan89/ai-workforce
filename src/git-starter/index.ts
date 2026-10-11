@@ -25,6 +25,7 @@
  * - scripts/leitstand-server.mjs (git status, ls-files, rev-parse HEAD)
  * - scripts/leitstand/routen-code.mjs (asynchron über gitProgramm + gitUmgebung)
  * - scripts/zustand-sichern.mjs (git)
+ * - src/arbeitsordner/index.ts (fuehreGitAsync und fuehreGitSync: worktree, branch, symbolic-ref, status)
  * - src/git-starter/git-starter.test.ts (node:test)
  *
  * Durchsetzungsgrad: geprüft, nicht ERZWUNGEN — Rotfall-Test (Attrappe in der Repo-Wurzel, in
@@ -36,7 +37,7 @@
  * auf execFileSync('git', …) „vereinfachen“ und keinen Rückfall auf den bloßen Namen einbauen.
  */
 
-import { type ExecFileSyncOptionsWithStringEncoding, execFileSync } from 'node:child_process'
+import { type ExecFileSyncOptionsWithStringEncoding, execFile, execFileSync } from 'node:child_process'
 import { accessSync, constants, statSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
@@ -111,4 +112,51 @@ export function gitUmgebung(basis: NodeJS.ProcessEnv = process.env, zusatz: Reco
  */
 export function fuehreGitSync(argumente: readonly string[], optionen: ExecFileSyncOptionsWithStringEncoding): string {
   return execFileSync(gitProgramm(), argumente, { ...optionen, env: gitUmgebung(optionen.env ?? process.env) })
+}
+
+/** Ergebnis eines asynchronen Git-Aufrufs: Exit-Code (null bei Zeitgrenze, Startfehler oder ohne git), stdout, stderr. */
+export interface GitErgebnis {
+  code: number | null
+  stdout: string
+  stderr: string
+}
+
+/**
+ * Führt git asynchron aus (F45 B1a-1, Arbeitsordner: worktree add/remove dürfen den Event-Loop nicht
+ * blockieren) — absoluter Programmpfad, bereinigte Umgebung, ohne Shell, kein Terminal-Prompt. Wirft nie:
+ * jeder Fehler (Exit ≠ 0, Zeitgrenze, kein git) kommt als code ≠ 0 bzw. null mit Text in stderr zurück.
+ * @param argumente - Git-Argumente
+ * @param optionen - cwd, Zeitgrenze in ms (Standard 60 s), maxBuffer in Bytes (Standard 8 MB)
+ * @returns GitErgebnis
+ */
+export function fuehreGitAsync(argumente: readonly string[], optionen: { cwd: string; zeitgrenzeMs?: number; maxBuffer?: number }): Promise<GitErgebnis> {
+  return new Promise((aufloesen) => {
+    let programm: string
+    try {
+      programm = gitProgramm()
+    } catch (fehler) {
+      aufloesen({ code: null, stdout: '', stderr: (fehler as Error).message })
+      return
+    }
+    execFile(
+      programm,
+      argumente,
+      {
+        cwd: optionen.cwd,
+        env: gitUmgebung(process.env, { GIT_TERMINAL_PROMPT: '0' }),
+        timeout: optionen.zeitgrenzeMs ?? 60_000,
+        maxBuffer: optionen.maxBuffer ?? 8 * 1024 * 1024,
+        windowsHide: true,
+        encoding: 'utf8',
+      },
+      (fehler, stdout, stderr) => {
+        if (fehler === null) {
+          aufloesen({ code: 0, stdout, stderr })
+          return
+        }
+        const code = typeof fehler.code === 'number' ? fehler.code : null
+        aufloesen({ code, stdout: stdout ?? '', stderr: stderr !== undefined && stderr.length > 0 ? stderr : fehler.message })
+      }
+    )
+  })
 }

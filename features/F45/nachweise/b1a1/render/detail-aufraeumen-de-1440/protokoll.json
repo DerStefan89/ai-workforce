@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Beendeter (gestoppter) Ablauf mit Arbeitsordner",
+    "Karte Wo gearbeitet wird": false,
+    "Knopf aufräumen": true,
+    "Dialog Begründung": false,
+    "Dialog verwerfen": false,
+    "Karte": "(fehlt)",
+    "Lage": "(fehlt)",
+    "Aktion": "Wo gearbeitet wird: Bereit (Pakete in 39 s installiert). C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\2b0ee56dff Arbeitso",
+    "Dialogtitel": "(fehlt)",
+    "Seite geladen": true
+  },
+  {
+    "label": "Dialog aufräumen",
+    "Karte Wo gearbeitet wird": false,
+    "Knopf aufräumen": true,
+    "Dialog Begründung": true,
+    "Dialog verwerfen": true,
+    "Karte": "(fehlt)",
+    "Lage": "(fehlt)",
+    "Aktion": "Wo gearbeitet wird: Bereit (Pakete in 39 s installiert). C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\2b0ee56dff Arbeitso",
+    "Dialogtitel": "Arbeitsordner aufräumen",
+    "Seite geladen": true
+  },
+  {
+    "label": "Ohne Begründung bestätigen",
+    "Karte Wo gearbeitet wird": false,
+    "Knopf aufräumen": true,
+    "Dialog Begründung": true,
+    "Dialog verwerfen": true,
+    "Karte": "(fehlt)",
+    "Lage": "(fehlt)",
+    "Aktion": "Wo gearbeitet wird: Bereit (Pakete in 39 s installiert). C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\2b0ee56dff Arbeitso",
+    "Dialogtitel": "Arbeitsordner aufräumen",
+    "Seite geladen": true
+  }
+]

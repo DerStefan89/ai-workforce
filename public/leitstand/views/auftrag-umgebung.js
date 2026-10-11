@@ -9,6 +9,8 @@
  * Quellen: Formularfelder (Titel, Ergebnis, Kontext), der Poll (aktiverLauf, zustand.js), das
  * Projektregister (projekt-kontext.js) und die Leseroute GET …/code über code-stand.js (Arbeitsordner,
  * Git, GitHub, Harness, Startvorlage) — geladen beim Betreten von #/projekt, nie aus dem Poll.
+ * F45 B1a-1 (F-954): Zeile „Eigener Arbeitsordner“ (Muster <Projektordner>-laeufe/<Kurzname>, Branch
+ * wf/<Ablauf-ID>, Basis = aktueller Commit, offene Änderungen des Projektordners blockieren nicht).
  * „kommt“: Projektkarte (Fixpaket B2), Terminal (E-F46-1), „Festlegen“ der Vorschau.
  *
  * Wird aufgerufen von:
@@ -29,6 +31,7 @@ import { abonniereProjektWechsel, holeAktivesProjekt, projektAusListe } from '..
 import { escapeHtml } from '../render.js'
 import { registriere } from '../router.js'
 import { abonniere } from '../zustand.js'
+import { umgebungArbeitsordnerZeile } from './arbeitsordner-anzeige.js'
 
 /** Lesbare Worker-Namen. */
 const WORKER_NAME = { 'claude-code': 'Claude Code', codex: 'Codex' }
@@ -206,6 +209,16 @@ function woHtml(projekt, daten, mainWarnung) {
     gitWert = tHtml('code.nichtVerfuegbar')
   }
   const git = feld('auftrag.wo.git', gitWert, gitUnter, `<a class="text-link" href="#/code">${tHtml('auftrag.wo.aenderungen')}</a>`)
+  // F45 B1a-1 (F-954): jeder schreibende Ablauf bekommt beim Start einen eigenen Arbeitsordner neben dem Projekt —
+  // vor dem Start nur als Muster (die Ablauf-ID entsteht erst mit dem Ablauf); offene Änderungen blockieren nicht.
+  const ao = umgebungArbeitsordnerZeile(daten, daten === null ? { zustand: 'laedt', daten: null } : { zustand: 'ok', daten })
+  const arbeitsordnerZeile = feld(
+    'auftrag.wo.arbeitsordner',
+    ao.muster === null ? laedt : `<code class="arbeitsordner-pfad">${escapeHtml(ao.muster.pfad)}</code>`,
+    ao.muster === null
+      ? ''
+      : [tHtml('auftrag.wo.arbeitsordnerBranch', { branch: ao.muster.branch }), ao.basis === null ? tHtml('arbeitsordner.basisBeimStart') : tHtml('auftrag.wo.arbeitsordnerBasis', { commit: ao.basis }), escapeHtml(ao.aenderungen.text)].join(' · ')
+  )
   const githubName = github === null ? null : github.replace('https://github.com/', '')
   const githubZeile = feld(
     'auftrag.wo.github',
@@ -237,7 +250,7 @@ function woHtml(projekt, daten, mainWarnung) {
   return `<section class="umgebung-karte" aria-labelledby="wo-titel">
       <h2 id="wo-titel">${tHtml('auftrag.wo.titel')}</h2>
       ${werkzeuge}
-      <dl class="umgebung-felder">${projektZeile}${ordner}${git}${githubZeile}${kontroll}${wissen}${vorschau}</dl>
+      <dl class="umgebung-felder">${projektZeile}${ordner}${git}${arbeitsordnerZeile}${githubZeile}${kontroll}${wissen}${vorschau}</dl>
       <div class="note amber umgebung-warnung"><p>${tHtml('auftrag.wo.warnung')}</p>${mainWarnung ? `<p><strong>${tHtml('auftrag.wo.warnungMain')}</strong></p>` : ''}</div>
       ${cd}
     </section>`

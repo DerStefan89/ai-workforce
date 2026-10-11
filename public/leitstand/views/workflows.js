@@ -37,6 +37,7 @@ import {
   holeLaufDetail,
   holeProjektAufruf,
   holeWorkflowDetail,
+  raeumeArbeitsordnerAuf,
   reicheWorkflowFassungEin,
   sendeAbnahme,
   sendeWorkflowArchitekturEntscheidung,
@@ -45,6 +46,7 @@ import {
   stoppeWorkflow,
   wiederholeWorkflowPruefung,
 } from '../api.js'
+import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
@@ -52,6 +54,7 @@ import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzeige.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
+import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDialog } from './arbeitsordner-anzeige.js'
 import { bedienZustand } from './entscheidung-panel.js'
 import { abnahmeLage, pruefWertText, renderAbnahme, renderAbnahmeBlick } from './workflow-abnahme.js'
 import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
@@ -288,7 +291,18 @@ function zeichneEntscheiden() {
   setzeHtml('workflow-detail-beschreibung', escapeHtml(kopf.beschreibung))
   const status = setzeHtml('workflow-detail-status', modusNeu === null ? '' : `${lageBadge(daten.status ?? null, naechster)} <span class="subtle">· ${tHtml('entscheiden.status.du')}</span>`)
   status.hidden = modusNeu === null
-  setzeHtml('workflow-entscheiden', modusNeu === 'freigabe' ? renderFreigabeSeite(aktuellesDetail) : '')
+  // F45 B1a-1: offene Änderungen des Projektordners aus der Leseroute …/code (nie aus dem Poll; einmal je Projekt).
+  if (modusNeu === 'freigabe' && aktuellerCodeStand().zustand === 'leer') void ladeCodeStand()
+  // F45 B1a-1 (QA-Pass, Befund 3): auf der Abnahme-Seite die Karte des Arbeitsordners offen — dort liegt das Ergebnis.
+  const ordnerKontext = { workflowId, workflowStatus: daten.status ?? null, abnahmeOffen: istAbnahmeOffen(daten.status ?? null), loeschliste: letzteAbnahme?.aenderungsuebersicht?.daten?.loeschliste ?? null }
+  setzeHtml(
+    'workflow-entscheiden',
+    modusNeu === 'freigabe'
+      ? renderFreigabeSeite({ ...aktuellesDetail, codeStand: aktuellerCodeStand() })
+      : modusNeu === 'abnahme'
+        ? renderArbeitsordnerKarte(aktuellesDetail.arbeitsordner ?? null, aktuellerCodeStand(), ordnerKontext)
+        : ''
+  )
   document.getElementById('workflow-entscheidung').hidden = modusNeu === null || panelArt !== modusNeu
   document.getElementById('workflow-detail').classList.toggle('entscheiden-modus', modusNeu !== null)
   document.getElementById('workflow-detail').classList.toggle('entscheiden-abnahme', modusNeu === 'abnahme')
@@ -453,8 +467,9 @@ async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext) {
  * Lauf). Aus dem Dialog (imDialog): ein Fehler steht im Dialog, der offen bleibt; Erfolg schließt ihn,
  * die Meldung steht am Ablauf; ist der Dialog schon zu (Escape, Stand-Änderung), steht alles am Ablauf.
  * @param anfrage - () => Promise<Response> @param knopf - auslösender Button (gesperrt) @param erfolgstext - Text bei Erfolg @param imDialog - true aus #workflow-dialog
+ * @param nachsendung - F45 B1a-1: true, wenn dies die einmalige Wiederholung nach der Arbeitsordner-Vorbereitung ist
  */
-async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext, imDialog = false) {
+async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext, imDialog = false, nachsendung = false) {
   // Die Antwort gehört zu GENAU diesem Workflow, Projekt und Dialog — wechselt eines, wird sie verworfen.
   const workflowBeimStart = gewaehlteWorkflowId
   const projektBeimStart = holeAktivesProjekt().id
@@ -473,9 +488,16 @@ async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext, imDialog = fa
     const inhalt = await antwort.json().catch(() => ({}))
     if (!giltNoch()) {
       console.info(`[workflows] Antwort zu '${workflowBeimStart}' verworfen — Ansicht oder Projekt inzwischen gewechselt (HTTP ${antwort.status}).`)
+    } else if (antwort.status === 202 && inhalt.vorbereitung === true) {
+      // F45 B1a-1: der eigene Arbeitsordner wird erst vorbereitet — nichts ist festgehalten oder gestartet. Sobald er
+      // BEREIT ist, sendet pruefeAusstehendeVorbereitung genau dieselbe Anfrage genau einmal erneut (nur bei
+      // unveränderter Fassung).
+      if (unserDialogOffen()) schliesseDialog()
+      ausstehendeVorbereitung = nachsendung ? null : { workflowId: workflowBeimStart, projektId: projektBeimStart, versionSequenz: inhalt.versionSequenz ?? null, anfrage, erfolgstext }
+      zeigeBedienungsMeldung(nachsendung ? t('arbeitsordner.meldung.nochNichtBereit') : t('arbeitsordner.meldung.vorbereitung'), 'hinweis')
     } else if (antwort.ok) {
       if (unserDialogOffen()) schliesseDialog()
-      zeigeBedienungsMeldung(`${erfolgstext}${inhalt.laufAbgebrochen === true ? ` ${t('ablauf.meldung.laufAbgebrochen')}` : ''}${inhalt.laufAbgebrochen === false ? ` ${t('ablauf.meldung.nichtsAbgebrochen')}` : ''}${inhalt.bezeugt === false ? ` ${t('ablauf.meldung.nichtBezeugt')}` : ''}${inhalt.kenntnisnahme?.neu === false ? ` ${t('ablauf.meldung.kenntnisnahme')}` : ''}`, 'erfolg')
+      zeigeBedienungsMeldung(`${erfolgstext}${typeof inhalt.hinweis === 'string' && inhalt.hinweis !== '' ? ` ${inhalt.hinweis}` : ''}${inhalt.laufAbgebrochen === true ? ` ${t('ablauf.meldung.laufAbgebrochen')}` : ''}${inhalt.laufAbgebrochen === false ? ` ${t('ablauf.meldung.nichtsAbgebrochen')}` : ''}${inhalt.bezeugt === false ? ` ${t('ablauf.meldung.nichtBezeugt')}` : ''}${inhalt.kenntnisnahme?.neu === false ? ` ${t('ablauf.meldung.kenntnisnahme')}` : ''}`, 'erfolg')
       // Nach dem Dialog liest ein Screenreader das Ergebnis über den Fokus (keine zweite Live-Region).
       if (imDialog) document.getElementById('workflow-bedienung-meldung').focus()
     } else {
@@ -517,7 +539,45 @@ function zeigeBedienungsFehler(text, imOffenenDialog, dialog) {
 let offenerDialog = null
 
 /** Pflichtfeld je Dialogart (Rückfrage: keines — Auswahl und optionale Begründungen je Frage). */
-const FELD_JE_ART = { freigabe: 'wf-freigabe-begruendung', stopp: 'wf-stopp-begruendung', sichtung: 'wf-sichtung-begruendung', klaerung: null }
+const FELD_JE_ART = { freigabe: 'wf-freigabe-begruendung', stopp: 'wf-stopp-begruendung', sichtung: 'wf-sichtung-begruendung', klaerung: null, aufraeumen: 'wf-aufraeumen-begruendung' }
+
+/**
+ * F45 B1a-1: true, solange ein ABGESCHLOSSENER Ablauf keine entschiedene Abnahme hat (dann kein Aufräumen — das
+ * Ergebnis liegt nur im Arbeitsordner). Ohne geladene Abnahme gilt sie als offen (vorsichtig).
+ * @param status - daten.status
+ * @returns boolean
+ */
+function istAbnahmeOffen(status) {
+  return status === 'ABGESCHLOSSEN' && letzteAbnahme?.entscheidung?.status !== 'ok'
+}
+
+/** F45 B1a-1: Start/Freigabe, die auf den eigenen Arbeitsordner wartet: { workflowId, projektId, versionSequenz, anfrage, erfolgstext } oder null. */
+let ausstehendeVorbereitung = null
+
+/**
+ * F45 B1a-1 (Plan v3 B4): prüft nach jedem Laden des Details, ob ein wartender Start/eine wartende Freigabe jetzt
+ * nachgesendet werden kann — genau einmal, nur bei unveränderter Fassung; bei FEHLGESCHLAGEN steht der Grund am
+ * Ablauf, bei geänderter Fassung ein Hinweis (der Mensch prüft neu).
+ * @param workflowId - angezeigter Workflow
+ * @param detail - Antwort von GET /api/workflows/<id>
+ */
+function pruefeAusstehendeVorbereitung(workflowId, detail) {
+  const wartend = ausstehendeVorbereitung
+  if (wartend === null || wartend.workflowId !== workflowId || wartend.projektId !== holeAktivesProjekt().id) return
+  const ao = detail.arbeitsordner ?? null
+  if (ao === null || ao.vorbereitungLaeuft === true || ao.status === 'IN_VORBEREITUNG') return
+  ausstehendeVorbereitung = null
+  if (ao.status === 'FEHLGESCHLAGEN') {
+    zeigeBedienungsMeldung(t('arbeitsordner.meldung.fehlgeschlagen', { grund: ao.grund ?? '–' }))
+    return
+  }
+  if (ao.status !== 'BEREIT') return
+  if (wartend.versionSequenz !== null && detail.versionSequenz !== wartend.versionSequenz) {
+    zeigeBedienungsMeldung(t('arbeitsordner.meldung.fassungGeaendert'), 'hinweis')
+    return
+  }
+  void sendeWorkflowBedienung(wartend.anfrage, document.createElement('button'), wartend.erfolgstext, false, true)
+}
 
 /** Begründung aus einem wegen Stand-Änderung geschlossenen Dialog: { art, basis, wert } — basis = Kennzeichen ohne Empfehlung (F-809); nur derselbe Halt bekommt sie zurück. */
 let geretteteBegruendung = null
@@ -580,7 +640,7 @@ function pflichtBegruendung(feldId, pflichtSchluessel) {
 function oeffneDialog(art, vorgabe = null) {
   // Solange eine Dialog-Bedienung läuft, öffnet kein neuer Dialog (sonst wäre ein zweiter POST möglich).
   if (aktuellesDetail === null || bedienungsKennzeichen === null || laufendeDialogBedienung !== null) return
-  const inhalt = renderDialogInhalt(art, aktuellesDetail)
+  const inhalt = art === 'aufraeumen' ? renderAufraeumenDialog(aktuellesDetail) : renderDialogInhalt(art, aktuellesDetail)
   if (inhalt === null) return
   const dialog = document.getElementById('workflow-dialog')
   dialog.innerHTML = inhalt
@@ -663,9 +723,11 @@ let bedienungsKennzeichen = null
  * oder der Aktionszeile, geht er auf deren erste Aktion bzw. die Seitenüberschrift.
  * @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param ungueltig - true bei ungültiger Fassung @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null
  */
-function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null) {
+function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null, arbeitsordner = null) {
   // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung schneidet am letzten '|'); sie steht kodiert (encodeURIComponent) darin, damit ein '|' in einem Katalogtext den Schnitt nicht verschiebt (F46 D2, qa 8).
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${encodeURIComponent(JSON.stringify(empfehlung))}`
+  // F45 B1a-1: die Lage des Arbeitsordners (Status, Vorbereitung, Ordner vorhanden, Grund) steht kodiert davor.
+  const ordnerLage = encodeURIComponent(`${arbeitsordner?.status ?? 'null'}:${arbeitsordner?.vorbereitungLaeuft === true}:${arbeitsordner?.ordnerVorhanden !== false}:${arbeitsordner?.grund ?? ''}:${istAbnahmeOffen(status)}`)
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${ordnerLage}|${encodeURIComponent(JSON.stringify(empfehlung))}`
   if (kennzeichen === bedienungsKennzeichen) return
   // Während einer laufenden Dialog-Bedienung schließt der Dialog erst mit ihrer Antwort (sendeWorkflowBedienung).
   const dialogVeraltet = offenerDialog !== null && laufendeDialogBedienung === null && dialogUeberholt(offenerDialog, kennzeichen)
@@ -679,7 +741,7 @@ function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig 
   setzePanel('freigabe', freigabeSpalte ? renderFreigabePanel({ workflowId, empfehlung }) : '', ohneEmpfehlung(kennzeichen))
   for (const [id, html] of [
     ['workflow-bedienung', renderEingriffe(workflowId, status, ungueltig, architekturEntscheidung, sichtung)],
-    ['workflow-aktionen', renderAktionen(workflowId, status, naechster, ungueltig, { hauptknopf: !freigabeSpalte })],
+    ['workflow-aktionen', renderAktionen(workflowId, status, naechster, ungueltig, { hauptknopf: !freigabeSpalte }) + renderArbeitsordnerAktion(workflowId, status, arbeitsordner, istAbnahmeOffen(status))],
   ]) {
     const container = document.getElementById(id)
     const hatteFokus = container.contains(document.activeElement)
@@ -940,8 +1002,9 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     // F-768: die Sichtung ist nur beim reinen F-760-Halt fällig (bei ungültiger Fassung allein die Reparatur).
     const sichtung = ungueltig ? null : istSichtungsHaltAnzeige(daten)
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
-    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung }
-    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung)
+    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null }
+    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null)
+    pruefeAusstehendeVorbereitung(workflowId, detail)
     // F46 D2: Kopf, Freigabe-Teil und Lage der Bereiche je Modus (Freigabe, Abnahme oder heutige Ablaufseite).
     zeichneEntscheiden()
     // Eigener Endpunkt, eigener Überholschutz, fire-and-forget — blockiert das übrige Rendern nicht.
@@ -976,6 +1039,7 @@ function raeumeWorkflowBedienzustand() {
   laufendeAbnahme = null
   geretteteBegruendung = null
   aktuellesDetail = null
+  ausstehendeVorbereitung = null
   bedienungsKennzeichen = null
   abnahmeKennzeichen = null
   letzteAbnahme = null
@@ -1034,7 +1098,7 @@ async function fuehreWorkflowAktionAus(button) {
   const aktion = button.dataset.aktion
   zeigeBedienungsMeldung(null)
 
-  const oeffnen = { 'freigabe-oeffnen': 'freigabe', 'stopp-oeffnen': 'stopp', 'klaerung-oeffnen': 'klaerung', 'sichtung-oeffnen': 'sichtung' }
+  const oeffnen = { 'freigabe-oeffnen': 'freigabe', 'stopp-oeffnen': 'stopp', 'klaerung-oeffnen': 'klaerung', 'sichtung-oeffnen': 'sichtung', 'aufraeumen-oeffnen': 'aufraeumen' }
   if (Object.hasOwn(oeffnen, aktion)) {
     const spaltenText = oeffnen[aktion] === 'freigabe' && panelArt === 'freigabe' ? (document.getElementById('wf-entscheidung-begruendung')?.value ?? '') : ''
     oeffneDialog(oeffnen[aktion], spaltenText.trim() === '' ? null : { begruendung: spaltenText, option: null })
@@ -1102,6 +1166,14 @@ async function fuehreWorkflowAktionAus(button) {
     const begruendung = pflichtBegruendung('wf-stopp-begruendung', 'ablauf.dialog.stopp.pflicht')
     if (begruendung === null) return
     await sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, { begruendung }), button, t('ablauf.meldung.gestoppt'), true)
+    return
+  }
+
+  if (aktion === 'aufraeumen') {
+    const begruendung = pflichtBegruendung('wf-aufraeumen-begruendung', 'arbeitsordner.aufraeumen.pflicht')
+    if (begruendung === null) return
+    const verwerfen = document.getElementById('wf-aufraeumen-verwerfen')?.checked === true
+    await sendeWorkflowBedienung(() => raeumeArbeitsordnerAuf(workflowId, { begruendung, verwerfen }), button, t('arbeitsordner.meldung.aufgeraeumt'), true)
     return
   }
 
@@ -1285,4 +1357,8 @@ export function initWorkflowsView() {
     if (gewaehlteWorkflowId !== null) void ladeWorkflowDetail(gewaehlteWorkflowId, false)
   })
   abonniereProjektWechsel(verwirfNachProjektWechsel)
+  // F45 B1a-1: kommt der Code-Stand (offene Änderungen des Projektordners) an, zeichnet die Freigabe-Seite neu.
+  abonniereCodeStand(() => {
+    if (modus === 'freigabe') zeichneEntscheiden()
+  })
 }

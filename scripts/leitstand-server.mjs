@@ -468,13 +468,13 @@ import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
 import { registriereAuftrag, validiereAuftragHerkunft } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
-import { leseErgebnisobjekt, pruefeStartordner } from '../src/claude-code-gateway/index.ts'
+import { leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
 import { arbeitsverzeichnisseGleich } from '../src/invocation-policy/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, loeseRessourcenAuf, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
-import { bereiteInstallationVor, installiereRessource } from '../src/ressourcen/installation.ts'
+import { bereiteInstallationVor, installiereRessource, npmReal } from '../src/ressourcen/installation.ts'
 import { baueOrtBSkillStart } from '../src/ressourcen/ort-b-start.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
@@ -507,6 +507,18 @@ import {
 } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
 import { istAusnahmePfad, pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
+import {
+  baueLoeschlistenSatz,
+  bereiteArbeitsordnerVor,
+  entferneArbeitsordner,
+  brauchtArbeitsordner,
+  leiteArbeitsordnerAb,
+  leseArbeitsordnerVorbedingung,
+  leseLoeschliste,
+  loescheDateien,
+  schreibenderSchrittGelaufen,
+  validiereArbeitsordnerDaten,
+} from '../src/arbeitsordner/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
@@ -519,6 +531,7 @@ import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
+import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper } from './leitstand/routen-arbeitsordner.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
@@ -2866,7 +2879,12 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   // wird kein Lauf angelegt, kein FEHLGESCHLAGEN — nur ein Startfehler wie jede andere
   // Vertragsverletzung.
   if (werkzeugsatz.art === 'schreibend') {
-    const leseVorbedingung = optionen.leseAusfuehrungsVorbedingung ?? leseAusfuehrungsVorbedingungRealGit
+    // F45 B1a-1 (Plan v3 B6, E-F45-5 offen): im eigenen Arbeitsordner (optionen.arbeitsordner = { pfad, branch },
+    // nur aus starteWorkflowSchritt) prüft die Vorbedingung den Worktree — Branch exakt wf/<id>; Sauberkeit hat die
+    // Vorbereitung beim Anlegen festgestellt. Ohne das Feld bleibt die Prüfung des Projektordners bitgenau.
+    const leseVorbedingung =
+      optionen.leseAusfuehrungsVorbedingung ??
+      (optionen.arbeitsordner !== undefined ? () => leseArbeitsordnerVorbedingung(optionen.arbeitsordner.pfad, optionen.arbeitsordner.branch) : leseAusfuehrungsVorbedingungRealGit)
     const vorbedingung = leseVorbedingung(repoWurzel)
     if (!vorbedingung.ok) {
       return { ok: false, grund: vorbedingung.grund }
@@ -4903,6 +4921,14 @@ export function erzeugeRequestHandler(optionen = {}) {
     // F45 B0 (F-986 a): überschreibt den Start-Hinweis des Prozesses (prozessStartHinweis) — nur Tests;
     // undefined = den beim Serverstart ermittelten Wert liefern.
     startHinweis = undefined,
+    // F45 B1a-1 (E-F45-3 = A): eigener Arbeitsordner (Git-Worktree) je schreibendem Ablauf. Standard AUS, damit
+    // die bestehenden Gates mit eigenen Handler-Instanzen bitgenau bleiben; der reale Server setzt ihn im
+    // CLI-Bindeblock und in baueProjektHandlerMap auf true (kein Umgebungsschalter, Plan v2 i).
+    arbeitsordner = false,
+    // F45 B1a-1: npm-Runner und E-183-Vorprüfung der Vorbereitung — undefined = echt (npmReal,
+    // pruefeWerkzeugkonfigurationVorab); nur Tests setzen Attrappen.
+    arbeitsordnerNpm = undefined,
+    arbeitsordnerE183 = undefined,
   } = optionen
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -4942,6 +4968,215 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (laufId.startsWith(`${konfiguration.rolle}-${konfiguration.auftragPraefix}-`)) return konfiguration.zeitgrenzeMs
     }
     return typeof vorlage.zeitgrenzeMs === 'number' ? vorlage.zeitgrenzeMs : null
+  }
+
+  // ─── F45 B1a-1: Arbeitsordner je Ablauf (E-F45-3 = A, features/F45/plan-b1a1.md Plan v2/v3) ─────────────────
+  // Der Zustand liegt append-only im Kern-Artefakt 'arbeitsordner-<workflowId>'; der WORKFLOW_V0-Datensatz bleibt
+  // unverändert. Vorbereitet wird asynchron und ohne D13-Belegung; gestartet wird ein Schritt nur über die
+  // bestehenden Startwege, wenn der Arbeitsordner BEREIT ist (keine serverseitige Fortsetzung).
+
+  /** workflowIds, deren Vorbereitung in DIESER Serverinstanz läuft (IN_VORBEREITUNG ohne Eintrag = veraltet, Serverneustart). */
+  const arbeitsordnerVorbereitungLaeuft = new Set()
+
+  /** Art eines Werkzeugsatzes der Startvorlage ('lesend' | 'schreibend' | undefined). @param name - Werkzeugsatzname @returns Art */
+  const werkzeugsatzArtVon = (name) => loeseWerkzeugsatzAuf(vorlage, name)?.art
+
+  /** Neueste Version des Arbeitsordner-Artefakts eines Workflows oder null. @param workflowId - Kennung @returns ArtefaktVersion | null */
+  function ladeArbeitsordner(workflowId) {
+    return ladeArtefaktVersion(`arbeitsordner-${workflowId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  }
+
+  /**
+   * Lage eines Workflows zum Arbeitsordner (Plan v2 i): 'kein_bedarf' (Option aus oder kein schreibender Schritt),
+   * 'bestand' (schreibender Schritt lief schon, kein Artefakt → alter Weg im Projektordner), sonst 'pflicht'.
+   * @param workflowId - Kennung
+   * @param workflowDaten - WORKFLOW_V0-Daten
+   * @returns { bedarf, daten } — daten = Payload der neuesten Artefaktversion oder null
+   */
+  function ermittleArbeitsordnerLage(workflowId, workflowDaten) {
+    if (!arbeitsordner || !Array.isArray(workflowDaten?.schritte) || !brauchtArbeitsordner(workflowDaten.schritte, werkzeugsatzArtVon)) return { bedarf: 'kein_bedarf', daten: null }
+    const version = ladeArbeitsordner(workflowId)
+    if (version === null && istBestandOhneArbeitsordner(workflowId, workflowDaten)) return { bedarf: 'bestand', daten: null }
+    return { bedarf: 'pflicht', daten: version?.daten ?? null }
+  }
+
+  /** workflowIds, die als Bestand erkannt sind (einmal Bestand, immer Bestand — die Geschichte ist append-only). */
+  const arbeitsordnerBestand = new Set()
+
+  /**
+   * Bestand (QA-Pass B1a-1, Befund 1): ein schreibender Schritt lief schon im Projektordner — auch wenn eine
+   * Anpassung (Abnahme ANPASSUNG_ANGEFORDERT, Automatik nach BLOCKIERT) seine lauf_id inzwischen zurückgesetzt hat.
+   * Belege: aktuelle lauf_id, ein Abnahme-Artefakt oder eine frühere Workflow-Version mit gelaufenem schreibendem Schritt.
+   * @param workflowId - Kennung
+   * @param workflowDaten - aktuelle WORKFLOW_V0-Daten
+   * @returns true bei Bestand
+   */
+  function istBestandOhneArbeitsordner(workflowId, workflowDaten) {
+    if (arbeitsordnerBestand.has(workflowId)) return true
+    const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+    const bestand =
+      schreibenderSchrittGelaufen(workflowDaten.schritte, werkzeugsatzArtVon) ||
+      ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen) !== null ||
+      listeVersionen(`workflow-${workflowId}`, ladeOptionen).some((v) => Array.isArray(v.daten?.schritte) && schreibenderSchrittGelaufen(v.daten.schritte, werkzeugsatzArtVon))
+    if (bestand) arbeitsordnerBestand.add(workflowId)
+    return bestand
+  }
+
+  /**
+   * Wirksamer Status eines Arbeitsordner-Artefakts (Code-Review B1a-1, Befund 5): IN_VORBEREITUNG ohne laufende
+   * Vorbereitung in dieser Instanz gilt als FEHLGESCHLAGEN (Serverneustart) — eine Regel für Projektion, Liste und
+   * Aufräumen.
+   * @param workflowId - Kennung
+   * @param daten - Payload oder null
+   * @returns Status oder null
+   */
+  function wirksamerArbeitsordnerStatus(workflowId, daten) {
+    if (daten === null || daten === undefined) return null
+    return daten.status === 'IN_VORBEREITUNG' && !arbeitsordnerVorbereitungLaeuft.has(workflowId) ? 'FEHLGESCHLAGEN' : daten.status
+  }
+
+  /**
+   * Lesende Laufwurzel für Anzeigen und Entscheidungen (Code-Review B1a-1, Befund 1): der Arbeitsordner, wenn er
+   * Pflicht ist und auf der Platte liegt, sonst der Projektordner — ohne Fehlerzweig.
+   * @param workflowId - Kennung
+   * @param workflowDaten - WORKFLOW_V0-Daten
+   * @returns absoluter Pfad
+   */
+  function laufwurzelFuer(workflowId, workflowDaten) {
+    const lage = ermittleArbeitsordnerLage(workflowId, workflowDaten)
+    return lage.bedarf === 'pflicht' && lage.daten !== null && lage.daten.status === 'BEREIT' && existsSync(lage.daten.pfad) ? lage.daten.pfad : repoWurzel
+  }
+
+  /**
+   * Laufort eines Workflow-Schritts: der Arbeitsordner, wenn Pflicht und BEREIT, sonst der Projektordner (kein
+   * Bedarf, Bestand). Pflicht ohne bereiten Ordner → Fehler (Tiefenverteidigung: nie still im Projektordner).
+   * @param workflowId - Kennung
+   * @param workflowDaten - WORKFLOW_V0-Daten
+   * @returns { ok: true, wurzel, arbeitsordner: { pfad, branch } | null } oder { ok: false, grund }
+   */
+  function ermittleLaufort(workflowId, workflowDaten) {
+    const lage = ermittleArbeitsordnerLage(workflowId, workflowDaten)
+    if (lage.bedarf !== 'pflicht') return { ok: true, wurzel: repoWurzel, arbeitsordner: null }
+    if (lage.daten?.status !== 'BEREIT' || !existsSync(lage.daten.pfad)) {
+      return { ok: false, grund: `Workflow '${workflowId}' braucht einen eigenen Arbeitsordner, der nicht bereit ist (${lage.daten === null ? 'noch nicht angelegt' : lage.daten.status === 'BEREIT' ? 'Ordner fehlt auf der Platte' : lage.daten.status}) — über „Starten“ bzw. die Freigabe wird er vorbereitet` }
+    }
+    return { ok: true, wurzel: lage.daten.pfad, arbeitsordner: { pfad: lage.daten.pfad, branch: lage.daten.branch } }
+  }
+
+  /**
+   * Schreibt eine neue Version des Arbeitsordner-Artefakts (validiert, append-only).
+   * @param daten - ArbeitsordnerV0Daten
+   * @returns { ok: true } oder { ok: false, grund }
+   */
+  function schreibeArbeitsordner(daten) {
+    const verstoesse = validiereArbeitsordnerDaten(daten)
+    if (verstoesse.length > 0) return { ok: false, grund: `verstößt gegen schemas/kontrollzustand-arbeitsordner-payload.schema.json: ${verstoesse.join('; ')}` }
+    try {
+      registriereKernArtefakt(`arbeitsordner-${daten.workflow_id}`, profilReferenz, { erzeuger: 'kern', schritt: 'arbeitsordner' }, daten, [], { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      return { ok: true }
+    } catch (fehler) {
+      return { ok: false, grund: String(fehler?.message ?? fehler) }
+    }
+  }
+
+  /**
+   * Läuft im Hintergrund: bereitet den Arbeitsordner vor und schreibt BEREIT oder FEHLGESCHLAGEN (Plan v3 B3:
+   * Aufrufer hängt .catch an, finally räumt die Speicher-Menge).
+   * @param workflowId - Kennung
+   * @param basisDaten - die eben geschriebene IN_VORBEREITUNG-Payload
+   */
+  async function fuehreArbeitsordnerVorbereitungAus(workflowId, basisDaten) {
+    try {
+      const ergebnis = await bereiteArbeitsordnerVor({
+        repoWurzel,
+        workflowId,
+        vorherigeBasis: basisDaten.basis_commit,
+        npm: arbeitsordnerNpm ?? npmReal,
+        pruefeE183:
+          arbeitsordnerE183 ??
+          ((pfad) => pruefeWerkzeugkonfigurationVorab(join(pfad, '.claude', 'settings.json'), { aktuelleAutorisierungPfad: optionen.aktuelleAutorisierungPfad, startfreigabeRepoWurzel })),
+      })
+      const geschrieben = schreibeArbeitsordner({ ...basisDaten, ...ergebnis, aktualisiert_am: new Date().toISOString() })
+      if (!geschrieben.ok) console.error(`[leitstand] Arbeitsordner für Workflow '${workflowId}' konnte nicht festgehalten werden:`, geschrieben.grund)
+      const v = ergebnis.vorbereitung
+      console.log(`[leitstand] Arbeitsordner ${workflowId}: ${ergebnis.status}${ergebnis.grund ? ` (${ergebnis.grund})` : ''} — worktree ${v.worktree_ms ?? '-'} ms, npm ci ${v.npm_ci?.dauer_ms ?? '-'} ms, E-183 ${v.e183_ms ?? '-'} ms`)
+    } catch (fehler) {
+      schreibeArbeitsordner({ ...basisDaten, status: 'FEHLGESCHLAGEN', grund: `Vorbereitung abgebrochen: ${String(fehler?.message ?? fehler)}`, aktualisiert_am: new Date().toISOString() })
+      throw fehler
+    } finally {
+      arbeitsordnerVorbereitungLaeuft.delete(workflowId)
+    }
+  }
+
+  /**
+   * Vorprüfung der Startwege (POST …/starten nach 'starte', POST …/freigabe FREIGEGEBEN vor dem Festhalten):
+   * braucht der Workflow einen Arbeitsordner und ist er nicht BEREIT, wird am Workflow NICHTS geschrieben, die
+   * Vorbereitung (idempotent) angestoßen und eine 202-Antwort geliefert. Synchron bis zum Anstoß.
+   * @param workflowId - Kennung
+   * @param workflowDaten - WORKFLOW_V0-Daten
+   * @param versionSequenz - Fassung, die der Mensch sieht (Plan v3 B4: die Oberfläche sendet nur bei gleicher Fassung erneut)
+   * @returns null (Start darf weiter) oder { status, koerper } für sendeJson
+   */
+  function arbeitsordnerVorStart(workflowId, workflowDaten, versionSequenz) {
+    const lage = ermittleArbeitsordnerLage(workflowId, workflowDaten)
+    if (lage.bedarf !== 'pflicht') return null
+    if (lage.daten?.status === 'BEREIT' && existsSync(lage.daten.pfad)) return null
+    if (arbeitsordnerVorbereitungLaeuft.has(workflowId)) {
+      return { status: 202, koerper: { workflowId, vorbereitung: true, versionSequenz, arbeitsordner: baueArbeitsordnerProjektion(workflowId, workflowDaten) } }
+    }
+    const abgeleitet = leiteArbeitsordnerAb(repoWurzel, workflowId)
+    // Code-Review B1a-1 (Befund 2): ohne gültigen Pfad entsteht weder Artefakt noch Vorbereitung — nie ein Ersatzpfad.
+    if (!abgeleitet.ok) return { status: 409, koerper: { grund: abgeleitet.grund } }
+    const basisDaten = {
+      arbeitsordner_schema: 'v0',
+      workflow_id: workflowId,
+      projekt_wurzel: repoWurzel,
+      pfad: abgeleitet.pfad,
+      branch: abgeleitet.branch,
+      // Wiederaufnahme nur aus einem nicht entfernten Stand; nach ENTFERNT beginnt die Vorbereitung neu.
+      basis_commit: lage.daten !== null && lage.daten.status !== 'ENTFERNT' ? lage.daten.basis_commit : null,
+      status: 'IN_VORBEREITUNG',
+      grund: null,
+      vorbereitung: null,
+      aufraeumen: null,
+      aktualisiert_am: new Date().toISOString(),
+    }
+    const geschrieben = schreibeArbeitsordner(basisDaten)
+    if (!geschrieben.ok) return { status: 500, koerper: { grund: `Arbeitsordner konnte nicht angelegt werden: ${geschrieben.grund}` } }
+    arbeitsordnerVorbereitungLaeuft.add(workflowId)
+    fuehreArbeitsordnerVorbereitungAus(workflowId, basisDaten).catch((fehler) => {
+      startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId: null, fehler: `Arbeitsordner für Workflow '${workflowId}' fehlgeschlagen: ${String(fehler?.message ?? fehler)}` })
+      console.error(`[leitstand] Arbeitsordner für Workflow '${workflowId}' fehlgeschlagen:`, fehler)
+    })
+    return { status: 202, koerper: { workflowId, vorbereitung: true, versionSequenz, arbeitsordner: baueArbeitsordnerProjektion(workflowId, workflowDaten) } }
+  }
+
+  /**
+   * Projektion für GET /api/workflows/<id> (Feld 'arbeitsordner') und die 202 der Vorbereitung — nur aus dem
+   * Artefakt und der Ableitung, kein Git im Poll (Plan v2 f).
+   * @param workflowId - Kennung
+   * @param workflowDaten - WORKFLOW_V0-Daten
+   * @returns Projektion
+   */
+  function baueArbeitsordnerProjektion(workflowId, workflowDaten) {
+    const lage = ermittleArbeitsordnerLage(workflowId, workflowDaten)
+    if (lage.bedarf !== 'pflicht') return { status: lage.bedarf }
+    const muster = leiteArbeitsordnerAb(repoWurzel, workflowId)
+    const musterFelder = muster.ok ? { pfad: muster.pfad, branch: muster.branch } : { pfad: null, branch: null, grund: muster.grund }
+    if (lage.daten === null) return { status: 'fehlt', ...musterFelder, basis_commit: null, vorbereitungLaeuft: false }
+    const d = lage.daten
+    const veraltet = d.status === 'IN_VORBEREITUNG' && !arbeitsordnerVorbereitungLaeuft.has(workflowId)
+    return {
+      status: wirksamerArbeitsordnerStatus(workflowId, d),
+      pfad: d.pfad,
+      branch: d.branch,
+      basis_commit: d.basis_commit,
+      grund: veraltet ? 'Vorbereitung unterbrochen (Serverneustart) — erneut starten nimmt sie wieder auf' : d.grund,
+      vorbereitung: d.vorbereitung,
+      aufraeumen: d.aufraeumen,
+      vorbereitungLaeuft: arbeitsordnerVorbereitungLaeuft.has(workflowId),
+      ordnerVorhanden: existsSync(d.pfad),
+    }
   }
 
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
@@ -5011,8 +5246,15 @@ export function erzeugeRequestHandler(optionen = {}) {
    *   eine Änderungsübersicht registriert wird. undefined (Router-Lauf, immer 'lesend') registriert nie eine.
    * @param zeitmessungMarke - F31 WS-3: optionaler (marke) => void-Rückruf, unverändert an AusfuehrungsOptionen.zeitmessung
    *   durchgereicht (Muster abbruchSignal) — undefined bei LEITSTAND_ZEITMESSUNG!=1 oder für jeden Aufrufer ohne Zeitmessung.
+   * @param laufort - F45 B1a-1: { wurzel, arbeitsordner, loeschliste } aus ermittleLaufort (starteWorkflowSchritt) — undefined
+   *   für jeden anderen Aufrufer (Projektordner, bitgenau wie bisher). Mit arbeitsordner !== null laufen Kindprozess (cwd),
+   *   E-183-Messung (settingsPfad), Löschliste, Änderungsübersicht und Prüfschritt im Arbeitsordner. Bewusst KEIN
+   *   Optionen-Objekt (Muster zeitgrenzeMsUeberschreibung): nur diese beiden Felder werden gesetzt, basisVerzeichnis,
+   *   Autorisierung und Rohstrom bleiben beim Serverprozess.
    */
-  function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined, werkzeugsatzArt = undefined, zeitmessungMarke = undefined) {
+  function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined, werkzeugsatzArt = undefined, zeitmessungMarke = undefined, laufort = undefined) {
+    const laufImArbeitsordner = laufort !== undefined && laufort.arbeitsordner !== null
+    const nachlaufWurzel = laufImArbeitsordner ? laufort.wurzel : repoWurzel
     // F-145: dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen wurde,
     // strukturell durchgereicht (nicht basisVerzeichnis einzeln herauskopiert) — sonst
     // respektieren die synchronen Prüfungen im Handler (D13, laufIdBelegt, auftragId-Existenz)
@@ -5040,6 +5282,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       ...(zeitgrenzeMsUeberschreibung !== undefined ? { zeitgrenzeMs: zeitgrenzeMsUeberschreibung } : {}),
       abbruchSignal: laufAktivAbortController.signal,
       ...(zeitmessungMarke !== undefined ? { zeitmessung: zeitmessungMarke } : {}),
+      // F45 B1a-1: Lauf im eigenen Arbeitsordner — Kindprozess und E-183-Messung dort (E-188 bleibt process.cwd()).
+      ...(laufImArbeitsordner ? { cwd: laufort.wurzel, settingsPfad: join(laufort.wurzel, '.claude', 'settings.json') } : {}),
       // F40 WS-1: Live-Fortschritt (tool_use-Zeilen) für JEDEN Lauf, nur In-Memory. Die laufId-Prüfung
       // verhindert, dass ein spät eintreffender Rückruf eines alten Laufs den Folgelauf überschreibt.
       beiWerkzeugaufruf: (aufruf) => {
@@ -5131,12 +5375,33 @@ export function erzeugeRequestHandler(optionen = {}) {
           // Fehlschlag hier ist Nachbereitung, kein Laufergebnis: er wird wie ein Wurf aus nachLauf
           // abgefangen und in der Startfehlerliste protokolliert, der bereits geschriebene, terminale
           // Laufstatus bleibt unverändert.
+          // F45 B1a-1 (F-715, Plan v3 B7): Löschliste nur nach ERFOLGREICH, nur im Arbeitsordner, nur wenn der Aufrufer
+          // sie verlangt (Rolle 'ausfuehrung'); VOR der Änderungsübersicht, damit Übersicht, Regel 1j und Prüfschritt
+          // die Löschungen sehen. Eigener try: ein Fehler hier nimmt der Übersicht nichts.
+          let loeschliste
+          if (laufErfolgreich && laufImArbeitsordner && laufort.loeschliste === true) {
+            try {
+              const laufakteFuerLoeschliste = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+              const textErgebnis = laufakteFuerLoeschliste !== null ? leseErgebnistextAusRohstrom(laufakteFuerLoeschliste.daten) : { ok: false }
+              const gelesen = leseLoeschliste(textErgebnis.ok ? textErgebnis.text : null)
+              if (gelesen.status === 'ok') loeschliste = loescheDateien(laufort.wurzel, gelesen.pfade)
+              else if (gelesen.status === 'ungueltig') loeschliste = { geloescht: [], abgelehnt: [{ pfad: '(zu_loeschen-Block)', grund: gelesen.grund }] }
+              if (loeschliste !== undefined) console.log(`[leitstand] Löschliste Lauf '${laufId}': ${loeschliste.geloescht.length} gelöscht, ${loeschliste.abgelehnt.length} abgelehnt`)
+            } catch (loeschFehler) {
+              const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Löschliste konnte nicht ausgeführt werden: ${String(loeschFehler?.message ?? loeschFehler)}` }
+              startfehlerListe.push(eintrag)
+              console.error(`[leitstand] Löschliste für Lauf '${laufId}' fehlgeschlagen:`, loeschFehler)
+            }
+          }
           try {
             // Number.isInteger(Infinity) ist false — validiereAenderungsuebersichtDaten verlangt eine
             // ganze Zahl für budget_bytes. Ein Number.POSITIVE_INFINITY-Fallback ließ die Registrierung
             // dadurch für JEDE Startvorlage ohne standardBudget.maxBytes (optional, src/startvorlage/
             // types.ts) an der eigenen Schemaprüfung scheitern (Reviewer-Pass 14.09.2026, Befund 1).
-            const uebersichtDaten = erzeugeAenderungsuebersichtDaten(laufId, repoWurzel, vorlage.standardBudget?.maxBytes ?? STANDARD_MAX_BYTES)
+            const uebersichtDaten = {
+              ...erzeugeAenderungsuebersichtDaten(laufId, nachlaufWurzel, vorlage.standardBudget?.maxBytes ?? STANDARD_MAX_BYTES),
+              ...(loeschliste !== undefined ? { loeschliste } : {}),
+            }
             const uebersichtVerstoesse = validiereAenderungsuebersichtDaten(uebersichtDaten)
             if (uebersichtVerstoesse.length > 0) {
               throw new Error(`verstößt gegen schemas/kontrollzustand-aenderungsuebersicht-payload.schema.json: ${uebersichtVerstoesse.join('; ')}`)
@@ -5153,7 +5418,7 @@ export function erzeugeRequestHandler(optionen = {}) {
             const eintrag = {
               zeitstempel: new Date().toISOString(),
               laufId,
-              fehler: `Änderungsübersicht konnte nicht registriert werden: ${String(uebersichtFehler?.message ?? uebersichtFehler)}`,
+              fehler: `Änderungsübersicht konnte nicht registriert werden: ${String(uebersichtFehler?.message ?? uebersichtFehler)}${loeschliste !== undefined ? ` (Löschliste: gelöscht ${JSON.stringify(loeschliste.geloescht)}, abgelehnt ${JSON.stringify(loeschliste.abgelehnt)})` : ''}`,
             }
             startfehlerListe.push(eintrag)
             console.error(`[leitstand] Änderungsübersicht für Lauf '${laufId}' fehlgeschlagen:`, uebersichtFehler)
@@ -5167,7 +5432,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           // aus Sicht von D13 weiter "in einem aktiven Lauf".
           if (vorlage.pruefbefehl !== undefined) {
             try {
-              const pruefDaten = await fuehrePruefungDurch(laufId, vorlage.pruefbefehl, repoWurzel, vorlage.pruefZeitgrenzeMs)
+              const pruefDaten = await fuehrePruefungDurch(laufId, vorlage.pruefbefehl, nachlaufWurzel, vorlage.pruefZeitgrenzeMs)
               const pruefVerstoesse = validierePruefergebnisDaten(pruefDaten)
               if (pruefVerstoesse.length > 0) {
                 throw new Error(`verstößt gegen schemas/kontrollzustand-pruefergebnis-payload.schema.json: ${pruefVerstoesse.join('; ')}`)
@@ -5328,6 +5593,17 @@ export function erzeugeRequestHandler(optionen = {}) {
       return { ok: false, art: 'nichtLadbar', grund: `Workflow '${workflowId}' kennt den Schritt '${ausgang.schritt.schritt_id}' nicht mehr` }
     }
 
+    // F45 B1a-1 (E-F45-3 = A): Laufort des Schritts — der eigene Arbeitsordner, wenn der Workflow einen braucht und er
+    // BEREIT ist; Bestand und Workflows ohne schreibenden Schritt bleiben im Projektordner. Braucht er einen und ist er
+    // nicht bereit (Auto-Fortsetzung, Korrekturlauf, Replan), läuft NICHTS im Projektordner (Tiefenverteidigung).
+    // laufWurzel ersetzt repoWurzel überall dort, wo Produktdateien gelesen werden; bewusst beim Projektordner bleiben
+    // Ressourcen/Empfehlung („Anzeige = Start“) und startvorlageImRepo (Plan v2 b).
+    const laufort = ermittleLaufort(workflowId, workflowDaten)
+    if (!laufort.ok) {
+      return { ok: false, art: 'konflikt', grund: laufort.grund }
+    }
+    const laufWurzel = laufort.wurzel
+
     // Die laufId eines Workflow-Schritts erzeugt der Server (Muster auftragId, D1) — sie kommt
     // nie aus einer Payload. Die Belegtprüfung bleibt trotzdem: randomUUID ist praktisch
     // kollisionsfrei, aber die Reservierung ist die Zusage, nicht die Wahrscheinlichkeit.
@@ -5392,8 +5668,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       // F-750: dazu die entschiedenen ADRs DESSELBEN Projekts als bindender Kontext.
       // F36 WS-3: bei offenem Stack zusätzlich der Auszug der Stack-Liste — aus der INSTALLATIONSWURZEL
       // (Workforce-eigenes Dokument), nicht aus dem Projekt; fehlt die Datei, kein Auszug.
-      const stackOffen = istStackOffen(repoWurzel)
-      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, stackOffen, leseEntschiedeneAdrs(repoWurzel), stackOffen ? leseStackKandidatenAuszug(installWurzel) : null)
+      const stackOffen = istStackOffen(laufWurzel)
+      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, stackOffen, leseEntschiedeneAdrs(laufWurzel), stackOffen ? leseStackKandidatenAuszug(installWurzel) : null)
     } else if (schritt.rolle === 'architecture-advisor') {
       // F-641 (Muster F39 WS-3a/baueArchitektAuftragstext oben): ohne diese Umhüllung bekommt der
       // Advisor nur den rohen Planungsauftrag — dessen Abschnitt "Auftrag an den Baudurchgang" ist
@@ -5401,7 +5677,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // 4b3ebc42-91df-422b-9dd4-b2fc02dc4151): ohne Rolleninstruktion plante der Advisor selbst
       // die Dokumentations-Schreibschritte und bat um Schreibzugriff, statt zu bewerten.
       // F-750: entschiedene ADRs des PROJEKTS (repoWurzel, nicht installWurzel) als bindender Kontext.
-      auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext, leseEntschiedeneAdrs(repoWurzel))
+      auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext, leseEntschiedeneAdrs(laufWurzel))
     }
 
     // F39 WS-3a, Punkt 2 (Ergebnis-Umsetzung): ein 'ausfuehrung'-Schritt, der ein
@@ -5470,6 +5746,10 @@ export function erzeugeRequestHandler(optionen = {}) {
     // (findeRueckfrageZeile) bleibt nur das Netz darunter.
     if (schritt.rolle === 'ausfuehrung') {
       auftragstext = `${auftragstext}\n\nHinweis: Wenn du eine Rückfrage an den Menschen hast oder nicht weiterarbeiten kannst, beende mit der Zeile '- [x] Blockiert' und schreibe die Frage darunter.`
+    }
+    // F45 B1a-1 (F-715): im eigenen Arbeitsordner darf die Ausführung Dateien zum Löschen nennen (Server prüft und löscht).
+    if (schritt.rolle === 'ausfuehrung' && laufort.arbeitsordner !== null) {
+      auftragstext = `${auftragstext}\n\n${baueLoeschlistenSatz()}`
     }
 
     // F-648 (löst "Korrekturschleife trägt Abnahme-Begründung/vorherige Review-Befunde nicht in
@@ -5548,13 +5828,15 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
     }
 
+    // F45 B1a-1: im Arbeitsordner prüft die Vorbedingung eines schreibenden Schritts den Worktree (Branch wf/<id>).
+    if (laufort.arbeitsordner !== null) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, arbeitsordner: laufort.arbeitsordner }
     const eingabenErgebnis = loeseSchrittEingabenAuf(
       schritt,
       workflowDaten,
       vorgaengerLaufId,
       auftragstext,
       vorlage,
-      repoWurzel,
+      laufWurzel,
       ladeOptionen,
       installWurzel,
       ausfuehrungsOptionen
@@ -5763,7 +6045,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
         const architekturErgebnis =
           laufakteVersion !== null
-            ? leseArchitekturErgebnisAusLaufakte(laufakteVersion.daten, istStackOffen(repoWurzel))
+            ? leseArchitekturErgebnisAusLaufakte(laufakteVersion.daten, istStackOffen(laufWurzel))
             : { verstoesse: [`Laufakte 'laufakte-${laufId}' nicht gefunden`], entscheidungenMensch: [] }
         architekturVerstoesse = architekturErgebnis.verstoesse
         architekturAnzahlFragen = architekturErgebnis.entscheidungenMensch.length
@@ -5824,7 +6106,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           const geaenderteDateienAnzahl = uebersichtVersionFuerNachlauf.daten.dateien.filter((datei) => !istAusnahmePfad(datei.pfad)).length
           ausfuehrungRueckfrage = findeRueckfrageZeile(textFuerRueckfrage.ok ? textFuerRueckfrage.text : null, geaenderteDateienAnzahl) ?? undefined
         }
-        const { head, arbeitskopie } = lesePackageScriptsStaende(repoWurzel)
+        const { head, arbeitskopie } = lesePackageScriptsStaende(laufWurzel)
         // F-735: Muster = Default-Liste + pruefketten_pfade der beim Aufbau geladenen Startvorlage
         // (Stand vor dem Lauf — ein Lauf kann sie nicht nachträglich entschärfen) + die eines frisch
         // gelesenen Stands (ein vom Menschen nachgetragenes Feld wirkt ohne Serverneustart). Beides
@@ -5909,7 +6191,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           const traegtStackEntscheidungNachlauf =
             architekturErgebnisFuerStackNachlauf !== null && architekturErgebnisFuerStackNachlauf.entscheidungenMensch.some((eintrag) => eintrag.kategorie === 'stack')
           if (traegtStackEntscheidungNachlauf && findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittIdFuerStack) !== null) {
-            stackNichtGefuellt = istStackOffen(repoWurzel) || !traegtAdrVerweisAufEntscheidung(repoWurzel, workflowEntscheidungArtefaktId(workflowId))
+            stackNichtGefuellt = istStackOffen(laufWurzel) || !traegtAdrVerweisAufEntscheidung(laufWurzel, workflowEntscheidungArtefaktId(workflowId))
             // F-735: dritte Pflicht neben CLAUDE.md/ADR — frisch gelesen, weil der Mensch das Feld
             // typischerweise erst nach der Entscheidung in die Startvorlage einträgt.
             // QA-Befund F-735: eine leere Liste erfüllt die Pflicht nicht — 1j sähe sonst wieder nur die Node-Default-Liste.
@@ -6120,7 +6402,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // D13-Belegung), die Invariante bleibt unberührt.
         schreibeStartfehlerHalt(workflowId, naechster.schritt.schritt_id, naechster.aktiverSchrittId, laufId, anlassDerFortsetzung, ladeOptionen)
       }
-    }, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)
+    }, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art, undefined, { wurzel: laufWurzel, arbeitsordner: laufort.arbeitsordner, loeschliste: schritt.rolle === 'ausfuehrung' })
 
     return { ok: true, schrittId: schritt.schritt_id, laufId }
   }
@@ -6717,7 +6999,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         const architektSchritt = version.daten.schritte?.find((s) => s.schritt_id === version.daten.aktiver_schritt_id)
         if (architektSchritt !== undefined && architektSchritt.output_schema === 'ergebnis-architektur' && architektSchritt.status === 'ERFOLGREICH' && architektSchritt.lauf_id !== null) {
           const architektLaufakteVersion = ladeArtefaktVersion(`laufakte-${architektSchritt.lauf_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-          const architekturErgebnis = architektLaufakteVersion === null ? null : leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten, istStackOffen(repoWurzel))
+          const architekturErgebnis = architektLaufakteVersion === null ? null : leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten, istStackOffen(laufwurzelFuer(workflowId, version.daten)))
           const bereitsEntschieden =
             architekturErgebnis !== null && architekturErgebnis.verstoesse.length === 0 && architekturErgebnis.entscheidungenMensch.length > 0
               ? findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchritt.schritt_id)
@@ -6777,6 +7059,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         werkzeugsatzDurchsetzung: baueWerkzeugsatzDurchsetzungProjektion(version.daten),
         architekturEntscheidung,
         pruefergebnis: pruefergebnisProjektion,
+        // F45 B1a-1 (F-954): additiv — eigener Arbeitsordner des Ablaufs (nur aus dem Artefakt, kein Git im Poll).
+        arbeitsordner: baueArbeitsordnerProjektion(workflowId, version.daten),
       })
       return
     }
@@ -8320,6 +8604,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       // geschrieben werden konnte oder der Workflow zwischen (1) und hier verschwunden wäre
       // (art 'nichtLadbar' — in diesem Handler unerreichbar, weil dazwischen kein await liegt;
       // die Auto-Fortsetzung erreicht ihn sehr wohl).
+      // F45 B1a-1 (Plan v3 B2): eigener Arbeitsordner noch nicht bereit → Vorbereitung anstoßen, nichts starten (202).
+      const arbeitsordnerHalt = arbeitsordnerVorStart(workflowId, workflowDaten, workflowVersion.versionSequenz)
+      if (arbeitsordnerHalt !== null) {
+        sendeJson(res, arbeitsordnerHalt.status, arbeitsordnerHalt.koerper)
+        return
+      }
       const gestartet = starteWorkflowSchritt(workflowId, ausgang)
       if (!gestartet.ok) {
         sendeJson(res, STARTFEHLER_STATUS[gestartet.art] ?? 500, { grund: gestartet.grund })
@@ -8412,7 +8702,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `Laufakte 'laufakte-${architektSchritt.lauf_id}' des Architektur-Schritts '${formular.schrittId}' nicht gefunden` })
         return
       }
-      const architekturErgebnis = leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten, istStackOffen(repoWurzel))
+      const architekturErgebnis = leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten, istStackOffen(laufwurzelFuer(workflowId, workflowDaten)))
       if (architekturErgebnis.verstoesse.length > 0) {
         sendeJson(res, 409, { grund: `Der Architektur-Lauf von Schritt '${formular.schrittId}' ist selbst ungültig, keine Entscheidung möglich: ${architekturErgebnis.verstoesse.join('; ')}` })
         return
@@ -8732,6 +9022,17 @@ export function erzeugeRequestHandler(optionen = {}) {
         }
       }
 
+      // F45 B1a-1 (Plan v3 B1): braucht der Workflow einen eigenen Arbeitsordner, der noch nicht bereit ist, wird
+      // die Freigabe NICHT festgehalten — die Vorbereitung beginnt, die Antwort ist 202 mit vorbereitung: true, und
+      // die Oberfläche reicht dieselbe Freigabe ein, sobald der Arbeitsordner BEREIT ist.
+      if (body.entscheidung === 'FREIGEGEBEN') {
+        const arbeitsordnerHalt = arbeitsordnerVorStart(workflowId, workflowDaten, workflowVersion.versionSequenz)
+        if (arbeitsordnerHalt !== null) {
+          sendeJson(res, arbeitsordnerHalt.status, arbeitsordnerHalt.koerper)
+          return
+        }
+      }
+
       // Das Entscheidungsartefakt entsteht VOR jeder Zustandsänderung und in BEIDEN Zweigen
       // (D2, AK7 Satz 2). Muster: der kenntnisnahme-Zweig in POST /api/entscheidungen — kein
       // neues Schema, daten bleibt unknown wie dort (D5). Der Kern erzeugt hier kein
@@ -8971,6 +9272,12 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `Workflow '${workflowId}': die aktive Startvorlage trägt keinen pruefbefehl — 'Prüfung wiederholen' kann nichts ausführen` })
         return
       }
+      // F45 B1a-1: die Prüfung läuft dort, wo der Lauf gebaut hat — im Arbeitsordner, sonst im Projektordner (Bestand).
+      const pruefLaufort = ermittleLaufort(workflowId, workflowDaten)
+      if (!pruefLaufort.ok) {
+        sendeJson(res, 409, { grund: pruefLaufort.grund })
+        return
+      }
 
       // D13, wortgleich zu jedem anderen Startpfad und aus demselben Grund: genau ein aktiver
       // Arbeitsstrang. Vor jeder Zustandsänderung (D2) und vor dem eigentlichen Prüflauf.
@@ -8991,7 +9298,7 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       let pruefDaten
       try {
-        pruefDaten = await fuehrePruefungDurch(laufId, vorlage.pruefbefehl, repoWurzel, vorlage.pruefZeitgrenzeMs)
+        pruefDaten = await fuehrePruefungDurch(laufId, vorlage.pruefbefehl, pruefLaufort.wurzel, vorlage.pruefZeitgrenzeMs)
       } finally {
         laufAktiv = false
         laufAktivLaufId = null
@@ -9104,6 +9411,97 @@ export function erzeugeRequestHandler(optionen = {}) {
         status: 'LAEUFT',
         versionSequenz: neueVersion.versionSequenz,
       })
+      return
+    }
+
+    // ─── POST /api/workflows/<id>/arbeitsordner-aufraeumen (F45 B1a-1, E-F45-3 = A) ─────────────
+    // Entfernt den eigenen Arbeitsordner eines beendeten Ablaufs (oder einer fehlgeschlagenen Vorbereitung): git
+    // worktree remove (--force nur mit verwerfen: true), git branch -d nur wenn gemergt (nie -D). Pflichtbegründung.
+    // Scheitert git (offene Änderungen, gesperrte Dateien), bleibt das Artefakt unverändert (409 mit git-Meldung).
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/arbeitsordner-aufraeumen')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/arbeitsordner-aufraeumen'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      const koerper = pruefeAufraeumenKoerper(body)
+      if (!koerper.ok) {
+        sendeJson(res, 400, { grund: koerper.grund })
+        return
+      }
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const ordnerVersion = ladeArbeitsordner(workflowId)
+      const abnahmeVersion = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const sperrgrund = aufraeumenSperrgrund({
+        workflowStatus: workflowVersion.daten.status,
+        arbeitsordnerStatus: wirksamerArbeitsordnerStatus(workflowId, ordnerVersion?.daten ?? null),
+        abnahmeOffen: workflowVersion.daten.status === 'ABGESCHLOSSEN' && (abnahmeVersion === null || abnahmeVersion.daten.ergebnis === 'ANPASSUNG_ANGEFORDERT'),
+        laufAktiv: laufAktiv || globalerLaufZustand.aktiv,
+        vorbereitungLaeuft: arbeitsordnerVorbereitungLaeuft.has(workflowId),
+      })
+      if (sperrgrund !== null) {
+        sendeJson(res, 409, { grund: sperrgrund })
+        return
+      }
+      // Für die Dauer des Entfernens gilt der Ordner als „in Arbeit“ — kein zweites Aufräumen, keine Vorbereitung.
+      arbeitsordnerVorbereitungLaeuft.add(workflowId)
+      let entfernt
+      try {
+        entfernt = await entferneArbeitsordner({ repoWurzel, pfad: ordnerVersion.daten.pfad, branch: ordnerVersion.daten.branch, verwerfen: koerper.verwerfen })
+      } finally {
+        arbeitsordnerVorbereitungLaeuft.delete(workflowId)
+      }
+      if (!entfernt.ok) {
+        sendeJson(res, 409, { grund: entfernt.grund })
+        return
+      }
+      const am = new Date().toISOString()
+      const geschrieben = schreibeArbeitsordner({
+        ...ordnerVersion.daten,
+        status: 'ENTFERNT',
+        grund: null,
+        aufraeumen: { begruendung: koerper.begruendung, verworfen: koerper.verwerfen, branch_geloescht: entfernt.branchGeloescht, hinweis: entfernt.hinweis, am },
+        aktualisiert_am: am,
+      })
+      if (!geschrieben.ok) {
+        console.error(`[leitstand] Aufräumen von Workflow '${workflowId}' nicht festgehalten:`, geschrieben.grund)
+        sendeJson(res, 500, { grund: `Arbeitsordner entfernt, aber nicht festgehalten: ${geschrieben.grund}` })
+        return
+      }
+      sendeJson(res, 200, { workflowId, status: 'ENTFERNT', branchGeloescht: entfernt.branchGeloescht, hinweis: entfernt.hinweis })
+      return
+    }
+
+    // ─── GET /api/arbeitsordner (F45 B1a-1): lesende Liste der Arbeitsordner dieses Projekts aus den Artefakten ──
+    if (req.method === 'GET' && pfad === '/api/arbeitsordner') {
+      // Absolute Pfade wie bei /api/code: nicht für eine fremde Seite im selben Browser (Code-Review B1a-1, Befund 14).
+      const fremd = pruefeCodeHerkunft(req)
+      if (fremd !== null) {
+        sendeJson(res, 403, { grund: fremd })
+        return
+      }
+      const praefix = 'lineage-arbeitsordner-'
+      const ordner = (await leseKontrollzustandOrdner(basisVerzeichnis)).filter((name) => name.startsWith(praefix))
+      const eintraege = ordner.map((name) => {
+        const workflowId = name.slice(praefix.length)
+        const version = ladeArbeitsordner(workflowId)
+        const daten = version === null ? null : { ...version.daten, status: wirksamerArbeitsordnerStatus(workflowId, version.daten) }
+        return { workflowId, daten, ordnerVorhanden: version !== null && existsSync(version.daten.pfad) }
+      })
+      sendeJson(res, 200, baueArbeitsordnerListe(eintraege))
       return
     }
 
@@ -9936,6 +10334,8 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           roadmapPfad: projekt.roadmap_pfad,
           // F36 WS-5a: Projekt-URL für {projekt_origins} (E-F36-7).
           vorschauUrl: pfade.vorschauUrl,
+          // F45 B1a-1 (E-F45-3 = A): jede reale Projektinstanz arbeitet mit eigenem Arbeitsordner je schreibendem Ablauf.
+          arbeitsordner: true,
         })
       )
     } catch (fehler) {
@@ -10119,7 +10519,8 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // F36 WS-5a: der Registereintrag der Installation selbst (repo_pfad = process.cwd()) liefert die
   // Projekt-URL auch für den unpräfigierten Pfad.
   const selbstEintrag = projekte.find((projekt) => resolve(projekteBasis, projekt.repo_pfad) === projekteBasis)
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null })
+  // F45 B1a-1 (E-F45-3 = A): der reale Server arbeitet immer mit eigenem Arbeitsordner je schreibendem Ablauf (kein Schalter).
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, arbeitsordner: true })
   const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,
@@ -10144,6 +10545,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     console.log(
       `Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad}, Projekte: ${projekte.map((p) => p.id).join(', ') || '—'})`
     )
+    console.log('Arbeitsordner je Ablauf: an (eigener Git-Worktree <Projektordner>-laeufe/<Kurzname>, Branch wf/<Ablauf-ID>)')
     // F-849: Registereinträge, deren vorschau_url auf den gebundenen Port zeigt, sichtbar melden —
     // gesperrt sind sie je Anfrage ohnehin (vorschauLeitstandSperre gegen req.socket.localPort).
     for (const projekt of projekte) {

@@ -1,0 +1,13 @@
+{
+  "arbeitsordner_schema": "v0",
+  "workflow_id": "wf-beispiel-1",
+  "projekt_wurzel": "C:/Users/beispiel/Projekte/projekt",
+  "pfad": "C:/Users/beispiel/Projekte/projekt-laeufe/wf-beispiel-1",
+  "branch": "wf/wf-beispiel-1",
+  "basis_commit": null,
+  "status": "GEPLANT",
+  "grund": null,
+  "vorbereitung": null,
+  "aufraeumen": null,
+  "aktualisiert_am": "2026-10-11T12:00:00.000Z"
+}

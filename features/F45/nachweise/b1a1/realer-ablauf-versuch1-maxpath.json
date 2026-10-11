@@ -1,0 +1,127 @@
+{
+  "gestartet_am": "2026-10-11T13:45:50.647Z",
+  "schritte": [
+    {
+      "t": "2026-10-11T13:45:51.216Z",
+      "art": "projekt_vorher",
+      "status": [
+        " M ARCHITECTURE.md",
+        " M docs/projekt/zielfassung.md",
+        " M public/leitstand/api.js",
+        " M public/leitstand/i18n/de.js",
+        " M public/leitstand/i18n/en.js",
+        " M public/leitstand/i18n/ru.js",
+        " M public/leitstand/i18n/tr.js",
+        " M public/leitstand/index.html",
+        " M public/leitstand/style.css",
+        " M public/leitstand/views/auftrag-umgebung.js",
+        " M public/leitstand/views/code.js",
+        " M public/leitstand/views/workflow-entscheiden.js",
+        " M public/leitstand/views/workflows.js",
+        " M schemas/kontrollzustand-aenderungsuebersicht-payload.schema.json",
+        " M scripts/leitstand-server.mjs",
+        " M src/aenderungsuebersicht/index.ts",
+        " M src/aenderungsuebersicht/types.ts",
+        " M src/ausfuehrung-vorbedingung/index.ts",
+        " M src/claude-code-gateway/index.ts",
+        " M src/git-starter/index.ts",
+        " M src/ressourcen/installation.ts",
+        "?? \"Claude outputs/AI_Workforce_Design_Briefing_fuer_ChatGPT.md\"",
+        "?? features/F45/plan-b1a1.md",
+        "?? public/leitstand/views/arbeitsordner-anzeige.js",
+        "?? public/leitstand/views/arbeitsordner-anzeige.test.mjs",
+        "?? schemas/ergebnis-ausfuehrung-loeschliste.schema.json",
+        "?? schemas/examples/ergebnis-ausfuehrung-loeschliste.invalid-unbekanntes-feld.json",
+        "?? schemas/examples/ergebnis-ausfuehrung-loeschliste.valid.json",
+        "?? schemas/examples/kontrollzustand-arbeitsordner-payload.invalid-unbekannter-status.json",
+        "?? schemas/examples/kontrollzustand-arbeitsordner-payload.valid.json",
+        "?? schemas/kontrollzustand-arbeitsordner-payload.schema.json",
+        "?? scripts/leitstand-arbeitsordner.test.mjs",
+        "?? scripts/leitstand/routen-arbeitsordner.mjs",
+        "?? scripts/leitstand/routen-arbeitsordner.test.mjs",
+        "?? src/arbeitsordner/arbeitsordner.test.ts",
+        "?? src/arbeitsordner/index.ts",
+        "?? src/arbeitsordner/loeschliste.ts",
+        "?? src/arbeitsordner/types.ts"
+      ],
+      "branch": "refs/heads/feat/f45-b1a1-arbeitsordner",
+      "kopf": "387f1a3e1dbc1581abd8f22a3b0b765825984c11",
+      "statusHash": " ARCHITECTURE.md                                    |   5 +\n docs/projekt/zielfassung.md                        |  11 +-\n public/leitstand/api.js                            |   4 +\n public/leitstand/i18n/de.js                        |  46 ++-\n public/leitstand/i18n/en.js                        |  46 ++-\n public/leitstand/i18n/ru.js                        |  46 ++-\n public/leitstand/i18n/tr.js                        |  46 ++-\n public/leitstand/index.html                        |   1 +\n public/leitstand/style.css                         |  41 +++\n public/leitstand/views/auftrag-umgebung.js         |  15 +-\n public/leitstand/views/code.js                     |  32 +-\n public/leitstand/views/workflow-entscheiden.js     |   5 +-\n public/leitstand/views/workflows.js                |  79 ++++-\n ...ustand-aenderungsuebersicht-payload.schema.json |  20 +-\n scripts/leitstand-server.mjs                       | 376 ++++++++++++++++++++-\n src/aenderungsuebersicht/index.ts                  |  20 +-\n src/aenderungsuebersicht/types.ts                  |   2 +\n src/ausfuehrung-vorbedingung/index.ts              |  21 +-\n src/claude-code-gateway/index.ts                   |  26 +-\n src/git-starter/index.ts                           |  50 ++-\n src/ressourcen/installation.ts                     |   6 +-\n 21 files changed, 853 insertions(+), 45 deletions(-)\n"
+    },
+    {
+      "t": "2026-10-11T13:45:51.344Z",
+      "art": "auftrag",
+      "status": 201,
+      "koerper": {
+        "auftragId": "a590b15e-f55b-42bf-833d-3a746a92bc66"
+      }
+    },
+    {
+      "t": "2026-10-11T13:45:51.378Z",
+      "art": "workflow_angelegt",
+      "status": 201,
+      "workflowId": "b1a1-nachweis-72fdac22",
+      "koerper": {
+        "workflowId": "b1a1-nachweis-72fdac22",
+        "versionSequenz": 1
+      }
+    },
+    {
+      "t": "2026-10-11T13:45:51.700Z",
+      "art": "anzeige_vor_dem_start",
+      "arbeitsordner": {
+        "status": "fehlt",
+        "pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\b1a1-nachweis-72fdac22",
+        "branch": "wf/b1a1-nachweis-72fdac22",
+        "basis_commit": null,
+        "vorbereitungLaeuft": false
+      },
+      "naechster": {
+        "art": "haltFreigabe",
+        "schrittId": "schritt-1-ausfuehrung",
+        "grund": "Schritt 'schritt-1-ausfuehrung' verlangt eine menschliche Freigabe (freigabe 'ZWINGEND') — er startet erst, wenn für ihn eine Freigabe erteilt ist (POST /api/workflows/<id>/freigabe)"
+      }
+    },
+    {
+      "t": "2026-10-11T13:45:51.778Z",
+      "art": "freigabe_1",
+      "status": 202,
+      "koerper": {
+        "workflowId": "b1a1-nachweis-72fdac22",
+        "vorbereitung": true,
+        "versionSequenz": 1,
+        "arbeitsordner": {
+          "status": "IN_VORBEREITUNG",
+          "pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\b1a1-nachweis-72fdac22",
+          "branch": "wf/b1a1-nachweis-72fdac22",
+          "basis_commit": null,
+          "grund": null,
+          "vorbereitung": null,
+          "aufraeumen": null,
+          "vorbereitungLaeuft": true,
+          "ordnerVorhanden": false
+        }
+      }
+    },
+    {
+      "t": "2026-10-11T13:49:53.355Z",
+      "art": "arbeitsordner_vorbereitet",
+      "wanduhr_ms": 241654,
+      "arbeitsordner": {
+        "status": "FEHLGESCHLAGEN",
+        "pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\b1a1-nachweis-72fdac22",
+        "branch": "wf/b1a1-nachweis-72fdac22",
+        "basis_commit": null,
+        "grund": "git worktree add fehlgeschlagen (Preparing worktree (new branch 'wf/b1a1-nachweis-72fdac22') Updating files: 1% (61/4873) Updating files: 2% (98/4873) Updating files: 2% (118/4873) Updating files: 2% (135/4873) Updating files: 3% (147/4873) Updating files: 3% (160/4873) Updating files: 4% (195/4873) Updating files: 4% (205/4873) Up…)",
+        "vorbereitung": {
+          "e183_ms": null,
+          "npm_ci": null,
+          "worktree_ms": null
+        },
+        "aufraeumen": null,
+        "vorbereitungLaeuft": false,
+        "ordnerVorhanden": false
+      }
+    }
+  ]
+}

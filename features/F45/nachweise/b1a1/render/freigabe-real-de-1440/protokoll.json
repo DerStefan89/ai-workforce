@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Freigabe, Arbeitsordner noch nicht angelegt (echt)",
+    "Karte Wo gearbeitet wird": true,
+    "Knopf aufräumen": false,
+    "Dialog Begründung": false,
+    "Dialog verwerfen": false,
+    "Karte": "Wo gearbeitet wird",
+    "Lage": "Wird beim Start angelegt (dauert beim ersten Mal etwas länger).",
+    "Aktion": "Wo gearbeitet wird: Wird beim Start angelegt (dauert beim ersten Mal etwas länger). C:\\Users\\stefa\\Projekte\\ai-workforce",
+    "Dialogtitel": "(fehlt)",
+    "Seite geladen": true
+  }
+]
