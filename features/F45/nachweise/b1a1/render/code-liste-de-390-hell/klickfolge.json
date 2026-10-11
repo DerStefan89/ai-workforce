@@ -1,0 +1,31 @@
+{
+  "url": "http://127.0.0.1:4199/#/code",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 1400
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#code-arbeitsordner",
+    "hoehe": 900
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Liste",
+        "selector": "#code-arbeitsordner"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Seite Code 390 px hell, Liste",
+      "warteAufSelector": {
+        "selector": ".arbeitsordner-liste, #code-arbeitsordner .subtle",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-code-liste-390.webp"
+    }
+  ]
+}

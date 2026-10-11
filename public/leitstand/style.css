@@ -12902,3 +12902,50 @@ button.harness-ordner-eintrag {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* F45 B1a-1: eigener Arbeitsordner je Ablauf (views/arbeitsordner-anzeige.js) — nur vorhandene Tokens. */
+.arbeitsordner-pfad {
+  overflow-wrap: anywhere;
+}
+
+.arbeitsordner-abgelehnt {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.arbeitsordner-aktion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 12px;
+}
+
+.arbeitsordner-aktion p {
+  margin: 0;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.arbeitsordner-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+.arbeitsordner-eintrag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}

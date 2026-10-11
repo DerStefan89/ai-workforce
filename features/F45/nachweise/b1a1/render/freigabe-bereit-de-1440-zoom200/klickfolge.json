@@ -1,0 +1,172 @@
+{
+  "url": "http://127.0.0.1:4199/#/workflows/b1a1-render-8f4cb092",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1100
+  },
+  "zoom": 2,
+  "screenshotVollseite": true,
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workflows/b1a1-render-8f4cb092",
+      "status": 200,
+      "json": {
+        "workflowId": "b1a1-render-8f4cb092",
+        "versionSequenz": 1,
+        "daten": {
+          "aktiver_schritt_id": "schritt-1-ausfuehrung",
+          "auftrag_id": "5733e0fb-6314-4f1b-8e07-c79c391c75b1",
+          "grenzen": {
+            "max_replans": 1,
+            "max_schritte": 6
+          },
+          "grund": null,
+          "schritte": [
+            {
+              "eingaben": [
+                "artefakt:auftrag-5733e0fb-6314-4f1b-8e07-c79c391c75b1"
+              ],
+              "freigabe": "ZWINGEND",
+              "lauf_id": null,
+              "modell": "claude-sonnet-5",
+              "nachfolger": "schritt-2-review",
+              "output_schema": null,
+              "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend.",
+              "rolle": "ausfuehrung",
+              "schritt_id": "schritt-1-ausfuehrung",
+              "status": "OFFEN",
+              "werkzeugsatz": "schreibend",
+              "worker": "claude-code",
+              "zeitgrenze_ms": 1800000
+            },
+            {
+              "eingaben": [
+                "artefakt:auftrag-5733e0fb-6314-4f1b-8e07-c79c391c75b1",
+                "artefakt:aenderungsuebersicht-@schritt-1-ausfuehrung",
+                "artefakt:pruefergebnis-@schritt-1-ausfuehrung"
+              ],
+              "freigabe": "AUTOMATISCH",
+              "lauf_id": null,
+              "modell": "gpt-6-astra",
+              "nachfolger": null,
+              "output_schema": "ergebnis-code-reviewer",
+              "risiko": "Kein Schreibzugriff — Post-Build-Pruefung des tatsaechlichen Diffs.",
+              "rolle": "code-reviewer",
+              "schritt_id": "schritt-2-review",
+              "status": "OFFEN",
+              "werkzeugsatz": "lesend",
+              "worker": "codex",
+              "zeitgrenze_ms": 600000
+            }
+          ],
+          "status": "OFFEN",
+          "version": 1,
+          "workflow_id": "b1a1-render-8f4cb092",
+          "workflow_schema": "v0",
+          "ziel": "F45 B1a-1 Render-Nachweis: Anzeige vor dem Start"
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltFreigabe",
+          "schrittId": "schritt-1-ausfuehrung",
+          "grund": "Schritt 'schritt-1-ausfuehrung' verlangt eine menschliche Freigabe (freigabe 'ZWINGEND') — er startet erst, wenn für ihn eine Freigabe erteilt ist (POST /api/workflows/<id>/freigabe)"
+        },
+        "empfehlung": {
+          "schrittId": "schritt-1-ausfuehrung",
+          "wirdGenutzt": [],
+          "passtNichtImLauf": [],
+          "weitereAnzahl": {
+            "wirdGenutzt": 0,
+            "passtNichtImLauf": 0
+          },
+          "nichtFreigebbarAnzahl": 0,
+          "hinweise": [
+            "keine Router-Klassifikation"
+          ],
+          "projektUrl": null
+        },
+        "werkzeugsatzDurchsetzung": [
+          {
+            "schrittId": "schritt-1-ausfuehrung",
+            "durchsetzungsgrad": "ERZWUNGEN"
+          },
+          {
+            "schrittId": "schritt-2-review",
+            "durchsetzungsgrad": "DEKLARIERT"
+          }
+        ],
+        "architekturEntscheidung": null,
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen",
+          "schrittId": "schritt-1-ausfuehrung"
+        },
+        "arbeitsordner": {
+          "status": "BEREIT",
+          "pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\b53c02f158",
+          "branch": "wf/b1a1-render-8f4cb092",
+          "basis_commit": "387f1a3e1dbc1581abd8f22a3b0b765825984c11",
+          "vorbereitungLaeuft": false,
+          "vorbereitung": {
+            "worktree_ms": 14658,
+            "npm_ci": {
+              "ergebnis": "OK",
+              "exit_code": 0,
+              "dauer_ms": 38502,
+              "ausgabe_ende": ""
+            },
+            "e183_ms": 299
+          },
+          "ordnerVorhanden": true
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Karte",
+        "selector": "#freigabe-arbeitsordner"
+      },
+      {
+        "name": "Lage",
+        "selector": ".arbeitsordner-karte .arbeitsordner-lage"
+      },
+      {
+        "name": "Aktion",
+        "selector": ".arbeitsordner-aktion"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte Wo gearbeitet wird",
+        "selector": ".arbeitsordner-karte"
+      },
+      {
+        "name": "Knopf aufräumen",
+        "selector": "[data-aktion=\"aufraeumen-oeffnen\"]"
+      },
+      {
+        "name": "Dialog Begründung",
+        "selector": "#wf-aufraeumen-begruendung"
+      },
+      {
+        "name": "Dialog verwerfen",
+        "selector": "#wf-aufraeumen-verwerfen"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "200 % Zoom, bereit",
+      "warteAufSelector": {
+        "selector": ".arbeitsordner-karte",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-zoom200.webp"
+    }
+  ]
+}

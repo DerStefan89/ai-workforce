@@ -127,6 +127,10 @@ export const bereiteInstallationVor = (id) => fetch(mitPraefix(`/ressourcen/${en
 /** F36 WS-5a: Schritt 2 — installiert genau koerper { version, integrity, eintragHash } und gibt den Eintrag frei. */
 export const installiereRessource = (id, koerper) => fetch(mitPraefix(`/ressourcen/${encodeURIComponent(id)}/installation`), { method: 'POST', body: JSON.stringify(koerper) })
 export const stoppeWorkflow = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/stoppen`), { method: 'POST', body: JSON.stringify(koerper) })
+/** F45 B1a-1: räumt den eigenen Arbeitsordner eines beendeten Ablaufs auf. koerper: { begruendung, verwerfen? }. */
+export const raeumeArbeitsordnerAuf = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/arbeitsordner-aufraeumen`), { method: 'POST', body: JSON.stringify(koerper) })
+/** F45 B1a-1: lesende Liste der Arbeitsordner des aktiven Projekts (aus dem Kontrollzustand, kein Git). */
+export const holeArbeitsordner = () => holeJsonOderWirf(mitPraefix('/arbeitsordner'))
 /** F-656: wiederholt die deterministische Prüfung (Regel 1f) für den bereits gelaufenen Ausführungsschritt — nur zulässig, solange der Workflow genau dort auf KLAERUNG_ERFORDERLICH steht. Keine Begründungspflicht, kein Body. */
 export const wiederholeWorkflowPruefung = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/pruefung-wiederholen`), { method: 'POST', body: JSON.stringify({}) })
 /** F39 WS-2b (löst state/findings.md F-632 Teil b): Fortsetzungsweg für eine Architektur-Entscheidung (Regel 1c). koerper: { schrittId, antworten: [{ frage, gewaehlt, begruendung? }] }. */

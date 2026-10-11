@@ -70,6 +70,22 @@ const DATEI_FELDER = new Set(['pfad', 'status', 'plus', 'minus'])
 const DATEI_FELDER_OPTIONAL = new Set(['alter_pfad'])
 const DATEI_STATUS_WERTE: AenderungsuebersichtDateiStatus[] = ['GEAENDERT', 'NEU', 'GELOESCHT', 'UMBENANNT']
 
+/**
+ * F45 B1a-1 (F-715): prüft das optionale Feld 'loeschliste' — { geloescht: string[], abgelehnt: [{ pfad, grund }] }.
+ * @param wert - Feldwert
+ * @returns Verstöße
+ */
+function validiereLoeschliste(wert: unknown): string[] {
+  if (!istObjekt(wert)) return ["'loeschliste' muss ein Objekt sein"]
+  const verstoesse: string[] = []
+  for (const feld of Object.keys(wert)) if (feld !== 'geloescht' && feld !== 'abgelehnt') verstoesse.push(`unbekanntes Feld 'loeschliste.${feld}'`)
+  if (!Array.isArray(wert.geloescht) || !wert.geloescht.every(istNichtLeererString)) verstoesse.push("'loeschliste.geloescht' muss eine Liste nicht-leerer Strings sein")
+  if (!Array.isArray(wert.abgelehnt) || !wert.abgelehnt.every((e) => istObjekt(e) && typeof e.pfad === 'string' && istNichtLeererString(e.grund) && Object.keys(e).length === 2)) {
+    verstoesse.push("'loeschliste.abgelehnt' muss eine Liste von { pfad, grund } sein")
+  }
+  return verstoesse
+}
+
 function istGanzzahlOderNull(wert: unknown): wert is number | null {
   return wert === null || (typeof wert === 'number' && Number.isInteger(wert) && wert >= 0)
 }
@@ -89,8 +105,10 @@ export function validiereAenderungsuebersichtDaten(daten: unknown): string[] {
   const verstoesse: string[] = []
 
   for (const feld of Object.keys(daten)) {
-    if (!AENDERUNGSUEBERSICHT_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
+    if (!AENDERUNGSUEBERSICHT_FELDER.has(feld) && feld !== 'loeschliste') verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
+  // F45 B1a-1 (F-715): optional und additiv — Ergebnis der geprüften Löschliste eines Laufs im Arbeitsordner.
+  if ('loeschliste' in daten) verstoesse.push(...validiereLoeschliste(daten.loeschliste))
   for (const feld of AENDERUNGSUEBERSICHT_FELDER) {
     if (!(feld in daten)) verstoesse.push(`Pflichtfeld '${feld}' fehlt`)
   }

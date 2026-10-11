@@ -1,0 +1,17 @@
+{
+  "arbeitsordner_schema": "v0",
+  "workflow_id": "wf-beispiel-1",
+  "projekt_wurzel": "C:/Users/beispiel/Projekte/projekt",
+  "pfad": "C:/Users/beispiel/Projekte/projekt-laeufe/wf-beispiel-1",
+  "branch": "wf/wf-beispiel-1",
+  "basis_commit": "387f1a3e1dbc1581abd8f22a3b0b765825984c11",
+  "status": "BEREIT",
+  "grund": null,
+  "vorbereitung": {
+    "worktree_ms": 1840,
+    "npm_ci": { "ergebnis": "OK", "exit_code": 0, "dauer_ms": 21500, "ausgabe_ende": "added 12 packages in 21s" },
+    "e183_ms": 35
+  },
+  "aufraeumen": null,
+  "aktualisiert_am": "2026-10-11T12:00:00.000Z"
+}

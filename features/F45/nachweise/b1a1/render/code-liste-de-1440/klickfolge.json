@@ -1,0 +1,30 @@
+{
+  "url": "http://127.0.0.1:4199/#/code",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1300
+  },
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#code-arbeitsordner",
+    "hoehe": 700
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Liste",
+        "selector": "#code-arbeitsordner"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Seite Code, Liste der Arbeitsordner",
+      "warteAufSelector": {
+        "selector": ".arbeitsordner-liste, #code-arbeitsordner .subtle",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-code-liste.webp"
+    }
+  ]
+}

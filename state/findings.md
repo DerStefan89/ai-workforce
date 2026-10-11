@@ -10008,13 +10008,13 @@ Maßnahme: Nach einer Entscheidung mit `kategorie: 'stack'` sollte der nächste 
 Status: gelöst. `baueStackEntscheidungsInstruktion` (`src/architekt/index.ts`) hängt an den Auftragstext des `ausfuehrung`-Schritts eine Pflicht-Instruktion an — CLAUDE.md-Stack-Abschnitt füllen (Füllungs-Marker entfernen) UND ein ADR mit Verweis auf das Entscheidungsartefakt (`workflow-entscheidung-<workflowId>`) anlegen —, sobald der referenzierte Architektur-Lauf eine `kategorie:'stack'`-Entscheidung trägt UND dafür bereits eine menschliche Antwort erfasst ist (`findeWorkflowEntscheidungFuerSchritt`). Neue Regel 1h (`src/workflow/index.ts`) prüft danach deterministisch BEIDE Schreibziele nach — QA-Befund während WS-4 (eine erste Fassung prüfte nur `istStackOffen`, ein Lauf ohne jedes ADR hätte bestanden): `istStackOffen(repoWurzel)` UND `traegtAdrVerweisAufEntscheidung(repoWurzel, entscheidungArtefaktId)` (neu, `src/architekt/index.ts`, liest `docs/adr/*.md` auf einen Verweis auf die Entscheidungsartefakt-Id). Erfüllt eines der beiden nicht, hält der Workflow mit dem Grund `"Stack entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714)"` an, statt zum Review fortzusetzen — die Grenze ist damit nicht mehr nur eine Anleitung, sondern ERZWUNGEN (kalibrierter Rot-/Grün-Fall, inkl. des Halb-erfüllt-Rot-Falls). Real belegt am Aufrufpfad: `scripts/check-f42-projekt-harness.mjs` Block (h1)-(h3), `state/gates.md` (2026-09-25).
 Feature/Run: F42 WS-3 Z8, 25.09.2026; gelöst F42 WS-4, 25.09.2026.
 
-**F-715** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-715** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Der schreibende Werkzeugsatz der `ausfuehrung`-Rolle kann nicht löschen — eine Korrektur, die Löschungen verlangt, endet in Blockiert plus Handarbeit.
 Beschreibung: Real beobachtet im `haushaltsbuch2`-Reallauf: nach der Review-Rückmeldung (Z7, Scope-Verstoß F-712) forderte die Korrekturschleife eine Anpassung an, die unter anderem das Entfernen der eigenmächtig hinzugefügten Dateien (`schemas/`, `scripts/check-schemas.mjs`, ADR-0001–0003 etc.) verlangte. Lauf `28fd1ae5` bekam die Abnahme-Begründung korrekt über das Kontextpaket übermittelt und setzte sie um, konnte die verlangten Löschungen aber strukturell nicht durchführen — der `schreibend`-Werkzeugsatz enthält kein Löschwerkzeug. Der Lauf meldete das ehrlich als Blockiert (`KLAERUNG` korrekt ausgelöst, kein stiller Fehlschlag), der Rest musste danach von Hand gelöscht werden, der Workflow wurde gestoppt.
 Fundstelle: Lauf `28fd1ae5` (`ausfuehrung`, Korrekturversuch); Werkzeugsatz-Definition `schreibend` (kein Löschwerkzeug enthalten).
 Auswirkung: Mittel — kein Fehlverhalten am Kontrollzustand (die Selbstblockade griff korrekt), aber eine strukturelle Lücke: jede Korrektur, die eine Löschung verlangt, braucht zwingend menschliche Handarbeit statt eines automatisierten Korrekturdurchlaufs.
 Maßnahme: Ein eng begrenztes Löschwerkzeug im Baupfad ergänzen (Sicherheitsentscheidung Stefan — Umfang, Pfad-Allowlist und Protokollierung müssen vorher geklärt werden, kein unbegrenztes `rm`). Kein Umbau in diesem Nur-Doku-Auftrag.
-Status: offen.
+Status: erledigt (F45 B1a-1, E-F45-3 = A): im eigenen Arbeitsordner nennt die Ausführung Dateien in einem Block `zu_loeschen` (schemas/ergebnis-ausfuehrung-loeschliste.schema.json); der Server prüft je Pfad (relativ, kein `..`, realpath im Arbeitsordner, reguläre Datei, nichts unter `.git`, `.claude/`, `kontrollzustand/`) und löscht; Ergebnis in der Änderungsübersicht (Feld `loeschliste`). Kein Bash(rm). Real belegt im Korrekturlauf add92616 (runs-dialog.test.mjs gelöscht).
 Feature/Run: F42 WS-3, Lauf `28fd1ae5`, 25.09.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
@@ -12224,13 +12224,13 @@ Maßnahme: F42 und F44 nachtragen und ein Gate „jede Feature-Akte steht in gen
 Status: erledigt (F46 D0, 02.10.2026): `docs/projekt/roadmap.json` M5 trägt F42 (nach F41), F44 (nach F43) und F46 (nach F44, vor F30). Neues Gate `scripts/check-akte-meilenstein.mjs` in `npm run check`: jede Akte steht in genau einem Meilenstein, jeder Roadmap-Eintrag hat eine Akte; Ausnahmen AF-F001 (ohne Meilenstein) und F30 (ohne Akte) mit Begründung im Gate-Kopf. Tests `scripts/check-akte-meilenstein.test.mjs` (grün, fehlend, doppelt, veraltete Ausnahme); Kalibrierung `state/gates.md`.
 Feature/Run: Entdeckt: Roadmap neu, 01.10.2026.
 
-**F-954** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-954** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Läufe schreiben ohne eigenen Branch/Worktree in den ausgecheckten Stand.
 Beschreibung: Ein Lauf schreibt direkt in den gerade ausgecheckten Branch des Projekts. Der Leitstand zeigt vor dem Start weder den Branch noch offene Änderungen.
 Fundstelle: Auftrag starten mit Arbeitsumgebung (`#/projekt`, Ablauf-Freigabe); Laufstart im Server.
 Auswirkung: Mittel — Änderungen eines Laufs mischen sich mit offener Handarbeit; der Mensch sieht das Risiko vor dem Start nicht.
 Maßnahme: Branch oder Worktree je Lauf und Anzeige von Branch und offenen Änderungen vor dem Start (Fixpaket B1).
-Status: offen.
+Status: erledigt (F45 B1a-1, E-F45-3 = A): jeder schreibende Ablauf arbeitet in einem eigenen Git-Worktree `<Projektordner>-laeufe/<Kurzname>` auf `wf/<Ablauf-ID>`; Freigabe-Seite und „Auftrag anlegen“ zeigen Branch, Arbeitsordner, Basis-Commit und die offenen Änderungen des Projektordners (blockieren nicht). Realer Nachweis `features/F45/nachweise/b1a1/nachweis.md` (Ablauf b1a1-nachweis-325d2a8f, Projektordner unverändert). Einzelläufe ohne Ablauf (POST /api/laeufe) und Chat bleiben im Projektordner.
 Feature/Run: Entdeckt: Auftrag starten mit Arbeitsumgebung, 01.10.2026.
 
 **F-955** · `BUG` · P2 · erledigt
@@ -12865,3 +12865,39 @@ Auswirkung: Mittel — eine zusätzliche Runde nach dem Push; ohne CI bliebe ein
 Maßnahme: F45 B1a (Mindest-Gates, auch für das Projekt-Skelett): lokaler Secret-Scan in npm run check, wenn das Werkzeug vorhanden ist (gitleaks bzw. Docker), sonst klarer Hinweis statt stillem Überspringen.
 Status: offen.
 Feature/Run: Entdeckt: CI #318, 11.10.2026.
+
+**F-1025** · `BUG` · P2 · offen
+Titel: Arbeitsordner: Windows-Pfadgrenze (MAX_PATH) bei langen eingecheckten Pfaden.
+Beschreibung: Erster realer Versuch (B1a-1, Ablauf b1a1-nachweis-72fdac22): `git worktree add` scheiterte nach 241 s mit „Filename too long“ — eingecheckte `kontrollzustand/lineage-…`-Dateien sind bis 195 Zeichen lang; im Projektordner (37 Zeichen) passt das, im Worktree mit voller Ablauf-ID (68 Zeichen) nicht. Behoben in B1a-1: Ordnername = 10-stelliger Hash der Ablauf-ID (Branch bleibt `wf/<Ablauf-ID>`), Vorprüfung der Pfadlänge gegen den Basis-Commit vor dem Checkout (Halt mit Grund statt Minuten), Fehlertext zeigt die `error:`/`fatal:`-Zeilen. Rest: ein Projekt mit langem Pfad oder noch längeren Dateinamen hält weiter an (jetzt sofort, mit Grund).
+Fundstelle: `src/arbeitsordner/index.ts` (leiteArbeitsordnerAb, pruefePfadlaengen), eingecheckte Kontrollzustand-Dateien.
+Auswirkung: Mittel — ohne Fix entstand unter Windows bei ai-workforce nie ein Arbeitsordner.
+Maßnahme: Rest beobachten; bei Bedarf `core.longpaths` für die Worktree-Aufrufe oder kürzere Lineage-Dateinamen (eigene Entscheidung).
+Status: offen (Kern behoben, Rest beobachten).
+Feature/Run: Entdeckt: F45 B1a-1, realer Nachweis 11.10.2026.
+
+**F-1026** · `BUG` · P1 · offen
+Titel: Ausführung endet „erfolgreich“, aber unvollständig, wenn ein Prüfbefehl im -p-Lauf in den Hintergrund wandert.
+Beschreibung: Realer Nachweis B1a-1, Lauf af862c09: die Ausführung startete `npm run check` (Zeitgrenze 300 s über dem Vordergrund-Limit), Claude Code schob ihn in den Hintergrund, das Modell beendete den Turn mit „Ich warte auf die Benachrichtigung“. Der Lauf endete ERFOLGREICH ohne Abschluss: der `zu_loeschen`-Block fehlte, die verlangte Löschung unterblieb; der verwaiste Hintergrund-Check lief parallel zum Prüfschritt im selben Arbeitsordner. Der Review (Codex) fing es (BLOCKIERT), der Korrekturlauf holte es nach. Nicht durch B1a-1 entstanden, der Hinweissatz „Kannst du sie selbst ausführen, tu es trotzdem“ (F-652) begünstigt es.
+Fundstelle: Instruktion in `starteWorkflowSchritt` (F-652-Satz), Werkzeugsatz `schreibend` (Bash-Allowlist), Rohstrom `kontrollzustand-roh/af862c09…`.
+Auswirkung: Hoch — Ergebnis wirkt fertig, ist es nicht; jeder Bau mit eigenem Check kann so enden.
+Maßnahme: (B2b) Ende „wartet auf Hintergrund“ als unvollständig werten (Rückfrage/Halt), Hintergrundausführung im Lauf unterbinden oder Bash-Zeitgrenze unter das Vordergrund-Limit legen; Instruktion: Prüfbefehle nur im Vordergrund oder gar nicht.
+Status: offen.
+Feature/Run: Entdeckt: F45 B1a-1, realer Nachweis 11.10.2026.
+
+**F-1027** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Arbeitsordner: Invariante „Projektordner unberührt“ geprüft, nicht ERZWUNGEN — Restgrenzen.
+Beschreibung: Belegt sind Servertest (Arbeitsbaum, Index, Branch, HEAD unverändert) und realer Nachweis. Nicht erzwungen: (a) ein Schreibzugriff von Claude Code aus dem Worktree in den Projektordner (`../<Projekt>/…`) ist nicht als Rot-Fall belegt — die Grenze trägt die Arbeitsverzeichnis-Beschränkung von Claude Code; (b) das `.git` ist geteilt (Konfiguration, Refs); (c) ein späteres `npm install` im Lauf führt Lifecycle-Skripte aus (`prepare` → `git config`); die Vorbereitung selbst nutzt `npm ci --ignore-scripts` — Fremdprojekte mit nötigem postinstall scheitern erst im Prüfschritt; (d) Einzelläufe (POST /api/laeufe) und Chat laufen bewusst weiter im Projektordner.
+Fundstelle: `src/arbeitsordner/index.ts`, `scripts/leitstand-server.mjs` (starteLaufUndVergiss, ermittleLaufort).
+Auswirkung: Mittel.
+Maßnahme: Rot-Fall (a) im nächsten realen Lauf mit eigenem, harmlosen Ziel belegen; (b)/(c) in B1b mit der Harness-Prüfung abgleichen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B1a-1, Advisor-Pass 11.10.2026.
+
+**F-1028** · `TECH_DEBT` · P3 · offen
+Titel: Arbeitsordner: Restpunkte der Anzeige und des Aufräumens.
+Beschreibung: (a) erledigt im Prüfpass: die Karte steht offen auf der Abnahme-Seite (ohne Knopf, solange die Abnahme offen ist); nach der Abnahme verlässt die Seite den Abnahme-Modus, „Der Weg zum Ergebnis“ ist offen und der Knopf steht in der Aktionszeile. Auf der Freigabe-Seite (fehlgeschlagene Vorbereitung) steht er weiter nur unter dem eingeklappten „Der Weg zum Ergebnis“, die Karte nennt den nächsten Schritt. (b) Nach dem letzten Aufräumen bleibt der leere Ordner `<Projekt>-laeufe` stehen (kein rmdir). (c) Nachsenden nach der Vorbereitung prüft die Fassung nur in der Oberfläche (versionSequenz), nicht am Server; ein Neuladen während der Vorbereitung verwirft die wartende Freigabe (Text sagt das); zwei offene Tabs senden beide nach, der zweite bekommt 409. (d) Die Seite Code zeigt weiter den Projektordner, nicht den Worktree eines Ablaufs (B2b, „Bereit zum Sichern“). (e) Im Korrekturlauf vergleichen Änderungsübersicht, Regel 1j und Rückfrage-Heuristik gegen die Basis, also kumuliert über alle Läufe des Ablaufs. (f) Zustände der Karte unterscheiden sich außer „fehlgeschlagen“ nur im Text (kein Chip); der Kurztext „Der Ablauf startet sofort“ der Freigabe-Option stimmt bei noch anzulegendem Arbeitsordner nicht ganz. (g) Pfadreserve bei ai-workforce: längster Pfad 250 von 259 Zeichen. (h) Pfade brechen in schmalen Spalten mitten im Wort (`overflow-wrap: anywhere`), z. B. „…\\Projekt“ / „e\\ai-workforce-“ (Design-Nachpass). (i) QA-Nachpass: der Halt in starteWorkflowSchritt bei fehlendem Ordner ist nur über den Startweg getestet; der Weg ohne package-lock.json (npm ci übersprungen) ist ungetestet und die Karte sagt dann nur „Bereit.“; „Abnahme offen“ rechnen Oberfläche und Server leicht verschieden (der Server entscheidet, eine Abweichung endet als 409).
+Fundstelle: `public/leitstand/views/arbeitsordner-anzeige.js`, `public/leitstand/views/workflows.js`.
+Auswirkung: Gering.
+Maßnahme: (b) leeren Elternordner nach dem Entfernen löschen (nur wenn leer); (c) optionale versionSequenz im Körper serverseitig prüfen; (d) B2b; (e) je Lauf gegen eine Momentaufnahme vergleichen; (f) Chip der Bereitschaftsliste wiederverwenden, Optionstext anpassen; (g) beobachten (F-1025); (i) Tests ergänzen, Lage „npm ci übersprungen“ anzeigen, eine gemeinsame Regel für „Abnahme offen“; (h) beim Escapen nach `\\` und `/` ein `<wbr>` einfügen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B1a-1, Render-Nachweis 11.10.2026.

@@ -15,7 +15,7 @@
  * `--no-optional-locks` ist Pflicht (Stefans Vorgabe): die Prüfung ist rein lesend und darf nie
  * gegen ein bestehendes index.lock eines anderen, echten Git-Vorgangs laufen.
  *
- * Wird aufgerufen von: scripts/leitstand-server.mjs,
+ * Wird aufgerufen von: scripts/leitstand-server.mjs, src/arbeitsordner/index.ts,
  * src/ausfuehrung-vorbedingung/ausfuehrung-vorbedingung.test.ts.
  */
 
@@ -89,6 +89,25 @@ export function pruefeAusfuehrungsVorbedingung(headInhalt: string, statusPorcela
       ok: false,
       grund: `Ausführung gesperrt: der Arbeitsbaum ist nicht sauber (${unsaubereZeilen.length} Datei(en) außerhalb der bekannten Ausnahmen) — committen oder stashen, bevor ein schreibender Schritt startet.`,
     }
+  }
+  return { ok: true }
+}
+
+/**
+ * F45 B1a-1 (E-F45-3 = A; Auslegung von E-F39-1=B im Arbeitsordner, Entscheidungsbedarf E-F45-5, Plan v3 B6):
+ * Vorbedingung eines schreibenden Schritts, der im eigenen Git-Worktree des Ablaufs läuft. Der Branch muss
+ * GENAU der des Ablaufs sein (strenger als ≠ main/master). Sauberkeit stellt die Vorbereitung beim Anlegen fest
+ * (src/arbeitsordner, vor npm ci); danach gehören alle offenen Änderungen dem Ablauf selbst — der Korrekturlauf
+ * fände sonst immer die Änderungen des ersten Baus vor. Stefans Projektordner berührt diese Prüfung nicht — für
+ * ihn gilt pruefeAusfuehrungsVorbedingung unverändert. Reine Funktion.
+ * @param kopfRef - Ausgabe von `git symbolic-ref -q HEAD` im Worktree (leer bei losgelöstem HEAD)
+ * @param branch - erwarteter Branch ohne 'refs/heads/' (wf/<workflowId>)
+ * @returns { ok: true } oder { ok: false, grund }
+ */
+export function pruefeArbeitsordnerVorbedingung(kopfRef: string, branch: string): { ok: true } | { ok: false; grund: string } {
+  const gefunden = kopfRef.trim()
+  if (gefunden !== `refs/heads/${branch}`) {
+    return { ok: false, grund: `Ausführung gesperrt: der Arbeitsordner steht nicht auf ${branch} (gefunden: ${gefunden.length > 0 ? gefunden : 'losgelöster HEAD'}).` }
   }
   return { ok: true }
 }

@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gebaut (Branch `feat/f45-s-sicherheit`, Basis `8e5adf9`, nicht committet; Abschnitt „Stand S“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gebaut (Branch `feat/f45-b1a1-arbeitsordner`, Basis `387f1a3`, nicht committet; Abschnitt „Stand B1a-1“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -22,7 +22,8 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 ## Entscheidungen
 - **E-F45-1 = A** (Stefan, 01.10.2026) — Eine Feature-Akte wird direkt im Leitstand bearbeitet; Wortlaut in `docs/projekt/zielfassung.md` §13.6.
 - **E-F45-2** (offen, fällig nach R) — Teil 2 vor F30 über Challenger-Bauaufträge (A) oder als erste Aufträge der Workforce an sich selbst (B). Empfehlung Challenger: B. Grundlage Abschnitt 5.
-- **E-F45-3** (offen, fällig vor B1a) — Lauf-Umgebung: eigener Worktree je Lauf oder nur eigener Branch; darf der Lauf im eigenen Worktree löschen (F-715). Grundlage Abschnitt 5.
+- **E-F45-3 = A** (Stefan, 11.10.2026) — Jeder schreibende Ablauf der Workforce arbeitet in einem eigenen Git-Worktree auf eigenem Branch neben dem Projekt. Stefans Projektordner bleibt unberührt. Im eigenen Worktree darf der Ablauf Dateien löschen — über eine Löschliste, die der Server prüft und ausführt. Wortlaut in `docs/projekt/zielfassung.md` §13.6; Umsetzung B1a-1.
+- **E-F45-5** (offen, aus B1a-1, vor dem Merge zu bestätigen) — Auslegung von E-F39-1=B im Arbeitsordner: Sauberkeit wird beim Anlegen des Worktrees festgestellt; ein schreibender Schritt prüft danach nur, dass der Worktree genau auf `wf/<Ablauf-ID>` steht (der Korrekturlauf findet die Änderungen des ersten Baus vor). Für den Projektordner gilt E-F39-1=B unverändert. Empfehlung: A (so bestätigen). Grundlage `features/F45/plan-b1a1.md` (Plan v3 B6).
 - **E-F45-4** (offen, aus WS P, F-1018) — Energiemodus „Ausgeglichen“ (A) oder der Leitstand nimmt sich selbst aus der Drosselung (B). Grundlage Abschnitt 5.
 - **F-1015-Kriterium** (Challenger, 11.10.2026) — Seitenspeicher, JS-Heap, DOM-Knoten und Listener am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen); Grundlage Abschnitt 2.
 
@@ -177,3 +178,83 @@ Branch `feat/f45-s-sicherheit` (Basis `8e5adf9`, gleich `origin/main` beim Start
 - Der F-760-Halt-Grund wird seit S maskiert gespeichert (Kontrollzustand des Ablaufs) — Textänderung, keine Änderung an Ablauf-Logik; vom Challenger gegen „NICHT: Workflows“ zu bestätigen.
 
 **Prüfpass** (frischer Kontext, eine Korrekturrunde): code-reviewer und qa zunächst „nicht freigegeben“ — Gate blind hinter `/*` in Texten (cr 1), quadratische Laufzeit möglich (cr 2), Selbstbetrieb über `node_modules/.bin` (qa 2), F-760-Halt-Grund unmaskiert (qa 1), escaptes JSON (qa 3), Render-Nachweis fehlte. Alles korrigiert bzw. als F-1021/F-1022 festgehalten. Nachpass: code-reviewer und qa „freigegeben mit Hinweisen“ (F-760-Maskierung verletzt nach code-reviewer die Grenze „Workflows“ nicht: nur Text, Erkennung über Anfang/Schluss unberührt). Hinweise eingearbeitet: Ziel über 1 200 Zeichen endet immer auf „…“, das angeschnittene letzte Wort fällt weg; ein Anführungszeichen vor Leerraum beginnt keinen Wert (`grep -n "token:" datei` bleibt unverändert); `-u C:\…` kein curl-Benutzer; Scanner-Grenze im Gate-Kopf. Neu: F-1023 (fsmonitor).
+
+## Stand B1a-1
+Branch `feat/f45-b1a1-arbeitsordner` (Basis `387f1a3` = `origin/main`, #318), nicht committet. Bau 11.10.2026.
+Plan `features/F45/plan-b1a1.md` (v1 → Advisor-Pass „tragfähig mit Änderungen“ → v2 → Nachpass auf d/e „tragfähig mit
+Änderungen“ → v3, Nachtrag Bau).
+
+**Ist:** ≈ 1 AT (Schätzung 0,75–1 AT), davon ≈ 0,5 h echte Läufe; ein zusätzlicher Versuch durch die Windows-Pfadgrenze
+(F-1025).
+
+**Gebaut:**
+- **Kern** `src/arbeitsordner/`: Pfad/Branch (`<Projektordner>-laeufe/<Kurzname>`, `wf/<Ablauf-ID>`, Whitelist der ID),
+  Bedarf (mindestens ein schreibender Schritt) und Bestand (schreibender Schritt lief ohne Artefakt), Vorbereitung
+  idempotent über den Git-Starter (Repo-Wurzel, Commit, Pfadlängen, `worktree add --quiet`, Wiederaufnahme nur bei
+  sauberem, nicht gesperrtem Worktree auf Basis, Sauberkeit vor `npm ci --ignore-scripts`, E-183-Vorprüfung),
+  Entfernen (`worktree remove`, `--force` nur mit „verwerfen“, `branch -d` nie `-D`), Löschliste
+  (`loeschliste.ts`), Vorbedingung im Worktree (Branch exakt). Git-Starter um `fuehreGitAsync` erweitert.
+- **Kern-Artefakt** `arbeitsordner-<workflowId>` (append-only, `schemas/kontrollzustand-arbeitsordner-payload.schema.json`);
+  WORKFLOW_V0 unverändert. Änderungsübersicht additiv um `loeschliste`. Neues Schema
+  `schemas/ergebnis-ausfuehrung-loeschliste.schema.json` (Block `zu_loeschen` im Ergebnistext).
+- **Server** (`scripts/leitstand-server.mjs`): Laufort je Schritt (`ermittleLaufort`) für Eingaben, Vorbedingung,
+  Regeln 1c/1h/1j, Ort-B; skalarer Parameter `laufort` an `starteLaufUndVergiss` (cwd + settingsPfad, Löschliste vor
+  der Änderungsübersicht, Prüfschritt); „Prüfung wiederholen“ im Laufort; Vorprüfung in Start und Freigabe (202
+  `vorbereitung`, nichts am Workflow geschrieben; D13 und Quelltextverträge unverändert); Tiefenverteidigung in
+  `starteWorkflowSchritt`; Projektion `arbeitsordner` im Detail; Routen Aufräumen und Liste
+  (`scripts/leitstand/routen-arbeitsordner.mjs`). Option `arbeitsordner` an im realen Server (CLI-Bindeblock,
+  `baueProjektHandlerMap`), aus für Gate-Instanzen; Start-Log „Arbeitsordner je Ablauf: an“.
+- **E-183/E-188:** E-183 misst im Lauf die `.claude/settings.json` und Hooks des Worktrees (`settingsPfad` je Lauf),
+  E-188 `arbeitsverzeichnis_pfad` bleibt `process.cwd()`; keine Zeile in invocation-policy geändert.
+- **ARCHITECTURE.md §2:** eng gefasste Ausnahme für den Arbeitsordner.
+- **Oberfläche:** Karte „Wo gearbeitet wird“ auf der Freigabe-Seite (Branch, Arbeitsordner, Basis-Commit, offene
+  Änderungen des Projektordners — blockieren nicht; Zustände nicht angelegt, wird vorbereitet, bereit, fehlgeschlagen,
+  aufgeräumt, Bestand), Zeile „Eigener Arbeitsordner“ in „Auftrag anlegen“ (Warnung angepasst), Lage und Knopf
+  „Arbeitsordner aufräumen“ im Detail mit Dialog (Pflichtbegründung, „verwerfen“), Liste auf der Seite Code; 202
+  `vorbereitung` → einmaliges Nachsenden bei gleicher Fassung. Texte in de/en/ru/tr.
+- **Tests** (53, einer übersprungen: Datei-Symlink braucht unter Windows Rechte): `src/arbeitsordner/arbeitsordner.test.ts`
+  (E-183 Grün/Rot gegen Worktree-Settings, Junction nach außen und auf `.claude/`, `.git` als Segment, Wiederaufnahme
+  mit stehengebliebenem Branch, Aufräumen gemergt/nicht gemergt/verwerfen/gesperrt/Ordner fehlt),
+  `scripts/leitstand-arbeitsordner.test.mjs` (volle Kette im Worktree mit Invariante, Aufräumen erst nach der Abnahme,
+  Freigabeweg, fehlgeschlagene Vorbereitung, Bestand und Bestand nach ANPASSUNG, Ordner von Hand gelöscht, veraltetes
+  IN_VORBEREITUNG, zweiter Start während der Vorbereitung, keine Löschung bei VERWEIGERT, Regel 1j, Prüfung wiederholen,
+  Einschalten im realen Server), `public/leitstand/views/arbeitsordner-anzeige.test.mjs`,
+  `scripts/leitstand/routen-arbeitsordner.test.mjs`.
+
+**Ergebnis realer Nachweis** (`features/F45/nachweise/b1a1/nachweis.md`): Ablauf b1a1-nachweis-325d2a8f gegen
+ai-workforce; Arbeitsordner `C:\Users\stefa\Projekte\ai-workforce-laeufe\2b0ee56dff`, Branch
+`wf/b1a1-nachweis-325d2a8f`, Basis `387f1a3`; **worktree add 14,7 s, npm ci 38,5 s, E-183 0,3 s** (bereit nach 55 s);
+Bau, Prüfschritt (GRÜN) und Codex-Review im Worktree; Korrekturlauf im selben Worktree; Löschung ausgeführt
+(`runs-dialog.test.mjs`); Projektordner: Statusliste, Branch und HEAD in beiden Runden gleich, ohne Eingriff von mir
+im Korrekturlauf vollständig unverändert (Vergleich über porcelain und `--stat`, nicht über Inhalts-Hashes); Aufräumen
+ohne Verwerfen 409, mit Verwerfen 200, Branch gelöscht (vor der Korrekturrunde, damals noch ohne Abnahme-Sperre).
+
+**Grenzen:**
+- Invariante geprüft, nicht ERZWUNGEN (F-1027): Schreibzugriff von Claude Code aus dem Worktree nach außen nicht als
+  Rot-Fall belegt; `.git` geteilt; Einzelläufe und Chat bleiben im Projektordner.
+- Ausführung kann vorzeitig „erfolgreich“ enden, wenn sie einen Prüfbefehl in den Hintergrund schiebt (F-1026, im
+  Nachweis aufgetreten, vom Review gefangen).
+- Windows-Pfadgrenze: Kurzname und Vorprüfung; sehr lange Projektpfade halten mit Grund an (F-1025).
+- `npm ci --ignore-scripts`: Fremdprojekte mit nötigem postinstall fallen erst im Prüfschritt auf; ohne
+  `package-lock.json` kein `npm ci`.
+- Anzeige-Restpunkte F-1028 (leerer `-laeufe`-Ordner bleibt, Fassungsprüfung beim Nachsenden nur in der Oberfläche,
+  Zustände außer „fehlgeschlagen“ nur über Text, Optionstext „startet sofort“, Pfade brechen in schmalen Spalten mitten im
+  Wort).
+- Im Korrekturlauf zeigen Änderungsübersicht, Regel 1j und Rückfrage-Heuristik alle Änderungen seit der Basis, nicht nur
+  die des Korrekturlaufs (HEAD bleibt die Basis; F-1028 e).
+- Bis „Bereit zum Sichern“ (B2b) liegt das Ergebnis nur im Arbeitsordner auf `wf/<Ablauf-ID>`; Stefan sichert dort.
+  Aufräumen ist erst nach der Abnahme (oder bei GESTOPPT/fehlgeschlagener Vorbereitung) möglich.
+- E-F45-5 offen (Stefan).
+
+**Prüfpass** (frischer Kontext, eine Korrekturrunde): code-reviewer „freigegeben mit Hinweisen“, qa und design-guardian
+„nicht freigegeben“. Korrigiert: Bestand auch nach ANPASSUNG (Abnahme-Artefakt, Versionsgeschichte), Aufräumen erst nach
+entschiedener Abnahme (Server und Oberfläche), gesperrter Worktree (unlock nur mit „verwerfen“), Ordner von Hand gelöscht
+(prune), ein wirksamer Status für Projektion, Liste und Aufräumen, Laufort für Regel 1c in Detail und Entscheidung, ungültige
+ID ohne Artefakt (409), Löschen über den realpath, `.git` als jedes Segment, offene Änderungen sprachunabhängig, Pfadvergleich
+über realpath, Puffer für `ls-tree`, npm-Fehlgrund mit letzter Zeile, kein `worktree prune` im Normalfall, Validator
+strenger, Herkunftsprüfung für die Liste, Löschergebnis im Fehlereintrag; Oberfläche: keine zweite Live-Region, Karte auch
+auf der Abnahme-Seite (Sichern-Hinweis, Löschliste mit abgelehnten Gründen, Knopf erst nach der Abnahme), nächster Schritt
+bei fehlgeschlagener Vorbereitung, danger-Knopf im Dialog, Musterpfad bricht um, „Projektordner“ statt „Arbeitsordner“ in
+„Auftrag anlegen“, Texte zum Nachsenden ehrlich; Render-Nachweis neu (15 Folgen inkl. 200 %, Bestand, aufgeräumt,
+Dialog 390 px). Rest F-1028.
+

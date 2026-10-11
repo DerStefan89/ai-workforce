@@ -1,0 +1,56 @@
+{
+  "url": "http://127.0.0.1:4199/#/workflows/b1a1-nachweis-325d2a8f",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Karte",
+        "selector": "#freigabe-arbeitsordner"
+      },
+      {
+        "name": "Lage",
+        "selector": ".arbeitsordner-karte .arbeitsordner-lage"
+      },
+      {
+        "name": "Aktion",
+        "selector": ".arbeitsordner-aktion"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte Wo gearbeitet wird",
+        "selector": ".arbeitsordner-karte"
+      },
+      {
+        "name": "Knopf aufräumen",
+        "selector": "[data-aktion=\"aufraeumen-oeffnen\"]"
+      },
+      {
+        "name": "Dialog Begründung",
+        "selector": "#wf-aufraeumen-begruendung"
+      },
+      {
+        "name": "Dialog verwerfen",
+        "selector": "#wf-aufraeumen-verwerfen"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Abnahme-Seite des echten Ablaufs: Karte offen, Löschliste, aufgeräumt (echt)",
+      "warteAufSelector": {
+        "selector": ".arbeitsordner-karte",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-abnahme-aufgeraeumt.webp"
+    }
+  ]
+}

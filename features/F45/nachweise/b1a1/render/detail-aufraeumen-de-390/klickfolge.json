@@ -1,0 +1,180 @@
+{
+  "url": "http://127.0.0.1:4199/#/workflows/b1a1-nachweis-325d2a8f",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workflows/b1a1-nachweis-325d2a8f",
+      "status": 200,
+      "json": {
+        "workflowId": "b1a1-nachweis-325d2a8f",
+        "versionSequenz": 12,
+        "daten": {
+          "aktiver_schritt_id": null,
+          "auftrag_id": "73057314-929e-4507-ad64-6cc2e3fd3149",
+          "grenzen": {
+            "max_replans": 1,
+            "max_schritte": 6
+          },
+          "grund": "Vom Menschen gestoppt: Render-Nachweis",
+          "schritte": [
+            {
+              "eingaben": [
+                "artefakt:auftrag-73057314-929e-4507-ad64-6cc2e3fd3149",
+                "artefakt:entscheidung-workflow-b1a1-nachweis-325d2a8f-abnahme"
+              ],
+              "freigabe": "ZWINGEND",
+              "freigabe_erteilt": true,
+              "lauf_id": "add92616-c7d2-4e45-ad92-2456b097963e",
+              "modell": "claude-sonnet-5",
+              "nachfolger": "schritt-2-review",
+              "output_schema": null,
+              "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend.",
+              "rolle": "ausfuehrung",
+              "schritt_id": "schritt-1-ausfuehrung",
+              "status": "ERFOLGREICH",
+              "werkzeugsatz": "schreibend",
+              "worker": "claude-code",
+              "zeitgrenze_ms": 1800000
+            },
+            {
+              "eingaben": [
+                "artefakt:auftrag-73057314-929e-4507-ad64-6cc2e3fd3149",
+                "artefakt:aenderungsuebersicht-@schritt-1-ausfuehrung",
+                "artefakt:pruefergebnis-@schritt-1-ausfuehrung"
+              ],
+              "freigabe": "AUTOMATISCH",
+              "lauf_id": "82e9b324-4233-4714-b51a-b9bacc231295",
+              "modell": "gpt-6-astra",
+              "nachfolger": null,
+              "output_schema": "ergebnis-code-reviewer",
+              "risiko": "Kein Schreibzugriff — Post-Build-Pruefung des tatsaechlichen Diffs.",
+              "rolle": "code-reviewer",
+              "schritt_id": "schritt-2-review",
+              "status": "ERFOLGREICH",
+              "werkzeugsatz": "lesend",
+              "worker": "codex",
+              "zeitgrenze_ms": 600000
+            }
+          ],
+          "status": "GESTOPPT",
+          "version": 1,
+          "workflow_id": "b1a1-nachweis-325d2a8f",
+          "workflow_schema": "v0",
+          "ziel": "F45 B1a-1 Nachweis: Arbeitsordner je Ablauf"
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltGestoppt",
+          "schrittId": null,
+          "grund": "gestoppt"
+        },
+        "empfehlung": null,
+        "werkzeugsatzDurchsetzung": [
+          {
+            "schrittId": "schritt-1-ausfuehrung",
+            "durchsetzungsgrad": "ERZWUNGEN"
+          },
+          {
+            "schrittId": "schritt-2-review",
+            "durchsetzungsgrad": "DEKLARIERT"
+          }
+        ],
+        "architekturEntscheidung": null,
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "add92616-c7d2-4e45-ad92-2456b097963e",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        },
+        "arbeitsordner": {
+          "status": "BEREIT",
+          "pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce-laeufe\\2b0ee56dff",
+          "branch": "wf/b1a1-nachweis-325d2a8f",
+          "basis_commit": "387f1a3e1dbc1581abd8f22a3b0b765825984c11",
+          "grund": null,
+          "vorbereitung": {
+            "worktree_ms": 14658,
+            "npm_ci": {
+              "ergebnis": "OK",
+              "exit_code": 0,
+              "dauer_ms": 38502,
+              "ausgabe_ende": ""
+            },
+            "e183_ms": 299
+          },
+          "aufraeumen": null,
+          "vorbereitungLaeuft": false,
+          "ordnerVorhanden": true
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Karte",
+        "selector": "#freigabe-arbeitsordner"
+      },
+      {
+        "name": "Lage",
+        "selector": ".arbeitsordner-karte .arbeitsordner-lage"
+      },
+      {
+        "name": "Aktion",
+        "selector": ".arbeitsordner-aktion"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte Wo gearbeitet wird",
+        "selector": ".arbeitsordner-karte"
+      },
+      {
+        "name": "Knopf aufräumen",
+        "selector": "[data-aktion=\"aufraeumen-oeffnen\"]"
+      },
+      {
+        "name": "Dialog Begründung",
+        "selector": "#wf-aufraeumen-begruendung"
+      },
+      {
+        "name": "Dialog verwerfen",
+        "selector": "#wf-aufraeumen-verwerfen"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Beendeter (gestoppter) Ablauf mit Arbeitsordner",
+      "warteAufSelector": {
+        "selector": "[data-aktion=\"aufraeumen-oeffnen\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-detail.webp"
+    },
+    {
+      "label": "Dialog aufräumen",
+      "klick": ".arbeitsordner-aktion [data-aktion=\"aufraeumen-oeffnen\"]",
+      "warteAufSelector": {
+        "selector": "#wf-aufraeumen-begruendung",
+        "timeoutMs": 5000
+      },
+      "ohneAusschnitt": true,
+      "screenshot": "02-dialog.webp"
+    },
+    {
+      "label": "Ohne Begründung bestätigen",
+      "klick": "[data-aktion=\"aufraeumen\"]",
+      "screenshot": "03-pflicht.webp",
+      "ohneAusschnitt": true
+    }
+  ]
+}

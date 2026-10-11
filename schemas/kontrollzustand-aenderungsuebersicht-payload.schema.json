@@ -35,6 +35,24 @@
     "stat_text": { "type": "string", "description": "Text von 'git diff --stat HEAD', oder ein Klartext-Grund, wenn die Ermittlung fehlschlug." },
     "patch": { "type": "string", "description": "Text von 'git diff HEAD', ggf. auf budget_bytes gekappt (gekuerzt: true)." },
     "gekuerzt": { "type": "boolean" },
-    "budget_bytes": { "type": "integer", "minimum": 0 }
+    "budget_bytes": { "type": "integer", "minimum": 0 },
+    "loeschliste": {
+      "type": "object",
+      "description": "F45 B1a-1 (F-715), optional und additiv: Ergebnis der vom Server geprüften Löschliste eines Ausführungslaufs im Arbeitsordner (schemas/ergebnis-ausfuehrung-loeschliste.schema.json). Abgelehnte Pfade sind ein Befund, kein Halt.",
+      "additionalProperties": false,
+      "required": ["geloescht", "abgelehnt"],
+      "properties": {
+        "geloescht": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "abgelehnt": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pfad", "grund"],
+            "properties": { "pfad": { "type": "string" }, "grund": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
   }
 }

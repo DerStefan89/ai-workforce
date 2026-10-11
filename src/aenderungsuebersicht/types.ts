@@ -32,4 +32,6 @@ export interface AenderungsuebersichtV0Daten {
   patch: string
   gekuerzt: boolean
   budget_bytes: number
+  /** F45 B1a-1 (F-715), optional: geprüfte Löschliste eines Laufs im Arbeitsordner (gelöscht / abgelehnt mit Grund). */
+  loeschliste?: { geloescht: string[]; abgelehnt: { pfad: string; grund: string }[] }
 }

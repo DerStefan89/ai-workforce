@@ -55,7 +55,7 @@ export interface ProzessErgebnis {
 }
 
 /** Führt npm mit den gegebenen Argumenten aus (ohne Shell). */
-export type NpmRunner = (args: string[], optionen: { cwd: string; timeoutMs: number }) => Promise<ProzessErgebnis>
+export type NpmRunner = (args: string[], optionen: { cwd: string; timeoutMs: number; env?: NodeJS.ProcessEnv }) => Promise<ProzessErgebnis>
 
 /** Startet den MCP-Server, fragt initialize + tools/list ab und beendet ihn wieder. */
 export type ServerPruefer = (command: string, args: string[], optionen: { cwd: string; timeoutMs: number }) => Promise<{ ok: true; werkzeuge: string[] } | { ok: false; grund: string }>
@@ -885,10 +885,10 @@ function laufeProzess(befehl: string, args: string[], { cwd, timeoutMs, env }: {
 }
 
 /** npm ohne Shell: node + npm-cli.js neben der laufenden node.exe (Spike WS-2s S5: Startform node + *-cli.js). */
-const npmReal: NpmRunner = (args, { cwd, timeoutMs }) => {
+export const npmReal: NpmRunner = (args, { cwd, timeoutMs, env }) => {
   const npmCli = join(dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')
   if (!existsSync(npmCli)) return Promise.reject(new Error(`npm-cli.js nicht gefunden unter '${npmCli}'`))
-  return laufeProzess(process.execPath, [npmCli, ...args], { cwd, timeoutMs })
+  return laufeProzess(process.execPath, [npmCli, ...args], { cwd, timeoutMs, ...(env !== undefined ? { env } : {}) })
 }
 
 /**

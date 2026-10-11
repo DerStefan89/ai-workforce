@@ -111,7 +111,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ermittleIstZustand, pruefeAufrufparameter, pruefeStartfreigabe, vergleicheArbeitsverzeichnisMitNachweis, verweigereStart } from '../invocation-policy/index.ts'
+import { ermittleIstZustand, pruefeAufrufparameter, pruefeStartbedingung1, pruefeStartfreigabe, vergleicheArbeitsverzeichnisMitNachweis, verweigereStart } from '../invocation-policy/index.ts'
 import type { BaselineReferenz, IstUebrigeFelder, IstZustand, WirksamkeitsnachweisReferenz } from '../invocation-policy/types.ts'
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
@@ -183,6 +183,30 @@ export function pruefeStartordner(
   const autorisierung = leseAktuelleAutorisierung(optionen.aktuelleAutorisierungPfad ?? STANDARD_AKTUELLE_AUTORISIERUNG_PFAD)
   if (autorisierung === null) return { ok: false, grund: 'Referenzdatei fehlt oder hat nicht die erwartete Form, siehe state/aktuelle-autorisierung.json' }
   return vergleicheArbeitsverzeichnisMitNachweis(autorisierung.wirksamkeitsnachweisReferenz, istPfad, { repoWurzel: optionen.startfreigabeRepoWurzel })
+}
+
+/**
+ * F45 B1a-1 (Advisor-Pass Befund 14): E-183 vorab gegen die Werkzeugkonfiguration eines Arbeitsordners — dieselbe
+ * Lesestelle der Autorisierung wie starteGateway und dieselbe Messung (ermittleIstZustand) und Prüfung
+ * (pruefeStartbedingung1 über pruefeStartfreigabe ist hier nicht nötig: rein lesend, keine Wirkungsmarke, kein
+ * Log). Die Durchsetzung bleibt die Startfreigabe jedes Laufs (settingsPfad des Laufs = Arbeitsordner).
+ * @param settingsPfad - .claude/settings.json des Arbeitsordners
+ * @param optionen - aktuelleAutorisierungPfad/startfreigabeRepoWurzel wie in GatewayOptionen
+ * @returns { ok: true } oder { ok: false, grund }
+ */
+export function pruefeWerkzeugkonfigurationVorab(
+  settingsPfad: string,
+  optionen: { aktuelleAutorisierungPfad?: string; startfreigabeRepoWurzel?: string } = {}
+): { ok: true } | { ok: false; grund: string } {
+  const autorisierung = leseAktuelleAutorisierung(optionen.aktuelleAutorisierungPfad ?? STANDARD_AKTUELLE_AUTORISIERUNG_PFAD)
+  if (autorisierung === null) return { ok: false, grund: 'Referenzdatei fehlt oder hat nicht die erwartete Form, siehe state/aktuelle-autorisierung.json' }
+  let istZustand: IstZustand
+  try {
+    istZustand = ermittleIstZustand(settingsPfad)
+  } catch (fehler) {
+    return { ok: false, grund: `Ist-Zustand (.claude/settings.json + Schutzskripte) nicht messbar: ${(fehler as Error).message}` }
+  }
+  return pruefeStartbedingung1(autorisierung.baselineReferenz, istZustand, { repoWurzel: optionen.startfreigabeRepoWurzel })
 }
 
 interface Optionen {

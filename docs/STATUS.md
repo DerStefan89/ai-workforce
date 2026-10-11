@@ -603,10 +603,12 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   `d10f9be`). Akte `features/F45/feature.md`, Status `IN_ARBEIT`,
   Grundlage `docs/projekt/fixpaket-f45.md` (Ziel, K1–K5, P1–P5, R1–R7,
   Bestehensbedingung, Workstreams B0 bis R). B0 „Chat zuverlässig und
-  schnell“ gemergt #316 (`9bdfc1a`; K1–K5 erfüllt); P „Performance“ gebaut,
-  nicht gemergt (Branch `feat/f45-p-performance`; P1–P3 und F-1015 bei gleichem
-  Energiemodus erfüllt, F-556/F-999/F-1015 erledigt, Windows-Drosselung F-1018).
-  Offene Entscheidungen E-F45-2, E-F45-3, E-F45-4. Findings F-1007 bis F-1020. Nach F46, vor F30
+  schnell“ gemergt #316 (`9bdfc1a`; K1–K5 erfüllt); P „Performance“ gemergt
+  #317 (`8e5adf9`); S „Härtung klein“ gemergt #318 (`387f1a3`); B1a-1 „eigener
+  Arbeitsordner je Ablauf“ gebaut, nicht committet (Branch
+  `feat/f45-b1a1-arbeitsordner`; E-F45-3 = A, F-954/F-715 erledigt, realer
+  Nachweis `features/F45/nachweise/b1a1/nachweis.md`).
+  Offene Entscheidungen E-F45-2, E-F45-4, E-F45-5. Findings F-1007 bis F-1028. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

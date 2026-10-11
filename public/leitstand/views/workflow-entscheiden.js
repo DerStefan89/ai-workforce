@@ -32,6 +32,7 @@ import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge } from '../kommt.js'
 import { escapeHtml } from '../render.js'
 import { rollenName, workerName } from '../rollen-anzeige.js'
+import { renderArbeitsordnerKarte } from './arbeitsordner-anzeige.js'
 import { renderEntscheidungsPanel } from './entscheidung-panel.js'
 import { abnahmeEinleitung, abnahmeLage } from './workflow-abnahme.js'
 import { ordneSchritteNachPlan } from './workflow-detail.js'
@@ -162,11 +163,11 @@ function renderFaehigkeiten(empfehlung) {
 
 /**
  * Hauptspalte der Freigabe.
- * @param detail - { daten, naechster, empfehlung }
+ * @param detail - { daten, naechster, empfehlung, arbeitsordner, codeStand } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js
  * @returns HTML
  */
 export function renderFreigabeSeite(detail) {
-  return `<div class="entscheiden-inhalt">${renderWasStartet(detail)}${renderArbeitspaket()}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
+  return `<div class="entscheiden-inhalt">${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket()}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
 }
 
 /**

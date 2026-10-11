@@ -1,0 +1,14 @@
+[
+  {
+    "label": "ru, 390 px, hell, langer Grund",
+    "Karte Wo gearbeitet wird": true,
+    "Knopf aufräumen": true,
+    "Dialog Begründung": false,
+    "Dialog verwerfen": false,
+    "Karte": "Где идёт работа",
+    "Lage": "Подготовка не удалась: Im Arbeitsordner wäre der längste Pfad 263 Zeichen lang (Windows-Grenze 259): kontrollzustand/lin",
+    "Aktion": "Где идёт работа: Подготовка не удалась: Im Arbeitsordner wäre der längste Pfad 263 Zeichen lang (Windows-Grenze 259): ko",
+    "Dialogtitel": "(fehlt)",
+    "Seite geladen": true
+  }
+]
