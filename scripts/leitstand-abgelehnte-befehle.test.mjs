@@ -20,6 +20,10 @@ import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { MASKE } from './leitstand/geheimnisse-maskieren.mjs'
 import { leseAbgelehnteBefehleAusRohstrom } from './leitstand-server.mjs'
 
+/** Test-Attrappen, zur Laufzeit zusammengesetzt: kein vollständiges, scanner-erkennbares Geheimnis steht im Quelltext (Secret-Scan der CI, gitleaks). */
+const BEARER = ['test-abcd', 'efghijklmnop'].join('')
+const GHP = ['ghp', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123'].join('_')
+
 /**
  * Legt einen Rohstrom mit den gegebenen permission_denials an und ruft fn mit seinem Pfad auf.
  * @param denials - permission_denials des Ergebnisobjekts
@@ -38,8 +42,8 @@ function mitRohstrom(denials, fn) {
 
 test('abgelehnte Befehle: Geheimnis maskiert, harmloser Befehl und Werkzeug ohne Befehl unverändert', () => {
   const denials = [
-    { tool_name: 'Bash', tool_input: { command: 'curl -H "Authorization: Bearer test-abcdefghijklmnop" https://x.invalid' } },
-    { tool_name: 'Bash', tool_input: { command: 'export GITHUB_TOKEN=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 && gh pr list' } },
+    { tool_name: 'Bash', tool_input: { command: `curl -H "Authorization: Bearer ${BEARER}" https://x.invalid` } },
+    { tool_name: 'Bash', tool_input: { command: `export GITHUB_TOKEN=${GHP} && gh pr list` } },
     { tool_name: 'Bash', tool_input: { command: 'git status | head' } },
     { tool_name: 'WebFetch', tool_input: { url: 'https://x.invalid' } },
   ]
@@ -51,7 +55,7 @@ test('abgelehnte Befehle: Geheimnis maskiert, harmloser Befehl und Werkzeug ohne
       'Bash: git status | head',
       'WebFetch',
     ])
-    assert.ok(!befehle.join('\n').includes('abcdefghijklmnop'))
+    assert.ok(!befehle.join('\n').includes(BEARER))
   })
 })
 

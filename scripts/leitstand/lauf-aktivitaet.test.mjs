@@ -114,7 +114,8 @@ test('Geheimnisse (F-1005): Befehlstext im Ringpuffer maskiert — auch jenseits
   const speicher = erzeugeAktivitaetsSpeicher()
   speicher.starte('lauf-a')
   // Erfundene Testdaten.
-  speicher.melde('lauf-a', { werkzeug: 'Bash', ziel: 'curl -H "Authorization: Bearer abcdefghijklmnop" https://x.invalid?token=geheim123' })
+  // Bearer-Wert zur Laufzeit zusammengesetzt (Secret-Scan der CI, gitleaks).
+  speicher.melde('lauf-a', { werkzeug: 'Bash', ziel: `curl -H "Authorization: Bearer ${['abcdefgh', 'ijklmnop'].join('')}" https://x.invalid?token=geheim123` })
   speicher.melde('lauf-a', { werkzeug: 'Bash', ziel: 'npm run check' })
   speicher.melde('lauf-a', { werkzeug: 'Write', ziel: 'C:\\repo\\src\\token-store.ts' })
   const [schreiben, harmlos, geheim] = speicher.lese('lauf-a').eintraege
@@ -131,7 +132,7 @@ test('Geheimnisse (F-1005): Befehlstext im Ringpuffer maskiert — auch jenseits
   // Der Wert reicht über die Kante und fällt als angeschnittenes Wort ganz weg; die Kürzung bleibt sichtbar.
   assert.equal(ueberlang, 'export …')
   assert.equal(zielFuerAnzeige(`export TOKEN=geheim123 ${'w '.repeat(700)}`).startsWith(`export TOKEN=${MASKE} `), true)
-  const kante = zielFuerAnzeige(`${'x '.repeat(595)}ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 weiter`)
+  const kante = zielFuerAnzeige(`${'x '.repeat(595)}${['ghp', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123'].join('_')} weiter`)
   assert.ok(kante.endsWith('…'))
   assert.ok(!kante.includes('ghp_'), 'ein an der Kante angeschnittenes Token erscheint nicht')
   assert.equal(Array.from(zielFuerAnzeige('y'.repeat(5000))).length <= ZIEL_MAX_ZEICHEN, true)

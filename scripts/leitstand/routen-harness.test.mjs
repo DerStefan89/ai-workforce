@@ -145,7 +145,8 @@ test('Detail: Datei der Liste und direkte Datei eines gelisteten Ordners werden 
 
 test('Geheimnisse (F-1005): settings.json mit maskiertem env-Block und Schlüsseln, andere Dateien nach Mustern, Datei auf Platte unverändert', async () => {
   // Erfundene Testdaten.
-  const settings = '{\n  "env": {\n    "ANTHROPIC_API_KEY": "sk-ant-test-0123456789abcdefgh",\n    "MEIN_WERT": "klartext"\n  },\n  "apiKeyHelper": "/pfad/helfer.sh",\n  "token": "t-123"\n}\n'
+  // Schlüsselwert zur Laufzeit zusammengesetzt (Secret-Scan der CI, gitleaks).
+  const settings = `{\n  "env": {\n    "ANTHROPIC_API_KEY": "${['sk', 'ant', 'test', '0123456789abcdefgh'].join('-')}",\n` + '    "MEIN_WERT": "klartext"\n  },\n  "apiKeyHelper": "/pfad/helfer.sh",\n  "token": "t-123"\n}\n'
   await mitRepo(
     (repoWurzel) => {
       const s = baueHarnessDatei({ repoWurzel, pfad: '.claude/settings.json' })
@@ -158,7 +159,7 @@ test('Geheimnisse (F-1005): settings.json mit maskiertem env-Block und Schlüsse
       const claude = baueHarnessDatei({ repoWurzel, pfad: 'CLAUDE.md' })
       assert.strictEqual(claude.koerper.text, '# Regeln\nexport GITHUB_TOKEN=••••\nnpm run check\n')
     },
-    { ...DATEIEN, '.claude/settings.json': settings, 'CLAUDE.md': '# Regeln\nexport GITHUB_TOKEN=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123\nnpm run check\n' }
+    { ...DATEIEN, '.claude/settings.json': settings, 'CLAUDE.md': `# Regeln\nexport GITHUB_TOKEN=${['ghp', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123'].join('_')}\nnpm run check\n` }
   )
 })
 

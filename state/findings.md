@@ -12856,3 +12856,12 @@ Auswirkung: Gering bis mittel — setzt Schreibzugriff auf `.git/config` voraus.
 Maßnahme: `-c core.fsmonitor=false` (und ggf. `core.hooksPath`-neutrale Optionen) als feste Grundargumente in fuehreGitSync für lesende Aufrufe; mit Test, dass die Ergebnisse gleich bleiben.
 Status: offen.
 Feature/Run: Entdeckt: F45 S, QA-Nachpass 11.10.2026.
+
+**F-1024** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Secret-Scan läuft nur in der CI, nicht in npm run check.
+Beschreibung: F45 S lief lokal grün (npm run check, Prüfpass), der gitleaks-Scan der CI (ci.yml „Secret-Scan (gitleaks)“, detect --no-git) fand danach 8 Test-Attrappen (curl-auth-header, stripe-access-token, gitlab-pat, gcp-api-key) in Tests und im Nachweis-Skript. Fehler dieser Art fallen erst nach dem Push auf. Behoben in F45 S (Nachbesserung): die Attrappen werden zur Laufzeit zusammengesetzt; keine Allowlist.
+Fundstelle: `package.json` (Skript „check“), `.github/workflows/ci.yml` (Secret-Scan).
+Auswirkung: Mittel — eine zusätzliche Runde nach dem Push; ohne CI bliebe ein echtes Geheimnis lokal unentdeckt.
+Maßnahme: F45 B1a (Mindest-Gates, auch für das Projekt-Skelett): lokaler Secret-Scan in npm run check, wenn das Werkzeug vorhanden ist (gitleaks bzw. Docker), sonst klarer Hinweis statt stillem Überspringen.
+Status: offen.
+Feature/Run: Entdeckt: CI #318, 11.10.2026.

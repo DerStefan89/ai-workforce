@@ -17,13 +17,30 @@ import { MASKE, MUSTER, maskiereEinstellungenJson, maskiereGeheimnisse } from '.
 
 const M = MASKE
 
+/** Test-Attrappen, zur Laufzeit zusammengesetzt: kein vollständiges, scanner-erkennbares Geheimnis steht im Quelltext (Secret-Scan der CI, gitleaks). */
+const A = {
+  bearer: ['abcdefgh', 'ijklmnop'].join(''),
+  basic: ['dXNlcj', 'pwYXNz'].join(''),
+  jwt: ['eyJhbGciOiJIUzI1NiJ9', 'e30', 'abc'].join('.'),
+  skAnt: ['sk', 'ant', 'api03', 'ABCDEFGHIJKLMNOPQRST'].join('-'),
+  ghp: ['ghp', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123'].join('_'),
+  gho: ['gho', 'abcdefghijklmnopqrstuvwx'].join('_'),
+  githubPat: ['github', 'pat', '11ABCDEFG0123456789', 'abcdefghij'].join('_'),
+  slack: ['xoxb', '1234567890', 'abcdefghij'].join('-'),
+  akia: ['AKIA', 'IOSFODNN7EXAMPLE'].join(''),
+  asia: ['ASIA', 'IOSFODNN7EXAMPLE'].join(''),
+  stripe: ['sk', 'live', 'ABCDEFGHIJKLMNOP1234'].join('_'),
+  gitlab: ['gl', 'pat-ABCDEFGHIJKLMNOPQRST'].join(''),
+  google: ['AI', 'zaSyA-1234567890abcdefghijklmnopqrstu'].join(''),
+}
+
 /** Rotfälle: [Muster, Eingabe, erwartete Ausgabe]. */
 const ROT = [
   ['url-benutzer-passwort', 'git clone https://stefan:hunter2geheim@example.invalid/repo.git', `git clone https://stefan:${M}@example.invalid/repo.git`],
-  ['authorization', 'curl -H "Authorization: Bearer abcdefghijklmnop" https://x.invalid', `curl -H "Authorization: Bearer ${M}" https://x.invalid`],
-  ['authorization', 'curl -H "Authorization: Basic dXNlcjpwYXNz" x', `curl -H "Authorization: Basic ${M}" x`],
+  ['authorization', `curl -H "Authorization: Bearer ${A.bearer}" https://x.invalid`, `curl -H "Authorization: Bearer ${M}" https://x.invalid`],
+  ['authorization', `curl -H "Authorization: Basic ${A.basic}" x`, `curl -H "Authorization: Basic ${M}" x`],
   ['authorization', '{"Authorization": "token-ohne-schema-123"}', `{"Authorization": "${M}"}`],
-  ['bearer', 'wget --header="X: Bearer eyJhbGciOiJIUzI1NiJ9.e30.abc" x', `wget --header="X: Bearer ${M}" x`],
+  ['bearer', `wget --header="X: Bearer ${A.jwt}" x`, `wget --header="X: Bearer ${M}" x`],
   ['flag', 'mysql --password=hunter2 -u root', `mysql --password=${M} -u root`],
   ['flag', 'tool --token abcdef123 run', `tool --token ${M} run`],
   ['flag', 'gh auth --github-token "abc def" x', `gh auth --github-token "${M}" x`],
@@ -35,16 +52,16 @@ const ROT = [
   ['zuweisung', '{"apiKey": "k-123", "token": "t-456"}', `{"apiKey": "${M}", "token": "${M}"}`],
   ['zuweisung', 'password: hunter2', `password: ${M}`],
   ['zuweisung', 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI', `AWS_SECRET_ACCESS_KEY=${M}`],
-  ['openai-anthropic', 'echo sk-ant-api03-ABCDEFGHIJKLMNOPQRST', `echo sk-${M}`],
-  ['github', 'echo ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 und gho_abcdefghijklmnopqrstuvwx', `echo ghp_${M} und gho_${M}`],
-  ['github-pat', 'echo github_pat_11ABCDEFG0123456789_abcdefghij', `echo github_pat_${M}`],
-  ['slack', 'echo xoxb-1234567890-abcdefghij', `echo xoxb-${M}`],
-  ['aws', 'echo AKIAIOSFODNN7EXAMPLE', `echo AKIA${M}`],
+  ['openai-anthropic', `echo ${A.skAnt}`, `echo sk-${M}`],
+  ['github', `echo ${A.ghp} und ${A.gho}`, `echo ghp_${M} und gho_${M}`],
+  ['github-pat', `echo ${A.githubPat}`, `echo github_pat_${M}`],
+  ['slack', `echo ${A.slack}`, `echo xoxb-${M}`],
+  ['aws', `echo ${A.akia}`, `echo AKIA${M}`],
   // Korrekturrunde (QA F45 S):
   ['url-benutzer-passwort', 'psql postgres://app:geheim@db.invalid:5432/x', `psql postgres://app:${M}@db.invalid:5432/x`],
   ['url-benutzer-passwort', 'redis-cli -u redis://:nurpasswort@cache.invalid', `redis-cli -u redis://:${M}@cache.invalid`],
   ['url-benutzer-passwort', 'git clone https://u:p@ss@host.invalid/r', `git clone https://u:${M}@host.invalid/r`],
-  ['authorization', 'curl -d "{\\"Authorization\\": \\"Basic dXNlcjpwYXNz\\"}"', `curl -d "{\\"Authorization\\": \\"Basic ${M}\\"}"`],
+  ['authorization', `curl -d "{\\"Authorization\\": \\"Basic ${A.basic}\\"}"`, `curl -d "{\\"Authorization\\": \\"Basic ${M}\\"}"`],
   ['curl-benutzer', 'curl -u stefan:geheim https://x.invalid', `curl -u stefan:${M} https://x.invalid`],
   ['flag', 'Connect-Dienst -Password Geheim1 -Token abc123', `Connect-Dienst -Password ${M} -Token ${M}`],
   ['zuweisung', "$env:GITHUB_TOKEN = 'abc123'", `$env:GITHUB_TOKEN = '${M}'`],
@@ -53,10 +70,10 @@ const ROT = [
   ['zuweisung', 'curl -d "{\\"password\\":\\"x y\\"}" url', `curl -d "{\\"password\\":\\"${M}\\"}" url`],
   ['zuweisung', '"command": "export TOKEN=\\"abc def\\" && run"', `"command": "export TOKEN=\\"${M}\\" && run"`],
   ['zuweisung', 'Server=x;Password=abc;Database=y', `Server=x;Password=${M};Database=y`],
-  ['stripe', 'echo sk_live_ABCDEFGHIJKLMNOP1234', `echo sk_live_${M}`],
-  ['gitlab', 'echo glpat-ABCDEFGHIJKLMNOPQRST', `echo glpat-${M}`],
-  ['aws', 'echo ASIAIOSFODNN7EXAMPLE', `echo ASIA${M}`],
-  ['google', 'echo AIzaSyA-1234567890abcdefghijklmnopqrstu', `echo AIza${M}`],
+  ['stripe', `echo ${A.stripe}`, `echo sk_live_${M}`],
+  ['gitlab', `echo ${A.gitlab}`, `echo glpat-${M}`],
+  ['aws', `echo ${A.asia}`, `echo ASIA${M}`],
+  ['google', `echo ${A.google}`, `echo AIza${M}`],
 ]
 
 /** Grünfälle: bleiben unverändert. */

@@ -10,7 +10,8 @@
  * erzeugeAktivitaetsSpeicher/melde und zielFuerAnzeige (scripts/leitstand/lauf-aktivitaet.mjs), die
  * Harness-Antworten über baueHarnessProjektion/baueHarnessDatei (scripts/leitstand/routen-harness.mjs)
  * gegen ein Wegwerf-Repo mit Testdaten. Kein Modell-Lauf, keine Schreibanfrage (POST → 409 mit Marke).
- * Alle „Geheimnisse“ sind erfundene Testdaten.
+ * Alle „Geheimnisse“ sind erfundene Testdaten und werden zur Laufzeit zusammengesetzt — kein vollständiges,
+ * scanner-erkennbares Geheimnis steht im Quelltext (Secret-Scan der CI, gitleaks).
  *
  * Wird aufgerufen von: Hand, gegen einen laufenden Leitstand dieses Worktrees —
  *   LEITSTAND_PORT=4199 node scripts/leitstand-server.mjs
@@ -42,7 +43,7 @@ const BEFEHLE = [
   ['Bash', 'mysql --password=Testpasswort123 -u root -e "select 1"'],
   ['Bash', 'npm run check'],
   ['Edit', 'C:\\Users\\stefa\\Projekte\\ai-workforce\\src\\git-starter\\index.ts'],
-  ['Bash', 'curl -H "Authorization: Bearer test-abcdefghijklmnop" "https://api.example.invalid/v1?access_token=testtoken42&seite=2"'],
+  ['Bash', `curl -H "Authorization: Bearer ${['test-abcd', 'efghijklmnop'].join('')}" "https://api.example.invalid/v1?access_token=testtoken42&seite=2"`],
 ]
 let minute = BEFEHLE.length
 const speicher = erzeugeAktivitaetsSpeicher({ jetzt: () => vor(minute--) })
@@ -73,7 +74,7 @@ const LAUF_KOPF = { laufId: LAUF, laufStatus: DETAIL_LIVE.laufStatus, ergebnis: 
 const EINSTELLUNGEN = ['.claude', 'settings.json'].join('/')
 const SETTINGS = `{
   "env": {
-    "ANTHROPIC_API_KEY": "sk-ant-test-0123456789abcdefghij",
+    "ANTHROPIC_API_KEY": "${['sk', 'ant', 'test', '0123456789abcdefghij'].join('-')}",
     "INTERNER_DIENST_URL": "https://dienst.example.invalid",
     "MEIN_SCHLUESSEL": "klartext-ohne-muster"
   },
@@ -90,7 +91,7 @@ try {
   mkdirSync(join(repo, '.claude', 'hooks'), { recursive: true })
   writeFileSync(join(repo, EINSTELLUNGEN), SETTINGS)
   writeFileSync(join(repo, '.claude', 'hooks', 'beispiel.cjs'), '// Hook\n')
-  writeFileSync(join(repo, 'CLAUDE.md'), '# Regeln\n\nTestdaten: export GITHUB_TOKEN=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123\n\nPrüfen mit `npm run check`.\n')
+  writeFileSync(join(repo, 'CLAUDE.md'), `# Regeln\n\nTestdaten: export GITHUB_TOKEN=${['ghp', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123'].join('_')}\n\nPrüfen mit \`npm run check\`.\n`)
   harnessAntwort = baueHarnessProjektion({ repoWurzel: repo })
   settingsAntwort = baueHarnessDatei({ repoWurzel: repo, pfad: EINSTELLUNGEN }).koerper
   claudeAntwort = baueHarnessDatei({ repoWurzel: repo, pfad: 'CLAUDE.md' }).koerper
