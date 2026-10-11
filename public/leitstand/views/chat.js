@@ -259,11 +259,11 @@ import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
 import { baueAuftragAusScope } from '../auftrag-aus-scope.js'
 import { baueAuftragAusProjektentwurf, entferneIdPraefix } from '../auftrag-aus-projektentwurf.js'
 import { fuegeEntwurfEin, istGrossansicht, leiteNaechstenSchrittAb } from '../chat-anzeige.js'
-import { chatModusDesAktivenLaufs, laufstandSignatur, ordneLaufstandEin, warteGrenzeMs, wirksameLaufZeitgrenzeMs, zeitgrenzeUeberschritten } from '../chat-laufstand.js'
+import { GRUND_SCHLUESSEL, NACHLAUF_FENSTER_MS, chatModusDesAktivenLaufs, grundCodeDesEintrags, klartextDesEintrags, laufstandSignatur, ordneLaufstandEin, sperreDurchAnderenLauf, warteGrenzeMs, wirksameLaufZeitgrenzeMs, zeitgrenzeUeberschritten } from '../chat-laufstand.js'
 import { startHinweisText } from '../start-hinweis.js'
 import { kopiereBefehlsblock, renderAntwortText } from '../befehlsblock.js'
 import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
-import { t, tHtml } from '../i18n.js'
+import { aktuelleSprache, t, tHtml } from '../i18n.js'
 import { roadmapKennzahlen } from '../produkte-anzeige.js'
 
 /**
@@ -396,6 +396,20 @@ let letzterZustand = null
  * erkannt hat — uebernimmLaufendenChatLauf übernimmt keinen davon (erneut). Beim Projektwechsel geleert.
  */
 const bekannteLaufIds = new Set()
+
+/** F45 P (F-1016 d): eigene Läufe dieser Seite mit ihrem Endzeitpunkt (Date.now()) — ein eben beendeter sperrt Senden nicht, solange der Poll ihn noch als aktiv meldet (sperreDurchAnderenLauf, NACHLAUF_FENSTER_MS). Beim Projektwechsel geleert. */
+const kuerzlichBeendet = new Map()
+
+/**
+ * Merkt einen eigenen Lauf als eben beendet und entfernt dabei Einträge, deren Nachlauf-Fenster vorbei ist (die Liste
+ * bleibt so klein, Code-Review F45 P N3).
+ * @param laufId - laufId des beendeten Laufs
+ */
+function merkeBeendet(laufId) {
+  const jetzt = Date.now()
+  for (const [id, zeit] of kuerzlichBeendet) if (jetzt - zeit > NACHLAUF_FENSTER_MS) kuerzlichBeendet.delete(id)
+  kuerzlichBeendet.set(laufId, jetzt)
+}
 
 /** F45 B0: true, solange uebernimmLaufendenChatLauf auf das Lauf-Detail wartet (höchstens eine Übernahme zur Zeit). */
 let uebernahmeLaeuft = false
@@ -543,9 +557,88 @@ const FEHLER_ART_SCHLUESSEL = {
  */
 function fehlerEintragText(fehler, antwortObjekt) {
   if (!Object.hasOwn(FEHLER_ART_SCHLUESSEL, fehler?.art)) return antwortText(antwortObjekt)
-  const grund = typeof fehler.grund === 'string' && fehler.grund !== '' ? fehler.grund : t('chat.ende.grundFehlt')
-  return t(FEHLER_ART_SCHLUESSEL[fehler.art], { grund, sekunden: Math.round((fehler.zeitgrenzeMs ?? 0) / 1000) })
+  return t(FEHLER_ART_SCHLUESSEL[fehler.art], { grund: grundText(fehler), sekunden: Math.round((fehler.zeitgrenzeMs ?? 0) / 1000) })
 }
+
+/**
+ * F45 P (F-1016 c): Grund eines Fehler-Eintrags in der aktuellen Sprache.
+ * - Deutsch: der Klartext des Servers, wenn es einen gibt (er ist genauer, z. B. die Abweichung der Startfreigabe);
+ *   sonst wie unten.
+ * - Bekannter Code über GRUND_SCHLUESSEL, unbekannter Code als „unbekannt (<code>)“.
+ * - Kein Code, aber ein Klartext (nur in en/tr/ru): Verweis auf das Lauf-Detail — nie deutscher Fließtext.
+ * - Weder Code noch Klartext: „kein Grund gemeldet“.
+ * @param fehler - { art, grund, code? }
+ * @returns Anzeigetext
+ */
+function grundText(fehler) {
+  const klartext = klartextDesEintrags(fehler)
+  if (klartext !== null && aktuelleSprache() === 'de') return klartext
+  const code = grundCodeDesEintrags(fehler)
+  if (code !== null) return Object.hasOwn(GRUND_SCHLUESSEL, code) ? t(GRUND_SCHLUESSEL[code]) : t('chat.grund.unbekannt', { code })
+  return klartext !== null ? t('chat.grund.imLaufDetail') : t('chat.ende.grundFehlt')
+}
+
+/**
+ * F45 P (F-1016 d): Sperre durch einen anderen aktiven Lauf laut letztem Poll (sperreDurchAnderenLauf).
+ * @param modus - 'jarvis' | 'sparring'
+ * @returns null oder { art, modus? }
+ */
+function sperreDurchFremdenLauf(modus) {
+  const ausstehend = {}
+  const sendet = {}
+  for (const name of Object.keys(zustandJeModus)) {
+    const lauf = zustandJeModus[name].ausstehenderLauf
+    // Ein ausstehender Lauf ohne laufId (sollte nicht vorkommen) zählt trotzdem als laufend.
+    ausstehend[name] = lauf === null ? null : (lauf.laufId ?? '')
+    sendet[name] = zustandJeModus[name].sendenLaeuft === true
+  }
+  return sperreDurchAnderenLauf(letzterZustand?.aktiverLauf, { ausstehend, sendet, kuerzlichBeendet, jetzt: Date.now() }, modus)
+}
+
+/**
+ * F45 P (F-1016 c): Meldung zu einer nicht angenommenen Sende- oder Zusammenfassen-Anfrage. 409 mit code
+ * 'kein_verlauf' (nur Zusammenfassen) → „kein Verlauf“; jede andere 409 dieser Routen meldet einen anderen aktiven
+ * Lauf (D13, Projekt-Aufruf, belegte laufId) → übersetzt statt roh. Andere Status zeigen den Servergrund wie bisher.
+ * @param status - HTTP-Status
+ * @param koerper - Antwortkörper ({ grund?, code? })
+ * @returns Anzeigetext
+ */
+function sendeFehlerText(status, koerper) {
+  if (status === 409 && koerper.code === 'kein_verlauf') return t('chat.fehler.keinVerlauf')
+  if (status === 409) return t('chat.fehler.laufAktiv')
+  return t('chat.fehler.status', { status, grund: koerper.grund ?? t('chat.fehler.unbekannt') })
+}
+
+/**
+ * Leitet Sperre und Sperrgrund von Senden und Zusammenfassen für den angezeigten Modus ab (eine Ableitungsstelle,
+ * siehe Kommentar in renderVerlauf). F45 P (F-1016 d): auch aus dem Poll aufgerufen — ein anderer aktiver Lauf
+ * (anderer Reiter, Baulauf, anderes Projekt) sperrt mit Grund, statt dass Senden in 409 endet.
+ */
+function renderSendenSperre() {
+  const modus = aktiverModus
+  const zustand = zustandJeModus[modus]
+  const eigeneSperre = zustand.sendenLaeuft === true || zustand.ausstehenderLauf !== null
+  const fremd = eigeneSperre ? null : sperreDurchFremdenLauf(modus)
+  const gesperrt = eigeneSperre || fremd !== null
+  document.getElementById('chat-senden').disabled = gesperrt
+  document.getElementById('chat-zusammenfassen-btn').disabled = gesperrt
+  // F45 B0 (F-971): gesperrtes Senden nennt seinen Grund (sichtbar unter dem Verlauf und als Titel des Knopfs).
+  const abweichend = abweichenderUntermodusDesLaufs(modus)
+  let sperrgrund = ''
+  if (zustand.sendenLaeuft === true) sperrgrund = t('chat.sperre.sendet')
+  else if (zustand.ausstehenderLauf !== null) sperrgrund = abweichend !== null ? t('chat.sperre.untermodus', { untermodus: t(UNTERMODUS_NAME_SCHLUESSEL[abweichend]) }) : t('chat.sperre.laeuft')
+  else if (fremd?.art === 'laeuft') sperrgrund = t('chat.sperre.laeuft')
+  else if (fremd?.art === 'andererReiter') sperrgrund = t('chat.sperre.andererReiter', { reiter: t(MODUS_NAME_SCHLUESSEL[fremd.modus]) })
+  else if (fremd !== null) sperrgrund = t('chat.sperre.andererLauf')
+  const sperrgrundElement = document.getElementById('chat-sperrgrund')
+  sperrgrundElement.textContent = sperrgrund
+  sperrgrundElement.hidden = sperrgrund === ''
+  if (sperrgrund === '') document.getElementById('chat-senden').removeAttribute('title')
+  else document.getElementById('chat-senden').title = sperrgrund
+}
+
+/** F45 P (F-1016 d): i18n-Schlüssel der Reiter-Namen (Sperrgrund „Antwort im Reiter … läuft“). */
+const MODUS_NAME_SCHLUESSEL = { jarvis: 'chat.modus.jarvis', sparring: 'chat.modus.coach' }
 
 /** F45 B0: i18n-Schlüssel der Untermodus-Namen (Hinweis „Lauf im Untermodus … läuft“, Sperrgrund). */
 const UNTERMODUS_NAME_SCHLUESSEL = { feature: 'chat.untermodus.feature', projekt: 'chat.untermodus.projekt' }
@@ -999,23 +1092,7 @@ function renderVerlauf() {
   // Ableitungsstelle statt vieler verstreuter Schreibzugriffe auf dieselben zwei DOM-Elemente.
   // 'sendenLaeuft': eigenes Flag für das schmale Zeitfenster VOR dem Setzen von ausstehenderLauf
   // (Vorfilter-Abruf/die eigentliche POST-Anfrage) — ausstehenderLauf existiert dort noch nicht.
-  const gesperrt = zustand.sendenLaeuft === true || zustand.ausstehenderLauf !== null
-  document.getElementById('chat-senden').disabled = gesperrt
-  document.getElementById('chat-zusammenfassen-btn').disabled = gesperrt
-  // F45 B0 (F-971): gesperrtes Senden nennt seinen Grund (sichtbar unter dem Verlauf und als Titel des Knopfs).
-  const abweichend = abweichenderUntermodusDesLaufs(modus)
-  const sperrgrund = !gesperrt
-    ? ''
-    : zustand.sendenLaeuft === true
-      ? t('chat.sperre.sendet')
-      : abweichend !== null
-        ? t('chat.sperre.untermodus', { untermodus: t(UNTERMODUS_NAME_SCHLUESSEL[abweichend]) })
-        : t('chat.sperre.laeuft')
-  const sperrgrundElement = document.getElementById('chat-sperrgrund')
-  sperrgrundElement.textContent = sperrgrund
-  sperrgrundElement.hidden = sperrgrund === ''
-  if (sperrgrund === '') document.getElementById('chat-senden').removeAttribute('title')
-  else document.getElementById('chat-senden').title = sperrgrund
+  renderSendenSperre()
 
   const abbrechenBtn = document.getElementById('chat-abbrechen-btn')
   const abbruchAngefordert = zustand.ausstehenderLauf?.abbruchAngefordert === true
@@ -1265,7 +1342,10 @@ function schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis) {
   const zustand = zustandJeModus[modus]
   if (messung !== undefined) protokolliereClientLatenz(messung, tPollErgebnis, performance.now())
   // F45 B0: dieser Lauf ist erledigt (keine erneute Übernahme); im nicht angezeigten Modus ist er neu (Reiter-Punkt).
-  if (typeof zustand.ausstehenderLauf?.laufId === 'string') bekannteLaufIds.add(zustand.ausstehenderLauf.laufId)
+  if (typeof zustand.ausstehenderLauf?.laufId === 'string') {
+    bekannteLaufIds.add(zustand.ausstehenderLauf.laufId)
+    merkeBeendet(zustand.ausstehenderLauf.laufId)
+  }
   if (modus !== aktiverModus) zustand.ungelesen = true
   // F45 B0 (Prüfpass qa 3): endet ein Coach-Lauf in einem anderen als dem angezeigten Untermodus, trägt
   // dessen Knopf einen Punkt. Untermodus aus dem Lauf, sonst (übernommener Lauf) aus seinem Verlaufseintrag.
@@ -1329,6 +1409,7 @@ async function uebernimmLaufendenChatLauf(aggregat) {
         // Prüfpass F45 B0 (qa 2): der Lauf ist schon beendet (zwischen erstem Laden und diesem Tick) —
         // sein Ergebnis bzw. Fehler-Eintrag steht im Verlauf: einmal nachladen, dann nicht erneut fragen.
         bekannteLaufIds.add(laufId)
+        merkeBeendet(laufId)
         void ladeVerlauf(modus)
         return
       }
@@ -1367,7 +1448,7 @@ function renderChatStartHinweis(hinweis) {
 async function sendeAktuelleEingabe() {
   const modus = aktiverModus
   const zustand = zustandJeModus[modus]
-  if (zustand.sendenLaeuft || zustand.ausstehenderLauf !== null) return
+  if (zustand.sendenLaeuft || zustand.ausstehenderLauf !== null || sperreDurchFremdenLauf(modus) !== null) return
   const feld = document.getElementById('chat-eingabe')
   const nachricht = feld.value.trim()
   zeigeChatFehler('')
@@ -1411,7 +1492,7 @@ async function sendeAktuelleEingabe() {
       const tServerQuittung = performance.now()
       if (antwort.status !== 202) {
         const koerper = await antwort.json().catch(() => ({}))
-        zeigeChatFehler(t('chat.fehler.status', { status: antwort.status, grund: koerper.grund ?? t('chat.fehler.unbekannt') }))
+        zeigeChatFehler(sendeFehlerText(antwort.status, koerper))
         return
       }
       const angenommen = await antwort.json().catch(() => ({}))
@@ -1469,7 +1550,7 @@ function initAbbrechenBedienung() {
 async function sendeZusammenfassungAnfrage() {
   const modus = aktiverModus
   const zustand = zustandJeModus[modus]
-  if (!MODI[modus].hatZusammenfassen || zustand.sendenLaeuft || zustand.ausstehenderLauf !== null) return
+  if (!MODI[modus].hatZusammenfassen || zustand.sendenLaeuft || zustand.ausstehenderLauf !== null || sperreDurchFremdenLauf(modus) !== null) return
   zeigeChatFehler('')
   const tSenden = performance.now()
   zustand.sendenLaeuft = true
@@ -1479,7 +1560,7 @@ async function sendeZusammenfassungAnfrage() {
     const tServerQuittung = performance.now()
     if (antwort.status !== 202) {
       const koerper = await antwort.json().catch(() => ({}))
-      zeigeChatFehler(t('chat.fehler.status', { status: antwort.status, grund: koerper.grund ?? t('chat.fehler.unbekannt') }))
+      zeigeChatFehler(sendeFehlerText(antwort.status, koerper))
       return
     }
     const angenommen = await antwort.json().catch(() => ({}))
@@ -1857,6 +1938,8 @@ function setzeChatZustandZurueck() {
   }
   // F45 B0: im neuen Projekt darf ein laufender Chat-Lauf wieder übernommen werden.
   bekannteLaufIds.clear()
+  // F45 P (QA): ein Lauf des alten Projekts ist hier fremd — er sperrt wieder, solange er aktiv ist.
+  kuerzlichBeendet.clear()
   fremdeLaufVersuche.clear()
   ungeleseneUntermodi.clear()
   offenerAuftragDialog = null
@@ -1909,6 +1992,8 @@ export function initChatView() {
     if (istGrossansicht(location.hash)) renderNaechsterSchritt()
     // F45 B0: Start-Hinweis über dem Eingabefeld; ein laufender Chat-Lauf wird nach Neuladen weiter verfolgt.
     renderChatStartHinweis(zustand?.startHinweis)
+    // F45 P (F-1016 d): ein anderer aktiver Lauf sperrt Senden mit Grund (und gibt es nach seinem Ende frei).
+    renderSendenSperre()
     void uebernimmLaufendenChatLauf(zustand)
   })
   abonniereProjektWechsel(setzeChatZustandZurueck)

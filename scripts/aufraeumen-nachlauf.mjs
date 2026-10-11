@@ -29,15 +29,22 @@ import { RESTE_VERZEICHNIS } from './_aufraeumen.ts'
  * Verzeichnisse selbst — ein Rest ist nur ein Hinweis, siehe Dateikopf).
  * Gibt die Pfade zurück, die auch im Nachlauf nicht entfernt werden
  * konnten (reine Information).
+ *
+ * F45 P (F-999): resteVerzeichnis ist wählbar, damit scripts/aufraeumen-nachlauf.test.mjs ein eigenes
+ * Verzeichnis prüft. Vorher las der Test das gemeinsame RESTE_VERZEICHNIS aller Prozesse — schrieb ein
+ * parallel laufender Test (npm run test, --test-concurrency=4; real: execution-controller.test.ts, Lauf
+ * „f16c-…“) dort einen Rest, scheiterte der Test sporadisch und löschte zudem die fremde Je-PID-Datei.
+ * @param resteVerzeichnis - Verzeichnis der Je-PID-Dateien (Standard RESTE_VERZEICHNIS)
+ * @returns { versucht, reste } — versuchte und verbliebene Pfade
  */
-export function fuehreNachlaufAus() {
-  if (!existsSync(RESTE_VERZEICHNIS)) {
+export function fuehreNachlaufAus(resteVerzeichnis = RESTE_VERZEICHNIS) {
+  if (!existsSync(resteVerzeichnis)) {
     return { versucht: [], reste: [] }
   }
 
   const pfade = new Set()
-  for (const dateiname of readdirSync(RESTE_VERZEICHNIS)) {
-    const dateiPfad = join(RESTE_VERZEICHNIS, dateiname)
+  for (const dateiname of readdirSync(resteVerzeichnis)) {
+    const dateiPfad = join(resteVerzeichnis, dateiname)
     for (const zeile of readFileSync(dateiPfad, 'utf8').split('\n')) {
       if (zeile.trim().length > 0) {
         pfade.add(JSON.parse(zeile).pfad)

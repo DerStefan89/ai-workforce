@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Fehler-Einträge mit Grund-Code: nie gestartet, verweigert, älterer Eintrag ohne Code, unbekannter Code, Klärung nur mit Klartext",
+    "Sperrgrund sichtbar": false,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": true,
+    "Tipp-Punkte": false,
+    "lang": "de",
+    "Sperrgrund": "",
+    "Senden disabled": "null",
+    "Senden title": "null",
+    "Zusammenfassen disabled": "null",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "Lauf nicht erfolgreich Lauf hält — Klärung erforderlich: RUN_PREPARED ohne Terminalartefakt",
+    "Seite geladen": true
+  },
+  {
+    "label": "Ganzen Verlauf öffnen: alle Grund-Arten sichtbar",
+    "Sperrgrund sichtbar": false,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": true,
+    "Tipp-Punkte": false,
+    "lang": "de",
+    "Sperrgrund": "",
+    "Senden disabled": "null",
+    "Senden title": "null",
+    "Zusammenfassen disabled": "null",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "Lauf nicht erfolgreich Lauf hält — Klärung erforderlich: RUN_PREPARED ohne Terminalartefakt",
+    "Seite geladen": true
+  }
+]

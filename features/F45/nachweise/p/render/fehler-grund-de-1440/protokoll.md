@@ -1,0 +1,4 @@
+| Aktion | Sperrgrund sichtbar | Fehlerzeile sichtbar | Fehler-Eintrag | Tipp-Punkte | lang | Sperrgrund | Senden disabled | Senden title | Zusammenfassen disabled | Fehlerzeile | Letzter Fehler-Eintrag | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Fehler-Einträge mit Grund-Code: nie gestartet, verweigert, älterer Eintrag ohne Code, unbekannter Code, Klärung nur mit Klartext | false | false | true | false | de |  | null | null | null |  | Lauf nicht erfolgreich Lauf hält — Klärung erforderlich: RUN_PREPARED ohne Terminalartefakt | true |
+| Ganzen Verlauf öffnen: alle Grund-Arten sichtbar | false | false | true | false | de |  | null | null | null |  | Lauf nicht erfolgreich Lauf hält — Klärung erforderlich: RUN_PREPARED ohne Terminalartefakt | true |

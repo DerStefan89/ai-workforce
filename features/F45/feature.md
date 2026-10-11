@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gebaut (Branch `feat/f45-b0-chat`, Basis `d10f9be`, nicht committet; Abschnitt „Stand B0“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gebaut (Branch `feat/f45-p-performance`, Basis `9bdfc1a`, nicht committet; Abschnitt „Stand P“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -23,13 +23,15 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-F45-1 = A** (Stefan, 01.10.2026) — Eine Feature-Akte wird direkt im Leitstand bearbeitet; Wortlaut in `docs/projekt/zielfassung.md` §13.6.
 - **E-F45-2** (offen, fällig nach R) — Teil 2 vor F30 über Challenger-Bauaufträge (A) oder als erste Aufträge der Workforce an sich selbst (B). Empfehlung Challenger: B. Grundlage Abschnitt 5.
 - **E-F45-3** (offen, fällig vor B1a) — Lauf-Umgebung: eigener Worktree je Lauf oder nur eigener Branch; darf der Lauf im eigenen Worktree löschen (F-715). Grundlage Abschnitt 5.
+- **E-F45-4** (offen, aus WS P, F-1018) — Energiemodus „Ausgeglichen“ (A) oder der Leitstand nimmt sich selbst aus der Drosselung (B). Grundlage Abschnitt 5.
+- **F-1015-Kriterium** (Challenger, 11.10.2026) — Seitenspeicher, JS-Heap, DOM-Knoten und Listener am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen); Grundlage Abschnitt 2.
 
 ## Scope
 
 | WS | Inhalt | Findings | Abhängig von | Prüfmodus | Schätzung AT | Ist |
 |---|---|---|---|---|---|---|
-| B0 | Chat zuverlässig und schnell: Messskript, eigene Chat-Zeitgrenze, Chat-Worker fest, Fehler-Eintrag bei jedem Misserfolg, Neuladen verfolgt Lauf, Start-Hinweis bei falschem Ordner (E-188 bleibt streng), Event-Loop-Messung, Chat-Reiter; Akte F45 | F-987, F-986 a, F-971, F-544, F-1007, F-1008 | – | vor Merge | 0,75 | ≈ 1 AT inkl. Messläufe (Bau, nicht gemergt) |
-| P | Performance: /api/zustand im Langlauf, Event-Loop-Blockaden beseitigen, Seitenwechsel messen, f16-Restordner | F-556, F-999 | B0 (Messskript) | vor Merge | 0,5 | |
+| B0 | Chat zuverlässig und schnell: Messskript, eigene Chat-Zeitgrenze, Chat-Worker fest, Fehler-Eintrag bei jedem Misserfolg, Neuladen verfolgt Lauf, Start-Hinweis bei falschem Ordner (E-188 bleibt streng), Event-Loop-Messung, Chat-Reiter; Akte F45 | F-987, F-986 a, F-971, F-544, F-1007, F-1008 | – | vor Merge | 0,75 | ≈ 1 AT, gemergt #316 (9bdfc1a) |
+| P | Performance: /api/zustand im Langlauf, Event-Loop-Blockaden beseitigen, Seitenwechsel messen, f16-Restordner | F-556, F-999 | B0 (Messskript) | vor Merge | 0,5 | ≈ 1,25 AT + ≈ 6 h Messung (Bau, nicht gemergt) |
 | S | Härtung klein: ein Git-Starter für alle Aufrufe, Geheimnis-Maskierung (Live-Aktivität, env im Harness-Detail), Abbruch-Formulierung | F-1000, F-1005, F-1003 | – | vor Merge | 0,3 | |
 | B1a | Lauf-Umgebung: Branch/Worktree je Lauf (Gültigkeitsschlüssel misst die Einstellungen des Lauf-Ordners), Vorlage nachziehen (513), Mindest-Gates im Skelett, check:template, Standard-Startvorlage aus dem Register, Löschen im Lauf, Kontrollzustand in Fremdprojekten | F-954, F-939, F-701, F-1009, F-715, F-766 | E-F45-3 | Advisor-Pass, vor Merge | 1–1,25 | |
 | B1b | Harness im Lauf: Projekt-Agents/-Skills im Lauf, Freigabe nach Inhalt, Vorstart-Scan, Codex-Harness-Regeln, Hooks belegen, „vorgesehen gegen benutzt“ an Review und Abnahme, /lessons, Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce | F-815, F-816, F-818, F-929, F-932, F-937, F-933 | B1a | vor Merge | 0,75 | |
@@ -108,3 +110,46 @@ Untermodus-Knopf; strengere Lauf-Präfixe; Zusammenfassen-Knopf ohne echten Verl
 mit schmalen Fassungen und ausgeblendet auf der Startfläche; Einzug von Chat-Hinweis und Sperrgrund; Reiter-Punkt
 verschiebt nichts; Fehlertext ohne Dopplung; Tests warten auf Bedingungen statt fester Zeiten. Render-Nachweis neu
 (17 Folgen inkl. 390 px, hell, 200 %, ru, reduzierte Bewegung). Rest als F-1016.
+
+## Stand P
+Branch `feat/f45-p-performance` (Basis `9bdfc1a`, gleich `origin/main` beim Start), nicht committet. Bau 10./11.10.2026.
+
+**Ist:** ≈ 1,25 AT Arbeit (Schätzung 0,5–0,75 AT) plus ≈ 6 h Messlaufzeit (Schätzung ≈ 4,5 h). Mehr als geplant durch drei Abbrüche der Vorher-Messung (zweimal Speicherschutz wegen Firefox ≈ 5 GB, einmal von Claude Code bei Speicherdruck beendet), einen Modern-Standby über Nacht trotz Netzbetrieb und die Ursachenanalyse der Windows-Drosselung (F-1018).
+
+**Gebaut:**
+- **Messen** (`scripts/messe-chat.mjs`, nicht in `npm run check`): `--nur-leerlauf M` mit `--seite`, `--seitenwechsel` (alle 60 s eine der sechs Hauptseiten `#/dashboard`, `#/roadmap`, `#/workboard` = Entwicklung, `#/attention`, `#/capabilities`, `#/chat`; Zeit bis „Inhalt sichtbar“: Container sichtbar, ≥ 40 Zeichen, keine Ladezeile; Chat: Gesprächsfläche mit Eintrag oder Leerzustand), Seitenmetriken je Minute (JS-Heap, DOM-Knoten, Listener), Heap-Snapshot nach dem Laden und am Ende samt Top-Wachstum, minütlicher Zwischenstand, Energiemodus (reg.exe, lesend), Standby-Fenster → Abschnitt ungültig plus `-gueltig`-Auswertung, `--auswerten … --bis` für Zuschnitte. Server bei `LEITSTAND_ZEITMESSUNG=1`: Zeile „Zustand-Quellen 60s“ (max/p95 je Poll-Quelle), Zeile „Synchron > 200 ms“ je Anfrage (`scripts/leitstand/event-loop-messung.mjs`).
+- **F-556** (`scripts/leitstand-server.mjs`): Stempel der Läufe und Workflows asynchron und parallel; entscheidung-/Abnahme-Ketten nur, wenn ihr Ordner in der Verzeichnisliste steht; Kaltstart und Cache-Prüfung in 25-ms-Scheiben; Cache je Auftrag (GET /api/auftraege) und Parse-Cache der Workitems mit dem Dateiinhalt als Stempel (Datei- und Verzeichnis-mtime ändern sich unter Windows beim schnellen Schreiben oft nicht — gemessen). Antworten inhaltlich gleich; GET /api/laeufe bleibt synchron (gleicher Cache), weil `check-f814-host.mjs` rohe Anfragen mit Halbschluss schickt.
+- **Event-Loop:** dieselben Fixes (Läufe, Aufträge, Workitems); der Prüfschritt läuft bereits als Kindprozess (`starteProzess`, spawn) — P5-Voraussetzung erfüllt.
+- **F-999:** Ursache war ein paralleler Test (`execution-controller.test.ts`, „f16c-…“), nicht das f16-Gate; der Nachlauf-Test nutzt ein eigenes Reste-Verzeichnis.
+- **F-1015:** keine Codeänderung nötig — kein Leck (siehe unten).
+- **Teil 3 (F-1016 c, d):** Grund-Code im Fehler-Eintrag, Übersetzung in vier Sprachen, Sende-Sperre bei anderem aktivem Lauf, 409 übersetzt (`public/leitstand/chat-laufstand.js`, `views/chat.js`, i18n).
+- **Tests:** `scripts/leitstand/zustand-caches.test.mjs` (neu), `event-loop-messung.test.mjs`, `chat-laufstand.test.mjs`, `leitstand-chat-misserfolg.test.mjs`, `aufraeumen-nachlauf.test.mjs`.
+- **Nachweise** `features/F45/nachweise/p/`: `messung-vorher.md` (120 min, ab 23:47:31 UTC Standby), `messung-vorher-basis60.md` (Vorher-Basis: die sauberen ersten 60 min), `messung-nachher-gleich.md` (60 min, gleicher Energiemodus), `messung-nachher-jarvis.md` (5 Turns), Abbruch-Läufe `messung-vorher-abbruch*.md`, Render-Nachweis `render/` (12 Folgen). Heap-Snapshots per .gitignore ausgeschlossen.
+
+**Ergebnis** (Energiemodus bei Netzbetrieb in allen Läufen „Beste Energieeffizienz“; Stefan hat ihn am 11.10.2026 nicht umgestellt — der Endzustand ist „nachher-gleich“, eine Messung im Modus „Ausgeglichen“ entfiel):
+
+| Kennzahl | Ziel | Vorher-Basis (60 min) | Nachher = Endzustand (60 min) |
+|---|---|---|---|
+| P1 GET /api/zustand p95 | ≤ 300 ms frisch und spät | gesamt 125, frisch 504, spät 92 | gesamt 65, frisch 63, spät 68 |
+| P2 Event-Loop max je 60 s | ≤ 200 ms | 12 von 63 Fenstern darüber, max 2 162 | 1 von 60 (nur Startfenster: erster GET /api/chat kalt 1 433 ms, F-1020), sonst max 187 |
+| P3 Seitenwechsel Median / Max | ≤ 500 ms | 24–249 / bis 3 654 (roadmap), 1 156 (workboard), 1 131 (attention) | 26–284 / alle ≤ 359 |
+| P4 npm run check 3× grün | 3/3 | – (F-999 sporadisch) | 3/3 grün: 10:28:54–10:35:21, 10:35:21–10:41:46, 10:41:46–10:48:08 UTC (11.10.2026, je 1 599 Tests, kein Standby) |
+| F-1015 (Mediane Min. 15–20 gegen letzte 5 min) | ≤ 1,2 | RSS 0,94, JS-Heap 0,88, DOM 1,0, Listener 1,0 | RSS 1,02, JS-Heap 0,94, DOM 1,0, Listener 1,0 |
+| K1 / K3 Jarvis (5 Turns nach dem Leerlauf) | ≤ 300 ms / ≤ 15 s Median | B0: 28 ms / 5,2 s | 27 ms / 5,2 s, 5/5 Antworten |
+
+Die Zeilen „Synchron > 200 ms“ und „Zustand-Quellen“ sind vorher/nachher nicht vergleichbar: nachher misst der Dispatcher-Mantel nur bis zum ersten `await`, die Quellen messen Wartezeit statt blockierter Zeit. P2 wird deshalb nur am Event-Loop-Maximum verglichen, P1 an der vom Client gemessenen Dauer.
+
+**Ursachen:**
+- P1/P2/Event-Loop: GET /api/zustand stempelte ≈ 280 Läufe synchron (stat + readdir je Kette, ≈ 560 Systemaufrufe je Poll); GET /api/auftraege las 226 Auftragsketten je Aufruf; GET /api/workitems parste findings.md je Aufruf.
+- Verstärker: Windows drosselt den Leitstand im Energiemodus „Beste Energieeffizienz“ um Faktor 5–10 (F-1018) — nachgewiesen mit einer reinen CPU-Schleife und einem prozessweisen Opt-out am Testprozess.
+- F-1015: kein Leck. JS-Heap, DOM-Knoten und Listener über 2 h flach, kein Detached DOM; RSS Chromium 360 → ≈ 650 MB in den ersten ≈ 15 min, danach Plateau; Heap-Zuwachs = einmal gefüllte Ansichtsdaten und der DevTools-Netzwerkpuffer der Messung.
+- F-999: paralleler Test schreibt ins gemeinsame Reste-Verzeichnis.
+
+**Grenzen:**
+- Nachher nur 60 min (statt 2 h); die 2-h-Vorher-Messung ist ab 23:47:31 UTC durch Standby ungültig.
+- Vorher-Basis: der Energiemodus wurde nicht in der Messung erfasst, sondern per Registry-Abfrage am Abend des 10.10. (vor der Vorher-Messung) und am 11.10. (vor der Nachher-Messung) belegt; in „nachher-gleich“ steht er in der Messdatei.
+- F-1015 belegt „kein Leck nach dem Aufwärmen“ (vorher schon erfüllt), nicht „behoben“.
+- Kaltstart (erster GET /api/chat) und der Workitems-Parse nach einer Änderung bleiben synchron (F-1020).
+- P5 (Baulauf) misst WS R.
+
+**Prüfpass** (frischer Kontext, eine Korrekturrunde): code-reviewer, qa und design-guardian zunächst „nicht freigegeben“ (Server-Kern hielt; Befunde am Chat-Teil, an Texten, Tests und fehlenden Nachweisen). Korrigiert: 409 „kein Verlauf“ mit Code, Gründe ohne Code (de Klartext, sonst Verweis), Sperre sofort bei lokalem Lauf des anderen Reiters, Nachlauf-Fenster 5 s statt unbegrenzt, Projektwechsel leert es, Texte ohne Doppelungen, eine Stempelformel für sync/async, Restrisiko dokumentiert, Tests ergänzt, Zwischenstand-Regex, .gitignore für Heap-Snapshots, F-1015 über Mediane. Nachpass: alle drei „freigegeben mit Hinweisen“; Hinweise eingearbeitet (ru-Texte, `--auswerten` für ältere Messdateien, Liste der beendeten Läufe ausgedünnt, Render-Folge für die 409 beim Senden) oder als F-1019/F-1020 festgehalten.

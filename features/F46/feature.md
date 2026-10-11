@@ -7,11 +7,11 @@ F46
 Design-Nachbau nach neuem Seitenaufbau: Leitstand nach den neuen Designs umgestalten
 
 ## Status
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
 D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 gemergt #310, add7c94; D2 gemergt #311, ec3b831;
-D3 gemergt #312, a48b344; D4 gemergt #313, 69a4638; D5 gemergt #314, a445783; D6 in Arbeit (Branch
-`feat/f46-d6-workforce`, Basis `a445783`) — letzter Workstream. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+D3 gemergt #312, a48b344; D4 gemergt #313, 69a4638; D5 gemergt #314, a445783; D6 gemergt #315, d10f9be.
+**Abgenommen durch Stefan im Leitstand am 10.10.2026** („passt“).
 
 Feature-Nummer: F45 ist durch E-F45-1 (`docs/projekt/zielfassung.md` §13.6) für das Fixpaket
 „Arbeitsfähigkeit“ vorgesehen; der Design-Nachbau ist deshalb F46 (Finding F-983).
@@ -58,9 +58,13 @@ Beide Entscheidungen stehen auch in `docs/projekt/zielfassung.md` §13.6.
 | D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | ≈ 0,4 AT (#312; Branch → Bericht 22:57) |
 | D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | ≈ 0,2 AT (#313) |
 | D5 | Live-Ansicht (#/live), beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | ≈ 0,2 AT (#314) |
-| D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | Leseroute Harness-Dateien (feste Pfadliste) | 1–1,5 | offen |
+| D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | Leseroute Harness-Dateien (feste Pfadliste) | 1–1,5 | ≈ 0,2 AT (#315) |
 
 Die Spalte „Ist“ trägt der Challenger nach Abschluss eines Workstreams nach.
+
+**Plan gegen Ist:** geschätzt 6,5–9,75 AT (Summe D0–D6), Ist ≈ 1,5–2 AT. UI-Umbau auf vorhandenen Bausteinen
+(F44-Shell, Tokens, i18n) kostete ≈ 0,2–0,3 der Schätzung; die Kalibrierung ist in die F45-Schätzungen
+eingegangen (`docs/projekt/fixpaket-f45.md` Abschnitt 3).
 
 ## Nicht-Ziele
 - **Keine neuen Datenformate:** Arbeitspaket als Daten, Schätzfelder, Workstreams als Datenobjekt,
@@ -589,9 +593,9 @@ Ist D4 ≈ 0,2 AT (#313); Ist D5 offen.
 Stehen begründet in `docs/design/abgleich-f46.md` unter §4.10 („Umsetzung D5“).
 
 ## Stand D6 „Workforce: Harness-Aufbau und Capability Library“ (03.10.2026)
-Branch `feat/f46-d6-workforce` (Basis `a445783`), nicht committet. Grundlage `docs/design/abgleich-f46.md`
+Branch `feat/f46-d6-workforce` (Basis `a445783`), gemergt #315 (`d10f9be`). Grundlage `docs/design/abgleich-f46.md`
 (Leitprinzip, §0, §1, §2 `#/capabilities`, §4.14, §5), Bilder 01-workforce-harness--Main und --Library
-(--Bearbeiten nur als „kommt“). Ist D4 ≈ 0,2 AT (#313), Ist D5 ≈ 0,2 AT (#314); Ist D6 offen.
+(--Bearbeiten nur als „kommt“). Ist D4 ≈ 0,2 AT (#313), Ist D5 ≈ 0,2 AT (#314); Ist D6 ≈ 0,2 AT (#315).
 - **Leseroute** `scripts/leitstand/routen-harness.mjs` (GET …/harness und …/harness/datei, je Projektinstanz
   über den Dispatcher; Test `routen-harness.test.mjs`, 13 Fälle, davon einer unter Windows ohne
   Symlink-Recht übersprungen). Feste Liste `HARNESS_BAUSTEINE` unter der Repo-Wurzel in sechs Bausteinen:
@@ -666,9 +670,8 @@ Branch `feat/f46-d6-workforce` (Basis `a445783`), nicht committet. Grundlage `do
 ### Abweichungen von abgleich-f46.md (D6)
 Stehen begründet in `docs/design/abgleich-f46.md` unter §4.14 („Umsetzung D6“).
 
-## Abschlussvermerk F46 (vorbereitet, gilt erst mit Stefans Abnahme)
-D0–D6 umgesetzt (D0 #308, D0b #309, D1 #310, D2 #311, D3 #312, D4 #313, D5 #314, D6 offen). Alle Seiten aus
+## Abschlussvermerk F46 (Abnahme durch Stefan im Leitstand am 10.10.2026, „passt“)
+D0–D6 umgesetzt (D0 #308, D0b #309, D1 #310, D2 #311, D3 #312, D4 #313, D5 #314, D6 #315). Alle Seiten aus
 `docs/design/neu/` sind nach dem Leitprinzip nachgebaut; was ohne Quelle ist, steht als „kommt“ mit Ziel
 (§5 des Abgleichs: Fixpaket B1, B2, B5, Fixpaket ohne Nummer, Terminal-Vorhaben, Später). Offene Restpunkte im
-Register (offen, Stand 03.10.2026): F-985 bis F-995, F-998 bis F-1001, F-1003 bis F-1006. Status bleibt IN_ARBEIT bis zur Abnahme; danach
-ABGESCHLOSSEN mit Datum und Ist D6. Nächste Schritte laut E-M5-18: Fixpaket „Arbeitsfähigkeit“ (F45), dann F30.
+Register (offen, Stand 03.10.2026): F-985 bis F-995, F-998 bis F-1001, F-1003 bis F-1006. Status ABGESCHLOSSEN seit 10.10.2026, Ist D6 ≈ 0,2 AT. Nächste Schritte laut E-M5-18: Fixpaket „Arbeitsfähigkeit“ (F45), dann F30.

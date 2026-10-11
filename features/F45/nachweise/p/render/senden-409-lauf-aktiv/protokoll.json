@@ -1,0 +1,17 @@
+[
+  {
+    "label": "Senden, bevor der Poll den anderen Lauf zeigt → 409 → übersetzte Meldung „Ein anderer Lauf ist aktiv …“ statt Rohtext",
+    "Sperrgrund sichtbar": false,
+    "Fehlerzeile sichtbar": true,
+    "Fehler-Eintrag": false,
+    "Tipp-Punkte": false,
+    "lang": "de",
+    "Sperrgrund": "",
+    "Senden disabled": "null",
+    "Senden title": "null",
+    "Zusammenfassen disabled": "null",
+    "Fehlerzeile": "Ein anderer Lauf ist aktiv — es läuft immer nur einer. Senden geht wieder, sobald er endet.",
+    "Letzter Fehler-Eintrag": "(fehlt)",
+    "Seite geladen": true
+  }
+]

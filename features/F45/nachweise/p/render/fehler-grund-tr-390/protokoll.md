@@ -1,0 +1,4 @@
+| Aktion | Sperrgrund sichtbar | Fehlerzeile sichtbar | Fehler-Eintrag | Tipp-Punkte | lang | Sperrgrund | Senden disabled | Senden title | Zusammenfassen disabled | Fehlerzeile | Letzter Fehler-Eintrag | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Fehler-Einträge mit Grund-Code: nie gestartet, verweigert, älterer Eintrag ohne Code, unbekannter Code, Klärung nur mit Klartext | false | false | true | false | tr |  | null | null | null |  | Çalıştırma başarısız Çalıştırma durdu — açıklama gerekli: ayrıntılar „Çalıştırmalar“ bölümünde | true |
+| Ganzen Verlauf öffnen: alle Grund-Arten sichtbar | false | false | true | false | tr |  | null | null | null |  | Çalıştırma başarısız Çalıştırma durdu — açıklama gerekli: ayrıntılar „Çalıştırmalar“ bölümünde | true |

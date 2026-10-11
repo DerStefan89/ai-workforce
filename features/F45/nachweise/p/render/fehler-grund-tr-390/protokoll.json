@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Fehler-Einträge mit Grund-Code: nie gestartet, verweigert, älterer Eintrag ohne Code, unbekannter Code, Klärung nur mit Klartext",
+    "Sperrgrund sichtbar": false,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": true,
+    "Tipp-Punkte": false,
+    "lang": "tr",
+    "Sperrgrund": "",
+    "Senden disabled": "null",
+    "Senden title": "null",
+    "Zusammenfassen disabled": "null",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "Çalıştırma başarısız Çalıştırma durdu — açıklama gerekli: ayrıntılar „Çalıştırmalar“ bölümünde",
+    "Seite geladen": true
+  },
+  {
+    "label": "Ganzen Verlauf öffnen: alle Grund-Arten sichtbar",
+    "Sperrgrund sichtbar": false,
+    "Fehlerzeile sichtbar": false,
+    "Fehler-Eintrag": true,
+    "Tipp-Punkte": false,
+    "lang": "tr",
+    "Sperrgrund": "",
+    "Senden disabled": "null",
+    "Senden title": "null",
+    "Zusammenfassen disabled": "null",
+    "Fehlerzeile": "",
+    "Letzter Fehler-Eintrag": "Çalıştırma başarısız Çalıştırma durdu — açıklama gerekli: ayrıntılar „Çalıştırmalar“ bölümünde",
+    "Seite geladen": true
+  }
+]

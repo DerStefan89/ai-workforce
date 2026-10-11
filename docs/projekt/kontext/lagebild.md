@@ -98,11 +98,11 @@ vor dem Design) `ABGESCHLOSSEN` (WS-1 gemergt #287, Abnahme durch Stefan
 am 30.09.2026 real an haushaltsbuch2, `features/F43/feature.md`; F-849
 gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
-Seitenaufbau `IN_ARBEIT` (D0 „Grundlage“ auf Branch; danach Fixpaket
-„Arbeitsfähigkeit“ F45, dann F30 — E-M5-18, geändert 02.10.2026), F45
-Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
-`docs/projekt/fixpaket-f45.md`; B0 Chat gebaut, nicht gemergt) (Stand
-22.09.2026; F36 29.09.2026; F43 30.09.2026; F44/F46 02.10.2026; F45 10.10.2026).
+Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
+10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
+`docs/projekt/fixpaket-f45.md`; B0 Chat gemergt #316, WS P Performance gebaut,
+nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F45/F46 10.10.2026).
 
 ## Offene P1-Findings
 
@@ -145,7 +145,6 @@ Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 - F-501 · TECH_DEBT · Jarvis-Chat-Turn kostet ~7-10s CLI-Prozessstart je Nachricht.
 - F-523 · TECH_DEBT · Greenfield-Projekt über Jarvis ist strukturell blockiert.
 - F-553 · PROCESS_IMPROVEMENT · Challenger bezifferte den Nutzen einer Option ohne direkte Messung.
-- F-556 · BUG · Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
 - F-589 · HARNESS_IMPROVEMENT · Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.
 - F-648 · BUG · Die Korrekturschleife nach „Anpassung anfordern" trägt weder die Abnahme-Begründung noch die vorherigen Review-Befunde erkennbar in die Instruktion der neuen Iteration — Ausführung und Review wiederholen sich dadurch blind.
 - F-666 · TECH_DEBT · Ein vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, `code-reviewer` erfolgreich, Regel 1c real ausgelöst) wurde nie belegt — Pflicht-AK der F41-Abnahme (E-F39-2 = A).
@@ -156,4 +155,4 @@ Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 - F-696 · HARNESS_IMPROVEMENT · Sechster `index.lock`-Vorfall über die Remote-Bridge (nach F-100/F-118/F-122/F-123/F-126) — ein als lesend geltender `git diff HEAD`-Aufruf lief in einen Timeout und hinterließ `.git/index.lock`.
 - F-791 · HARNESS_IMPROVEMENT · Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste wird bei jedem Update still undicht.
 - F-936 · PROCESS_IMPROVEMENT · Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe.
-- F-1015 · BUG · Der Speicher der Leitstand-Seite wächst im Langlauf in Stufen.
+- F-1018 · BUG · Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor ≈ 5–10.
