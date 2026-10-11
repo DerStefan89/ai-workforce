@@ -1,0 +1,257 @@
+{
+  "harness_zuordnung_schema": "v0",
+  "beschreibung": "F45 B1b-2 (Beleg 12): Standard-Zuordnung des Projekt-Harness (ai-workforce und Projekt-Skelett mit Baseline-Hooks) zu wirksam / ersetzt_durch / bewusst_nicht. Ist-Stand, nichts erfunden; statische Hook-Belege an Skript-Hash und Matcher gebunden (features/F45/nachweise/b1b2/zaehlung-hooks.json), Quellen relativ zur Installation. Was hier fehlt, ist im Abgleich offen. Schema schemas/harness-zuordnung.schema.json; je Projekt überschreibbar (Startvorlage harnessZuordnungPfad).",
+  "eintraege": [
+    {
+      "art": "dod",
+      "name": "dod-d5021306",
+      "text": "`npm run check` → Exit 0",
+      "status": "wirksam",
+      "beleg": {
+        "art": "pruefschritt"
+      },
+      "begruendung": "Der Kern führt den Prüfbefehl der Startvorlage nach jedem schreibenden Lauf selbst aus (F-652)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-a472b39f",
+      "text": "Typisiert, kein `any` (oder Sprachäquivalent)",
+      "status": "wirksam",
+      "beleg": {
+        "art": "pruefschritt"
+      },
+      "begruendung": "Belegt, soweit der Prüfbefehl des Projekts Typprüfung und Lint enthält — für ai-workforce npm run check mit tsc und Biome (noExplicitAny). Ein Projekt, dessen Prüfbefehl das nicht enthält, überschreibt den Eintrag in seiner Projektdatei (harnessZuordnungPfad)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-86559c82",
+      "text": "KEINE Commits ohne explizite Freigabe",
+      "status": "wirksam",
+      "beleg": {
+        "art": "statisch",
+        "quelle": "scripts/check-fixpaket-f35-reallauf.mjs"
+      },
+      "begruendung": "Commits durch die Workforce sind bewusst ausgeschlossen (Beleg 12): der schreibende Werkzeugsatz sperrt git (--disallowedTools Bash(git:*), Gate check-fixpaket-f35-reallauf (e) in npm run check); commit-guard sperrt im -p-Lauf zusätzlich destruktive Befehle (Hook-Nachweis B1b-2). Ein verweigerter Commit-Versuch im Lauf ist nicht eigens belegt. Stefan sichert."
+    },
+    {
+      "art": "dod",
+      "name": "dod-04a521a7",
+      "text": "Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, frischer Kontext) vor Freigabe/Commit durchlaufen — nicht optional, nicht retroactiv nachgeholt (F-046)",
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "code-reviewer"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Ablauf ohne Review-Schritt (heute nur die Vorlage fast-lane) — bewusst ohne Review; ob eine Fast-Lane ohne Review Beleg 12 erfüllen darf, entscheidet Stefan."
+      },
+      "begruendung": "Review ist eigener Workflow-Schritt mit frischem Kontext; qa als Schritt erst mit B2b (F-1031)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-283ac334",
+      "text": "Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, frischer Kontext) vor Freigabe/Commit. In Workforce-Läufen sind Review und QA eigene Workflow-Schritte; die Ausführung delegiert nicht an Subagenten, und weder git noch Commit finden in ihr statt (der Shell-Satz im Auftrag hat Vorrang).",
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "code-reviewer"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Ablauf ohne Review-Schritt (heute nur die Vorlage fast-lane) — bewusst ohne Review; ob eine Fast-Lane ohne Review Beleg 12 erfüllen darf, entscheidet Stefan."
+      },
+      "begruendung": "Review ist eigener Workflow-Schritt mit frischem Kontext; qa als Schritt erst mit B2b (F-1031)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-600f3001",
+      "text": "Komponenten/Module sind wiederverwendbar",
+      "status": "bewusst_nicht",
+      "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt."
+    },
+    {
+      "art": "dod",
+      "name": "dod-44846f57",
+      "text": "Fehlerzustände berücksichtigt (catch + Logging)",
+      "status": "bewusst_nicht",
+      "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt."
+    },
+    {
+      "art": "dod",
+      "name": "dod-424cdb7c",
+      "text": "Leere Zustände berücksichtigt",
+      "status": "bewusst_nicht",
+      "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt."
+    },
+    {
+      "art": "dod",
+      "name": "dod-f409dc65",
+      "text": "Code ist sinnvoll kommentiert (Datei-Header + Funktionsdoku, siehe `docs/kommentar-standard.md`)",
+      "status": "bewusst_nicht",
+      "begruendung": "Das Review bekommt die DoD erst mit B2a (Arbeitspaket mit DoD an Review/qa, F-829); bis dahin kein Ersatz, der die Kriterien kennt."
+    },
+    {
+      "art": "dod",
+      "name": "dod-be1977f5",
+      "text": "[FÜLLUNG, nur UI] Lange Texte zerstören das Layout nicht",
+      "status": "bewusst_nicht",
+      "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B2b, B3, F-1031)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-bef0bed6",
+      "text": "[FÜLLUNG, nur UI] Mobile Darstellung berücksichtigt; jeder Container mit max-width hat auch width: 100%",
+      "status": "bewusst_nicht",
+      "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B2b, B3, F-1031)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-6e75626d",
+      "text": "[FÜLLUNG, nur UI] Design bleibt treu (Design-Tokens, keine neuen Farben/Schatten ohne Freigabe)",
+      "status": "bewusst_nicht",
+      "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B2b, B3, F-1031)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-526c5ddb",
+      "text": "[FÜLLUNG, nur UI] UI-Workstreams liefern vor Übergabe an Stefan einen Render-Nachweis per `npm run render-nachweis` (Screenshots + Klicktabelle) — ein Reviewer-/QA-Pass allein findet keine real nur im Browser sichtbaren Fehler wie eine überschriebene `[hidden]`-Regel oder eine fehlende `classList`-Mutation (F-622)",
+      "status": "bewusst_nicht",
+      "begruendung": "Render-Nachweis im Lauf erst mit B2b/B3 (Beleg 5)."
+    },
+    {
+      "art": "hook",
+      "name": "commit-guard",
+      "status": "wirksam",
+      "beleg": {
+        "art": "statisch",
+        "quelle": "features/F45/nachweise/b1b2/zaehlung-hooks.json",
+        "skript_sha256": "13bc35a0eb596ae93313b43b46d19fc98464f1b9156f4656f0405ebcca1d3773",
+        "matcher": "Bash|PowerShell"
+      },
+      "begruendung": "Realer -p-Lauf (B1b-2): rm -rf über Bash und Remove-Item -Recurse -Force über PowerShell verweigert, Ordner unverändert; zuerst belegt in B1b-1 (features/F45/nachweise/b1b1/nachweis.md)."
+    },
+    {
+      "art": "hook",
+      "name": "guard-settings",
+      "status": "wirksam",
+      "beleg": {
+        "art": "statisch",
+        "quelle": "features/F45/nachweise/b1b2/zaehlung-hooks.json",
+        "skript_sha256": "b4cd0f27989fa522d39ec0a4068ee356aa53b55681511319c46a7af6340823c7",
+        "matcher": "Edit|Write"
+      },
+      "begruendung": "Realer -p-Lauf (B1b-2) mit --setting-sources project: Edit auf die settings.json verweigert, Datei byte-gleich; zuerst belegt in B1b-1 mit der Skelett-Fassung."
+    },
+    {
+      "art": "hook",
+      "name": "zwischenstand-laden",
+      "status": "bewusst_nicht",
+      "begruendung": "Feuert als SessionStart auch im -p-Lauf (hook_response outcome success, B1b-2), bleibt dort aber ohne Inhalt: kein Zwischenstand für den Branch wf/<Ablauf>. Rückwärts-Handoff ist Sache der interaktiven Sitzung (F-932)."
+    },
+    {
+      "art": "hook",
+      "name": "session-reminder",
+      "status": "bewusst_nicht",
+      "begruendung": "UserPromptSubmit: stream-json meldet nur SessionStart-Hooks, die Wirkung im Lauf ist unbelegt; die Erinnerung alle 30 Nachrichten ist für interaktive Sitzungen gedacht (F-932)."
+    },
+    {
+      "art": "hook",
+      "name": "zwischenstand-pruefen",
+      "status": "bewusst_nicht",
+      "begruendung": "PreCompact feuert nur bei Kontextverdichtung, im -p-Lauf nicht beobachtet; der Zwischenstand ist Sache der interaktiven Sitzung (F-932)."
+    },
+    {
+      "art": "agent",
+      "name": "code-reviewer",
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "code-reviewer"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Ablauf ohne Review-Schritt (heute nur die Vorlage fast-lane) — bewusst ohne Review; ob eine Fast-Lane ohne Review Beleg 12 erfüllen darf, entscheidet Stefan."
+      },
+      "begruendung": "Eigener Workflow-Schritt (Vorlagen standard und hoch) statt Subagent im Lauf."
+    },
+    {
+      "art": "agent",
+      "name": "architecture-advisor",
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "architecture-advisor"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Advisor-Schritt steht nur in der Vorlage hoch (Kontrolltiefe hoch)."
+      },
+      "begruendung": "Eigener Workflow-Schritt in der Vorlage hoch (workflow-vorlagen/hoch.json)."
+    },
+    {
+      "art": "agent",
+      "name": "qa",
+      "status": "bewusst_nicht",
+      "begruendung": "qa-Schritt in der Kette erst mit B2b; Auslöser je Prüfschritt offen (F-1031)."
+    },
+    {
+      "art": "agent",
+      "name": "design-guardian",
+      "status": "bewusst_nicht",
+      "begruendung": "design-guardian-Schritt mit Render-Nachweis im Lauf erst mit B2b; Auslöser je Prüfschritt offen (F-1031)."
+    },
+    {
+      "art": "agent",
+      "name": "scout",
+      "status": "bewusst_nicht",
+      "begruendung": "Recherche-Rolle der Seite Workforce (F27), kein Schritt eines Bau-Ablaufs."
+    },
+    {
+      "art": "skill",
+      "name": "advisor-pass",
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "architecture-advisor"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Advisor-Schritt steht nur in der Vorlage hoch (Kontrolltiefe hoch)."
+      },
+      "begruendung": "Der Plan-Prüfpass ist der Advisor-Schritt der Vorlage hoch; Advisor-Schema und Plan v2 kommen mit B2b."
+    },
+    {
+      "art": "skill",
+      "name": "handoff-vertrag",
+      "status": "bewusst_nicht",
+      "begruendung": "Übergabeformat der Workforce ist das Arbeitspaket (B2a, F-938), nicht der Handoff-Vertrag."
+    },
+    {
+      "art": "skill",
+      "name": "git-flow",
+      "status": "bewusst_nicht",
+      "begruendung": "Stefan sichert (Bereit zum Sichern, B2b); Commits durch die Workforce bewusst nicht (Beleg 12)."
+    },
+    {
+      "art": "skill",
+      "name": "spec-schreiben",
+      "status": "bewusst_nicht",
+      "begruendung": "Die Spec entsteht vor dem Ablauf (Coach, Feature-Akte), nicht im Lauf."
+    },
+    {
+      "art": "skill",
+      "name": "repo-audit",
+      "status": "bewusst_nicht",
+      "begruendung": "Sanierungsprüfung zwischen Zyklen, kein Schritt eines Ablaufs."
+    },
+    {
+      "art": "skill",
+      "name": "werkzeug-auswahl",
+      "status": "bewusst_nicht",
+      "begruendung": "Werkzeugwahl trifft Stefan auf der Seite Workforce (F27, WS F)."
+    },
+    {
+      "art": "skill",
+      "name": "ponytail",
+      "status": "bewusst_nicht",
+      "begruendung": "Projekt-Skills im Lauf erst mit WS F (F-815/F-816)."
+    },
+    {
+      "art": "command",
+      "name": "lessons",
+      "status": "bewusst_nicht",
+      "begruendung": "Lernschleife in der Workforce ist Teil 2 (Paket L, F-933)."
+    }
+  ]
+}

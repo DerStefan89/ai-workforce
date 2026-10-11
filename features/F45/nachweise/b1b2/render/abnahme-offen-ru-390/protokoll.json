@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Fixture: unbekannter Agent im Lauf (Tabelle aufgeklappt)",
+    "Tabelle": true,
+    "offen-Zeile": true,
+    "lang": "ru",
+    "Zählzeile": "Harness: действует: 3 · заменено: 1 · сознательно нет: 8 · открыто: 1 Доказательство 12 не выполнено рассчитано сейчас (",
+    "Hinweis offen": "1 запись открыта — причина в каждой строке таблицы.",
+    "Kurzliste": "Навыкинет Субагентынет MCP-серверынет Фоновые вызовыне записано",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Tabelle zugeklappt",
+    "Tabelle": true,
+    "offen-Zeile": true,
+    "lang": "ru",
+    "Zählzeile": "Harness: действует: 3 · заменено: 1 · сознательно нет: 8 · открыто: 1 Доказательство 12 не выполнено рассчитано сейчас (",
+    "Hinweis offen": "1 запись открыта — причина в каждой строке таблицы.",
+    "Kurzliste": "Навыкинет Субагентынет MCP-серверынет Фоновые вызовыне записано",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

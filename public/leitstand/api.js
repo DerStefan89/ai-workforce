@@ -244,6 +244,8 @@ export const holeCodeDiff = (pfad) => holeJsonOderWirf(mitPraefix(`/code/diff?pf
 // Poll. holeHarnessDatei schickt genau einen Parameter (pfad); der Server nimmt ihn nur, wenn er in seiner Liste
 // steht (400 sonst → Wurf). Zeitlimit wie holeRoadmap.
 export const holeHarness = () => holeJsonOderWirf(mitPraefix('/harness'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+// F45 B1b-2 (Beleg 12): Harness-Abgleich eines Ablaufs — nicht gepollt, einmal je Stand der Schritte (views/workflows.js, views/runs.js).
+export const holeHarnessAbgleich = (workflowId) => holeJsonOderWirf(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/harness-abgleich`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 export const holeHarnessDatei = (pfad) => holeJsonOderWirf(mitPraefix(`/harness/datei?pfad=${encodeURIComponent(pfad)}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
 // F44 WS-3b: Titel, Ziel, Nicht-Ziele und AKs einer Feature-Akte für das Detail der Seite

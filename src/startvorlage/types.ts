@@ -46,6 +46,12 @@ export interface StartvorlageV0Daten {
    */
   bashZeitgrenzeMs?: number
   /**
+   * F45 B1b-2 (Beleg 12): optionaler Pfad einer Projektdatei der Harness-Zuordnung, relativ zur Installation von
+   * ai-workforce (schemas/harness-zuordnung.schema.json). Ihre Einträge ersetzen Einträge gleichen Schlüssels aus
+   * harness-abgleich/standard.json (src/harness-abgleich ladeZuordnung). Ohne Feld gilt der Standard allein.
+   */
+  harnessZuordnungPfad?: string
+  /**
    * F-652 (state/findings.md F-652, BUG P1): argv eines deterministischen Prüfbefehls (z. B.
    * `npm run check`), den der KERN nach jedem real erfolgreich beendeten Lauf mit schreibendem
    * Werkzeugsatz selbst ausführt (src/pruefschritt/index.ts). Seit E-F754 trägt der Werkzeugsatz

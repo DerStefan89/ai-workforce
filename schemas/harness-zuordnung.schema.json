@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/harness-zuordnung.schema.json",
+  "title": "Harness-Zuordnung",
+  "description": "F45 B1b-2 (Beleg 12): versionierte Zuordnung je Harness-Eintrag (DoD-Punkt, Hook, Agent, Skill, Command) zu wirksam (mit Beleg-Vorgabe), ersetzt_durch (Workflow-Schritt) oder bewusst_nicht (Begründung). Standard: harness-abgleich/standard.json; optional je Projekt eine weitere Datei (Startvorlage harnessZuordnungPfad), deren Einträge Standard-Einträge gleichen Schlüssels (art + name) ersetzen. Was hier fehlt, ist im Abgleich offen. Handnachbau: src/harness-abgleich/index.ts validiereZuordnung.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "harness_zuordnung_schema",
+    "eintraege"
+  ],
+  "properties": {
+    "harness_zuordnung_schema": {
+      "const": "v0"
+    },
+    "beschreibung": {
+      "type": "string"
+    },
+    "eintraege": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "art",
+          "name",
+          "status"
+        ],
+        "properties": {
+          "art": {
+            "enum": [
+              "dod",
+              "hook",
+              "agent",
+              "skill",
+              "command"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Hook: Skriptname ohne Endung; Agent/Command: Dateiname ohne .md; Skill: Ordnername; DoD: dod-<8 Hex des SHA-256 des normalisierten Texts>."
+          },
+          "status": {
+            "enum": [
+              "wirksam",
+              "ersetzt_durch",
+              "bewusst_nicht"
+            ]
+          },
+          "beleg": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "art"
+            ],
+            "properties": {
+              "art": {
+                "enum": [
+                  "statisch",
+                  "pruefschritt"
+                ],
+                "description": "statisch: Nachweis außerhalb des Laufs (quelle, relativ zur Installation); bei Hooks gebunden an skript_sha256 und matcher — weicht das Inventar ab, ist der Eintrag 'wirksam_ohne_beleg'. pruefschritt: Prüfergebnis GRUEN des Ausführungslaufs (ROT/ZEITGRENZE/FEHLER → offen, keins → ohne Beleg). Belege aus Schritten und Aufrufen kommen mit WS F."
+              },
+              "quelle": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Nur bei statisch: Pfad relativ zur Installation, '/' als Trenner, kein '..'."
+              },
+              "skript_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Nur bei statisch und art hook (dort Pflicht): SHA-256 der Hook-Datei des Nachweises."
+              },
+              "matcher": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "description": "Nur bei statisch und art hook (dort Pflicht): Matcher des Nachweises; null für Ereignisse ohne Matcher."
+              }
+            }
+          },
+          "schritt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rolle"
+            ],
+            "properties": {
+              "rolle": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Rolle des Workflow-Schritts, der den Eintrag ersetzt — nur gültig, wenn er im Ablauf ERFOLGREICH lief."
+              }
+            }
+          },
+          "fehlt_im_ablauf": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "begruendung"
+            ],
+            "properties": {
+              "begruendung": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "description": "Nur bei ersetzt_durch: steht der Schritt nicht im Ablauf, ist der Eintrag bewusst_nicht mit dieser Begründung (sonst offen)."
+          },
+          "begruendung": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "description": "DoD: Wortlaut als Lesehilfe, nicht Teil des Schlüssels."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "wirksam"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "beleg"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "schritt"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "fehlt_im_ablauf"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "ersetzt_durch"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "schritt"
+              ],
+              "not": {
+                "required": [
+                  "beleg"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "bewusst_nicht"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "begruendung"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "beleg"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "schritt"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "fehlt_im_ablauf"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "art": {
+                  "const": "dod"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "name": {
+                  "pattern": "^dod-[0-9a-f]{8}$"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "art": {
+                  "const": "hook"
+                },
+                "beleg": {
+                  "properties": {
+                    "art": {
+                      "const": "statisch"
+                    }
+                  },
+                  "required": [
+                    "art"
+                  ]
+                }
+              },
+              "required": [
+                "beleg"
+              ]
+            },
+            "then": {
+              "properties": {
+                "beleg": {
+                  "required": [
+                    "skript_sha256",
+                    "matcher"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

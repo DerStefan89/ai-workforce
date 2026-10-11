@@ -12031,7 +12031,7 @@ Beschreibung: kopiereBaseline kopiert `.claude/settings.json` und alle Hooks in 
 Fundstelle: `src/projekt-anlegen/index.ts:185` (kopiereBaseline), `.claude/settings.json`, `docs/harness/HARNESS-OVERVIEW.md`.
 Auswirkung: Mittel — Schutz- und Komfort-Hooks wirken im Workforce-Lauf womöglich nicht oder falsch; ein behaupteter Lint-Schritt fehlt.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1.
-Status: teilweise (F45 B1b-1, 11.10.2026): PreToolUse real belegt — `-p`-Lauf mit `--setting-sources project` und den Skelett-Hooks: ein Edit auf `.claude/settings.json` verweigert der guard-settings-Hook (Grund im tool_result, Datei byte-gleich), `features/F45/nachweise/b1b1/zaehlung-hooks.json`. Offen: commit-guard (Bash) im `-p`-Lauf nicht real ausgelöst (der Werkzeugsatz sperrt git schon vorher), Nutzen von session-reminder/zwischenstand-* im Lauf, PostToolUse-Lint (B3).
+Status: teilweise (F45 B1b-1, 11.10.2026): PreToolUse real belegt — `-p`-Lauf mit `--setting-sources project` und den Skelett-Hooks: ein Edit auf `.claude/settings.json` verweigert der guard-settings-Hook (Grund im tool_result, Datei byte-gleich), `features/F45/nachweise/b1b1/zaehlung-hooks.json`. F45 B1b-2 (11.10.2026): realer `-p`-Lauf mit den Root-Hooks von ai-workforce (byte-gleiche Kopie, `features/F45/nachweise/b1b2/zaehlung-hooks.json`): commit-guard verweigert `rm -rf` über Bash und `Remove-Item -Recurse -Force` über PowerShell, guard-settings das Edit auf die settings.json; SessionStart (zwischenstand-laden) feuert (`hook_response` outcome success), bleibt aber ohne Inhalt (kein Zwischenstand für `wf/<Ablauf>`); für UserPromptSubmit und PreCompact meldet stream-json kein Ereignis. Im Harness-Abgleich: commit-guard/guard-settings wirksam (statisch, an Hash und Matcher gebunden), session-reminder/zwischenstand-* bewusst nicht. Offen: PostToolUse-Lint (B3).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-933** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -12076,7 +12076,7 @@ Beschreibung: Die Laufakte erfasst `skill_aufrufe`, `subagent_aufrufe` und `mcp_
 Fundstelle: `public/leitstand/beobachtung-zeile.js`; Laufakte (claude-code-gateway).
 Auswirkung: Mittel. „Harness als Verfahren“ (E-M5-19) ist nicht nachprüfbar.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1. Das Review prüft „vorgesehen gegen benutzt“, die Abnahme zeigt eine Kurzliste der benutzten Fähigkeiten.
-Status: teilweise (F45 B1b-1, 11.10.2026): der code-reviewer-Schritt (Claude und Codex) bekommt die Beobachtung des Ausführungslaufs als kurzen, deterministischen Block (geladen gegen aufgerufen: Skills, Subagenten, MCP-Server; Hintergrund-Aufrufe; ohne Beobachtung der Satz „keine Beobachtung“) — `baueBeobachtungsBlock`, Test `scripts/leitstand/review-beobachtung.test.mjs`. Offen: „vorgesehen“ aus dem Arbeitspaket (B2a), Kurzliste in der Abnahme (B1b-2).
+Status: teilweise (F45 B1b-1, 11.10.2026): der code-reviewer-Schritt (Claude und Codex) bekommt die Beobachtung des Ausführungslaufs als kurzen, deterministischen Block (geladen gegen aufgerufen: Skills, Subagenten, MCP-Server; Hintergrund-Aufrufe; ohne Beobachtung der Satz „keine Beobachtung“) — `baueBeobachtungsBlock`, Test `scripts/leitstand/review-beobachtung.test.mjs`. Seit F45 B1b-2 (11.10.2026) zeigt die Abnahme (und das Lauf-Detail) die Kurzliste der benutzten Fähigkeiten des Ausführungslaufs — Skills, Subagenten, MCP-Server je mit Anzahl, Hintergrund-Aufrufe (`baueFaehigkeitenKurzliste`, Zählregel `zaehleNamen` des Gateways; Feld `faehigkeiten` im Artefakt `harness-abgleich-<workflowId>`; Tests `src/harness-abgleich/harness-abgleich.test.ts`, `public/leitstand/harness-abgleich-anzeige.test.mjs`). Offen: „vorgesehen“ aus dem Arbeitspaket (B2a).
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
 **F-938** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12992,13 +12992,13 @@ Maßnahme: Stefan zieht die Härtung im Template-Repo nach (Vorlage: Aufgaben 5/
 Status: offen.
 Feature/Run: Entdeckt: Bauauftrag F45 B1b-1, 11.10.2026.
 
-**F-1039** · `TECH_DEBT` · P3 · offen
+**F-1039** · `TECH_DEBT` · P3 · erledigt
 Titel: projekt-nachruesten.test.mjs setzt voraus, dass os.tmpdir() außerhalb der Nachrüst-Basis liegt.
 Beschreibung: Der Test „Ziel außerhalb der Basis neben der Installation“ (`scripts/projekt-nachruesten.test.mjs:40`) nutzt ein Ziel unter os.tmpdir(); die Basis ist der Elternordner der Installation. Liegt das Repo selbst unter /tmp (Challenger-Clone 11.10.), liegt das Ziel innerhalb der Basis und der Test ist rot.
 Fundstelle: `scripts/projekt-nachruesten.test.mjs:40`.
 Auswirkung: Gering — falsch roter Test in der Cloud-Prüfung.
 Maßnahme: Basis im Test explizit setzen (Testeinspritzung) statt aus der Lage der Installation abzuleiten.
-Status: offen.
+Status: erledigt (F45 B1b-2, 11.10.2026): der CLI-Test prüft „abgelehntes Ziel → Exit 2, nichts geschrieben (auch mit --anwenden)“ mit einem Ziel, das unabhängig von der Lage des Repos abgelehnt wird (eine Datei statt eines Ordners); die Basisregel selbst prüft der Unit-Test `src/projekt-anlegen/nachruesten.test.ts` („Pfad außerhalb der Basis wird abgelehnt“) mit explizit gesetzter Basis. Kein neuer Schalter in der CLI.
 Feature/Run: Entdeckt: Challenger, Cloud-Clone 11.10.2026; Bauauftrag F45 B1b-1.
 
 **F-1040** · `BUG` · P1 · erledigt
@@ -13027,3 +13027,57 @@ Auswirkung: Mittel — die Bremsen gelten nur für eine von zwei Shells.
 Maßnahme: Stefan setzt den Matcher auf `Bash|PowerShell` (Team-Policy, nur im eigenen Editor), im Template nachziehen; commit-guard liest `tool_input.command` bereits für beide.
 Status: teilweise (F45 B1b-1 Nachtrag, 11.10.2026): Eingabeform des PowerShell-Werkzeugs real belegt (`tool_name` "PowerShell", `tool_input` { command, description }, Kopf-Felder wie Bash; `features/F45/nachweise/b1b1/zaehlung-powershell.json`), commit-guard verweigert dort real `Remove-Item -Recurse -Force`; Rot-/Grün-Tests mit dieser Form in `scripts/commit-guard.test.mjs`; unbekannte Form ohne `tool_input.command` wird verweigert (fail-closed). Offen: Matcher `Bash|PowerShell` in `.claude/settings.json` (Stefan, Teil der neuen Startfreigabe) und im Template (F-1038).
 Feature/Run: Entdeckt: F45 B1b-1 (Bausitzung), 11.10.2026.
+
+**F-1043** · `TECH_DEBT` · P2 · teilweise
+Titel: Die Reserve der Bash-Zeitgrenze für ai-workforce war knapp (479 s von 600 s).
+Beschreibung: `npm run check` von ai-workforce dauerte 479 s (B1b-1-Messung), unter Last ≈ 10 min; ohne Hintergrund-Ausführung (F-1026) beendet die CLI einen Befehl über der Bash-Zeitgrenze (Exit 143). Der Standard von 600 000 ms ließ ≈ 20 % Reserve. Der Prüfschritt des Kerns hat eine eigene Grenze `pruefZeitgrenzeMs` 900 000 (läuft ohne parallelen Modell-Lauf, Reserve ≈ 47 %).
+Fundstelle: `startvorlagen/ai-workforce.json` (`bashZeitgrenzeMs`, `pruefZeitgrenzeMs`); `features/F45/nachweise/b1b1/nachweis.md` (Messung).
+Auswirkung: Mittel — ein `npm run check` im Lauf kann bei weiterem Wachstum der Testkette abgebrochen werden.
+Maßnahme: `bashZeitgrenzeMs` 1 200 000 (≤ `zeitgrenzeMs` 1 800 000); Dauer der Kette beobachten, `pruefZeitgrenzeMs` nachziehen, sobald eine Messung unter Last 900 s erreicht.
+Status: teilweise (F45 B1b-2, 11.10.2026): `bashZeitgrenzeMs: 1200000` in `startvorlagen/ai-workforce.json` (kein Feld des Gültigkeitsschlüssels — keine neue Startfreigabe nötig; Test `src/startvorlage/startvorlage.test.ts`). Offen: Reserve von `pruefZeitgrenzeMs` unter Last.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1b-2, 11.10.2026.
+
+**F-1044** · `PROCESS_IMPROVEMENT` · P3 · teilweise
+Titel: Jedes Claude-Code-Update lässt die Startfreigabe unbelegt — Handschritte nötig.
+Beschreibung: Die Startfreigabe (E-183/E-188) vergleicht die deklarierte Version der Startvorlage mit dem Wirksamkeitsnachweis, nicht die installierte. Nach einem Update laufen Läufe weiter, ihre Belege (Rot-Fälle, Hook-Wirkung) gelten aber nur für die alte Version; Erneuern heißt Matcher prüfen, Nachweise neu, Startvorlage, Nachweise schreiben, Commit im Autorisierungs-Repo, Verweisdatei, Prüfung.
+Fundstelle: `src/invocation-policy/index.ts` (Vergleich deklariert gegen nachgewiesen), `startvorlagen/ai-workforce.json` (`werkzeugVersionDeklariert`).
+Auswirkung: Gering bis mittel — ein Update bleibt unbemerkt, bis jemand die Versionen vergleicht.
+Maßnahme: Start-Hinweis bei Abweichung und Anleitung; kein automatisches Neuerzeugen (E3).
+Status: teilweise (F45 B1b-2, 11.10.2026): beim Leitstand-Start einmal `<werkzeugStartziel> --version` (asynchron, nie im Poll) gegen `werkzeugVersionDeklariert` der Startvorlage des Startprojekts; bei Abweichung Band „CLI-Version geändert — Startfreigabe neu erzeugen“ mit Verweis auf `docs/harness/startfreigabe-erneuern.md` (`scripts/leitstand/cli-version.mjs`, Feld `cliHinweis` in GET /api/zustand). Grenzen: Momentaufnahme beim Start (ein Update zur Laufzeit bleibt bis zum Neustart unbemerkt); prozessweit für die Startvorlage des Startprojekts, nicht je Projekt.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B1b-2, 11.10.2026.
+
+**F-1045** · `TECH_DEBT` · P3 · offen
+Titel: Die Änderungsübersicht meldet einen neuen Ordner nur als Ordnerpfad, nicht seine Dateien.
+Beschreibung: `erzeugeAenderungsuebersichtDaten` liest ungetrackte Dateien über `git status --porcelain` ohne `--untracked-files=all`. Legt ein Lauf einen neuen Ordner an (z. B. `.claude/agents/` mit einer Datei), steht in `dateien` nur `.claude/agents/` — ohne Dateiname und ohne Zeilenzahlen. Real gesehen im Servertest `scripts/leitstand/routen-harness-abgleich.test.mjs` (`geaenderte_harness_dateien`).
+Fundstelle: `src/aenderungsuebersicht/index.ts` (`status --porcelain`, `parseUntrackedDateien`).
+Auswirkung: Gering — „Geänderte Dateien“ der Abnahme und „Harness im Lauf geändert“ zeigen bei neuen Ordnern nur den Ordner.
+Maßnahme: `--untracked-files=all` (Budget beachten) und Test mit neuem Ordner.
+Status: offen.
+Feature/Run: Entdeckt: F45 B1b-2 (Servertest), 11.10.2026.
+
+**F-1046** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Die Laufakte trägt keine Hook-Ereignisse — Hooks sind im Harness-Abgleich nur statisch belegt.
+Beschreibung: stream-json meldet im `-p`-Lauf nur SessionStart-Hooks (`hook_started`/`hook_response`); eine PreToolUse-Verweigerung erscheint nur als tool_result-Text mit dem Grund des Hooks. `leseBeobachtung` übernimmt beides nicht. Der Harness-Abgleich belegt Hooks deshalb nur statisch (Nachweis-Lauf, an Skript-Hash und Matcher gebunden), nicht je Lauf.
+Fundstelle: `src/claude-code-gateway/index.ts` (`leseBeobachtung`), `harness-abgleich/standard.json`, `features/F45/nachweise/b1b2/zaehlung-hooks.json`.
+Auswirkung: Mittel — Beleg 12 kann für Hooks nur „statisch“ zeigen; ob ein Hook im konkreten Lauf gegriffen hat, steht nicht in der Laufakte.
+Maßnahme: `beobachtung.hook_ereignisse` (SessionStart-Ereignisse samt outcome) und gezählte Verweigerungen mit Hook-Grund aufnehmen; danach eine Beleg-Art „im Lauf“ für Hooks in der Zuordnung (WS F oder R).
+Status: offen.
+Feature/Run: Entdeckt: F45 B1b-2 (Hook-Nachweis), 11.10.2026.
+
+**F-1047** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Fremdprojekte tragen die Hook-Baseline von vor B1b-1 — commit-guard ist dort im Harness-Abgleich „ohne Beleg“.
+Beschreibung: Neue Projekte bekommen beim Anlegen die Baseline von ai-workforce byte-gleich (E-F41-1); spätere Härtungen (B1b-1: commit-guard Aufgaben 5/6, Matcher `Bash|PowerShell`) erreichen bestehende Projekte nicht. Real (11.10.2026): haushaltsbuch2 und haushaltsbuch tragen commit-guard mit Matcher `Bash` und anderem Hash (64cedd25…); der Abgleich zeigt dort „Hook weicht vom Nachweis ab“ → „ohne Beleg“ → Beleg 12 nicht erfüllt. guard-settings stimmt überein. Ein per `projekt:nachruesten` nachgerüstetes Projekt ohne settings.json bekommt die Skelett-Hooks (`.js`, Matcher `Bash`) — auch die sind nicht belegt.
+Fundstelle: `harness-abgleich/standard.json` (Bindung an Hash und Matcher), `src/projekt-anlegen/index.ts` (kopiereBaseline), `vorlagen/projekt-skelett/.claude/` (F-1038).
+Auswirkung: Mittel — im Referenzlauf R (Vorschlag haushaltsbuch2) kann Beleg 12 so nicht bestehen; die Anzeige sagt das richtig.
+Maßnahme: Vor R entscheiden (Stefan): (a) Baseline des R-Projekts auf den heutigen Stand ziehen (settings.json und Hooks, dann E-183/Startfreigabe des Projekts neu) oder (b) eine Projektdatei der Zuordnung (`harnessZuordnungPfad`) mit eigenem, realem Hook-Nachweis für die Projekt-Fassung. Template-Repo: F-1038.
+Status: offen.
+Feature/Run: Entdeckt: F45 B1b-2 (QA-Pass, gegen haushaltsbuch2 nachgerechnet), 11.10.2026.
+
+**F-1048** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte des Harness-Abgleichs aus dem Prüfpass B1b-2.
+Beschreibung: (1) Ein Ladefehler von GET …/harness-abgleich bleibt in Abnahme und Lauf-Detail stehen, bis sich der Stand ändert (kein Nachladen-Knopf). (2) Agents/Commands in Unterordnern (`.claude/commands/git/commit.md`) werden nicht inventarisiert (eine Ebene, keine Rekursion) — sie fehlen, statt offen zu sein. (3) Die DoD-Überschrift wird streng gesucht (Zusatz oder Emoji → „kein Abschnitt“, nummerierte Listen werden nicht erkannt). (4) Begründungen und Gründe kommen nur deutsch (Serverwerte), die Seite ist in en/ru/tr gemischtsprachig. (5) Statischer Hook-Beleg zeigt Hash und Matcher nicht in der Oberfläche. (6) Die Nachher-Messung von GET /api/zustand lief nur ≈ 7 min (von Claude Code wegen Speicherdrucks beendet, `features/F45/nachweise/b1b2/messung-nachher-teil.md`); eine volle 10-min-Messung steht aus. (7) Der Render-Nachweis zeigt den Zustand „ohne Beleg“ (gelber Hinweis) nicht — belegt nur im Anzeige-Test.
+Fundstelle: `public/leitstand/views/{workflows.js,runs.js}`, `src/harness-abgleich/index.ts` (leseHarnessInventar, leseDodPunkte), `public/leitstand/harness-abgleich-anzeige.js`.
+Auswirkung: Gering.
+Maßnahme: (1) Nachladen mit dem nächsten Poll-Tick nach Ablauf einer Wartezeit oder Knopf „Neu laden“; (2) Unterordner als Quellen-Eintrag „nicht inventarisiert“ melden statt still auszulassen; (3) Überschrift mit Zusatz zulassen; (4) mit F-1016-Muster Codes statt Texte; (5) Anzeige ergänzen; (6) Messung bei ausreichendem Speicher wiederholen; (7) Render-Folge mit Hook-Abweichung (z. B. haushaltsbuch2).
+Status: offen.
+Feature/Run: Entdeckt: F45 B1b-2 (code-reviewer, qa), 11.10.2026.

@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Fixture: unbekannter Agent im Lauf (Tabelle aufgeklappt)",
+    "Tabelle": true,
+    "offen-Zeile": true,
+    "lang": "de",
+    "Zählzeile": "Harness: 3 wirksam · 1 ersetzt · 8 bewusst nicht · 1 offen Beleg 12 nicht erfüllt live berechnet (heutiger Harness)",
+    "Hinweis offen": "1 Eintrag ist offen — Grund je Zeile in der Tabelle.",
+    "Kurzliste": "Skillskeine Subagentenkeine MCP-Serverkeine Hintergrund-Aufrufenicht erfasst",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Tabelle zugeklappt",
+    "Tabelle": true,
+    "offen-Zeile": true,
+    "lang": "de",
+    "Zählzeile": "Harness: 3 wirksam · 1 ersetzt · 8 bewusst nicht · 1 offen Beleg 12 nicht erfüllt live berechnet (heutiger Harness)",
+    "Hinweis offen": "1 Eintrag ist offen — Grund je Zeile in der Tabelle.",
+    "Kurzliste": "Skillskeine Subagentenkeine MCP-Serverkeine Hintergrund-Aufrufenicht erfasst",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

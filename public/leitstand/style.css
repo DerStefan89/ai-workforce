@@ -12949,3 +12949,99 @@ button.harness-ordner-eintrag {
   border: 1px solid var(--line);
   border-radius: 10px;
 }
+
+/* F45 B1b-2 (Beleg 12): Harness-Abgleich (harness-abgleich-anzeige.js) in Abnahme, Lauf-Detail und auf der Seite
+   Workforce — die Tabelle scrollt in ihrem Rahmen (Muster .workflow-seite .ablauf-tabelle), statt bei 390 px zu
+   zerquetschen; Art und Status brechen nicht mitten im Wort (.lauf-kopfdaten td bricht sonst überall), Eintrag
+   und Beleg dürfen umbrechen. Keine neuen Farben. */
+.harness-abgleich .ablauf-tabelle {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.harness-abgleich-tabelle {
+  min-width: 640px;
+}
+
+.harness-abgleich-tabelle th,
+.harness-abgleich-tabelle td:nth-child(1),
+.harness-abgleich-tabelle td:nth-child(3) {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.harness-abgleich-tabelle td:nth-child(2) {
+  min-width: 14rem;
+}
+
+/* F45 B1b-2: unter 900 px (auch 1440 px bei 200 % Zoom) die Harness-Tabelle als gestapelte Blöcke mit Beschriftung
+   (Muster .library-tabelle, F46 D4) — Status und Beleg bleiben sichtbar statt seitlich weggescrollt. */
+@media (max-width: 900px) {
+  .harness-abgleich-tabelle {
+    min-width: 0;
+  }
+
+  .harness-abgleich-tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .harness-abgleich-tabelle,
+  .harness-abgleich-tabelle tbody,
+  .harness-abgleich-tabelle tr,
+  .harness-abgleich-tabelle td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .harness-abgleich-tabelle tr {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .harness-abgleich-tabelle tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .harness-abgleich-tabelle td {
+    padding: 4px 16px;
+    border: 0;
+  }
+
+  .harness-abgleich-tabelle td:nth-child(2) {
+    min-width: 0;
+  }
+
+  .harness-abgleich-tabelle td:nth-child(1),
+  .harness-abgleich-tabelle td:nth-child(3) {
+    white-space: normal;
+  }
+
+  .harness-abgleich-tabelle td::before {
+    content: attr(data-spalte) ': ';
+    color: var(--muted);
+  }
+}
+
+.harness-abgleich .ablauf-tabelle {
+  width: 100%;
+}
+
+.harness-kurzliste-lauf {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.harness-abgleich-bereich {
+  margin-top: 24px;
+}
+
+/* F45 B1b-2 (F-1044): steht nur der CLI-Hinweis im Band, ist es eine Warnung (Läufe laufen weiter) — gelb. */
+#start-hinweis[data-art='warnung'] {
+  border-left-color: var(--amber);
+  background: var(--note-amber-bg);
+}

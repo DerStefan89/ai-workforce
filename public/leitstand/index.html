@@ -121,7 +121,7 @@
       <p id="poll-fehler" class="note red" hidden data-i18n="kopf.pollFehler">Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
       <!-- F45 B0 (F-986 a): Leitstand aus falschem Ordner gestartet — Läufe werden verweigert (E-188). Text aus
            GET /api/zustand (startHinweis) über start-hinweis.js; keine Live-Region. -->
-      <p id="start-hinweis" class="note red" hidden></p>
+      <div id="start-hinweis" class="note red" hidden></div>
 
       <div id="shell-koerper">
       <main id="shell-hauptbereich">
@@ -602,6 +602,7 @@
                   <details id="lauf-faehigkeiten" class="workflow-technik">
                     <summary data-i18n="lauf.aufklapp.faehigkeiten">Tatsächlich verwendete Fähigkeiten</summary>
                     <div id="lauf-faehigkeiten-inhalt"></div>
+                    <div id="lauf-harness-abgleich"></div>
                   </details>
                 </div>
               </div>
@@ -684,6 +685,12 @@
                 <p data-i18n="harness.nutzer.text">Welche Rolle welche Datei lädt, zeigt diese Seite mit dem Fixpaket „Arbeitsfähigkeit“ (B1).</p>
               </aside>
             </div>
+            <!-- F45 B1b-2 (Beleg 12): Abgleich des Projekt-Harness mit der Zuordnung (harness-abgleich/standard.json), ohne Laufbelege. -->
+            <section class="harness-abgleich-bereich" aria-labelledby="harness-abgleich-titel">
+              <h2 id="harness-abgleich-titel" data-i18n="harnessAbgleich.titelWorkforce">Abgleich mit der Zuordnung</h2>
+              <p class="subtle" data-i18n="harnessAbgleich.einleitungWorkforce">Was aus diesem Harness in einem Lauf wirkt, ersetzt wird oder bewusst nicht wirkt — laut Zuordnung, ohne Laufbelege.</p>
+              <div id="harness-abgleich"></div>
+            </section>
             <div class="harness-fusslinks">
               <button type="button" class="button kommt-knopf" aria-disabled="true"><span data-i18n="harness.bearbeiten">Harness bearbeiten</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
               <button type="button" id="harness-zur-library" class="werkstatt-textlink" data-i18n="harness.zurLibrary">Zur Capability Library →</button>

@@ -7,6 +7,11 @@
  * oben (#start-hinweis) und liefert denselben Text für den Hinweis im Chat über dem Eingabefeld
  * (views/chat.js, #chat-start-hinweis).
  *
+ * F45 B1b-2 (F-1044): zweiter Hinweis cliHinweis — die installierte Claude-Code-Version weicht von
+ * werkzeugVersionDeklariert der Startvorlage ab („CLI-Version geändert — Startfreigabe neu erzeugen“, mit Verweis auf
+ * docs/harness/startfreigabe-erneuern.md). Nur im Band (Läufe werden dadurch nicht verweigert); stehen beide an, je
+ * eine Zeile.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initStartHinweisBand vor initZustandPoll)
  * - public/leitstand/views/chat.js (startHinweisText)
@@ -32,12 +37,43 @@ export function startHinweisText(hinweis) {
   return t('start.hinweis.falscherOrdner', { ist: hinweis.istPfad, soll: hinweis.sollPfad })
 }
 
-/** Abonniert den Poll und blendet das Band #start-hinweis ein oder aus. */
+/**
+ * Text des CLI-Hinweises in der aktuellen Sprache.
+ * @param hinweis - zustand.cliHinweis ({ art: 'cliVersionGeaendert', installiert, deklariert, anleitung }) oder null/undefined
+ * @returns Anzeigetext, oder '' ohne (bekannten) Hinweis
+ */
+export function cliHinweisText(hinweis) {
+  if (hinweis?.art !== 'cliVersionGeaendert' || typeof hinweis.installiert !== 'string' || typeof hinweis.deklariert !== 'string' || typeof hinweis.anleitung !== 'string') return ''
+  return t('start.hinweis.cliVersion', { installiert: hinweis.installiert, deklariert: hinweis.deklariert, anleitung: hinweis.anleitung })
+}
+
+/**
+ * Die Zeilen des Bands: falscher Ordner und CLI-Version, je eine Zeile, leere weggelassen.
+ * @param zustand - Poll-Aggregat oder null
+ * @returns Texte
+ */
+export function startBandZeilen(zustand) {
+  return [startHinweisText(zustand?.startHinweis), cliHinweisText(zustand?.cliHinweis)].filter((text) => text !== '')
+}
+
+/** Abonniert den Poll und blendet das Band #start-hinweis ein oder aus (je Hinweis eine Zeile, nur über textContent). */
 export function initStartHinweisBand() {
+  let zuletzt = null
   abonniere((zustand) => {
     const band = document.getElementById('start-hinweis')
-    const text = startHinweisText(zustand?.startHinweis)
-    band.textContent = text
-    band.hidden = text === ''
+    const zeilen = startBandZeilen(zustand)
+    const schluessel = zeilen.join('\n')
+    band.hidden = zeilen.length === 0
+    // Nur der CLI-Hinweis: eine Warnung (Läufe laufen weiter) — gelb statt rot.
+    band.dataset.art = startHinweisText(zustand?.startHinweis) === '' && zeilen.length > 0 ? 'warnung' : 'sperre'
+    if (schluessel === zuletzt) return
+    zuletzt = schluessel
+    band.replaceChildren(
+      ...zeilen.map((text) => {
+        const zeile = document.createElement('div')
+        zeile.textContent = text
+        return zeile
+      })
+    )
   })
 }

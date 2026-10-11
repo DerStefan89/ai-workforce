@@ -534,6 +534,8 @@ import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } fr
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper } from './leitstand/routen-arbeitsordner.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
+import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
+import { baueHarnessAbgleichAntwort, baueHarnessAbgleichOhneLauf, schreibeHarnessAbgleichAmKettenende } from './leitstand/routen-harness-abgleich.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
@@ -621,6 +623,14 @@ const STANDARD_STARTVORLAGE_PFAD = 'startvorlagen/beispielprojekt.json'
  * über die Handler-Option startHinweis. Kein Durchsetzungsort — E-188 prüft weiter bei jedem Lauf.
  */
 let prozessStartHinweis = null
+/**
+ * F45 B1b-2 (F-1044): CLI-Hinweis dieses Serverprozesses ({ art: 'cliVersionGeaendert', installiert, deklariert,
+ * anleitung }) oder null. Setzt ausschließlich der CLI-Bindeblock einmal nach dem Binden (ermittleCliHinweis,
+ * asynchron, nie im Poll) für die Startvorlage des Startprojekts; GET /api/zustand liefert ihn lesend (Feld
+ * cliHinweis), Tests überschreiben ihn über die Handler-Option cliHinweis. Kein Durchsetzungsort, Momentaufnahme
+ * beim Start.
+ */
+let prozessCliHinweis = null
 /** F40 WS-3 (löst F-567): Wert für AufrufEingaben.disallowedTools, ausschließlich für 'jarvis'/'router' gesetzt (starteJarvisChatLauf, Router-Lauf-Handler) — eine Konstante statt zweier Literale, damit beide Stellen nicht auseinanderlaufen können. */
 const AUTO_MEMORY_DENY_REGEL = 'Read(~/.claude/**)'
 /** F25 WS-1: Pfad zum Projektregister, per Umgebungsvariable überschreibbar (Muster LEITSTAND_STARTVORLAGE_PFAD) — u.a. für AK8s realen Zwei-Projekte-Test gegen eine eigene Registerkopie, ohne das committete projekte.json anzufassen. */
@@ -4938,6 +4948,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // F45 B0 (F-986 a): überschreibt den Start-Hinweis des Prozesses (prozessStartHinweis) — nur Tests;
     // undefined = den beim Serverstart ermittelten Wert liefern.
     startHinweis = undefined,
+    // F45 B1b-2 (F-1044): überschreibt den CLI-Hinweis des Prozesses (prozessCliHinweis) — nur Tests.
+    cliHinweis = undefined,
     // F45 B1a-1 (E-F45-3 = A): eigener Arbeitsordner (Git-Worktree) je schreibendem Ablauf. Standard AUS, damit
     // die bestehenden Gates mit eigenen Handler-Instanzen bitgenau bleiben; der reale Server setzt ihn im
     // CLI-Bindeblock und in baueProjektHandlerMap auf true (kein Umgebungsschalter, Plan v2 i).
@@ -6434,6 +6446,17 @@ export function erzeugeRequestHandler(optionen = {}) {
           }
         }
       }
+      // F45 B1b-2 (Beleg 12): am Ende der Kette den Harness-Abgleich als Kern-Artefakt festhalten — synchron, ohne
+      // Wurf (routen-harness-abgleich.mjs), Fehler nur in die Startfehlerliste. Gelesen wird der Harness des Laufs
+      // (Arbeitsordner, sonst Projektordner).
+      if (naechster !== null && naechster.art === 'fertig') {
+        const abgleich = schreibeHarnessAbgleichAmKettenende({ workflowId, workflowDaten, wurzel: laufWurzel, repoWurzel, installWurzel, zuordnungPfad: vorlage.harnessZuordnungPfad ?? null, ladeOptionen, profilReferenz })
+        if (!abgleich.ok) {
+          const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Harness-Abgleich für Workflow '${workflowId}' nicht festgehalten: ${abgleich.grund}` }
+          startfehlerListe.push(eintrag)
+          console.error(`[leitstand] ${eintrag.fehler}`)
+        }
+      }
       if (naechster === null || naechster.art !== 'starte') return
 
       const fortsetzung = starteWorkflowSchritt(workflowId, naechster)
@@ -6644,7 +6667,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
       if (pfad === '/api/harness') {
-        sendeJson(res, 200, baueHarnessProjektion({ repoWurzel }))
+        // F45 B1b-2 (Beleg 12): additiv das Feld abgleich — Projekt-Harness laut Zuordnung, ohne Laufbelege.
+        sendeJson(res, 200, { ...baueHarnessProjektion({ repoWurzel }), abgleich: baueHarnessAbgleichOhneLauf({ repoWurzel, installWurzel, zuordnungPfad: vorlage.harnessZuordnungPfad ?? null }) })
         return
       }
       const { http, koerper } = baueHarnessDatei({ repoWurzel, pfad: angefragteUrl.searchParams.get('pfad') })
@@ -6990,7 +7014,9 @@ export function erzeugeRequestHandler(optionen = {}) {
         pruefergebnisProjektion =
           pruefergebnisVersion === null
             ? { status: 'nicht_vorhanden', laufId: ausfuehrungSchritt.lauf_id }
-            : { status: 'ok', laufId: ausfuehrungSchritt.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code }
+            : // F45 B1b-2: versionSequenz additiv — eine wiederholte Prüfung ist eine neue Version; die Abnahme lädt den
+              // Harness-Abgleich einmal je Stand und erkennt so auch GRÜN → GRÜN.
+              { status: 'ok', laufId: ausfuehrungSchritt.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code, versionSequenz: pruefergebnisVersion.versionSequenz }
       }
 
       sendeJson(res, 200, {
@@ -7003,6 +7029,38 @@ export function erzeugeRequestHandler(optionen = {}) {
         entscheidung: entscheidungProjektion,
         freigabeHalt,
       })
+      return
+    }
+
+    // ─── GET /api/workflows/<id>/harness-abgleich (F45 B1b-2, Beleg 12) ──────────────────
+    // VOR dem generischen Detailendpunkt (Muster …/abnahme). Nicht gepollt: die Abnahme und das Lauf-Detail laden
+    // ihn einmal je Stand der Schritte. Das am Kettenende geschriebene Artefakt, wenn sein bezug zum heutigen Stand
+    // passt, sonst live gerechnet und nicht geschrieben (eine GET-Anfrage schreibt keinen Kontrollzustand). Gelesen
+    // wird der Harness des Arbeitsordners, sonst des Projektordners (laufwurzelFuer). Logik:
+    // scripts/leitstand/routen-harness-abgleich.mjs.
+    if (req.method === 'GET' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/harness-abgleich')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/harness-abgleich'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const { http, koerper } = baueHarnessAbgleichAntwort({
+        workflowId,
+        workflowDaten: workflowVersion.daten,
+        wurzel: laufwurzelFuer(workflowId, workflowVersion.daten),
+        repoWurzel,
+        installWurzel,
+        zuordnungPfad: vorlage.harnessZuordnungPfad ?? null,
+        ladeOptionen,
+      })
+      sendeJson(res, http, koerper)
       return
     }
 
@@ -7150,7 +7208,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // F45 B0 (F-986 a): lesender Start-Hinweis (Leitstand aus falschem Ordner, E-188) — der Server bleibt
       // Durchsetzungsort, Senden bleibt möglich. Option startHinweis nur für Tests.
       const startHinweisWert = startHinweis !== undefined ? startHinweis : prozessStartHinweis
-      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert })
+      // F45 B1b-2 (F-1044): CLI-Version weicht von der Startvorlage ab — aus dem Speicher, keine Datei-Lesung im Poll.
+      const cliHinweisWert = cliHinweis !== undefined ? cliHinweis : prozessCliHinweis
+      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert, cliHinweis: cliHinweisWert })
       // F45 P (Teil 1 Punkt 2): Gesamtdauer inkl. Serialisierung — nur bei LEITSTAND_ZEITMESSUNG=1 wirksam.
       erfasseQuellenDauer('gesamt', performance.now() - zustandStart)
       return
@@ -9428,6 +9488,12 @@ export function erzeugeRequestHandler(optionen = {}) {
           })
           return
         }
+        // F45 B1b-2 (Beleg 12): eine wiederholte Prüfung am Ende der Kette ist ein neuer Stand — den Harness-Abgleich als
+        // neue Version festhalten (sonst zeigte die Abnahme dauerhaft die Live-Rechnung). Fehler nur ins Log.
+        if (naechster.art === 'fertig') {
+          const abgleich = schreibeHarnessAbgleichAmKettenende({ workflowId, workflowDaten: workflowNachPruefung.daten, wurzel: laufwurzelFuer(workflowId, workflowNachPruefung.daten), repoWurzel, installWurzel, zuordnungPfad: vorlage.harnessZuordnungPfad ?? null, ladeOptionen, profilReferenz })
+          if (!abgleich.ok) console.error(`[leitstand] Harness-Abgleich für Workflow '${workflowId}' nach wiederholter Prüfung nicht festgehalten: ${abgleich.grund}`)
+        }
         sendeJson(res, 200, {
           workflowId,
           schrittId: schritt.schritt_id,
@@ -10624,5 +10690,18 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     }
     // F45 B0 (Teil 2 Punkt 6): Event-Loop-Zeile alle 60 s, nur bei LEITSTAND_ZEITMESSUNG=1 (sonst No-op).
     starteEventLoopMessung()
+    // F45 B1b-2 (F-1044): installierte Claude-Code-Version gegen werkzeugVersionDeklariert der Startvorlage — einmal,
+    // asynchron nach dem Binden (ermittleCliHinweis wirft nicht); kein automatisches Neuerzeugen der Startfreigabe (E3).
+    let startVorlageFuerVersion = null
+    try {
+      startVorlageFuerVersion = ladeStartvorlage(startvorlagePfad)
+    } catch (fehler) {
+      console.warn(`[leitstand] Startvorlage für den Versionsvergleich nicht ladbar: ${fehler.message}`)
+    }
+    ermittleCliHinweis(startVorlageFuerVersion)
+      .then((hinweis) => {
+        prozessCliHinweis = hinweis
+      })
+      .catch((fehler) => console.warn(`[leitstand] CLI-Versionsvergleich fehlgeschlagen: ${fehler?.message ?? fehler}`))
   })
 }

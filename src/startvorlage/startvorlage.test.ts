@@ -9,6 +9,7 @@
  */
 
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf, validiereStartvorlageDaten } from './index.ts'
 
@@ -251,4 +252,17 @@ test('validiereStartvorlageDaten (F45 B1b-1): bashZeitgrenzeMs optional, positiv
     assert.ok(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, bashZeitgrenzeMs: falsch }).some((v) => v.includes('bashZeitgrenzeMs')), String(falsch))
   }
   assert.ok(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, zeitgrenzeMs: 300000, bashZeitgrenzeMs: 600000 }).some((v) => v.includes("darf nicht über 'zeitgrenzeMs'")))
+})
+
+test('validiereStartvorlageDaten (F45 B1b-2): harnessZuordnungPfad optional, relativer Dateipfad ohne .. und ohne Muster', () => {
+  assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, harnessZuordnungPfad: 'harness-abgleich/haushaltsbuch2.json' }), [])
+  for (const falsch of ['', '../aussen.json', 'C:/x.json', '/x.json', 'a\\b.json', 'harness-abgleich/*.json', 5, null]) {
+    assert.ok(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, harnessZuordnungPfad: falsch }).some((v) => v.includes('harnessZuordnungPfad')), String(falsch))
+  }
+})
+
+test('startvorlagen/ai-workforce.json (F45 B1b-2): bashZeitgrenzeMs 1 200 000 und gültig', () => {
+  const vorlage = JSON.parse(readFileSync('startvorlagen/ai-workforce.json', 'utf8'))
+  assert.equal(vorlage.bashZeitgrenzeMs, 1200000)
+  assert.deepStrictEqual(validiereStartvorlageDaten(vorlage), [])
 })

@@ -557,15 +557,39 @@ export function zaehleHintergrundAufrufe(zeilen: string[]): number {
 const BLOCK_NAMEN_HOECHSTENS = 20
 
 /**
+ * Zählt die Namen einer Beobachtungsliste in Reihenfolge des ersten Auftretens (einzige Zählregel für den
+ * Review-Block und die Kurzliste der Abnahme, F45 B1b-2). Nicht-Strings und leere Namen werden übergangen.
+ * @param namen - Liste mit Duplikaten (roh aus der Laufakte)
+ * @param abbildung - Name je Wert (z. B. MCP-Werkzeug → Server); Standard: unverändert
+ * @returns [{ name, anzahl }]
+ */
+export function zaehleNamen(namen: unknown, abbildung: (wert: string) => string = (wert) => wert): { name: string; anzahl: number }[] {
+  const zaehler = new Map<string, number>()
+  for (const wert of Array.isArray(namen) ? namen : []) {
+    if (typeof wert !== 'string' || wert === '') continue
+    const name = abbildung(wert)
+    zaehler.set(name, (zaehler.get(name) ?? 0) + 1)
+  }
+  return [...zaehler].map(([name, anzahl]) => ({ name, anzahl }))
+}
+
+/**
+ * MCP-Server eines Werkzeugnamens mcp__<server>__<werkzeug>; ohne diese Form der Name selbst.
+ * @param name - voller Werkzeugname
+ * @returns Servername
+ */
+export function mcpServerName(name: string): string {
+  return name.split('__')[1] || name
+}
+
+/**
  * Namen dedupliziert in Reihenfolge des ersten Auftretens, je mit Anzahl (ab 2), gekürzt.
  * @param namen - Liste mit Duplikaten
  * @returns Text, „—“ bei leerer Liste
  */
 function fasseNamenZusammen(namen: readonly string[]): string {
   if (namen.length === 0) return '—'
-  const zaehler = new Map<string, number>()
-  for (const name of namen) zaehler.set(name, (zaehler.get(name) ?? 0) + 1)
-  const eintraege = [...zaehler].map(([name, anzahl]) => (anzahl > 1 ? `${name} (${anzahl}×)` : name))
+  const eintraege = zaehleNamen(namen).map(({ name, anzahl }) => (anzahl > 1 ? `${name} (${anzahl}×)` : name))
   const rest = eintraege.length - BLOCK_NAMEN_HOECHSTENS
   return rest > 0 ? `${eintraege.slice(0, BLOCK_NAMEN_HOECHSTENS).join(', ')} … und ${rest} weitere` : eintraege.join(', ')
 }
@@ -583,7 +607,7 @@ export function baueBeobachtungsBlock(beobachtung: BeobachtungV0 | null | undefi
   if (beobachtung === null || beobachtung === undefined) {
     return 'Beobachtung des Ausführungslaufs: keine Beobachtung (Codex-Lauf oder Lauf ohne init-Zeile) — ob vorgesehene Skills und Subagenten benutzt wurden, ist nicht belegt.'
   }
-  const mcpAufgerufen = beobachtung.mcp_aufrufe.map((name) => name.split('__')[1] ?? name)
+  const mcpAufgerufen = beobachtung.mcp_aufrufe.map(mcpServerName)
   const hintergrund = beobachtung.hintergrund_aufrufe
   return [
     'Beobachtung des Ausführungslaufs (geladen gegen aufgerufen, aus der Laufakte):',

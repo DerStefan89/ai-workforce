@@ -1,0 +1,2334 @@
+{
+  "parameter": {
+    "modus": "jarvis",
+    "turns": 0,
+    "etikett": "vorher",
+    "startvorlage": null,
+    "warmlaufMin": 10,
+    "untermodus": "feature",
+    "port": 4199,
+    "speicherUntergrenzeMb": 1536,
+    "nurLeerlauf": true,
+    "seite": "#/dashboard",
+    "seitenwechsel": false,
+    "wechselTaktS": 60,
+    "ausgabe": "b1b2"
+  },
+  "umgebung": {
+    "start": "2026-10-11T19:37:40.529Z",
+    "ende": "2026-10-11T19:48:34.225Z",
+    "git": "febcc86",
+    "node": "v24.16.0",
+    "plattform": "win32 x64",
+    "arbeitsordner": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+    "startzeile": "Leitstand läuft auf http://127.0.0.1:4199 (Startvorlage: startvorlagen/ai-workforce.json — aus dem Projektregister (Eintrag 'ai-workforce'), Projekte: ai-workforce, haushaltsbuch, haushaltsbuch2)",
+    "warnungen": [],
+    "standby": [],
+    "energiemodus": {
+      "ac": {
+        "guid": "961cc777-2547-4f9d-8174-7d86181b8a7a",
+        "name": "Beste Energieeffizienz"
+      },
+      "dc": {
+        "guid": "00000000-0000-0000-0000-000000000000",
+        "name": "Ausgeglichen"
+      }
+    }
+  },
+  "turns": [],
+  "zustand": [
+    {
+      "zeit": 1791747496163,
+      "ms": 269,
+      "status": 200
+    },
+    {
+      "zeit": 1791747498285,
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "zeit": 1791747500417,
+      "ms": 126,
+      "status": 200
+    },
+    {
+      "zeit": 1791747502542,
+      "ms": 119,
+      "status": 200
+    },
+    {
+      "zeit": 1791747504731,
+      "ms": 181,
+      "status": 200
+    },
+    {
+      "zeit": 1791747506916,
+      "ms": 173,
+      "status": 200
+    },
+    {
+      "zeit": 1791747509042,
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "zeit": 1791747511161,
+      "ms": 113,
+      "status": 200
+    },
+    {
+      "zeit": 1791747513307,
+      "ms": 140,
+      "status": 200
+    },
+    {
+      "zeit": 1791747515430,
+      "ms": 112,
+      "status": 200
+    },
+    {
+      "zeit": 1791747517547,
+      "ms": 109,
+      "status": 200
+    },
+    {
+      "zeit": 1791747519668,
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "zeit": 1791747521786,
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "zeit": 1791747523908,
+      "ms": 120,
+      "status": 200
+    },
+    {
+      "zeit": 1791747526042,
+      "ms": 123,
+      "status": 200
+    },
+    {
+      "zeit": 1791747528168,
+      "ms": 112,
+      "status": 200
+    },
+    {
+      "zeit": 1791747530293,
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "zeit": 1791747532421,
+      "ms": 121,
+      "status": 200
+    },
+    {
+      "zeit": 1791747534552,
+      "ms": 120,
+      "status": 200
+    },
+    {
+      "zeit": 1791747536666,
+      "ms": 107,
+      "status": 200
+    },
+    {
+      "zeit": 1791747538869,
+      "ms": 193,
+      "status": 200
+    },
+    {
+      "zeit": 1791747541001,
+      "ms": 122,
+      "status": 200
+    },
+    {
+      "zeit": 1791747543127,
+      "ms": 113,
+      "status": 200
+    },
+    {
+      "zeit": 1791747545250,
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "zeit": 1791747547369,
+      "ms": 110,
+      "status": 200
+    },
+    {
+      "zeit": 1791747549493,
+      "ms": 114,
+      "status": 200
+    },
+    {
+      "zeit": 1791747551608,
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "zeit": 1791747553741,
+      "ms": 131,
+      "status": 200
+    },
+    {
+      "zeit": 1791747555875,
+      "ms": 120,
+      "status": 200
+    },
+    {
+      "zeit": 1791747558004,
+      "ms": 118,
+      "status": 200
+    },
+    {
+      "zeit": 1791747560131,
+      "ms": 116,
+      "status": 200
+    },
+    {
+      "zeit": 1791747562263,
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "zeit": 1791747564307,
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "zeit": 1791747566469,
+      "ms": 161,
+      "status": 200
+    },
+    {
+      "zeit": 1791747568592,
+      "ms": 118,
+      "status": 200
+    },
+    {
+      "zeit": 1791747570718,
+      "ms": 126,
+      "status": 200
+    },
+    {
+      "zeit": 1791747572903,
+      "ms": 170,
+      "status": 200
+    },
+    {
+      "zeit": 1791747575025,
+      "ms": 110,
+      "status": 200
+    },
+    {
+      "zeit": 1791747577151,
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "zeit": 1791747579274,
+      "ms": 108,
+      "status": 200
+    },
+    {
+      "zeit": 1791747581398,
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "zeit": 1791747583528,
+      "ms": 123,
+      "status": 200
+    },
+    {
+      "zeit": 1791747585708,
+      "ms": 110,
+      "status": 200
+    },
+    {
+      "zeit": 1791747587823,
+      "ms": 113,
+      "status": 200
+    },
+    {
+      "zeit": 1791747589935,
+      "ms": 108,
+      "status": 200
+    },
+    {
+      "zeit": 1791747592062,
+      "ms": 119,
+      "status": 200
+    },
+    {
+      "zeit": 1791747594181,
+      "ms": 117,
+      "status": 200
+    },
+    {
+      "zeit": 1791747596329,
+      "ms": 135,
+      "status": 200
+    },
+    {
+      "zeit": 1791747598452,
+      "ms": 122,
+      "status": 200
+    },
+    {
+      "zeit": 1791747600570,
+      "ms": 114,
+      "status": 200
+    },
+    {
+      "zeit": 1791747602700,
+      "ms": 121,
+      "status": 200
+    },
+    {
+      "zeit": 1791747604909,
+      "ms": 203,
+      "status": 200
+    },
+    {
+      "zeit": 1791747607029,
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "zeit": 1791747609137,
+      "ms": 105,
+      "status": 200
+    },
+    {
+      "zeit": 1791747611254,
+      "ms": 113,
+      "status": 200
+    },
+    {
+      "zeit": 1791747613373,
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "zeit": 1791747615494,
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "zeit": 1791747617621,
+      "ms": 121,
+      "status": 200
+    },
+    {
+      "zeit": 1791747619740,
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "zeit": 1791747621871,
+      "ms": 119,
+      "status": 200
+    },
+    {
+      "zeit": 1791747623992,
+      "ms": 117,
+      "status": 200
+    },
+    {
+      "zeit": 1791747626130,
+      "ms": 123,
+      "status": 200
+    },
+    {
+      "zeit": 1791747628261,
+      "ms": 116,
+      "status": 200
+    },
+    {
+      "zeit": 1791747630393,
+      "ms": 122,
+      "status": 200
+    },
+    {
+      "zeit": 1791747632527,
+      "ms": 121,
+      "status": 200
+    },
+    {
+      "zeit": 1791747634648,
+      "ms": 114,
+      "status": 200
+    },
+    {
+      "zeit": 1791747636845,
+      "ms": 185,
+      "status": 200
+    },
+    {
+      "zeit": 1791747638906,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791747640959,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747643018,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791747645521,
+      "ms": 22,
+      "status": 200
+    },
+    {
+      "zeit": 1791747647575,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747649651,
+      "ms": 71,
+      "status": 200
+    },
+    {
+      "zeit": 1791747651716,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747653773,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791747655842,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747657883,
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "zeit": 1791747659945,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747662011,
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "zeit": 1791747664080,
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "zeit": 1791747666130,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791747668176,
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "zeit": 1791747670235,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747672283,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747674334,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791747676384,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747678440,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747680495,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747682561,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747684606,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791747686640,
+      "ms": 28,
+      "status": 200
+    },
+    {
+      "zeit": 1791747688699,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747690781,
+      "ms": 82,
+      "status": 200
+    },
+    {
+      "zeit": 1791747692839,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747694885,
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "zeit": 1791747696958,
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "zeit": 1791747699031,
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "zeit": 1791747701077,
+      "ms": 33,
+      "status": 200
+    },
+    {
+      "zeit": 1791747703146,
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "zeit": 1791747705510,
+      "ms": 22,
+      "status": 200
+    },
+    {
+      "zeit": 1791747707568,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747709620,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747711688,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747713756,
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "zeit": 1791747715802,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791747717877,
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "zeit": 1791747719934,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791747721991,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747724040,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747726096,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791747728155,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791747730216,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747732285,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747734345,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747736402,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747738457,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791747740518,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747742575,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747744630,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747746703,
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "zeit": 1791747748784,
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "zeit": 1791747750808,
+      "ms": 24,
+      "status": 200
+    },
+    {
+      "zeit": 1791747752867,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747754937,
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "zeit": 1791747756982,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747759040,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747761101,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791747763142,
+      "ms": 32,
+      "status": 200
+    },
+    {
+      "zeit": 1791747765536,
+      "ms": 34,
+      "status": 200
+    },
+    {
+      "zeit": 1791747767585,
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "zeit": 1791747769641,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747771705,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747773759,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747775817,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747777853,
+      "ms": 30,
+      "status": 200
+    },
+    {
+      "zeit": 1791747779918,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747781986,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747784040,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791747786087,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747788164,
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "zeit": 1791747790228,
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "zeit": 1791747792280,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747794338,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791747796386,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747798440,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747800501,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791747802557,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791747804617,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747806724,
+      "ms": 94,
+      "status": 200
+    },
+    {
+      "zeit": 1791747808772,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747810806,
+      "ms": 24,
+      "status": 200
+    },
+    {
+      "zeit": 1791747812862,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791747814939,
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "zeit": 1791747816999,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747819062,
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "zeit": 1791747821111,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747823171,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747825566,
+      "ms": 23,
+      "status": 200
+    },
+    {
+      "zeit": 1791747827623,
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "zeit": 1791747829679,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747831731,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747833782,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747835840,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747837904,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747839964,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747842018,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747844078,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747846125,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747848182,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747850238,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747852287,
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "zeit": 1791747854347,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747856403,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747858445,
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "zeit": 1791747860502,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747862546,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791747864593,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747866630,
+      "ms": 21,
+      "status": 200
+    },
+    {
+      "zeit": 1791747868690,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747870774,
+      "ms": 72,
+      "status": 200
+    },
+    {
+      "zeit": 1791747872801,
+      "ms": 27,
+      "status": 200
+    },
+    {
+      "zeit": 1791747874837,
+      "ms": 20,
+      "status": 200
+    },
+    {
+      "zeit": 1791747876902,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747878953,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747881017,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791747883084,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747885533,
+      "ms": 26,
+      "status": 200
+    },
+    {
+      "zeit": 1791747887595,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747889652,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791747891709,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747893762,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791747895809,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747897855,
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "zeit": 1791747899913,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747901982,
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "zeit": 1791747904037,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747906095,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747908158,
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "zeit": 1791747910220,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747912277,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791747914333,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747916391,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747918450,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747920515,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747922567,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747924637,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747926696,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791747928772,
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "zeit": 1791747930810,
+      "ms": 23,
+      "status": 200
+    },
+    {
+      "zeit": 1791747932853,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791747934890,
+      "ms": 23,
+      "status": 200
+    },
+    {
+      "zeit": 1791747936936,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791747938998,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747941056,
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "zeit": 1791747943119,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791747945602,
+      "ms": 29,
+      "status": 200
+    },
+    {
+      "zeit": 1791747947645,
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "zeit": 1791747949696,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747951764,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747953823,
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "zeit": 1791747955882,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747957933,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791747959993,
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "zeit": 1791747962054,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791747964097,
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "zeit": 1791747966165,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747968220,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747970273,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791747972334,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747974389,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791747976441,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747978492,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791747980545,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791747982607,
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "zeit": 1791747984649,
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "zeit": 1791747986817,
+      "ms": 153,
+      "status": 200
+    },
+    {
+      "zeit": 1791747988867,
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "zeit": 1791747990924,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791747992956,
+      "ms": 23,
+      "status": 200
+    },
+    {
+      "zeit": 1791747995024,
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "zeit": 1791747997082,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791747999155,
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "zeit": 1791748001186,
+      "ms": 30,
+      "status": 200
+    },
+    {
+      "zeit": 1791748003237,
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "zeit": 1791748005576,
+      "ms": 22,
+      "status": 200
+    },
+    {
+      "zeit": 1791748007628,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791748009680,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791748011733,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791748013792,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791748015849,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791748017902,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791748019971,
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "zeit": 1791748022028,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791748024074,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791748026130,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791748028181,
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "zeit": 1791748030240,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791748032313,
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "zeit": 1791748034358,
+      "ms": 31,
+      "status": 200
+    },
+    {
+      "zeit": 1791748036416,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791748038477,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791748040531,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791748042591,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791748044654,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791748046721,
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "zeit": 1791748048783,
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "zeit": 1791748050837,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791748052875,
+      "ms": 27,
+      "status": 200
+    },
+    {
+      "zeit": 1791748054924,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791748056980,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791748059028,
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "zeit": 1791748061084,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791748063140,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791748065599,
+      "ms": 25,
+      "status": 200
+    },
+    {
+      "zeit": 1791748067624,
+      "ms": 24,
+      "status": 200
+    },
+    {
+      "zeit": 1791748069683,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791748071742,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791748073806,
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "zeit": 1791748075874,
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "zeit": 1791748077927,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791748079983,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791748082028,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791748084097,
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "zeit": 1791748086156,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791748088204,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791748090269,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791748092318,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791748094386,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791748096425,
+      "ms": 25,
+      "status": 200
+    },
+    {
+      "zeit": 1791748098491,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791748100541,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791748102605,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791748104667,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791748106734,
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "zeit": 1791748108772,
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "zeit": 1791748111681,
+      "ms": 35,
+      "status": 200
+    }
+  ],
+  "eventLoop": [
+    {
+      "zeit": "2026-10-11T19:38:41.957Z",
+      "max": 1818,
+      "p99": 292
+    },
+    {
+      "zeit": "2026-10-11T19:39:41.961Z",
+      "max": 60,
+      "p99": 47
+    },
+    {
+      "zeit": "2026-10-11T19:40:41.967Z",
+      "max": 96,
+      "p99": 45
+    },
+    {
+      "zeit": "2026-10-11T19:41:41.979Z",
+      "max": 26,
+      "p99": 17
+    },
+    {
+      "zeit": "2026-10-11T19:42:41.987Z",
+      "max": 39,
+      "p99": 17
+    },
+    {
+      "zeit": "2026-10-11T19:43:41.998Z",
+      "max": 26,
+      "p99": 18
+    },
+    {
+      "zeit": "2026-10-11T19:44:42.004Z",
+      "max": 42,
+      "p99": 17
+    },
+    {
+      "zeit": "2026-10-11T19:45:42.012Z",
+      "max": 28,
+      "p99": 17
+    },
+    {
+      "zeit": "2026-10-11T19:46:42.013Z",
+      "max": 42,
+      "p99": 17
+    },
+    {
+      "zeit": "2026-10-11T19:47:42.022Z",
+      "max": 26,
+      "p99": 18
+    }
+  ],
+  "synchron": [
+    {
+      "zeit": "2026-10-11T19:37:50.446Z",
+      "name": "GET /api/chat",
+      "ms": 1814
+    },
+    {
+      "zeit": "2026-10-11T19:37:51.664Z",
+      "name": "GET /api/roadmap",
+      "ms": 1111
+    },
+    {
+      "zeit": "2026-10-11T19:37:52.016Z",
+      "name": "GET /api/projektakte",
+      "ms": 208
+    }
+  ],
+  "seitenwechsel": [],
+  "seitenMetriken": [
+    {
+      "zeit": "2026-10-11T19:38:16.185Z",
+      "jsHeapMb": 6,
+      "jsHeapGesamtMb": 8,
+      "knoten": 12910,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 981
+    },
+    {
+      "zeit": "2026-10-11T19:39:16.192Z",
+      "jsHeapMb": 12,
+      "jsHeapGesamtMb": 15,
+      "knoten": 12527,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:40:16.196Z",
+      "jsHeapMb": 11,
+      "jsHeapGesamtMb": 13,
+      "knoten": 12528,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:41:16.201Z",
+      "jsHeapMb": 12,
+      "jsHeapGesamtMb": 14,
+      "knoten": 12532,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:42:16.210Z",
+      "jsHeapMb": 7,
+      "jsHeapGesamtMb": 13,
+      "knoten": 12508,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:43:16.219Z",
+      "jsHeapMb": 7,
+      "jsHeapGesamtMb": 13,
+      "knoten": 12508,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:44:16.235Z",
+      "jsHeapMb": 9,
+      "jsHeapGesamtMb": 15,
+      "knoten": 12511,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:45:16.245Z",
+      "jsHeapMb": 8,
+      "jsHeapGesamtMb": 15,
+      "knoten": 12512,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:46:16.251Z",
+      "jsHeapMb": 10,
+      "jsHeapGesamtMb": 16,
+      "knoten": 12516,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:47:16.268Z",
+      "jsHeapMb": 10,
+      "jsHeapGesamtMb": 13,
+      "knoten": 12521,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:48:16.279Z",
+      "jsHeapMb": 11,
+      "jsHeapGesamtMb": 15,
+      "knoten": 12525,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    },
+    {
+      "zeit": "2026-10-11T19:48:31.647Z",
+      "jsHeapMb": 6,
+      "jsHeapGesamtMb": 14,
+      "knoten": 12504,
+      "listener": 166,
+      "dokumente": 1,
+      "layoutObjekte": 691
+    }
+  ],
+  "heap": {
+    "start": {
+      "datei": "features/F45/nachweise/b1b2/heap-vorher-start.heapsnapshot",
+      "mb": 14.9,
+      "gesamtMb": 14.4,
+      "knoten": 145912,
+      "detached": 0,
+      "zeit": "2026-10-11T19:38:25.718Z"
+    },
+    "ende": {
+      "datei": "features/F45/nachweise/b1b2/heap-vorher-ende.heapsnapshot",
+      "mb": 15,
+      "gesamtMb": 14.8,
+      "knoten": 146319,
+      "detached": 0,
+      "zeit": "2026-10-11T19:48:32.145Z"
+    },
+    "topWachstum": [
+      {
+        "gruppe": "(code)",
+        "anzahlStart": 18595,
+        "anzahlEnde": 18391,
+        "kbStart": 1008,
+        "kbEnde": 1251,
+        "kbZuwachs": 243
+      },
+      {
+        "gruppe": "native: blink::NetworkResourcesData::ResourceData",
+        "anzahlStart": 111,
+        "anzahlEnde": 415,
+        "kbStart": 31,
+        "kbEnde": 117,
+        "kbZuwachs": 86
+      },
+      {
+        "gruppe": "native: PerformanceResourceTiming",
+        "anzahlStart": 110,
+        "anzahlEnde": 250,
+        "kbStart": 15,
+        "kbEnde": 33,
+        "kbZuwachs": 19
+      },
+      {
+        "gruppe": "native: system / WeakArrayList",
+        "anzahlStart": 87,
+        "anzahlEnde": 217,
+        "kbStart": 5,
+        "kbEnde": 17,
+        "kbZuwachs": 12
+      },
+      {
+        "gruppe": "native: blink::HeapHashTableBacking<blink::HashTable<blink::String, blink::KeyValuePair<",
+        "anzahlStart": 8,
+        "anzahlEnde": 8,
+        "kbStart": 14,
+        "kbEnde": 26,
+        "kbZuwachs": 12
+      },
+      {
+        "gruppe": "native: PerformanceLongAnimationFrameTiming",
+        "anzahlStart": 11,
+        "anzahlEnde": 79,
+        "kbStart": 2,
+        "kbEnde": 14,
+        "kbZuwachs": 12
+      },
+      {
+        "gruppe": "native: blink::ScriptTimingInfo",
+        "anzahlStart": 8,
+        "anzahlEnde": 76,
+        "kbStart": 1,
+        "kbEnde": 10,
+        "kbZuwachs": 9
+      },
+      {
+        "gruppe": "native: TaskAttributionTiming",
+        "anzahlStart": 8,
+        "anzahlEnde": 76,
+        "kbStart": 1,
+        "kbEnde": 9,
+        "kbZuwachs": 8
+      },
+      {
+        "gruppe": "native: PerformanceScriptTiming",
+        "anzahlStart": 8,
+        "anzahlEnde": 76,
+        "kbStart": 1,
+        "kbEnde": 9,
+        "kbZuwachs": 8
+      },
+      {
+        "gruppe": "native: PerformanceLongTaskTiming",
+        "anzahlStart": 8,
+        "anzahlEnde": 76,
+        "kbStart": 1,
+        "kbEnde": 8,
+        "kbZuwachs": 7
+      },
+      {
+        "gruppe": "native: blink::HeapHashTableBacking<blink::HashTable<cppgc::internal::BasicMember<blink:",
+        "anzahlStart": 291,
+        "anzahlEnde": 292,
+        "kbStart": 36,
+        "kbEnde": 42,
+        "kbZuwachs": 6
+      },
+      {
+        "gruppe": "(object shape)",
+        "anzahlStart": 3101,
+        "anzahlEnde": 3132,
+        "kbStart": 182,
+        "kbEnde": 183,
+        "kbZuwachs": 2
+      },
+      {
+        "gruppe": "native: blink::HeapVectorBacking<cppgc::internal::BasicMember<blink::TaskAttributionTimi",
+        "anzahlStart": 8,
+        "anzahlEnde": 76,
+        "kbStart": 0,
+        "kbEnde": 2,
+        "kbZuwachs": 2
+      },
+      {
+        "gruppe": "native: blink::HeapVectorBacking<cppgc::internal::BasicMember<blink::PerformanceScriptTi",
+        "anzahlStart": 8,
+        "anzahlEnde": 76,
+        "kbStart": 0,
+        "kbEnde": 2,
+        "kbZuwachs": 2
+      },
+      {
+        "gruppe": "native: system / ProtectedFixedArray",
+        "anzahlStart": 14,
+        "anzahlEnde": 64,
+        "kbStart": 0,
+        "kbEnde": 1,
+        "kbZuwachs": 1
+      }
+    ]
+  },
+  "speicher": {
+    "proben": [
+      {
+        "zeit": "2026-10-11T19:37:42.712Z",
+        "serverMb": 82,
+        "chromiumMb": 90,
+        "freiMb": 3197,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:38:21.194Z",
+        "serverMb": 105,
+        "chromiumMb": 343,
+        "freiMb": 3137,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:38:44.471Z",
+        "serverMb": 116,
+        "chromiumMb": 397,
+        "freiMb": 2947,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:39:44.487Z",
+        "serverMb": 118,
+        "chromiumMb": 416,
+        "freiMb": 2933,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:40:44.491Z",
+        "serverMb": 146,
+        "chromiumMb": 457,
+        "freiMb": 3102,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:41:44.499Z",
+        "serverMb": 145,
+        "chromiumMb": 474,
+        "freiMb": 2975,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:42:44.499Z",
+        "serverMb": 147,
+        "chromiumMb": 529,
+        "freiMb": 2600,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:43:44.504Z",
+        "serverMb": 149,
+        "chromiumMb": 529,
+        "freiMb": 2545,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:44:44.509Z",
+        "serverMb": 202,
+        "chromiumMb": 547,
+        "freiMb": 2494,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:45:44.520Z",
+        "serverMb": 206,
+        "chromiumMb": 561,
+        "freiMb": 2840,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:46:44.531Z",
+        "serverMb": 206,
+        "chromiumMb": 405,
+        "freiMb": 2947,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:47:44.539Z",
+        "serverMb": 208,
+        "chromiumMb": 441,
+        "freiMb": 3202,
+        "claude": 10
+      },
+      {
+        "zeit": "2026-10-11T19:48:30.733Z",
+        "serverMb": 202,
+        "chromiumMb": 425,
+        "freiMb": 3100,
+        "claude": 10
+      }
+    ],
+    "zusammenfassung": {
+      "maxServerMb": 208,
+      "maxChromiumMb": 561,
+      "minFreiMb": 2494,
+      "wachstumServerProzent": 92,
+      "wachstumChromiumProzent": 24,
+      "faktorChromium": 1.24,
+      "f1015": {
+        "chromiumNach15Mb": null,
+        "chromiumEndeMb": 425,
+        "faktorChromium15": null,
+        "jsHeap": {
+          "nach15": null,
+          "ende": 6,
+          "faktor": null
+        },
+        "knoten": {
+          "nach15": null,
+          "ende": 12504,
+          "faktor": null
+        },
+        "listener": {
+          "nach15": null,
+          "ende": 166,
+          "faktor": null
+        },
+        "median": null
+      }
+    }
+  },
+  "abbruch": null,
+  "marken": {
+    "basisZeit": "2026-10-11T19:38:21.194Z",
+    "endeZeit": "2026-10-11T19:48:30.733Z",
+    "leerlaufEnde": 1791748105733
+  },
+  "quellenFenster": [
+    {
+      "zeit": "2026-10-11T19:38:41.959Z",
+      "werte": {
+        "workitems": {
+          "max": 2079,
+          "p95": 2079,
+          "anzahl": 2
+        },
+        "laeufe": {
+          "max": 22362,
+          "p95": 18121,
+          "anzahl": 30
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 30
+        },
+        "workflows": {
+          "max": 2533,
+          "p95": 2530,
+          "anzahl": 30
+        },
+        "gesamt": {
+          "max": 24890,
+          "p95": 20651,
+          "anzahl": 30
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:39:41.961Z",
+      "werte": {
+        "laeufe": {
+          "max": 132,
+          "p95": 114,
+          "anzahl": 58
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 58
+        },
+        "workflows": {
+          "max": 92,
+          "p95": 32,
+          "anzahl": 58
+        },
+        "gesamt": {
+          "max": 186,
+          "p95": 159,
+          "anzahl": 58
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:40:41.967Z",
+      "werte": {
+        "laeufe": {
+          "max": 155,
+          "p95": 117,
+          "anzahl": 58
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 58
+        },
+        "workflows": {
+          "max": 90,
+          "p95": 33,
+          "anzahl": 58
+        },
+        "gesamt": {
+          "max": 196,
+          "p95": 179,
+          "anzahl": 58
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:41:41.979Z",
+      "werte": {
+        "laeufe": {
+          "max": 70,
+          "p95": 53,
+          "anzahl": 59
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 59
+        },
+        "workflows": {
+          "max": 36,
+          "p95": 10,
+          "anzahl": 59
+        },
+        "gesamt": {
+          "max": 79,
+          "p95": 67,
+          "anzahl": 59
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:42:41.987Z",
+      "werte": {
+        "laeufe": {
+          "max": 70,
+          "p95": 53,
+          "anzahl": 59
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 59
+        },
+        "workflows": {
+          "max": 33,
+          "p95": 11,
+          "anzahl": 59
+        },
+        "gesamt": {
+          "max": 78,
+          "p95": 68,
+          "anzahl": 59
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:43:41.998Z",
+      "werte": {
+        "laeufe": {
+          "max": 71,
+          "p95": 55,
+          "anzahl": 59
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 59
+        },
+        "workflows": {
+          "max": 26,
+          "p95": 19,
+          "anzahl": 59
+        },
+        "gesamt": {
+          "max": 93,
+          "p95": 62,
+          "anzahl": 59
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:44:42.004Z",
+      "werte": {
+        "laeufe": {
+          "max": 62,
+          "p95": 46,
+          "anzahl": 59
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 59
+        },
+        "workflows": {
+          "max": 25,
+          "p95": 11,
+          "anzahl": 59
+        },
+        "gesamt": {
+          "max": 81,
+          "p95": 70,
+          "anzahl": 59
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:45:42.013Z",
+      "werte": {
+        "laeufe": {
+          "max": 76,
+          "p95": 50,
+          "anzahl": 59
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 59
+        },
+        "workflows": {
+          "max": 21,
+          "p95": 12,
+          "anzahl": 59
+        },
+        "gesamt": {
+          "max": 92,
+          "p95": 64,
+          "anzahl": 59
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:46:42.013Z",
+      "werte": {
+        "laeufe": {
+          "max": 105,
+          "p95": 48,
+          "anzahl": 59
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 59
+        },
+        "workflows": {
+          "max": 112,
+          "p95": 15,
+          "anzahl": 59
+        },
+        "gesamt": {
+          "max": 151,
+          "p95": 68,
+          "anzahl": 59
+        }
+      }
+    },
+    {
+      "zeit": "2026-10-11T19:47:42.022Z",
+      "werte": {
+        "laeufe": {
+          "max": 51,
+          "p95": 47,
+          "anzahl": 59
+        },
+        "startfehler": {
+          "max": 0,
+          "p95": 0,
+          "anzahl": 59
+        },
+        "workflows": {
+          "max": 37,
+          "p95": 9,
+          "anzahl": 59
+        },
+        "gesamt": {
+          "max": 75,
+          "p95": 60,
+          "anzahl": 59
+        }
+      }
+    }
+  ],
+  "zusammenfassung": {
+    "k1": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "k2": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "prozess": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "nachbereitung": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "quittungBisPoll": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "pollBisAnzeige": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "k3": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "zustand": {
+      "median": 51,
+      "p95": 123,
+      "max": 269,
+      "anzahl": 296
+    },
+    "zustandFrisch": {
+      "median": 51,
+      "p95": 123,
+      "max": 269,
+      "anzahl": 288
+    },
+    "zustandSpaet": {
+      "median": 51,
+      "p95": 122,
+      "max": 203,
+      "anzahl": 288
+    },
+    "eventLoopMax": {
+      "median": 41,
+      "p95": 1818,
+      "max": 1818,
+      "anzahl": 10
+    },
+    "eventLoopUeber200": 1,
+    "seitenwechsel": {},
+    "quellen": {
+      "workitems": {
+        "maxMax": 2079,
+        "maxP95": 2079,
+        "medianP95": 2079,
+        "anzahl": 2
+      },
+      "laeufe": {
+        "maxMax": 22362,
+        "maxP95": 18121,
+        "medianP95": 53,
+        "anzahl": 559
+      },
+      "startfehler": {
+        "maxMax": 0,
+        "maxP95": 0,
+        "medianP95": 0,
+        "anzahl": 559
+      },
+      "workflows": {
+        "maxMax": 2533,
+        "maxP95": 2530,
+        "medianP95": 14,
+        "anzahl": 559
+      },
+      "gesamt": {
+        "maxMax": 24890,
+        "maxP95": 20651,
+        "medianP95": 68,
+        "anzahl": 559
+      }
+    },
+    "antworten": 0,
+    "fehler": 0,
+    "haengt": 0,
+    "sichtbarBeendet": 0
+  }
+}

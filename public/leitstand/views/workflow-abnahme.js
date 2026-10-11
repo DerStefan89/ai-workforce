@@ -41,6 +41,7 @@
  *   data-aktion, .wf-pruefung-wiederholen (Klick-Delegation in views/workflows.js, Gate f20-shell).
  */
 
+import { renderHarnessImLauf, zaehlZeileText } from '../harness-abgleich-anzeige.js'
 import { formatiereDatum, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
@@ -339,18 +340,21 @@ function renderReviewKachel(urteil) {
 /**
  * Kachel „Nachweise“: geänderte Dateien und Befunde in Zahlen, „Alle Nachweise“ springt zum
  * Abschnitt darunter (Kacheln Desktop/Mobil/Hell nur, wenn Dateien vorlägen — heute keine Quelle).
+ * F45 B1b-2: ist Beleg 12 nicht erfüllt, steht die Harness-Zählzeile rot auch hier (nicht nur unten in den Nachweisen).
  * @param abnahme - Antwort von GET …/abnahme
+ * @param harnessAbgleich - Zustand des Harness-Abgleichs (siehe renderHarnessImLauf)
  * @returns HTML
  */
-function renderNachweiseKachel(abnahme) {
+function renderNachweiseKachel(abnahme, harnessAbgleich) {
   const aenderung = abnahme.aenderungsuebersicht ?? { status: 'noch_nicht_gelaufen' }
   const dateien =
     aenderung.status === 'ok'
       ? tHtml('entscheiden.abnahme.dateien', { anzahl: Array.isArray(aenderung.daten?.dateien) ? aenderung.daten.dateien.length : 0 })
       : escapeHtml(wertText(PROJEKTION_STATUS, 'abnahme.dateien.status', aenderung.status))
   const befunde = abnahme.urteil?.status === 'ok' && Array.isArray(abnahme.urteil.befunde) ? `<p>${tHtml('entscheiden.abnahme.befunde', { anzahl: abnahme.urteil.befunde.length })}</p>` : ''
+  const harness = harnessAbgleich?.daten?.bestanden === false ? `<p>${escapeHtml(zaehlZeileText(harnessAbgleich.daten))} <span class="ablauf-status fehler">${tHtml('harnessAbgleich.bestanden.nein')}</span></p>` : ''
   return `<div class="entscheiden-kachel"><span class="eyebrow">${tHtml('entscheiden.abnahme.nachweise')}</span>
-    <p>${dateien}</p>${befunde}
+    <p>${dateien}</p>${befunde}${harness}
     <button type="button" class="text-link-knopf abnahme-nachweise-zeigen" aria-controls="abnahme-nachweise">${tHtml('entscheiden.abnahme.alleNachweise')}</button></div>`
 }
 
@@ -390,22 +394,24 @@ function renderSelbstAusprobieren(urteil, vorschau) {
  * @param workflowId - Kennung des Workflows
  * @param abnahme - Antwort von GET …/abnahme
  * @param vorschau - siehe renderSelbstAusprobieren
+ * @param harnessAbgleich - F45 B1b-2: Zustand des Harness-Abgleichs (siehe renderHarnessImLauf)
  * @returns HTML
  */
-export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null) {
+export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined) {
   const urteil = abnahme.urteil ?? { status: 'noch_nicht_gelaufen' }
   // Eine veraltete frühere Entscheidung steht oben (qa 15) — sie erklärt, warum die Abnahme wieder offen ist.
   return `<div class="entscheiden-inhalt">
     ${renderFruehereEntscheidung(abnahme.entscheidung)}
     ${renderAkAbschnitt(urteil)}
     <section class="entscheiden-kacheln" aria-label="${tHtml('entscheiden.abnahme.kachelnLabel')}">
-      ${renderPruefungKachel(workflowId, abnahme)}${renderReviewKachel(urteil)}${renderNachweiseKachel(abnahme)}
+      ${renderPruefungKachel(workflowId, abnahme)}${renderReviewKachel(urteil)}${renderNachweiseKachel(abnahme, harnessAbgleich)}
     </section>
     ${renderSelbstAusprobieren(urteil, vorschau)}
     <section id="abnahme-nachweise" class="entscheiden-karte" aria-labelledby="abnahme-nachweise-titel">
       <h2 id="abnahme-nachweise-titel" tabindex="-1">${tHtml('entscheiden.abnahme.nachweiseTitel')}</h2>
       ${urteil.status === 'ok' ? `<h3>${tHtml('entscheiden.abnahme.empfehlungVoll')}</h3><p class="entscheiden-empfehlung-voll">${urteil.empfehlung ? escapeHtml(urteil.empfehlung) : tHtml('abnahme.empfehlung.keine')}</p>${renderBefunde(urteil)}` : ''}
       ${renderErgebnisDetails(workflowId, abnahme)}
+      ${renderHarnessImLauf(harnessAbgleich)}
     </section>
   </div>`
 }
@@ -457,11 +463,12 @@ function renderEntschieden(entscheidung) {
  * wünschen“ ohne Ergebnis-Abschnitte. Dasselbe Pflichtfeld wf-abnahme-begruendung, nur die erlaubten Knöpfe.
  * @param workflowId - Kennung des Workflows
  * @param abnahme - Antwort von GET …/abnahme
+ * @param harnessAbgleich - F45 B1b-2: Zustand des Harness-Abgleichs (nur nach dem Bau)
  * @returns HTML
  */
-function renderVorab(workflowId, abnahme) {
+function renderVorab(workflowId, abnahme, harnessAbgleich) {
   const gelaufen = ausfuehrungGelaufen(abnahme)
-  const ergebnis = gelaufen ? renderErgebnisDetails(workflowId, abnahme) : ''
+  const ergebnis = gelaufen ? `${renderErgebnisDetails(workflowId, abnahme)}${renderHarnessImLauf(harnessAbgleich, { ebene: 4, aufklappen: false })}` : ''
   const erlaubt = erlaubteAbnahmeAktionen(abnahme.workflowStatus)
   const stil = { ANGENOMMEN: 'button primary', ANPASSUNG_ANGEFORDERT: 'button', ABGELEHNT: 'button danger' }
   const knoepfe = ABNAHME_AKTIONEN.filter((aktion) => erlaubt[aktion])
@@ -487,15 +494,18 @@ function renderVorab(workflowId, abnahme) {
  * @param workflowId - Kennung des Workflows
  * @param abnahme - Antwort von GET …/abnahme
  * @param vorschau - Vorschau des Projekts für „Produkt öffnen“ (siehe renderSelbstAusprobieren), null solange sie lädt
+ * @param harnessAbgleich - F45 B1b-2: Zustand des Harness-Abgleichs — undefined (lädt), { fehler } oder Antwort von
+ *   GET …/harness-abgleich; gezeigt, sobald die Ausführung gelaufen ist (F-937: Kurzliste der benutzten Fähigkeiten)
  * @returns { lage, oben, unten, spalte? } (HTML)
  */
-export function renderAbnahme(workflowId, abnahme, vorschau = null) {
+export function renderAbnahme(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined) {
   const lage = abnahmeLage(abnahme)
-  if (lage === 'entscheidbar') return { lage, oben: renderAbnahmeSeite(workflowId, abnahme, vorschau), unten: '', spalte: renderAbnahmePanel(workflowId, abnahme) }
+  if (lage === 'entscheidbar') return { lage, oben: renderAbnahmeSeite(workflowId, abnahme, vorschau, harnessAbgleich), unten: '', spalte: renderAbnahmePanel(workflowId, abnahme) }
   const pruefung = pruefungWiederholbar(abnahme) ? renderPruefergebnis(workflowId, abnahme) : ''
   // Nach dem Bau trägt der Block den Prüfbericht selbst (samt „Prüfung wiederholen“), vor dem Bau gibt es keinen.
-  if (lage === 'vorab') return { lage, oben: '', unten: `${renderVorab(workflowId, abnahme)}${ausfuehrungGelaufen(abnahme) ? '' : pruefung}` }
-  if (lage === 'entschieden') return { lage, oben: '', unten: `${renderEntschieden(abnahme.entscheidung)}${pruefung}` }
+  if (lage === 'vorab') return { lage, oben: '', unten: `${renderVorab(workflowId, abnahme, harnessAbgleich)}${ausfuehrungGelaufen(abnahme) ? '' : pruefung}` }
+  const harness = ausfuehrungGelaufen(abnahme) ? `<div class="abnahme-stand">${renderHarnessImLauf(harnessAbgleich)}</div>` : ''
+  if (lage === 'entschieden') return { lage, oben: '', unten: `${renderEntschieden(abnahme.entscheidung)}${pruefung}${harness}` }
   return { lage, oben: '', unten: `<div class="abnahme-stand"><p class="subtle">${tHtml('abnahme.folgt')}</p>${renderFruehereEntscheidung(abnahme.entscheidung)}${pruefung}</div>` }
 }
 

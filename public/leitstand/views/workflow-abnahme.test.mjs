@@ -244,3 +244,28 @@ test('entscheidbar (F46 D2, Prüfpass): frühere Entscheidung oben, Empfehlung d
   assert.ok(oben.indexOf('Frühere Entscheidung') < oben.indexOf('Abnahmekriterien'), 'die veraltete Entscheidung steht vor den Kriterien')
   assert.match(oben, /<h3>Empfehlung des Reviews<\/h3><p class="entscheiden-empfehlung-voll">Langer Text &lt;b&gt;roh&lt;\/b&gt;[^<]*Ende<\/p>/)
 })
+
+test('F45 B1b-2: Harness im Lauf in der Abnahme — lädt, Zählzeile mit Tabelle und Kurzliste, vor dem Bau nichts', () => {
+  const laedt = renderAbnahme('wf-1', abnahme())
+  assert.match(laedt.oben, /Harness im Lauf/)
+  assert.match(laedt.oben, /Harness-Abgleich lädt/)
+  const antwort = {
+    status: 'ok',
+    quelle: 'artefakt',
+    daten: {
+      zaehlung: { wirksam: 3, wirksam_ohne_beleg: 0, ersetzt_durch: 1, bewusst_nicht: 20, offen: 0 },
+      bestanden: true,
+      geaenderte_harness_dateien: [],
+      eintraege: [{ art: 'command', name: 'lessons', quelle: '.claude/commands/lessons.md', detail: null, ereignis: null, matcher: null, status: 'bewusst_nicht', beleg: null, ersatz: null, begruendung: 'Teil 2 (F-933)', aufrufe: null, offen_grund: null, grund: null }],
+      faehigkeiten: { lauf_id: 'l-bau', skills: [], subagenten: [{ name: 'Explore', anzahl: 2 }], mcp_server: [], hintergrund: 0 },
+    },
+  }
+  const html = renderAbnahme('wf-1', abnahme(), null, antwort).oben
+  assert.match(html, /Harness: 3 wirksam · 1 ersetzt · 20 bewusst nicht · 0 offen/)
+  assert.match(html, /Beleg 12 erfüllt/)
+  assert.match(html, /<code>Explore<\/code> ×2/)
+  const entschieden = renderAbnahme('wf-1', abnahme({ entscheidung: { status: 'ok', ergebnis: 'ANGENOMMEN', begruendung: 'ok', entschiedenAm: '2026-10-11T08:00:00.000Z' } }), null, antwort)
+  assert.match(entschieden.unten, /Harness: 3 wirksam/)
+  const vorDemBau = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', aenderungsuebersicht: { status: 'noch_nicht_gelaufen' }, pruefergebnis: { status: 'noch_nicht_gelaufen' } }), null, antwort)
+  assert.doesNotMatch(`${vorDemBau.oben}${vorDemBau.unten}`, /Harness im Lauf/)
+})

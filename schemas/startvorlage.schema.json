@@ -44,6 +44,11 @@
       "minimum": 1,
       "description": "F45 B1b-1. Zeitgrenze eines einzelnen Bash-Befehls im Claude-Code-Lauf (BASH_DEFAULT_TIMEOUT_MS und BASH_MAX_TIMEOUT_MS). Optional — Standard 600000; nie über zeitgrenzeMs (geprüft von validiereStartvorlageDaten; zur Laufzeit zusätzlich auf die wirksame Lauf-Zeitgrenze begrenzt)."
     },
+    "harnessZuordnungPfad": {
+      "type": "string",
+      "minLength": 1,
+      "description": "F45 B1b-2 (Beleg 12). Optional: Pfad einer Projektdatei der Harness-Zuordnung (schemas/harness-zuordnung.schema.json) relativ zur Installation von ai-workforce; ihre Einträge ersetzen Einträge gleichen Schlüssels aus harness-abgleich/standard.json. '/'-getrennt, kein '..', nicht absolut — semantisch geprüft von validiereStartvorlageDaten."
+    },
     "pruefbefehl": {
       "type": "array",
       "minItems": 1,

@@ -1,0 +1,28 @@
+{
+  "harness_zuordnung_schema": "v0",
+  "beschreibung": "Beispiel einer Projektdatei (Startvorlage harnessZuordnungPfad): ersetzt den Standard-Eintrag für qa.",
+  "eintraege": [
+    {
+      "art": "agent",
+      "name": "qa",
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "qa"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Ablauf ohne qa-Schritt"
+      }
+    },
+    {
+      "art": "hook",
+      "name": "eigener-hook",
+      "status": "wirksam",
+      "beleg": {
+        "art": "statisch",
+        "quelle": "features/X/nachweis.md",
+        "skript_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "matcher": "Bash"
+      }
+    }
+  ]
+}

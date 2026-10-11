@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readdirSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, test } from 'node:test'
@@ -37,9 +37,17 @@ test('unbekannte Option und zwei Pfade → Exit 2 mit Aufrufhinweis', () => {
   assert.equal(cli([]).status, 2)
 })
 
-test('Ziel außerhalb der Basis neben der Installation → Exit 2, nichts geschrieben (auch mit --anwenden)', () => {
-  const lauf = cli([aussen, '--anwenden'])
+// F-1039: Ein abgelehntes Ziel beendet die CLI mit Exit 2, bevor etwas geschrieben wird — geprüft mit einem
+// Ziel, das unabhängig von der Lage des Repos abgelehnt wird (eine Datei statt eines Ordners). Die frühere
+// Fassung nutzte „außerhalb der Basis“ und setzte voraus, dass os.tmpdir() außerhalb des Elternordners der
+// Installation liegt — im Clone unter /tmp war der Test rot. Die Basisregel selbst prüft
+// src/projekt-anlegen/nachruesten.test.ts mit explizit gesetzter Basis („Pfad außerhalb der Basis wird abgelehnt“).
+test('abgelehntes Ziel → Exit 2, nichts geschrieben (auch mit --anwenden), unabhängig von der Lage des Repos', () => {
+  const datei = join(aussen, 'keine-ordner.txt')
+  writeFileSync(datei, 'x')
+  const lauf = cli([datei, '--anwenden'])
   assert.equal(lauf.status, 2)
-  assert.match(lauf.stderr, /Abgelehnt: .*außerhalb der erlaubten Basis/)
-  assert.deepEqual(readdirSync(aussen), [])
+  assert.match(lauf.stderr, /Abgelehnt: .*kein vorhandener Ordner/)
+  assert.deepEqual(readdirSync(aussen), ['keine-ordner.txt'])
+  assert.equal(readFileSync(datei, 'utf8'), 'x')
 })
