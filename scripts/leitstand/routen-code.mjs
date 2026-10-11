@@ -18,9 +18,10 @@
  * - startvorlage: Auszug der geladenen Startvorlage (Allowlist, s. baueStartvorlageAuszug)
  *
  * Sicherheitsgrenzen:
- * - Git wird als absoluter Pfad aus den absoluten PATH-Einträgen gestartet (nie per bloßem Namen — unter
- *   Windows würde sonst zuerst die Repo-Wurzel durchsucht), mit einer Umgebung ohne geerbte GIT_*-Variablen
- *   und mit '--literal-pathspecs' (Pfade nach '--' sind wörtlich).
+ * - Git wird über den gemeinsamen Git-Starter (src/git-starter, F45 S) als absoluter Pfad aus den absoluten
+ *   PATH-Einträgen gestartet (nie per bloßem Namen — unter Windows würde sonst zuerst die Repo-Wurzel
+ *   durchsucht), mit einer Umgebung ohne geerbte GIT_*-Variablen und mit '--literal-pathspecs' (Pfade nach
+ *   '--' sind wörtlich).
  * - Git nur über execFile (asynchron, ohne Shell), immer mit '--no-optional-locks' (kein
  *   .git/index.lock, kein Index-Auffrischen) und '-c core.quotePath=false', dazu
  *   '-c core.fsmonitor=false' (kein Fremdprogramm beim status) und für Diffs '--no-ext-diff
@@ -46,9 +47,9 @@
  */
 
 import { execFile } from 'node:child_process'
-import { statSync } from 'node:fs'
 import { lstat, readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
+import { GIT_NICHT_GEFUNDEN, gitProgramm, gitUmgebung } from '../../src/git-starter/index.ts'
 
 /** Zeitgrenze je Git-Aufruf. */
 export const GIT_ZEITGRENZE_MS = 5000
@@ -75,47 +76,13 @@ const GIT_GRUNDARGUMENTE = Object.freeze(['--no-optional-locks', '--literal-path
 /** Gesamtbudget der Zeilenzählung neuer Dateien (Prüfpass cr 5: der Event-Loop bleibt frei). */
 const NEU_ZAEHLEN_BUDGET_BYTES = 8 * 1024 * 1024
 
-/** Zwischenspeicher des aufgelösten Git-Programms (undefined = noch nicht gesucht, null = nicht gefunden). */
-let gitProgrammCache
-
 /**
- * Sucht git als absoluten Pfad in den ABSOLUTEN Einträgen von PATH (Prüfpass cr 3): Mit einem bloßen
- * Programmnamen sucht Windows zuerst im cwd des Kindprozesses — das wäre hier die Repo-Wurzel, in die
- * ein Lauf schreiben kann. Relative PATH-Einträge werden übersprungen.
- * @param pfadVariable - Inhalt von PATH
- * @param plattform - process.platform
- * @returns absoluter Pfad oder null
- */
-export function findeGitProgramm(pfadVariable = process.env.PATH ?? '', plattform = process.platform) {
-  const trenner = plattform === 'win32' ? ';' : ':'
-  const name = plattform === 'win32' ? 'git.exe' : 'git'
-  for (const eintrag of pfadVariable.split(trenner)) {
-    const ordner = eintrag.trim().replace(/^"(.*)"$/, '$1')
-    if (ordner === '' || !isAbsolute(ordner)) continue
-    try {
-      const kandidat = join(ordner, name)
-      if (statSync(kandidat).isFile()) return kandidat
-    } catch {
-      // Eintrag ohne git — weiter.
-    }
-  }
-  return null
-}
-
-/** @returns das aufgelöste Git-Programm (einmal je Prozess gesucht) oder null. */
-function gitProgramm() {
-  if (gitProgrammCache === undefined) gitProgrammCache = findeGitProgramm()
-  return gitProgrammCache
-}
-
-/**
- * Umgebung der Git-Aufrufe: ohne geerbte GIT_*-Variablen (GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE …
- * lenkten Git sonst an der Repo-Wurzel vorbei, Prüfpass cr 9), dazu feste Werte.
+ * Umgebung der Git-Aufrufe: die Regel des Git-Starters (ohne geerbte GIT_*-Variablen — GIT_DIR, GIT_WORK_TREE,
+ * GIT_INDEX_FILE … lenkten Git sonst an der Repo-Wurzel vorbei, Prüfpass cr 9), dazu feste Werte.
  * @returns env
  */
-function gitUmgebung() {
-  const env = Object.fromEntries(Object.entries(process.env).filter(([schluessel]) => !/^GIT_/i.test(schluessel)))
-  return { ...env, GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0', GIT_PAGER: 'cat', LC_ALL: 'C' }
+function gitUmgebungLesend() {
+  return gitUmgebung(process.env, { GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0', GIT_PAGER: 'cat', LC_ALL: 'C' })
 }
 
 /** Basis-Refs in Vorzugsreihenfolge: origin/main ist nach einem Fetch frischer als ein lokales main. */
@@ -139,8 +106,12 @@ const GITHUB_SSH = /^git@github\.com:([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+?)(?:\.git
  * @returns Promise<{ ok: true, stdout: Buffer, gekuerzt } | { ok: false, art: 'fehlt' | 'zeit' | 'fehler', grund }>
  */
 export function fuehreGitAus(repoWurzel, args, { maxBytes = LISTE_MAX_BYTES, zeitgrenzeMs = GIT_ZEITGRENZE_MS, erfolgsCodes = [] } = {}) {
-  const programm = gitProgramm()
-  if (programm === null) return Promise.resolve({ ok: false, art: 'fehlt', grund: 'git ist nicht installiert oder nicht im PATH' })
+  let programm
+  try {
+    programm = gitProgramm()
+  } catch {
+    return Promise.resolve({ ok: false, art: 'fehlt', grund: GIT_NICHT_GEFUNDEN })
+  }
   return new Promise((aufloesen) => {
     execFile(
       programm,
@@ -153,7 +124,7 @@ export function fuehreGitAus(repoWurzel, args, { maxBytes = LISTE_MAX_BYTES, zei
         killSignal: 'SIGKILL',
         windowsHide: true,
         shell: false,
-        env: gitUmgebung(),
+        env: gitUmgebungLesend(),
       },
       (fehler, stdout, stderr) => {
         if (fehler === null) {

@@ -17,7 +17,8 @@ import { registriereAuftrag } from '../../src/auftrag/index.ts'
 import { schreibeWirkungsmarke } from '../../src/checkpoint-store/index.ts'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { erzeugeRequestHandler } from '../leitstand-server.mjs'
-import { AKTIVITAET_GRENZE, BERUEHRT_GRENZE, erzeugeAktivitaetsSpeicher, kuerze, WERKZEUG_ART, werkzeugArt, ZIEL_MAX_ZEICHEN } from './lauf-aktivitaet.mjs'
+import { MASKE } from './geheimnisse-maskieren.mjs'
+import { AKTIVITAET_GRENZE, BERUEHRT_GRENZE, erzeugeAktivitaetsSpeicher, kuerze, WERKZEUG_ART, werkzeugArt, ZIEL_MAX_ZEICHEN, zielFuerAnzeige } from './lauf-aktivitaet.mjs'
 
 test('werkzeugArt bildet die Werkzeuge nach Tabelle ab, MCP als Fähigkeit, Unbekanntes als sonstiges', () => {
   const erwartet = {
@@ -107,6 +108,35 @@ test('Kürzung: Ziel auf 300 Zeichen mit „…“, Werkzeugname begrenzt, kein 
   assert.equal(kuerze('', 5), null)
   speicher.melde('lauf-a', { werkzeug: 'Glob', ziel: null })
   assert.equal(speicher.lese('lauf-a').eintraege[0].ziel, null)
+})
+
+test('Geheimnisse (F-1005): Befehlstext im Ringpuffer maskiert — auch jenseits der Kürzungsgrenze; harmloser Befehl unverändert', () => {
+  const speicher = erzeugeAktivitaetsSpeicher()
+  speicher.starte('lauf-a')
+  // Erfundene Testdaten.
+  speicher.melde('lauf-a', { werkzeug: 'Bash', ziel: 'curl -H "Authorization: Bearer abcdefghijklmnop" https://x.invalid?token=geheim123' })
+  speicher.melde('lauf-a', { werkzeug: 'Bash', ziel: 'npm run check' })
+  speicher.melde('lauf-a', { werkzeug: 'Write', ziel: 'C:\\repo\\src\\token-store.ts' })
+  const [schreiben, harmlos, geheim] = speicher.lese('lauf-a').eintraege
+  assert.equal(geheim.ziel, `curl -H "Authorization: Bearer ${MASKE}" https://x.invalid?token=${MASKE}`)
+  assert.equal(harmlos.ziel, 'npm run check')
+  assert.equal(schreiben.ziel, 'C:\\repo\\src\\token-store.ts')
+  assert.deepEqual(speicher.lese('lauf-a').beruehrteDateien, ['C:\\repo\\src\\token-store.ts'])
+  // Ein Geheimnis, das über die Grenze reicht, wird vor dem Kürzen maskiert — kein Anfang bleibt stehen.
+  const lang = zielFuerAnzeige(`${'x '.repeat(140)}--password=${'g'.repeat(100)}`)
+  assert.ok(!lang.includes('ggg'), lang)
+  assert.ok(lang.includes(`--password=${MASKE}`))
+  // Ziel länger als das Maskier-Präfix (Prüfpass cr N1): Kürzung sichtbar, kein angeschnittenes Token an der Kante.
+  const ueberlang = zielFuerAnzeige(`export TOKEN=${'t'.repeat(1300)} && rm -rf /`)
+  // Der Wert reicht über die Kante und fällt als angeschnittenes Wort ganz weg; die Kürzung bleibt sichtbar.
+  assert.equal(ueberlang, 'export …')
+  assert.equal(zielFuerAnzeige(`export TOKEN=geheim123 ${'w '.repeat(700)}`).startsWith(`export TOKEN=${MASKE} `), true)
+  const kante = zielFuerAnzeige(`${'x '.repeat(595)}ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 weiter`)
+  assert.ok(kante.endsWith('…'))
+  assert.ok(!kante.includes('ghp_'), 'ein an der Kante angeschnittenes Token erscheint nicht')
+  assert.equal(Array.from(zielFuerAnzeige('y'.repeat(5000))).length <= ZIEL_MAX_ZEICHEN, true)
+  assert.equal(zielFuerAnzeige(null), null)
+  assert.equal(zielFuerAnzeige(''), null)
 })
 
 test('Berührte Dateien: nur schreibende Werkzeuge, eindeutig, gekappt bei 100', () => {

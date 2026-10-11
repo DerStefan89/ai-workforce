@@ -12641,13 +12641,13 @@ Maßnahme: Das f16-Gate räumt seine Ordner vor dem Ende auf oder nutzt einen ei
 Status: erledigt (F45 P, 11.10.2026): Die Ursache war nicht das f16-Gate (die Gates laufen nacheinander, vor npm run test), sondern der Testfall „F16 AK11“ in src/execution-controller/execution-controller.test.ts (Lauf-Präfix „f16c“), der in npm run test (--test-concurrency=4) parallel zu scripts/aufraeumen-nachlauf.test.mjs läuft: tolerierte raeumeVerzeichnis einen EPERM, schrieb es eine Reste-Meldung ins gemeinsame RESTE_VERZEICHNIS, und der Nachlauf-Test las (und löschte) sie. Fix: fuehreNachlaufAus nimmt ein Reste-Verzeichnis entgegen, der Test arbeitet auf einem eigenen unter os.tmpdir() (scripts/aufraeumen-nachlauf.mjs/.test.mjs). check-f16-codex-gateway.mjs unverändert. Der Restordner kann bei EPERM weiter entstehen; der Nachlauf am Ende von npm run check räumt ihn wie vorgesehen. npm run check dreimal hintereinander grün (Zeitpunkte in features/F45/feature.md, Stand P).
 Feature/Run: Entdeckt: F46 D3, 02.10.2026.
 
-**F-1000** · `TECH_DEBT` · P2 · offen
+**F-1000** · `TECH_DEBT` · P2 · erledigt
 Titel: Git wird außerhalb der Code-Leseroute per bloßem Namen gestartet.
 Beschreibung: `execFileSync('git', …)` mit cwd = Repo-Wurzel des Projekts: Unter Windows sucht der Prozessstart bei einem bloßen Programmnamen zuerst im cwd — eine von einem Lauf ins Repo gelegte `git.com`/`git.exe` liefe dann im Leitstand-Prozess (außerhalb von Werkzeugsatz und Berechtigungsprofil). F46 D4 löst das nur für `scripts/leitstand/routen-code.mjs` (absoluter Pfad aus den absoluten PATH-Einträgen, `findeGitProgramm`, ohne geerbte GIT_*-Variablen).
 Fundstelle: `src/execution-controller/index.ts:156`, `src/aenderungsuebersicht/index.ts:182`, `scripts/leitstand-server.mjs` (leseAusfuehrungsVorbedingungRealGit, leseVersionierteDateien, rev-parse HEAD).
 Auswirkung: Mittel — ausnutzbar nur, wenn ein Lauf eine ausführbare Datei in die Repo-Wurzel schreibt; dann aber ohne weitere Hürde.
 Maßnahme: Einen gemeinsamen Git-Starter (absoluter Pfad, bereinigte Umgebung) für alle Aufrufe; Muster `findeGitProgramm` aus routen-code.mjs übernehmen, mit Gate-Fall.
-Status: offen.
+Status: erledigt (F45 S, 11.10.2026): Gemeinsamer Git-Starter `src/git-starter/index.ts` (findeGitProgramm, gitProgramm, gitUmgebung, fuehreGitSync; ohne git „git nicht gefunden (PATH)“, kein Rückfall auf den bloßen Namen). Umgestellt: `src/authorization-boundary/index.ts` (leseAusCommit), `src/execution-controller/index.ts` (leseClaudeAenderungen), `src/aenderungsuebersicht/index.ts` (leseGitOderNull), `src/ressourcen/installation.ts` (gitReal, zusätzlich gefunden), `scripts/leitstand-server.mjs` (status, ls-files, rev-parse HEAD), `scripts/zustand-sichern.mjs` (git); `scripts/leitstand/routen-code.mjs` nutzt denselben Starter. PATH-Einträge mit einem Segment `node_modules` zählen nicht (npm-Skripte stellen `<repo>/node_modules/.bin` vor PATH, QA-Pass). Rotfälle `src/git-starter/git-starter.test.ts` (Attrappe git.exe/git.com/git in der Repo-Wurzel — Kalibrierung: bloßes 'git' trifft sie unter Windows — und in `node_modules/.bin`). Gate `scripts/check-git-starter.mjs` (in npm run check) findet Aufrufe mit bloßem 'git' als erstem Argument, exec/spawn mit Befehlstext 'git …', Konstanten und Startziel-Arrays mit 'git' (Groß-/Kleinschreibung egal) in src/, scripts/leitstand*, scripts/zustand-sichern.mjs; Durchsetzungsgrad: geprüft, nicht ERZWUNGEN (zusammengesetzte Namen fallen nicht auf).
 Feature/Run: Entdeckt: F46 D4, Prüfpass code-reviewer 3.
 
 **F-1001** · `BUG` · P3 · offen
@@ -12668,13 +12668,13 @@ Maßnahme: `--test-concurrency=4`.
 Status: erledigt (F46 D5, 03.10.2026): Skript „test“ = `node --test --test-concurrency=4`; kein Gate und kein Doku-Check prüft den Wortlaut.
 Feature/Run: Entdeckt: F46 D4, 03.10.2026.
 
-**F-1003** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1003** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Abbruch eines Einzellaufs hat keine Begründung — Bauauftrag und Abgleich setzen eine voraus.
 Beschreibung: Der Bauauftrag F46 D5 und `docs/design/abgleich-f46.md` §4.9 nennen „Abbrechen … (Begründung)“ als bestehenden Dialog. Tatsächlich speichert POST /api/laeufe/<laufId>/abbrechen keinen Grund, der Dialog (F44 WS-5a, G9) hat kein Begründungsfeld. Eine Pflichtbegründung gibt es nur beim Stopp eines Ablaufs (POST /api/workflows/<id>/stoppen, Entscheidungsartefakt). D5 nutzt deshalb für den Lauf eines laufenden Workflow-Schritts den bestehenden Stopp (Pflichtbegründung, „Stoppen“ leer gesperrt, bricht den Lauf ab) und lässt den Einzellauf ohne Workflow beim bestehenden Abbruch ohne Grund — keine Änderung an der Abbruch-Logik.
 Fundstelle: `scripts/leitstand-server.mjs` (POST …/abbrechen), `public/leitstand/views/lauf-detail.js` (LAUF_DIALOG_FELD.abbrechen null), `public/leitstand/views/runs.js` (abbrechenKnopf).
 Auswirkung: Mittel — ein abgebrochener Einzellauf trägt keine bezeugte Begründung; je nach Laufart gibt es zwei Abbruchwege.
 Maßnahme: Entscheiden, ob der Einzellauf-Abbruch eine Pflichtbegründung als Entscheidungsartefakt bekommt (Serveränderung, eigener Auftrag), oder die Formulierung in Abgleich und Auftrag auf „Stopp mit Begründung bei Abläufen“ korrigieren.
-Status: offen. Vermerk: Entscheidung Challenger 03.10.2026: Einzellauf-Abbruch bleibt ohne Begründung, Fixpaket.
+Status: erledigt (F45 S, 11.10.2026): Formulierung korrigiert, Entscheidung Challenger 03.10.2026 (Einzellauf-Abbruch bleibt ohne Begründung). `docs/design/abgleich-f46.md` Bedienfluss Zeile „Zuschauen“, §4.9 (Hauptaufgabe und Tabelle) lauten jetzt „Abbrechen (Einzellauf ohne Begründung; Stopp eines Ablaufs mit Pflichtbegründung)“; keine Codeänderung am Abbruch.
 Feature/Run: Entdeckt: F46 D5, Bau 03.10.2026.
 
 **F-1004** · `TECH_DEBT` · P3 · offen
@@ -12686,13 +12686,13 @@ Maßnahme: (a) statusBlockHtml um einen Fußbereich erweitern; (b) die Prüfphas
 Status: offen.
 Feature/Run: Entdeckt: F46 D5, Prüfpass (design-guardian 9, qa 10, qa 12, qa 15), 03.10.2026.
 
-**F-1005** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-1005** · `HARNESS_IMPROVEMENT` · P3 · erledigt
 Titel: Live-Aktivität zeigt Bash-Befehlstexte — ein Befehl mit Geheimnis wäre dort sichtbar.
 Beschreibung: Seit F46 D5 trägt der Ringpuffer der Live-Ansicht das Ziel eines Werkzeugaufrufs, bei Bash/PowerShell den Befehlstext (gekürzt auf 300 Zeichen, escaped, nur lokal im Speicher, mit dem Laufende gelöscht). Enthält ein Befehl ein Geheimnis (Token in einer URL, `Authorization`-Kopf, `--password=…`), steht es während des Laufs lesbar in „Aktivität“ und „Mehr dazu“ des Leitstands.
 Fundstelle: `scripts/leitstand/lauf-aktivitaet.mjs` (melde, kuerze), `public/leitstand/views/live-anzeige.js` (Aktivität, Mehr dazu).
 Auswirkung: Gering — nur lokal und flüchtig, aber auf dem Bildschirm (Bildschirmfreigabe, Screenshot) sichtbar.
 Maßnahme: Fixpaket: bekannte Geheimnis-Muster (Bearer/Token-Köpfe, `password=`/`token=`-Parameter, Schlüssel-Präfixe wie `sk-`, `ghp_`) vor dem Ablegen im Ringpuffer maskieren; Test mit Rot- und Grünfall.
-Status: offen.
+Status: erledigt (F45 S, 11.10.2026): Reine Maskierung `scripts/leitstand/geheimnisse-maskieren.mjs` (URL Benutzer:Passwort@, Authorization/Bearer, --password/--token/--secret/--api-key, Zuweisungen auf …token/passwd/password/secret/api_key/access_key/private_key, Präfixe sk-, ghp_/gho_/ghu_/ghs_/ghr_, github_pat_, xox[abpr]-, AKIA; Platzhalter „••••“, Schlüsselname bleibt). Angewendet in `scripts/leitstand/lauf-aktivitaet.mjs` (zielFuerAnzeige: Ringpuffer, berührte Dateien, „Gerade“ über `scripts/leitstand-server.mjs`) und `scripts/leitstand/routen-harness.mjs` (textFuerAnzeige: Einstellungsdatei mit jedem env-Wert maskiert, alle Harness-Dateien nach Mustern). Zusätzlich (QA-Pass) die abgelehnten Befehle im F-760-Halt-Grund (`scripts/leitstand-server.mjs`, leseAbgelehnteBefehleAusRohstrom). Tests `geheimnisse-maskieren.test.mjs` (Rot/Grün je Muster, Laufzeit bei 64 KB), `lauf-aktivitaet.test.mjs`, `routen-harness.test.mjs`, `scripts/leitstand-abgelehnte-befehle.test.mjs`. Durchsetzungsgrad: geprüft, nicht ERZWUNGEN (Geheimnis ohne Muster bleibt sichtbar; Restpunkte F-1022).
 Feature/Run: Entdeckt: F46 D5.
 
 **F-1006** · `TECH_DEBT` · P3 · offen
@@ -12829,3 +12829,30 @@ Auswirkung: Gering — einmal nach dem Start bzw. nach einer Änderung; im Norma
 Maßnahme: Chat-Kette asynchron bzw. gecacht lesen (Stempel der Kette); Workitems-Parse in Scheiben oder im Worker. Prüfen in WS R (P5).
 Status: offen.
 Feature/Run: Entdeckt: F45 P, Nachher-Messung 11.10.2026 (QA-Nachpass Punkt 8).
+
+**F-1021** · `TECH_DEBT` · P3 · offen
+Titel: taskkill wird per bloßem Namen im cwd des Leitstands gestartet.
+Beschreibung: Beim Beenden eines Laufs (Zeitgrenze, Abbruch) startet der Gateway `execFile('taskkill', …)` ohne cwd — damit gilt das cwd des Leitstands, die Installationswurzel; im Selbstbetrieb (Projekt ai-workforce) ist das die Repo-Wurzel des Laufs. Unter Windows sucht der Prozessstart einen bloßen Namen zuerst dort; ein vom Lauf abgelegtes taskkill.exe liefe im Leitstand-Prozess. Dieselbe Klasse wie F-1000, aber kein Git-Aufruf und deshalb außerhalb von F45 S und Gate.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts` (killeProzessbaumFallsWindows, taskkill).
+Auswirkung: Gering bis mittel — nur im Selbstbetrieb und nur, wenn ein Lauf eine ausführbare Datei in die Repo-Wurzel schreibt.
+Maßnahme: taskkill über den absoluten Pfad (%SystemRoot%\System32\taskkill.exe) starten; das Gate scripts/check-git-starter.mjs um eine Liste solcher Programmnamen erweitern oder ein eigenes Gate „kein bloßer Programmname mit Projekt-cwd“.
+Status: offen.
+Feature/Run: Entdeckt: F45 S, QA-Pass 11.10.2026.
+
+**F-1022** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Maskierung: Restpunkte nach F45 S.
+Beschreibung: (a) Code-Reiter (/api/code/diff), Projektakte (docs/projekt/kontext/*) sowie Prüf-/Startbefehl und Prüfausgabe zeigen Inhalte unmaskiert, die im Harness-Detail maskiert sind (z. B. ein Diff der Einstellungsdatei). (b) Nicht erkannt: key=/sig=-Parameter (SAS, API-Schlüssel ohne Schlüsselwort), ein gequoteter Wert über einen Zeilenumbruch. (c) Bewusst eher zu viel: Code in Hooks und Prüfskripten im Harness-Detail (z. B. `token = …`) und Fließtext wie „secret: x“ erscheinen maskiert. (d) Wird git.exe nach der ersten Auflösung verschoben, meldet routen-code.mjs „Arbeitsverzeichnis nicht gefunden“ statt „git nicht gefunden“ (ENOENT bei absolutem Pfad).
+Fundstelle: `scripts/leitstand/routen-code.mjs` (baueCodeDiff, fuehreGitAus), `scripts/leitstand/routen-projektakte.mjs`, `scripts/leitstand/geheimnisse-maskieren.mjs`.
+Auswirkung: Gering — lokal, Werte meist von Stefan selbst gesetzt.
+Maßnahme: (a) maskiereGeheimnisse auch auf Diff- und Akte-Texte anwenden (eigener kleiner Auftrag, Diff-Darstellung prüfen); (b) bei Bedarf Muster ergänzen; (d) bei ENOENT den Zwischenspeicher des Git-Starters verwerfen.
+Status: offen.
+Feature/Run: Entdeckt: F45 S, Prüfpass (qa 7/8, TC-08; code-reviewer 4), 11.10.2026.
+
+**F-1023** · `TECH_DEBT` · P3 · offen
+Titel: Git-Aufrufe außerhalb der Code-Leseroute laufen ohne `-c core.fsmonitor=false`.
+Beschreibung: `git status` liest `core.fsmonitor` aus der Repo-Konfiguration; ist dort ein Programm eingetragen, startet Git es. Ein Lauf, der `.git/config` des Projekts ändern kann, könnte so ein Programm im Leitstand- bzw. Kernprozess starten. `scripts/leitstand/routen-code.mjs` setzt deshalb `-c core.fsmonitor=false` (F46 D4); die übrigen Aufrufer des Git-Starters nicht. Seit vor F45 S vorhanden, durch S unverändert.
+Fundstelle: `scripts/leitstand-server.mjs` (leseAusfuehrungsVorbedingungRealGit: git status), `src/execution-controller/index.ts` (leseClaudeAenderungen: git status), `src/aenderungsuebersicht/index.ts` (leseGitOderNull).
+Auswirkung: Gering bis mittel — setzt Schreibzugriff auf `.git/config` voraus.
+Maßnahme: `-c core.fsmonitor=false` (und ggf. `core.hooksPath`-neutrale Optionen) als feste Grundargumente in fuehreGitSync für lesende Aufrufe; mit Test, dass die Ergebnisse gleich bleiben.
+Status: offen.
+Feature/Run: Entdeckt: F45 S, QA-Nachpass 11.10.2026.

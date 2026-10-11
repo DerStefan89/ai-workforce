@@ -40,9 +40,9 @@
  * Workflow-Nachlauf eines schreibenden 'ausfuehrung'-Schritts).
  */
 
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fuehreGitSync } from '../git-starter/index.ts'
 import type { AenderungsuebersichtDatei, AenderungsuebersichtDateiStatus, AenderungsuebersichtV0Daten } from './types.ts'
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
@@ -179,7 +179,7 @@ const KLEINER_MAX_BUFFER = 20_000_000
 /** Führt einen lesenden git-Befehl aus, liefert null statt zu werfen (kein Repo, kein git, ungültige Referenz, Ausgabe größer als maxBuffer — Bauauftrag Punkt 4: die Ermittlung darf den Lauf nicht scheitern lassen). */
 function leseGitOderNull(repoWurzel: string, argumente: string[], maxBuffer: number = KLEINER_MAX_BUFFER): string | null {
   try {
-    return execFileSync('git', [...GIT_BASISARGUMENTE, ...argumente], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer })
+    return fuehreGitSync([...GIT_BASISARGUMENTE, ...argumente], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer })
   } catch {
     return null
   }

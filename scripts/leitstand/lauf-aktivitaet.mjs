@@ -20,17 +20,27 @@
  * (Shell), 'liest' (lesende Werkzeuge), 'faehigkeit' (Skill, Subagent, MCP-Werkzeuge mit Präfix
  * mcp__), sonst 'sonstiges'. Die Oberfläche übersetzt die Art in ein Verb (i18n live.art.*).
  *
+ * Geheimnisse (F45 S, F-1005): Jedes Ziel wird vor dem Ablegen maskiert (zielFuerAnzeige,
+ *   geheimnisse-maskieren.mjs) — im Ringpuffer, in den berührten Dateien und in „Gerade“ steht nie der
+ *   Klartext eines erkannten Musters (Token, Passwort, Authorization-Kopf …).
+ *
  * Wird aufgerufen von:
- * - scripts/leitstand-server.mjs (starteLaufUndVergiss: starte, beiWerkzeugaufruf → melde, Reset in
+ * - scripts/leitstand-server.mjs (starteLaufUndVergiss: starte, beiWerkzeugaufruf → melde und
+ *   zielFuerAnzeige für laufAktivFortschritt, Reset in
  *   .then/.catch → beende; GET /api/laeufe/<laufId> → lese als Feld aktivitaet)
  * - scripts/leitstand/lauf-aktivitaet.test.mjs (node:test)
  */
+
+import { maskiereGeheimnisse } from './geheimnisse-maskieren.mjs'
 
 /** Höchstzahl gehaltener Aufrufe je Lauf (Abgleich §4.9: „letzte 50 Aufrufe“). */
 export const AKTIVITAET_GRENZE = 50
 
 /** Höchstlänge eines Ziels (Pfad, Muster, Befehl) in Zeichen; länger wird mit „…“ gekürzt. */
 export const ZIEL_MAX_ZEICHEN = 300
+
+/** Länge des Präfixes eines Ziels, das maskiert wird (4 × ZIEL_MAX_ZEICHEN; dahinter wird ohnehin gekürzt). */
+export const MASKIER_PRAEFIX_ZEICHEN = 4 * ZIEL_MAX_ZEICHEN
 
 /** Höchstlänge eines Werkzeugnamens in Zeichen (MCP-Namen sind frei wählbar). */
 export const WERKZEUG_MAX_ZEICHEN = 100
@@ -88,6 +98,25 @@ export function kuerze(text, max) {
 }
 
 /**
+ * Ziel eines Werkzeugaufrufs, wie der Leitstand es zeigt: erst maskiert (F-1005), dann gekürzt — so
+ * bleibt auch ein über die Grenze reichendes Geheimnis verdeckt. Maskiert wird nur ein Präfix von
+ * MASKIER_PRAEFIX_ZEICHEN (ein Vielfaches der Anzeigegrenze): die Arbeit je Aufruf bleibt fest begrenzt,
+ * auch bei einem mehrere MB langen Befehl.
+ * @param ziel - rohes Ziel (Pfad, Muster, Befehl) oder null
+ * @returns maskiertes, gekürztes Ziel oder null ohne Ziel
+ */
+export function zielFuerAnzeige(ziel) {
+  if (typeof ziel !== 'string' || ziel === '') return null
+  if (ziel.length <= MASKIER_PRAEFIX_ZEICHEN) return kuerze(maskiereGeheimnisse(ziel), ZIEL_MAX_ZEICHEN)
+  // Länger als das Präfix (Prüfpass cr N1): das an der Kante angeschnittene letzte Wort fällt weg — ein
+  // halbes Token erfüllte sein Muster nicht mehr und bliebe sonst sichtbar —, und die Kürzung bleibt
+  // immer an „…“ erkennbar, auch wenn die Maskierung den Text unter die Anzeigegrenze verkürzt.
+  const praefix = ziel.slice(0, MASKIER_PRAEFIX_ZEICHEN).replace(/[^\s"'`]+$/, '')
+  const gekuerzt = kuerze(maskiereGeheimnisse(praefix), ZIEL_MAX_ZEICHEN - 1) ?? ''
+  return gekuerzt.endsWith('…') ? gekuerzt : `${gekuerzt}…`
+}
+
+/**
  * Legt den Speicher an — eine Instanz je Serverinstanz (erzeugeRequestHandler).
  * @param optionen - { jetzt: () => ISO-Zeitstempel } (für Tests überschreibbar)
  * @returns { starte, melde, beende, lese, anzahlLaeufe }
@@ -110,18 +139,19 @@ export function erzeugeAktivitaetsSpeicher({ jetzt = () => new Date().toISOStrin
      * Nimmt einen live gemeldeten Werkzeugaufruf auf — nur für den Lauf, dessen Puffer besteht.
      * @param laufId - laufId des meldenden Laufs
      * @param aufruf - { werkzeug, ziel } aus dem Gateway (beiWerkzeugaufruf)
+     * @param zielAnzeige - schon berechnetes zielFuerAnzeige(aufruf.ziel) (der Server braucht es auch für „Gerade“; so wird je Aufruf nur einmal maskiert)
      */
-    melde(laufId, aufruf) {
+    melde(laufId, aufruf, zielAnzeige = undefined) {
       const lauf = laeufe.get(laufId)
       if (lauf === undefined) return
       const werkzeug = kuerze(aufruf?.werkzeug, WERKZEUG_MAX_ZEICHEN) ?? '?'
       const art = werkzeugArt(aufruf?.werkzeug)
-      const zielVoll = typeof aufruf?.ziel === 'string' && aufruf.ziel !== '' ? aufruf.ziel : null
-      lauf.eintraege.push({ zeit: jetzt(), werkzeug, ziel: kuerze(zielVoll, ZIEL_MAX_ZEICHEN), art })
+      const ziel = zielAnzeige === undefined ? zielFuerAnzeige(aufruf?.ziel) : zielAnzeige
+      lauf.eintraege.push({ zeit: jetzt(), werkzeug, ziel, art })
       if (lauf.eintraege.length > AKTIVITAET_GRENZE) lauf.eintraege.shift()
       lauf.anzahlGesamt += 1
-      if (art === 'aendert' && zielVoll !== null) {
-        const pfad = kuerze(zielVoll, ZIEL_MAX_ZEICHEN)
+      if (art === 'aendert' && ziel !== null) {
+        const pfad = ziel
         if (lauf.beruehrt.has(pfad)) return
         if (lauf.beruehrt.size < BERUEHRT_GRENZE) lauf.beruehrt.add(pfad)
         else lauf.beruehrtGekappt = true

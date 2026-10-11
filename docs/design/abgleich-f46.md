@@ -99,7 +99,7 @@ Festlegungen (reversibel): `#/projektakte`, `#/code` und `#/live` als eigene Rou
 | 2 | Idee durchdenken | Chat, Register Product Coach (auch von `#/projekt`) | Gespräch, dann „Als Auftrag anlegen“ → Feature-Akte ENTWURF | U |
 | 3 | Auftrag anlegen | `#/projekt` | Titel, gewünschtes Ergebnis, Kontext; rechts prüfen, ob alles bereit ist; „Ablauf vorbereiten“ | U, rechte Spalte S (D4) |
 | 4 | Freigeben | `#/attention` → `#/workflows/<id>` | prüfen, was startet; Freigeben / Freigeben & installieren / Ablehnen mit Begründung | U |
-| 5 | Zuschauen | Live-Chip → `#/live` | Aktivität und berührte Dateien verfolgen; bei Bedarf abbrechen (Begründung) | U, Aktivität S (D5) |
+| 5 | Zuschauen | Live-Chip → `#/live` | Aktivität und berührte Dateien verfolgen; bei Bedarf abbrechen (Einzellauf ohne Begründung; Stopp eines Ablaufs mit Pflichtbegründung) | U, Aktivität S (D5) |
 | 6 | Abnehmen | `#/attention` → `#/workflows/<id>` | AKs mit Urteil und Beleg prüfen, selbst ausprobieren; Annehmen / Anpassung anfordern / Ablehnen mit Begründung | U, Listeneintrag S (D2) |
 | 7 | Sichern | `#/code` | Arbeitsstand und Diff ansehen, Befehlsblock kopieren; Commit, Push, PR und Merge macht Stefan | U, Daten S (D4); „Sichern & mergen“ als Entscheidung K |
 
@@ -329,7 +329,7 @@ Umsetzung D3 (Abweichungen, begründet):
 
 ### 4.9 Live-Ansicht — `#/live`, `#/runs/<laufId>` (08-live--Main, --Main-nichts-laeuft) · D5
 Zweck: sehen, was die Workforce gerade tut, und eingreifen können.
-Hauptaufgabe: zuschauen; bei Bedarf mit Begründung abbrechen.
+Hauptaufgabe: zuschauen; bei Bedarf abbrechen (Einzellauf ohne Begründung; Stopp eines Ablaufs mit Pflichtbegründung).
 
 | Bereich | Status | Quelle / Hinweis |
 |---|---|---|
@@ -339,7 +339,7 @@ Hauptaufgabe: zuschauen; bei Bedarf mit Begründung abbrechen.
 | Läuft seit, Zeitgrenze und Rest | U | |
 | Schätzung WS | K | Fixpaket B5 |
 | Anzahl Aufrufe | S | Zähler zum Ringpuffer |
-| Abbrechen … (Begründung), Laufakte | U | bestehend (F44 WS-5a) |
+| Abbrechen (Einzellauf ohne Begründung; Stopp eines Ablaufs mit Pflichtbegründung), Laufakte | U | bestehend (F44 WS-5a; Formulierung F45 S, F-1003) |
 | Ablaufleiste Plan → Freigabe → Bau → Prüfschritt → Review | U | Workflow-Schritte; „Sichern“ und „Merge“ K |
 | Aktivität: letzte 50 Aufrufe, neueste oben, Filter Alle · Ändert · Befehle · Fähigkeiten · Warnungen | S | Ringpuffer (nur Speicher, laufId-Prüfung, mit D13 zurückgesetzt); Werkzeug → Verb über i18n |
 | „Mehr dazu“: Werkzeug, Ziel, Zeit | U | aus dem Aufruf |
@@ -358,7 +358,7 @@ Hauptaufgabe: zuschauen; bei Bedarf mit Begründung abbrechen.
 Reiter „Aufträge“ der Entwicklung: Register Aufträge · Ausführungen (`#/ausfuehrungen`) und „+ Auftrag anlegen“ (→ `#/projekt`). U. Löst F-964.
 
 Umsetzung D5 (Abweichungen zu §4.9/§4.10, begründet):
-- „Abbrechen … (Begründung)“: Der Lauf-Abbruch speichert heute keinen Grund. Läuft der Lauf in einem
+- „Abbrechen“ (bis F45 S hier „Abbrechen … (Begründung)“, F-1003): Der Lauf-Abbruch speichert heute keinen Grund. Läuft der Lauf in einem
   Workflow-Schritt, öffnet „Abbrechen …“ den bestehenden Stopp des Ablaufs mit Pflichtbegründung („Stoppen“
   gesperrt, solange leer), der den Lauf abbricht; ein Einzellauf behält den bestehenden Abbruch ohne Grund
   (keine Änderung an der Abbruch-Logik, F-1003). Der Knopf steht im Status-Block, nicht zusätzlich in der Notiz.

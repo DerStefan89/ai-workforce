@@ -1,0 +1,584 @@
+{
+  "url": "http://127.0.0.1:4199/#/live",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1300
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.75,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": ".",
+            "basisverzeichnis": "kontrollzustand",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": true
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-f45s-live-5e2a",
+            "laufStatus": {
+              "status": "KLAERUNG_ERFORDERLICH",
+              "grund": "RUN_PREPARED ohne Terminalartefakt",
+              "blockerId": "b-1",
+              "aufloesungsbedingung": "Terminalmarke",
+              "resumeZiel": "lauf",
+              "evidenz": {
+                "offeneRunPreparedSequenzen": [
+                  1
+                ]
+              }
+            },
+            "ergebnis": null,
+            "zeitpunkt": "2026-10-11T12:06:13.248Z",
+            "auftragsbezug": {
+              "auftragId": "auftrag-f45s",
+              "titel": "F45 S · Nachweis Maskierung"
+            },
+            "anzahlCheckpoints": 1,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": true,
+          "laufId": "lauf-f45s-live-5e2a"
+        },
+        "pruefbefehl": "npm run check",
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/workitems",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/workitems?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "status": 200,
+      "json": [
+        {
+          "auftragId": "auftrag-f45s",
+          "titel": "F45 S · Nachweis Maskierung",
+          "workitem_referenz": "workitem:feature:F45"
+        }
+      ]
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Nachweis",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/ressourcen",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startvorlagePfad": "startvorlagen/ai-workforce.json",
+        "assessedHinweis": "",
+        "eintraege": []
+      }
+    },
+    {
+      "muster": "**/api/ressourcen/abdeckung",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startvorlagePfad": "startvorlagen/ai-workforce.json",
+        "rollen": []
+      }
+    },
+    {
+      "muster": "**/api/laeufe/lauf-f45s-live-5e2a",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laufId": "lauf-f45s-live-5e2a",
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-11T11:59:25.248Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            },
+            "lineage": null
+          }
+        ],
+        "laufStatus": {
+          "status": "KLAERUNG_ERFORDERLICH",
+          "grund": "RUN_PREPARED ohne Terminalartefakt",
+          "blockerId": "b-1",
+          "aufloesungsbedingung": "Terminalmarke",
+          "resumeZiel": "lauf",
+          "evidenz": {
+            "offeneRunPreparedSequenzen": [
+              1
+            ]
+          }
+        },
+        "aktiv": true,
+        "fortschritt": {
+          "werkzeug": "Bash",
+          "ziel": "curl -H \"Authorization: Bearer ••••\" \"https://api.example.invalid/v1?access_token=••••&seite=2\""
+        },
+        "aktivitaet": {
+          "eintraege": [
+            {
+              "zeit": "2026-10-11T12:05:25.248Z",
+              "werkzeug": "Bash",
+              "ziel": "curl -H \"Authorization: Bearer ••••\" \"https://api.example.invalid/v1?access_token=••••&seite=2\"",
+              "art": "befehl"
+            },
+            {
+              "zeit": "2026-10-11T12:04:25.248Z",
+              "werkzeug": "Edit",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\src\\git-starter\\index.ts",
+              "art": "aendert"
+            },
+            {
+              "zeit": "2026-10-11T12:03:25.248Z",
+              "werkzeug": "Bash",
+              "ziel": "npm run check",
+              "art": "befehl"
+            },
+            {
+              "zeit": "2026-10-11T12:02:25.248Z",
+              "werkzeug": "Bash",
+              "ziel": "mysql --password=•••• -u root -e \"select 1\"",
+              "art": "befehl"
+            },
+            {
+              "zeit": "2026-10-11T12:01:25.248Z",
+              "werkzeug": "Bash",
+              "ziel": "git clone https://stefan:••••@example.invalid/repo.git",
+              "art": "befehl"
+            },
+            {
+              "zeit": "2026-10-11T12:00:25.248Z",
+              "werkzeug": "Read",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\CLAUDE.md",
+              "art": "liest"
+            }
+          ],
+          "anzahlGesamt": 6,
+          "grenze": 50,
+          "beruehrteDateien": [
+            "C:\\Users\\stefa\\Projekte\\ai-workforce\\src\\git-starter\\index.ts"
+          ],
+          "beruehrteGekappt": false
+        },
+        "verweigertDaten": null,
+        "nichtGestartet": null,
+        "startvorlageZeitgrenzeMs": 1800000,
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "ausfuehrung",
+          "elemente": [
+            {
+              "pfad": "CLAUDE.md"
+            }
+          ],
+          "ausgeschlossen": []
+        },
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "auftrag-f45s",
+          "titel": "F45 S · Nachweis Maskierung",
+          "auftragstext": "Testdaten."
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "scoutErgebnis": null
+      }
+    },
+    {
+      "muster": "**/api/harness",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45s-nachweis-NbsojF",
+        "name": "f45s-nachweis-NbsojF",
+        "bausteine": [
+          {
+            "id": "regeln",
+            "ort": "/",
+            "eintraege": [
+              {
+                "pfad": "CLAUDE.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 106,
+                "geaendert": "2026-10-11T12:06:25.252Z"
+              },
+              {
+                "pfad": "ARCHITECTURE.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "README.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              }
+            ]
+          },
+          {
+            "id": "wissen",
+            "ort": "docs/",
+            "eintraege": [
+              {
+                "pfad": "docs/STATUS.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "docs/adr",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "docs/projekt/kontext",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "docs/harness",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              }
+            ]
+          },
+          {
+            "id": "gedaechtnis",
+            "ort": "state/",
+            "eintraege": [
+              {
+                "pfad": "state/findings.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "state/gates.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "state/assumption-ledger.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "state/triggers.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "state/memory-map.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "state/tooling.md",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": "state/zwischenstand",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              }
+            ]
+          },
+          {
+            "id": "rollen",
+            "ort": ".claude/",
+            "eintraege": [
+              {
+                "pfad": ".claude/agents",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": ".claude/skills",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": ".claude/commands",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              }
+            ]
+          },
+          {
+            "id": "bremsen",
+            "ort": ".claude/",
+            "eintraege": [
+              {
+                "pfad": ".claude/settings.json",
+                "art": "datei",
+                "geschuetzt": true,
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 370,
+                "geaendert": "2026-10-11T12:06:25.252Z"
+              },
+              {
+                "pfad": ".claude/hooks",
+                "art": "ordner",
+                "geschuetzt": true,
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-11T12:06:25.252Z",
+                "anzahl": 1,
+                "eintraege": [
+                  {
+                    "name": "beispiel.cjs",
+                    "art": "datei",
+                    "groesse": 8,
+                    "geaendert": "2026-10-11T12:06:25.252Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "pruefung",
+            "ort": "scripts/ · .github/",
+            "eintraege": [
+              {
+                "pfad": "scripts",
+                "art": "ordner",
+                "muster": "check-*.mjs",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": ".github/workflows",
+                "art": "ordner",
+                "vorhanden": false,
+                "status": "ok"
+              },
+              {
+                "pfad": ".worktreeinclude",
+                "art": "datei",
+                "vorhanden": false,
+                "status": "ok"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/harness/datei?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "fehlt",
+        "pfad": "unbekannt"
+      }
+    },
+    {
+      "muster": "**/api/harness/datei?pfad=.claude%2Fsettings.json",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "pfad": ".claude/settings.json",
+        "absolut": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45s-nachweis-NbsojF\\.claude\\settings.json",
+        "groesse": 370,
+        "geaendert": "2026-10-11T12:06:25.252Z",
+        "text": "{\n  \"env\": {\n    \"ANTHROPIC_API_KEY\": \"••••\",\n    \"INTERNER_DIENST_URL\": \"••••\",\n    \"MEIN_SCHLUESSEL\": \"••••\"\n  },\n  \"apiKeyHelper\": \"/usr/local/bin/schluessel-helfer.sh\",\n  \"permissions\": { \"allow\": [\"Bash(npm run check)\", \"Read\"] },\n  \"mcpServers\": { \"beispiel\": { \"token\": \"••••\" } }\n}\n",
+        "gekuerzt": false
+      }
+    },
+    {
+      "muster": "**/api/harness/datei?pfad=CLAUDE.md",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "pfad": "CLAUDE.md",
+        "absolut": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45s-nachweis-NbsojF\\CLAUDE.md",
+        "groesse": 106,
+        "geaendert": "2026-10-11T12:06:25.252Z",
+        "text": "# Regeln\n\nTestdaten: export GITHUB_TOKEN=••••\n\nPrüfen mit `npm run check`.\n",
+        "gekuerzt": false
+      }
+    },
+    {
+      "muster": "**/api/laeufe**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/workflows/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/entscheidungen",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/auftraege**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/ressourcen/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Gerade",
+        "selector": "#live-gerade:not([hidden])"
+      },
+      {
+        "name": "Gewählter Aufruf",
+        "selector": "#live-aktivitaet .live-zeile[aria-pressed=\"true\"] .live-ziel"
+      },
+      {
+        "name": "Mehr dazu: Ziel",
+        "selector": "#live-mehr .live-mehr-kopf .live-ziel"
+      },
+      {
+        "name": "Detail: Pfad",
+        "selector": "#harness-detail .harness-detail-pfad"
+      },
+      {
+        "name": "Detail: Inhalt",
+        "selector": "#harness-detail .harness-detail-inhalt"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/live: Aktivität mit maskierten Befehlen (URL-Passwort, --password, Authorization: Bearer, access_token) — „npm run check“ und Pfade unverändert; „Gerade“ maskiert",
+      "warteAufSelector": {
+        "selector": "#live-aktivitaet .live-zeile",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d1440-live-maskiert.webp"
+    },
+    {
+      "label": "Klick auf den curl-Aufruf → Mehr dazu: Ziel maskiert",
+      "klick": "#live-aktivitaet li:first-child .live-zeile",
+      "warteAufSelector": {
+        "selector": "#live-mehr .live-felder",
+        "timeoutMs": 8000
+      },
+      "screenshot": "k01-mehr-dazu-maskiert.webp"
+    }
+  ]
+}

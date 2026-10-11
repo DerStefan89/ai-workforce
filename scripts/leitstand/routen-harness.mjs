@@ -26,6 +26,10 @@
  *   'gekuerzt'). Enthält der gelesene Teil ein NUL-Byte, ist die Datei 'binaer' und es geht kein Text raus.
  * - Antwort 200 { status: 'ok' | 'binaer' | 'fehlt' | 'fehler', pfad, absolut?, text?, gekuerzt?, groesse?,
  *   geaendert?, grund? }.
+ * - Geheimnisse (F45 S, F-1005): `text` geht nur maskiert hinaus (textFuerAnzeige) — in einer Einstellungsdatei
+ *   (.claude/settings*.json) jeder Wert im env-Block, in jeder Datei die bekannten Muster (Token, Passwort,
+ *   apiKey/secret-Schlüssel, Authorization-Kopf, Schlüssel-Präfixe; geheimnisse-maskieren.mjs). Die Datei auf
+ *   der Platte bleibt unverändert.
  *
  * Sicherheitsgrenzen: nur GET; Herkunft wie /api/code (pruefeHarnessHerkunft, Sec-Fetch-Site); die
  * Host-Allowlist (F-814) greift zentral davor. Nicht gepollt — der Client fragt beim Betreten von
@@ -36,9 +40,9 @@
  *   könnte eine Datei in diesem Moment gegen eine Verknüpfung nach außen tauschen.
  * - Ein Hardlink auf eine Datei außerhalb der Repo-Wurzel ist über realpath nicht erkennbar.
  *   Beides setzt Schreibzugriff auf das Repo voraus.
- * - Die Route liefert auch die Einstellungsdatei unter .claude/ aus (nur lesend, E-F46-2). Trüge ein Projekt dort
- *   Geheimnisse (etwa im env-Block), wären sie im Leitstand lesbar — gegen fremde Seiten durch Sec-Fetch-Site und
- *   die Host-Allowlist geschützt, für lokale Werkzeuge ohne diese Köpfe (curl) nicht.
+ * - Die Route liefert auch die Einstellungsdatei unter .claude/ aus (nur lesend, E-F46-2). Seit F45 S sind env-Werte
+ *   und erkannte Geheimnis-Muster maskiert; ein Geheimnis ohne erkennbares Muster außerhalb des env-Blocks bliebe
+ *   lesbar (Durchsetzungsgrad: geprüft, nicht ERZWUNGEN).
  *
  * Wird aufgerufen von:
  * - scripts/leitstand-server.mjs (GET /api/harness, GET /api/harness/datei, je Projektinstanz über den
@@ -51,6 +55,7 @@
 
 import { lstatSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { basename, isAbsolute, relative, resolve } from 'node:path'
+import { maskiereEinstellungenJson, maskiereGeheimnisse } from './geheimnisse-maskieren.mjs'
 import { leseKontextDatei, MAX_BYTES } from './routen-projektakte.mjs'
 
 export { MAX_BYTES }
@@ -266,6 +271,17 @@ export function pruefeHarnessPfad(pfad) {
 }
 
 /**
+ * Text einer Harness-Datei, wie der Leitstand ihn zeigt (F-1005): Einstellungsdateien unter .claude/
+ * (settings.json, settings.local.json) mit maskiertem env-Block, alle Dateien mit maskierten Mustern. Rein.
+ * @param pfad - repo-relativer Pfad aus der Liste
+ * @param text - gelesener Text
+ * @returns maskierter Text
+ */
+export function textFuerAnzeige(pfad, text) {
+  return /^\.claude\/settings(?:\.local)?\.json$/.test(pfad) ? maskiereEinstellungenJson(text) : maskiereGeheimnisse(text)
+}
+
+/**
  * Baut die Antwort für GET /api/harness/datei. Wirft nie.
  * @param optionen - { repoWurzel, pfad } — pfad ist der rohe Query-Parameter
  * @returns { http: 200 | 400, koerper }
@@ -282,7 +298,7 @@ export function baueHarnessDatei({ repoWurzel, pfad }) {
   if (gelesen.status !== 'ok') return { http: 200, koerper: { status: gelesen.status, pfad: treffer, ...(gelesen.grund ? { grund: gelesen.grund } : {}) } }
   const kopf = { pfad: treffer, absolut: gelesen.absolut, groesse: meta.groesse, geaendert: meta.geaendert }
   if (gelesen.text.includes('\u0000')) return { http: 200, koerper: { status: 'binaer', ...kopf } }
-  return { http: 200, koerper: { status: 'ok', ...kopf, text: gelesen.text, gekuerzt: gelesen.gekuerzt } }
+  return { http: 200, koerper: { status: 'ok', ...kopf, text: textFuerAnzeige(treffer, gelesen.text), gekuerzt: gelesen.gekuerzt } }
 }
 
 /**

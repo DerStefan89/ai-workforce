@@ -30,17 +30,20 @@
  * Wichtig: Es committet nie, pusht nie und schreibt die Freigabedatei nie —
  * Commit-Hook und zweiter Schlüssel bleiben unumgangen. Die ausgegebenen
  * Befehle enthalten keine Freigabe-Zeilen (F-736, siehe FREIGABE_HINWEIS). Alle Git-Aufrufe
- * laufen über execFileSync mit argv (keine Shell) und explizitem
- * cwd = Repo-Wurzel.
+ * laufen über den Git-Starter fuehreGitSync (src/git-starter, F45 S: absoluter
+ * git-Pfad, ohne geerbte GIT_*-Variablen) mit argv (keine Shell) und explizitem
+ * cwd = Repo-Wurzel. Folge der Bereinigung: ein in der Shell gesetztes GIT_CONFIG_GLOBAL bzw.
+ * GIT_CONFIG_* (etwa core.autocrlf) gilt für das `git add` dieses Skripts NICHT, für das spätere
+ * `git commit` von Hand in derselben Shell aber schon — Konfiguration gehört in die Git-Config-Dateien.
  *
  * Aufruf: npm run zustand:sichern
  * Exit 0 = gestagt, Exit 1 = Abbruch
  */
 
-import { execFileSync } from 'node:child_process'
 import { existsSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { fuehreGitSync } from '../src/git-starter/index.ts'
 
 export const ZUSTAND_ORDNER = 'kontrollzustand'
 export const LOCK_DATEI = 'kontrollzustand/.leitstand.lock'
@@ -200,9 +203,9 @@ export function naechsteBefehle(repoWurzel, branch, datumText) {
   ]
 }
 
-/** Git-Aufruf ohne Shell, mit explizitem cwd. */
+/** Git-Aufruf ohne Shell über den Git-Starter (absoluter Pfad, bereinigte Umgebung), mit explizitem cwd. */
 function git(repoWurzel, argumente) {
-  return execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  return fuehreGitSync(argumente, { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 }
 
 /** Abbruch-Ergebnis. */

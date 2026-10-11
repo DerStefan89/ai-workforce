@@ -454,7 +454,7 @@
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
-import { execFileSync } from 'node:child_process'
+import { fuehreGitSync } from '../src/git-starter/index.ts'
 import { homedir } from 'node:os'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { readFile as readFileAsync, readdir as readdirAsync, stat as statAsync } from 'node:fs/promises'
@@ -515,7 +515,8 @@ import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordn
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
-import { erzeugeAktivitaetsSpeicher, kuerze, ZIEL_MAX_ZEICHEN } from './leitstand/lauf-aktivitaet.mjs'
+import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
+import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
@@ -2379,7 +2380,8 @@ export function filtereExistierendeAnfragen(anfragen, repoWurzel) {
 
 /**
  * Impure Wiring-Funktion für E-F39-1=B (löst F-643): liest .git/HEAD und führt
- * `git --no-optional-locks status --porcelain` real gegen repoWurzel aus, reicht beide Rohtexte
+ * `git --no-optional-locks status --porcelain` real gegen repoWurzel aus (über den Git-Starter, F-1000),
+ * reicht beide Rohtexte
  * an die reine Prüfung (pruefeAusfuehrungsVorbedingung, src/ausfuehrung-vorbedingung/index.ts)
  * durch. `--no-optional-locks` ist Pflicht (Stefans Vorgabe): rein lesend, nie gegen ein
  * bestehendes index.lock eines anderen, echten Git-Vorgangs laufend. Ein Lese-/Ausführungsfehler
@@ -2398,7 +2400,7 @@ function leseAusfuehrungsVorbedingungRealGit(repoWurzel) {
   }
   let statusRoh
   try {
-    statusRoh = execFileSync('git', ['--no-optional-locks', 'status', '--porcelain'], { cwd: repoWurzel, encoding: 'utf8' })
+    statusRoh = fuehreGitSync(['--no-optional-locks', 'status', '--porcelain'], { cwd: repoWurzel, encoding: 'utf8' })
   } catch (fehler) {
     return { ok: false, grund: `Ausführung gesperrt: 'git status' nicht ausführbar (${fehler.message})` }
   }
@@ -2436,7 +2438,7 @@ function leseVersionierteDateien(repoWurzel) {
   try {
     // timeout: synchroner Aufruf (auch im 2-s-Poll von GET /api/workflows/<id>) — ein hängendes git
     // (z. B. Cloud-Sync) darf den Server nicht blockieren; Überschreitung = nicht lesbar (null).
-    const roh = execFileSync('git', ['-c', 'core.quotePath=false', 'ls-files', '-z'], {
+    const roh = fuehreGitSync(['-c', 'core.quotePath=false', 'ls-files', '-z'], {
       cwd: repoWurzel,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
@@ -2502,7 +2504,7 @@ const empfehlungCache = new Map()
 function empfehlungCacheSchluessel(auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz) {
   try {
     const katalog = statSync(join(installWurzel, 'ressourcen.json'))
-    const head = execFileSync('git', ['--no-optional-locks', 'rev-parse', 'HEAD'], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
+    const head = fuehreGitSync(['--no-optional-locks', 'rev-parse', 'HEAD'], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
     return JSON.stringify([auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz.vorschauUrl ?? null, zusatz.leitstandPort ?? null, katalog.mtimeMs, katalog.size, head])
   } catch {
     return null
@@ -3560,10 +3562,14 @@ function leseErgebnistextAusRohstrom(laufakteDaten) {
  * D5), hier auf 'permission_denials' statt 'result'. NUR claude-code: 'VERWEIGERT' kommt aus
  * permission_denials[] (ermittleErgebnis, src/result-evaluator/index.ts); die Codex-Klassifikation
  * (ermittleErgebnisCodex) kennt dieses Feld nicht, ein Codex-Lauf liefert deshalb immer [].
+ * F45 S (F-1005, QA-Pass): der Befehlstext wird maskiert (geheimnisse-maskieren.mjs), bevor er in den
+ * Halt-Grund und damit in Kontrollzustand und Leitstand geht — abgelehnte Probebefehle sind oft genau die
+ * mit Authorization-Kopf oder Token. Anfang (F760_HALT_ANFANG) und Schluss des Grunds bleiben unberührt,
+ * ermittleSichtungsHalt vergleicht nur diese.
  * @param laufakteDaten - bereits geladene LaufakteV0Daten
  * @returns Liste kurzer Beschreibungen ('<tool_name>: <command>' bzw. nur '<tool_name>'); leer, wenn nicht lesbar oder keine Ablehnungen
  */
-function leseAbgelehnteBefehleAusRohstrom(laufakteDaten) {
+export function leseAbgelehnteBefehleAusRohstrom(laufakteDaten) {
   if ((laufakteDaten.worker ?? 'claude-code') === 'codex') return []
   let rohInhalt
   try {
@@ -3583,7 +3589,7 @@ function leseAbgelehnteBefehleAusRohstrom(laufakteDaten) {
   return denials.map((denial) => {
     const name = typeof denial.tool_name === 'string' ? denial.tool_name : 'unbekannt'
     const command = typeof denial.tool_input?.command === 'string' ? denial.tool_input.command : null
-    return command !== null ? `${name}: ${command}` : name
+    return command !== null ? `${name}: ${maskiereGeheimnisse(command)}` : name
   })
 }
 
@@ -5038,9 +5044,11 @@ export function erzeugeRequestHandler(optionen = {}) {
       // verhindert, dass ein spät eintreffender Rückruf eines alten Laufs den Folgelauf überschreibt.
       beiWerkzeugaufruf: (aufruf) => {
         if (laufAktivLaufId !== laufId) return
-        // F46 D5: seit command/skill/subagent_type Ziele sind, kann ein Ziel ein mehrere KB langer Befehl sein — gekürzt wie im Ringpuffer.
-        laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: kuerze(aufruf.ziel, ZIEL_MAX_ZEICHEN) }
-        laufAktivitaet.melde(laufId, aufruf)
+        // F46 D5: seit command/skill/subagent_type Ziele sind, kann ein Ziel ein mehrere KB langer Befehl sein — gekürzt wie im Ringpuffer;
+        // F45 S (F-1005): vorher maskiert wie dort.
+        const zielAnzeige = zielFuerAnzeige(aufruf.ziel)
+        laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: zielAnzeige }
+        laufAktivitaet.melde(laufId, aufruf, zielAnzeige)
       },
     }
 
