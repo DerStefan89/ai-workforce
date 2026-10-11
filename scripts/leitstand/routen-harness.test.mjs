@@ -12,7 +12,7 @@
 
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -141,6 +141,26 @@ test('Detail: Datei der Liste und direkte Datei eines gelisteten Ordners werden 
     assert.strictEqual(baueHarnessDatei({ repoWurzel, pfad: 'docs/adr/technischer-stack.md' }).koerper.status, 'ok')
     assert.strictEqual(baueHarnessDatei({ repoWurzel, pfad: 'scripts/check-docs.mjs' }).koerper.status, 'ok')
   })
+})
+
+test('Geheimnisse (F-1005): settings.json mit maskiertem env-Block und Schlüsseln, andere Dateien nach Mustern, Datei auf Platte unverändert', async () => {
+  // Erfundene Testdaten.
+  // Schlüsselwert zur Laufzeit zusammengesetzt (Secret-Scan der CI, gitleaks).
+  const settings = `{\n  "env": {\n    "ANTHROPIC_API_KEY": "${['sk', 'ant', 'test', '0123456789abcdefgh'].join('-')}",\n` + '    "MEIN_WERT": "klartext"\n  },\n  "apiKeyHelper": "/pfad/helfer.sh",\n  "token": "t-123"\n}\n'
+  await mitRepo(
+    (repoWurzel) => {
+      const s = baueHarnessDatei({ repoWurzel, pfad: '.claude/settings.json' })
+      assert.strictEqual(s.koerper.status, 'ok')
+      assert.strictEqual(
+        s.koerper.text,
+        '{\n  "env": {\n    "ANTHROPIC_API_KEY": "••••",\n    "MEIN_WERT": "••••"\n  },\n  "apiKeyHelper": "/pfad/helfer.sh",\n  "token": "••••"\n}\n'
+      )
+      assert.strictEqual(readFileSync(join(repoWurzel, '.claude/settings.json'), 'utf8'), settings)
+      const claude = baueHarnessDatei({ repoWurzel, pfad: 'CLAUDE.md' })
+      assert.strictEqual(claude.koerper.text, '# Regeln\nexport GITHUB_TOKEN=••••\nnpm run check\n')
+    },
+    { ...DATEIEN, '.claude/settings.json': settings, 'CLAUDE.md': `# Regeln\nexport GITHUB_TOKEN=${['ghp', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123'].join('_')}\nnpm run check\n` }
+  )
 })
 
 test('Pfad außerhalb der Liste: 400, nichts gelesen (Datei im Repo, Ordner, tiefer Pfad, Skill-Datei, Test, Fremdskript)', async () => {

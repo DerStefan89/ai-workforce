@@ -1,0 +1,4 @@
+| Aktion | Ansicht | Gerade | Gewählter Aufruf | Mehr dazu: Ziel | Detail: Pfad | Detail: Inhalt | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/live: Aktivität mit maskierten Befehlen (URL-Passwort, --password, Authorization: Bearer, access_token) — „npm run check“ und Pfade unverändert; „Gerade“ maskiert | runs | Gerade: führt aus curl -H "Authorization: Bearer ••••" "https://api.example.invalid/v1?access_token=••••&seite=2" | (fehlt) | (fehlt) | (fehlt) | (fehlt) | false | true |
+| Klick auf den curl-Aufruf → Mehr dazu: Ziel maskiert | runs | Gerade: führt aus curl -H "Authorization: Bearer ••••" "https://api.example.invalid/v1?access_token=••••&seite=2" | curl -H "Authorization: Bearer ••••" "https://api.example.invalid/v1?access_token=••••&seite=2" | curl -H "Authorization: Bearer ••••" "https://api.example.invalid/v1?access_token=••••&seite=2" | (fehlt) | (fehlt) | false | true |

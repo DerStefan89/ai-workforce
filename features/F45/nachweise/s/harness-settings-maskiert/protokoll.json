@@ -1,0 +1,35 @@
+[
+  {
+    "label": "#/capabilities, Harness-Aufbau",
+    "Ansicht": "capabilities",
+    "Gerade": "(fehlt)",
+    "Gewählter Aufruf": "(fehlt)",
+    "Mehr dazu: Ziel": "(fehlt)",
+    "Detail: Pfad": "(fehlt)",
+    "Detail: Inhalt": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick auf settings.json → Detail: jeder env-Wert „••••“, token in mcpServers „••••“; apiKeyHelper (Pfad) und permissions unverändert",
+    "Ansicht": "capabilities",
+    "Gerade": "(fehlt)",
+    "Gewählter Aufruf": "(fehlt)",
+    "Mehr dazu: Ziel": "(fehlt)",
+    "Detail: Pfad": ".claude/settings.json",
+    "Detail: Inhalt": "{ \"env\": { \"ANTHROPIC_API_KEY\": \"••••\", \"INTERNER_DIENST_URL\": \"••••\", \"MEIN_SCHLUESSEL\": \"••••\" }, \"apiKeyHelper\": \"/us",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick auf CLAUDE.md → GITHUB_TOKEN maskiert, „npm run check“ unverändert",
+    "Ansicht": "capabilities",
+    "Gerade": "(fehlt)",
+    "Gewählter Aufruf": "(fehlt)",
+    "Mehr dazu: Ziel": "(fehlt)",
+    "Detail: Pfad": "CLAUDE.md",
+    "Detail: Inhalt": "# Regeln Testdaten: export GITHUB_TOKEN=•••• Prüfen mit `npm run check`.",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

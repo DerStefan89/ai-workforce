@@ -112,7 +112,6 @@
  * vergleicheClaudeOrdner), der auch git-ignorierte Dateien sieht.
  */
 
-import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, readlinkSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -122,6 +121,7 @@ import { baueKontextpaket, elementSchluessel } from '../context-builder/index.ts
 import type { Anfrage, KontextpaketV0Daten } from '../context-builder/types.ts'
 import { kanonischesJson, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import { fuehreGitSync } from '../git-starter/index.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
@@ -153,7 +153,7 @@ function vorgaengerEntscheidungArtefaktId(vorgaengerLaufId: string): string {
 export function leseClaudeAenderungen(projektWurzel: string): string[] {
   let roh: string
   try {
-    roh = execFileSync('git', ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], {
+    roh = fuehreGitSync(['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], {
       cwd: projektWurzel,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],

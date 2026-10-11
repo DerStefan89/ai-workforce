@@ -19,9 +19,9 @@
  * Nicht-Ziele).
  */
 
-import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
+import { fuehreGitSync } from '../git-starter/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import type { AutorisierungsEintrag, AutorisierungsErgebnis, AutorisierungsReferenz, Ereignis, Schreiber } from './types.ts'
 
@@ -72,10 +72,10 @@ export function leiteRepoRelativenPfadAb(pfad: string, repoWurzel: string): stri
   return pfadTrennerNormalisiert.slice(wurzelMitSlash.length)
 }
 
-/** Liest einen Pfad aus einem konkreten Commit des externen Repos. null bei jedem Fehlschlag (Commit/Pfad nicht auffindbar) — fail-closed, kein Wurf nach außen. */
+/** Liest einen Pfad aus einem konkreten Commit des externen Repos. null bei jedem Fehlschlag (Commit/Pfad nicht auffindbar, kein git im PATH) — fail-closed, kein Wurf nach außen. Git über den gemeinsamen Starter (F-1000: absoluter Pfad, ohne geerbte GIT_*-Variablen). */
 export function leseAusCommit(repoWurzel: string, commitHash: string, relativerPfad: string): string | null {
   try {
-    return execFileSync('git', ['show', `${commitHash}:${relativerPfad}`], {
+    return fuehreGitSync(['show', `${commitHash}:${relativerPfad}`], {
       cwd: repoWurzel,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],

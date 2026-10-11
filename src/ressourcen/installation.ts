@@ -40,6 +40,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, w
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
+import { gitProgramm, gitUmgebung } from '../git-starter/index.ts'
 import { ersetzePlatzhalter, paketNameAus, pruefeInstallierbarkeit, validiereRessourcenDaten } from './index.ts'
 import { berechneInhaltHash, pruefeSkillDateiNamen, zerlegeGithubUrl } from './skill-dateien.ts'
 import { COMMIT_SHA, type GitRunner, holeSkillQuelle, kopiereSkill, loeseSkillCommitAuf, pruefeSkillQuelle, SKILL_SKRIPT_HINWEIS } from './skill-installation.ts'
@@ -989,24 +990,14 @@ const pruefeServerReal: ServerPruefer = (command, args, { cwd, timeoutMs }) =>
   })
 
 /**
- * F36 WS-5b: git ohne Shell ('git' aus PATH). Aus process.env fallen alle GIT_*-Variablen weg (Reviewer:
+ * F36 WS-5b: git ohne Shell. Seit F45 S (F-1000) über den gemeinsamen Starter (src/git-starter): absoluter
+ * Pfad aus den absoluten PATH-Einträgen (gitProgramm wirft „git nicht gefunden (PATH)“ — rufeGit meldet das
+ * als „nicht ausführbar“). Aus process.env fallen alle GIT_*-Variablen weg (Reviewer:
  * GIT_CONFIG_PARAMETERS/-COUNT, GIT_DIR, GIT_SSL_NO_VERIFY, GIT_ASKPASS … könnten sonst Filter, Hooks oder
  * eine andere Quelle einschleusen); env aus skill-installation.ts (GIT_CONFIG_NOSYSTEM, GIT_CONFIG_GLOBAL
  * auf eine leere Datei, GIT_TERMINAL_PROMPT=0) kommt danach dazu.
  */
-const gitReal: GitRunner = (args, { cwd, timeoutMs, env }) => laufeProzess('git', args, { cwd, timeoutMs, env: gitUmgebung(process.env, env) })
-
-/**
- * Umgebung eines git-Aufrufs: die Server-Umgebung ohne jede GIT_*-Variable (Groß-/Kleinschreibung egal),
- * darüber die Werte aus skill-installation.ts.
- * @param basis - process.env des Servers
- * @param zusatz - GIT_CONFIG_NOSYSTEM, GIT_CONFIG_GLOBAL … des Aufrufs
- * @returns vollständige Umgebung
- */
-export function gitUmgebung(basis: NodeJS.ProcessEnv, zusatz: Record<string, string> = {}): NodeJS.ProcessEnv {
-  return { ...Object.fromEntries(Object.entries(basis).filter(([schluessel]) => !schluessel.toUpperCase().startsWith('GIT_'))), ...zusatz }
-}
-
+const gitReal: GitRunner = (args, { cwd, timeoutMs, env }) => laufeProzess(gitProgramm(), args, { cwd, timeoutMs, env: gitUmgebung(process.env, env) })
 /** Echte Runner — Default, wenn der Kontext keine injiziert. */
 export const ECHTE_RUNNER: InstallationsRunner = {
   npm: npmReal,

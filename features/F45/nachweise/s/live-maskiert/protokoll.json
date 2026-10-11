@@ -1,0 +1,24 @@
+[
+  {
+    "label": "#/live: Aktivität mit maskierten Befehlen (URL-Passwort, --password, Authorization: Bearer, access_token) — „npm run check“ und Pfade unverändert; „Gerade“ maskiert",
+    "Ansicht": "runs",
+    "Gerade": "Gerade: führt aus curl -H \"Authorization: Bearer ••••\" \"https://api.example.invalid/v1?access_token=••••&seite=2\"",
+    "Gewählter Aufruf": "(fehlt)",
+    "Mehr dazu: Ziel": "(fehlt)",
+    "Detail: Pfad": "(fehlt)",
+    "Detail: Inhalt": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick auf den curl-Aufruf → Mehr dazu: Ziel maskiert",
+    "Ansicht": "runs",
+    "Gerade": "Gerade: führt aus curl -H \"Authorization: Bearer ••••\" \"https://api.example.invalid/v1?access_token=••••&seite=2\"",
+    "Gewählter Aufruf": "curl -H \"Authorization: Bearer ••••\" \"https://api.example.invalid/v1?access_token=••••&seite=2\"",
+    "Mehr dazu: Ziel": "curl -H \"Authorization: Bearer ••••\" \"https://api.example.invalid/v1?access_token=••••&seite=2\"",
+    "Detail: Pfad": "(fehlt)",
+    "Detail: Inhalt": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

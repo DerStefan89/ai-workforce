@@ -23,7 +23,6 @@ import {
   baueCodeProjektion,
   baueStartvorlageAuszug,
   DIFF_MAX_BYTES,
-  findeGitProgramm,
   fuehreGitAus,
   githubWebUrl,
   parseNumstat,
@@ -387,11 +386,8 @@ test('Randfälle der Route: detached HEAD, ohne origin, ohne Commits, mehr als 5
   assert.deepEqual(fehlt.arbeitsverzeichnis, { status: 'ok', vorhanden: false })
 })
 
-test('Git: absoluter Programmpfad, relative PATH-Einträge zählen nicht, GIT_DIR der Umgebung lenkt nicht um (Prüfpass cr 3, cr 9)', async () => {
-  const absolut = findeGitProgramm()
-  assert.ok(absolut === null || /^(?:[A-Za-z]:[\\/]|\/)/.test(absolut), String(absolut))
-  assert.equal(findeGitProgramm('.;relativ;bin', 'win32'), null)
-  assert.equal(findeGitProgramm('.:relativ', 'linux'), null)
+// Programmauflösung (absoluter Pfad, relative PATH-Einträge zählen nicht) prüft seit F45 S src/git-starter/git-starter.test.ts.
+test('Git: GIT_DIR der Umgebung lenkt nicht um (Prüfpass cr 9)', async () => {
   await mitRepo(async (repo) => {
     const anderes = mkdtempSync(join(tmpdir(), 'f46-code-anderes-'))
     const vorher = process.env.GIT_DIR
