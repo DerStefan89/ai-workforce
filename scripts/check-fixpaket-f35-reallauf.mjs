@@ -589,7 +589,8 @@ async function starteSchritt(fall, optionen) {
   const wert = (tokens, flag) => (tokens.includes(flag) ? tokens[tokens.indexOf(flag) + 1] : undefined)
   const schreibend = baueAufruf({ modell: 'm', prompt: 'p', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Write', ...allowlist] } })
   if (wert(schreibend, '--tools') !== 'Read,Write,Bash') befunde.push(`(e) baueAufruf: --tools erwartet 'Read,Write,Bash', erhalten '${wert(schreibend, '--tools')}'`)
-  if (wert(schreibend, '--allowedTools') !== ['Read', 'Write', ...allowlist].join(',')) befunde.push('(e) baueAufruf: --allowedTools muss die vollen Regeln tragen')
+  // F45 B1b-1 (F-1040): ein nacktes 'Write'/'Edit' wird auf den Arbeitsordner begrenzt ('Edit(./**)'), die übrigen Regeln bleiben voll.
+  if (wert(schreibend, '--allowedTools') !== ['Read', 'Edit(./**)', ...allowlist].join(',')) befunde.push('(e) baueAufruf: --allowedTools muss die vollen Regeln tragen (Write/Edit begrenzt auf Edit(./**))')
   if (wert(schreibend, '--disallowedTools') !== 'Bash(git:*)') befunde.push(`(e) baueAufruf: --disallowedTools 'Bash(git:*)' erwartet, erhalten '${wert(schreibend, '--disallowedTools')}'`)
   const lesend = baueAufruf({ modell: 'm', prompt: 'p', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Grep', 'Glob'] } })
   const lesendErwartet = ['--model', 'm', '--output-format', 'stream-json', '--verbose', '--setting-sources', 'project', '--tools', 'Read,Grep,Glob', '--allowedTools', 'Read,Grep,Glob', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '-p', 'p']

@@ -156,4 +156,3 @@ nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 - F-791 · HARNESS_IMPROVEMENT · Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste wird bei jedem Update still undicht.
 - F-936 · PROCESS_IMPROVEMENT · Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe.
 - F-1018 · BUG · Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor ≈ 5–10.
-- F-1026 · BUG · Ausführung endet „erfolgreich“, aber unvollständig, wenn ein Prüfbefehl im -p-Lauf in den Hintergrund wandert.

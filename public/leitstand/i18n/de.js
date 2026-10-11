@@ -1631,6 +1631,7 @@ export default {
   'chat.grund.keinErgebnisobjekt': 'kein Ergebnis in der Laufausgabe',
   'chat.grund.initGateVerstoss': 'Startprüfung nicht bestanden',
   'chat.grund.claudeOrdnerVeraendert': 'Harness-Ordner .claude während des Laufs verändert',
+  'chat.grund.hintergrundAusfuehrung': 'Lauf hat Befehle in den Hintergrund geschoben — Ergebnis unvollständig',
   'chat.grund.werkzeuggrenzeAbgelehnt': 'Werkzeugaufruf außerhalb der erlaubten Grenze',
   'chat.grund.fehlgeschlagen': 'Lauf fehlgeschlagen',
   'chat.grund.unerwarteterLaufstatus': 'unerwarteter Laufstatus',

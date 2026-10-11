@@ -146,6 +146,7 @@ export const GRUND_SCHLUESSEL = {
   kein_ergebnisobjekt: 'chat.grund.keinErgebnisobjekt',
   init_gate_verstoss: 'chat.grund.initGateVerstoss',
   claude_ordner_veraendert: 'chat.grund.claudeOrdnerVeraendert',
+  hintergrund_ausfuehrung: 'chat.grund.hintergrundAusfuehrung',
   werkzeuggrenze_abgelehnt: 'chat.grund.werkzeuggrenzeAbgelehnt',
   fehlgeschlagen: 'chat.grund.fehlgeschlagen',
   unerwarteter_laufstatus: 'chat.grund.unerwarteterLaufstatus',

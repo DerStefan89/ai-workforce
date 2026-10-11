@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gebaut (Branch `feat/f45-b1a2-skelett`, Basis `fde3b06`, nicht committet; Abschnitt „Stand B1a-2“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gebaut (Branch `feat/f45-b1b1-harness-lauf`, Basis `cf433fd`, nicht committet; Abschnitt „Stand B1b-1“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -35,9 +35,9 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 | P | Performance: /api/zustand im Langlauf, Event-Loop-Blockaden beseitigen, Seitenwechsel messen, f16-Restordner | F-556, F-999 | B0 (Messskript) | vor Merge | 0,5 | ≈ 1,25 AT + ≈ 6 h Messung (Bau, nicht gemergt) |
 | S | Härtung klein: ein Git-Starter für alle Aufrufe, Geheimnis-Maskierung (Live-Aktivität, env im Harness-Detail), Abbruch-Formulierung | F-1000, F-1005, F-1003 | – | vor Merge | 0,3 | |
 | B1a | Lauf-Umgebung: Branch/Worktree je Lauf (Gültigkeitsschlüssel misst die Einstellungen des Lauf-Ordners), Vorlage nachziehen (513), Mindest-Gates im Skelett, check:template, Standard-Startvorlage aus dem Register, Löschen im Lauf, Kontrollzustand in Fremdprojekten | F-954, F-939, F-701, F-1009, F-715, F-766 | E-F45-3 | Advisor-Pass, vor Merge | 1–1,25 | |
-| B1b | Harness im Lauf: Projekt-Agents/-Skills im Lauf, Freigabe nach Inhalt, Vorstart-Scan, Codex-Harness-Regeln, Hooks belegen, „vorgesehen gegen benutzt“ an Review und Abnahme, /lessons, Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce | F-815, F-816, F-818, F-929, F-932, F-937, F-933 | B1a | vor Merge | 0,75 | |
-| F | Fähigkeiten verwalten: MCPs, Skills, Agents und Plugins im Leitstand installieren (auch aus den OFFEN-Einträgen), je Projekt aktivieren/deaktivieren (wirkt ab dem nächsten Lauf, gespeichert im Workforce-Register, nicht in settings.json — E-F46-2), Agents installierbar und im Lauf nutzbar, Plugins im Fähigkeitenmodell; sichtbar: installiert · aktiv · im letzten Lauf benutzt (Seite Workforce, Lauf-Detail); MCP-Grenzen nach E-F36-4 (Einzelfreigabe, Kosten sichtbar, nur lesend) | F-815 (Agents), F-910, F-859, F-1012 | B1b | Advisor-Pass, vor Merge | 1,25–1,5 | |
-| B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte an alle planenden/prüfenden Rollen; DoD und Checkliste an Review/qa; Feature ↔ Ablauf | F-938, F-936, F-829, F-931, F-989, F-998, F-959 | B1b | vor Merge | 1 | |
+| B1b | Harness im Lauf, geschnitten am 11.10.2026: **B1b-1** Hintergrund-Ausführung abschalten und als unvollständig werten, Lauf-Härtung (npm-Installationsskripte aus, Schreiben nur im Arbeitsordner), Hooks im -p-Lauf belegen, commit-guard härten, „vorgesehen gegen benutzt“ ans Review, Vorstart-Scan; **B1b-2** Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce, Kurzliste der benutzten Fähigkeiten an die Abnahme. Verschoben: Projekt-Agents/-Skills im Lauf und Freigabe nach Inhalt (F-815/F-816 → F), Codex-Harness-Regeln (F-929 → B2a), /lessons (F-933 → Teil 2) | B1b-1: F-1026, F-1027, F-1035, F-818, F-932, F-937 (Review); B1b-2: F-937 (Abnahme), Beleg 12 | B1a | vor Merge | 0,75 | |
+| F | Fähigkeiten verwalten: MCPs, Skills, Agents und Plugins im Leitstand installieren (auch aus den OFFEN-Einträgen), je Projekt aktivieren/deaktivieren (wirkt ab dem nächsten Lauf, gespeichert im Workforce-Register, nicht in settings.json — E-F46-2), Agents installierbar und im Lauf nutzbar, Plugins im Fähigkeitenmodell; sichtbar: installiert · aktiv · im letzten Lauf benutzt (Seite Workforce, Lauf-Detail); MCP-Grenzen nach E-F36-4 (Einzelfreigabe, Kosten sichtbar, nur lesend); aus B1b: Projekt-Agents/-Skills im Lauf, Freigabe nach Inhalt | F-815, F-816, F-910, F-859, F-1012 | B1b | Advisor-Pass, vor Merge | 1,25–1,5 | |
+| B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte an alle planenden/prüfenden Rollen; DoD und Checkliste an Review/qa; Feature ↔ Ablauf; aus B1b: Codex-Harness-Regeln | F-938, F-936, F-829, F-931, F-989, F-998, F-959, F-929 | B1b | vor Merge | 1 | |
 | B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011 | B2a | Advisor-Pass, vor Merge | 1,25–1,5 | |
 | B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 | |
 | B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 | |
@@ -311,3 +311,71 @@ code-reviewer und qa zunächst „nicht freigegeben“ — Nachrüsten legte ein
 host-abhängig (Linux-CI rot), Kopierfehler mittendrin, verwaiste Links, kaputter Registereintrag ungetestet, gitleaks/Docker
 mit falscher Ursache u. a. Alles korrigiert (Plan, „Nachtrag Bau und Korrekturrunde“). Nachpass: code-reviewer und qa
 „freigegeben mit Hinweisen“; Hinweise eingearbeitet bzw. oben als Grenze genannt. design-guardian nicht nötig (keine UI-Änderung).
+
+## Stand B1b-1
+Branch `feat/f45-b1b1-harness-lauf` (Basis `cf433fd` = main mit #320), nicht committet. Bau 11.10.2026.
+Plan `features/F45/plan-b1b1.md` (v1 → Advisor-Pass „tragfähig mit Änderungen“, A1–A5/H1–H7 → v2).
+**Zuschnitt B1b:** B1b-1 (dieser Stand) und B1b-2 (Harness-Abgleich-Tabelle, Kurzliste an die Abnahme, UI). Verschoben:
+F-815/F-816 → F, F-929 → B2a, F-933 → Teil 2 (Zeile „L“ in `docs/projekt/fixpaket-f45.md`).
+
+**Gebaut:**
+- **Hintergrund (F-1026):** jeder Claude-Code-Lauf mit `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` (`WORKFORCE_LAUF_UMGEBUNG`,
+  nicht abwählbar). Netz: `ermittleHintergrundAufrufe` zählt angenommene Hintergrund-Aufrufe — `tool_use_result.backgroundTaskId`
+  (die reale F-1026-Form: automatisch verschoben ohne `run_in_background`) oder `run_in_background` ohne Fehler; neues optionales
+  Laufakten-Feld `beobachtung.hintergrund_aufrufe` (Schema, Typ, Validator). Der Result Evaluator rechnet aus dem Rohstrom nach:
+  FEHLGESCHLAGEN/`hintergrund_ausfuehrung` vor VERWEIGERT/ERFOLGREICH (ARCHITECTURE §4; ein gleichzeitiger Umgehungsverdacht
+  steht in `daten`); der Server hält den Workflow mit klarem Grund an (KLAERUNG_ERFORDERLICH; Text nennt Version/Rohstrom
+  prüfen und Reparaturfassung). Text des Grund-Codes in vier Sprachen
+  (Pflicht des bestehenden Tests „jeder Klassifikationscode ist bekannt“; keine sichtbare UI-Änderung).
+- **Lauf-Härtung (F-1027):** `npm_config_ignore_scripts=true` in jedem Claude-Code-Lauf (real belegt: `prepare` lief mit der
+  Variable nicht, ohne sie schon); Zusammenführen der Umgebung entfernt unter Windows gleichnamige Schlüssel anderer Schreibweise. **Realer Rot-Fall belegt und behoben (F-1040):** ein nacktes
+  `Write`/`Edit` in `--allowedTools` erlaubte jeden Pfad — Write legte im `-p`-Lauf Dateien im Eltern- und im Projektordner
+  an. `baueAufruf` begrenzt Write/Edit jetzt auf `Edit(./**)`; danach beide verweigert, Write im Worktree geht.
+- **Hooks (F-932, PreToolUse):** realer `-p`-Lauf mit `--setting-sources project` und Skelett-Hooks: guard-settings verweigert
+  ein Edit auf `.claude/settings.json` (Grund im tool_result, Datei byte-gleich).
+- **commit-guard (F-1035, F-1037), nur Root-Hook von ai-workforce:** Aufgabe 5 (`.claude` als Kopier-/Verschiebe-/Lösch-/
+  Schreibziel, Quelle oder Ziel, Platzhalter, ./-Varianten, Pipeline, Wechsel in `.claude`, Inline-Code) und Aufgabe 6
+  (rm -rf in allen Schreibweisen, Remove-Item -Recurse -Force, rd /s /q, git branch -D, git reset --hard, git clean -f,
+  git checkout ., git restore ., git stash drop/clear, git worktree remove --force, git update-ref -d). Skelett-Hooks unverändert
+  (F-1038 für das Template-Repo). **Der E-183-Hash von ai-workforce ändert sich — Startfreigabe neu erteilen.**
+- **Review (F-937, Teil Review):** der code-reviewer-Schritt (Claude und Codex) bekommt `baueBeobachtungsBlock` — geladen gegen
+  aufgerufen (Skills, Subagenten, MCP-Server), Hintergrund-Aufrufe; ohne Beobachtung der Satz „keine Beobachtung“.
+  Ausführungslauf über `findeAusfuehrungsSchritt`.
+- **Vorstart-Scan (F-818):** Ausnahme genau `vorlagen/projekt-skelett/.claude`, nur wenn der Projektordner die Installation
+  ist (realpath, Windows ohne Groß/Klein); die Skelett-Skill-/Command-Namen werden dann wie Projekt-Skills gesperrt.
+
+**Nachweise** `features/F45/nachweise/b1b1/nachweis.md`: acht reale Läufe (Haiku, Wegwerf-Ordner; Lauf 1 = Rot-Fall vor dem
+Fix), Beleg 1b (Doku + CLI-Binary + Kontrolllauf), Laufkosten (≈ 132 s Wanduhr, 5 331 Output-Token), Testnamen. Rohströme
+bleiben nach ARCHITECTURE §4 lokal (gitignoriert, SHA-256 in der Nachweis-Datei); committet werden die Zählungen.
+
+**Grenzen:**
+- `Bash(npm run check:*)` erlaubt kein `npm run check:<name>` (CLI-Semantik `:*` ≡ ` *`), die Instruktion verspricht es (F-1041, B2b).
+- Das PowerShell-Werkzeug läuft am Bash-Matcher von commit-guard vorbei (F-1042, settings.json = Stefan).
+- Schreiben über npm-Skripte begrenzt die Pfadregel nicht; `.git` bleibt im Worktree geteilt; Fremdprojekte mit `pre`/`post`-
+  Skripten sehen im Lauf ein anderes `npm run` als im Prüfschritt (F-1027 offen).
+- Der Review-Block vergleicht geladen mit aufgerufen; „vorgesehen“ kommt mit dem Arbeitspaket (B2a).
+- commit-guard sperrt bewusst streng: auch Lesen aus `.claude` mit einem schreibenden Verb. Commit-/PR-Texte und
+  Heredoc-Körper ohne Shell zählen nicht als Befehl. Nicht erkannt: Kopien eines ganzen Ordnerinhalts (`cp -r ../tpl/. ./`).
+- Ohne Hintergrund wird ein Befehl über der Bash-Zeitgrenze beendet (Exit 143); ein langer `npm run check` im Lauf
+  braucht deshalb eine ausreichende `timeout`-Angabe (real nicht mit langer Kette geprüft). Hintergrund über die Shell
+  selbst (`&`, `nohup`) zählt die Regel nicht.
+
+**Prüfpass** (frischer Kontext, eine Korrekturrunde): architecture-advisor „tragfähig mit Änderungen“ (A1–A5/H1–H7 → Plan v2;
+A1 real belegt: der F-1026-Fall war automatisches Verschieben). code-reviewer und qa „freigegeben mit Hinweisen“; in der
+Korrekturrunde umgesetzt: Rohströme lokal statt committet, A3 zurück auf ARCHITECTURE §4 (Verdacht in `daten`), commit-guard
+ohne Fehlsperren bei Commit-/PR-Texten, Suchmustern und `-ErrorAction` (Befehlsstellen statt jedes Token), `tar`, realer
+npm-Beleg, Halt-Text handlungsfähig, mehrere tool_results fail-closed, eigener Satz bei fehlender Laufakte, Kommentare.
+Gate-Änderungen: `check-f35-ws2` (e) prüft den Review-Text vor dem neuen Beobachtungs-Block; `check-fixpaket-f35-reallauf`
+(e) erwartet `Edit(./**)` statt nacktem `Write`.
+
+**Nachtrag (11.10.2026):**
+- **Bash-Zeitgrenze:** `BASH_DEFAULT_TIMEOUT_MS`/`BASH_MAX_TIMEOUT_MS` im installierten CLI belegt (Standard 120000,
+  Höchstwert ohne Variable 600000, per Variable anhebbar). Neues optionales Startvorlagen-Feld `bashZeitgrenzeMs`
+  (Standard 600000, nicht über `zeitgrenzeMs`); das Gateway setzt beide Variablen = min(Feld, Lauf-Zeitgrenze).
+  Messung `npm run check`: `features/F45/nachweise/b1b1/nachweis.md`.
+- **PowerShell-Werkzeug (F-1042):** Eingabeform real belegt (`tool_name` "PowerShell", `tool_input` { command,
+  description }); commit-guard verweigerte im echten Lauf `Remove-Item -Recurse -Force`; Rot-/Grün-Tests mit dieser Form.
+  Wirksam erst mit Matcher `Bash|PowerShell` in `.claude/settings.json` (Stefan).
+- **Startfreigabe:** `werkzeugVersionDeklariert` in `startvorlagen/ai-workforce.json` auf die installierte 2.1.296 gezogen;
+  neue Baseline/Nachweis, Commit im Autorisierungs-Repo und `state/aktuelle-autorisierung.json` erzeugt Stefan (E3). Kein Nachpass nötig (beide hatten
+freigegeben). design-guardian nicht nötig (keine UI-Änderung).

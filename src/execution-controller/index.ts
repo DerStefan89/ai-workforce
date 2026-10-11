@@ -453,6 +453,7 @@ export async function fuehreAufgabeDurch(
             aktuelleAutorisierungPfad: optionen.aktuelleAutorisierungPfad,
             startfreigabeRepoWurzel: optionen.startfreigabeRepoWurzel,
             zeitgrenzeMs: optionen.zeitgrenzeMs,
+            bashZeitgrenzeMs: optionen.bashZeitgrenzeMs,
             abbruchSignal: optionen.abbruchSignal,
             cwd: optionen.cwd,
             zeitmessung: optionen.zeitmessung,

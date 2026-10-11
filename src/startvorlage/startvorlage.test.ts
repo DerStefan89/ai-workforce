@@ -243,3 +243,12 @@ test('validiereStartvorlageDaten: Skill, Agent, Task und mcp__… in erlaubte_we
   // Grünseite: ähnliche, aber andere Namen bleiben zulässig.
   assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, werkzeugsaetze: { ...GUELTIGE_VORLAGE.werkzeugsaetze, lesend: { art: 'lesend', modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'TaskOutput', 'Skills'] } } }), [])
 })
+
+test('validiereStartvorlageDaten (F45 B1b-1): bashZeitgrenzeMs optional, positive ganze Zahl, nie über zeitgrenzeMs', () => {
+  assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, bashZeitgrenzeMs: 900000 }), [])
+  assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, zeitgrenzeMs: 1800000, bashZeitgrenzeMs: 1800000 }), [])
+  for (const falsch of [0, -1, 1.5, '600000', null]) {
+    assert.ok(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, bashZeitgrenzeMs: falsch }).some((v) => v.includes('bashZeitgrenzeMs')), String(falsch))
+  }
+  assert.ok(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, zeitgrenzeMs: 300000, bashZeitgrenzeMs: 600000 }).some((v) => v.includes("darf nicht über 'zeitgrenzeMs'")))
+})

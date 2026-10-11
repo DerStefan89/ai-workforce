@@ -39,6 +39,13 @@ export interface StartvorlageV0Daten {
   /** Harte Wanduhr-Grenze in Millisekunden für jeden über diese Startvorlage gestarteten Lauf (F14 WS-4, F-177). Optional — fehlt sie, bleibt der Prozessstart ohne Timeout. */
   zeitgrenzeMs?: number
   /**
+   * F45 B1b-1: Zeitgrenze eines einzelnen Bash-Befehls im Claude-Code-Lauf in Millisekunden — wird als
+   * BASH_DEFAULT_TIMEOUT_MS und BASH_MAX_TIMEOUT_MS gesetzt (Hintergrund ist abgeschaltet, ein Befehl über
+   * der Grenze wird beendet). Optional; ohne Feld gilt STANDARD_BASH_ZEITGRENZE_MS (600000), nie über der
+   * Lauf-Zeitgrenze (zeitgrenzeMs bzw. schritt.zeitgrenze_ms).
+   */
+  bashZeitgrenzeMs?: number
+  /**
    * F-652 (state/findings.md F-652, BUG P1): argv eines deterministischen Prüfbefehls (z. B.
    * `npm run check`), den der KERN nach jedem real erfolgreich beendeten Lauf mit schreibendem
    * Werkzeugsatz selbst ausführt (src/pruefschritt/index.ts). Seit E-F754 trägt der Werkzeugsatz

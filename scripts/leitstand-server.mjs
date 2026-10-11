@@ -468,7 +468,7 @@ import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
 import { registriereAuftrag, validiereAuftragHerkunft } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
-import { leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
+import { baueBeobachtungsBlock, leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
 import { arbeitsverzeichnisseGleich } from '../src/invocation-policy/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
@@ -1901,6 +1901,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'startfreigabeRepoWurzel',
   // F14 WS-1, AK2: neu in AusfuehrungsOptionen (src/execution-controller/types.ts), PFLICHT-Nachtrag.
   'zeitgrenzeMs',
+  // F45 B1b-1: ebenso — kommt aus der Startvorlage (bashZeitgrenzeMs), nie über den Body.
+  'bashZeitgrenzeMs',
   // F14 WS-4, AK7: ebenso — entsteht serverseitig (ein AbortController je aktivem Lauf), kommt nie über den Body.
   'abbruchSignal',
   // F25 WS-1, AK3: ebenso — entsteht serverseitig aus dem Projektregister (projekte.json), kommt nie über den Body.
@@ -2721,6 +2723,8 @@ export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leits
  *   skillEintraege (F36 WS-5b): aufgelöste, angezeigte Ort-B-Skills (extern skill) — nur für
  *   'ausfuehrung' mit schreibendem Werkzeugsatz ausgewertet (baueOrtBSkillStart, V4a); Default leer.
  *   capWurzel (F36 WS-5b): Workforce-Ordner der Installationen — Pflicht, sobald skillEintraege übergeben werden
+ *   projektOrdner/installWurzel (F45 B1b-1, F-818): Projektordner (nicht der Worktree) und Installation — nur bei
+ *   gleichem realpath ist vorlagen/projekt-skelett/.claude vom Vorstart-Scan ausgenommen; fehlt installWurzel, keine Ausnahme
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
@@ -2923,7 +2927,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   const skillEintraege = optionen.skillEintraege ?? []
   if (erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, werkzeugsatz.art) && skillEintraege.length > 0) {
     if (typeof optionen.capWurzel !== 'string' || optionen.capWurzel.length === 0) return { ok: false, grund: 'Ort-B-Skill-Start abgelehnt: cap-Wurzel fehlt (optionen.capWurzel)' }
-    const ortB = baueOrtBSkillStart(skillEintraege, repoWurzel, optionen.capWurzel)
+    const ortB = baueOrtBSkillStart(skillEintraege, repoWurzel, optionen.capWurzel, { projektOrdner: optionen.projektOrdner ?? repoWurzel, installWurzel: optionen.installWurzel })
     if (!ortB.ok) return { ok: false, grund: ortB.grund }
     erlaubteWerkzeuge = [...new Set([...erlaubteWerkzeuge, 'Skill'])]
     // Zusammenführen statt ersetzen: ein künftig gesetztes disallowedTools bliebe erhalten (heute setzt es keine Ausführung).
@@ -3614,6 +3618,18 @@ export function leseAbgelehnteBefehleAusRohstrom(laufakteDaten) {
 
 /** F-760: Anfang des Halt-Grunds bei VERWEIGERT ohne Bypass-Verdacht — geteilt mit ermittleSichtungsHalt (F-768), damit Bau und Erkennung nicht auseinanderlaufen. */
 const F760_HALT_ANFANG = 'Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: '
+
+/**
+ * F45 B1b-1 (F-1026): Halt-Grund eines Schritts, dessen Lauf Befehle in den Hintergrund geschoben hat.
+ * @param schrittId - Schritt
+ * @param laufId - Lauf
+ * @param anzahl - Zahl der Hintergrund-Aufrufe aus der Laufakte, undefined ohne beobachtung
+ * @returns Grundtext
+ */
+export function baueHintergrundHaltGrund(schrittId, laufId, anzahl) {
+  const zahl = typeof anzahl === 'number' ? `${anzahl} Hintergrund-Aufruf${anzahl === 1 ? '' : 'e'}` : 'Anzahl unbekannt'
+  return `Schritt '${schrittId}': Lauf hat Befehle in den Hintergrund geschoben — Ergebnis unvollständig (${zahl}, Lauf '${laufId}'). Die Abschaltung CLAUDE_CODE_DISABLE_BACKGROUND_TASKS hat nicht gegriffen: Claude-Code-Version und Rohstrom prüfen, dann den Schritt über eine Reparaturfassung neu ansetzen.`
+}
 
 /**
  * F-760: Schluss des ersten Halt-Grund-Teils. Zusatzgründe (Scope, Stack, Prüfkette) hängt der Halt
@@ -5281,6 +5297,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       ...optionen,
       ...(vorlage.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: vorlage.zeitgrenzeMs } : {}),
       ...(zeitgrenzeMsUeberschreibung !== undefined ? { zeitgrenzeMs: zeitgrenzeMsUeberschreibung } : {}),
+      // F45 B1b-1: Bash-Zeitgrenze im Lauf aus der Startvorlage (das Gateway begrenzt sie auf zeitgrenzeMs).
+      ...(vorlage.bashZeitgrenzeMs !== undefined ? { bashZeitgrenzeMs: vorlage.bashZeitgrenzeMs } : {}),
       abbruchSignal: laufAktivAbortController.signal,
       ...(zeitmessungMarke !== undefined ? { zeitmessung: zeitmessungMarke } : {}),
       // F45 B1a-1: Lauf im eigenen Arbeitsordner — Kindprozess und E-183-Messung dort (E-188 bleibt process.cwd()).
@@ -5791,6 +5809,23 @@ export function erzeugeRequestHandler(optionen = {}) {
       auftragstext = `${auftragstext}\n\n${baueAkPruefInstruktion(auftragVersion.daten.akzeptanzkriterien, auftragVersion.daten.nicht_ziele ?? [])}`
     }
 
+    // F45 B1b-1 (F-937, Teil Review): der code-reviewer-Schritt (Claude und Codex gleich) bekommt die
+    // Beobachtung des Ausführungslaufs (geladen gegen aufgerufen, Hintergrund-Aufrufe) als kurzen Block.
+    // Ausführungslauf = findeAusfuehrungsSchritt mit lauf_id (die Korrekturschleife setzt denselben Schritt
+    // zurück, die lauf_id ist also immer der neueste Lauf). Ohne gelaufenen Ausführungsschritt kein Block
+    // (bitgenau wie bisher); ohne beobachtung (Codex, keine init-Zeile) der Satz „keine Beobachtung“.
+    if (schritt.rolle === 'code-reviewer') {
+      const ausfuehrungLaufId = findeAusfuehrungsSchritt(workflowDaten)?.lauf_id
+      if (typeof ausfuehrungLaufId === 'string') {
+        const ausfuehrungLaufakte = ladeArtefaktVersion(`laufakte-${ausfuehrungLaufId}`, undefined, ladeOptionen)
+        const block =
+          ausfuehrungLaufakte === null
+            ? `Beobachtung des Ausführungslaufs: Laufakte des Laufs '${ausfuehrungLaufId}' nicht gefunden — ob vorgesehene Skills und Subagenten benutzt wurden, ist nicht belegt.`
+            : baueBeobachtungsBlock(ausfuehrungLaufakte.daten?.beobachtung)
+        auftragstext = `${auftragstext}\n\n${block}`
+      }
+    }
+
     // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
     // diesen zeigt und der real gelaufen ist. Beim ERSTEN Schritt gibt es keinen — dann bleibt
     // vorgaengerLaufId weg. Kein neuer Mechanismus, nur die bestehende Verweisbildung aus
@@ -5825,7 +5860,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (angezeigteEmpfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(schritt.rolle, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)) {
       const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort })
       if (!vorbereitet.ok) return { ok: false, art: 'konflikt', grund: vorbereitet.grund }
-      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leitstandPort) }
+      // F45 B1b-1 (F-818): projektOrdner/installWurzel für die Skelett-Ausnahme des Vorstart-Scans (realpath-Vergleich).
+      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leitstandPort), projektOrdner: repoWurzel, installWurzel }
       if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
     }
 
@@ -6238,6 +6274,18 @@ export function erzeugeRequestHandler(optionen = {}) {
         verweigertHalt = { art: 'haltKlaerung', grund: nachlaufVerstoesseVerweigert.join(' | '), aktiverSchrittId: schritt.schritt_id }
       }
 
+      // F45 B1b-1 (F-1026): der Result Evaluator wertet einen Lauf mit Hintergrund-Ausführung als
+      // FEHLGESCHLAGEN ('hintergrund_ausfuehrung'). Regel 1 hielte ohnehin an, nennte aber nur
+      // „endete FEHLGESCHLAGEN“ — dieser Halt nennt den Grund und den echten Weg (Reparaturfassung; ein
+      // Schritt mit lauf_id ist nie wieder startbereit). Die Anzahl kommt aus der Laufakte (dieselbe
+      // Zählregel wie der Evaluator, ermittleHintergrundAufrufe); ohne beobachtung „Anzahl unbekannt“.
+      // Gilt für jede Rolle; schließt sich mit verweigertHalt aus (FEHLGESCHLAGEN ≠ VERWEIGERT).
+      let hintergrundHalt = null
+      if (!heilbar && schrittStatus === 'FEHLGESCHLAGEN' && ergebnis?.klassifikation?.grund === 'hintergrund_ausfuehrung') {
+        const anzahl = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)?.daten?.beobachtung?.hintergrund_aufrufe?.length
+        hintergrundHalt = { art: 'haltKlaerung', grund: baueHintergrundHaltGrund(schritt.schritt_id, laufId, anzahl), aktiverSchrittId: schritt.schritt_id }
+      }
+
       // WS-2c (a2) 1.: das Ergebnis von ermittleNaechstenSchritt, das der Updater ohnehin
       // berechnet, zusätzlich hier festhalten. Kein Trick — schreibeWorkflowFortschritt ruft
       // leiteWorkflowFelderAb synchron auf, die Zuweisung ist nach dem Aufruf sicher belegt.
@@ -6255,6 +6303,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           // Mensch klärt (KLAERUNG_ERFORDERLICH), und ein erneuter Start ist danach möglich.
           if (heilbar) return { status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: schritt.schritt_id, grund: heilungsGrund }
           naechster =
+            hintergrundHalt ??
             verweigertHalt ??
             ermittleNaechstenSchritt(datenMitSchritt, {
               schrittId: schritt.schritt_id,
@@ -7689,7 +7738,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           sendeJson(res, 400, { grund: vorbereitet.grund })
           return
         }
-        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, req.socket?.localPort) }
+        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, req.socket?.localPort), projektOrdner: repoWurzel, installWurzel }
         if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
       }
       const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, ausfuehrungsOptionen)

@@ -1,0 +1,33 @@
+{
+  "modell": "claude-haiku-4-5",
+  "exitCode": 0,
+  "dauer_ms_wand": 10985,
+  "verbrauch": {
+    "input_tokens": 18,
+    "output_tokens": 257,
+    "cache_read_tokens": 21191,
+    "cache_write_tokens": 5218,
+    "dauer_ms": 8196,
+    "dauer_api_ms": 4176,
+    "turns": 2,
+    "quelle": "claude-code"
+  },
+  "npm_config_ignore_scripts_gesetzt": true,
+  "werkzeugaufrufe": [
+    {
+      "id": "toolu_01W1moDTiGNyAX9WAHo89MSJ",
+      "name": "Bash",
+      "eingabe": {
+        "command": "npm install",
+        "description": "Install npm dependencies"
+      },
+      "ergebnis": {
+        "is_error": false,
+        "text": "up to date, audited 1 package in 395ms\n\nfound 0 vulnerabilities",
+        "backgroundTaskId": null
+      }
+    }
+  ],
+  "prepare_lief": false,
+  "ergebnistext": "fertig."
+}

@@ -46,7 +46,7 @@ Gleichwertigkeit zum heutigen Ablauf:
 **Bestehensbedingung (E-Stefan = A, 535, F-980):** Ein echter Referenzauftrag läuft vom Coach bis zur Abnahme in einem Fremdprojekt, gleichwertig zum manuellen Ablauf. Belege:
 1. Projektkarte wirkte bei allen planenden und prüfenden Rollen (B2a)
 2. Arbeitspaket mit Ziel, AK, Nicht-Zielen, DoD wirkte vom Architekten bis zur Abnahme (B2a)
-3. Skills/Agents „vorgesehen gegen benutzt“ (B1b)
+3. Skills/Agents „vorgesehen gegen benutzt“ (B1b-1 Review, B1b-2 Abnahme)
 4. Mindest-Gates haben gewirkt (B1a)
 5. Render-Nachweis im Lauf (B2b, B3)
 6. Prüferpass code-reviewer/qa/design-guardian + höchstens eine Korrekturrunde als Schritt der Kette (B2b)
@@ -55,7 +55,7 @@ Gleichwertigkeit zum heutigen Ablauf:
 9. Verifikation in sauberer Umgebung, Branch/Worktree je Lauf (B1a)
 10. Stefan muss keinen Zwischentext lesen (B2a, B2b)
 11. K1–K5, P1–P5 und R1–R7 im Referenzlauf erneut erfüllt.
-12. Harness-Abdeckung: Die Workforce erzeugt im Referenzlauf aus dem Projekt-Harness (DoD-Punkte aus CLAUDE.md, Hooks aus .claude/settings.json, Agents, Skills) eine Abgleich-Tabelle; jeder Eintrag ist „wirksam“ (Beleg aus der Laufakte), „ersetzt durch <Schritt>“ oder „bewusst nicht“ (Begründung). Bestanden, wenn kein Eintrag offen ist. Bewusst nicht: Commits durch die Workforce (Stefan committet, „Bereit zum Sichern“). (B1b)
+12. Harness-Abdeckung: Die Workforce erzeugt im Referenzlauf aus dem Projekt-Harness (DoD-Punkte aus CLAUDE.md, Hooks aus .claude/settings.json, Agents, Skills) eine Abgleich-Tabelle; jeder Eintrag ist „wirksam“ (Beleg aus der Laufakte), „ersetzt durch <Schritt>“ oder „bewusst nicht“ (Begründung). Bestanden, wenn kein Eintrag offen ist. Bewusst nicht: Commits durch die Workforce (Stefan committet, „Bereit zum Sichern“). (B1b-2)
 13. Fähigkeiten: Mindestens ein MCP, ein Skill und ein Agent, die Stefan im Leitstand installiert bzw. aktiviert hat, sind im Lauf als „aktiv“ ausgewiesen und laut Laufakte benutzt; eine deaktivierte Fähigkeit ist im Lauf nicht verfügbar. (F)
 14. Rückfrage statt Abbruch: Ein Befehl außerhalb des Werkzeugsatzes führt im Referenzlauf zu einer Rückfrage an Stefan (erlauben einmal / ablehnen), nicht zu VERWEIGERT mit Handarbeit. (B2b)
 
@@ -68,9 +68,9 @@ Reihenfolge = Tabellenreihenfolge. Prüfmodus „vor Merge“: Challenger prüft
 | P | Performance: /api/zustand im Langlauf, Event-Loop-Blockaden beseitigen, Seitenwechsel messen, f16-Restordner | F-556, F-999 | B0 (Messskript) | vor Merge | 0,5 |
 | S | Härtung klein: ein Git-Starter für alle Aufrufe, Geheimnis-Maskierung (Live-Aktivität, env im Harness-Detail), Abbruch-Formulierung | F-1000, F-1005, F-1003 | – | vor Merge | 0,3 |
 | B1a | Lauf-Umgebung: Branch/Worktree je Lauf (Gültigkeitsschlüssel misst die Einstellungen des Lauf-Ordners), Vorlage nachziehen (513), Mindest-Gates im Skelett, check:template, Standard-Startvorlage aus dem Register, Löschen im Lauf, Kontrollzustand in Fremdprojekten | F-954, F-939, F-701, F-1009, F-715, F-766 | E-F45-3 | Advisor-Pass, vor Merge | 1–1,25 |
-| B1b | Harness im Lauf: Projekt-Agents/-Skills im Lauf, Freigabe nach Inhalt, Vorstart-Scan, Codex-Harness-Regeln, Hooks belegen, „vorgesehen gegen benutzt“ an Review und Abnahme, /lessons, Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce | F-815, F-816, F-818, F-929, F-932, F-937, F-933 | B1a | vor Merge | 0,75 |
-| F | Fähigkeiten verwalten: MCPs, Skills, Agents und Plugins im Leitstand installieren (auch aus den OFFEN-Einträgen), je Projekt aktivieren/deaktivieren (wirkt ab dem nächsten Lauf, gespeichert im Workforce-Register, nicht in settings.json — E-F46-2), Agents installierbar und im Lauf nutzbar, Plugins im Fähigkeitenmodell; sichtbar: installiert · aktiv · im letzten Lauf benutzt (Seite Workforce, Lauf-Detail); MCP-Grenzen nach E-F36-4 (Einzelfreigabe, Kosten sichtbar, nur lesend) | F-815 (Agents), F-910, F-859, F-1012 | B1b | Advisor-Pass, vor Merge | 1,25–1,5 |
-| B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte an alle planenden/prüfenden Rollen; DoD und Checkliste an Review/qa; Feature ↔ Ablauf | F-938, F-936, F-829, F-931, F-989, F-998, F-959 | B1b | vor Merge | 1 |
+| B1b | Harness im Lauf, geschnitten am 11.10.2026: **B1b-1** Hintergrund-Ausführung abschalten und als unvollständig werten, Lauf-Härtung (npm-Installationsskripte aus, Schreiben nur im Arbeitsordner), Hooks im -p-Lauf belegen, commit-guard härten, „vorgesehen gegen benutzt“ ans Review, Vorstart-Scan; **B1b-2** Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce, Kurzliste der benutzten Fähigkeiten an die Abnahme. Verschoben: Projekt-Agents/-Skills im Lauf und Freigabe nach Inhalt (F-815/F-816 → F), Codex-Harness-Regeln (F-929 → B2a), /lessons (F-933 → Teil 2) | B1b-1: F-1026, F-1027, F-1035, F-818, F-932, F-937 (Review); B1b-2: F-937 (Abnahme), Beleg 12 | B1a | vor Merge | 0,75 |
+| F | Fähigkeiten verwalten: MCPs, Skills, Agents und Plugins im Leitstand installieren (auch aus den OFFEN-Einträgen), je Projekt aktivieren/deaktivieren (wirkt ab dem nächsten Lauf, gespeichert im Workforce-Register, nicht in settings.json — E-F46-2), Agents installierbar und im Lauf nutzbar, Plugins im Fähigkeitenmodell; sichtbar: installiert · aktiv · im letzten Lauf benutzt (Seite Workforce, Lauf-Detail); MCP-Grenzen nach E-F36-4 (Einzelfreigabe, Kosten sichtbar, nur lesend); aus B1b: Projekt-Agents/-Skills im Lauf, Freigabe nach Inhalt | F-815, F-816, F-910, F-859, F-1012 | B1b | Advisor-Pass, vor Merge | 1,25–1,5 |
+| B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte an alle planenden/prüfenden Rollen; DoD und Checkliste an Review/qa; Feature ↔ Ablauf; aus B1b: Codex-Harness-Regeln | F-938, F-936, F-829, F-931, F-989, F-998, F-959, F-929 | B1b | vor Merge | 1 |
 | B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011 | B2a | Advisor-Pass, vor Merge | 1,25–1,5 |
 | B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 |
 | B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 |
@@ -85,8 +85,9 @@ Summe Teil 1: ≈ 10–12 AT.
 | B5b′ | Prioritäts-Kanban; Balken ziehen in der Roadmap | F-917 | 0,25–0,5 |
 | B5c | Aufräumen: Click-to-Work-Modul, Scout nach Projektwechsel, Merge-Konvention, Restpunkte D2/D4/D5/D6, Register-Sichtung | F-928, F-943, F-924, F-927, F-957, F-963, F-992, F-994, F-1001, F-1004, F-1006, F-965, F-915 | 0,5–0,75 |
 | H | Harness-Dokumente im Leitstand bearbeiten, nur als Vorschlag (E-F46-2) | F-985 | 0,5 |
+| L | Lernschleife /lessons in der Workforce (aus B1b, 11.10.2026) | F-933 | 0,25 |
 
-Summe Teil 2: ≈ 1,25–1,75 AT.
+Summe Teil 2: ≈ 1,5–2 AT.
 
 ## 5 Offene Entscheidungen
 - **E-F45-2** (fällig nach R): Teil 2 vor F30 wie bisher über Challenger-Bauaufträge (A) oder als erste Aufträge der Workforce an sich selbst, F30-Bau startet nach deren Abnahme (B). Empfehlung Challenger: B.

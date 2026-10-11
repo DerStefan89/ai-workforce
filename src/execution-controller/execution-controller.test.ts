@@ -112,7 +112,7 @@ import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../claude-code-gateway/prozessstart.ts'
-import { baueAufruf, starteGateway } from '../claude-code-gateway/index.ts'
+import { baueAufruf, bashZeitgrenzeUmgebung, STANDARD_BASH_ZEITGRENZE_MS, starteGateway, WORKFORCE_LAUF_UMGEBUNG } from '../claude-code-gateway/index.ts'
 // Importiert statt als Literal geprüft (QA-Pass 11.09.2026, Befund 8): der
 // Berechtigungskontext eines Codex-Laufs steht an zwei Stellen (Gateway und
 // worker-abhängige Auflösung im Leitstand-Server) und ist genau deshalb eine
@@ -545,7 +545,7 @@ test("F40 WS-3: aufrufEingaben.disallowedTools 'Read(~/.claude/**)' landet unver
 
 // ─── Task "Jarvis-Chat-Latenz senken", Schritt 3: aufrufEingaben.umgebungsvariablen erreicht starteProzess (Muster settingSources, aber kein Argv-Feld — es landet in den Starter-Optionen, nicht in den Tokens) ──
 
-test('Task "Jarvis-Chat-Latenz senken": aufrufEingaben.umgebungsvariablen erreicht starteProzess unverändert (Jarvis-Chat-Pfad)', async () => {
+test('Task "Jarvis-Chat-Latenz senken": aufrufEingaben.umgebungsvariablen erreicht starteProzess, ergänzt um WORKFORCE_LAUF_UMGEBUNG (Jarvis-Chat-Pfad; F45 B1b-1)', async () => {
   const laufId = neueLaufId('f31-umgebungsvariablen-a')
   let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
   const spyStarter: Starter = async (startziel, tokens, optionen) => {
@@ -563,13 +563,13 @@ test('Task "Jarvis-Chat-Latenz senken": aufrufEingaben.umgebungsvariablen erreic
       schreiber: () => {},
     })
     assert.strictEqual(ergebnis.ok, true)
-    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { MAX_THINKING_TOKENS: '0' })
+    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { MAX_THINKING_TOKENS: '0', ...WORKFORCE_LAUF_UMGEBUNG, ...bashZeitgrenzeUmgebung(STANDARD_BASH_ZEITGRENZE_MS) })
   } finally {
     raeumeKette(laufId)
   }
 })
 
-test('Task "Jarvis-Chat-Latenz senken": ohne aufrufEingaben.umgebungsvariablen bleibt der Wert unbesetzt — Regression (jede Rolle außer jarvis)', async () => {
+test('Task "Jarvis-Chat-Latenz senken": ohne aufrufEingaben.umgebungsvariablen trägt der Start genau WORKFORCE_LAUF_UMGEBUNG (jede Rolle außer jarvis; F45 B1b-1)', async () => {
   const laufId = neueLaufId('f31-umgebungsvariablen-b')
   let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
   const spyStarter: Starter = async (startziel, tokens, optionen) => {
@@ -586,7 +586,7 @@ test('Task "Jarvis-Chat-Latenz senken": ohne aufrufEingaben.umgebungsvariablen b
       schreiber: () => {},
     })
     assert.strictEqual(ergebnis.ok, true)
-    assert.strictEqual(empfangeneOptionen?.umgebungsvariablen, undefined)
+    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { ...WORKFORCE_LAUF_UMGEBUNG, ...bashZeitgrenzeUmgebung(STANDARD_BASH_ZEITGRENZE_MS) })
   } finally {
     raeumeKette(laufId)
   }

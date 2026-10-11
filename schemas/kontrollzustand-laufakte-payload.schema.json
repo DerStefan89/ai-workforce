@@ -85,6 +85,11 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "F36 WS-5a (E-F36-7). Optional (append-only: Laufakten vor WS-5a tragen das Feld nicht, daher nicht in required). input.url je Aufruf mcp__<server>__browser_navigate in Reihenfolge; ohne url der Platzhalter '(keine url)'. Erfasst nur den ausdrücklichen browser_navigate, keinen Seitenwechsel per Klick oder Weiterleitung. Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts)."
+        },
+        "hintergrund_aufrufe": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "F45 B1b-1 (F-1026). Optional (append-only: Laufakten vor B1b-1 tragen das Feld nicht). Werkzeugname je angenommenem Hintergrund-Aufruf (tool_use_result.backgroundTaskId oder input.run_in_background === true ohne Fehler), in Reihenfolge; Länge = Anzahl. Ein Wert > 0 macht den Lauf FEHLGESCHLAGEN (Grund hintergrund_ausfuehrung, nachgerechnet aus dem Rohstrom). Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts)."
         }
       }
     }

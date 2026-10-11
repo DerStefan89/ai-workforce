@@ -10,7 +10,8 @@
  *   <projekt>/.claude/skills) ↔ anderer Ort-B-Skill;
  * - Vorstart-Scan: kein weiteres .claude/skills|agents|commands unterhalb der Projektwurzel außer dem
  *   der Wurzel (ohne .git, Junctions/Symlinks werden nicht verfolgt, node_modules zählt mit; ein
- *   verschachteltes .claude als Verknüpfung zählt als Treffer);
+ *   verschachteltes .claude als Verknüpfung zählt als Treffer; F45 B1b-1/F-818: einzige Ausnahme
+ *   vorlagen/projekt-skelett/.claude, nur wenn der Projektordner die Installation selbst ist);
  * - Ergebnis: --add-dir <cap>/<id> je Skill, --disallowedTools Write/Edit(<cap>/<id>/**) in der
  *   S4b-Form (C:/…, nicht //C:/…), Write/Edit(**\/.claude/**), Skill(design), Skill(doctor),
  *   Skill(<Projekt-Skill>); --settings { disableBundledSkills, skillOverrides design/doctor/Projekt off }.
@@ -25,7 +26,7 @@
  * eine neue eingebaute Fähigkeit fängt nicht diese Liste, sondern das Init-Gate im Datenstrom.
  */
 
-import { type Dirent, existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs'
+import { type Dirent, existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { berechneInhaltHash, EINGEBAUTE_SKILLS_S7, expandiereHome, leseFrontmatter, listeSkillDateien, pruefeSkillDateiNamen, SKILL_NAME_MUSTER } from './skill-dateien.ts'
 import type { Ressource } from './types.ts'
@@ -38,6 +39,17 @@ export const CLAUDE_ORDNER_SPERREN: readonly string[] = ['Write(**/.claude/**)',
 
 /** Namen, die als Skill(<name>)/skillOverrides-Schlüssel ohne Brechen der Regelsyntax taugen. */
 const SPERRBARER_NAME = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
+
+/**
+ * F45 B1b-1 (F-818): einzige Ausnahme des Vorstart-Scans — das Projekt-Skelett der Installation selbst
+ * (Vorlage für neue Projekte, enthält absichtlich .claude/skills|agents|commands). Gilt NUR, wenn der
+ * Projektordner die Installation ist (realpath-Vergleich in baueOrtBSkillStart): der Inhalt ist dann
+ * Teil der Installation (versioniert, gehasht in HERKUNFT.md, Drift-Gate check-skelett-herkunft), kein
+ * Fremdinhalt. In jedem anderen Projekt bleibt derselbe Pfad ein Treffer. Weil die CLI verschachtelte Skills
+ * auch während des Laufs entdecken kann, sperrt baueOrtBSkillStart im Ausnahmefall die Skill- und
+ * Command-Namen des Skeletts wie Projekt-Skills (Skill(…), skillOverrides off) — nicht das Init-Gate trägt die Ausnahme.
+ */
+export const INSTALLATIONS_SKELETT_CLAUDE = 'vorlagen/projekt-skelett/.claude'
 
 /** Unterordner eines .claude, die der Vorstart-Scan unterhalb der Wurzel nicht duldet. */
 const VERBOTENE_UNTERORDNER = new Set(['skills', 'agents', 'commands'])
@@ -129,10 +141,13 @@ export function leseProjektSkillNamen(projektWurzel: string): { ok: true; namen:
  * skills, agents oder commands enthält, und jedes verschachtelte .claude, das eine Verknüpfung ist.
  * .git wird übersprungen, Junctions/Symlinks werden nicht verfolgt, node_modules zählt mit. Ein nicht
  * lesbarer Ordner zählt als Treffer (fail-closed).
+ * F45 B1b-1 (F-818): ausnahmen nennt relative Pfade ('/' als Trenner, exakt), deren .claude-Ordner nicht
+ * geprüft wird (darunter wird weiter gesucht); eine Verknüpfung bleibt auch dort ein Treffer.
  * @param projektWurzel - Projekt-Repo-Wurzel
+ * @param ausnahmen - exakt freigestellte .claude-Pfade (Standard: keine)
  * @returns Treffer als relative Pfade ('/' als Trenner), leer = sauber
  */
-export function scanneVerschachtelteClaudeOrdner(projektWurzel: string): string[] {
+export function scanneVerschachtelteClaudeOrdner(projektWurzel: string, ausnahmen: readonly string[] = []): string[] {
   const treffer: string[] = []
   const gehe = (absolut: string, relativ: string): void => {
     let eintraege: Dirent[]
@@ -154,7 +169,7 @@ export function scanneVerschachtelteClaudeOrdner(projektWurzel: string): string[
       }
       // Dirent meldet Junctions unter Windows als Link, nicht als Ordner — sie werden nicht verfolgt.
       if (!e.isDirectory()) continue
-      if (istClaude && !istWurzelClaude) {
+      if (istClaude && !istWurzelClaude && !ausnahmen.includes(rel)) {
         let innen: string[] = []
         try {
           innen = readdirSync(join(absolut, e.name))
@@ -169,6 +184,25 @@ export function scanneVerschachtelteClaudeOrdner(projektWurzel: string): string[
   }
   gehe(projektWurzel, '')
   return treffer
+}
+
+/**
+ * F45 B1b-1 (F-818): true, wenn der Projektordner die Installation selbst ist (realpath beider gleich).
+ * Ohne installWurzel oder bei einem nicht auflösbaren Pfad false (fail-closed: keine Ausnahme).
+ * @param projektOrdner - Projektordner (nicht der Worktree eines Ablaufs)
+ * @param installWurzel - Installationswurzel von ai-workforce
+ * @returns true bei gleichem realpath
+ */
+export function istInstallationSelbst(projektOrdner: string, installWurzel: string | undefined): boolean {
+  if (installWurzel === undefined) return false
+  try {
+    const a = realpathSync.native(projektOrdner)
+    const b = realpathSync.native(installWurzel)
+    // Unter Windows ohne Groß-/Kleinschreibung (NTFS), sonst exakt.
+    return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -187,9 +221,16 @@ function regelPfad(pfad: string): string {
  * @param projektWurzel - Projekt-Repo-Wurzel (cwd des Laufs)
  * @param capWurzel - Workforce-Ordner der Installationen (~/.ai-workforce/cap); jede installation.pfad muss
  *   genau <capWurzel>/<id>/.claude/skills/<name> sein (Reviewer: ressourcen.json ist versioniert und änderbar)
+ * @param installation - F45 B1b-1 (F-818): projektOrdner (Projekt, nicht dessen Worktree; Standard projektWurzel)
+ *   und installWurzel — nur bei gleichem realpath gilt INSTALLATIONS_SKELETT_CLAUDE als Ausnahme des Vorstart-Scans
  * @returns { ok: true, start } oder { ok: false, grund }
  */
-export function baueOrtBSkillStart(skillEintraege: readonly Ressource[], projektWurzel: string, capWurzel: string): { ok: true; start: OrtBSkillStart } | { ok: false; grund: string } {
+export function baueOrtBSkillStart(
+  skillEintraege: readonly Ressource[],
+  projektWurzel: string,
+  capWurzel: string,
+  installation: { projektOrdner?: string; installWurzel?: string } = {}
+): { ok: true; start: OrtBSkillStart } | { ok: false; grund: string } {
   const nein = (grund: string): { ok: false; grund: string } => ({ ok: false, grund: `Ort-B-Skill-Start abgelehnt: ${grund}` })
   if (skillEintraege.length === 0) return nein('keine Ort-B-Skills übergeben')
   const skillNamen: string[] = []
@@ -236,13 +277,21 @@ export function baueOrtBSkillStart(skillEintraege: readonly Ressource[], projekt
     addDirs.push(capNormiert)
   }
 
-  const projekt = leseProjektSkillNamen(projektWurzel)
-  if (!projekt.ok) return nein(projekt.grund)
+  const projektWurzelNamen = leseProjektSkillNamen(projektWurzel)
+  if (!projektWurzelNamen.ok) return nein(projektWurzelNamen.grund)
+  // F45 B1b-1 (F-818, Advisor A5): ist der Projektordner die Installation, bleibt das Skelett-.claude vom Scan
+  // ausgenommen — seine Skill- und Command-Namen werden dann wie Projekt-Skills behandelt (Kollision, Sperre per
+  // Skill(…)/skillOverrides), denn die CLI kann verschachtelte Skills während des Laufs entdecken.
+  const skelettAusnahme = istInstallationSelbst(installation.projektOrdner ?? projektWurzel, installation.installWurzel)
+  const skelettNamen = skelettAusnahme ? leseProjektSkillNamen(join(projektWurzel, dirname(INSTALLATIONS_SKELETT_CLAUDE))) : { ok: true as const, namen: [] }
+  if (!skelettNamen.ok) return nein(`Skelett der Installation: ${skelettNamen.grund}`)
+  const projekt = { namen: [...new Set([...projektWurzelNamen.namen, ...skelettNamen.namen])].sort() }
   const kollision = skillNamen.filter((n) => projekt.namen.includes(n))
-  if (kollision.length > 0) return nein(`Name(n) ${kollision.join(', ')} kollidieren mit Projekt-Skills/-Commands unter '${join(projektWurzel, '.claude')}'`)
+  if (kollision.length > 0) return nein(`Name(n) ${kollision.join(', ')} kollidieren mit Projekt-Skills/-Commands unter '${join(projektWurzel, '.claude')}'${skelettAusnahme ? ` oder '${join(projektWurzel, INSTALLATIONS_SKELETT_CLAUDE)}'` : ''}`)
 
   const scanStart = Date.now()
-  const scan = scanneVerschachtelteClaudeOrdner(projektWurzel)
+  const ausnahmen = skelettAusnahme ? [INSTALLATIONS_SKELETT_CLAUDE] : []
+  const scan = scanneVerschachtelteClaudeOrdner(projektWurzel, ausnahmen)
   // Der Scan läuft synchron über den ganzen Baum (samt node_modules) — lange Dauer sichtbar machen.
   if (Date.now() - scanStart > 1000) console.error(`[ort-b-start] Vorstart-Scan '${projektWurzel}' dauerte ${Date.now() - scanStart} ms`)
   if (scan.length > 0) return nein(`verschachtelte .claude-Ordner unterhalb der Projektwurzel: ${scan.join(', ')} — erst entfernen (F-791 (2))`)

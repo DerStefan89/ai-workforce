@@ -48,6 +48,7 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
     'standardBudget',
     'werkzeugsaetze',
     'zeitgrenzeMs',
+    'bashZeitgrenzeMs',
     'worker',
     'pruefbefehl',
     'pruefZeitgrenzeMs',
@@ -105,6 +106,14 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
   // F14 WS-4 (F-177): optional — fehlt sie, bleibt der Prozessstart ohne Wanduhr-Grenze.
   if ('zeitgrenzeMs' in obj && (typeof obj.zeitgrenzeMs !== 'number' || !Number.isInteger(obj.zeitgrenzeMs) || obj.zeitgrenzeMs <= 0)) {
     verstoesse.push("'zeitgrenzeMs' muss, wenn angegeben, eine positive ganze Zahl sein")
+  }
+  // F45 B1b-1: optional — Bash-Zeitgrenze im Lauf, nie über der Lauf-Zeitgrenze.
+  if ('bashZeitgrenzeMs' in obj) {
+    if (typeof obj.bashZeitgrenzeMs !== 'number' || !Number.isInteger(obj.bashZeitgrenzeMs) || obj.bashZeitgrenzeMs <= 0) {
+      verstoesse.push("'bashZeitgrenzeMs' muss, wenn angegeben, eine positive ganze Zahl sein")
+    } else if (typeof obj.zeitgrenzeMs === 'number' && obj.bashZeitgrenzeMs > obj.zeitgrenzeMs) {
+      verstoesse.push(`'bashZeitgrenzeMs' (${obj.bashZeitgrenzeMs}) darf nicht über 'zeitgrenzeMs' (${obj.zeitgrenzeMs}) liegen`)
+    }
   }
 
   verstoesse.push(...pruefeWorkerBlock(obj.worker))

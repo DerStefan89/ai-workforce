@@ -1620,6 +1620,7 @@ export default {
   'chat.grund.keinErgebnisobjekt': 'no result in the run output',
   'chat.grund.initGateVerstoss': 'start check failed',
   'chat.grund.claudeOrdnerVeraendert': 'harness folder .claude changed during the run',
+  'chat.grund.hintergrundAusfuehrung': 'the run moved commands to the background — result incomplete',
   'chat.grund.werkzeuggrenzeAbgelehnt': 'tool call outside the allowed limit',
   'chat.grund.fehlgeschlagen': 'run failed',
   'chat.grund.unerwarteterLaufstatus': 'unexpected run status',
