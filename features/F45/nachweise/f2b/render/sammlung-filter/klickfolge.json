@@ -1,0 +1,118 @@
+{
+  "url": "http://127.0.0.1:4391/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#faehigkeiten-bereich-sammlung",
+    "hoehe": 1300
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": "#sammlung .sm-kennzahlen"
+      },
+      {
+        "name": "Treffer",
+        "selector": "#sammlung .sm-treffer"
+      },
+      {
+        "name": "Band",
+        "selector": "#sammlung .sm-band"
+      },
+      {
+        "name": "erste Gruppe",
+        "selector": "#sammlung .sm-gruppe h3"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Detail offen",
+        "selector": "#sammlung details.sm-detail[open]"
+      },
+      {
+        "name": "Auswählen (kommt)",
+        "selector": "#sammlung details[open] .sm-auswaehlen"
+      },
+      {
+        "name": "nicht auswählbar",
+        "selector": "#sammlung details[open] .sm-nicht-auswaehlbar"
+      },
+      {
+        "name": "ausgeschlossen",
+        "selector": "#sammlung details[open] .sm-ausgeschlossen"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-alle.png"
+    },
+    {
+      "label": "Urteil „Nur Ausnahme“",
+      "klick": "#sammlung [data-sm-filter=\"urteil\"][data-sm-wert=\"Nur Ausnahme\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-sm-wert=\"Nur Ausnahme\"][aria-pressed=\"true\"]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "02-nur-ausnahme.png"
+    },
+    {
+      "label": "Urteil zurück auf alle",
+      "klick": "#sammlung [data-sm-filter=\"urteil\"][data-sm-wert=\"\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-sm-filter=\"urteil\"][data-sm-wert=\"\"][aria-pressed=\"true\"]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Suche „scraper“",
+      "tippen": {
+        "selector": "#sammlung-suche",
+        "text": "scraper"
+      },
+      "screenshot": "03-suche.png"
+    },
+    {
+      "label": "Suche ohne Treffer",
+      "tippen": {
+        "selector": "#sammlung-suche",
+        "text": "gibt-es-nicht"
+      },
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-leer",
+        "timeoutMs": 5000
+      },
+      "screenshot": "04-keine-treffer.png"
+    }
+  ]
+}

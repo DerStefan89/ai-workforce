@@ -639,7 +639,12 @@ export function renderFaehigkeitenImLauf(feld) {
       e.aktiv === true
         ? `<span class="ablauf-status">${tHtml('lauf.faehigkeitenImLauf.aktiv')}</span>`
         : `<span class="ablauf-status neutral">${tHtml('lauf.faehigkeitenImLauf.aus')}</span>${typeof e.grund === 'string' && e.grund !== '' ? `<br><span class="subtle">${escapeHtml(e.grund)}</span>` : ''}`
-    const hash = typeof e.hash === 'string' && e.hash !== '' ? `<code title="${escapeHtml(e.hash)}">${escapeHtml(e.hash.slice(0, 12))}…</code>` : '—'
+    // F45 F-2b-1 (F-1060 (6)): voller Hash aufklappbar wie in der Freigabe — per Tastatur, Screenreader und Touch erreichbar,
+    // nicht nur im title.
+    const hash =
+      typeof e.hash === 'string' && e.hash !== ''
+        ? `<code title="${escapeHtml(e.hash)}">${escapeHtml(e.hash.slice(0, 12))}…</code><details class="fp-hash-voll"><summary>${tHtml('faehigkeitenProjekt.freigabe.hashVoll')}</summary><code>${escapeHtml(e.hash)}</code> <button type="button" class="button hash-kopieren" data-hash-kopieren="${escapeHtml(e.hash)}">${tHtml('befehl.kopieren')}</button><span class="subtle hash-kopieren-hinweis" hidden>${tHtml('lauf.hashKopierenHinweis')}</span></details>`
+        : '—'
     return `<tr data-aktiv="${e.aktiv === true}"><td data-spalte="${spalte('name')}"><strong>${escapeHtml(String(e.name ?? e.id ?? ''))}</strong></td><td data-spalte="${spalte('art')}">${escapeHtml(art)}</td><td data-spalte="${spalte('quelle')}">${escapeHtml(quelle)}</td><td data-spalte="${spalte('status')}">${status}</td><td data-spalte="${spalte('hash')}">${hash}</td><td data-spalte="${spalte('aufrufe')}">${aufrufZelle(e.aufrufe, e.fehlgeschlagen)}</td></tr>`
   })
   // Fremde Aufrufe je Art und Name zusammengefasst (Anzahl, davon mit Fehler = verweigert).
@@ -777,4 +782,43 @@ export function renderLaufDialog(art, { laufId, lage, kenntnisgenommen = false, 
       ${dialogFuss(`<button type="button" class="button danger lauf-dialog-aktion" data-aktion="stopp" disabled>${tHtml('ablauf.dialog.stopp.bestaetigen')}</button>`, 'lauf.dialog.abbruch.zurueck')}`
   }
   return null
+}
+
+/**
+ * F45 F-2b-1 (F-1060 (6), Plan v2 §5, Advisor A20/Delta B10): Klick auf „Kopieren“ am vollen Hash — schreibt den Hash in die
+ * Zwischenablage und zeigt kurz „Kopiert“; ohne Clipboard-API (z. B. kein localhost) oder bei Ablehnung wird der Hash markiert
+ * und ein sichtbarer Hinweis „mit Strg+C kopieren“ gezeigt (Muster befehlsblock.js kopiereBefehlsblock).
+ * @param knopf - der geklickte [data-hash-kopieren]
+ * @param zwischenablage - navigator.clipboard oder undefined (Parameter für den Test)
+ * @returns Promise, erfüllt nach dem Versuch
+ */
+export async function kopiereHash(knopf, zwischenablage = globalThis.navigator?.clipboard) {
+  const hash = knopf.dataset.hashKopieren ?? ''
+  const hinweis = knopf.parentElement?.querySelector('.hash-kopieren-hinweis') ?? null
+  const markiere = () => {
+    const code = knopf.parentElement?.querySelector('code') ?? null
+    const auswahl = globalThis.getSelection?.()
+    if (code !== null && auswahl && typeof globalThis.document?.createRange === 'function') {
+      const bereich = globalThis.document.createRange()
+      bereich.selectNodeContents(code)
+      auswahl.removeAllRanges()
+      auswahl.addRange(bereich)
+    }
+    if (hinweis !== null) hinweis.hidden = false
+  }
+  if (typeof zwischenablage?.writeText !== 'function') {
+    markiere()
+    return
+  }
+  try {
+    await zwischenablage.writeText(hash)
+  } catch (fehler) {
+    console.warn('Lauf-Detail: Zwischenablage abgelehnt:', fehler)
+    markiere()
+    return
+  }
+  knopf.textContent = t('befehl.kopiert')
+  setTimeout(() => {
+    knopf.textContent = t('befehl.kopieren')
+  }, 1500)
 }

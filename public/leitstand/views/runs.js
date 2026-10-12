@@ -48,6 +48,7 @@ import { abbruchArt, initLive, letztesAggregat, raeumeLive, workflowZuLauf, zeic
 import {
   darfFortsetzen,
   ermittleLaufLage,
+  kopiereHash,
   LAUF_DIALOG_FELD,
   laufStatusBadge,
   laufTitel,
@@ -668,6 +669,11 @@ function initBedienung() {
   document.getElementById('runs-entwicklung-tabs').addEventListener('click', (ereignis) => {
     const reiter = ereignis.target.closest('[data-tab]')
     if (reiter !== null) oeffneEntwicklungsRegister(reiter.dataset.tab)
+  })
+  // F45 F-2b-1 (F-1060 (6)): „Kopieren“ am vollen Hash im Bereich „Fähigkeiten im Lauf“ (Delegation, der Inhalt wird neu gesetzt).
+  document.getElementById('lauf-faehigkeiten-inhalt').addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target instanceof Element ? ereignis.target.closest('[data-hash-kopieren]') : null
+    if (knopf !== null) void kopiereHash(knopf)
   })
   document.getElementById('lauf-detail-fehler').addEventListener('click', (ereignis) => {
     if (!ereignis.target.closest('[data-aktion="erneut-laden"]') || gewaehlteLaufId === null) return

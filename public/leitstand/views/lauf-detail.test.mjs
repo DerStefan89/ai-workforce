@@ -15,6 +15,7 @@ import { test } from 'node:test'
 import {
   checkpointTitel,
   ermittleLaufLage,
+  kopiereHash,
   laufStatusPunkt,
   renderAufklappInhalte,
   renderEinordnung,
@@ -265,6 +266,8 @@ test('F45 F-2a (Beleg 13): „Fähigkeiten im Lauf“ — aktiv/aus mit Grund, Q
   assert.match(html, /Fähigkeiten im Lauf/)
   assert.match(html, /2 aktiv · 2 benutzt · 1 aus · 2 fremde Aufrufe/)
   assert.match(html, /<code title="a{64}">a{12}…<\/code>/)
+  // F45 F-2b-1 (F-1060 (6)): voller Hash per Tastatur erreichbar (details/summary), nicht nur im title.
+  assert.match(html, /<details class="fp-hash-voll"><summary>ganzer Hash<\/summary><code>a{64}<\/code> <button type="button" class="button hash-kopieren" data-hash-kopieren="a{64}">Kopieren<\/button><span class="subtle hash-kopieren-hinweis" hidden>/)
   assert.match(html, /data-aktiv="true"><td[^>]*><strong>Playwright<\/strong><\/td><td[^>]*>MCP<\/td><td[^>]*>Katalog<\/td>/)
   assert.match(html, /4 · <span class="ablauf-status fehler">1 mit Fehler<\/span>/)
   assert.match(html, /<strong>qa<\/strong><\/td><td[^>]*>Agent<\/td><td[^>]*>Projekt<\/td><td[^>]*><span class="ablauf-status">aktiv<\/span>/)
@@ -280,4 +283,20 @@ test('F45 F-2a: „Fähigkeiten im Lauf“ ohne Feld → nicht erfasst; ohne Beo
   const mitAkte = renderFaehigkeiten({ status: 'ok', beobachtung: null, faehigkeitenImLauf: { eintraege: [], fremde_aufrufe: [] } })
   assert.match(mitAkte, /Fähigkeiten im Lauf/)
   assert.doesNotMatch(renderFaehigkeiten({ status: 'nicht_vorhanden' }), /Fähigkeiten im Lauf/)
+})
+
+test('F45 F-2b-1 (F-1060 (6)): kopiereHash schreibt den Hash; ohne Zwischenablage wird der Hinweis sichtbar', async () => {
+  const hinweis = { hidden: true }
+  const knopf = { dataset: { hashKopieren: 'f'.repeat(64) }, textContent: 'Kopieren', parentElement: { querySelector: (s) => (s === '.hash-kopieren-hinweis' ? hinweis : null) } }
+  const geschrieben = []
+  await kopiereHash(knopf, { writeText: async (text) => geschrieben.push(text) })
+  assert.deepEqual(geschrieben, ['f'.repeat(64)])
+  assert.equal(knopf.textContent, 'Kopiert')
+  assert.equal(hinweis.hidden, true)
+  await kopiereHash(knopf, undefined)
+  assert.equal(hinweis.hidden, false)
+  const hinweis2 = { hidden: true }
+  const knopf2 = { ...knopf, parentElement: { querySelector: (s) => (s === '.hash-kopieren-hinweis' ? hinweis2 : null) } }
+  await kopiereHash(knopf2, { writeText: async () => Promise.reject(new Error('verweigert')) })
+  assert.equal(hinweis2.hidden, false)
 })

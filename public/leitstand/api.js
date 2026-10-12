@@ -252,6 +252,9 @@ export const holeHarnessDatei = (pfad) => holeJsonOderWirf(mitPraefix(`/harness/
 // liefern die rohe Antwort (Status 409/400/404/500 mit grund zeigt die View selbst). stand = angezeigter Hash der lokalen
 // Datei (QA 1: der Server schreibt nichts, wenn sie sich seit der Anzeige geändert hat); Zeitlimit wie der GET (QA 10).
 export const holeFaehigkeiten = () => holeJsonOderWirf(mitPraefix('/faehigkeiten'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+// F45 F-2b-1: Stefans Sammlung mit Zuordnung zum Katalog und Stand des aktiven Projekts — nur beim Betreten der Seite Workforce,
+// per „Neu laden“ und beim Projektwechsel, nie aus dem Poll. 200 trägt { status: 'ok' | 'fehler' }.
+export const holeSammlung = () => holeJsonOderWirf(mitPraefix('/sammlung'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 export const sendeFaehigkeitAktivierung = (eintrag, aktiv, stand) => fetch(mitPraefix('/faehigkeiten/aktivierung'), { method: 'POST', body: JSON.stringify({ eintrag, aktiv, ...(typeof stand === 'string' ? { stand } : {}) }), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 // F-1061 (3): „Datei geprüft – Stand übernehmen“ — bestätigt genau den angezeigten Stand der lokalen Datei.
 export const sendeFaehigkeitBestaetigung = (stand) => fetch(mitPraefix('/faehigkeiten/bestaetigung'), { method: 'POST', body: JSON.stringify({ stand }), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })

@@ -1,0 +1,6 @@
+| Aktion | Detail offen | Auswählen (kommt) | nicht auswählbar | ausgeschlossen | lang | Kennzahlen | Treffer | Band | erste Gruppe | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Workforce geladen | false | false | false | false | ru | 176 записей · 172 со ссылкой · 126 можно выбрать (со следующего этапа) · 10 исключено Источник: docs/harness/kandidaten- | Показано 176 из 176 записей | (fehlt) | UI 16 | false | true |
+| Capability Library | false | false | false | false | ru | 176 записей · 172 со ссылкой · 126 можно выбрать (со следующего этапа) · 10 исключено Источник: docs/harness/kandidaten- | Показано 176 из 176 записей | (fehlt) | UI 16 | false | true |
+| Unterreiter „Sammlung“ | false | false | false | false | ru | 176 записей · 172 со ссылкой · 126 можно выбрать (со следующего этапа) · 10 исключено Источник: docs/harness/kandidaten- | Показано 176 из 176 записей | (fehlt) | UI 16 | false | true |
+| Detail plugins-playwright aufgeklappt | true | true | false | false | ru | 176 записей · 172 со ссылкой · 126 можно выбрать (со следующего этапа) · 10 исключено Источник: docs/harness/kandidaten- | Показано 176 из 176 записей | (fehlt) | UI 16 | false | true |

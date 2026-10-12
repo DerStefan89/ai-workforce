@@ -9,6 +9,8 @@
  * Wird aufgerufen von: src/scout/index.ts.
  */
 
+import type { SammlungUrteil } from '../sammlung/types.ts'
+
 export type ScoutKandidatTyp = 'skill' | 'extern'
 export type ScoutFit = 'hoch' | 'mittel' | 'niedrig'
 export type ScoutIntegrationsaufwand = 'gering' | 'mittel' | 'hoch'
@@ -23,6 +25,10 @@ export interface ScoutKandidat {
   rechte: string
   risiken: string[]
   lizenz?: string
+  /** F45 F-2b-1 (F-1057): Herkunft des Kandidaten — Sammlung oder Web. */
+  quelle?: 'sammlung' | 'web'
+  /** F45 F-2b-1 (F-1057): Urteil der Sammlung, unverändert übernommen. */
+  urteil_sammlung?: SammlungUrteil
   empfehlung: string
   unsicherheiten: string[]
 }

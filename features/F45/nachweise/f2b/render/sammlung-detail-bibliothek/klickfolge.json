@@ -1,0 +1,89 @@
+{
+  "url": "http://127.0.0.1:4391/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#sammlung tr[data-sm-id=\"ui-shadcn-ui\"]"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": "#sammlung .sm-kennzahlen"
+      },
+      {
+        "name": "Treffer",
+        "selector": "#sammlung .sm-treffer"
+      },
+      {
+        "name": "Band",
+        "selector": "#sammlung .sm-band"
+      },
+      {
+        "name": "erste Gruppe",
+        "selector": "#sammlung .sm-gruppe h3"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Detail offen",
+        "selector": "#sammlung details.sm-detail[open]"
+      },
+      {
+        "name": "Auswählen (kommt)",
+        "selector": "#sammlung details[open] .sm-auswaehlen"
+      },
+      {
+        "name": "nicht auswählbar",
+        "selector": "#sammlung details[open] .sm-nicht-auswaehlbar"
+      },
+      {
+        "name": "ausgeschlossen",
+        "selector": "#sammlung details[open] .sm-ausgeschlossen"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-sammlung.png"
+    },
+    {
+      "label": "Detail ui-shadcn-ui aufgeklappt",
+      "klick": "#sammlung details[data-sm-detail=\"ui-shadcn-ui\"] summary",
+      "warteAufSelector": {
+        "selector": "#sammlung details[data-sm-detail=\"ui-shadcn-ui\"][open]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "02-detail-shadcn.png"
+    }
+  ]
+}

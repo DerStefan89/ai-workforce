@@ -1,0 +1,20 @@
+{
+  "gesuchte_capability": "UI_VISUAL_TESTING",
+  "kandidaten": [
+    {
+      "name": "Playwright",
+      "typ": "extern",
+      "quelle_url": "https://github.com/microsoft/playwright-mcp",
+      "capabilities": ["UI_VISUAL_TESTING"],
+      "fit": "hoch",
+      "integrationsaufwand": "mittel",
+      "rechte": "Browser-Steuerung",
+      "risiken": [],
+      "empfehlung": "Vormerken",
+      "unsicherheiten": [],
+      "quelle": "Sammlung",
+      "urteil_sammlung": "Empfohlen"
+    }
+  ],
+  "hinweis_untrusted": true
+}

@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a (Fähigkeiten-Oberfläche, Bindung an die Anzeige, Lauf-Detail, Beleg 13) gebaut (Branch `f45/f2a-faehigkeiten-oberflaeche`, Basis `849fda5`, nicht committet; Abschnitt „Stand F-2a“), nächster Schritt F-2b. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b geteilt (Stefan, 12.10.2026): F-2b-1 (Sammlung im Leitstand, Scout liest die Sammlung) gebaut (Branch `f45/f2b-sammlung-auswahl-pruefung`, Basis `83a576c`, nicht committet; Abschnitt „Stand F-2b-1“), nächster Schritt F-2b-2. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -30,7 +30,9 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-F45-8 = Ablage `~/.ai-workforce/faehigkeiten.lokal.json`** (Stefan, 12.10.2026) — außerhalb jedes Repos und Arbeitsordners; die Änderungs-Endpunkte sind gesperrt, solange ein Lauf aktiv ist (ARCHITECTURE.md §2).
 - **E-F45-9 = B** (Stefan, 11.10.2026, gegen die Empfehlung A) — Plugins sind installierbar und im Lauf nutzbar. Folge: eigener Workstream F-3 mit Sicherheitsprüfung (Katalogtyp `plugin`, Installation gepinnt mit Commit-SHA und Inhalt-Hash, Bestandteile einzeln ausgewiesen und nur über die F-1-Wege, Plugin-Hooks nur nach eigener Freigabe je Hook-Hash, Init-Gate `init.plugins` = erwartete Menge). Erste Kandidaten aus `docs/harness/kandidaten-2026-09-15.md`: Claude Code Setup, Code Review (nur lokaler Bericht).
 - **E-F45-10 = A** (Stefan, 12.10.2026, gegen die Empfehlung B) — Website-Fähigkeit (Motion, Interaktion, 3D; Website- und Design-Empfehlungen durch die Workforce) gehört ins Fixpaket, vor F30. B3 wird „Design & Motion in Fremdprojekten“ (bisheriger Inhalt plus Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung: Bildfolge/Video, Ladezeit-Budget, „Bewegung reduzieren“). Neuer Referenzauftrag R2 nach R (kleine Landingpage mit Scroll-Animation, Interaktion und einem 3D-Element), neuer Beleg 15.
-- **Sammlung als Basis** (Stefan, 12.10.2026) — `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl; sie kommt in F-2b in den Leitstand (Kurzbeschreibung, Urteil, Lizenz, Kosten, Stand) mit „Auswählen“ → Prüflauf → Katalog. Reihenfolge ab F: F-1 → F-2a → F-2b → F-3 → B2a → B2b → B5a/B5b → B3 → R → R2.
+- **Sammlung als Basis** (Stefan, 12.10.2026) — `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl; sie kommt in F-2b in den Leitstand (Kurzbeschreibung, Urteil, Lizenz, Kosten, Stand) mit „Auswählen“ → Prüflauf → Katalog. Reihenfolge ab F (Challenger, 12.10.2026): F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2 — B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht. (Vorher, Stefan 12.10.2026: F-1 → F-2a → F-2b → F-3 → B2a → …)
+- **F-2b geteilt** (Stefan, 12.10.2026, nach dem Advisor-Pass, Befund A1 „Zuschnitt zu groß“) — F-2b-1: Sammlung lesen und zeigen, Zuordnung zum Katalog, Scout liest die Sammlung, F-1060 (6); F-2b-2: Auswählen → Eignungsprüfung (Prüfbericht) → Katalog, Sperre der Freigabe, F-1061 (1). Sammlung: alle 176 Zeilen der Bewertungsmatrix sichtbar (172 mit Link, die 4 ohne Link nicht auswählbar; O1). extern_lesend-MCPs von F-2b nach F-3.
+- **Reihenfolge ab F** (Challenger, 12.10.2026) — F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2; B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht.
 - **F-1061 (3) — Bestätigung nach Fremdänderung** (Stefan, 12.10.2026, Empfehlung Challenger) — Nach einer Änderung von außen an `~/.ai-workforce/faehigkeiten.lokal.json` gilt der Stand erst nach ausdrücklicher Bestätigung im Leitstand („Datei geprüft – Stand übernehmen“); bis dahin startet kein Lauf mit Katalog-Fähigkeiten (Muster E-F45-7). Umsetzung F-2a, ARCHITECTURE.md §2.
 - **F-1015-Kriterium** (Challenger, 11.10.2026) — Seitenspeicher, JS-Heap, DOM-Knoten und Listener am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen); Grundlage Abschnitt 2.
 
@@ -45,9 +47,10 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 | B1b | Harness im Lauf, geschnitten am 11.10.2026: **B1b-1** Hintergrund-Ausführung abschalten und als unvollständig werten, Lauf-Härtung (npm-Installationsskripte aus, Schreiben nur im Arbeitsordner), Hooks im -p-Lauf belegen, commit-guard härten, „vorgesehen gegen benutzt“ ans Review, Vorstart-Scan; **B1b-2** Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce, Kurzliste der benutzten Fähigkeiten an die Abnahme. Verschoben: Projekt-Agents/-Skills im Lauf und Freigabe nach Inhalt (F-815/F-816 → F), Codex-Harness-Regeln (F-929 → B2a), /lessons (F-933 → Teil 2) | B1b-1: F-1026, F-1027, F-1035, F-818, F-932, F-937 (Review); B1b-2: F-937 (Abnahme), Beleg 12 | B1a | vor Merge | 0,75 | |
 | F-1 | Fähigkeiten im Lauf (Server): Aktivierung je Projekt (E-F45-6/7/8), Projekt-Agents/-Skills nach Inhalt und Opt-in, Agent-Sperre, Init-Gate, Laufakte aktiv/benutzt, Endpunkte | F-815, F-816, F-1012 (Server), F-910 (teilweise) | B1b | Advisor-Pass, vor Merge | Teil von 1,25–1,5 (Zeile F bis 12.10.2026) | gemergt #323 (849fda5) |
 | F-2a | Fähigkeiten-Oberfläche: Seite Workforce, Bindung an die Anzeige, Gründe der Empfehlung, Lauf-Detail, Beleg 13 | F-1054, F-1012 (Oberfläche), F-1055 (1) Anzeige | F-1 | Advisor-Pass, vor Merge | Teil von 1,25–1,5 | |
-| F-2b | Sammlung im Leitstand mit „Auswählen“ → Prüflauf → Katalog, Scout liest die Sammlung, extern_lesend-MCPs | F-1056 (K20), F-1057 (K21), F-1052 | F-2a | Advisor-Pass, vor Merge | Schätzung fehlt | |
-| F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate | F-910 | F-2b | Advisor-Pass, vor Merge | Schätzung fehlt | |
-| B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte an alle planenden/prüfenden Rollen; DoD und Checkliste an Review/qa; Feature ↔ Ablauf; aus B1b: Codex-Harness-Regeln | F-938, F-936, F-829, F-931, F-989, F-998, F-959, F-929 | B1b | vor Merge | 1 | |
+| F-2b-1 | Sammlung im Leitstand (Unterreiter „Sammlung“: Urteil, Lizenz, Kosten, Stand, Zuordnung, Typ, Auswahlgrund), Scout liest die Sammlung, voller Hash im Lauf-Detail | F-1057 (K21), F-1060 (6) | F-2a | Advisor-Pass, vor Merge | ≈ 0,6 | |
+| F-2b-2 | „Auswählen“ → Eignungsprüfung (Prüfbericht) → Katalog, Freigabe nur mit Bericht, Stand der lokalen Datei über Neustarts | F-1056 (K20), F-1061 (1) | F-2b-1 | Advisor-Pass, vor Merge | ≈ 1–1,25 | |
+| F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge | Schätzung fehlt | |
+| B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte mit Zuschnitt je Rolle an alle planenden/prüfenden Rollen (Vorhaben, Bestand, Ausführungsrahmen, aktive Fähigkeiten, Qualität; Hash je Lauf; K26–K28); DoD und Checkliste an Review/qa; Feature ↔ Ablauf; aus B1b: Codex-Harness-Regeln; Codex-Review-Spec (`docs/projekt/codex-review-spec.md`: Audit-Block nur für claude-code, Review-Schema v2 additiv; K24, K25) | F-938, F-936, F-829, F-931, F-989, F-998, F-959, F-929, F-1062 (K24), F-1063 (K25), F-1064 (K26), F-1065 (K27), F-1066 (K28) | B1b | vor Merge | 1,5–1,85 | |
 | B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011 | B2a | Advisor-Pass, vor Merge | 1,25–1,5 | |
 | B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 | |
 | B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 | |
@@ -540,3 +543,57 @@ F-1061 (Wächter nur im Speicher, POST ohne `stand`; (3) entschieden und umgeset
 sperren Schreib-Routen und Starts mit Katalog-Fähigkeiten bis „Datei geprüft – Stand übernehmen“).
 
 **Nächster Schritt: F-2b** — Sammlung im Leitstand mit „Auswählen“ → Prüflauf → Katalog (F-1056, F-1057), extern_lesend-MCPs.
+
+## Stand F-2b-1
+Branch `f45/f2b-sammlung-auswahl-pruefung` (Basis `83a576c` = main mit F-2a, #324), nicht committet. Bau 12.10.2026.
+Plan `features/F45/plan-f2b.md` (v1 für ganz F-2b → Advisor-Pass „nicht freigegeben“, A1–A21 → Entscheidungen Stefan: teilen,
+176 zeigen → v2 für F-2b-1 → Delta-Advisor-Pass „freigegeben mit Hinweisen“, B1–B14 → v2.1).
+
+**Gebaut:**
+- **Sammlung lesen** (`src/sammlung/`): nur die Tabellen unter „## Vollständige Bewertungsmatrix“ (UI, Repos, Plugins, Skills,
+  Tools, MCP); je Zeile Name, Link, Urteil, Kurzbeschreibung, Lizenz, Kosten, Sicherheits-/Fit-Bewertung, Art, Zeilennummer;
+  Bedeutung je Urteil aus „Entscheidungen lesen“; Selbstprüfung gegen die Angabe der Datei (gesamt und je Urteil — eine
+  Abweichung zeigt die Liste mit Band, ein Strukturfehler einen Fehlerstand). Feste Zahlen nur im Gate: 176 Zeilen, 172 mit Link.
+- **Zuordnung Sammlung ↔ Katalog** (Regel im Kopf von `src/sammlung/index.ts`): erst normalisierter Link = `herkunft.url`,
+  dann normalisierter Name = Katalog-id/-name; nur 1:1, sonst „mehrdeutig“ (nichts geraten); Alias nimmt nicht teil. Echte Daten:
+  19 zugeordnet, 0 mehrdeutig.
+- **Typ, prüfbare Quelle, Auswahlgrund, Stand** je Eintrag (Codes, übersetzt in der Oberfläche): Typ aus Katalog → Stack-Liste →
+  Abschnitt (nur Vorschlag) → unbestimmt; Quelle strukturiert (GitHub-Repo/Unterpfad, npm-Paket; sonst „keine prüfbare
+  Quelle“); nicht auswählbar: Alias, ohne Link, lokal, Bibliothek („wählt der Architekt“), Plugin (F-3), keine Quelle;
+  ausgeschlossen = „Nur Ausnahme“/„Ausgeschlossen“ (Auswählen nur mit Ausnahme-Begründung, F-2b-2); Stand benutzt · aktiv ·
+  installiert · vorgemerkt · nur Sammlung aus dem Katalog-Status dieses Projekts (`baueKatalogStatus`, aus
+  `baueFaehigkeitenStatus` herausgezogen, Verhalten gleich); Prüfbericht „ohne Prüfbericht (vor F-2b freigegeben)“ für
+  playwright-mcp und frontend-design, „lokal“ für Repo-Einträge.
+- **Route** `GET /api/sammlung` (`scripts/leitstand/routen-sammlung.mjs`, Dateien der Installation, Zwischenspeicher nach
+  mtime/size), nicht im Poll.
+- **Oberfläche** Seite Workforce → Capability Library → Unterreiter „Sammlung“ (`views/sammlung.js`,
+  `sammlung-anzeige.js`): Kennzahlen, Suche, Filter Urteil und Stand, Gruppen nach Art, Zeile mit Name, Was es kann, Urteil,
+  Lizenz, Kosten, Stand, Link; Detail mit Bewertung, Bedeutung des Urteils, Zuordnung, Typ, Prüfbericht und „Auswählen“
+  (Kennzeichen „kommt“, F-2b-2) bzw. Grund. i18n de/en/ru/tr.
+- **Scout liest die Sammlung zuerst (F-1057)**: der Server hängt jedem direkt gestarteten Scout-Lauf die Regel und eine
+  kompakte Liste (Name · Art · Urteil · Lizenz · Link, dazu die Stack-Liste) an den Prompt; gestarteter Argv bitgleich (Prompt
+  per stdin, F-642). `ergebnis-scout` additiv `quelle`/`urteil_sammlung`; die Scout-Karte zeigt „laut Sammlung (aktueller
+  Stand)“ (Serverwahrheit per Link) und Abweichungen. `.claude/agents/scout.md` trägt dieselbe Regel für den Subagenten der
+  Sitzung — Leitstand-Läufe lesen die Datei nicht (Advisor A12).
+- **F-1060 (6)**: voller Hash im Lauf-Detail aufklappbar (Tastatur, Screenreader, Touch) mit „Kopieren“ (Rückfall ohne
+  Zwischenablage: Hash markiert, Hinweis „mit Strg+C kopieren“).
+- **Register**: F-1057 erledigt, F-1060 (6) erledigt, F-1056 Nachtrag (→ F-2b-2); neu F-1062 (K24), F-1063 (K25), F-1064–F-1066
+  (K26–K28, Projektkarte, B2a), F-1067 (Scout-Schritt über Workflow ohne Sammlung), F-1068 (Restpunkte F-2b-1). Fixpaket §3/§5: F-2b-1/F-2b-2 mit
+  Schätzung, extern_lesend-MCPs nach F-3, B2a erweitert (1,5–1,85 AT), Reihenfolge neu.
+
+**Startfreigabe:** nicht neu nötig — der Gültigkeitsschlüssel misst nur `.claude/settings.json` und die darin genannten Hooks
+(`src/invocation-policy/index.ts`, Advisor A11). Folge der geänderten `scout.md` (Delta B9): ein Projekt mit einer Handkopie von
+`scout.md` und eingeschaltetem `agent:scout` steht danach auf „Inhalt weicht ab“ (Freigabe nach Inhalt nötig); das Skelett trägt
+keine `scout.md`.
+
+**Prüfpass** (frischer Kontext): code-reviewer „freigegeben mit Hinweisen“, qa „freigegeben mit Hinweisen“, design-guardian „nicht
+freigegeben“ (zweite Live-Region) → eine Korrekturrunde (Plan Nachtrag v2.2), Render-Nachweis neu
+(`features/F45/nachweise/f2b/nachweis.md`, 21 Folgen, u. a. Tastatur und Scout-Karte über Antwort-Attrappen).
+
+**Grenzen:** F-1067 (Scout-Schritt über einen Workflow ohne Sammlung); F-1068 (Gruppen bei 390 px nicht einklappbar, Texte des
+Servers deutsch, Detail nicht als eigene Tabellenzeile); Gate (b) wird bewusst rot, sobald eine Zuordnung mehrdeutig ist; die Sammlungsangabe auf der Scout-Karte ist der Stand der
+Anzeige, nicht des Laufs (Delta B5); ein falscher Wert in `quelle`/`urteil_sammlung` macht das ganze Scout-Ergebnis ungültig
+(Delta B4, der Anhang nennt die exakten Werte).
+
+**Nächster Schritt: F-2b-2** — Auswählen → Eignungsprüfung der gepinnten Version → Prüfbericht → Katalog, Sperre der Freigabe ohne
+Bericht (F-1056), F-1061 (1); Plan aus `features/F45/plan-f2b.md` (Advisor A2–A10, A15–A19, A21).

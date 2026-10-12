@@ -36,6 +36,7 @@ import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { rollenName } from '../rollen-anzeige.js'
+import { scoutSammlungHtml } from '../sammlung-anzeige.js'
 import { navigiere, registriere } from '../router.js'
 import { ableiteRessourcenId, baueVormerkenAuftragstext } from '../vormerken-auftrag.js'
 import { abonniereDetailAuffrischer } from '../zustand.js'
@@ -48,6 +49,7 @@ import {
   zeigeCapabilityLibraryLaedt,
 } from './capability-library.js'
 import { initFaehigkeitenProjekt, ladeFaehigkeitenProjekt, setzeFaehigkeitenProjektZurueck } from './faehigkeiten-projekt.js'
+import { initSammlung, ladeSammlung, setzeSammlungZurueck } from './sammlung.js'
 import { initHarnessAufbau, oeffneHarnessOrt, renderHarness, setzeHarnessZurueck, zeigeHarnessFehler, zeigeHarnessLaedt } from './harness-aufbau.js'
 
 // ─── Register (role=tablist) ─────────────────────────────────────────────
@@ -355,6 +357,7 @@ function kandidatKarte(kandidat, index) {
   return `<article class="scout-karte">
     <span class="werkzeug-typ">${tHtml('werkstatt.scout.kandidatTyp', { typ: typName(kandidat.typ) })}</span>
     <h4>${escapeHtml(kandidat.name)}</h4>
+    ${scoutSammlungHtml(kandidat, scoutZustand?.sammlung?.[index])}
     <p class="scout-empfehlung">${escapeHtml(kandidat.empfehlung)}</p>
     <dl class="scout-daten">
       <dt>${tHtml('werkstatt.scout.fit')}</dt><dd>${escapeHtml(stufeName(kandidat.fit))}</dd>
@@ -440,7 +443,7 @@ function renderScoutPanel() {
  * @param capabilities - eintrag.restFehlend dieser Zeile
  */
 async function starteScoutSuche(rolle, capabilities) {
-  const zustand = { rolle, capabilities, phase: 'wird_angelegt', auftragId: null, laufId: null, ergebnis: null, meldung: null }
+  const zustand = { rolle, capabilities, phase: 'wird_angelegt', auftragId: null, laufId: null, ergebnis: null, sammlung: null, meldung: null }
   scoutZustand = zustand
   vormerkenZustaende = new Map()
   renderScoutPanel()
@@ -518,6 +521,8 @@ async function aktualisiereScoutZustand() {
       return
     }
     zustand.ergebnis = detail.scoutErgebnis.ergebnis
+    // F45 F-2b-1 (F-1057): Abgleich mit der Sammlung (Serverwahrheit, Stand der Anzeige) je Kandidat oder null.
+    zustand.sammlung = Array.isArray(detail.scoutSammlung) ? detail.scoutSammlung : null
     zustand.phase = 'fertig'
     renderScoutPanel()
   } catch {
@@ -745,6 +750,8 @@ async function ladeCapabilities() {
   document.getElementById('capabilities-abdeckung').innerHTML = `<p class="leer">${tHtml('werkstatt.laedt')}</p>`
   // F45 F-2a: „Dieses Projekt“ lädt parallel und zeigt seinen Fehler selbst (eigener Überholschutz).
   void ladeFaehigkeitenProjekt()
+  // F45 F-2b-1: die Sammlung lädt ebenso parallel und zeigt ihren Fehler selbst.
+  void ladeSammlung()
   const [libraryErgebnis, abdeckungErgebnis, harnessErgebnis] = await Promise.allSettled([holeRessourcen(), holeAbdeckung(), holeHarness()])
   if (meineNummer !== ladeZaehler) return
 
@@ -811,6 +818,7 @@ export function initCapabilitiesView() {
   initAbdeckungBedienung()
   initScoutBedienung()
   initFaehigkeitenProjekt()
+  initSammlung()
   document.getElementById('harness-zur-library').addEventListener('click', () => wechsleZuReiter('werkstatt-reiter-faehigkeiten'))
   abonniereDetailAuffrischer(() => {
     void aktualisiereScoutZustand()
@@ -821,6 +829,7 @@ export function initCapabilitiesView() {
     setzeHarnessZurueck()
     setzeCapabilityLibraryZurueck()
     setzeFaehigkeitenProjektZurueck()
+    setzeSammlungZurueck()
     void ladeCapabilities()
   })
   document.getElementById('capabilities-neu-laden').addEventListener('click', () => {

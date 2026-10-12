@@ -1,0 +1,23 @@
+[
+  {
+    "label": "Lauf-Detail geladen",
+    "Hash aufgeklappt": false,
+    "erster voller Hash": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Fähigkeiten aufgeklappt",
+    "Hash aufgeklappt": false,
+    "erster voller Hash": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Voller Hash per Klick auf „ganzer Hash“",
+    "Hash aufgeklappt": true,
+    "erster voller Hash": "400dcf35dc95a9c72b5eb9c1f453066c2a230e709d603849cb642887049e63cb",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

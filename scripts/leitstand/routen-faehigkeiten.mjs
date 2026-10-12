@@ -17,6 +17,7 @@
  * Wird aufgerufen von:
  * - scripts/leitstand-server.mjs (Registrierung der drei Routen, Wächter je Prozess)
  * - scripts/leitstand/routen-faehigkeiten.test.mjs (node:test), scripts/check-f45-f1-faehigkeiten.mjs
+ * - scripts/leitstand/routen-sammlung.mjs (F45 F-2b-1: baueKatalogStatus für den Stand der Sammlung)
  *
  * Wichtig:
  * - Geschrieben wird nur ~/.ai-workforce/faehigkeiten.lokal.json (E-F45-8), nie ressourcen.json, projekte.json oder
@@ -150,7 +151,37 @@ export function baueFaehigkeitenStatus({ projektId, lokal, katalog, projekt, let
   const ungueltig = lokal.zustand === 'ungueltig'
   const einst = ungueltig ? { an: [], aus: [], inhalt_freigaben: {} } : projektEinstellungen(lokal.daten, projektId)
   const lauf = letzterLauf?.daten ?? null
-  const katalogEintraege = katalog
+  const katalogEintraege = baueKatalogStatus({ projektId, lokal, katalog, letzterLauf, kennung })
+  const projektEintraege = baueProjektStatus(projekt, einst, lauf)
+  return {
+    projekt_id: projektId,
+    lokale_datei: {
+      ...(lokal.zustand === 'ungueltig'
+        ? { zustand: 'ungueltig', grund: `${lokal.grund} — Läufe mit Fähigkeiten starten in allen Projekten nicht, bis die Datei repariert oder gelöscht ist (E-F45-7)` }
+        : { zustand: lokal.zustand }),
+      pfad: lokalPfad,
+      hash: standHash,
+      fremd_geaendert: fremd,
+    },
+    lauf_aktiv: laufAktiv,
+    letzter_lauf_id: letzterLauf?.laufId ?? null,
+    hindernis: projekt.hindernis,
+    eintraege: [...katalogEintraege, ...projektEintraege],
+  }
+}
+
+/**
+ * Katalog-Teil von GET /api/faehigkeiten (MCP, installierter Skill) — seit F45 F-2b-1 eigene Funktion, weil die Sammlung
+ * (GET /api/sammlung, Stand installiert · aktiv · benutzt) dieselbe Regel braucht. Verhalten wie vorher in
+ * baueFaehigkeitenStatus.
+ * @param eingabe - { projektId, lokal, katalog (aufgelöste Ressourcen), letzterLauf: { laufId, daten } | null, kennung }
+ * @returns Katalog-Einträge des Status
+ */
+export function baueKatalogStatus({ projektId, lokal, katalog, letzterLauf, kennung }) {
+  const ungueltig = lokal.zustand === 'ungueltig'
+  const einst = ungueltig ? { an: [], aus: [], inhalt_freigaben: {} } : projektEinstellungen(lokal.daten, projektId)
+  const lauf = letzterLauf?.daten ?? null
+  return katalog
     .filter((r) => r.typ === 'extern' && (r.unterart === 'mcp' || r.unterart === 'skill'))
     .map((r) => {
       const installiert = r.installation !== undefined && r.verfuegbar === true
@@ -175,7 +206,17 @@ export function baueFaehigkeitenStatus({ projektId, lokal, katalog, projekt, let
         letzter_lauf: nutzungImLauf(lauf, r.id),
       }
     })
-  const projektEintraege = projekt.eintraege.map((e) => ({
+}
+
+/**
+ * Projekt-Teil von GET /api/faehigkeiten (Projekt-Agents/-Skills) — herausgezogen mit baueKatalogStatus (F45 F-2b-1).
+ * @param projekt - ermittleProjektFaehigkeiten
+ * @param einst - Einstellungen des Projekts aus der lokalen Datei
+ * @param lauf - Laufakte des jüngsten Ausführungslaufs oder null
+ * @returns Projekt-Einträge des Status
+ */
+function baueProjektStatus(projekt, einst, lauf) {
+  return projekt.eintraege.map((e) => ({
     id: e.schluessel,
     name: e.name,
     typ: e.typ,
@@ -193,21 +234,6 @@ export function baueFaehigkeitenStatus({ projektId, lokal, katalog, projekt, let
     grund: e.grund,
     letzter_lauf: nutzungImLauf(lauf, e.schluessel),
   }))
-  return {
-    projekt_id: projektId,
-    lokale_datei: {
-      ...(lokal.zustand === 'ungueltig'
-        ? { zustand: 'ungueltig', grund: `${lokal.grund} — Läufe mit Fähigkeiten starten in allen Projekten nicht, bis die Datei repariert oder gelöscht ist (E-F45-7)` }
-        : { zustand: lokal.zustand }),
-      pfad: lokalPfad,
-      hash: standHash,
-      fremd_geaendert: fremd,
-    },
-    lauf_aktiv: laufAktiv,
-    letzter_lauf_id: letzterLauf?.laufId ?? null,
-    hindernis: projekt.hindernis,
-    eintraege: [...katalogEintraege, ...projektEintraege],
-  }
 }
 
 /** Grund eines Katalog-Eintrags bei ungültiger lokaler Datei (QA 6). */

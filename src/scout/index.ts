@@ -9,10 +9,13 @@
  * Router: WS-1 liefert die Mechanik bis zum validen Ergebnis, der
  * Schreibpfad nach ressourcen.json ("Vormerken") ist WS-2.
  *
+ * F45 F-2b-1 (F-1057): Kandidat additiv um die optionalen Felder quelle und urteil_sammlung erweitert.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (leseScoutErgebnisAusLaufakte),
  * scripts/check-f27-scout.mjs, src/scout/scout.test.ts.
  */
 
+import { URTEILE } from '../sammlung/index.ts'
 import type { ErgebnisScout, ScoutFit, ScoutIntegrationsaufwand, ScoutKandidat, ScoutKandidatTyp } from './types.ts'
 
 const KANDIDAT_TYP = ['skill', 'extern']
@@ -20,7 +23,10 @@ const FIT = ['hoch', 'mittel', 'niedrig']
 const INTEGRATIONSAUFWAND = ['gering', 'mittel', 'hoch']
 
 const ERGEBNIS_SCOUT_FELDER = new Set(['gesuchte_capability', 'kandidaten', 'hinweis_untrusted'])
-const KANDIDAT_FELDER = new Set(['name', 'typ', 'quelle_url', 'capabilities', 'fit', 'integrationsaufwand', 'rechte', 'risiken', 'lizenz', 'empfehlung', 'unsicherheiten'])
+const KANDIDAT_FELDER = new Set(['name', 'typ', 'quelle_url', 'capabilities', 'fit', 'integrationsaufwand', 'rechte', 'risiken', 'lizenz', 'empfehlung', 'unsicherheiten', 'quelle', 'urteil_sammlung'])
+/** F45 F-2b-1 (F-1057): optionale, additive Felder — Herkunft des Kandidaten und Urteil der Sammlung (Liste aus src/sammlung). */
+const QUELLE = ['sammlung', 'web']
+const URTEIL_SAMMLUNG: readonly string[] = URTEILE
 const KANDIDAT_PFLICHTFELDER = ['name', 'typ', 'quelle_url', 'capabilities', 'fit', 'integrationsaufwand', 'rechte', 'risiken', 'empfehlung', 'unsicherheiten']
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
@@ -77,6 +83,10 @@ function validiereKandidat(kandidat: unknown, index: number): string[] {
     verstoesse.push(`'kandidaten[${index}].risiken' muss ein Array nicht-leerer Strings sein (leer ist zulässig)`)
   }
   if ('lizenz' in kandidat && !istNichtLeererString(kandidat.lizenz)) verstoesse.push(`'kandidaten[${index}].lizenz' muss, wenn angegeben, ein nicht-leerer String sein`)
+  if ('quelle' in kandidat && (typeof kandidat.quelle !== 'string' || !QUELLE.includes(kandidat.quelle))) verstoesse.push(`'kandidaten[${index}].quelle' muss, wenn angegeben, einer von ${QUELLE.join(', ')} sein`)
+  if ('urteil_sammlung' in kandidat && (typeof kandidat.urteil_sammlung !== 'string' || !URTEIL_SAMMLUNG.includes(kandidat.urteil_sammlung))) {
+    verstoesse.push(`'kandidaten[${index}].urteil_sammlung' muss, wenn angegeben, eines der zehn Urteile der Sammlung sein (${URTEIL_SAMMLUNG.join(', ')})`)
+  }
   if ('empfehlung' in kandidat && !istNichtLeererString(kandidat.empfehlung)) verstoesse.push(`'kandidaten[${index}].empfehlung' muss ein nicht-leerer String sein`)
   if ('unsicherheiten' in kandidat && !(Array.isArray(kandidat.unsicherheiten) && istArrayNichtLeererStrings(kandidat.unsicherheiten))) {
     verstoesse.push(`'kandidaten[${index}].unsicherheiten' muss ein Array nicht-leerer Strings sein (leer ist zulässig)`)

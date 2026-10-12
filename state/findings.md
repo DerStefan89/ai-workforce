@@ -13160,14 +13160,15 @@ Maßnahme: F45 F-2b: read-only Prüfschritt nach dem Verfahren `.claude/skills/w
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit, F-2b.
+Nachtrag (F45 F-2b-1, 12.10.2026): F-2b geteilt (Entscheidung Stefan nach dem Advisor-Pass). F-2b-1 liefert die Sammlung im Leitstand (Liste, Zuordnung zum Katalog, Typ, Stand, Auswahlgrund); Prüflauf, Prüfbericht und Sperre der Freigabe folgen mit F-2b-2 (`features/F45/plan-f2b.md`, Advisor-Befunde A2–A10, A15–A19, A21 als Eingabe).
 
-**F-1057** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1057** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Der Scout kennt Stefans bewertete Sammlung nicht (Challenger K21).
 Beschreibung: `.claude/agents/scout.md` sucht nur im Web. Die rund 55 bewerteten Einträge der Sammlung mit Urteil „Optional“ oder „Offen“ (`docs/harness/kandidaten-2026-09-15.md`, `docs/harness/stack-kandidaten.md`) sind für ihn unsichtbar.
 Fundstelle: `.claude/agents/scout.md`, `docs/harness/kandidaten-2026-09-15.md`, `docs/harness/stack-kandidaten.md`.
 Auswirkung: Mittel — der Scout schlägt Bekanntes neu vor oder übersieht bereits bewertete Kandidaten.
 Maßnahme: F45 F-2b: der Scout liest zuerst `kandidaten-2026-09-15.md` und `stack-kandidaten.md`, übernimmt Urteil und Lizenz, das Web nur für Lücken.
-Status: offen.
+Status: erledigt (F45 F-2b-1, 12.10.2026): Der Server hängt jedem direkt gestarteten Scout-Lauf (POST /api/laeufe, Rolle `scout`) die Regel „Sammlung zuerst“ und eine kompakte Liste der Sammlung (Name · Art · Urteil · Lizenz · Link) plus Stack-Liste an den Prompt (`ergaenzeScoutPrompt`, `scripts/leitstand/routen-sammlung.mjs`; gestarteter Argv bitgleich, der Prompt geht per stdin) — die Leitstand-Läufe lesen `.claude/agents/scout.md` nicht (Advisor A12); `scout.md` trägt dieselbe Regel für den Subagenten der Sitzung. Schema `ergebnis-scout` additiv um `quelle` (sammlung|web) und `urteil_sammlung`; die Scout-Karte zeigt das Urteil laut Sammlung (Serverwahrheit per Link, Stand der Anzeige) und markiert Abweichungen. Startfreigabe nicht nötig (der Gültigkeitsschlüssel misst nur settings.json und Hooks). Grenze: ein Scout-Schritt über einen Workflow bekommt den Anhang nicht (F-1067).
 Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit, F-2b.
 
@@ -13199,6 +13200,7 @@ Auswirkung: Mittel für (1) (Korrekturlauf ohne Fähigkeiten), sonst gering.
 Maßnahme: (1) B2b-Rückweg: die Korrektur-Entscheidung zeigt die Empfehlung erneut und trägt die Kennungen; (2) Werkzeugsatz als Parameter der Status-Route; (3) Groß-/Kleinschreibung im Join wie die CLI; (4) „letzter Lauf mit Erfassung“ zusätzlich zeigen; (5) Schalter bei nicht freigegebenen Einträgen deaktivieren oder Chip „nicht freigegeben“; (6) Hash aufklappbar wie in der Freigabe (Behebung mit F-2b oder B3); (7) Codes statt Texte (Muster F-1016); (8) Fehlschläge kurz zwischenspeichern; (9) Skelett und Katalog angleichen (Template-Repo, F-1038) oder Skelett-Inhalt im Katalog freigeben; (10) Freigabestand in faehigkeiten_im_lauf aufnehmen und dieselben Chips nutzen; (11) Nummern aus den Gründen nehmen; (12) über i18n; (13) Abstand bzw. Ausweichen des Knopfs bei schmaler Ansicht; (14) role-Attribute (table/row/cell) beim Stapeln.
 Status: offen.
 Feature/Run: Entdeckt: F45 F-2a (code-reviewer, qa, design-guardian, Render-Nachweis, Beleg 13), 12.10.2026.
+Nachtrag (F45 F-2b-1, 12.10.2026): (6) erledigt — der volle Hash im Lauf-Detail steht aufklappbar unter dem gekürzten (`<details>`, Muster der Freigabe; per Tastatur, Screenreader und Touch erreichbar, bricht in schmalen Zellen um) mit „Kopieren“ (ohne Zwischenablage: Hash markiert und Hinweis „mit Strg+C kopieren“; Render-Nachweis per Tastatur `features/F45/nachweise/f2b/render/lauf-detail-l1-hash-tastatur/`). Übrige Punkte offen.
 
 **F-1061** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: Grenzen des Wächters der lokalen Fähigkeiten-Datei (F45 F-2a).
@@ -13209,3 +13211,71 @@ Maßnahme: (3) Entscheidung Stefan (bewusste Bestätigung vs. Übernahme mit dem
 Entscheidung (3) (Stefan, 12.10.2026, Empfehlung Challenger): Nach einer Änderung von außen gilt der Stand erst nach ausdrücklicher Bestätigung im Leitstand („Datei geprüft – Stand übernehmen“, POST …/faehigkeiten/bestaetigung, Laufsperre und CSRF wie die anderen Fähigkeiten-Routen); bis dahin startet kein Lauf mit Katalog-Fähigkeiten (Grund im Startabbruch und im Band, Muster E-F45-7).
 Status: teilweise (F45 F-2a, 12.10.2026): (3) umgesetzt — `bestaetigeLokaleDatei` (nur der angezeigte, aktuelle Stand; ungültige Datei → erst reparieren), Schreib-Routen 409 solange unbestätigt (auch ohne `stand`, damit gilt (2) nur noch ohne vorherige Fremdänderung), Start mit Katalog-Fähigkeiten abgelehnt (`loeseAusfuehrungsEingabenAuf`, Freigabe-Vorprüfung vor dem Festhalten), rotes Band mit Knopf auf der Seite Workforce, Hinweis im Freigabeblock; Tests rot/grün in `scripts/leitstand/routen-faehigkeiten.test.mjs`; ARCHITECTURE.md §2 nachgezogen. Offen: (1), (2) (Schreiben über die Routen ohne Fremdänderung), (4).
 Feature/Run: Entdeckt: F45 F-2a (Advisor A1/A3, code-reviewer 3, qa 1), 12.10.2026.
+
+**F-1062** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Der Codex-Reviewer bekommt den Prozess-Audit-Block (Challenger K24).
+Beschreibung: `baueBeobachtungsBlock` hängt dem Review-Auftrag „Beobachtung des Ausführungslaufs … fehlende oder unerwartete Nutzung als Befund“ an — auch für den Worker `codex`. Das widerspricht Stefans Codex-Review-Spec §4 (kein Audit von Harness-Schritten durch den Codex-Reviewer).
+Fundstelle: `src/claude-code-gateway/index.ts` (`baueBeobachtungsBlock`), Aufruf in `scripts/leitstand-server.mjs` beim Schritt `code-reviewer`.
+Auswirkung: Mittel — der Codex-Reviewer prüft Prozessnutzung statt Code; Befunde vermischen sich mit dem Harness-Abgleich.
+Maßnahme: B2a — Block nur für den Worker `claude-code`; „vorgesehen gegen benutzt“ bleibt über den Harness-Abgleich (Beleg 12) in der Abnahme.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026 (Auftrag F45 F-2b).
+Zugeordnet: F45 B2a.
+
+**F-1063** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Review-Schema ohne Dimension, Evidenzstatus, Korrekturrichtung und Bezug auf den geprüften Stand (Challenger K25).
+Beschreibung: `ergebnis-code-reviewer` kennt weder Dimension noch Evidenzstatus (confirmed/likely/needs-validation), Korrekturrichtung, Stufe `critical`, Befund-ID noch den Bezug auf den geprüften Stand — ein veralteter Befund ist nicht erkennbar.
+Fundstelle: `schemas/ergebnis-code-reviewer.schema.json`.
+Auswirkung: Mittel — Review-Befunde sind schwer zu sortieren, nachzuverfolgen und gegen den aktuellen Stand zu prüfen.
+Maßnahme: B2a — Schema v2 additiv nach Stefans Codex-Review-Spec (kommt mit B2a als `docs/projekt/codex-review-spec.md`).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026 (Auftrag F45 F-2b).
+Zugeordnet: F45 B2a.
+
+**F-1064** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Projektkarte mit Zuschnitt je Rolle (Challenger K26).
+Beschreibung: Architekt, Advisor und Reviewer kennen den Ausführungsrahmen nicht; Pläne enthalten deshalb Schritte, die die Ausführung nicht darf (git, Paket mit Installationsskript, `npm run check:<name>` (F-1041), Löschen ohne Löschliste, Hintergrundbefehle) → der Lauf endet VERWEIGERT oder braucht eine Korrekturrunde.
+Fundstelle: `src/architekt/index.ts`, Workflow-Vorlagen, Startvorlage/Werkzeugsatz.
+Auswirkung: Mittel — vermeidbare Verweigerungen und Korrekturrunden.
+Maßnahme: B2a — eine einzige, deterministisch je Ablauf neu erzeugte Projektkarte, je Rolle gefiltert, keine Handpflege. Abschnitte: Vorhaben (Projektbeschreibung, Akte, AK — deckt F-936), Bestand (Auszug ARCHITECTURE.md, ADRs, begrenzte Modul-/Verzeichnisübersicht), Ausführungsrahmen (aus Startvorlage und Werkzeugsatz: erlaubte Befehle, kein git, kein Hintergrund, Schreiben nur im Arbeitsordner, Löschen nur per Löschliste, npm-Skripte aus, Bash-Zeitgrenze), Aktive Fähigkeiten (Agents/Skills/MCPs aus dem F-1-Satz), Qualität (DoD aus CLAUDE.md, Prüfbefehl, AK). Zuschnitt: Architekt und Advisor alle Abschnitte; Ausführung Rahmen, Fähigkeiten, Qualität (plus DoD); Reviewer (Claude und Codex) Vorhaben, Bestand, Qualität und Prüfergebnis, ohne Bash-Details (Codex-Review-Spec). Hash der verwendeten Karte je Lauf in der Laufakte. Rahmen-Konflikte meldet der Architekt über vorhandene Felder (`entscheidungen_mensch` mit Kategorie „ausfuehrungsrahmen“ bzw. `capabilities_bedarf.status = "fehlt"`), kein neuer Mechanismus; der Advisor prüft, dass kein Planschritt außerhalb des Rahmens liegt, ohne so gemeldet zu sein. Nicht bauen: kein AGENTS.md (zweite Wahrheit), keine eigene Datei für Architekturprinzipien (stehen in ARCHITECTURE.md und ADRs).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026.
+Zugeordnet: F45 B2a.
+
+**F-1065** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Der Architekt sieht im Feature-Modus den Bestand nicht (Challenger K27).
+Beschreibung: `baueArchitektAuftragstext` gibt im Modus „feature“ nur Rolleninstruktion, ADR-Block, Stack-Hinweis und Planungsauftrag; es fehlen Capability-Auszug (nur im Modus „projekt“), ARCHITECTURE.md, Modulübersicht und eine Anweisung, den Code zu lesen. Codex läuft `--sandbox read-only` und könnte lesen, wird aber nicht angewiesen.
+Fundstelle: `src/architekt/index.ts` (`baueArchitektAuftragstext`).
+Auswirkung: Mittel — Entwürfe ohne Kenntnis des Bestands.
+Maßnahme: B2a, mit F-1064 — Projektkarte an den Architekten; Anweisung „Relevante Dateien vor dem Entwurf lesen, als [Fakt] mit Pfad belegen“; Capability-Auszug auch im Feature-Modus.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026.
+Zugeordnet: F45 B2a.
+
+**F-1066** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: ARCHITECTURE.md wird in neuen Projekten von niemandem befüllt (Challenger K28).
+Beschreibung: Das Skelett liefert ARCHITECTURE.md komplett als [FÜLLUNG]; die Schreib-Allowlist des Architekt-Projektmodus (`src/architekt/index.ts`, `PROJEKTMODUS_SCOPE_ALLOWLIST_DATEIEN`, F-712) erlaubt nur `docs/**`, `features/**` und `CLAUDE.md` → der wichtigste Bestandsteil der Karte bleibt leer.
+Fundstelle: `src/architekt/index.ts`, `vorlagen/projekt-skelett/ARCHITECTURE.md`.
+Auswirkung: Mittel — die Projektkarte (F-1064) hätte keinen Bestand.
+Maßnahme: B2a, mit F-1064/F-1065 — ARCHITECTURE.md in die Allowlist des Projektmodus; Abschnitt Ordnerstruktur/Module/Datenzugriff beim Stack-Entscheid zur Pflicht (gleiche Prüfung wie CLAUDE.md und ADR, F-714); die Karte erkennt [FÜLLUNG] und meldet „Architektur noch nicht beschrieben“ statt Vorlagentext. Verwerfen nur, falls ARCHITECTURE.md in Fremdprojekten bewusst Handarbeit bleiben soll.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026.
+Zugeordnet: F45 B2a.
+
+**F-1067** · `TECH_DEBT` · P3 · offen
+Titel: Ein Scout-Schritt über einen Workflow bekommt die Sammlung nicht (F45 F-2b-1).
+Beschreibung: Der Anhang „Sammlung zuerst“ hängt nur an direkt gestarteten Scout-Läufen (POST /api/laeufe, Rolle `scout`). Workflows lassen jede bekannte Rolle zu; ein Scout-Schritt über `starteWorkflowSchritt` liefe ohne die Sammlung (Delta-Advisor B3). Heute plant keine Workflow-Vorlage einen Scout-Schritt.
+Fundstelle: `scripts/leitstand-server.mjs` (`loeseSchrittEingabenAuf`), `scripts/leitstand/routen-sammlung.mjs` (`ergaenzeScoutPrompt`).
+Auswirkung: Gering — nur, wenn künftig ein Workflow einen Scout-Schritt plant.
+Maßnahme: Bei Bedarf denselben Anhang in `loeseSchrittEingabenAuf` für die Rolle `scout` (ohne neuen Aufruf von `starteWorkflowSchritt`).
+Status: offen.
+Feature/Run: Entdeckt: F45 F-2b-1 (Delta-Advisor B3), 12.10.2026.
+
+**F-1068** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte der Sammlung im Leitstand (F45 F-2b-1).
+Beschreibung: (1) Bei 390 px sind 176 gestapelte Einträge zu scrollen; die Gruppen nach Art lassen sich nicht einklappen (QA 6). (2) Die Texte des Servers — Selbstprüfung, Strukturfehler der Datei, Fehler des Katalog-Status — bleiben in en/ru/tr deutsch (QA 8; Muster F-1060 (7)). (3) Das Detail öffnet in der Namensspalte (34 %) statt als eigene volle Tabellenzeile (design-guardian 3, Variante „besser“; umgesetzt ist die Variante „einspaltig“). (4) In den Spalten Lizenz/Kosten bricht ein Wort, das breiter als die Spalte ist („iOS-/Signierungssetup“), im Wort (Bestätigungsprüfung design-guardian; Silbentrennung verworfen, weil sie Eigennamen wie „GitHub“ trennt).
+Fundstelle: `public/leitstand/sammlung-anzeige.js`, `src/sammlung/index.ts`, `scripts/leitstand/routen-sammlung.mjs`.
+Auswirkung: Gering — Lesbarkeit auf dem Telefon und in anderen Sprachen.
+Maßnahme: (1) Gruppen als `<details>` (offen ab 1 Treffer bzw. bei Filter); (2) Codes mit Zahlen statt Text (Muster F-1016); (3) Detailzeile mit `colspan` (mit F-2b-2, wenn dort der Prüfbericht im Detail steht); (4) breitere Kosten-Spalte oder `hyphens` nur für die Kosten-Spalte mit `lang` der Datei.
+Status: offen.
+Feature/Run: Entdeckt: F45 F-2b-1 (qa, design-guardian), 12.10.2026.

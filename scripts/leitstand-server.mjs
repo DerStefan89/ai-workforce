@@ -539,6 +539,7 @@ import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, eins
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
 import { baueHarnessAbgleichAntwort, baueHarnessAbgleichOhneLauf, schreibeHarnessAbgleichAmKettenende } from './leitstand/routen-harness-abgleich.mjs'
+import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } from './leitstand/routen-sammlung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
@@ -5179,6 +5180,16 @@ export function erzeugeRequestHandler(optionen = {}) {
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const profilReferenz = leiteProfilReferenzAb(vorlage)
 
+  /**
+   * F45 F-2b-1 (F-1057, Delta B5): Scout-Felder des Lauf-Details — scoutErgebnis unverändert (das geprüfte Modellergebnis),
+   * daneben scoutSammlung: je Kandidat die Sammlung der Installation zum Zeitpunkt der Anzeige (Serverwahrheit), sonst null.
+   * @param projektion - Ergebnis von baueScoutErgebnisProjektion
+   * @returns { scoutErgebnis, scoutSammlung }
+   */
+  function scoutFelder(projektion) {
+    return { scoutErgebnis: projektion, scoutSammlung: projektion.status === 'ok' ? baueScoutSammlungAbgleich(projektion.ergebnis, installWurzel) : null }
+  }
+
   /** Synchron VOR dem fuehreAufgabeDurch-Aufruf reservierte laufIds dieser Serverinstanz (AK5) — die erste run_prepared-Marke liegt erst Sekunden später auf der Platte. */
   const angenommeneLaufIds = new Set()
   /** Flüchtige Projektion eines Wurfs aus fuehreAufgabeDurch (AK6) — kein Zustand, keine Datei unter kontrollzustand/, geht bei Serverneustart verloren. */
@@ -6795,7 +6806,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufakte: baueLaufakteProjektion(laufakteVersion),
         // F-683: gegen installWurzel — dieselbe Wurzel, unter der die Gateways schreiben.
         rohstrom: baueRohstromProjektion(laufakteVersion, installWurzel),
-        scoutErgebnis: baueScoutErgebnisProjektion(laufakteVersion),
+        // F45 F-2b-1 (F-1057, Delta B5): dazu scoutSammlung — je Kandidat die Sammlung zum Zeitpunkt der Anzeige (Serverwahrheit).
+        ...scoutFelder(baueScoutErgebnisProjektion(laufakteVersion)),
       })
       return
     }
@@ -7491,6 +7503,40 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    // F45 F-2b-1: Stefans Sammlung (docs/harness/kandidaten-2026-09-15.md der Installation, nur die Bewertungsmatrix) mit
+    // Zuordnung zum Katalog und Stand dieses Projekts. Rein lesend, nicht im Poll; Logik in scripts/leitstand/routen-sammlung.mjs
+    // und src/sammlung. Ein Lesefehler der Sammlung ist ein Fehlerstand (200), ein ungültiger Katalog 500.
+    if (pfad === '/api/sammlung') {
+      if (req.method !== 'GET') {
+        sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+        return
+      }
+      let katalogRoh
+      try {
+        katalogRoh = leseRessourcenRoh(installWurzel)
+      } catch (fehler) {
+        sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
+        return
+      }
+      const katalogVerstoesse = validiereRessourcenDaten(katalogRoh)
+      if (katalogVerstoesse.length > 0) {
+        sendeJson(res, 500, { grund: `ressourcen.json ungültig: ${katalogVerstoesse.join('; ')}` })
+        return
+      }
+      const letzte = findeLetzteRealeBesetzung('ausfuehrung', basisVerzeichnis).treffer
+      const laufakte = letzte === null ? null : ladeArtefaktVersion(`laufakte-${letzte.laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const antwort = baueSammlungAntwort({
+        installWurzel,
+        katalog: loeseRessourcenAuf(katalogRoh.ressourcen, repoWurzel, startvorlagePfad),
+        projektId,
+        lokal: ladeFaehigkeitenLokal(faehigkeitenLokalPfad),
+        letzterLauf: letzte === null ? null : { laufId: letzte.laufId, daten: laufakte?.daten ?? null },
+        kennung: empfehlungsKennung,
+      })
+      sendeJson(res, antwort.http, antwort.koerper)
+      return
+    }
+
     // F45 F-1 (F-1012 Serverteil, E-F45-6/7/8): Fähigkeiten je Projekt — Status lesen, ein-/ausschalten, nach Inhalt
     // freigeben. Logik in scripts/leitstand/routen-faehigkeiten.mjs und src/faehigkeiten; hier nur Registrierung. Die
     // POST-Routen sind während eines Laufs gesperrt (pruefeGlobaleLaufSperre, E-F45-8) und schreiben nur
@@ -8159,7 +8205,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // und nur für erhaeltKatalogFaehigkeiten; Abweichung → 400, nichts reserviert. Sonst bitgenau:
       // bei einer Rolle/Art ohne Katalog-Fähigkeiten wird empfehlungIds BEWUSST still ignoriert
       // (Vorgabe „jede andere Rolle/Art bitgenau wie bisher“, auch in POST .../freigabe).
-      let auftragstext = auftragVersion.daten.auftragstext
+      // F45 F-2b-1 (F-1057, Plan v2.1 Delta B3): der Scout liest die Sammlung zuerst — Anhang nur für rolle 'scout', jede
+      // andere Rolle bitgleich; der Argv bleibt auch für scout gleich (der Prompt geht per stdin, F-642).
+      let auftragstext = ergaenzeScoutPrompt(eingabenRoh.rolle, auftragVersion.daten.auftragstext, installWurzel)
       let ausfuehrungsOptionen = {}
       // F45 F-1 (Code-Review 7): die lokale Datei einmal lesen.
       const lokaleDatei = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)

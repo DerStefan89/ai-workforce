@@ -1,0 +1,30 @@
+[
+  {
+    "label": "Workforce geladen",
+    "Abweichung": false,
+    "erste Sammlungszeile": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Capability Library",
+    "Abweichung": false,
+    "erste Sammlungszeile": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Rollen & Besetzung",
+    "Abweichung": false,
+    "erste Sammlungszeile": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "„Kandidaten suchen“ (Attrappen für Auftrag, Lauf, Detail)",
+    "Abweichung": true,
+    "erste Sammlungszeile": "Laut Sammlung (aktueller Stand): Aufnehmen",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]
