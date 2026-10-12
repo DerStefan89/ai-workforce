@@ -21,6 +21,10 @@
  * F44 WS-4a (F5): Texte über i18n (Schlüssel installation.*; Server- und Katalogwerte bleiben roh),
  * Knöpfe im Stil .button der Vorlage.
  *
+ * F45 F-2b-2a (F-1056): der Bestätigungsblock zeigt den Prüfbericht zur angezeigten Version (Urteil, Fakten, Befunde,
+ * Auflagen, Ausnahme-Begründung); ohne passenden Bericht oder bei NICHT_GEEIGNET steht statt „Installieren“ der Grund
+ * (pruefbericht_sperre) — der Server lehnt in diesem Fall ohnehin mit 409 ab.
+ *
  * Wichtig: Jeder Serverwert wird escaped (escapeHtml). Die version/integrity des Klicks „Installieren“
  * stammen aus den data-Attributen des angezeigten Bestätigungsblocks — installiert wird genau, was
  * angezeigt wurde.
@@ -29,7 +33,16 @@
 import { bereiteInstallationVor, installiereRessource } from './api.js'
 import { setzeInstallationsAnzeige, setzeInstallationsMeldung } from './empfehlung-anzeige.js'
 import { t, tHtml } from './i18n.js'
+import { renderBerichtFuerFreigabe } from './pruefung-anzeige.js'
 import { escapeHtml } from './render.js'
+
+/**
+ * F-1075 Rückfallebene: „Installieren“ bei Sperre deaktiviert sichtbar (ohne Aktion), der Grund steht im Sperrblock darüber.
+ * @returns HTML
+ */
+function gesperrterKnopf() {
+  return `<button type="button" class="button primary" disabled aria-describedby="installation-sperre">${escapeHtml(t('installation.installieren'))}</button>`
+}
 
 /**
  * Bestätigungsblock vor dem Klick „Installieren“.
@@ -39,11 +52,14 @@ import { escapeHtml } from './render.js'
 export function renderInstallationsBestaetigung(daten) {
   const zeile = (titelSchluessel, wert) => `<li><strong>${escapeHtml(t(titelSchluessel))}:</strong> ${wert}</li>`
   const text = (wert) => (wert === null || wert === undefined || wert === '' ? `<span class="hinweis">${escapeHtml(t('installation.nichtAngegeben'))}</span>` : escapeHtml(wert))
-  if (daten.art === 'skill') return renderSkillBestaetigung(daten, zeile, text)
+  // F45 F-2b-2a: Prüfbericht zur angezeigten Version bzw. Sperrgrund (ohne Bericht / veraltet / NICHT_GEEIGNET → kein Knopf).
+  const bericht = renderBerichtFuerFreigabe(daten)
+  if (daten.art === 'skill') return renderSkillBestaetigung(daten, zeile, text, bericht)
   const lizenz = daten.lizenzRegistry !== null && daten.lizenzRegistry !== undefined ? `${text(daten.lizenz)} ${escapeHtml(t('installation.registry', { lizenz: daten.lizenzRegistry }))}` : text(daten.lizenz)
   const werkzeuge = (daten.werkzeuge ?? []).map((w) => `<code>${escapeHtml(w)}</code>`).join(', ')
   return `<div class="empfehlung-installation-bestaetigung">
     <p>${tHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
+    ${bericht.html}
     <ul>
       ${zeile('installation.paket', `<code>npm:${escapeHtml(daten.paket)}</code>`)}
       ${zeile('installation.version', `<code>${escapeHtml(daten.version)}</code>`)}
@@ -56,7 +72,7 @@ export function renderInstallationsBestaetigung(daten) {
       ${zeile('installation.adresse', text(daten.herkunftUrl))}
     </ul>
     <p class="hinweis">${escapeHtml(t('installation.hinweisMcp'))}</p>
-    <button type="button" class="button primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="${escapeHtml(daten.integrity)}" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">${escapeHtml(t('installation.installieren'))}</button>
+    ${bericht.gesperrt ? gesperrterKnopf() : `<button type="button" class="button primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="${escapeHtml(daten.integrity)}" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">${escapeHtml(t('installation.installieren'))}</button>`}
     <button type="button" class="button" data-installation-aktion="abbrechen" data-ressource-id="${escapeHtml(daten.id)}">${escapeHtml(t('installation.abbrechen'))}</button>
   </div>`
 }
@@ -66,12 +82,14 @@ export function renderInstallationsBestaetigung(daten) {
  * @param daten - Antwort von POST .../installation/vorbereiten mit art 'skill'
  * @param zeile - (titel, htmlWert) => <li>
  * @param text - Wert escaped oder „nicht angegeben“
+ * @param bericht - { html, gesperrt } aus renderBerichtFuerFreigabe
  * @returns HTML
  */
-function renderSkillBestaetigung(daten, zeile, text) {
+function renderSkillBestaetigung(daten, zeile, text, bericht) {
   const code = (wert) => `<code>${escapeHtml(wert)}</code>`
   return `<div class="empfehlung-installation-bestaetigung">
     <p>${tHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
+    ${bericht.html}
     <ul>
       ${zeile('installation.repo', code(daten.repo))}
       ${zeile('installation.ref', code(daten.ref))}
@@ -84,7 +102,7 @@ function renderSkillBestaetigung(daten, zeile, text) {
       ${zeile('installation.adresse', text(daten.herkunftUrl))}
     </ul>
     <p class="hinweis">${escapeHtml(daten.hinweis)} ${escapeHtml(t('installation.hinweisSkill'))}</p>
-    <button type="button" class="button primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">${escapeHtml(t('installation.installieren'))}</button>
+    ${bericht.gesperrt ? gesperrterKnopf() : `<button type="button" class="button primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">${escapeHtml(t('installation.installieren'))}</button>`}
     <button type="button" class="button" data-installation-aktion="abbrechen" data-ressource-id="${escapeHtml(daten.id)}">${escapeHtml(t('installation.abbrechen'))}</button>
   </div>`
 }

@@ -99,7 +99,7 @@ gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
-`docs/projekt/fixpaket-f45.md`; B0 bis F-2a gemergt, zuletzt #324; F-2b-1
+`docs/projekt/fixpaket-f45.md`; B0 bis F-2b-1 gemergt, zuletzt #325; F-2b-2a
 gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 12.10.2026).
 
@@ -607,12 +607,13 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   #317 (`8e5adf9`); S „Härtung klein“ gemergt #318 (`387f1a3`); B1a-1 „eigener
   Arbeitsordner je Ablauf“ gemergt #319, B1a-2 #320, B1b-1 #321, B1b-2 #322,
   F-1 „Fähigkeiten im Lauf“ #323, F-2a „Fähigkeiten-Oberfläche“ #324
-  (`83a576c`); F-2b geteilt (Stefan, 12.10.2026): F-2b-1 „Sammlung im
-  Leitstand, Scout liest die Sammlung“ gebaut, nicht committet (Branch
-  `f45/f2b-sammlung-auswahl-pruefung`; F-1057 und F-1060 (6) erledigt),
-  danach F-2b-2 (Auswählen → Eignungsprüfung → Katalog). Reihenfolge ab F:
-  F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1068. Nach F46, vor F30
+  (`83a576c`), F-2b-1 „Sammlung im Leitstand“ #325 (`1985e9b`); F-2b-2 geteilt
+  (Delta-Advisor 12.10.2026): F-2b-2a „Auswählen → Eignungsprüfung →
+  Freigabe nur mit Bericht“ gebaut, nicht committet (Branch
+  `f45/f2b2-pruefung-freigabe`; F-1056 teilweise), danach F-2b-2b (Vormerken,
+  „Eignung prüfen“ im Katalog, F-1061 (1)). Reihenfolge ab F: F-2b-2a →
+  F-2b-2b → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1076 (F-1075 P1 offen, Rest F-2b-2b; npm-Installation nach Prüfung bis dahin gesperrt). Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

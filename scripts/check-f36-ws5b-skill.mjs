@@ -41,9 +41,9 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { baueAufruf, pruefeInitZeile } from '../src/claude-code-gateway/index.ts'
@@ -58,6 +58,7 @@ import { berechneInhaltHash } from '../src/ressourcen/skill-dateien.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
+import { mitPassendemBericht } from './leitstand/pruefbericht-testhilfe.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -109,6 +110,29 @@ remoteRepo('proj-pack', { 'skills/s/SKILL.md': skillMd('ponytail') })
 remoteRepo('leer-pack', { 'skills/s/README.md': 'kein Skill' })
 remoteRepo('fm-pack', { 'skills/s/SKILL.md': '# ohne Frontmatter\n' })
 remoteRepo('link-pack', { 'skills/s/SKILL.md': skillMd('link-skill') }, { 'skills/s/geheim': '../../../../etc/passwd' })
+
+/**
+ * F-1075: geprüfte Dateiliste eines Fixture-Skills (Pfad + sha256) aus dem lokalen „GitHub“ — so, wie die Installation sie
+ * schreibt; der passende Prüfbericht der Testhilfe trägt sie, damit der Inhalts-Abgleich der Installation besteht.
+ * @param d - Antwort von …/installation/vorbereiten (art 'skill')
+ * @returns [{ pfad, sha256 }]
+ */
+function dateienAusRemote(d) {
+  const treffer = /github\.com\/fixture\/([^/]+)\.git$/.exec(String(d.repo ?? ''))
+  if (treffer === null) return []
+  const wurzelOrdner = join(REMOTE, treffer[1], ...String(d.quellPfad).split('/'))
+  const liste = []
+  const gehe = (absolut, relativ) => {
+    if (!existsSync(absolut)) return
+    for (const e of readdirSync(absolut, { withFileTypes: true })) {
+      const rel = relativ === '' ? e.name : `${relativ}/${e.name}`
+      if (e.isDirectory()) gehe(join(absolut, e.name), rel)
+      else if (e.isFile()) liste.push({ pfad: rel, sha256: createHash('sha256').update(readFileSync(join(absolut, e.name))).digest('hex') })
+    }
+  }
+  gehe(wurzelOrdner, '')
+  return liste.length > 0 ? liste : [{ pfad: 'fehlt', sha256: '0'.repeat(64) }]
+}
 
 /** git-Runner: echtes git, nur die Fixture-Adressen werden auf die lokalen Repos umgeschrieben. */
 const gitRunner = (args, optionen) => {
@@ -262,10 +286,17 @@ async function umgebung() {
   )
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const basisUrl = `http://127.0.0.1:${server.address().port}`
-  const post = async (pfad, body) => {
-    const antwort = await fetch(`${basisUrl}${pfad}`, { method: 'POST', body: JSON.stringify(body ?? {}) })
-    return { status: antwort.status, inhalt: await antwort.json().catch(() => ({})) }
-  }
+  // F45 F-2b-2 (Advisor C5): nach jedem erfolgreichen „vorbereiten“ ein passender Prüfbericht in der Gate-Ablage — die
+  // Statuscodes dieses Gates gelten hinter der Bericht-Sperre unverändert (die Sperre selbst prüft check-f45-f2b2-pruefung).
+  const post = mitPassendemBericht(
+    async (pfad, body) => {
+      const antwort = await fetch(`${basisUrl}${pfad}`, { method: 'POST', body: JSON.stringify(body ?? {}) })
+      return { status: antwort.status, inhalt: await antwort.json().catch(() => ({})) }
+    },
+    profilReferenz,
+    basisVerzeichnis,
+    dateienAusRemote
+  )
   /** Vorbereiten + Installieren über HTTP (was der Leitstand-Knopf tut). */
   const installiere = async (id) => {
     const v = await post(`/api/ressourcen/${id}/installation/vorbereiten`)

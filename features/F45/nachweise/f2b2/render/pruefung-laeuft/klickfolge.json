@@ -1,0 +1,171 @@
+{
+  "url": "http://127.0.0.1:4393/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#sammlung tr[data-sm-id=\"repos-mengto-skills\"]"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Phase",
+        "selector": "#sammlung [data-pruef-phase]",
+        "attribut": "data-pruef-phase"
+      },
+      {
+        "name": "Urteil",
+        "selector": "#sammlung [data-pruef-bericht]",
+        "attribut": "data-pruef-bericht"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#sammlung .pruef-ablauf .fehler"
+      },
+      {
+        "name": "Sperre",
+        "selector": "[data-pruef-sperre]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Typwahl",
+        "selector": "#sammlung [data-sm-typ]"
+      },
+      {
+        "name": "Pfad-Feld",
+        "selector": "#sammlung [data-sm-pfad]"
+      },
+      {
+        "name": "Ausnahme-Feld",
+        "selector": "#sammlung [data-sm-ausnahme]"
+      },
+      {
+        "name": "Prüfung starten",
+        "selector": "#sammlung [data-sm-pruefung-start]"
+      },
+      {
+        "name": "Fakten",
+        "selector": ".pruef-fakten"
+      },
+      {
+        "name": "Installieren",
+        "selector": "[data-installation-aktion=\"installieren\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/sammlung/pruefung/vorbereiten",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "subjekt": {
+          "schluessel": "s-repos-mengto-skills",
+          "katalog_id": null,
+          "sammlung_id": "repos-mengto-skills",
+          "name": "MengTo/skills"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/MengTo/skills.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "urteil_sammlung": "Aufnehmen",
+        "urteil_bedeutung": "Priorisierter Kandidat für den kostenfreien, kommerziell erlaubten Basispfad. Vor Aktivierung Version, vollständige Rechte und Funktionstest bestätigen.",
+        "ausgeschlossen": false,
+        "letzter_bericht": null
+      }
+    },
+    {
+      "muster": "**/api/sammlung/pruefung",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "eignungspruefung-s-render-0001",
+        "auftragId": "pruefung-render"
+      }
+    },
+    {
+      "muster": "**/api/sammlung/pruefung/eignungspruefung-s-render-0001",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "lauf_id": "eignungspruefung-s-render-0001",
+        "auftrag_id": "pruefung-render",
+        "phase": "laeuft",
+        "grund": null,
+        "subjekt": {
+          "schluessel": "s-repos-mengto-skills",
+          "name": "MengTo/skills"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/MengTo/skills.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "bericht": null,
+        "gestartet_am": "2026-10-12T15:46:18.546Z"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail repos-mengto-skills",
+      "klick": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"] summary",
+      "warteAufSelector": {
+        "selector": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"][open]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "„Auswählen“",
+      "klick": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"] [data-sm-auswaehlen]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"bestaetigen\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-bestaetigung.png"
+    },
+    {
+      "label": "„Prüfung starten“",
+      "klick": "#sammlung [data-sm-pruefung-start=\"repos-mengto-skills\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"laeuft\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "02-laeuft.png"
+    }
+  ]
+}

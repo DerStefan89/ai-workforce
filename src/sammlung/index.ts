@@ -399,19 +399,27 @@ export function pruefbareQuelle(link: string | null): PruefbareQuelle {
 }
 
 /**
- * Ob ein Eintrag auswählbar ist (wirksam mit F-2b-2) und warum nicht.
+ * Ob ein Eintrag auswählbar ist (wirksam seit F-2b-2a) und warum nicht. Seit F-2b-2a (QA 2/3) zusätzlich: ein zugeordneter
+ * Katalogeintrag, der schon freigegeben ist (Bestandsschutz, keine Prüfung), und ein MCP ohne npm-Paket (Katalog
+ * `herkunft.paket` bzw. npm-Link der Sammlung) — die Route würde sonst 409 bzw. 422 „Paketangabe fehlt“ antworten.
  * @param zeile - Sammlungszeile
  * @param typ - bestimmter Typ
  * @param quelle - prüfbare Quelle
+ * @param katalogEintrag - zugeordneter Katalogeintrag oder undefined
  * @returns { auswaehlbar, grund }
  */
-export function auswahl(zeile: SammlungZeile, typ: SammlungTyp, quelle: PruefbareQuelle): { auswaehlbar: boolean; grund: NichtAuswaehlbar | null } {
+export function auswahl(zeile: SammlungZeile, typ: SammlungTyp, quelle: PruefbareQuelle, katalogEintrag?: KatalogEintragKurz): { auswaehlbar: boolean; grund: NichtAuswaehlbar | null } {
   const nein = (grund: NichtAuswaehlbar) => ({ auswaehlbar: false, grund })
   if (zeile.urteil === 'Alias') return nein('alias')
   if (zeile.link === null) return nein('ohne_link')
   if (typ === 'lokal') return nein('lokal')
   if (typ === 'bibliothek') return nein('bibliothek')
   if (typ === 'plugin') return nein('plugin')
+  if (katalogEintrag !== undefined && katalogEintrag.freigabe !== 'OFFEN') return nein('freigegeben')
+  if (typ === 'mcp') {
+    const paket = katalogEintrag !== undefined ? /^npm:.+/.test(katalogEintrag.herkunft?.paket ?? '') : quelle?.art === 'npm'
+    if (!paket) return nein('mcp_ohne_paket')
+  }
   if (quelle === null) return nein('keine_quelle')
   return { auswaehlbar: true, grund: null }
 }
@@ -469,7 +477,7 @@ export function baueSammlungAnsicht(eingabe: { text: string; stackText: string |
     const katalogEintrag = z.status === 'zugeordnet' ? katalogNachId.get(z.katalog_id) : undefined
     const { typ, typ_quelle } = bestimmeTyp(zeile, katalogEintrag, stackUrls)
     const quelle = pruefbareQuelle(zeile.link)
-    const wahl = auswahl(zeile, typ, quelle)
+    const wahl = auswahl(zeile, typ, quelle, katalogEintrag)
     const stand = berechneStand(katalogEintrag, katalogEintrag === undefined ? undefined : eingabe.katalogStatus.get(katalogEintrag.id))
     return {
       ...zeile,

@@ -1,0 +1,36 @@
+{
+  "wurzel": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-f2b2-nachweis-9cwiZ6",
+  "basis": "http://127.0.0.1:4392",
+  "zeit": "2026-10-12T15:18:58.554Z",
+  "laeufe": [
+    {
+      "id": "impeccable",
+      "vorbereiten": {
+        "status": 200,
+        "grund": null,
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/pbakaus/impeccable.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ".claude/skills/impeccable"
+        }
+      },
+      "start": {
+        "status": 202,
+        "lauf_id": "eignungspruefung-impeccable-87331e24-9000-432d-bd4b-75854a1bace7",
+        "grund": null
+      },
+      "ergebnis": {
+        "phase": "fertig",
+        "grund": null,
+        "urteil": "NICHT_GEEIGNET",
+        "artefakt": "pruefbericht-impeccable",
+        "init_skills": [],
+        "init_plugins": [],
+        "kosten_usd": 0.38459740000000003
+      }
+    }
+  ]
+}

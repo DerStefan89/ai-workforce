@@ -187,6 +187,12 @@ test('auswahl: Gründe in fester Reihenfolge', () => {
   assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'plugin', git), { auswaehlbar: false, grund: 'plugin' })
   assert.deepEqual(auswahl(zeile('a', 'A', 'https://example.com'), 'unbestimmt', null), { auswaehlbar: false, grund: 'keine_quelle' })
   assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'unbestimmt', git), { auswaehlbar: true, grund: null })
+  // F-2b-2a (QA 2/3): freigegebener Katalogeintrag und MCP ohne npm-Paket sind nicht auswählbar.
+  const k = (freigabe: string, paket?: string): KatalogEintragKurz => ({ id: 'k', typ: 'extern', unterart: 'mcp', freigabe, herkunft: { art: 'extern', url: 'https://github.com/a/b', ...(paket ? { paket } : {}) } })
+  assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git, k('FREIGEGEBEN', 'npm:x')), { auswaehlbar: false, grund: 'freigegeben' })
+  assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git, k('OFFEN')), { auswaehlbar: false, grund: 'mcp_ohne_paket' })
+  assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git, k('OFFEN', 'npm:x')), { auswaehlbar: true, grund: null })
+  assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git), { auswaehlbar: false, grund: 'mcp_ohne_paket' })
 })
 
 test('berechneStand: benutzt > aktiv > installiert > vorgemerkt; FREIGEGEBEN extern → ohne_vor_f2b', () => {

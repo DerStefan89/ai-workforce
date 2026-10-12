@@ -1,0 +1,1515 @@
+{
+  "url": "http://127.0.0.1:4393/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#library-detail"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Phase",
+        "selector": "#sammlung [data-pruef-phase]",
+        "attribut": "data-pruef-phase"
+      },
+      {
+        "name": "Urteil",
+        "selector": "#sammlung [data-pruef-bericht]",
+        "attribut": "data-pruef-bericht"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#sammlung .pruef-ablauf .fehler"
+      },
+      {
+        "name": "Sperre",
+        "selector": "[data-pruef-sperre]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Typwahl",
+        "selector": "#sammlung [data-sm-typ]"
+      },
+      {
+        "name": "Pfad-Feld",
+        "selector": "#sammlung [data-sm-pfad]"
+      },
+      {
+        "name": "Ausnahme-Feld",
+        "selector": "#sammlung [data-sm-ausnahme]"
+      },
+      {
+        "name": "Prüfung starten",
+        "selector": "#sammlung [data-sm-pruefung-start]"
+      },
+      {
+        "name": "Fakten",
+        "selector": ".pruef-fakten"
+      },
+      {
+        "name": "Installieren",
+        "selector": "[data-installation-aktion=\"installieren\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/ressourcen",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startvorlagePfad": "C:\\Users\\stefa\\Projekte\\ai-workforce\\startvorlagen\\ai-workforce.json",
+        "eintraege": [
+          {
+            "id": "claude-code",
+            "typ": "worker",
+            "capabilities": [
+              "CODE_WRITE",
+              "CODE_REVIEW",
+              "REPO_READ",
+              "PLAN_REVIEW",
+              "TEST_DESIGN",
+              "TASK_CLASSIFICATION",
+              "WEB_RESEARCH"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "startvorlage",
+              "worker": "claude-code"
+            },
+            "name": "claude-code",
+            "beschreibung": "Claude Code CLI — lesender und schreibender Ausführungs-Worker.",
+            "verfuegbar": true,
+            "grund": "Startvorlagen-Block vorhanden und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "Startvorlagen-Block vorhanden und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "codex",
+            "typ": "worker",
+            "capabilities": [
+              "CODE_REVIEW",
+              "REPO_READ",
+              "PLAN_REVIEW",
+              "TEST_DESIGN",
+              "TASK_CLASSIFICATION",
+              "STRUCTURED_OUTPUT"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "startvorlage",
+              "worker": "codex"
+            },
+            "name": "codex",
+            "beschreibung": "OpenAI Codex CLI — lesender Ausführungs-Worker.",
+            "verfuegbar": true,
+            "grund": "worker.codex-Block vorhanden und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "worker.codex-Block vorhanden und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "advisor-pass",
+            "typ": "skill",
+            "capabilities": [
+              "PLAN_REVIEW"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/advisor-pass"
+            },
+            "name": "advisor-pass",
+            "beschreibung": "Führt einen Advisor-Pass auf einen Plan durch, BEVOR gebaut wird — Plan v1 als Datei, frischer Kontext, Findings mit Evidenz-Marker und Belegstelle, vierstufiges Urteil, Plan v2 als eigene Datei. Nutzen vor jeder Umsetzung mit Nebenwirkungen (Auth, Geld, öffentliche Endpunkte, DB-Schreibzugriff, neues Gate, Schema-Änderung), oder wenn der Nutzer sagt \"Advisor-Pass\", \"prüf meinen Plan\", \"ist das overengineered\", \"bevor ich baue\". NICHT nutzen für fertigen Code — dafür Reviewer (code-reviewer/qa) — und nicht als Ersatz für Spec oder Handoff-Vertrag.",
+            "verfuegbar": true,
+            "grund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "git-flow",
+            "typ": "skill",
+            "capabilities": [
+              "GIT_WORKFLOW"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/git-flow"
+            },
+            "name": "git-flow",
+            "beschreibung": "Fuehrt den Standard-Workflow fuer eine freigegebene, kleine Aenderung aus — Branch anlegen, gezielt stagen, Diff zur Freigabe zeigen, ehrlich committen, pushen, PR-Link/Status nennen. Nutzen nach jeder abgeschlossenen Iteration, wenn eine geprueft Aenderung committet und ein PR eroeffnet werden soll. Ersetzt NICHT die Freigabe des Menschen und merged niemals selbst.",
+            "verfuegbar": true,
+            "grund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "handoff-vertrag",
+            "typ": "skill",
+            "capabilities": [
+              "HANDOFF_WRITE"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/handoff-vertrag"
+            },
+            "name": "handoff-vertrag",
+            "beschreibung": "Schreibt einen Handoff-Vertrag für eine abgegrenzte Teilaufgabe, die ein frischer Kontext oder ein anderer Agent ausführen soll — Minimalform plus Evidenz-Marker, Zuschnittprüfung und Stop-Grenzen. Nutzen, bevor eine Aufgabe an eine neue Sitzung/einen Subagenten übergeben wird, oder wenn der Nutzer sagt \"Task-Datei\", \"Handoff\", \"Auftrag schreiben\", \"gib mir den Prompt\". NICHT nutzen für triviale Einzelbefehle und nicht als Ersatz für Spec oder Plan bei mittleren und großen Vorhaben.",
+            "verfuegbar": true,
+            "grund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "repo-audit",
+            "typ": "skill",
+            "capabilities": [
+              "REPO_AUDIT"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/repo-audit"
+            },
+            "name": "repo-audit",
+            "beschreibung": "Fuehrt eine Sanierungs-Pruefung durch, gleicht Anweisungsdokumente (CLAUDE.md, ARCHITECTURE.md, README.md, .claude/agents/*.md) gegen die reale Repo-Struktur ab und findet tote Verweise, veraltete Behauptungen und ungeprueft Kopien. Nutzen nach mehreren abgeschlossenen Zyklen, vor einem neuen Zyklus, oder wenn der Nutzer sagt \"Sanierungsdurchgang\", \"Repo-Audit\", \"Doku gegen Realitaet pruefen\", \"Drift-Check\" oder \"ist das noch aktuell\". NICHT nutzen fuer einzelne Code-Reviews (dafuer code-reviewer/qa).",
+            "verfuegbar": true,
+            "grund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "spec-schreiben",
+            "typ": "skill",
+            "capabilities": [
+              "SPEC_WRITE"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/spec-schreiben"
+            },
+            "name": "spec-schreiben",
+            "beschreibung": "Schreibt eine Spec für ein Vorhaben — Problem, prüfbare V-Aussagen (aus denen später Tests werden), Nicht-Ziele als Pflichtsektion, Constraints, offene Fragen. Nutzen VOR Plan und Handoff-Vertrag bei jedem mittleren oder größeren Vorhaben, oder wenn der Nutzer sagt \"Spec\", \"was soll das können\", \"User Story\", \"Anforderungen aufschreiben\". NICHT nutzen für triviale Einzeländerungen und nicht als Ersatz für den Plan — die Spec sagt WAS, der Plan sagt WIE.",
+            "verfuegbar": true,
+            "grund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "werkzeug-auswahl",
+            "typ": "skill",
+            "capabilities": [
+              "TOOL_SELECTION"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/werkzeug-auswahl"
+            },
+            "name": "werkzeug-auswahl",
+            "beschreibung": "Prueft, ob ein Skill, MCP oder Plugin in dieses Projekt gehoert — Bedarf feststellen, Herkunft pruefen, Risiko bewerten, Entscheidung nach state/tooling.md schreiben. Nutzen, wenn ein neues Werkzeug im Gespraech ist, beim Aufsetzen eines neuen Projekts, oder wenn der Nutzer sagt \"brauche ich das\", \"welches Werkzeug\", \"soll ich das installieren\". NICHT nutzen, um ein bereits installiertes Werkzeug zu bedienen, und nicht als Ersatz fuer einen Advisor-Pass bei Aufgaben mit Nebenwirkungen.",
+            "verfuegbar": true,
+            "grund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "playwright-mcp",
+            "typ": "extern",
+            "name": "Playwright MCP",
+            "beschreibung": "Browser-Automatisierung für Agenten über Accessibility-Snapshots: Seiten öffnen, klicken, Formulare füllen, strukturiert auslesen.",
+            "unterart": "mcp",
+            "wirkung": "lokal",
+            "lizenz": "Apache-2.0 (GitHub-Metadaten)",
+            "kosten": "Server lokal kostenlos; Browser und Agentenquota",
+            "capabilities": [
+              "BROWSER_AUTOMATION",
+              "UI_VISUAL_TESTING"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/microsoft/playwright-mcp",
+              "paket": "npm:@playwright/mcp"
+            },
+            "installation_vorlage": {
+              "bin": "cli.js",
+              "args": [
+                "--headless",
+                "--isolated",
+                "--output-dir",
+                "{ausgabe_ordner}",
+                "--allowed-origins",
+                "{projekt_origins}"
+              ],
+              "werkzeuge": [
+                "mcp__playwright-mcp__browser_navigate",
+                "mcp__playwright-mcp__browser_snapshot",
+                "mcp__playwright-mcp__browser_take_screenshot",
+                "mcp__playwright-mcp__browser_click",
+                "mcp__playwright-mcp__browser_type",
+                "mcp__playwright-mcp__browser_wait_for",
+                "mcp__playwright-mcp__browser_console_messages",
+                "mcp__playwright-mcp__browser_close"
+              ]
+            },
+            "installation": {
+              "version": "0.0.83",
+              "mcp_server": {
+                "command": "C:\\Program Files\\nodejs\\node.exe",
+                "args": [
+                  "C:\\Users\\stefa\\.ai-workforce\\cap\\playwright-mcp\\node_modules\\@playwright\\mcp\\cli.js",
+                  "--headless",
+                  "--isolated",
+                  "--output-dir",
+                  "{ausgabe_ordner}",
+                  "--allowed-origins",
+                  "{projekt_origins}"
+                ]
+              },
+              "werkzeuge": [
+                "mcp__playwright-mcp__browser_navigate",
+                "mcp__playwright-mcp__browser_snapshot",
+                "mcp__playwright-mcp__browser_take_screenshot",
+                "mcp__playwright-mcp__browser_click",
+                "mcp__playwright-mcp__browser_type",
+                "mcp__playwright-mcp__browser_wait_for",
+                "mcp__playwright-mcp__browser_console_messages",
+                "mcp__playwright-mcp__browser_close"
+              ]
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature",
+                "bugfix"
+              ],
+              "pfad_muster_any": [
+                "**/*.html",
+                "**/*.css",
+                "public/**"
+              ]
+            },
+            "verfuegbar": true,
+            "grund": "freigegeben, wirkung 'lokal', installation vollständig (8 Werkzeug(e)) — Serverstart nicht geprüft",
+            "anzeigeGrund": "freigegeben, wirkung 'lokal', installation vollständig (8 Werkzeug(e)) — Serverstart nicht geprüft",
+            "phasen": [
+              "DISCOVERED",
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [],
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "supabase-mcp",
+            "typ": "extern",
+            "name": "Supabase MCP",
+            "beschreibung": "Direkter Zugriff auf ein Supabase-Projekt: SQL ausführen, Schema und Migrationen verwalten, Edge Functions ausrollen, Logs lesen.",
+            "unterart": "mcp",
+            "wirkung": "extern_schreibend",
+            "capabilities": [
+              "DATABASE_ACCESS"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/supabase-community/supabase-mcp"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_schreibend: in V1 nicht freigebbar (E-F36-4)",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_schreibend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "firecrawl-mcp",
+            "typ": "extern",
+            "name": "Firecrawl MCP",
+            "beschreibung": "Web-Extraktion für Agenten: scrapen, crawlen, suchen, strukturiert extrahieren, Ausgabe als Markdown, HTML oder JSON.",
+            "unterart": "mcp",
+            "wirkung": "extern_lesend",
+            "capabilities": [
+              "WEB_RESEARCH"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/firecrawl/firecrawl-mcp-server"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_lesend: in V1 nicht freigebbar (E-F36-4)",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "context7-mcp",
+            "typ": "extern",
+            "name": "Context7 MCP",
+            "beschreibung": "Liefert versionsgenaue, aktuelle Bibliotheks-Dokumentation in den Kontext.",
+            "unterart": "mcp",
+            "wirkung": "extern_lesend",
+            "capabilities": [
+              "LIBRARY_DOCS"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/upstash/context7",
+              "paket": "npm:@upstash/context7-mcp"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_lesend: in V1 nicht freigebbar (E-F36-4)",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "claude-in-chrome",
+            "typ": "extern",
+            "name": "Claude in Chrome",
+            "beschreibung": "Browser-Steuerung durch Claude selbst: Seiten öffnen, Inhalt nach JavaScript-Ausführung lesen, Formulare bedienen.",
+            "unterart": "mcp",
+            "wirkung": "extern_schreibend",
+            "capabilities": [
+              "BROWSER_AUTOMATION"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://www.anthropic.com/news/claude-for-chrome"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_schreibend: in V1 nicht freigebbar (E-F36-4)",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_schreibend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "perplexity-mcp",
+            "typ": "extern",
+            "name": "Perplexity MCP",
+            "beschreibung": "Websuche mit Quellenangaben: Kurzantworten und längere Rechercheberichte.",
+            "unterart": "mcp",
+            "wirkung": "extern_lesend",
+            "capabilities": [
+              "WEB_RESEARCH"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/perplexityai/modelcontextprotocol"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_lesend: in V1 nicht freigebbar (E-F36-4)",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "magic-21st-dev-mcp",
+            "typ": "extern",
+            "name": "21st.dev Magic MCP",
+            "beschreibung": "Generiert UI-Komponenten aus natürlicher Sprache und schreibt sie in das Arbeitsverzeichnis, dazu Suche in einem Komponenten-Katalog.",
+            "unterart": "mcp",
+            "wirkung": "extern_lesend",
+            "capabilities": [
+              "UI_COMPONENT_GENERATION"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/21st-dev"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_lesend: in V1 nicht freigebbar (E-F36-4)",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "obsidian-mcp",
+            "typ": "extern",
+            "name": "Obsidian MCP",
+            "beschreibung": "Lese- und Schreibzugriff auf einen Obsidian-Wissensspeicher: Notizen anlegen, durchsuchen, verknüpfen.",
+            "unterart": "mcp",
+            "wirkung": "lokal",
+            "capabilities": [
+              "NOTES_ACCESS"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/MarkusPfundstein/mcp-obsidian"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "herkunft.paket fehlt — installiert wird nur aus der ausdrücklichen Registry-Adresse (E-F36-9)"
+          },
+          {
+            "id": "frontend-design",
+            "typ": "extern",
+            "name": "frontend-design",
+            "beschreibung": "Erstanbieter-Plugin, das Claudes Frontend-Ausgabe von der Standard-AI-Optik wegführt (Typografie, Farbwahl, Motion, räumliche Komposition).",
+            "unterart": "skill",
+            "lizenz": "Apache-2.0 im Plugin-LICENSE",
+            "kosten": "Kein separater Pluginpreis; Modellquota",
+            "capabilities": [
+              "UI_UX_DESIGN"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design"
+            },
+            "installation_vorlage": {
+              "skill_pfad": "skills/frontend-design"
+            },
+            "installation": {
+              "pfad": "C:\\Users\\stefa\\.ai-workforce\\cap\\frontend-design\\.claude\\skills\\frontend-design",
+              "version": "fbe07fb6ce7d51d8e86ca6efdf050059894cdb80",
+              "inhalt_hash": "89a6e59de80320a32e8b4c597a329ef3c503f624a2e68874bb0475dfb66dbf4b"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature"
+              ],
+              "pfad_muster_any": [
+                "**/*.html",
+                "**/*.css",
+                "**/*.tsx",
+                "**/*.jsx"
+              ]
+            },
+            "verfuegbar": true,
+            "grund": "freigegeben, installation.pfad 'C:\\Users\\stefa\\.ai-workforce\\cap\\frontend-design\\.claude\\skills\\frontend-design' vorhanden (Version fbe07fb6ce7d51d8e86ca6efdf050059894cdb80), inhalt_hash stimmt",
+            "anzeigeGrund": "freigegeben, installation.pfad 'C:\\Users\\stefa\\.ai-workforce\\cap\\frontend-design\\.claude\\skills\\frontend-design' vorhanden (Version fbe07fb6ce7d51d8e86ca6efdf050059894cdb80), inhalt_hash stimmt",
+            "phasen": [
+              "DISCOVERED",
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [],
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "taste-skill",
+            "typ": "extern",
+            "name": "taste-skill",
+            "beschreibung": "Liest die Design-Entscheidungen einer bestehenden Website aus und liefert Design-Tokens mit Begründung.",
+            "unterart": "skill",
+            "capabilities": [
+              "UI_UX_DESIGN"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/senlindesign/taste-skill"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "animate-skill",
+            "typ": "extern",
+            "name": "animate-skill",
+            "beschreibung": "Animations- und Motion-Regeln (Dauer, Easing-Kurven, reduced-motion-Fallbacks).",
+            "unterart": "skill",
+            "capabilities": [
+              "UI_ANIMATION"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/delphi-ai/animate-skill"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "impeccable",
+            "typ": "extern",
+            "name": "Impeccable",
+            "beschreibung": "Design-Kontext-Protokoll (Zielgruppe, Markenpersönlichkeit, Anwendungsfall) mit Katalog von AI-Design-Mustern und Browser-Editiermodus.",
+            "unterart": "skill",
+            "capabilities": [
+              "UI_UX_DESIGN"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/pbakaus/impeccable"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": true,
+            "installationsGrund": null
+          },
+          {
+            "id": "ui-ux-pro-max",
+            "typ": "extern",
+            "name": "UI/UX Pro Max",
+            "beschreibung": "Nachschlage-Ansatz aus UI-Stilen, Paletten, Schriftpaarungen, UX-Regeln und Accessibility-Prüfungen.",
+            "unterart": "skill",
+            "capabilities": [
+              "UI_UX_DESIGN"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "ponytail",
+            "typ": "skill",
+            "capabilities": [
+              "SIMPLICITY_REVIEW"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/ponytail"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature",
+                "refactoring"
+              ]
+            },
+            "name": "ponytail",
+            "beschreibung": ">",
+            "verfuegbar": true,
+            "grund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "qa",
+            "typ": "agent",
+            "capabilities": [
+              "TEST_DESIGN"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/qa.md"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature",
+                "bugfix"
+              ]
+            },
+            "name": "qa",
+            "beschreibung": "Prueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature als fertig gilt. Meldet Luecken, aendert selbst nichts.",
+            "verfuegbar": true,
+            "grund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "code-reviewer",
+            "typ": "agent",
+            "capabilities": [
+              "CODE_REVIEW"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/code-reviewer.md"
+            },
+            "name": "code-reviewer",
+            "beschreibung": "Prueft fertigen Code auf Wartbarkeit, Robustheit und Einhaltung von ARCHITECTURE.md. Nach jeder abgeschlossenen Aufgabe einsetzen, bevor etwas freigegeben oder committet wird. Meldet Befunde, aendert selbst nichts.",
+            "verfuegbar": true,
+            "grund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "architecture-advisor",
+            "typ": "agent",
+            "capabilities": [
+              "PLAN_REVIEW"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/architecture-advisor.md"
+            },
+            "name": "architecture-advisor",
+            "beschreibung": "Challenged einen Architektur- oder Datenmodell-Plan VOR der Umsetzung — findet unbelegte Annahmen, unnoetige Komplexitaet, fehlende Fehlerpfade und Abweichungen von ARCHITECTURE.md. Nutzen, bevor eine neue Tabelle/Relation/API-Route/groessere Refaktorierung gebaut wird, oder wenn der Nutzer sagt \"pruef meinen Plan\", \"Architektur-Review\", \"ist das overengineered\" oder \"Advisor-Pass\". NICHT nutzen fuer fertigen Code (dafuer code-reviewer/qa) oder fuer Design-Treue (dafuer design-guardian, falls vorhanden).",
+            "verfuegbar": true,
+            "grund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "scout",
+            "typ": "agent",
+            "capabilities": [
+              "WEB_RESEARCH"
+            ],
+            "freigabe": "FREIGEGEBEN",
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/scout.md"
+            },
+            "name": "scout",
+            "beschreibung": "Recherchiert zu einem Capability Gap oder einer expliziten Suche externe Kandidaten (Skills, MCPs) — read-only, ohne selbst Code zu schreiben oder etwas zu installieren. Nutzen, wenn ein Capability Gap im Workboard/Capabilities-View auftritt oder der Nutzer nach Werkzeugkandidaten für eine fehlende Fähigkeit fragt. NICHT nutzen, um etwas zu installieren, freizugeben oder ressourcen.json direkt zu schreiben (das bleibt Sache des Menschen, F27-Scope).",
+            "verfuegbar": true,
+            "grund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "anzeigeGrund": "Agent-Datei mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'",
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": [
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
+          },
+          {
+            "id": "mengto-skills",
+            "typ": "extern",
+            "name": "MengTo/skills",
+            "beschreibung": "Design- und Entwicklungs-Skills, auch für agentengestützte Oberflächen.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Skill-Dateien kostenlos; Ausführung verbraucht Modellquota",
+            "capabilities": [
+              "UI_UX_DESIGN"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/MengTo/skills"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature"
+              ],
+              "pfad_muster_any": [
+                "**/*.html",
+                "**/*.css",
+                "**/*.tsx",
+                "**/*.jsx"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "mattpocock-skills",
+            "typ": "extern",
+            "name": "Matt Pocock Skills",
+            "beschreibung": "Engineering-Skills für Anforderungen, Planung, Umsetzung und Review.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Skill-Dateien kostenlos; Modellquota",
+            "capabilities": [
+              "SPEC_WRITE",
+              "PLAN_REVIEW",
+              "CODE_REVIEW"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/mattpocock/skills"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "addyosmani-agent-skills",
+            "typ": "extern",
+            "name": "Addy Osmani Agent Skills",
+            "beschreibung": "Engineering-Skills für nachvollziehbare Codequalität und Entwicklungsabläufe.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Skill-Dateien kostenlos; Modellquota",
+            "capabilities": [
+              "CODE_REVIEW"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/addyosmani/agent-skills"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature",
+                "refactoring"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "github-mcp",
+            "typ": "extern",
+            "name": "GitHub MCP",
+            "beschreibung": "Offizieller GitHub-MCP für Repos, Issues und Pull Requests.",
+            "unterart": "mcp",
+            "wirkung": "extern_schreibend",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Server kostenlos; GitHub-Funktionen und Quota separat",
+            "capabilities": [
+              "REPO_READ",
+              "GIT_WORKFLOW"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/github/github-mcp-server"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "bugfix",
+                "neues-feature"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_schreibend: in V1 nicht freigebbar (E-F36-4)"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_schreibend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "last30days-skill",
+            "typ": "extern",
+            "name": "Last30days",
+            "beschreibung": "Rechercheskill für aktuelle Web-/Social-Themen.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Modellquota; einzelne Quellen/APIs kostenpflichtig",
+            "capabilities": [
+              "WEB_RESEARCH"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/mvanhorn/last30days-skill"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "dokumentation"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "archify",
+            "typ": "extern",
+            "name": "Archify",
+            "beschreibung": "Erzeugt Architektur-/Ablaufdiagramme aus strukturierten Beschreibungen als HTML/SVG.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Lokal plus Modellquota",
+            "capabilities": [
+              "DIAGRAM_GENERATION"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/tt-a1i/archify"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "dokumentation"
+              ],
+              "pfad_muster_any": [
+                "ARCHITECTURE.md",
+                "docs/**"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "diagram-design",
+            "typ": "extern",
+            "name": "Diagram Design",
+            "beschreibung": "Skill für gestaltete, eigenständige HTML-/SVG-Diagramme.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Lokal plus Modellquota",
+            "capabilities": [
+              "DIAGRAM_GENERATION"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/cathrynlavery/diagram-design"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "dokumentation"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "humanizer",
+            "typ": "extern",
+            "name": "Humanizer",
+            "beschreibung": "Redigiert typische KI-Schreibmuster aus Texten.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Skill kostenlos; Modellquota",
+            "capabilities": [
+              "TEXT_EDITING"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/blader/humanizer"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "text-aenderung",
+                "dokumentation"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "simplify-codebase",
+            "typ": "extern",
+            "name": "Simplify Codebase",
+            "beschreibung": "Skill zum belegten Entfernen unnötiger Codekomplexität.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Skill kostenlos; Modellquota",
+            "capabilities": [
+              "SIMPLICITY_REVIEW"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/tt-a1i/simplify-codebase"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "refactoring"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "open-code-review",
+            "typ": "extern",
+            "name": "Alibaba Open Code Review",
+            "beschreibung": "Code-Review mit deterministischen Prüfungen und LLM-Agenten.",
+            "unterart": "skill",
+            "lizenz": "Apache-2.0 (GitHub-Metadaten)",
+            "kosten": "API oder Delegation an vorhandenen Coding-Agent",
+            "capabilities": [
+              "CODE_REVIEW"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/alibaba/open-code-review"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature",
+                "bugfix",
+                "refactoring"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "iannuttall-seo",
+            "typ": "extern",
+            "name": "iannuttall/seo",
+            "beschreibung": "Lokaler SEO-CLI/MCP für Audits aus Crawl-, Search-Console- und GA4-Daten.",
+            "unterart": "mcp",
+            "wirkung": "extern_lesend",
+            "lizenz": "Apache-2.0 (GitHub-Metadaten)",
+            "kosten": "Tool kostenlos; verbundene Daten-/Modellkosten separat",
+            "capabilities": [
+              "SEO_AUDIT"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/iannuttall/seo"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature",
+                "text-aenderung"
+              ],
+              "pfad_muster_any": [
+                "**/*.html"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "wirkung extern_lesend: in V1 nicht freigebbar (E-F36-4)"
+            ],
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)"
+          },
+          {
+            "id": "okf-agent-memory",
+            "typ": "extern",
+            "name": "OKF Agent Memory",
+            "beschreibung": "Git-native Markdown-Memory mit lokalem BM25-Index und MCP.",
+            "unterart": "mcp",
+            "wirkung": "lokal",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Lokal; keine Embedding-API für Basissuche",
+            "capabilities": [
+              "NOTES_ACCESS"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/okf-memory/okf-agent-memory"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "herkunft.paket fehlt — installiert wird nur aus der ausdrücklichen Registry-Adresse (E-F36-9)"
+          },
+          {
+            "id": "claude-code-setup",
+            "typ": "extern",
+            "name": "Claude Code Setup",
+            "beschreibung": "Erstanbieter-Plugin mit dem Skill claude-automation-recommender: analysiert ein Projekt und schlägt passende Skills, Hooks und MCPs vor, installiert nichts.",
+            "unterart": "skill",
+            "lizenz": "Apache-2.0 im Plugin-LICENSE",
+            "kosten": "Modellquota; Empfehlungen selbst kostenlos",
+            "capabilities": [
+              "TOOL_SELECTION"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/claude-code-setup"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "image-to-code",
+            "typ": "extern",
+            "name": "Image to code",
+            "beschreibung": "Skill aus leonxlnx/taste-skill: Designbild erzeugen, analysieren und das Frontend danach umsetzen.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Bildgenerierung und Coding-Quota",
+            "capabilities": [
+              "UI_UX_DESIGN"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/leonxlnx/taste-skill/tree/main/skills/image-to-code-skill"
+            },
+            "anwendbar_wenn": {
+              "task_typen_any": [
+                "neues-feature"
+              ],
+              "pfad_muster_any": [
+                "**/*.html",
+                "**/*.css",
+                "**/*.tsx",
+                "**/*.jsx"
+              ]
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "i-have-adhd",
+            "typ": "extern",
+            "name": "i-have-adhd",
+            "beschreibung": "Ausgabestil für kürzere, leichter erfassbare Agentenantworten; nur auf ausdrücklichen Stilbedarf, kein medizinisches Produkt.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Skill kostenlos; Modellquota",
+            "capabilities": [
+              "ANSWER_STYLE"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/ayghri/i-have-adhd"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          },
+          {
+            "id": "browser-use",
+            "typ": "extern",
+            "name": "Browser Use",
+            "beschreibung": "Agentenbasierte Browserautomatisierung über Sprachmodelle (Skill skills/browser-use, setzt die browser-use-CLI voraus). Wirkt über den Browser nach außen; nur mit eigenem Testaccount und Sandbox. Für reproduzierbare Tests zuerst Playwright.",
+            "unterart": "skill",
+            "lizenz": "MIT (GitHub-Metadaten)",
+            "kosten": "Library kostenlos; Modell und optional Cloudbrowser kostenpflichtig",
+            "capabilities": [
+              "BROWSER_AUTOMATION"
+            ],
+            "freigabe": "OFFEN",
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/browser-use/browser-use/tree/main/skills/browser-use"
+            },
+            "verfuegbar": false,
+            "grund": "extern, installation fehlt",
+            "anzeigeGrund": "Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt",
+              "kein anwendbar_wenn: wird nie empfohlen"
+            ],
+            "installierbar": false,
+            "installationsGrund": "installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+          }
+        ],
+        "assessedHinweis": "Scout-Artefakt kommt mit F27 — in v1 strukturell leer, keine Ressource kann diese Phase erreichen."
+      }
+    },
+    {
+      "muster": "**/api/ressourcen/impeccable/installation/vorbereiten",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "art": "skill",
+        "id": "impeccable",
+        "name": "Impeccable",
+        "repo": "https://github.com/pbakaus/impeccable.git",
+        "ref": "HEAD",
+        "version": "919dbeba520df760a157fe635be62faae88d58da",
+        "skillPfad": ".claude/skills/impeccable",
+        "quellPfad": ".claude/skills/impeccable",
+        "lizenz": null,
+        "kosten": null,
+        "zielordner": "…/cap/impeccable/.claude/skills/<name aus SKILL.md>",
+        "herkunftUrl": "https://github.com/pbakaus/impeccable",
+        "hinweis": "Skill-Dateien können Skripte enthalten.",
+        "eintragHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pruefbericht": null,
+        "pruefbericht_sperre": "ohne Prüfbericht zur angezeigten Version — erst in der Sammlung „Auswählen“ (Eignungsprüfung)"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library (Katalog)",
+      "klick": "#werkstatt-reiter-faehigkeiten",
+      "warteAufSelector": {
+        "selector": "#capabilities-suche",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Suche „impeccable“",
+      "tippen": {
+        "selector": "#capabilities-suche",
+        "text": "impeccable"
+      },
+      "warteAufSelector": {
+        "selector": "button.library-name[data-library-id=\"impeccable\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Eintrag impeccable",
+      "klick": "button.library-name[data-library-id=\"impeccable\"]",
+      "warteAufSelector": {
+        "selector": "#library-detail [data-installation-aktion=\"vorbereiten\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "„Prüfen & freigeben“",
+      "klick": "#library-detail [data-installation-aktion=\"vorbereiten\"]",
+      "warteAufSelector": {
+        "selector": "#library-detail .empfehlung-installation-bestaetigung",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-freigabedialog.png"
+    }
+  ]
+}

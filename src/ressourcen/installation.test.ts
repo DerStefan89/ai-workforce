@@ -143,7 +143,7 @@ test('bereiteInstallationVor: liefert exakte Version, integrity und Anzeige-Feld
 test('installiereRessource: Form von version/integrity wird vor allem anderen geprüft (400)', async () => {
   const u = umgebung()
   try {
-    const kontext = { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: stubRunner() }
+    const kontext = { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: stubRunner(), pruefeInhalt: () => null }
     for (const version of ['^1.2.3', 'latest', '1.2', 7]) {
       const e = await installiereRessource('pw-mcp', { ...angezeigt(), version }, kontext)
       assert.ok(!e.ok && e.status === 400, `version ${String(version)}`)
@@ -161,7 +161,7 @@ test('installiereRessource: Form von version/integrity wird vor allem anderen ge
 test('installiereRessource: Erfolg schreibt nur den einen Eintrag (Rest bitgleich), LF bleibt LF', async () => {
   const u = umgebung()
   try {
-    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: stubRunner(), nodePfad: '/pfad/node' })
+    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner: stubRunner(), nodePfad: '/pfad/node' })
     assert.ok(e.ok, e.ok ? '' : e.grund)
     const neu = readFileSync(u.katalog, 'utf8')
     const alt = katalogText()
@@ -186,7 +186,7 @@ test('installiereRessource: Erfolg schreibt nur den einen Eintrag (Rest bitgleic
 test('installiereRessource: CRLF-Datei bleibt CRLF', async () => {
   const u = umgebung('\r\n')
   try {
-    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: stubRunner() })
+    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner: stubRunner() })
     assert.ok(e.ok, e.ok ? '' : e.grund)
     const neu = readFileSync(u.katalog, 'utf8')
     assert.equal(neu.split('\n').length - 1, neu.split('\r\n').length - 1, 'jede Zeile endet auf CRLF')
@@ -198,7 +198,7 @@ test('installiereRessource: CRLF-Datei bleibt CRLF', async () => {
 test('installiereRessource: Fehlschlag entfernt den eigenen Zielordner, Katalog unverändert; zweiter Versuch möglich', async () => {
   const u = umgebung()
   try {
-    const kontext = { installWurzel: u.installWurzel, capWurzel: u.capWurzel }
+    const kontext = { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null }
     const falsch = await installiereRessource('pw-mcp', angezeigt(), { ...kontext, runner: stubRunner({ lockIntegrity: 'sha512-QU5ERVJT' }) })
     assert.ok(!falsch.ok && falsch.status === 422 && /integrity/.test(falsch.grund))
     assert.equal(existsSync(join(u.capWurzel, 'pw-mcp')), false)
@@ -213,7 +213,7 @@ test('installiereRessource: Fehlschlag entfernt den eigenen Zielordner, Katalog 
 test('installiereRessource: nur eine Installation zur Zeit (409), vorhandener Zielordner (409), schon installiert (409)', async () => {
   const u = umgebung()
   try {
-    const kontext = { installWurzel: u.installWurzel, capWurzel: u.capWurzel }
+    const kontext = { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null }
     const langsam = installiereRessource('pw-mcp', angezeigt(), { ...kontext, runner: stubRunner({ npmVerzoegerungMs: 200 }) })
     const parallel = await installiereRessource('pw-mcp', angezeigt(), { ...kontext, runner: stubRunner() })
     assert.ok(!parallel.ok && parallel.status === 409 && /bereits eine Installation/.test(parallel.grund))
@@ -223,7 +223,7 @@ test('installiereRessource: nur eine Installation zur Zeit (409), vorhandener Zi
     const u2 = umgebung()
     try {
       mkdirSync(join(u2.capWurzel, 'pw-mcp'), { recursive: true })
-      const belegt = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u2.installWurzel, capWurzel: u2.capWurzel, runner: stubRunner() })
+      const belegt = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u2.installWurzel, capWurzel: u2.capWurzel, pruefeInhalt: () => null, runner: stubRunner() })
       assert.ok(!belegt.ok && belegt.status === 409 && /existiert bereits/.test(belegt.grund))
       assert.ok(existsSync(join(u2.capWurzel, 'pw-mcp')), 'fremder, vorhandener Ordner wird nicht gelöscht')
     } finally {
@@ -257,7 +257,7 @@ test('installiereRessource: Lockfile-Version, npm-Fehler, Zeitgrenze und Serverf
       [{ server: { ok: false, grund: 'Server beendet ohne tools/list-Antwort (Exit 1)' } }, /Serverstart-Prüfung fehlgeschlagen/],
     ]
     for (const [optionen, muster] of faelle) {
-      const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: stubRunner(optionen) })
+      const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner: stubRunner(optionen) })
       assert.ok(!e.ok && e.status === 422 && muster.test(e.grund), e.ok ? 'ok' : e.grund)
       assert.equal(existsSync(join(u.capWurzel, 'pw-mcp')), false)
       assert.equal(readFileSync(u.katalog, 'utf8'), katalogText())
@@ -274,10 +274,98 @@ test('installiereRessource: Eintrag seit der Anzeige geändert (eintragHash) →
     // Werkzeugliste der Vorlage ändert sich zwischen Vorbereiten und Installieren (z. B. git pull).
     writeFileSync(u.katalog, katalogText().replace('["mcp__pw-mcp__browser_navigate"]', '["mcp__pw-mcp__browser_navigate", "mcp__pw-mcp__browser_run_code_unsafe"]'))
     const runner = stubRunner()
-    const e = await installiereRessource('pw-mcp', vorher, { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner })
+    const e = await installiereRessource('pw-mcp', vorher, { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner })
     assert.ok(!e.ok && e.status === 409 && /seit der Anzeige geändert/.test(e.grund))
     assert.deepEqual(runner.aufrufe, [])
     assert.equal(existsSync(u.capWurzel), false)
+  } finally {
+    u.aufraeumen()
+  }
+})
+
+test('installiereRessource: Prüfbericht-Rückruf (F45 F-2b-2) sperrt mit 409 nach eintragHash, vor npm; Wurf sperrt ebenso', async () => {
+  const u = umgebung()
+  try {
+    const runner = stubRunner()
+    const gesehen: unknown[] = []
+    const gesperrt = await installiereRessource('pw-mcp', angezeigt(), {
+      installWurzel: u.installWurzel,
+      capWurzel: u.capWurzel,
+      pruefeInhalt: () => null,
+      runner,
+      pruefeBericht: (eintrag, quelle) => {
+        gesehen.push([eintrag.id, quelle])
+        return 'ohne Prüfbericht zur angezeigten Version'
+      },
+    })
+    assert.equal(gesperrt.ok, false)
+    if (!gesperrt.ok) assert.equal(gesperrt.status, 409)
+    assert.deepEqual(gesehen, [['pw-mcp', { art: 'npm', paket: '@fixture/pw', version: VERSION, integrity: INTEGRITY }]])
+    assert.deepEqual(runner.aufrufe, [], 'npm wurde nicht aufgerufen')
+    assert.equal(readFileSync(u.katalog, 'utf8'), katalogText())
+    // Veralteter eintragHash schlägt den Rückruf (409 „geändert“, Rückruf nicht gerufen).
+    const veraltet = await installiereRessource('pw-mcp', { ...angezeigt(), eintragHash: '0'.repeat(64) }, { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner, pruefeBericht: () => assert.fail('nicht gerufen') })
+    assert.ok(!veraltet.ok && /geändert/.test(veraltet.grund))
+    const wurf = await installiereRessource('pw-mcp', angezeigt(), {
+      installWurzel: u.installWurzel,
+      capWurzel: u.capWurzel,
+      pruefeInhalt: () => null,
+      runner,
+      pruefeBericht: () => {
+        throw new Error('Ablage kaputt')
+      },
+    })
+    assert.ok(!wurf.ok && wurf.status === 409 && /Ablage kaputt/.test(wurf.grund))
+    const frei = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner, pruefeBericht: () => null })
+    assert.ok(frei.ok)
+  } finally {
+    u.aufraeumen()
+  }
+})
+
+test('installiereRessource (F-1075): Inhalts-Abgleich nach dem Schreiben — Abweichung → 422, Zielordner weg, Katalog unverändert; gleich → weiter', async () => {
+  const u = umgebung()
+  try {
+    const gesehen: string[] = []
+    const rot = await installiereRessource('pw-mcp', angezeigt(), {
+      installWurzel: u.installWurzel,
+      capWurzel: u.capWurzel,
+      runner: stubRunner(),
+      pruefeBericht: () => null,
+      pruefeInhalt: (_e, quelle, ordner) => {
+        gesehen.push(`${quelle.art}:${ordner.replaceAll('\\', '/').split('/cap/')[1]}`)
+        return 'installierter Inhalt ≠ geprüfter Inhalt (1): cli.js (nicht geprüft) — abgebrochen'
+      },
+    })
+    assert.ok(!rot.ok && rot.status === 422 && /≠ geprüfter Inhalt/.test(rot.grund))
+    assert.deepEqual(gesehen, ['npm:pw-mcp/node_modules/@fixture/pw'], 'geprüft wird der Paketordner')
+    assert.equal(existsSync(join(u.capWurzel, 'pw-mcp')), false, 'Zielordner entfernt')
+    assert.equal(readFileSync(u.katalog, 'utf8'), katalogText())
+    const wurf = await installiereRessource('pw-mcp', angezeigt(), {
+      installWurzel: u.installWurzel,
+      capWurzel: u.capWurzel,
+      runner: stubRunner(),
+      pruefeBericht: () => null,
+      pruefeInhalt: () => {
+        throw new Error('Ablage weg')
+      },
+    })
+    assert.ok(!wurf.ok && wurf.status === 422 && /Ablage weg/.test(wurf.grund))
+    const gruen = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: stubRunner(), pruefeBericht: () => null, pruefeInhalt: () => null })
+    assert.ok(gruen.ok)
+  } finally {
+    u.aufraeumen()
+  }
+})
+
+test('installiereRessource (F-1075 Runde 3): ohne pruefeInhalt wird nichts installiert (Pflicht, fail-closed)', async () => {
+  const u = umgebung()
+  try {
+    const runner = stubRunner()
+    const ohne = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner, pruefeBericht: () => null })
+    assert.ok(!ohne.ok && ohne.status === 500 && /pruefeInhalt/.test(ohne.grund))
+    assert.deepEqual(runner.aufrufe, [], 'npm nicht aufgerufen')
+    assert.equal(readFileSync(u.katalog, 'utf8'), katalogText())
   } finally {
     u.aufraeumen()
   }
@@ -288,7 +376,7 @@ test('installiereRessource: Katalog ändert sich während der Installation → 4
   try {
     const geaendert = katalogText().replace('"Bleibt bitgleich."', '"Von Hand geändert."')
     const runner = stubRunner({ beimInstall: () => writeFileSync(u.katalog, geaendert) })
-    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner })
+    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner })
     assert.ok(!e.ok && e.status === 409 && /während der Installation geändert/.test(e.grund))
     assert.equal(readFileSync(u.katalog, 'utf8'), geaendert)
     assert.equal(existsSync(join(u.capWurzel, 'pw-mcp')), false)
@@ -301,10 +389,10 @@ test('installiereRessource: geworfene Serverprüfung räumt den Zielordner ab, z
   const u = umgebung()
   try {
     const wirft: InstallationsRunner = { ...stubRunner(), pruefeServer: async () => Promise.reject(new Error('spawn EACCES')) }
-    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: wirft })
+    const e = await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner: wirft })
     assert.ok(!e.ok && e.status === 422 && /spawn EACCES/.test(e.grund))
     assert.equal(existsSync(join(u.capWurzel, 'pw-mcp')), false)
-    assert.ok((await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner: stubRunner() })).ok)
+    assert.ok((await installiereRessource('pw-mcp', angezeigt(), { installWurzel: u.installWurzel, capWurzel: u.capWurzel, pruefeInhalt: () => null, runner: stubRunner() })).ok)
   } finally {
     u.aufraeumen()
   }

@@ -117,6 +117,8 @@ export const F346_AUSNAHMEN: ReadonlyArray<{ rolle: string; worker: string; erla
   // (ein Architekt-Lauf über den direkten POST-Pfad läuft strukturell IMMER als
   // worker 'claude-code' bei fehlendem Codex, kein Verengen auf ['codex'] ohne Codex-Spike).
   { rolle: 'architekt', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
+  // 'eignungspruefung' kam mit F45 F-2b-2 hinzu — nur 'claude-code' (Prüflauf mit --add-dir/Init-Gate), dieselbe Lücke.
+  { rolle: 'eignungspruefung', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
 ]
 
 /**

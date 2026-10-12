@@ -13621,3 +13621,175 @@ button.harness-ordner-eintrag {
   }
 
 }
+
+/* ─── F45 F-2b-2a: Eignungsprüfung (Sammlung-Detail, Freigabedialog) ────────
+   Gleiche Tokens wie Sammlung und Freigabedialog; keine neuen Farben oder Schatten. Befunde stehen gestapelt (das Detail
+   sitzt in der Namensspalte, der Freigabedialog ist schmal). Lange Hashes und Pfade brechen um. */
+.pruef-ablauf {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.pruef-ablauf ul,
+.pruef-fakten ul,
+.pruef-auflagen ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.pruef-ablauf li,
+.pruef-fakten li {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.pruef-ablauf select {
+  max-width: 100%;
+}
+
+.pruef-ausnahme textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 4px;
+  font: inherit;
+}
+
+.pruef-bericht {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.pruef-kopf,
+.pruef-quelle,
+.pruef-zusammenfassung,
+.pruef-fuss {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pruef-version {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.pruef-fakten {
+  padding: 8px 10px;
+  border-left: 3px solid var(--line);
+  font-size: 12px;
+}
+
+.pruef-fakten-titel {
+  margin: 0;
+}
+
+.pruef-fakt-warnung {
+  color: var(--amber);
+}
+
+.pruef-befunde-titel {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.pruef-befunde {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pruef-befunde thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.pruef-befunde,
+.pruef-befunde tbody,
+.pruef-befunde tr,
+.pruef-befunde td {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pruef-befunde tr {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.pruef-befunde td {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  overflow-wrap: anywhere;
+}
+
+.pruef-befunde td::before {
+  content: attr(data-spalte) ': ';
+  color: var(--muted);
+}
+
+.pruef-schwere-hoch {
+  color: var(--red);
+}
+
+.pruef-schwere-mittel {
+  color: var(--amber);
+}
+
+.v10-seite .pruef-sperre,
+.pruef-sperre {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+/* design-guardian 5: Felder der Eignungsprüfung im Stil der Bibliotheks-Suche (gleiche Tokens). */
+.pruef-ablauf select,
+.pruef-pfad input,
+.pruef-ausnahme textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+}
+
+.pruef-pfad input {
+  width: 100%;
+  margin: 4px 0;
+}
+
+.v10-seite .pruef-ablauf select:focus-visible,
+.v10-seite .pruef-pfad input:focus-visible,
+.v10-seite .pruef-ausnahme textarea:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.pruef-frage {
+  margin: 0;
+}
+
+.pruef-zaehlung {
+  margin: 0;
+}
+
+.pruef-weitere summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+}

@@ -17,7 +17,7 @@
  * D5): Regel 1 importiert die reale validiereRessourcenDaten statt einen
  * zweiten Regelsatz zu pflegen.
  *
- * Regel 6 trägt sechs eng benannte Ausnahmen (F346_AUSNAHMEN, seit F24 aus
+ * Regel 6 trägt sieben eng benannte Ausnahmen (F346_AUSNAHMEN, seit F24 aus
  * src/capabilities-ansicht/index.ts importiert — einzige Quelle, die
  * F24-Coverage-Ansicht nutzt denselben Import): 'router', 'code-reviewer',
  * seit F27 WS-1 'scout', seit F26 WS-1 'jarvis', seit F34 WS-1
@@ -136,7 +136,7 @@ for (const [rolle, vertrag] of Object.entries(ROLLENVERTRAEGE)) {
 }
 if (befunde.length === befundeVor6) {
   console.log(
-    "✓ (6) Jeder in erlaubte_worker genannte, registrierte Worker deckt die benoetigte_capabilities seiner Rolle vollständig (F-346) — außer den sechs benannten Ausnahmen ('router'/'claude-code', 'code-reviewer'/'claude-code', 'scout'/'claude-code', 'jarvis'/'claude-code', 'product-coach'/'claude-code' und 'architekt'/'claude-code', je Capability 'STRUCTURED_OUTPUT')."
+    "✓ (6) Jeder in erlaubte_worker genannte, registrierte Worker deckt die benoetigte_capabilities seiner Rolle vollständig (F-346) — außer den sieben benannten Ausnahmen ('router'/'claude-code', 'code-reviewer'/'claude-code', 'scout'/'claude-code', 'jarvis'/'claude-code', 'product-coach'/'claude-code', 'architekt'/'claude-code' und seit F45 F-2b-2 'eignungspruefung'/'claude-code', je Capability 'STRUCTURED_OUTPUT')."
   )
 }
 

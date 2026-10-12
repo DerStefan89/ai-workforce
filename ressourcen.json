@@ -170,7 +170,7 @@
       "wirkung": "extern_lesend",
       "capabilities": ["LIBRARY_DOCS"],
       "freigabe": "OFFEN",
-      "herkunft": { "art": "extern", "url": "https://github.com/upstash/context7" }
+      "herkunft": { "art": "extern", "url": "https://github.com/upstash/context7", "paket": "npm:@upstash/context7-mcp" }
     },
     {
       "id": "claude-in-chrome",

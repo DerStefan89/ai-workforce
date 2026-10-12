@@ -206,10 +206,10 @@ test('projeziereAbdeckung: QA-Befund — eine Rolle ohne jeden registrierten erl
   assert.strictEqual(ansicht.rollen[0].gedeckt, false)
 })
 
-test('F346_AUSNAHMEN: exportiert genau die sechs bekannten, engen Ausnahmen', () => {
+test('F346_AUSNAHMEN: exportiert genau die sieben bekannten, engen Ausnahmen (seit F45 F-2b-2a: eignungspruefung)', () => {
   assert.deepStrictEqual(
     F346_AUSNAHMEN.map((a) => `${a.rolle}/${a.worker}`).sort(),
-    ['architekt/claude-code', 'code-reviewer/claude-code', 'jarvis/claude-code', 'product-coach/claude-code', 'router/claude-code', 'scout/claude-code']
+    ['architekt/claude-code', 'code-reviewer/claude-code', 'eignungspruefung/claude-code', 'jarvis/claude-code', 'product-coach/claude-code', 'router/claude-code', 'scout/claude-code']
   )
 })
 

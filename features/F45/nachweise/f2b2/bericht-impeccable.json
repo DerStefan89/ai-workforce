@@ -1,0 +1,104 @@
+{
+  "artefakt_id": "pruefbericht-impeccable",
+  "version": 1,
+  "ergebnis": {
+    "urteil": "NICHT_GEEIGNET",
+    "typ": "skill",
+    "gepinnte_version": "919dbeba520df760a157fe635be62faae88d58da",
+    "befunde": [
+      {
+        "bereich": "installationsweg",
+        "schwere": "hoch",
+        "beleg": "scripts/impeccable (sh-Launcher), Zeilen 87-206, und scripts/impeccable.cmd, Zeilen 64-169: Lädt beim ersten Lauf ein geschlossenes, kompiliertes Engine-Binary von https://github.com/pbakaus/impeccable/releases/... herunter und führt es aus. Verifikation per sha256-Sidecar, der von derselben Quelle stammt (keine unabhängige Vertrauenswurzel). SKILL.md Zeile 19 bestätigt: 'self-contained binary that ships next to it or is downloaded once on first run'. Der Dateibestand dieser gepinnten Version enthält keinen bin/-Ordner (56 Dateien laut Serverfakten, keiner darunter ein Binary) — der Download ist also nicht nur Fallback, sondern für die eigentliche Funktion (Detector, Live-Server, Screenshots) notwendig. Dieser Binärcode ist aus dem Inhalt selbst nicht prüfbar."
+      },
+      {
+        "bereich": "hooks_hintergrund",
+        "schwere": "hoch",
+        "beleg": "reference/hooks.md Zeilen 5, 30, 108: 'impeccable hooks on' installiert/reparaiert automatisch Hook-Manifeste in .claude/settings.local.json sowie .codex/hooks.json, .cursor/hooks.json, .github/hooks/impeccable.json, .gemini/settings.json; der Hook feuert danach bei jedem Edit einer UI-Datei. reference/live.md Zeilen 13, 22-26, 62: startet einen lokalen HTTP-/SSE-Server (impeccable live-server) und injiziert ein Skript (live.js) in die geöffnete Browser-Seite; der Agent soll einen dauerhaften Hintergrund-Poll-Loop (Default-Timeout 600000 ms) laufen lassen. scripts/live-browser.js bestätigt die injizierten localhost-Fetches (z. B. Zeilen 7558, 7815, 12219)."
+      },
+      {
+        "bereich": "modell_anweisungen",
+        "schwere": "mittel",
+        "beleg": "SKILL.md Zeilen 17-23, 82-88 und reference/live.md Zeilen 22-26: Der Inhalt verlangt vom Modell, Shell-Skripte des Pakets auszuführen, Browser-Automatisierung zu nutzen, einen dauerhaften Hintergrundprozess zu bedienen und eigenständig Konfigurationsdateien mehrerer KI-Werkzeuge (u. a. die Claude-Code-eigene settings.local.json) zu schreiben. Kein Versuch, diese Prüfung selbst zu manipulieren (keine Prompt-Injektion gegen die Eignungsprüfung gefunden), aber ein ungewöhnlich breites Bündel an Rechten/Dauerprozessen für ein als 'skill' deklariertes Paket."
+      },
+      {
+        "bereich": "bedarf_fit",
+        "schwere": "mittel",
+        "beleg": "Katalogtext nennt 'Design-Kontext-Protokoll ... mit Katalog von AI-Design-Mustern und Browser-Editiermodus'. Der tatsächliche Inhalt (SKILL.md Zeilen 43-70, 32 Referenzdateien) ist ein vollständiges Frontend-Design-Workflow-System (shape/critique/audit/polish/harden/live/generate u. v. a.) inklusive Detektor-Hooks und lokalem Live-Server — deutlich größerer Funktions- und Risikoumfang als die Katalogbeschreibung andeutet."
+      },
+      {
+        "bereich": "herkunft",
+        "schwere": "info",
+        "beleg": "Serverfakten: commit_zeit 2026-10-12T11:02:31Z (= Tag der Prüfung, also sehr aktuell gepflegt), pfleger: [] — aus dem Inhalt selbst sind Betreuer/Team hinter github.com/pbakaus/impeccable nicht verifizierbar; Status bleibt unklar statt geraten."
+      },
+      {
+        "bereich": "lizenz",
+        "schwere": "gering",
+        "beleg": "SKILL.md Zeile 7: 'license: Apache 2.0'. Im geprüften Ordner liegt jedoch keine LICENSE-Datei (Glob auf **/LICENSE* ohne Treffer); die Lizenzangabe ist nur Frontmatter-Text, nicht durch eine Volltextdatei im Skill-Pfad belegt."
+      },
+      {
+        "bereich": "kosten",
+        "schwere": "gering",
+        "beleg": "Keine Abo- oder API-Schlüssel-Pflicht erkennbar; die eigentliche Gestaltung übernimmt das aufrufende Modell selbst. reference/live.md Zeilen 15, 22-26 verlangt aber einen dauerhaften Hintergrund-Poll (Default 600000 ms) während einer Live-Sitzung, was Kontext-/Sitzungsdauer unnötig verlängern kann."
+      },
+      {
+        "bereich": "abweichung_sammlung",
+        "schwere": "mittel",
+        "beleg": "Sammlungsurteil nennt Lizenz 'nicht angegeben' und beschreibt nur Protokoll+Katalog+Editiermodus; der Inhalt selbst deklariert Apache 2.0 (SKILL.md Zeile 7) und bringt zusätzlich einen Laufzeit-Binärdownload, Hook-Installation in mehrere KI-Tool-Configs und einen lokalen Server mit — Risikoprofil ist höher als das Sammlungsurteil nahelegt."
+      }
+    ],
+    "auflagen": [
+      "Erneute Prüfung erst sinnvoll, wenn das heruntergeladene Engine-Binary entweder entfällt (reine Markdown/Skript-Fähigkeit) oder als auditierbarer Quellcode mit eigener, unabhängig prüfbarer Versionsbindung mitgeliefert wird.",
+      "Automatische Installation/Reparatur von Hook-Manifesten in .claude/settings.local.json u. a. dürfte nicht ohne gesonderte, explizite Freigabe je Vorhaben erfolgen."
+    ],
+    "zusammenfassung": "Impeccable ist inhaltlich weit mehr als der Katalogeintrag vermuten lässt: ein komplettes Design-Workflow-System mit Detektor-Hooks, lokalem Live-Server samt Browser-Injektion und automatischer Installation von Hook-Manifesten in mehreren KI-Tool-Konfigurationen. Entscheidend ist, dass die eigentliche Engine kein auditierbarer Bestandteil dieses gepinnten Inhalts ist, sondern beim ersten Lauf als geschlossenes Binary von GitHub-Releases nachgeladen und ausgeführt wird, nur gegen eine Prüfsumme aus derselben Quelle. Damit bringt die Fähigkeit beim Nutzen Code mit, den Stefan aus dem geprüften Inhalt nicht kontrollieren oder einsehen kann, zusätzlich zu dauerhaften Hintergrunddiensten und Config-Eingriffen in andere KI-Werkzeuge. Das rechtfertigt ein Nicht-geeignet für die aktuelle gepinnte Fassung."
+  },
+  "quelle": {
+    "art": "git",
+    "repo": "https://github.com/pbakaus/impeccable.git",
+    "ref": "HEAD",
+    "sha": "919dbeba520df760a157fe635be62faae88d58da",
+    "pfad": ".claude/skills/impeccable"
+  },
+  "typ": "skill",
+  "katalog_id": "impeccable",
+  "sammlung_id": null,
+  "urteil_sammlung": null,
+  "ausnahme_begruendung": null,
+  "fakten": {
+    "dateien": 56,
+    "bytes": 1079687,
+    "uebersprungen": {
+      "je_grund": {
+        "zu_gross": 1
+      },
+      "liste": [
+        {
+          "pfad": "scripts/data/font-index.json",
+          "grund": "zu_gross",
+          "detail": "1100013 Bytes"
+        }
+      ]
+    },
+    "umbenannt": [],
+    "skripte": {
+      ".cmd": 1,
+      ".js": 5
+    },
+    "paket": null,
+    "hooks": [],
+    "skill_dateien": [
+      "SKILL.md"
+    ],
+    "agent_dateien": []
+  },
+  "herkunft": {
+    "commit_zeit": "2026-10-12T11:02:31.000Z",
+    "geaendert": null,
+    "pfleger": [],
+    "lizenz_registry": null
+  },
+  "lauf_id": "eignungspruefung-impeccable-87331e24-9000-432d-bd4b-75854a1bace7",
+  "auftrag_id": "pruefung-87331e24-9000-432d-bd4b-75854a1bace7",
+  "erstellt_am": "2026-10-12T15:21:47.675Z"
+}

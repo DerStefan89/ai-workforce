@@ -1,0 +1,35 @@
+{
+  "lauf_id": "eignungspruefung-context7-mcp-e6a326e8-8fd2-4e9b-9728-9d7c6c5d61fa",
+  "phase": "fertig",
+  "grund": null,
+  "dauer_s": 147,
+  "cli": "2.1.296",
+  "modell": "claude-sonnet-5",
+  "init": {
+    "skills": [],
+    "plugins": [],
+    "mcp_servers": [],
+    "tools": [
+      "Glob",
+      "Grep",
+      "Read"
+    ],
+    "agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "design-guardian",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "scout",
+      "statusline-setup"
+    ],
+    "slash_commands_anzahl": 36
+  },
+  "permission_denials": [],
+  "kosten_usd": 0.5092846,
+  "klassifikation": null,
+  "lauf_status": null
+}

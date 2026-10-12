@@ -1,0 +1,137 @@
+{
+  "url": "http://127.0.0.1:4393/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#sammlung tr[data-sm-id=\"repos-peon\"]"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Phase",
+        "selector": "#sammlung [data-pruef-phase]",
+        "attribut": "data-pruef-phase"
+      },
+      {
+        "name": "Urteil",
+        "selector": "#sammlung [data-pruef-bericht]",
+        "attribut": "data-pruef-bericht"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#sammlung .pruef-ablauf .fehler"
+      },
+      {
+        "name": "Sperre",
+        "selector": "[data-pruef-sperre]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Typwahl",
+        "selector": "#sammlung [data-sm-typ]"
+      },
+      {
+        "name": "Pfad-Feld",
+        "selector": "#sammlung [data-sm-pfad]"
+      },
+      {
+        "name": "Ausnahme-Feld",
+        "selector": "#sammlung [data-sm-ausnahme]"
+      },
+      {
+        "name": "Prüfung starten",
+        "selector": "#sammlung [data-sm-pruefung-start]"
+      },
+      {
+        "name": "Fakten",
+        "selector": ".pruef-fakten"
+      },
+      {
+        "name": "Installieren",
+        "selector": "[data-installation-aktion=\"installieren\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/sammlung/pruefung/vorbereiten",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "subjekt": {
+          "schluessel": "s-repos-peon",
+          "katalog_id": null,
+          "sammlung_id": "repos-peon",
+          "name": "Peon"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/PeonPing/peon-ping.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "urteil_sammlung": "Optional",
+        "urteil_bedeutung": "Nützlicher Spezialfall; nur ein nachweislich kostenfreier und kommerziell erlaubter Einsatzpfad kommt ohne Ausnahmefreigabe infrage.",
+        "ausgeschlossen": false,
+        "letzter_bericht": null
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail repos-peon",
+      "klick": "#sammlung details[data-sm-detail=\"repos-peon\"] summary",
+      "warteAufSelector": {
+        "selector": "#sammlung details[data-sm-detail=\"repos-peon\"][open]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "„Auswählen“",
+      "klick": "#sammlung details[data-sm-detail=\"repos-peon\"] [data-sm-auswaehlen]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"typwahl\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-typwahl.png"
+    },
+    {
+      "label": "Typ „Skill“, Weiter",
+      "klick": "#sammlung [data-sm-typ-weiter=\"repos-peon\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"bestaetigen\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "02-bestaetigung.png"
+    }
+  ]
+}

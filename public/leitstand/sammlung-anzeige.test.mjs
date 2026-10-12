@@ -60,10 +60,14 @@ test('linkHtml: nur https mit noopener; sonst „Link fehlt“; Werte escaped', 
   assert.doesNotMatch(linkHtml({ name: BOESE, link: 'https://x.example' }), /<img/)
 })
 
-test('auswahlHtml: auswählbar → Knopf „kommt“ (aria-disabled); ausgeschlossen → Pflicht-Begründung; nicht auswählbar → Grund', () => {
-  const ja = auswahlHtml({ id: 'repos-x', auswaehlbar: true, ausgeschlossen: false })
-  assert.match(ja, /aria-disabled="true"/)
-  assert.match(ja, /kommt/)
+test('auswahlHtml: auswählbar → Knopf „Auswählen“ (F-2b-2a wirksam); mit Bericht „Erneut prüfen“; laufender Ablauf ersetzt den Knopf; ausgeschlossen → Pflicht-Begründung; nicht auswählbar → Grund', () => {
+  const ja = auswahlHtml({ id: 'repos-x', name: 'X', auswaehlbar: true, ausgeschlossen: false, typ: 'unbestimmt' })
+  assert.doesNotMatch(ja, /aria-disabled/)
+  assert.match(ja, /data-sm-auswaehlen="repos-x"/)
+  assert.match(ja, /data-sm-typ-offen="true"/)
+  assert.match(ja, />Auswählen</)
+  assert.match(auswahlHtml({ id: 'y', auswaehlbar: true, pruefbericht_letzter: { urteil: 'GEEIGNET', gepinnte_version: '1', erstellt_am: '2026-10-12' } }), /Erneut prüfen/)
+  assert.match(auswahlHtml({ id: 'z', auswaehlbar: true }, { phase: 'laedt' }), /data-pruef-phase="laedt"/)
   assert.match(auswahlHtml({ id: 'x', auswaehlbar: true, ausgeschlossen: true }), /Begründung „Ausnahme“/)
   assert.match(auswahlHtml({ auswaehlbar: false, nicht_auswaehlbar_grund: 'bibliothek', typ_quelle: 'stack-liste' }), /wählt der Architekt/)
   assert.match(auswahlHtml({ auswaehlbar: false, nicht_auswaehlbar_grund: 'plugin', typ_quelle: 'abschnitt' }), /Typ nur aus dem Abschnitt/)
@@ -122,8 +126,8 @@ test('alle dynamischen i18n-Schlüssel der Sammlung gibt es in de/en/ru/tr', () 
     ...STAENDE.map((s) => `sammlung.stand.${s}`),
     ...['skill', 'mcp', 'agent', 'plugin', 'bibliothek', 'lokal', 'unbestimmt'].map((s) => `sammlung.typ.${s}`),
     ...['katalog', 'stack-liste', 'abschnitt', 'unbestimmt'].map((s) => `sammlung.typQuelle.${s}`),
-    ...['alias', 'ohne_link', 'lokal', 'bibliothek', 'plugin', 'keine_quelle'].map((s) => `sammlung.grund.${s}`),
-    ...['ohne_vor_f2b', 'lokal', 'keiner'].map((s) => `sammlung.pruefbericht.${s}`),
+    ...['alias', 'ohne_link', 'lokal', 'bibliothek', 'plugin', 'keine_quelle', 'freigegeben', 'mcp_ohne_paket'].map((s) => `sammlung.grund.${s}`),
+    ...['ohne_vor_f2b', 'lokal', 'keiner', 'vorhanden'].map((s) => `sammlung.pruefbericht.${s}`),
     ...['UI', 'Repos', 'Plugins', 'Skills', 'Tools', 'MCP'].map((s) => `sammlung.art.${s}`),
     ...['name', 'urteil', 'lizenz', 'kosten', 'stand', 'link'].map((s) => `sammlung.spalte.${s}`),
     'sammlung.zuordnung.zugeordnet.link',

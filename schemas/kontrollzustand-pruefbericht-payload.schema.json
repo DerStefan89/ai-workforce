@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-pruefbericht-payload.schema.json",
+  "title": "Kontrollzustand: Payload des Kernartefakts pruefbericht-<schluessel>",
+  "description": "F45 F-2b-2 (F-1056). Prüfbericht einer fremden Fähigkeit zu genau einer gepinnten Quelle, registriert vom Kern nach einem Prüflauf der Rolle 'eignungspruefung' (Lineage: Laufakte des Prüflaufs). Abgelegt im Kontrollzustand der Workforce; <schluessel> ist die Katalog-id oder 's-<sammlung_id>'. Welcher Bericht für eine angezeigte Version gilt, entscheidet src/sammlung/pruefbericht.ts (waehleBericht) nach QUELLE, nicht nach Schlüssel. Der Bericht ist Daten, keine Freigabe. Validiert von validierePruefberichtDaten (handgeschrieben).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ergebnis", "quelle", "typ", "katalog_id", "sammlung_id", "urteil_sammlung", "ausnahme_begruendung", "fakten", "inhalt", "herkunft", "lauf_id", "auftrag_id", "erstellt_am"],
+  "properties": {
+    "ergebnis": { "$ref": "ergebnis-eignungspruefung.schema.json", "description": "Das geprüfte Modellergebnis; typ und gepinnte_version gleich typ bzw. Version der quelle." },
+    "quelle": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["art", "repo", "ref", "sha", "pfad"],
+          "properties": {
+            "art": { "const": "git" },
+            "repo": { "type": "string", "pattern": "^https://" },
+            "ref": { "type": "string", "minLength": 1 },
+            "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+            "pfad": { "type": "string", "description": "Pfad im Repo; '' = ganzes Repo." }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["art", "paket", "version", "integrity"],
+          "properties": {
+            "art": { "const": "npm" },
+            "paket": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 },
+            "integrity": { "type": "string", "pattern": "^sha512-" }
+          }
+        }
+      ]
+    },
+    "typ": { "enum": ["skill", "mcp", "agent"] },
+    "katalog_id": { "type": ["string", "null"], "minLength": 1 },
+    "sammlung_id": { "type": ["string", "null"], "minLength": 1 },
+    "urteil_sammlung": { "type": ["string", "null"], "minLength": 1, "description": "Urteil der Sammlung zum Zeitpunkt der Prüfung (Eingabe des Prüflaufs)." },
+    "ausnahme_begruendung": { "type": ["string", "null"], "minLength": 1, "description": "Pflicht-Begründung bei Urteil 'Nur Ausnahme'/'Ausgeschlossen'." },
+    "fakten": { "type": "object", "description": "Mechanische Fakten über den Inhalt (src/sammlung/inhalt.ts sammleFakten) — getrennt vom Modellurteil." },
+    "inhalt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dateien"],
+      "description": "F-1075: geprüfte Dateien (Pfad wie in der Quelle, relativ zum Paket bzw. gepinnten Pfad) mit sha256 — die Installation bricht ab, wenn sie etwas anderes schreibt (fehlend, zusätzlich, anderer Hash).",
+      "properties": {
+        "dateien": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3000,
+          "items": { "type": "object", "additionalProperties": false, "required": ["pfad", "sha256"], "properties": { "pfad": { "type": "string", "minLength": 1 }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } } }
+        }
+      }
+    },
+    "herkunft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit_zeit", "geaendert", "pfleger", "lizenz_registry"],
+      "properties": {
+        "commit_zeit": { "type": ["string", "null"] },
+        "geaendert": { "type": ["string", "null"] },
+        "pfleger": { "type": "array", "items": { "type": "string" } },
+        "lizenz_registry": { "type": ["string", "null"] }
+      }
+    },
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "auftrag_id": { "type": "string", "minLength": 1 },
+    "erstellt_am": { "type": "string", "format": "date-time" }
+  }
+}

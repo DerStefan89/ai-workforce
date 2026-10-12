@@ -51,6 +51,7 @@ import { formatiereBeobachtung } from '../public/leitstand/beobachtung-zeile.js'
 import { renderEmpfehlung } from '../public/leitstand/empfehlung-anzeige.js'
 import { baueMcpPlatzhalter, erzeugeRequestHandler, ermittleAusfuehrungsEmpfehlungGecached } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { legePassendenBerichtAn, mitPassendemBericht } from './leitstand/pruefbericht-testhilfe.mjs'
 
 const befunde = []
 console.log('\n=== F36-WS-5a-Installations-Check ===\n')
@@ -169,6 +170,9 @@ async function umgebung(o = {}) {
   writeFileSync(startvorlagePfad, JSON.stringify({ ...vorlage, pruefbefehl: [process.execPath, '-e', '0'] }, null, 2))
   const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage(startvorlagePfad))
   const ladeOptionen = { basisVerzeichnis, schreiber: STILL }
+  // F45 F-2b-2 (Advisor C5): dieses Gate installiert auch ohne vorheriges „vorbereiten“ (angezeigt(u)) — der passende
+  // Prüfbericht zu VERSION/INTEGRITY liegt deshalb von Anfang an in der Gate-Ablage.
+  legePassendenBerichtAn({ art: 'mcp', id: 'pw-mcp', paket: '@fixture/pw', version: VERSION, integrity: INTEGRITY }, profilReferenz, basisVerzeichnis)
   const gesehen = { eingaben: null, laufId: null }
   const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben) => {
     gesehen.eingaben = eingaben
@@ -191,13 +195,21 @@ async function umgebung(o = {}) {
       capWurzel,
       laufausgabeWurzel,
       installationsRunner: runner,
+      // F-1075 Rückfallebene: der reale Server sperrt npm-Installationen nach Prüfung; dieses Gate prüft die Mechanik.
+      npmInstallationNachPruefung: true,
       ...(vorschauUrl !== undefined ? { vorschauUrl } : {}),
     })
   const basisUrl = `http://127.0.0.1:${server.address().port}`
-  const post = async (pfad, body) => {
-    const antwort = await fetch(`${basisUrl}${pfad}`, { method: 'POST', body: JSON.stringify(body ?? {}) })
-    return { status: antwort.status, inhalt: await antwort.json().catch(() => ({})) }
-  }
+  // F45 F-2b-2 (Advisor C5): nach jedem erfolgreichen „vorbereiten“ ein passender Prüfbericht in der Gate-Ablage — die
+  // Statuscodes dieses Gates gelten hinter der Bericht-Sperre unverändert (die Sperre selbst prüft check-f45-f2b2-pruefung).
+  const post = mitPassendemBericht(
+    async (pfad, body) => {
+      const antwort = await fetch(`${basisUrl}${pfad}`, { method: 'POST', body: JSON.stringify(body ?? {}) })
+      return { status: antwort.status, inhalt: await antwort.json().catch(() => ({})) }
+    },
+    profilReferenz,
+    basisVerzeichnis
+  )
   return {
     installWurzel,
     katalogPfad,

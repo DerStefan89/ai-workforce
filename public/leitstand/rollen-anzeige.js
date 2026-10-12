@@ -25,7 +25,7 @@ import { t, tHtml } from './i18n.js'
 import { escapeHtml } from './render.js'
 
 /** Die Rollen mit Wörterbuchschlüssel `rolle.<id>` — dieselben IDs wie ROLLENVERTRAEGE (src/rollen/index.ts). */
-export const ROLLEN = Object.freeze(['architecture-advisor', 'architekt', 'ausfuehrung', 'code-reviewer', 'jarvis', 'product-coach', 'qa', 'router', 'scout'])
+export const ROLLEN = Object.freeze(['architecture-advisor', 'architekt', 'ausfuehrung', 'code-reviewer', 'eignungspruefung', 'jarvis', 'product-coach', 'qa', 'router', 'scout'])
 
 /**
  * Lesbarer Name einer Rolle.
