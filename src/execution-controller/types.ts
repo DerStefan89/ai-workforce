@@ -48,7 +48,7 @@
  * ohne dass der Controller eine gemeinsame Form erzwingen müsste.
  */
 
-import type { AufrufEingaben, Starter, Werkzeugaufruf } from '../claude-code-gateway/types.ts'
+import type { AufrufEingaben, FaehigkeitImLauf, Starter, Werkzeugaufruf } from '../claude-code-gateway/types.ts'
 import type { Anfrage, Budget, KontextpaketErgebnis } from '../context-builder/types.ts'
 import type { LaufStatus } from '../checkpoint-store/types.ts'
 import type { KlassifikationsErgebnis } from '../result-evaluator/types.ts'
@@ -124,7 +124,16 @@ export interface AusfuehrungsEingaben {
    * projektWurzel ist das Repo, dessen Laufdiff nach dem Lauf auf Änderungen unter .claude/ geprüft wird
    * (→ klassifiziereLauf, 'claude_ordner_veraendert'). Fehlt das Feld, läuft alles wie vor WS-5b.
    */
-  ortBLauf?: { skillNamen: string[]; gesperrteNamen: string[]; mcpServer: string[]; projektWurzel: string }
+  ortBLauf?: { skillNamen: string[]; gesperrteNamen: string[]; mcpServer: string[]; projektWurzel: string; agents?: { erlaubt: string[]; gesperrt: string[] }; pflichtSkills?: string[] }
+  /**
+   * F45 F-1: nur mit Katalog-Kontext gesetzt (loeseAusfuehrungsEingabenAuf) — beim Start eingefrorene Fähigkeiten. Der
+   * Controller vergleicht die Hashes der aktiven Projekt-Einträge vor dem Spawn mit der Momentaufnahme von .claude/
+   * (Abweichung: Start verweigert) und reicht sie an starteGateway (Laufakte faehigkeiten_im_lauf). ortBLauf.agents
+   * (nur mit aktivem Projekt-Agent) geht ins Init-Gate.
+   */
+  faehigkeitenImLauf?: FaehigkeitImLauf[]
+  /** F45 F-1 (Delta B1): Pfad von faehigkeiten.lokal.json — vorher/nachher gehasht; eine Änderung im Lauf färbt ihn rot. */
+  faehigkeitenLokalPfad?: string | null
 }
 
 /** Diskriminierte Union über die drei möglichen Ausgänge der Kette (Abbruch bei F5, Abbruch bei F6a, vollständiger Durchlauf). */

@@ -122,6 +122,7 @@ import type { Anfrage, KontextpaketV0Daten } from '../context-builder/types.ts'
 import { kanonischesJson, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { fuehreGitSync } from '../git-starter/index.ts'
+import { hashLokaleDatei, pruefeGegenMomentaufnahme } from '../faehigkeiten/index.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
@@ -396,6 +397,9 @@ export async function fuehreAufgabeDurch(
   // auftragId ohne Auftragsakte oben).
   // F-832: Momentaufnahme von <projekt>/.claude vor dem Start (inkl. git-ignorierter Dateien).
   const claudeOrdnerVorher = eingaben.ortBLauf !== undefined ? erfasseClaudeOrdner(eingaben.ortBLauf.projektWurzel) : undefined
+  // F45 F-1 (Delta B1): Stand der lokalen Fähigkeiten-Datei vor dem Lauf — ein Lauf darf sich nichts selbst freigeben.
+  // Code-Review 2: für jeden Lauf, dem der Server den Pfad mitgibt (jeder schreibende Lauf), nicht nur mit Katalog-Kontext.
+  const lokaleDateiVorher = typeof eingaben.faehigkeitenLokalPfad === 'string' ? hashLokaleDatei(eingaben.faehigkeitenLokalPfad) : undefined
   const gatewayErgebnis =
     workerGewaehlt === 'codex'
       ? await starteCodexGateway(
@@ -465,7 +469,14 @@ export async function fuehreAufgabeDurch(
             // Controller-weiten Durchreichung.
             umgebungsvariablen: eingaben.aufrufEingaben.umgebungsvariablen,
             // F36 WS-5b: Init-Gate nur für Läufe mit Ort-B-Skills (eingaben.ortBLauf).
-            ...(eingaben.ortBLauf !== undefined ? { initGate: { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer, gesperrt: eingaben.ortBLauf.gesperrteNamen } } : {}),
+            // F45 F-1: dasselbe Gate auch für Läufe mit aktiven Projekt-Agents/-Skills; agents nur mit aktivem Agent.
+            ...(eingaben.ortBLauf !== undefined
+              ? { initGate: { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer, gesperrt: eingaben.ortBLauf.gesperrteNamen, ...(eingaben.ortBLauf.agents !== undefined ? { agents: eingaben.ortBLauf.agents } : {}), ...(eingaben.ortBLauf.pflichtSkills !== undefined ? { pflichtSkills: eingaben.ortBLauf.pflichtSkills } : {}) } }
+              : {}),
+            // F45 F-1: eingefrorene Fähigkeiten (Laufakte) und Abgleich ihrer Hashes mit der Momentaufnahme vor dem Spawn (Advisor A6).
+            ...(eingaben.faehigkeitenImLauf !== undefined
+              ? { faehigkeitenImLauf: eingaben.faehigkeitenImLauf, vorStartPruefung: () => pruefeGegenMomentaufnahme(eingaben.faehigkeitenImLauf ?? [], claudeOrdnerVorher ?? null) }
+              : {}),
           }
         )
   if (!gatewayErgebnis.ok) {
@@ -475,10 +486,13 @@ export async function fuehreAufgabeDurch(
   // F36 WS-5b (F-791 (4b)): Laufdiff eines Ort-B-Laufs auf Änderungen unter .claude/ — die Bewertung
   // selbst (rot) macht klassifiziereLauf; hier wird nur der Diff gelesen.
   // F-832: zusätzlich der Dateisystem-Vergleich gegen die Momentaufnahme vor dem Start.
-  const claudeAenderungen =
+  const claudeAenderungenOrdner =
     eingaben.ortBLauf !== undefined && claudeOrdnerVorher !== undefined
       ? [...new Set([...leseClaudeAenderungen(eingaben.ortBLauf.projektWurzel), ...vergleicheClaudeOrdner(claudeOrdnerVorher, eingaben.ortBLauf.projektWurzel)])]
       : undefined
+  // F45 F-1 (Delta B1): eine im Lauf veränderte lokale Fähigkeiten-Datei zählt wie eine Änderung unter .claude/ (rot).
+  const lokaleDateiGeaendert = lokaleDateiVorher !== undefined && hashLokaleDatei(eingaben.faehigkeitenLokalPfad ?? null) !== lokaleDateiVorher
+  const claudeAenderungen = lokaleDateiGeaendert ? [...(claudeAenderungenOrdner ?? []), 'faehigkeiten.lokal.json (~/.ai-workforce) im Lauf verändert'] : claudeAenderungenOrdner
 
   // F31 WS-3-Zeitmessung (nur bei LEITSTAND_ZEITMESSUNG=1 gesetzt, sonst undefined — No-op):
   // klassifiziereLauf schreibt die terminale Wirkungsmarke über F1B, ist also die Grenze

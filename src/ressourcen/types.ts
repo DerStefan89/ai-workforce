@@ -133,6 +133,8 @@ export interface EmpfehlungsLaufKontext {
   projektUrlVorhanden?: boolean
   /** F-849: Grund statt PROJEKT_URL_FEHLT, wenn die vorschau_url gesperrt ist (z. B. Leitstand-Port). */
   projektUrlGrund?: string
+  /** F45 F-1 (E-F45-6): im Projekt abgeschaltete Katalog-ids (faehigkeiten.lokal.json, aus) — fehlt das Feld, bitgleich wie vorher. */
+  aus?: readonly string[]
 }
 
 /** F36 WS-3: Ergebnis von baueEmpfehlung — je Liste höchstens drei Einträge, der Rest nur als Anzahl (F-788). */
@@ -142,6 +144,8 @@ export interface Empfehlung {
   weitereAnzahl: { wirdGenutzt: number; passtNichtImLauf: number }
   /** Anwendbare MCP-Einträge mit wirkung ≠ 'lokal' — in V1 nicht freigebbar (E-F36-4), in keiner Liste. */
   nichtFreigebbarAnzahl: number
+  /** F45 F-1: anwendbare MCP/Ort-B-Skills, die im Projekt abgeschaltet sind (in keiner der beiden Listen, ohne Obergrenze). Nur gesetzt, wenn laufKontext.aus nicht leer ist. */
+  deaktiviert?: EmpfehlungsEintrag[]
 }
 
 /**

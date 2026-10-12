@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gebaut (Branch `feat/f45-b1b2-harness-abgleich`, Basis `febcc86`, nicht committet; Abschnitt „Stand B1b-2“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gebaut (Branch `feat/f45-b1b2-harness-abgleich`, Basis `febcc86`, nicht committet; Abschnitt „Stand B1b-2“). F-1 (WS F, Teil 1: Fähigkeiten im Lauf, Server) gebaut (Branch `f45/f1-faehigkeiten-im-lauf`, Basis `581269a`, nicht committet; Abschnitt „Stand F-1“), nächster Schritt F-2. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -25,6 +25,9 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-F45-3 = A** (Stefan, 11.10.2026) — Jeder schreibende Ablauf der Workforce arbeitet in einem eigenen Git-Worktree auf eigenem Branch neben dem Projekt. Stefans Projektordner bleibt unberührt. Im eigenen Worktree darf der Ablauf Dateien löschen — über eine Löschliste, die der Server prüft und ausführt. Wortlaut in `docs/projekt/zielfassung.md` §13.6; Umsetzung B1a-1.
 - **E-F45-5 = A** (Stefan, 11.10.2026) — Auslegung von E-F39-1=B im Arbeitsordner: Sauberkeit wird beim Anlegen des Worktrees festgestellt; ein schreibender Schritt prüft danach nur, dass der Worktree genau auf `wf/<Ablauf-ID>` steht (der Korrekturlauf findet die Änderungen des ersten Baus vor). Für den Projektordner gilt E-F39-1=B unverändert. Grundlage `features/F45/plan-b1a1.md` (Plan v3 B6).
 - **E-F45-4** (offen, aus WS P, F-1018) — Energiemodus „Ausgeglichen“ (A) oder der Leitstand nimmt sich selbst aus der Drosselung (B). Grundlage Abschnitt 5.
+- **E-F45-6 = Opt-in je Projekt** (Stefan, 12.10.2026) — Projekt-Agents/-Skills sind im Lauf nur aktiv, wenn Stefan sie je Projekt einschaltet (und ihr Inhalt freigegeben ist); ohne Einstellung bleibt alles wie vorher. MCPs und installierte Skills bleiben Standard aktiv und sind je Projekt abschaltbar. Grundlage `features/F45/plan-f1.md`.
+- **E-F45-7 = kaputte Datei sperrt** (Stefan, 12.10.2026) — Ist `faehigkeiten.lokal.json` vorhanden, aber ungültig oder nicht lesbar, startet kein Lauf mit Katalog-Fähigkeiten („reparieren oder löschen“); Server und alle anderen Läufe laufen weiter.
+- **E-F45-8 = Ablage `~/.ai-workforce/faehigkeiten.lokal.json`** (Stefan, 12.10.2026) — außerhalb jedes Repos und Arbeitsordners; die Änderungs-Endpunkte sind gesperrt, solange ein Lauf aktiv ist (ARCHITECTURE.md §2).
 - **F-1015-Kriterium** (Challenger, 11.10.2026) — Seitenspeicher, JS-Heap, DOM-Knoten und Listener am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen); Grundlage Abschnitt 2.
 
 ## Scope
@@ -443,3 +446,50 @@ ungesicherte Harness-Dateien als „im Lauf entfernt“), Servertests für „Pr
 ungetrackte Datei im Projektordner, Hinweistexte ohne Laufbezug auf der Seite Workforce, Tabelle im Vorab-Block
 zugeklappt, Kachelzeile als Text mit Marke, keine Kurzliste im Lauf-Detail (die Beobachtungszeile steht darüber).
 Offen als Hinweis: F-1048.
+
+## Stand F-1
+Branch `f45/f1-faehigkeiten-im-lauf` (Basis `581269a` = main mit #322), nicht committet. Bau 11./12.10.2026.
+Plan `features/F45/plan-f1.md` (v1 → Advisor-Pass „nicht freigegeben“, A1–A19 → Entscheidungen E-F45-6/7/8 → v2 →
+Delta-Pass „freigegeben mit Hinweisen“, B1–B10). Spike `state/spike-f45-f1-agents.md` (4 echte Läufe): `--allowedTools
+Agent(<name>)` begrenzt nicht (S1) → Fallback Sperrliste; `init.plugins` trägt zwei eingebaute Plugins (S3).
+
+**Beleg 13 (Fähigkeiten): Teil Agent/Skill/MCP-Abschaltung serverseitig vorhanden, Oberfläche in F-2, Erbringung in R.**
+
+**Gebaut:**
+- **Lokale Datei** `~/.ai-workforce/faehigkeiten.lokal.json` (Schema `schemas/faehigkeiten-lokal.schema.json`,
+  Validator `src/faehigkeiten/index.ts`): `an` (Projekt-Agents/-Skills, Opt-in), `aus` (Katalog-MCP/-Skill),
+  `inhalt_freigaben`. Fehlt → wie vorher; ungültig → Start mit Katalog-Fähigkeiten abgelehnt.
+- **Identität nach Inhalt** (F-816): Hash der Agent-Datei bzw. des Skill-Ordners im Arbeitsordner gegen die Katalog-Datei
+  der Workforce oder die Projekt-Freigabe; strenge Frontmatter-Positivliste, Namensregeln, Hindernisse (Verknüpfung,
+  mehrdeutiger Name) → Lauf startet nicht. Abgleich mit der Momentaufnahme unmittelbar vor dem Spawn (Controller).
+- **Start** (`src/faehigkeiten/start.ts`): aktive Agents → `Agent` in `--tools`, `Agent(<n>)` in `--allowedTools`,
+  Sperrliste `Agent(<eingebaut|nicht aktiv>)`; aktive Skills aus skillOverrides/Skill(…)-Sperre; `--settings` mit
+  `enabledPlugins` der eingebauten Plugins aus (auch für Ort-B-Läufe, F-1053); Vordergrund-Satz im Auftragstext.
+  Ohne aktiven Eintrag bitgleich. `aus` wirkt über `baueEmpfehlung` (Feld `deaktiviert`).
+- **Init-Gate**: `init.plugins` leer; mit aktiven Agents `Task`/`Agent` zulässig und `init.agents ⊆ erlaubt ∪ gesperrt`.
+- **Laufakte** `faehigkeiten_im_lauf` (eingefroren beim Start, am Ende mit dem Rohstrom verbunden: aufrufe/fehlgeschlagen
+  je Eintrag, fremde Aufrufe); Vorher/Nachher-Hash der lokalen Datei (Änderung im Lauf = rot).
+- **Endpunkte** (`scripts/leitstand/routen-faehigkeiten.mjs`): GET `/api/projekte/<id>/faehigkeiten`, POST
+  `…/faehigkeiten/aktivierung`, POST `…/faehigkeiten/freigabe` (409 bei Hash-Wechsel, bei laufendem Lauf, bei kaputter
+  Datei).
+- **Kleinpunkte:** Begründung `fehlt_im_ablauf` in `harness-abgleich/standard.json` („Kontrolltiefe fast-lane (Router) —
+  bewusst ohne Review; für den Referenzauftrag R nicht zulässig“); Register F-1049 bis F-1055, F-815/F-816 erledigt,
+  F-1012/F-910 teilweise, F-859 → F30.
+
+**Nachweise** `features/F45/nachweise/f1/` (`nachweis.md`): L1 (qa an + Ort-B frontend-design) ERFOLGREICH — Init-Gate
+grün mit `init.plugins = []`, qa aufgerufen, general-purpose von der Sperrliste verweigert; L2 (qa aus) ERFOLGREICH — kein
+Agent im Lauf; L3 (nur qa, ohne Ort-B) ERFOLGREICH — qa aufgerufen, Explore verweigert. Gate `scripts/check-f45-f1-faehigkeiten.mjs`, Tests `src/faehigkeiten/faehigkeiten.test.ts`,
+`scripts/leitstand/routen-faehigkeiten.test.mjs`.
+
+**Prüfpass** (frischer Kontext, eine Korrekturrunde): code-reviewer „nicht freigegeben“ (hoch: Name aus verworfenem
+Frontmatter fehlte in Sperrliste und Eindeutigkeit) und qa „freigegeben mit Hinweisen“ (eingeschaltet, aber im Arbeitsordner
+nicht aktiv lief still ohne die Fähigkeit; unbekannte Schlüssel einschaltbar; Init-Gate prüfte nicht, ob Eingeschaltetes
+geladen ist; „benutzt im letzten Lauf“ mehrdeutig; Reallauf ohne Ort-B fehlte) — in der Korrekturrunde umgesetzt
+(`features/F45/plan-f1.md`, Nachtrag v2.2); Rest in F-1054/F-1055.
+
+**Grenzen:** F-1054 (Anzeige-Bindung, Gründe, Oberfläche → F-2), F-1055 (Selbstfreigabe über einen nach Laufende
+weiterlebenden Prozess, ungemessene CLI-Fälle, Drift der Referenzlisten).
+
+**Nächster Schritt: F-2** — Oberfläche (Seite Workforce, Lauf-Detail: installiert · aktiv · benutzt, Schalter und
+„Freigeben nach Inhalt“ mit angezeigtem Hash), Bindung der Projekt-Fähigkeiten an die Anzeige im Start-Body, Plugins im
+Fähigkeitenmodell (F-910), Gründe der Empfehlung neu.

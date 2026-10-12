@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/faehigkeiten-lokal.schema.json",
+  "title": "Fähigkeiten je Projekt (FAEHIGKEITEN_LOKAL_V0)",
+  "description": "F45 F-1 (E-F45-6/7/8). Liegt unter ~/.ai-workforce/faehigkeiten.lokal.json, außerhalb jedes Repos und Arbeitsordners; geschrieben nur vom Leitstand auf direkte Eingabe Stefans (POST /api/projekte/<id>/faehigkeiten/aktivierung bzw. …/freigabe), nie ressourcen.json, projekte.json oder .claude/settings.json (E-F46-2). Ungültig (kein JSON, Schema verletzt, nicht lesbar) sperrt jeden Start mit Katalog-Fähigkeiten (E-F45-7). Geprüft von validiereFaehigkeitenLokal (src/faehigkeiten/index.ts), nicht durch dieses Schema allein (D5, kein ajv im Repo).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["faehigkeiten_lokal_schema", "projekte"],
+  "properties": {
+    "faehigkeiten_lokal_schema": { "const": "v0" },
+    "projekte": {
+      "type": "object",
+      "description": "Je Projekt-id (Registereintrag) die Einstellungen.",
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "an": {
+            "type": "array",
+            "uniqueItems": true,
+            "description": "Eingeschaltete Projekt-Agents/-Skills (Opt-in, E-F45-6). Aktiv im Lauf nur, wenn zusätzlich nach Inhalt freigegeben.",
+            "items": { "type": "string", "pattern": "^(agent|skill):[A-Za-z0-9][A-Za-z0-9._-]*$" }
+          },
+          "aus": {
+            "type": "array",
+            "uniqueItems": true,
+            "description": "Im Projekt abgeschaltete Katalog-ids (MCP, installierter Skill) — Standard ist aktiv.",
+            "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+          },
+          "inhalt_freigaben": {
+            "type": "object",
+            "description": "Freigabe nach Inhalt (F-816): Schlüssel agent:/skill:<name>, Wert sha256 der Agent-Datei bzw. inhalt_hash des Skill-Ordners.",
+            "propertyNames": { "pattern": "^(agent|skill):[A-Za-z0-9][A-Za-z0-9._-]*$" },
+            "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        }
+      }
+    }
+  }
+}

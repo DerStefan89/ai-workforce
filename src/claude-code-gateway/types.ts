@@ -128,6 +128,39 @@ export interface LaufakteV0Daten {
   verbrauch?: VerbrauchV0
   /** F36 WS-4 (AK8, F-730): init-Zeile und Skill-/Subagent-/MCP-Aufrufe aus dem stream-json-Rohstrom, Rang OBSERVED, reine Beobachtung. Additiv und optional wie verbrauch (append-only) — ohne init-Zeile (Codex, Abbruch vor init) bleibt das Feld weg, statt leer gesetzt zu werden. */
   beobachtung?: BeobachtungV0
+  /** F45 F-1: beim Start eingefrorene Fähigkeiten des Laufs, am Ende mit dem Rohstrom verbunden (Aufrufe je Eintrag). Optional (append-only) — nur Läufe mit Katalog-Kontext tragen das Feld. */
+  faehigkeiten_im_lauf?: FaehigkeitenImLaufV0
+}
+
+/** F45 F-1: Art einer Fähigkeit im Lauf. */
+export type FaehigkeitTyp = 'mcp' | 'skill' | 'agent'
+
+/**
+ * F45 F-1: ein beim Start eingefrorener Eintrag. katalog = MCP/Ort-B-Skill aus ressourcen.json (hash: installation-Hash
+ * bzw. inhalt_hash), projekt = Agent-/Skill-Datei im Arbeitsordner (hash: sha256 der Datei bzw. inhalt_hash des
+ * Ordners, pfad relativ zu .claude/). aktiv false trägt grund.
+ */
+export interface FaehigkeitImLauf {
+  id: string
+  name: string
+  typ: FaehigkeitTyp
+  quelle: 'katalog' | 'projekt'
+  hash?: string
+  pfad?: string
+  aktiv: boolean
+  grund?: string
+}
+
+/** F45 F-1: Eintrag nach dem Join mit dem Rohstrom — aufrufe = tool_use-Blöcke, fehlgeschlagen = davon mit is_error; ohne Beobachtung beide null. */
+export interface FaehigkeitImLaufMitNutzung extends FaehigkeitImLauf {
+  aufrufe: number | null
+  fehlgeschlagen: number | null
+}
+
+/** F45 F-1: Laufakten-Feld faehigkeiten_im_lauf — eintraege plus Agent-/Skill-Aufrufe, die keinem aktiven Eintrag gelten (versuchte Sperrumgehung, F-815). */
+export interface FaehigkeitenImLaufV0 {
+  eintraege: FaehigkeitImLaufMitNutzung[]
+  fremde_aufrufe: { art: 'agent' | 'skill'; name: string; fehler: boolean }[]
 }
 
 /** F36 WS-4: was ein Lauf geladen (init-Zeile) und tatsächlich aufgerufen hat. Aufruflisten in Reihenfolge des Auftretens, Duplikate bleiben erhalten, Zeilen aus Subagenten (parent_tool_use_id gesetzt) zählen mit. init_mcp_server trägt nur die Servernamen, mcp_aufrufe den vollen Werkzeugnamen (mcp__<server>__<werkzeug>). */

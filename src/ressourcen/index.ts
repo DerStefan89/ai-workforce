@@ -869,6 +869,8 @@ const EMPFEHLUNG_OBERGRENZE = 3
 const SKILL_AGENT_ERST_AB_WS5 = 'Skill/Agent in der Ausführung erst ab WS-5'
 /** F36 WS-5b: Projekt-Skills (typ 'skill') bleiben im Lauf gesperrt (skillOverrides/Skill(…)), auch wenn FREIGEGEBEN. */
 export const PROJEKT_SKILL_GESPERRT = 'Projekt-Skill im Lauf gesperrt (nur installierte Ort-B-Skills sind aufrufbar, F36 WS-5b)'
+/** F45 F-1 (E-F45-6): Grund eines im Projekt abgeschalteten Katalog-Eintrags (faehigkeiten.lokal.json, aus). */
+export const IM_PROJEKT_DEAKTIVIERT = 'im Projekt deaktiviert'
 /** F36 WS-5a (E-F36-7): Grund, wenn ein Eintrag mit {projekt_origins} ohne vorschau_url des Projekts empfohlen würde. */
 export const PROJEKT_URL_FEHLT = 'Projekt-URL (vorschau_url) fehlt'
 
@@ -906,16 +908,20 @@ function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintra
  *   wenn gesetzt, z. B. bei vorschau_url auf dem Leitstand-Port); jeder „Wird genutzt“-Eintrag trägt
  *   empfehlungId (F-808), ein über die Workforce installierbarer Eintrag in „Passt, nicht im Lauf“
  *   installierbar: true (pruefeInstallierbarkeit, noch ohne installation).
+ * - Seit F45 F-1 (E-F45-6): ein MCP/Ort-B-Skill, dessen id in laufKontext.aus steht, kommt in keine der beiden Listen,
+ *   sondern nach deaktiviert (ohne Obergrenze; das Feld fehlt bei leerem aus — bitgleich wie vorher).
  * Rangfolge und Obergrenze siehe sortiereUndBegrenze. Die Eingabereihenfolge beeinflusst das Ergebnis nicht.
  * @param aufgeloest - Katalog nach loeseRessourcenAuf
  * @param kontext - task_typen des Auftrags (Router) und Pfade des Projekts
- * @param laufKontext - { projektUrlVorhanden, projektUrlGrund? } des Projekts; Default {} = keine Projekt-URL (fail-closed)
+ * @param laufKontext - { projektUrlVorhanden, projektUrlGrund?, aus? (F45 F-1: im Projekt abgeschaltete Katalog-ids) } des Projekts; Default {} = keine Projekt-URL (fail-closed)
  * @returns die beiden Listen, je Liste die Anzahl weiterer Einträge, die Anzahl nicht freigebbarer
  */
 export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], kontext: AnwendbarkeitsKontext, laufKontext: EmpfehlungsLaufKontext = {}): Empfehlung {
   const genutzt: Kandidat[] = []
   const passtNicht: Kandidat[] = []
   let nichtFreigebbarAnzahl = 0
+  const aus = laufKontext.aus ?? []
+  const deaktiviert: EmpfehlungsEintrag[] = []
   for (const ressource of aufgeloest) {
     const anwendbarkeit = pruefeAnwendbarkeit(ressource, kontext)
     if (!anwendbarkeit.anwendbar) continue
@@ -928,6 +934,11 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
     const regel = ressource.anwendbar_wenn
     const rang = regel?.task_typen_any !== undefined && regel.pfad_muster_any !== undefined ? 0 : 1
     const basis = { id: ressource.id, name: ressource.name, typ: ressource.typ, ...(ressource.unterart !== undefined ? { unterart: ressource.unterart } : {}) }
+    // F45 F-1 (E-F45-6): im Projekt abgeschaltet → in keiner Liste, nie im Lauf.
+    if ((istMcp || istOrtBSkill) && aus.includes(ressource.id)) {
+      deaktiviert.push({ ...basis, grund: IM_PROJEKT_DEAKTIVIERT })
+      continue
+    }
     const ohneProjektUrl = istMcp && brauchtProjektOrigins(ressource) && laufKontext.projektUrlVorhanden !== true
     if ((istMcp || istOrtBSkill) && ressource.freigabe === 'FREIGEGEBEN' && ressource.installation !== undefined && ressource.verfuegbar && !ohneProjektUrl) {
       genutzt.push({ rang, eintrag: { ...basis, grund: anwendbarkeit.begruendung, empfehlungId: empfehlungsKennung(ressource) } })
@@ -945,7 +956,13 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
   }
   const a = sortiereUndBegrenze(genutzt)
   const b = sortiereUndBegrenze(passtNicht)
-  return { wirdGenutzt: a.liste, passtNichtImLauf: b.liste, weitereAnzahl: { wirdGenutzt: a.weitere, passtNichtImLauf: b.weitere }, nichtFreigebbarAnzahl }
+  return {
+    wirdGenutzt: a.liste,
+    passtNichtImLauf: b.liste,
+    weitereAnzahl: { wirdGenutzt: a.weitere, passtNichtImLauf: b.weitere },
+    nichtFreigebbarAnzahl,
+    ...(aus.length > 0 ? { deaktiviert: deaktiviert.sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)) } : {}),
+  }
 }
 
 /**

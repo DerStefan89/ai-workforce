@@ -110,7 +110,25 @@ export function leseProjektSkillNamen(projektWurzel: string): { ok: true; namen:
   } catch (fehler) {
     return { ok: false, grund: `Projekt-Skills unter '${skillsOrdner}' nicht lesbar (${(fehler as Error).message}) — Lauf startet nicht` }
   }
+  const commands = leseProjektCommandNamen(projektWurzel)
+  if (!commands.ok) return commands
+  for (const name of commands.namen) namen.add(name)
+  const nichtSperrbar = [...namen].filter((n) => !SPERRBARER_NAME.test(n))
+  if (nichtSperrbar.length > 0) return { ok: false, grund: `Projekt-Skill-Name(n) nicht sperrbar (Zeichen außerhalb ${SPERRBARER_NAME}): ${nichtSperrbar.map((n) => JSON.stringify(n)).join(', ')} — Lauf startet nicht` }
+  return { ok: true, namen: [...namen].sort() }
+}
+
+/**
+ * Namen der Projekt-Commands (<projekt>/.claude/commands, rekursiv, jede .md-Datei): Dateiname ohne .md, Unterordner
+ * als Namensraum mit ':' (sub/tief.md → sub:tief), dazu ein Frontmatter-name. Eine Verknüpfung wird nicht verfolgt,
+ * sondern abgelehnt (fail-closed). F45 F-1 (Advisor A12): aus leseProjektSkillNamen herausgelöst, damit die
+ * Eindeutigkeitsprüfung der Projekt-Fähigkeiten (src/faehigkeiten) dieselbe Regel nutzt — Verhalten unverändert.
+ * @param projektWurzel - Projekt-Repo-Wurzel
+ * @returns { ok, namen } (unsortiert, ohne Prüfung auf Sperrbarkeit) oder Grund
+ */
+export function leseProjektCommandNamen(projektWurzel: string): { ok: true; namen: string[] } | { ok: false; grund: string } {
   const commandsOrdner = join(projektWurzel, '.claude', 'commands')
+  const namen = new Set<string>()
   const verknuepfungen: string[] = []
   const gehe = (absolut: string, namensraum: string[]): void => {
     for (const eintrag of namenIn(absolut)) {
@@ -131,9 +149,7 @@ export function leseProjektSkillNamen(projektWurzel: string): { ok: true; namen:
     return { ok: false, grund: `Projekt-Commands unter '${commandsOrdner}' nicht lesbar (${(fehler as Error).message}) — Lauf startet nicht` }
   }
   if (verknuepfungen.length > 0) return { ok: false, grund: `Verknüpfung unter .claude/commands: ${verknuepfungen.join(', ')} — Lauf startet nicht` }
-  const nichtSperrbar = [...namen].filter((n) => !SPERRBARER_NAME.test(n))
-  if (nichtSperrbar.length > 0) return { ok: false, grund: `Projekt-Skill-Name(n) nicht sperrbar (Zeichen außerhalb ${SPERRBARER_NAME}): ${nichtSperrbar.map((n) => JSON.stringify(n)).join(', ')} — Lauf startet nicht` }
-  return { ok: true, namen: [...namen].sort() }
+  return { ok: true, namen: [...namen] }
 }
 
 /**

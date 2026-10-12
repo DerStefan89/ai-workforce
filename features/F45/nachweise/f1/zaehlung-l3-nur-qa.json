@@ -1,0 +1,251 @@
+{
+  "lauf": "l3-nur-qa",
+  "lauf_id": "f45-f1-l3-nur-qa-cd47cf01-2f3d-49e4-bd5f-6906435074ef",
+  "modell": "claude-haiku-4-5",
+  "cli": "2.1.296",
+  "dauer_ms_wand": 18100,
+  "eingeschaltet": [
+    "agent:qa"
+  ],
+  "ort_b": null,
+  "argv_tools": [
+    "Read",
+    "Grep",
+    "Glob",
+    "Write",
+    "Edit",
+    "Bash(npm install)",
+    "Bash(npm ci)",
+    "Bash(npm run check:*)",
+    "Bash(npm run lint:*)",
+    "Bash(npm run typecheck:*)",
+    "Bash(npm run test:*)",
+    "Bash(npm run build:*)",
+    "Agent(qa)"
+  ],
+  "argv_disallowed": "Write(**/.claude/**),Edit(**/.claude/**),Skill(design),Skill(doctor),Skill(advisor-pass),Skill(git-flow),Skill(handoff-vertrag),Skill(lessons),Skill(ponytail),Skill(repo-audit),Skill(spec-schreiben),Skill(werkzeug-auswahl),Agent(Explore),Agent(Plan),Agent(architecture-advisor),Agent(claude),Agent(code-reviewer),Agent(general-purpose),Agent(statusline-setup)",
+  "argv_settings": "{\"disableBundledSkills\":true,\"skillOverrides\":{\"design\":\"off\",\"doctor\":\"off\",\"advisor-pass\":\"off\",\"git-flow\":\"off\",\"handoff-vertrag\":\"off\",\"lessons\":\"off\",\"ponytail\":\"off\",\"repo-audit\":\"off\",\"spec-schreiben\":\"off\",\"werkzeug-auswahl\":\"off\"},\"enabledPlugins\":{\"cc-plugin-telemetry@builtin\":false,\"cc-plugin-plugin-authoring@builtin\":false}}",
+  "init_gate_erwartung": {
+    "skillNamen": [],
+    "gesperrteNamen": [
+      "design",
+      "doctor",
+      "advisor-pass",
+      "git-flow",
+      "handoff-vertrag",
+      "lessons",
+      "ponytail",
+      "repo-audit",
+      "spec-schreiben",
+      "werkzeug-auswahl"
+    ],
+    "mcpServer": [],
+    "projektWurzel": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-f1-real-gaNr6s\\testprojekt",
+    "agents": {
+      "erlaubt": [
+        "qa"
+      ],
+      "gesperrt": [
+        "Explore",
+        "Plan",
+        "architecture-advisor",
+        "claude",
+        "code-reviewer",
+        "general-purpose",
+        "statusline-setup"
+      ]
+    }
+  },
+  "ergebnis": {
+    "klassifikation": "ERFOLGREICH",
+    "grund": null
+  },
+  "init_gate_verstoss": null,
+  "init": {
+    "tools": [
+      "Task",
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Write"
+    ],
+    "agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "statusline-setup"
+    ],
+    "skills": [],
+    "plugins": [],
+    "mcp_servers": []
+  },
+  "beobachtung": {
+    "hintergrund_aufrufe": [],
+    "init_agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "statusline-setup"
+    ],
+    "init_mcp_server": [],
+    "init_skills": [],
+    "init_tools": [
+      "Task",
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Write"
+    ],
+    "mcp_aufrufe": [],
+    "navigate_adressen": [],
+    "skill_aufrufe": [],
+    "subagent_aufrufe": [
+      "qa",
+      "Explore"
+    ]
+  },
+  "faehigkeiten_im_lauf": {
+    "eintraege": [
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "2424c036b50b4c714258659b2a162feca78e987617590b8133bf80230a9bc26a",
+        "id": "agent:architecture-advisor",
+        "name": "architecture-advisor",
+        "pfad": "agents/architecture-advisor.md",
+        "quelle": "projekt",
+        "typ": "agent"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "62c37feb911dcf1045d1b5af6a23606780e7c0d847ab42ce61d3f41e81e9ca93",
+        "id": "agent:code-reviewer",
+        "name": "code-reviewer",
+        "pfad": "agents/code-reviewer.md",
+        "quelle": "projekt",
+        "typ": "agent"
+      },
+      {
+        "aktiv": true,
+        "aufrufe": 1,
+        "fehlgeschlagen": 0,
+        "hash": "5aed8133c1084e55839535b9384d3d1afbfce9689e7c585c9b9122570b103874",
+        "id": "agent:qa",
+        "name": "qa",
+        "pfad": "agents/qa.md",
+        "quelle": "projekt",
+        "typ": "agent"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "07f62d335f1e760c9ca5d852fa2e7fb4d99204ffefbc6932a5afc495462528af",
+        "id": "skill:advisor-pass",
+        "name": "advisor-pass",
+        "pfad": "skills/advisor-pass",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "Inhalt weicht von der Freigabe ab (Datei 8103332c86ba…, Katalog d7ab6770fda8…)",
+        "hash": "8103332c86baa7aa058f6f8a1cb7389e40ac980d728e1feb7bc1317540f81148",
+        "id": "skill:git-flow",
+        "name": "git-flow",
+        "pfad": "skills/git-flow",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "Inhalt weicht von der Freigabe ab (Datei 5a64ecff8035…, Katalog a463e34e9a20…)",
+        "hash": "5a64ecff8035c73072482a310110c6c12ea4976dacedc97267bb0068eac7a102",
+        "id": "skill:handoff-vertrag",
+        "name": "handoff-vertrag",
+        "pfad": "skills/handoff-vertrag",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "1f9e4ddd507d4a27a305881fcc51ea4e5185bd793a138ae25e75ec0c24e38874",
+        "id": "skill:ponytail",
+        "name": "ponytail",
+        "pfad": "skills/ponytail",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "cc6efda724c50428895beb52d79fd659e3bd09cb6aaf86ccca312f66cea35e9d",
+        "id": "skill:repo-audit",
+        "name": "repo-audit",
+        "pfad": "skills/repo-audit",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "91f02bcbd5beb5e6cb31f340b93e7149e3e54c40d65720af4a872207900d1be3",
+        "id": "skill:spec-schreiben",
+        "name": "spec-schreiben",
+        "pfad": "skills/spec-schreiben",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "c730f1ccd024c97e496d67af739f6b573871e4d39592bdccc8a2bb631240eb48",
+        "id": "skill:werkzeug-auswahl",
+        "name": "werkzeug-auswahl",
+        "pfad": "skills/werkzeug-auswahl",
+        "quelle": "projekt",
+        "typ": "skill"
+      }
+    ],
+    "fremde_aufrufe": [
+      {
+        "art": "agent",
+        "fehler": true,
+        "name": "Explore"
+      }
+    ]
+  },
+  "permission_denials": [],
+  "ergebnistext": "**Ergebnisse:**\n\n1. Schritt 1 (qa): OK-QA\n2. Schritt 2 (Explore): Agent type 'Explore' has been denied by permission rule 'Agent(Explore)' from cliArg."
+}
