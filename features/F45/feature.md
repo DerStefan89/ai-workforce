@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b geteilt (Stefan, 12.10.2026): F-2b-1 (Sammlung im Leitstand, Scout liest die Sammlung) gebaut (Branch `f45/f2b-sammlung-auswahl-pruefung`, Basis `83a576c`, nicht committet; Abschnitt „Stand F-2b-1“), nächster Schritt F-2b-2. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gebaut (Branch `f45/f2b2-pruefung-freigabe`, Basis `1985e9b`, nicht committet; Abschnitt „Stand F-2b-2a“), nächster Schritt F-2b-2b. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -597,3 +597,68 @@ Anzeige, nicht des Laufs (Delta B5); ein falscher Wert in `quelle`/`urteil_samml
 
 **Nächster Schritt: F-2b-2** — Auswählen → Eignungsprüfung der gepinnten Version → Prüfbericht → Katalog, Sperre der Freigabe ohne
 Bericht (F-1056), F-1061 (1); Plan aus `features/F45/plan-f2b.md` (Advisor A2–A10, A15–A19, A21).
+
+## Stand F-2b-2a
+Branch `f45/f2b2-pruefung-freigabe` (Basis `1985e9b` = main mit F-2b-1, #325), nicht committet. Bau 12.10.2026.
+Plan `features/F45/plan-f2b.md` (Plan v3 für F-2b-2 → Delta-Advisor-Pass „freigegeben mit Hinweisen, zu groß“, C1–C15 →
+Teilung F-2b-2a/F-2b-2b und Nachtrag v3.1).
+
+**Gebaut:**
+- **Rolle `eignungspruefung`** (`src/rollen/index.ts`): lesend, nur claude-code, Schema `ergebnis-eignungspruefung`. Startet nur
+  serverseitig mit Prüfordner (Option `pruefOrdner` in `loeseAusfuehrungsEingabenAuf`, C4): POST /api/laeufe und Workflow-Schritte
+  ohne Prüfordner werden abgelehnt; Werkzeugsatz exakt Read/Grep/Glob. Der Prüfordner geht über den bestehenden ortB-Kanal
+  (`--add-dir` + `--settings` aus `baueFaehigkeitenStart` ohne aktive Einträge: alle Skills/Commands der Workforce aus, eingebaute
+  Plugins aus), Init-Gate `skills = ∅`, `mcp_servers = ∅`, `plugins = ∅`; `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0`. Gateway
+  unverändert, Argv der übrigen Rollen bitgleich.
+- **Pin ohne Installation** (`scripts/leitstand/routen-pruefung.mjs`): Subjekt aus Sammlung (zugeordnet → Katalogeintrag) oder
+  Katalog OFFEN; Skill/Agent → Commit-SHA (`loeseSkillCommitAuf`), optional `pfad` im Repo; MCP → npm exakte Version + nur
+  sha512-Integrity; fehlende Paketangabe → 422 „Quelle nicht pinnbar: Paketangabe fehlt“; FREIGEGEBEN → 409 (Bestandsschutz).
+- **Inhalt holen read-only** (`src/sammlung/quelle.ts`, `inhalt.ts`): git mit der Härtung der Installation (`gitHaertung`, aus
+  `skill-installation.ts` gezogen, Installation bitgleich), flacher Fetch genau der SHA, `ls-tree -l` → Auswahl und Grenzen vor dem
+  Checkout (≤ 3 000 Dateien, ≤ 25 MB, Datei ≤ 1 MB), Checkout nur der ausgewählten Dateien (`--literal-pathspecs`) — dieselben Bytes
+  wie die Installation; npm per `npm pack --ignore-scripts` (cwd leer), sha512 = angezeigte Integrity, eigener Tar-Leser (pax, GNU,
+  Prüfsumme, nur reguläre Dateien). Segmentprüfung (Windows-Gerätenamen, `..`, Laufwerk, Punkt am Ende …), Neutralisierung
+  `.claude*`/CLAUDE.md, mechanische Fakten (Lebenszyklus-Skripte, bin, Hooks, Umbenennungen, Übersprungenes).
+- **Ablauf** `POST /api/sammlung/pruefung/vorbereiten` (nur Pin), `POST /api/sammlung/pruefung` (Pin = Anzeige, sonst 409; D13 und
+  Reservierung im selben Takt, C2; 202), `GET /api/sammlung/pruefung/<laufId>` (Zustand im Speicher). Nur in der Workforce-Instanz
+  (`istWorkforceInstanz`, A3; die Oberfläche ruft unpräfigiert). Holen und Lauf asynchron; jeder Fehlschlag vor dem Start gibt die
+  Sperre frei; Abbruch zwischen den Schritten; verwaiste Prüfordner beim Serverstart entfernt.
+- **Prüfbericht** als Kernartefakt `pruefbericht-<schluessel>` (Lineage: Laufakte) im Kontrollzustand der Workforce
+  (`pruefberichtBasisVerzeichnis`, an beiden Aufrufen von `baueProjektHandlerMap`); Schema/Validator
+  `kontrollzustand-pruefbericht-payload`; Ergebnis mit falschem typ/Version → kein Bericht.
+- **Freigabe nur mit Bericht** (`src/ressourcen/installation.ts`, Rückruf `pruefeBericht` unter der Installationssperre nach
+  eintragHash, nicht abschaltbar): ohne Bericht, Bericht nur für eine andere Version oder NICHT_GEEIGNET → 409; es gilt der neueste
+  passende Bericht (Suche nach Quelle, Skill-Pfad an Segmentgrenze, `waehleBericht`). `…/installation/vorbereiten` additiv
+  `pruefbericht` und `pruefbericht_sperre`. Gates WS-5a/5b legen über `pruefbericht-testhilfe.mjs` passende Berichte an (C5).
+- **Oberfläche:** Sammlung-Detail „Auswählen“ → Typwahl (unbestimmt) → Bestätigung (Pin, Urteil + Bedeutung, letzter Bericht,
+  „Pfad im Repo“, Pflicht-Ausnahme-Begründung, Kostenhinweis) → „Prüflauf läuft“ (Detail-Auffrischer nur solange) → Bericht (Fakten
+  vor dem Urteil, C14; Befunde, Auflagen, Ausnahme, Lauf-Link); Stand „geprüft“ und letzter Bericht je Eintrag. Freigabedialog zeigt
+  den Bericht; ohne passenden Bericht oder NICHT_GEEIGNET kein „Installieren“, sondern der Grund. i18n de/en/ru/tr.
+- **Katalog:** `context7-mcp` erhält `herkunft.paket = "npm:@upstash/context7-mcp"` (Bestätigung Stefan, Beleg im Nachweis).
+- **Gate** `scripts/check-f45-f2b2-pruefung.mjs` (in `npm run check`).
+
+**Echte Prüfläufe** (`features/F45/nachweise/f2b2/`): context7-mcp 4.3.0 → MIT_AUFLAGEN (Anfragen an context7.com; keine
+Installationsskripte); impeccable `.claude/skills/impeccable` @ `919dbeb` → NICHT_GEEIGNET (Launcher lädt ein Engine-Binary zur Laufzeit
+nach, Hook-Manifeste in `.claude/settings.local.json`). Erster impeccable-Versuch über das ganze Monorepo endete an der Grenze
+(3 884 Dateien) — deshalb das Feld `pfad`. Init-Zeile beider Läufe: skills/plugins/mcp_servers leer, Werkzeuge Glob/Grep/Read.
+
+**Startfreigabe:** nicht neu nötig — `.claude/**` unverändert (der Gültigkeitsschlüssel misst `.claude/settings.json` und die
+Hooks); die echten Läufe liefen mit der bestehenden Startfreigabe der Workforce.
+
+**Prüfpass** (frischer Kontext): code-reviewer „nicht freigegeben“ (doppelter Pfad im npm-Tarball), qa „freigegeben mit Hinweisen“,
+design-guardian „nicht freigegeben“ (zwei zusätzliche Live-Regionen) → eine Korrekturrunde (Plan Nachtrag v3.2), Render-Nachweis neu
+(`features/F45/nachweise/f2b2/nachweis.md`, 15 Folgen). Restpunkte F-1073, F-1074. Delta-Review danach „nicht freigegeben“: zwei hohe Restlücken bei „geprüft = installiert“ (Tar-
+Schreibweisen, git-Zwillinge über 1 MB) → nach der Abbruchregel Stopp. Runden 2 und 3 (Freigabe Stefan, nur F-1075): git/Skills dicht (Zwillinge über den ganzen Baum, Inhalts-Abgleich Pflicht); npm weiter ein echter Bruch (eigener Tar-Leser ≠ node-tar) → **Rückfallebene: npm-Installation nach Prüfung gesperrt** (409 „npm-Installation nach Prüfung noch nicht freigegeben, F-1075“, Knopf deaktiviert mit Grund); F-1075 (P1, Rest) → F-2b-2b. `npm run check` grün (2009 Tests).
+
+**Abweichung vom Auftrag (benannt):** „F-1052: P3 → P2, fremde Agents“ ist inhaltlich F-1051 (P3, „Externe Agents sind nicht
+installierbar“); dort umgesetzt, F-1052 (API-Schlüssel, schon P2) unverändert.
+
+**Grenzen** (F-1074, F-1073): ein laufender git/npm-Schritt endet bei Abbruch erst an seiner Zeitgrenze (C8); `--depth 1` lädt den ganzen Stand vor
+den Grenzen (C10); das Init-Gate prüft die init-Zeile, gegen verschachtelte Skills im Lauf schützen Neutralisierung und fehlendes
+Skill-Werkzeug (C13); ein unsauberes `.claude` im Workforce-Checkout färbt den Prüflauf rot (C6, fail-closed); der Prüfzustand
+lebt im Speicher (nach Neustart zählt nur der Bericht); die echten Läufe belegen Prüflauf und Bericht, nicht die Installation
+(impeccable ohne skill_pfad, context7 extern_lesend; C9); das Modellurteil kann ein manipuliertes Repo beeinflussen — deshalb stehen
+die mechanischen Fakten getrennt davor (C14).
+
+**Nächster Schritt: F-2b-2b** — Vormerken-Variante für Sammlungseinträge ohne Katalog, „Eignung prüfen“ in der Capability Library,
+Detail als volle Tabellenzeile (F-1068 (3)), F-1061 (1).

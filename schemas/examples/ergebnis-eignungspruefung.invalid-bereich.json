@@ -1,0 +1,8 @@
+{
+  "urteil": "GEEIGNET",
+  "typ": "mcp",
+  "gepinnte_version": "4.3.0",
+  "befunde": [{ "bereich": "sicherheit", "schwere": "gering", "beleg": "frei erfundener Bereich" }],
+  "auflagen": [],
+  "zusammenfassung": "Unbekannter Bereich."
+}

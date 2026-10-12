@@ -166,7 +166,7 @@ test('installiereRessource (skill): Erfolg schreibt installation { pfad, version
     r.repo('pack', { 'plugins/p/skills/gate-skill/SKILL.md': SKILL_MD, 'plugins/p/skills/gate-skill/LICENSE.txt': 'MIT' })
     writeFileSync(join(installWurzel, 'ressourcen.json'), katalog())
     const runner: InstallationsRunner = { npm: async () => ok(''), pruefeServer: async () => ({ ok: false, grund: 'nie' }), git: r.git }
-    const kontext = { installWurzel, capWurzel, runner }
+    const kontext = { installWurzel, capWurzel, runner, pruefeInhalt: () => null }
     const vor = await bereiteInstallationVor('gate-skill', kontext)
     assert.ok(vor.ok && vor.daten.art === 'skill', JSON.stringify(vor))
     assert.equal(vor.daten.quellPfad, 'plugins/p/skills/gate-skill')
@@ -210,7 +210,7 @@ test('installiereRessource (skill): Form — version keine SHA / eintragHash feh
   try {
     r.repo('pack', { 'plugins/p/skills/gate-skill/README.md': 'kein Skill' })
     writeFileSync(join(installWurzel, 'ressourcen.json'), katalog())
-    const kontext = { installWurzel, capWurzel, runner: { npm: async () => ok(''), pruefeServer: async () => ({ ok: false as const, grund: 'nie' }), git: r.git } }
+    const kontext = { installWurzel, capWurzel, runner: { npm: async () => ok(''), pruefeServer: async () => ({ ok: false as const, grund: 'nie' }), git: r.git }, pruefeInhalt: () => null }
     const vor = await bereiteInstallationVor('gate-skill', kontext)
     assert.ok(vor.ok)
     assert.equal((await installiereRessource('gate-skill', { version: '1.2.3', integrity: undefined, eintragHash: vor.daten.eintragHash }, kontext)).ok, false)

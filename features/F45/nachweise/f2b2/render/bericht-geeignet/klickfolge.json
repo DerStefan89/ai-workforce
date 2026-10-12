@@ -1,0 +1,248 @@
+{
+  "url": "http://127.0.0.1:4393/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#sammlung tr[data-sm-id=\"repos-mengto-skills\"]"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Phase",
+        "selector": "#sammlung [data-pruef-phase]",
+        "attribut": "data-pruef-phase"
+      },
+      {
+        "name": "Urteil",
+        "selector": "#sammlung [data-pruef-bericht]",
+        "attribut": "data-pruef-bericht"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#sammlung .pruef-ablauf .fehler"
+      },
+      {
+        "name": "Sperre",
+        "selector": "[data-pruef-sperre]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Typwahl",
+        "selector": "#sammlung [data-sm-typ]"
+      },
+      {
+        "name": "Pfad-Feld",
+        "selector": "#sammlung [data-sm-pfad]"
+      },
+      {
+        "name": "Ausnahme-Feld",
+        "selector": "#sammlung [data-sm-ausnahme]"
+      },
+      {
+        "name": "Prüfung starten",
+        "selector": "#sammlung [data-sm-pruefung-start]"
+      },
+      {
+        "name": "Fakten",
+        "selector": ".pruef-fakten"
+      },
+      {
+        "name": "Installieren",
+        "selector": "[data-installation-aktion=\"installieren\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/sammlung/pruefung/vorbereiten",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "subjekt": {
+          "schluessel": "s-repos-mengto-skills",
+          "katalog_id": null,
+          "sammlung_id": "repos-mengto-skills",
+          "name": "MengTo/skills"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/MengTo/skills.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "urteil_sammlung": "Aufnehmen",
+        "urteil_bedeutung": "Priorisierter Kandidat für den kostenfreien, kommerziell erlaubten Basispfad. Vor Aktivierung Version, vollständige Rechte und Funktionstest bestätigen.",
+        "ausgeschlossen": false,
+        "letzter_bericht": null
+      }
+    },
+    {
+      "muster": "**/api/sammlung/pruefung",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "eignungspruefung-s-render-0001",
+        "auftragId": "pruefung-render"
+      }
+    },
+    {
+      "muster": "**/api/sammlung/pruefung/eignungspruefung-s-render-0001",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "lauf_id": "eignungspruefung-s-render-0001",
+        "auftrag_id": "pruefung-render",
+        "phase": "fertig",
+        "grund": null,
+        "subjekt": {
+          "schluessel": "s-repos-mengto-skills",
+          "name": "MengTo/skills"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/MengTo/skills.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "bericht": {
+          "artefakt_id": "pruefbericht-context7-mcp",
+          "version": 1,
+          "ergebnis": {
+            "urteil": "GEEIGNET",
+            "typ": "mcp",
+            "gepinnte_version": "4.3.0",
+            "befunde": [
+              {
+                "bereich": "bedarf_fit",
+                "schwere": "info",
+                "beleg": "README.md Zeilen 5-21, 1377-1390: liefert zwei Werkzeuge (resolve-library-id, query-docs), die versionsgenaue Bibliotheksdokumentation in den Kontext holen – deckt sich mit der Katalogbeschreibung."
+              },
+              {
+                "bereich": "lizenz",
+                "schwere": "info",
+                "beleg": "LICENSE (MIT, Copyright Upstash, Inc. 2021) deckt sich mit package.json Zeile 21 ('license': 'MIT') und dem gezählten 'lizenz_registry':'MIT'. Katalog führte Lizenz als 'nicht angegeben' – hier konkret MIT, kein Hinderungsgrund."
+              },
+              {
+                "bereich": "abweichung_sammlung",
+                "schwere": "info",
+                "beleg": "Kein Widerspruch zum Katalogeintrag: Lizenz ist konkret MIT (Katalog: 'nicht angegeben'), Kosten optional/kostenlos nutzbar (Katalog: 'nicht angegeben'), Wirkung 'extern_lesend' passt zum beobachteten Verhalten (Lesezugriff auf externe Doku, keine schreibenden Seiteneffekte)."
+              }
+            ],
+            "auflagen": [],
+            "zusammenfassung": "Attrappe für den Render-Nachweis: geeignet ohne Auflagen."
+          },
+          "quelle": {
+            "art": "npm",
+            "paket": "@upstash/context7-mcp",
+            "version": "4.3.0",
+            "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA=="
+          },
+          "typ": "mcp",
+          "katalog_id": "context7-mcp",
+          "sammlung_id": null,
+          "urteil_sammlung": null,
+          "ausnahme_begruendung": null,
+          "fakten": {
+            "dateien": 29,
+            "bytes": 202409,
+            "uebersprungen": {
+              "je_grund": {},
+              "liste": []
+            },
+            "umbenannt": [],
+            "skripte": {
+              ".js": 26
+            },
+            "paket": {
+              "lebenszyklus": {},
+              "bin": [
+                "impeccable"
+              ],
+              "abhaengigkeiten": 3
+            },
+            "hooks": [],
+            "skill_dateien": [],
+            "agent_dateien": []
+          },
+          "herkunft": {
+            "commit_zeit": null,
+            "geaendert": "2026-10-09T15:37:57.202Z",
+            "pfleger": [
+              "mdogan",
+              "buggyhunter",
+              "cahidarda",
+              "fahreddin.ozcan",
+              "upstashnpm",
+              "joshtc",
+              "burak-ups",
+              "shannonr"
+            ],
+            "lizenz_registry": "MIT"
+          },
+          "lauf_id": "eignungspruefung-context7-mcp-e6a326e8-8fd2-4e9b-9728-9d7c6c5d61fa",
+          "auftrag_id": "pruefung-e6a326e8-8fd2-4e9b-9728-9d7c6c5d61fa",
+          "erstellt_am": "2026-10-12T15:18:08.635Z"
+        },
+        "gestartet_am": "2026-10-12T15:46:18.547Z"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail repos-mengto-skills",
+      "klick": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"] summary",
+      "warteAufSelector": {
+        "selector": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"][open]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "„Auswählen“",
+      "klick": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"] [data-sm-auswaehlen]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"bestaetigen\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "„Prüfung starten“ → Bericht (Detail-Auffrischer am Poll-Tick)",
+      "klick": "#sammlung [data-sm-pruefung-start=\"repos-mengto-skills\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-bericht=\"GEEIGNET\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-bericht.png"
+    }
+  ]
+}

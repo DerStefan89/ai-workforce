@@ -71,14 +71,14 @@ export type Zuordnung =
 export type SammlungTyp = 'skill' | 'mcp' | 'agent' | 'plugin' | 'bibliothek' | 'lokal' | 'unbestimmt'
 export type TypQuelle = 'katalog' | 'stack-liste' | 'abschnitt' | 'unbestimmt'
 
-/** Stand je Eintrag (höchster gewinnt). `geprueft` kommt mit F-2b-2. */
+/** Stand je Eintrag (höchster gewinnt). `geprueft` setzt seit F45 F-2b-2a die Route (ergaenzeSammlung), wenn ein Bericht vorliegt. */
 export type SammlungStand = 'benutzt' | 'aktiv' | 'installiert' | 'geprueft' | 'vorgemerkt' | 'nur_sammlung'
 
 /** Gründe, warum ein Eintrag nicht auswählbar ist (Codes, die Oberfläche übersetzt sie). */
-export type NichtAuswaehlbar = 'alias' | 'ohne_link' | 'lokal' | 'bibliothek' | 'plugin' | 'keine_quelle'
+export type NichtAuswaehlbar = 'alias' | 'ohne_link' | 'lokal' | 'bibliothek' | 'plugin' | 'keine_quelle' | 'freigegeben' | 'mcp_ohne_paket'
 
-/** Prüfbericht-Lage je Eintrag. */
-export type PruefberichtLage = 'ohne_vor_f2b' | 'lokal' | 'keiner'
+/** Prüfbericht-Lage je Eintrag; 'vorhanden' setzt seit F45 F-2b-2a die Route (ergaenzeSammlung) aus der Ablage der Workforce. */
+export type PruefberichtLage = 'ohne_vor_f2b' | 'lokal' | 'keiner' | 'vorhanden'
 
 /** Prüfbare Quelle eines Links (Delta B11) — strukturiert, damit F-2b-2 nicht neu parsen muss. */
 export type PruefbareQuelle = { art: 'git'; owner: string; repo: string; ref: string | null; unterpfad: string } | { art: 'npm'; paket: string } | null
@@ -99,7 +99,7 @@ export interface KatalogEintragKurz {
   name?: string
   unterart?: string
   freigabe: string
-  herkunft: { art: string; url?: string }
+  herkunft: { art: string; url?: string; paket?: string }
 }
 
 /** Eine Zeile der Ansicht GET /api/sammlung. */

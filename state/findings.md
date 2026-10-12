@@ -13103,7 +13103,7 @@ Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit, B2b.
 
-**F-1051** · `TECH_DEBT` · P3 · offen
+**F-1051** · `TECH_DEBT` · P2 · offen
 Titel: Externe Agents sind nicht installierbar (Challenger K17).
 Beschreibung: Es gibt keine Katalogeinträge für externe Agents und keinen Bedarf; `AGENT_INSTALLATION_ERST_SPAETER` bleibt. Projekt-Agents laufen seit F45 F-1 (F-815).
 Fundstelle: `src/ressourcen/index.ts` (`pruefeInstallierbarkeit`, `AGENT_INSTALLATION_ERST_SPAETER`).
@@ -13111,6 +13111,8 @@ Auswirkung: Gering — heute kein Eintrag betroffen.
 Maßnahme: Beim ersten realen Eintrag das Ort-B-Muster für Agents (Installation in `<cap>/<id>/.claude/agents`, inhalt_hash, `--add-dir`, Init-Gate).
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
+Nachtrag (Challenger, Auftrag F45 F-2b-2, 12.10.2026): Priorität P3 → P2. Maßnahme neu: F-3 — fremde Agents installierbar über denselben Weg wie Plugins (Pin, Inhalts-Hash, Prüfbericht, Freigabe, Opt-in je Projekt). Der Auftrag nennt dafür F-1052; inhaltlich (P3, fremde Agents) ist es dieser Eintrag — F-1052 (API-Schlüssel, schon P2) bleibt unverändert.
+Zugeordnet: F45 F-3.
 
 **F-1052** · `TECH_DEBT` · P2 · offen
 Titel: extern_lesend-MCPs mit API-Schlüssel sind nicht nutzbar (Challenger K18).
@@ -13161,6 +13163,7 @@ Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit, F-2b.
 Nachtrag (F45 F-2b-1, 12.10.2026): F-2b geteilt (Entscheidung Stefan nach dem Advisor-Pass). F-2b-1 liefert die Sammlung im Leitstand (Liste, Zuordnung zum Katalog, Typ, Stand, Auswahlgrund); Prüflauf, Prüfbericht und Sperre der Freigabe folgen mit F-2b-2 (`features/F45/plan-f2b.md`, Advisor-Befunde A2–A10, A15–A19, A21 als Eingabe).
+Status: teilweise (F45 F-2b-2a, 12.10.2026; F-2b-2 nach dem Delta-Advisor-Pass erneut geteilt): „Auswählen“ (Sammlung; Katalogeintrag OFFEN über die API) pinnt die Quelle ohne Installation (Commit-SHA bzw. npm exakte Version + sha512-Integrity; fehlende Paketangabe → „Quelle nicht pinnbar: Paketangabe fehlt“), holt den Inhalt read-only in einen Temp-Ordner (Checkout nur ausgewählter Dateien bzw. `npm pack --ignore-scripts` + eigener Tar-Leser; `.claude*`/CLAUDE.md neutralisiert), prüft ihn in einem Lauf der neuen Rolle `eignungspruefung` (Read/Grep/Glob, `--add-dir` nur auf den Prüfordner, alle Skills/Plugins aus, Init-Gate `skills = ∅`) und legt den Prüfbericht als Kernartefakt `pruefbericht-<schluessel>` mit Lineage ab. „Freigeben & installieren“ verlangt einen Bericht zur angezeigten Version mit Urteil ≠ NICHT_GEEIGNET (sonst 409, Grund auch im Freigabedialog; Rückruf unter der Installationssperre, `src/ressourcen/installation.ts`). Ausnahme-Begründung Pflicht bei „Nur Ausnahme“/„Ausgeschlossen“. Gate `scripts/check-f45-f2b2-pruefung.mjs`, echte Prüfläufe `features/F45/nachweise/f2b2/`. Rest (F-2b-2b): Vormerken-Variante für Sammlungseinträge ohne Katalog, „Eignung prüfen“ im Detail der Capability Library.
 
 **F-1057** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Der Scout kennt Stefans bewertete Sammlung nicht (Challenger K21).
@@ -13279,3 +13282,86 @@ Auswirkung: Gering — Lesbarkeit auf dem Telefon und in anderen Sprachen.
 Maßnahme: (1) Gruppen als `<details>` (offen ab 1 Treffer bzw. bei Filter); (2) Codes mit Zahlen statt Text (Muster F-1016); (3) Detailzeile mit `colspan` (mit F-2b-2, wenn dort der Prüfbericht im Detail steht); (4) breitere Kosten-Spalte oder `hyphens` nur für die Kosten-Spalte mit `lang` der Datei.
 Status: offen.
 Feature/Run: Entdeckt: F45 F-2b-1 (qa, design-guardian), 12.10.2026.
+Nachtrag (F45 F-2b-2a, 12.10.2026): nichts davon erledigt — (3) (Detail als volle Tabellenzeile) ist nach dem Delta-Advisor-Pass F-2b-2b zugeordnet; der Prüfbericht im Detail sitzt bis dahin in der Namensspalte (Befunde gestapelt, gering/Hinweis eingeklappt).
+
+**F-1069** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Eigene Agents/Skills bauen lassen geht nicht durchgängig (Challenger K29).
+Beschreibung: Läufe dürfen `**/.claude/**` nicht schreiben (deny Write/Edit) — eine gebaute Fähigkeit landet also nicht dort, wo sie geladen wird.
+Fundstelle: `src/faehigkeiten/start.ts` (Write/Edit(`**/.claude/**`)), `src/ressourcen/ort-b-start.ts` (CLAUDE_ORDNER_SPERREN).
+Auswirkung: Mittel — „Fähigkeit bauen“ endet heute in Handarbeit.
+Maßnahme: nach F30/Teil 2 — Ablauf „Fähigkeit bauen“ schreibt in einen Vorschlagsordner; Stefan übernimmt per Knopf (Server schreibt, Freigabe nach Inhalt wie F-1/F-2a).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026.
+
+**F-1070** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Kein Direktstart „Fähigkeit X auf Aufgabe Y“ (Challenger K30).
+Beschreibung: Läufe starten nur über Rollen/Workflows; eine einzelne Fähigkeit lässt sich nicht gezielt auf eine Aufgabe ansetzen.
+Fundstelle: `scripts/leitstand-server.mjs` (POST /api/laeufe, Workflows).
+Auswirkung: Gering — Umweg über einen Workflow.
+Maßnahme: nach F30 — Einzelauftrag mit vorbelegter Fähigkeit (fast-lane).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026.
+
+**F-1071** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Einrichtungsschritte für Stefan haben keinen eigenen Ort (Challenger K31).
+Beschreibung: Konten, Schlüssel, Dienste und Berechtigungen, die Stefan vor oder während eines Baus einrichten muss, stehen nirgends gesammelt; der Bau startet ohne sie.
+Fundstelle: Arbeitspaket/Architekt (`src/architekt/`), Leitstand.
+Auswirkung: Mittel — Bauläufe scheitern an fehlender Einrichtung oder warten unbemerkt.
+Maßnahme: B2a — Feld „Einrichtung durch Stefan“ im Arbeitspaket (Schritt, wann nötig, Status), vom Architekten befüllt, Liste im Leitstand vor dem Bau; der Bau startet erst, wenn die als „vor dem Bau“ markierten Schritte erledigt sind.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026.
+Zugeordnet: F45 B2a.
+
+**F-1072** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: API-Schlüssel im Lauf ungeregelt (Challenger K32).
+Beschreibung: Integrationstests mit echten Diensten, ihre Kosten und die Maskierung von Schlüsseln (F-1005) sind im Lauf nicht geregelt.
+Fundstelle: Ausführungslauf, `scripts/leitstand/geheimnisse-maskieren.mjs`.
+Auswirkung: Mittel — Kosten und Schlüssel-Leck möglich.
+Maßnahme: B2a/B2b mit F-1071 — Standard Attrappe, echter Aufruf nur nach Rückfrage, Schlüssel nur als Umgebungsvariable, nie in Datei oder Laufakte.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026.
+Zugeordnet: F45 B2a/B2b.
+
+**F-1073** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte F45 F-2b-2a (Eignungsprüfung) — Bedienung und Anzeige.
+Beschreibung: (1) Ein Projektwechsel oder Neuladen verwirft die Verfolgung eines laufenden Prüflaufs; der Lauf geht weiter, die Sammlung zeigt bis zum Bericht nichts davon, ein erneutes „Auswählen“ endet erst nach dem Pin mit 409 (QA 4). (2) D13 wird erst nach dem Pin geprüft (bis zu 120 s Warten auf git/npm, dann 409) — bewusst so (Advisor C2), eine billige Vorabprüfung ohne Reservierung fehlt (QA 9). (3) Ein Bericht über einen tieferen Ordner als den installierten Pfad gilt nicht; die Sperre sagt dann „ohne Prüfbericht“, obwohl einer existiert (QA 10). (4) Stand „geprüft“ gilt auch bei NICHT_GEEIGNET und bei einem Bericht für eine ältere Version; der Filter mischt freigebbare und gesperrte Einträge (QA 11). (5) Der Render-Nachweis zeigt im Detail „Prüfbericht: keiner“ neben dem Attrappen-Bericht und deckt tr/ru, Fehlerphasen und eine Tastaturfolge nicht ab (design-guardian 9/10, QA). (6) Im Freigabedialog sind „Prüfen & freigeben“ und „Installieren“ zugleich als Hauptknopf sichtbar (Bestand vor F-2b-2a, design-guardian). (7) Befunde und Belege des Prüfberichts sind Daten des Modells und bleiben in der Sprache des Laufs (deutsch).
+Fundstelle: `public/leitstand/views/sammlung.js`, `scripts/leitstand-server.mjs` (POST /api/sammlung/pruefung), `src/sammlung/pruefbericht.ts` (gleicheQuelle), `scripts/leitstand/routen-pruefung.mjs` (ergaenzeSammlung), `features/F45/nachweise/f2b2/render/`.
+Auswirkung: Gering bis mittel — Bedienkomfort; die Sperre der Freigabe bleibt in jedem Fall fail-closed.
+Maßnahme: (1) laufende Prüfläufe aus dem Zustand der Workforce ableiten (laufAktivLaufId mit Präfix `eignungspruefung-`) und in der Zeile zeigen; (2) Vorabprüfung von D13 vor dem Pin (ohne Reservierung); (3) eigener Sperrgrund „Bericht deckt nur <pfad>“; (4) Stand „geprüft“ nach Urteil unterscheiden (z. B. „geprüft — nicht geeignet“); (5) Render-Folgen nachziehen; (6) Öffner nach dem Öffnen nachrangig; (7) bei Bedarf Zusammenfassung je Sprache.
+Status: offen.
+Feature/Run: Entdeckt: F45 F-2b-2a (qa, design-guardian), 12.10.2026.
+Nachtrag (Delta-Review, 12.10.2026): (8) ein Phasenwechsel durch den Detail-Auffrischer zeichnet die Liste neu und verliert den Fokus anderswo in der Liste; danach greift „wennDort“ über body; (9) „Pfad nicht übernommen“ zeichnet neu und verliert den getippten Pfad — ein zweiter Klick startet mit dem alten (getippten Pfad wie die Ausnahme im Ablauf merken); (10) Überholschutz von „vorbereiten“ fehlt im catch-Zweig und nach dem await; (11) Phase „fertig“ ohne festes Fokusziel; (12) Meldung „Pfad nicht übernommen“ ohne aria-describedby am Pfadfeld.
+
+**F-1074** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Grenzen des Prüflaufs (F45 F-2b-2a).
+Beschreibung: (1) Ein Abbruch greift beim Holen erst zwischen den Schritten; ein laufender git/npm-Aufruf endet an seiner Zeitgrenze (120 s; Advisor C8). (2) `fetch --depth 1` lädt den ganzen Stand des Commits, bevor die Grenzen (3 000 Dateien, 25 MB) greifen (C10) — ein sehr großes Repo füllt kurz den Temp-Ordner. (3) Das Init-Gate prüft nur die init-Zeile; gegen Skills, die die CLI im Lauf in verschachtelten Ordnern entdecken könnte, schützen Neutralisierung und das fehlende Skill-Werkzeug (C13). (4) Ein unsauberes `.claude` im Workforce-Checkout färbt jeden Prüflauf rot (C6, fail-closed, Grund im Fehlerstand). (5) Die Bildung `<unterpfad>/<skill_pfad>` steht an vier Stellen (Installation zweimal, Holen, Prüfroute); die Bindung des Berichts hängt an exakt gleicher Bildung (Code-Review 6). (6) Das Gate vergleicht den Argv der Bestandsrollen nur indirekt (kein ortB für architekt), Tests für die Grenzen von 3 000 Dateien/25 MB, den Misserfolgs-Zweig eines Prüflaufs und den Neustart mitten im Lauf fehlen (Code-Review 12, QA). (7) Das Modellurteil kann ein manipuliertes Repo beeinflussen; die mechanischen Fakten stehen deshalb getrennt davor (C14).
+Fundstelle: `src/sammlung/quelle.ts`, `scripts/leitstand/routen-pruefung.mjs`, `src/ressourcen/installation.ts`, `scripts/check-f45-f2b2-pruefung.mjs`.
+Auswirkung: Gering — Grenzen sind bekannt und fail-closed.
+Maßnahme: (1) Runner mit Abbruchsignal; (2) Partial Clone mit Blob-Filter prüfen (Vorsicht: Nachladen bei cat-file); (5) gemeinsame Funktion für den Quellpfad; (6) Tests nachziehen, Argv-Bitgleichheit direkt gegen baueAufruf prüfen.
+Status: offen.
+Feature/Run: Entdeckt: F45 F-2b-2a (Delta-Advisor C6/C8/C10/C13/C14, code-reviewer, qa), 12.10.2026.
+Nachtrag (Delta-Review Runde 2, 12.10.2026, mittel/gering): (11) NTFS-Großschreibungsfälle (`σ`/`ς` → `Σ`) und 8.3-Kurznamen (`ABCDEF~1.MD` neben `abcdefghij.md`) erkennt pfadSchluessel nicht — Prüfung läuft durch, die Installation endet über den Inhalts-Abgleich in 422 (Maßnahme: `toUpperCase().toLowerCase()`, Segmente mit `~<Ziffer>` ablehnen); (12) Ordner-Zwillinge (`A/x.md` neben `a/y.md`) werden nicht als Zwilling gemeldet — Installation endet sicher über den Abgleich, die Meldung ist irreführend. Erledigt in Runde 3: Tar-Parser-Abweichung pax/GNU-L (abgewiesen), NFC/NFD-Test mit Escapes, `pruefeInhalt` Pflicht.
+Nachtrag (Delta-Review, 12.10.2026): (8) `auswahl` prüft MCP-Pakete mit `^npm:`, die Route mit `paketNameAus` — ein ungültiger Name zeigt „Auswählen“ und endet mit 422; (9) die Payload prüft die Integrity nur auf das Präfix `sha512-` statt auf SHA512_INTEGRITY; (10) Kopf von `schreibeInhalt` nennt Kollision noch „Fakt“, und eine Kollision durch die Neutralisierung (`.claude/x` neben `_.claude/x`) meldet „andere Schreibweise“.
+
+**F-1075** · `BUG` · P1 · offen
+Titel: Geprüfter und installierter Inhalt können noch auseinanderfallen (F45 F-2b-2a, Delta-Review nach der Korrekturrunde).
+Beschreibung: (1) npm-Tarball: doppelte Pfade werden nur in Rohschreibweise (klein, NFC) erkannt. npm/node-tar und Windows lösen mehr Schreibweisen zum selben Ziel auf — `package/./SKILL.md`, `package//SKILL.md`, `package/SKILL.md.` (Punkt/Leerzeichen am Ende), `package\SKILL.md` (Backslash), absolute Namen; diese Einträge werden heute als Fakt übersprungen bzw. nicht verglichen, ein späterer Eintrag könnte beim Installieren die geprüfte Datei überschreiben. (2) git: die Kollisionsprüfung (Groß-/Kleinschreibung, Datei/Ordner) läuft nur über die ausgewählten Dateien (≤ 1 MB); die Installation checkt den ganzen Pfad aus — ein 2-MB-Zwilling `skill.md` neben dem geprüften `SKILL.md` gewänne auf Windows; Datei `a` neben Ordner `A/b` endet als 502 statt 422.
+Fundstelle: `src/sammlung/inhalt.ts` (leseTarGz), `src/sammlung/quelle.ts` (holeGitInhalt, schreibeInhalt).
+Auswirkung: Hoch — ein Paket- oder Repo-Autor könnte dem Prüflauf harmlosen und der Installation anderen Inhalt zeigen. Heute folgenlos für den Bestand (kein Katalogeintrag ist über F-2b-2a installiert), aber Voraussetzung für einen Merge.
+Maßnahme: (1) jeden Tar-Eintrag fail-closed abweisen (422), den pruefePfad ablehnt, der absolut ist oder einen Backslash trägt; (2) bei git Schreibweisen-Duplikate und ordnerKonflikt über ALLE ls-tree-Einträge vor dem Checkout prüfen (422); Rot-Tests: Tar mit `./`, `//`, Punkt am Ende, Backslash; git mit zu großem Zwilling und Datei neben Ordner; danach kurzer Delta-Review nur über inhalt.ts/quelle.ts.
+Status: offen.
+Feature/Run: Entdeckt: F45 F-2b-2a (code-reviewer, Delta-Review), 12.10.2026 — nach der einen Korrekturrunde; Abbruchregel des Auftrags (echter Bruch → Stopp).
+Nachtrag (Runde 2 und 3, Freigabe Stefan, 12.10.2026): umgesetzt — Tarball fail-closed (`./`, `//`, Punkt/Leerzeichen am Segmentende, Backslash, absolut, Laufwerk, `..`, Gerätename, Zwillinge in Schreibweise/Unicode-Form, Datei zugleich Ordner, `node_modules` in jeder Tiefe „bundleDependencies nicht unterstützt“, nur POSIX-ustar: L/K/g und pax path/linkpath „Tar-Format nicht unterstützt“); git: Zwillinge und Datei/Ordner über den GANZEN gepinnten Baum vor dem Checkout (Prüflauf und Skill-Installation); der Prüfbericht trägt die geprüfte Dateiliste mit sha256, die Installation vergleicht sie nach dem Schreiben (Pflicht-Rückruf `pruefeInhalt`, Abweichung 422). Delta-Review Runde 2: git dicht, npm offen (`node_modules`-Ausnahme); Runde 3: git dicht, npm weiter ein echter Bruch — der eigene Tar-Leser löst Bytes anders auf als node-tar: (1) Ende schon nach dem ersten Nullblock (node-tar: zwei), (2) Kopf-Typen `N`/`X` (Alt-GNU-Langpfad, alter pax-Kopf) übersprungen statt abgewiesen, (3) pax-Datensätze nach Länge statt nach Zeilenende zerlegt, (4) zwei pax-Köpfe hintereinander ersetzt statt zusammengeführt, (5) ustar-Präfix: Version `00` nicht geprüft, nicht-leere Bytes 345–500 bei leerem Präfix; (6) Ursache: die Ausnahme `<paket>/node_modules` im Abgleich hängt an der Gleichheit der beiden Leser; (7) pax-size mit `Number()` zu großzügig (gering); (8) Vergleichstest gegen npms eigenes node-tar fehlt; (9) Hinweis: hochgezogene Abhängigkeiten werden nie inhaltlich geprüft — „installiert = geprüft“ gilt nur für das Paket selbst.
+Rückfallebene (Auftrag Runde 3): jede npm-Installation (MCP) nach Prüfung ist gesperrt — Route 409 „npm-Installation nach Prüfung noch nicht freigegeben, F-1075“, im Freigabedialog Sperrgrund und „Installieren“ deaktiviert, der Bericht bleibt sichtbar; Skills über git bleiben installierbar. Nur Gates, die die Installationsmechanik prüfen, setzen `npmInstallationNachPruefung` (WS-5a, F-2b-2 (f)); Gate F-2b-2 (i) prüft die Sperre ohne Schalter.
+Rest (Maßnahme F-2b-2b): (a) Ausnahme `<paket>/node_modules` an verschachtelte Lockfile-Einträge `node_modules/<paket>/node_modules/<dep>` binden (nur genau diese Namen, sonst Abbruch) — schließt die Klasse der Leser-Abweichungen; (b) Leser als Positivliste (Typen `0`/NUL/`5`/`x`, genau ein pax-Kopf, pax-Zeilen wie node-tar, Nullblock-Ende wie node-tar, ustar `ustar\0`+`00`, leeres Präfix = Nullbytes, pax-size nur Ziffern); (c) Vergleichstest gegen npms node-tar (`strip:1`) mit vergleicheInhalt; danach die Sperre aufheben.
+Status: offen (P1, Rest), zugeordnet F45 F-2b-2b.
+
+**F-1076** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: impeccable ist laut Prüfbericht NICHT_GEEIGNET, steht aber im B3-Plan (Challenger K34).
+Beschreibung: Der echte Prüflauf `eignungspruefung-impeccable-87331e24…` (Skill-Ordner `.claude/skills/impeccable` @ `919dbeb`, `features/F45/nachweise/f2b2/bericht-impeccable.json`) urteilt NICHT_GEEIGNET: der Launcher (`scripts/impeccable`, `impeccable.cmd`) lädt beim ersten Lauf ein geschlossenes Engine-Binary von GitHub-Releases nach `~/.impeccable/bin/` und führt es aus; `hooks on` schreibt Hook-Manifeste u. a. in `.claude/settings.local.json`. B3 (`docs/projekt/fixpaket-f45.md`) plant „impeccable installierbar“.
+Fundstelle: `docs/projekt/fixpaket-f45.md` (Zeile B3), `ressourcen.json` (impeccable), `features/F45/nachweise/f2b2/`.
+Auswirkung: Mittel — B3 plant eine Fähigkeit, die die eigene Eignungsprüfung ablehnt.
+Maßnahme: B3 — Ersatz aus der Sammlung prüfen (taste-skill, animate-skill, ui-ux-pro-max; frontend-design ist installiert) oder nur eine gepinnte Teilkopie ohne Launcher und Hooks nach neuem Prüfbericht.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 12.10.2026 (Prüfbericht F45 F-2b-2a).
+Zugeordnet: F45 B3.

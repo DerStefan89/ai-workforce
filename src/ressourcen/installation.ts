@@ -30,6 +30,10 @@
  * Mensch (Bekannte Grenze, features/F36/feature.md). Geschrieben wird nur der Text des einen
  * Eintrags (übrige Formatierung bleibt), atomar über eine Nachbardatei + rename.
  *
+ * F45 F-2b-2 (F-1056): beide Wege prüfen unter der Sperre nach eintragHash den Rückruf kontext.pruefeBericht (Prüfbericht zur
+ * angezeigten Version, Urteil ≠ NICHT_GEEIGNET; sonst 409) und nach dem Schreiben kontext.pruefeInhalt (F-1075: geschriebene
+ * Dateien = geprüfte Dateiliste mit sha256; sonst 422).
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (POST /api/ressourcen/<id>/installation/
  * vorbereiten, POST /api/ressourcen/<id>/installation), scripts/check-f36-ws5a-installation.mjs,
  * src/ressourcen/installation.test.ts.
@@ -45,6 +49,46 @@ import { ersetzePlatzhalter, paketNameAus, pruefeInstallierbarkeit, validiereRes
 import { berechneInhaltHash, pruefeSkillDateiNamen, zerlegeGithubUrl } from './skill-dateien.ts'
 import { COMMIT_SHA, type GitRunner, holeSkillQuelle, kopiereSkill, loeseSkillCommitAuf, pruefeSkillQuelle, SKILL_SKRIPT_HINWEIS } from './skill-installation.ts'
 import type { Installation, McpInstallationsVorlage, Ressource, SkillInstallationsVorlage } from './types.ts'
+
+/** F45 F-2b-2: was vor „Installieren“ angezeigt wurde — die Kennzeichen, an die ein Prüfbericht passen muss (Zwilling von AngezeigteQuelle in src/sammlung/pruefbericht.ts, hier ohne Import, damit installation.ts nicht vom Prüfbericht-Modul abhängt). */
+export type AngezeigteQuelle = { art: 'git'; repo: string; sha: string; quellPfad: string } | { art: 'npm'; paket: string; version: string; integrity: string }
+
+/**
+ * F-1075: ruft den Inhalts-Rückruf (falls gesetzt) und übersetzt Grund und Wurf in einen Grund für 422.
+ * @param kontext - Installationskontext
+ * @param eintrag - Katalogeintrag
+ * @param angezeigt - angezeigte Quelle
+ * @param ordner - geschriebener Ordner
+ * @returns null (gleich) oder Grund
+ */
+function inhaltAbweichung(kontext: InstallationsKontext, eintrag: Ressource, angezeigt: AngezeigteQuelle, ordner: string): string | null {
+  if (kontext.pruefeInhalt === undefined) return 'Inhalts-Abgleich fehlt (F-1075)'
+  try {
+    return kontext.pruefeInhalt(eintrag, angezeigt, ordner)
+  } catch (fehler) {
+    console.error(`[installation] Inhalts-Abgleich für '${eintrag.id}' nicht möglich:`, fehler)
+    return `Inhalts-Abgleich nicht möglich: ${(fehler as Error).message}`
+  }
+}
+
+/**
+ * F45 F-2b-2: ruft den Prüfbericht-Rückruf (falls gesetzt) und übersetzt Grund und Wurf in eine 409-Ablehnung.
+ * @param kontext - Installationskontext
+ * @param eintrag - Katalogeintrag (durch eintragHash an die Anzeige gebunden)
+ * @param angezeigt - angezeigte Quelle
+ * @returns null (weiter) oder Ablehnung 409
+ */
+function berichtSperre(kontext: InstallationsKontext, eintrag: Ressource, angezeigt: AngezeigteQuelle): { ok: false; status: number; grund: string } | null {
+  if (kontext.pruefeBericht === undefined) return null
+  let grund: string | null
+  try {
+    grund = kontext.pruefeBericht(eintrag, angezeigt)
+  } catch (fehler) {
+    console.error(`[installation] Prüfbericht für '${eintrag.id}' nicht prüfbar:`, fehler)
+    grund = `Prüfbericht nicht prüfbar: ${(fehler as Error).message}`
+  }
+  return grund === null ? null : { ok: false, status: 409, grund: `'${eintrag.id}': ${grund} — nichts installiert` }
+}
 
 /** Ergebnis eines Kindprozesses. */
 export interface ProzessErgebnis {
@@ -78,6 +122,19 @@ export interface InstallationsKontext {
   nodePfad?: string
   /** Zeitgrenzen je Schritt in ms; Default siehe STANDARD_ZEITGRENZEN. */
   zeitgrenzen?: Partial<typeof STANDARD_ZEITGRENZEN>
+  /**
+   * F45 F-2b-2 (F-1056, Advisor A2): Prüfbericht-Sperre — unter der Installationssperre direkt nach der eintragHash-Prüfung
+   * gerufen (mcp und skill), vor jedem Netzzugriff und jedem Schreiben. Liefert einen Grund → 409, nichts installiert. Der
+   * Server reicht ihn immer (waehleBericht über die Ablage der Workforce); ohne Rückruf verhält sich die Installation wie vor
+   * F-2b-2 (nur Unit-Tests dieser Datei).
+   */
+  pruefeBericht?: (eintrag: Ressource, angezeigt: AngezeigteQuelle) => string | null
+  /**
+   * F-1075: Inhalts-Abgleich (Pflicht für installiereRessource seit Runde 3 — fehlt er, wird nichts installiert) — nach dem Schreiben der Dateien (MCP: node_modules/<paket>, Skill: der kopierte Skill-Ordner), vor
+   * jeder weiteren Prüfung und vor ressourcen.json gerufen. Liefert einen Grund, wenn der geschriebene Inhalt nicht genau der
+   * geprüften Dateiliste (Pfade + sha256) des geltenden Prüfberichts entspricht → 422, Zielordner entfernt, nichts freigegeben.
+   */
+  pruefeInhalt?: (eintrag: Ressource, angezeigt: AngezeigteQuelle, ordner: string) => string | null
 }
 
 /** Antwort beider Schritte — status ist der HTTP-Status, den der Server daraus macht. */
@@ -362,6 +419,8 @@ export async function bereiteInstallationVor(id: string, kontext: InstallationsK
 export async function installiereRessource(id: string, angezeigt: { version: unknown; integrity: unknown; eintragHash: unknown }, kontext: InstallationsKontext): Promise<InstallationsAntwort<InstallationsErgebnis>> {
   // F36 WS-5b: ein Skill wird mit { version = Commit-SHA, eintragHash } installiert (keine integrity);
   // welche Form gilt, entscheidet die unterart des Katalogeintrags (vorab gelesen, unter der Sperre erneut).
+  // F-1075 Runde 3: ohne Inhalts-Abgleich keine Installation (fail-closed statt still offen).
+  if (kontext.pruefeInhalt === undefined) return { ok: false, status: 500, grund: 'Inhalts-Abgleich (pruefeInhalt) fehlt — nichts installiert (F-1075)' }
   const vorab = findeInstallierbaren(id, kontext.installWurzel)
   if (!vorab.ok) return vorab
   if (vorab.eintrag.unterart === 'skill') return installiereSkill(id, angezeigt, kontext)
@@ -404,6 +463,9 @@ async function installiereGesperrt(id: string, version: string, integrity: strin
   if (eintragsKennung(eintrag) !== eintragHash) {
     return { ok: false, status: 409, grund: `Katalogeintrag '${id}' hat sich seit der Anzeige geändert (Paket, Vorlage, Lizenz, Kosten oder Wirkung) — nichts installiert, erneut vorbereiten` }
   }
+  // F45 F-2b-2 (A2): nur mit Prüfbericht zur angezeigten Version (Urteil ≠ NICHT_GEEIGNET).
+  const ohneBericht = berichtSperre(kontext, eintrag, { art: 'npm', paket, version, integrity })
+  if (ohneBericht !== null) return ohneBericht
   const vorlage = eintrag.installation_vorlage as McpInstallationsVorlage
   const runner = kontext.runner ?? ECHTE_RUNNER
   const zeitgrenzen = { ...STANDARD_ZEITGRENZEN, ...kontext.zeitgrenzen }
@@ -496,6 +558,10 @@ async function installiereGesperrt(id: string, version: string, integrity: strin
     const binPfad = resolve(paketOrdner, ...vorlage.bin.split('/'))
     if (relative(paketOrdner, binPfad).startsWith('..') || !binPfad.startsWith(paketOrdner + sep)) return scheitere(422, `bin '${vorlage.bin}' liegt außerhalb des Pakets — abgelehnt`)
     if (!existsSync(binPfad)) return scheitere(422, `bin '${vorlage.bin}' fehlt im Paket (${binPfad}) — abgelehnt`)
+
+    // (3b) F-1075: installiert ist genau, was geprüft wurde (Dateiliste + sha256 des Prüfberichts), sonst Abbruch.
+    const abweichung = inhaltAbweichung(kontext, eintrag, { art: 'npm', paket, version, integrity }, paketOrdner)
+    if (abweichung !== null) return scheitere(422, abweichung)
 
     // (4) Serverstart mit den Vorlagen-args (Platzhalter mit Testwerten), initialize + tools/list, alle werkzeuge.
     const pruefOrdner = mkdtempSync(join(tmpdir(), 'aiw-ws5a-pruef-'))
@@ -632,6 +698,9 @@ async function installiereSkillGesperrt(id: string, sha: string, eintragHash: st
   const quelle = zerlegeGithubUrl((eintrag.herkunft as { url: string }).url)
   if (!quelle.ok) return { ok: false, status: 400, grund: quelle.grund }
   const vorlage = eintrag.installation_vorlage as SkillInstallationsVorlage
+  // F45 F-2b-2 (A2): nur mit Prüfbericht zur angezeigten SHA; quellPfad aus dem durch eintragHash gebundenen Eintrag.
+  const ohneBericht = berichtSperre(kontext, eintrag, { art: 'git', repo: quelle.repoUrl, sha, quellPfad: quelle.unterpfad === '' ? vorlage.skill_pfad : `${quelle.unterpfad}/${vorlage.skill_pfad}` })
+  if (ohneBericht !== null) return ohneBericht
   const git = (kontext.runner ?? ECHTE_RUNNER).git ?? gitReal
   const zeitgrenzen = { ...STANDARD_ZEITGRENZEN, ...kontext.zeitgrenzen }
   const aufgeloest = await loeseSkillCommitAuf(quelle, git, zeitgrenzen.gitMs)
@@ -685,6 +754,9 @@ async function installiereSkillGesperrt(id: string, sha: string, eintragHash: st
     const ziel = join(capOrdner, '.claude', 'skills', geprueft.name)
     mkdirSync(dirname(ziel), { recursive: true })
     kopiereSkill(geholt.quellOrdner, ziel)
+    // F-1075: installiert ist genau, was geprüft wurde (Dateiliste + sha256 des Prüfberichts), sonst Abbruch.
+    const abweichung = inhaltAbweichung(kontext, eintrag, { art: 'git', repo: quelle.repoUrl, sha, quellPfad: quelle.unterpfad === '' ? vorlage.skill_pfad : `${quelle.unterpfad}/${vorlage.skill_pfad}` }, ziel)
+    if (abweichung !== null) return scheitere(422, abweichung)
     const installation: Installation = { pfad: ziel, version: sha, inhalt_hash: berechneInhaltHash(ziel) }
     const geschrieben = schreibeInstallierteRessource(katalog, id, installation)
     if (!geschrieben.ok) return scheitere(geschrieben.status, geschrieben.grund)

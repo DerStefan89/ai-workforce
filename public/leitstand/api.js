@@ -58,6 +58,11 @@ export function setzeAktivesProjektPraefix(praefix) {
   aktivesProjektPraefix = praefix
 }
 
+/** F45 F-2b-2a (QA 1): true, wenn die Workforce selbst das aktive Projekt ist — nur dann führt #/runs/<laufId> zum Prüflauf. */
+export function workforceAktiv() {
+  return aktivesProjektPraefix === '/api'
+}
+
 function mitPraefix(restPfad) {
   return `${aktivesProjektPraefix}${restPfad}`
 }
@@ -255,6 +260,13 @@ export const holeFaehigkeiten = () => holeJsonOderWirf(mitPraefix('/faehigkeiten
 // F45 F-2b-1: Stefans Sammlung mit Zuordnung zum Katalog und Stand des aktiven Projekts — nur beim Betreten der Seite Workforce,
 // per „Neu laden“ und beim Projektwechsel, nie aus dem Poll. 200 trägt { status: 'ok' | 'fehler' }.
 export const holeSammlung = () => holeJsonOderWirf(mitPraefix('/sammlung'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+// F45 F-2b-2a (F-1056): Auswählen → Eignungsprüfung. Bewusst UNPRÄFIGIERT (Muster holeProjekte): Prüfläufe laufen immer in
+// der Workforce-Instanz (Advisor A3), gleich welches Projekt aktiv ist. vorbereiten pinnt nur (git ls-remote / npm view, ohne
+// Zeitlimit des Polls — ein Pin darf länger dauern); der Start antwortet 202 { laufId }; der Zustand wird nur gefragt, solange
+// ein Prüflauf läuft (Detail-Auffrischer, kein eigener Timer).
+export const bereitePruefungVor = (koerper) => fetch('/api/sammlung/pruefung/vorbereiten', { method: 'POST', body: JSON.stringify(koerper) })
+export const startePruefung = (koerper) => fetch('/api/sammlung/pruefung', { method: 'POST', body: JSON.stringify(koerper) })
+export const holePruefung = (laufId) => fetch(`/api/sammlung/pruefung/${encodeURIComponent(laufId)}`, { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 export const sendeFaehigkeitAktivierung = (eintrag, aktiv, stand) => fetch(mitPraefix('/faehigkeiten/aktivierung'), { method: 'POST', body: JSON.stringify({ eintrag, aktiv, ...(typeof stand === 'string' ? { stand } : {}) }), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 // F-1061 (3): „Datei geprüft – Stand übernehmen“ — bestätigt genau den angezeigten Stand der lokalen Datei.
 export const sendeFaehigkeitBestaetigung = (stand) => fetch(mitPraefix('/faehigkeiten/bestaetigung'), { method: 'POST', body: JSON.stringify({ stand }), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })

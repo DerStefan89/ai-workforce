@@ -474,7 +474,7 @@ import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-ga
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, empfehlungsKennung, loeseRessourcenAuf, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
-import { bereiteInstallationVor, installiereRessource, npmReal } from '../src/ressourcen/installation.ts'
+import { bereiteInstallationVor, ECHTE_RUNNER, installiereRessource, npmReal } from '../src/ressourcen/installation.ts'
 import { baueOrtBSkillStart } from '../src/ressourcen/ort-b-start.ts'
 import { ermittleProjektFaehigkeiten, hashLokaleDatei, katalogFreigaben, ladeFaehigkeitenLokal, leseEingebautReferenz, projektEinstellungen, projektFaehigkeitenFuerAnzeige, projektKennung, projektStatusFuerEmpfehlung, STANDARD_FAEHIGKEITEN_LOKAL_PFAD, trenneAngezeigteIds, vergleicheProjektKennungen } from '../src/faehigkeiten/index.ts'
 import { baueFaehigkeitenStart } from '../src/faehigkeiten/start.ts'
@@ -540,6 +540,7 @@ import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from '
 import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
 import { baueHarnessAbgleichAntwort, baueHarnessAbgleichOhneLauf, schreibeHarnessAbgleichAmKettenende } from './leitstand/routen-harness-abgleich.mjs'
 import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } from './leitstand/routen-sammlung.mjs'
+import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
@@ -2803,6 +2804,9 @@ export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leits
  *   Vergleich mit den angezeigten Kennungen, eingefrorene faehigkeitenImLauf und Init-Gate.
  *   faehigkeitenLokalPfad (F45 F-1, Code-Review 2): Pfad der lokalen Datei — geht bei jedem schreibenden Lauf in die
  *   Eingaben (Vorher/Nachher-Hash im Controller)
+ *   pruefOrdner (F45 F-2b-2, Advisor C4): absoluter Prüfordner eines Prüflaufs — nur mit rolle 'eignungspruefung' (und diese
+ *   Rolle nur mit ihm); setzt ortB (--add-dir Prüfordner, --settings ohne Skills/Plugins), ortBLauf (Init-Gate skills = ∅) und
+ *   CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund, konflikt? (F45 F-2a: Anzeige veraltet → 409 im Workflow) }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
@@ -2948,6 +2952,16 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     berechtigungskontext = CODEX_BERECHTIGUNGSKONTEXT
   }
 
+  // F45 F-2b-2 (F-1056, Advisor C4): die Rolle 'eignungspruefung' läuft NUR mit einem serverseitig gesetzten Prüfordner
+  // (optionen.pruefOrdner, POST /api/sammlung/pruefung) — ohne ihn lehnt diese Stelle jeden Start ab (POST /api/laeufe,
+  // Workflow-Schritt; A17, O12). Umgekehrt nimmt keine andere Rolle einen Prüfordner an. Werkzeugsatz exakt Read/Grep/Glob.
+  const pruefOrdner = optionen.pruefOrdner
+  if (eingabenRoh.rolle === 'eignungspruefung' || pruefOrdner !== undefined) {
+    if (eingabenRoh.rolle !== 'eignungspruefung') return { ok: false, grund: `Prüfordner nur für die Rolle 'eignungspruefung', nicht für '${eingabenRoh.rolle}'` }
+    if (typeof pruefOrdner !== 'string' || !isAbsolute(pruefOrdner)) return { ok: false, grund: "Rolle 'eignungspruefung' startet nur serverseitig über POST /api/sammlung/pruefung (Prüfordner fehlt)" }
+    if (JSON.stringify(werkzeugsatz.erlaubte_werkzeuge) !== JSON.stringify(['Read', 'Grep', 'Glob'])) return { ok: false, grund: `Rolle 'eignungspruefung' verlangt den Werkzeugsatz exakt Read, Grep, Glob — '${werkzeugsatzName}' trägt ${werkzeugsatz.erlaubte_werkzeuge.join(', ')}` }
+  }
+
   // E-F39-1=B (Stefans Entscheidung, löst F-643): ein schreibender Schritt (Werkzeugsatz-Art
   // 'schreibend') darf main/master oder einen unsauberen Arbeitsbaum nie treffen. ZULETZT unter
   // den Ablehnungen — NACH allen zehn Rollenvertrag-/Worker-/Schema-Prüfungen oben: eine
@@ -3081,6 +3095,24 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     }
     faehigkeitenInstruktion = start.start.instruktion
   }
+  // F45 F-2b-2 (Advisor C3/C4/A5): Prüflauf — der Prüfordner kommt über den bestehenden ortB-Kanal (--add-dir + --settings),
+  // alle Skills/Commands der Workforce aus (skillOverrides), eingebaute Plugins aus, Init-Gate mit skills = ∅: ein Skill aus
+  // dem Prüfordner (Neutralisierung versagt) beendet den Lauf, es entsteht kein Bericht. CLAUDE.md aus Zusatzordnern aus.
+  let pruefZusatz = {}
+  if (pruefOrdner !== undefined) {
+    const eingebautPruef = leseEingebautReferenz()
+    if (!eingebautPruef.ok) return { ok: false, grund: `Prüflauf abgelehnt: ${eingebautPruef.grund}` }
+    const start = baueFaehigkeitenStart({ projekt: [], agentNamen: [], projektWurzel: repoWurzel, referenz: eingebautPruef.referenz, installation: { projektOrdner: repoWurzel, installWurzel: optionen.installWurzel } })
+    if (!start.ok) return { ok: false, grund: `Prüflauf abgelehnt: ${start.grund}` }
+    const bisher = typeof eingabenRoh.aufrufEingaben?.disallowedTools === 'string' && eingabenRoh.aufrufEingaben.disallowedTools.length > 0 ? [eingabenRoh.aufrufEingaben.disallowedTools] : []
+    pruefZusatz = {
+      ortB: { addDirs: [pruefOrdner], settings: start.start.settings },
+      disallowedTools: [...bisher, ...start.start.disallowedTools].join(','),
+      umgebungsvariablen: { ...(eingabenRoh.aufrufEingaben?.umgebungsvariablen ?? {}), CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '0' },
+    }
+    ortBLauf = { skillNamen: [], gesperrteNamen: start.start.initGate.gesperrt, mcpServer: [], projektWurzel: repoWurzel }
+  }
+
   // F45 F-1: beim Start eingefroren — Katalog (wird genutzt / im Projekt abgeschaltet) und Projekt-Einträge.
   const faehigkeitenImLauf =
     fk === undefined
@@ -3117,7 +3149,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       rolle: eingabenRoh.rolle,
       anfragen: anfragenMitInhalt,
       budget: eingabenRoh.budget,
-      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, ...skillZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
+      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, ...skillZusatz, ...pruefZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
       werkzeugStartziel,
       werkzeugVersionDeklariert,
       berechtigungskontext,
@@ -5118,6 +5150,18 @@ export function erzeugeRequestHandler(optionen = {}) {
     // F45 F-2a (F-1055 (1)): Wächter der lokalen Datei (erzeugeLokalWaechter) — einer je Prozess, vom CLI-Bindeblock an alle
     // Projektinstanzen gereicht (sie teilen die Datei); ohne Option eigener Wächter dieser Instanz (Tests).
     faehigkeitenLokalWaechter = faehigkeitenLokalPfad === null ? null : erzeugeLokalWaechter(faehigkeitenLokalPfad),
+    // F45 F-2b-2 (F-1056, Advisor A3/C7): Ablage der Prüfberichte = Kontrollzustand der Workforce. Standard die eigene Ablage
+    // (Gates/Tests isoliert); baueProjektHandlerMap reicht an jede Projektinstanz die der Workforce durch (Start und
+    // POST /api/projekte), damit Sammlung und Freigabe-Sperre überall dieselben Berichte sehen.
+    pruefberichtBasisVerzeichnis = basisVerzeichnis,
+    // F45 F-2b-2 (A3): nur die Workforce-Instanz startet Prüfläufe (Lauf und Bericht in derselben Ablage, Startfreigabe der
+    // Workforce). Gesetzt im CLI-Bindeblock am defaultHandler und von Gates/Nachweisen; jede andere Instanz antwortet 409.
+    istWorkforceInstanz = false,
+    // F45 F-2b-2: Runner der Quell-Aufrufe des Prüflaufs { git, npm } — undefined = echt (ECHTE_RUNNER); nur Tests.
+    pruefungRunner = undefined,
+    // F-1075 Rückfallebene: npm-Installation nach Prüfung gesperrt (409). Nur Gates, die die Installationsmechanik prüfen,
+    // setzen true; der CLI-Bindeblock und baueProjektHandlerMap nie.
+    npmInstallationNachPruefung = false,
   } = optionen
 
   /**
@@ -5204,6 +5248,8 @@ export function erzeugeRequestHandler(optionen = {}) {
   let laufAktivFortschritt = null
   /** F46 D5 (löst F-977): Ringpuffer der letzten 50 Werkzeugaufrufe des aktiven Laufs (scripts/leitstand/lauf-aktivitaet.mjs) — nur Speicher, je Laufstart neu (starte), mit jedem Reset von laufAktivFortschritt gelöscht (beende), laufId-geprüft wie dieser. Ausgeliefert über GET /api/laeufe/<laufId> (Feld aktivitaet). */
   const laufAktivitaet = erzeugeAktivitaetsSpeicher()
+  /** F45 F-2b-2a: Zustand der Prüfläufe dieser Instanz (laufId → { phase holen|laeuft|fertig|fehler, grund, bericht, … }) — nur Speicher, höchstens 50; nach einem Neustart gilt allein der Bericht im Kontrollzustand. */
+  const pruefZustaende = new Map()
   /** F43: true, solange POST /api/projekt-aufruf den startbefehl dieses Projekts ausführt — sperrt einen zweiten Aufruf und jeden Laufstart dieser Instanz (pruefeGlobaleLaufSperre). Rein In-Memory. */
   let aufrufAktiv = false
   /** F43: Ergebnis des letzten Aufrufs dieser Instanz oder null — flüchtig (Begründung src/projekt-aufruf/index.ts). */
@@ -7089,7 +7135,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // sind dieselben, per Referenz geteilten Objekte, die GET /api/projekte bzw. der Dispatcher
         // lesen (kein zweiter, divergierender Zustand).
         projekte.push(neuerEintrag)
-        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad, faehigkeitenLokalWaechter })
+        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad, faehigkeitenLokalWaechter, pruefberichtBasisVerzeichnis })
         for (const [id, handler] of neueTeilkarte) projektHandlerMap.set(id, handler)
 
         // F42 WS-1 (E-PH-1 = B): read-only-Erkennung, KEIN Schreibzugriff auf ~/.claude.json — der
@@ -7533,7 +7579,100 @@ export function erzeugeRequestHandler(optionen = {}) {
         letzterLauf: letzte === null ? null : { laufId: letzte.laufId, daten: laufakte?.daten ?? null },
         kennung: empfehlungsKennung,
       })
-      sendeJson(res, antwort.http, antwort.koerper)
+      // F45 F-2b-2: letzter Prüfbericht je Eintrag (Ablage der Workforce), Stand „geprüft“; ein Lesefehler wird ein Band.
+      const { berichte, fehler: berichtFehler } = leseBerichte(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER)
+      sendeJson(res, antwort.http, antwort.koerper?.status === 'ok' ? { ...ergaenzeSammlung(antwort.koerper, berichte), pruefbericht_fehler: berichtFehler } : antwort.koerper)
+      return
+    }
+
+    // F45 F-2b-2a (F-1056): Auswählen → Eignungsprüfung. vorbereiten pinnt nur lesend (kein Lauf, keine Sperre); der Start
+    // pinnt erneut, vergleicht mit der Anzeige, prüft D13 und reserviert im selben Takt (Advisor C2) und antwortet 202 — Holen
+    // und Lauf laufen danach asynchron (starteEignungspruefung). Nur in der Workforce-Instanz (A3). GET …/<laufId> liefert den
+    // Zustand, solange die Oberfläche ihn verfolgt (kein Poll von /api/zustand). Bausteine: scripts/leitstand/routen-pruefung.mjs.
+    if (pfad === '/api/sammlung/pruefung/vorbereiten' || pfad === '/api/sammlung/pruefung') {
+      if (req.method !== 'POST') {
+        sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+        return
+      }
+      if (!istWorkforceInstanz) {
+        sendeJson(res, 409, { grund: 'Prüfläufe laufen in der Workforce-Instanz (unpräfigiert /api/sammlung/pruefung), nicht je Projekt' })
+        return
+      }
+      const start = pfad === '/api/sammlung/pruefung'
+      let body
+      try {
+        body = JSON.parse(await leseBody(req))
+      } catch {
+        sendeJson(res, 400, { grund: 'Body ist kein gültiges JSON' })
+        return
+      }
+      const koerper = pruefeKoerper(body, start)
+      if (!koerper.ok) {
+        sendeJson(res, koerper.status, { grund: koerper.grund })
+        return
+      }
+      let katalogRoh
+      try {
+        katalogRoh = leseRessourcenRoh(installWurzel)
+      } catch (fehler) {
+        sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
+        return
+      }
+      const katalogVerstoesse = validiereRessourcenDaten(katalogRoh)
+      if (katalogVerstoesse.length > 0) {
+        sendeJson(res, 500, { grund: `ressourcen.json ungültig: ${katalogVerstoesse.join('; ')}` })
+        return
+      }
+      const bestimmt = bestimmeSubjekt(koerper, { installWurzel, katalog: katalogRoh.ressourcen })
+      if (!bestimmt.ok) {
+        sendeJson(res, bestimmt.status, { grund: bestimmt.grund })
+        return
+      }
+      const subjekt = bestimmt.subjekt
+      if (start) {
+        const ausnahmeFehler = pruefeAusnahme(subjekt, koerper.ausnahme)
+        if (ausnahmeFehler !== null) {
+          sendeJson(res, ausnahmeFehler.status, { grund: ausnahmeFehler.grund })
+          return
+        }
+      }
+      const runner = pruefungRunner ?? { git: ECHTE_RUNNER.git, npm: ECHTE_RUNNER.npm }
+      const pin = await pinneSubjekt(subjekt, runner)
+      if (!pin.ok) {
+        console.error(`[leitstand] Prüfung '${subjekt.schluessel}': Quelle nicht pinnbar (${pin.status}):`, pin.grund)
+        sendeJson(res, pin.status, { grund: pin.grund })
+        return
+      }
+      if (!start) {
+        const { berichte } = leseBerichte(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER)
+        const letzter = letzterBericht(berichte, subjekt.katalog_id, subjekt.sammlung_id)
+        sendeJson(res, 200, {
+          subjekt: { schluessel: subjekt.schluessel, katalog_id: subjekt.katalog_id, sammlung_id: subjekt.sammlung_id, name: subjekt.name },
+          typ: subjekt.typ,
+          quelle: pin.quelle,
+          urteil_sammlung: subjekt.urteil_sammlung,
+          urteil_bedeutung: subjekt.urteil_bedeutung,
+          ausgeschlossen: subjekt.ausgeschlossen,
+          letzter_bericht: letzter === null ? null : { ...berichtKurz(letzter), aktuell: gleicherPin(letzter.daten.quelle, pin.quelle) },
+        })
+        return
+      }
+      if (!gleicherPin(koerper.quelle, pin.quelle)) {
+        sendeJson(res, 409, { grund: `Quelle hat sich seit der Anzeige geändert (jetzt ${pin.quelle.art === 'git' ? pin.quelle.sha : pin.quelle.version}) — erneut „Auswählen“`, quelle: pin.quelle })
+        return
+      }
+      starteEignungspruefung(res, subjekt, pin.quelle, pin.herkunft, koerper.ausnahme, runner)
+      return
+    }
+
+    if (req.method === 'GET' && pfad.startsWith('/api/sammlung/pruefung/')) {
+      const laufId = dekodiereSegment(pfad.slice('/api/sammlung/pruefung/'.length))
+      const zustand = laufId === null ? undefined : pruefZustaende.get(laufId)
+      if (zustand === undefined) {
+        sendeJson(res, 404, { grund: `Prüflauf '${laufId}' unbekannt (nach einem Neustart steht nur der Bericht in der Sammlung)` })
+        return
+      }
+      sendeJson(res, 200, zustand)
       return
     }
 
@@ -7685,10 +7824,17 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 400, { grund: 'Ressourcen-id fehlt oder ist nicht dekodierbar' })
         return
       }
-      const kontext = { installWurzel, capWurzel, ...(installationsRunner !== undefined ? { runner: installationsRunner } : {}) }
+      // F45 F-2b-2 (F-1056, A2): „Freigeben & installieren“ nur mit Prüfbericht zur angezeigten Version (Urteil ≠ NICHT_GEEIGNET)
+      // — Rückruf unter der Installationssperre nach eintragHash, liest die Ablage der Workforce frisch; nicht abschaltbar (C5).
+      const kontext = { installWurzel, capWurzel, ...(installationsRunner !== undefined ? { runner: installationsRunner } : {}), pruefeBericht: baueBerichtPruefer(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER, { npmInstallationNachPruefung }), pruefeInhalt: baueInhaltPruefer(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER) }
       let antwort
       if (installationTreffer[2] !== undefined) {
         antwort = await bereiteInstallationVor(id, kontext)
+        // Additiv: geltender Bericht (Urteil, Befunde, Auflagen, Fakten) und Sperrgrund für den Freigabedialog.
+        if (antwort.ok) {
+          const { berichte, fehler } = leseBerichte(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER)
+          antwort = { ok: true, daten: fehler === null ? ergaenzeVorbereitung(antwort.daten, berichte, { npmInstallationNachPruefung }) : { ...antwort.daten, pruefbericht: null, pruefbericht_sperre: `Prüfberichte nicht lesbar: ${fehler}` } }
+        }
       } else {
         let body
         try {
@@ -8659,6 +8805,128 @@ export function erzeugeRequestHandler(optionen = {}) {
         undefined,
         zeitmessung !== null ? (marke) => markiereZeitMitNachzuegler(zeitmessung, laufId, marke) : undefined
       )
+    }
+
+    /**
+     * F45 F-2b-2a (F-1056): startet einen Prüflauf (Rolle eignungspruefung). Im selben Takt wie die Antwort: D13 prüfen und
+     * reservieren (Advisor C2), Zustand 'holen', 202. Danach asynchron: Inhalt read-only holen (Abbruch zwischen den Schritten;
+     * ein laufender git/npm-Aufruf endet erst an seiner Zeitgrenze, C8), Auftrag registrieren, Eingaben mit Prüfordner
+     * (loeseAusfuehrungsEingabenAuf, Option pruefOrdner) und Lauf über starteLaufUndVergiss. Jeder Fehlschlag vor dem Start gibt
+     * die Reservierung frei (Reset wie der ok:false-Zweig), räumt den Prüfordner weg und hinterlässt einen Fehlerstand. Nach
+     * dem Lauf: Ergebnis aus dem Rohstrom, Prüfung gegen Schema und Pin, Bericht als Kernartefakt in der Ablage der Workforce.
+     * @param res - Antwort (202 oder 409)
+     * @param subjekt - aus bestimmeSubjekt
+     * @param quelle - gepinnte Quelle (= angezeigte)
+     * @param herkunft - Herkunftsdaten aus dem Pin
+     * @param ausnahme - Ausnahme-Begründung oder null
+     * @param runner - { git, npm }
+     */
+    function starteEignungspruefung(res, subjekt, quelle, herkunft, ausnahme, runner) {
+      const kennung = randomUUID()
+      const auftragId = `pruefung-${kennung}`
+      const laufId = `eignungspruefung-${subjekt.schluessel}-${kennung}`
+      // D13 und Reservierung im selben Takt, ohne await dazwischen (C2).
+      if (pruefeGlobaleLaufSperre(res)) return
+      if (laufAktiv !== false || laufIdBelegt(laufId)) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
+        return
+      }
+      angenommeneLaufIds.add(laufId)
+      laufAktiv = true
+      laufAktivLaufId = laufId
+      laufAktivAbortController = new AbortController()
+      globalerLaufZustand.aktiv = true
+      globalerLaufZustand.laufId = laufId
+      globalerLaufZustand.abortController = laufAktivAbortController
+      const abbruch = laufAktivAbortController.signal
+      const zustand = { lauf_id: laufId, auftrag_id: auftragId, phase: 'holen', grund: null, subjekt: { schluessel: subjekt.schluessel, katalog_id: subjekt.katalog_id, sammlung_id: subjekt.sammlung_id, name: subjekt.name }, typ: subjekt.typ, quelle, bericht: null, gestartet_am: new Date().toISOString() }
+      pruefZustaende.set(laufId, zustand)
+      // Speicher begrenzt: nur die letzten 50 Prüfläufe bleiben abrufbar.
+      if (pruefZustaende.size > 50) pruefZustaende.delete(pruefZustaende.keys().next().value)
+      sendeJson(res, 202, { laufId, auftragId })
+
+      let wurzel = null
+      /** Fehlschlag VOR dem Laufstart: Reservierung frei (wie der ok:false-Zweig), Prüfordner weg, Fehlerstand. */
+      const gibFrei = (grund) => {
+        raeumeAuf(wurzel)
+        laufAktiv = false
+        laufAktivLaufId = null
+        laufAktivAbortController = null
+        laufAktivFortschritt = null
+        globalerLaufZustand.aktiv = false
+        globalerLaufZustand.laufId = null
+        globalerLaufZustand.abortController = null
+        angenommeneLaufIds.delete(laufId)
+        zustand.phase = 'fehler'
+        zustand.grund = grund
+        startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: grund })
+        console.error(`[leitstand] Prüflauf '${laufId}' nicht gestartet:`, grund)
+      }
+      void (async () => {
+        let gestartet = false
+        try {
+          const geholt = await holeSubjekt(quelle, runner)
+          wurzel = geholt.wurzel
+          if (abbruch.aborted) return gibFrei('abgebrochen beim Holen der Quelle')
+          if (!geholt.ergebnis.ok) return gibFrei(geholt.ergebnis.grund)
+          const { inhaltOrdner, fakten, commitZeit, dateien } = geholt.ergebnis
+          const herkunftVoll = { ...herkunft, commit_zeit: commitZeit ?? herkunft.commit_zeit }
+          const auftragstext = bauePruefAuftragstext({ subjekt, quelle, fakten, herkunft: herkunftVoll, pruefOrdner: inhaltOrdner, ausnahme })
+          try {
+            registriereAuftrag(auftragId, profilReferenz, `Eignungsprüfung: ${subjekt.name}`, auftragstext, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+          } catch (fehler) {
+            return gibFrei(`Auftrag nicht registrierbar: ${fehler.message}`)
+          }
+          const eingabenRoh = { rolle: 'eignungspruefung', anfragen: [], budget: vorlage.standardBudget, aufrufEingaben: { modell: vorlage.modell, disallowedTools: AUTO_MEMORY_DENY_REGEL }, auftragId }
+          const aufgeloest = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', auftragstext, vorlage, repoWurzel, { pruefOrdner: inhaltOrdner, installWurzel })
+          if (!aufgeloest.ok) return gibFrei(aufgeloest.grund)
+          if (abbruch.aborted) return gibFrei('abgebrochen vor dem Laufstart')
+          zustand.phase = 'laeuft'
+          starteLaufUndVergiss(laufId, aufgeloest.eingaben, PRUEF_ZEITGRENZE_MS, (ergebnis, fehler) => {
+            try {
+              const misserfolg = beschreibeChatMisserfolg(ergebnis, fehler, abbruch.aborted, PRUEF_ZEITGRENZE_MS)
+              if (misserfolg !== null) {
+                zustand.phase = 'fehler'
+                zustand.grund = `${misserfolg.art}${misserfolg.grund !== null && misserfolg.grund !== undefined ? `: ${misserfolg.grund}` : ''}`
+                return
+              }
+              const laufakte = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+              if (laufakte === null) {
+                zustand.phase = 'fehler'
+                zustand.grund = `Laufakte 'laufakte-${laufId}' nicht gefunden`
+                return
+              }
+              const gelesen = leseRollenErgebnisRohstrom(laufakte.daten, { jsonObjektFallback: true })
+              if (!gelesen.ok) {
+                zustand.phase = 'fehler'
+                zustand.grund = `Ergebnis nicht lesbar: ${gelesen.grund}`
+                return
+              }
+              const bericht = erzeugeBericht({ geparst: gelesen.geparst, subjekt, quelle, fakten, dateien, herkunft: herkunftVoll, ausnahme, laufId, auftragId, laufakte: { inhaltsHash: laufakte.inhaltsHash }, profilReferenz, basisVerzeichnis: pruefberichtBasisVerzeichnis, schreiber: STILLER_SCHREIBER })
+              if (!bericht.ok) {
+                zustand.phase = 'fehler'
+                zustand.grund = bericht.grund
+                return
+              }
+              zustand.phase = 'fertig'
+              zustand.bericht = { artefakt_id: bericht.artefakt_id, version: bericht.version, ...bericht.daten }
+              console.log(`[leitstand] Prüflauf '${laufId}': Bericht '${bericht.artefakt_id}' Version ${bericht.version} (${bericht.daten.ergebnis.urteil}).`)
+            } catch (fehlerNachbereitung) {
+              console.error(`[leitstand] Prüflauf '${laufId}': Nachbereitung gescheitert:`, fehlerNachbereitung)
+              zustand.phase = 'fehler'
+              zustand.grund = `Nachbereitung gescheitert: ${fehlerNachbereitung.message}`
+            } finally {
+              if (zustand.phase === 'fehler') startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: zustand.grund })
+              raeumeAuf(wurzel)
+            }
+          })
+          // Code-Review 9: erst nach dem Aufruf — ein synchroner Wurf darin gibt die Reservierung unten frei.
+          gestartet = true
+        } catch (fehler) {
+          console.error(`[leitstand] Prüflauf '${laufId}' unerwartet abgebrochen:`, fehler)
+          if (!gestartet) gibFrei(`unerwartet abgebrochen: ${fehler.message}`)
+        }
+      })()
     }
 
     /**
@@ -10846,7 +11114,7 @@ export function belegeInstanzLock(basisVerzeichnis, port) {
  * @returns Map von Projekt-id auf Request-Handler
  */
 export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZustand, optionen = {}) {
-  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null, faehigkeitenLokalWaechter = undefined } = optionen
+  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null, faehigkeitenLokalWaechter = undefined, pruefberichtBasisVerzeichnis = undefined } = optionen
   const map = new Map()
   const gesehenePfade = new Map()
   for (const projekt of projekte) {
@@ -10894,6 +11162,8 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           faehigkeitenLokalPfad,
           // F45 F-2a (F-1055 (1)): derselbe Wächter für alle Instanzen (sie teilen die Datei); undefined → eigener.
           faehigkeitenLokalWaechter,
+          // F45 F-2b-2 (Advisor C7): Prüfberichte liegen im Kontrollzustand der Workforce; undefined → eigene Ablage (Gates).
+          ...(pruefberichtBasisVerzeichnis !== undefined ? { pruefberichtBasisVerzeichnis } : {}),
         })
       )
     } catch (fehler) {
@@ -11102,12 +11372,17 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   const faehigkeitenLokalPfad = process.env.LEITSTAND_FAEHIGKEITEN_LOKAL_PFAD ?? STANDARD_FAEHIGKEITEN_LOKAL_PFAD
   // F45 F-2a (F-1055 (1)): ein Wächter je Prozess — der Stand beim Start gilt als bekannt.
   const faehigkeitenLokalWaechter = erzeugeLokalWaechter(faehigkeitenLokalPfad)
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, arbeitsordner: true })
+  // F45 F-2b-2 (A4): Prüfordner früherer Prüfläufe (Absturz, Neustart während eines Laufs) entfernen — kein Lauf ist aktiv.
+  const verwaist = raeumeVerwaistePruefordner()
+  if (verwaist > 0) console.log(`[leitstand] ${verwaist} verwaiste(r) Prüfordner entfernt.`)
+  // F45 F-2b-2 (A3): nur der defaultHandler ist die Workforce-Instanz (Prüfläufe), seine Ablage gilt für alle Projekte.
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, istWorkforceInstanz: true, arbeitsordner: true })
   const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,
     faehigkeitenLokalPfad,
     faehigkeitenLokalWaechter,
+    pruefberichtBasisVerzeichnis: BASISVERZEICHNIS,
   })
   for (const [id, handler] of anfangsHandlerKarte) projektHandlerMap.set(id, handler)
   const dispatcher = erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler)

@@ -23,6 +23,7 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { findeNamensKonflikt } from '../sammlung/inhalt.ts'
 import type { ProzessErgebnis } from './installation.ts'
 import { EINGEBAUTE_SKILLS_S7, type GithubQuelle, leseFrontmatter, listeSkillDateien, SKILL_NAME_MUSTER } from './skill-dateien.ts'
 
@@ -57,7 +58,7 @@ function kurz(ergebnis: ProzessErgebnis): string {
  * @param status - HTTP-Status im Fehlerfall
  * @returns stdout oder Fehler
  */
-async function rufeGit(git: GitRunner, args: string[], optionen: { cwd: string; timeoutMs: number; env?: Record<string, string> }, status: number): Promise<{ ok: true; stdout: string } | Fehler> {
+export async function rufeGit(git: GitRunner, args: string[], optionen: { cwd: string; timeoutMs: number; env?: Record<string, string> }, status: number): Promise<{ ok: true; stdout: string } | Fehler> {
   let ergebnis: ProzessErgebnis
   try {
     ergebnis = await git(args, optionen)
@@ -115,6 +116,24 @@ export async function loeseSkillCommitAuf(quelle: GithubQuelle & { ok: true }, g
  */
 export const GIT_UMGEBUNG_OHNE_KONFIG: Record<string, string> = { GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0', GIT_LFS_SKIP_SMUDGE: '1', GIT_CEILING_DIRECTORIES: tmpdir() }
 
+/**
+ * Härtung jedes git-Aufrufs, der fremden Inhalt holt (holeSkillQuelle; seit F45 F-2b-2 auch der Prüflauf,
+ * src/sammlung/quelle.ts): legt in temp einen leeren Hook-Ordner und eine leere globale Konfiguration an und liefert die
+ * -c-Argumente (Hooks ins Leere, keine Symlinks, kein autocrlf, kein fsmonitor, kein Credential-Helper) und die
+ * Umgebung (GIT_UMGEBUNG_OHNE_KONFIG + GIT_CONFIG_GLOBAL).
+ * @param temp - eigener Temp-Ordner des Aufrufers
+ * @returns { konfig, env, leereHooks }
+ */
+export function gitHaertung(temp: string): { konfig: string[]; env: Record<string, string>; leereHooks: string } {
+  const leereHooks = join(temp, 'hooks-leer')
+  const leereKonfig = join(temp, 'gitconfig-leer')
+  mkdirSync(leereHooks)
+  writeFileSync(leereKonfig, '')
+  const env = { ...GIT_UMGEBUNG_OHNE_KONFIG, GIT_CONFIG_GLOBAL: leereKonfig }
+  const konfig = ['-c', `core.hooksPath=${leereHooks}`, '-c', 'core.symlinks=false', '-c', 'core.autocrlf=false', '-c', 'core.fsmonitor=false', '-c', 'credential.helper=']
+  return { konfig, env, leereHooks }
+}
+
 /** Ergebnis von holeSkillQuelle: der ausgecheckte Skill-Ordner im Temp-Repo und ein Aufräumer. */
 export type SkillQuelle = { ok: true; quellOrdner: string; quellPfad: string; dateien: string[]; aufraeumen: () => void } | Fehler
 
@@ -144,12 +163,7 @@ export async function holeSkillQuelle(quelle: GithubQuelle & { ok: true }, sha: 
   }
   try {
     const repo = join(temp, 'repo')
-    const leereHooks = join(temp, 'hooks-leer')
-    const leereKonfig = join(temp, 'gitconfig-leer')
-    mkdirSync(leereHooks)
-    writeFileSync(leereKonfig, '')
-    const env = { ...GIT_UMGEBUNG_OHNE_KONFIG, GIT_CONFIG_GLOBAL: leereKonfig }
-    const konfig = ['-c', `core.hooksPath=${leereHooks}`, '-c', 'core.symlinks=false', '-c', 'core.autocrlf=false', '-c', 'core.fsmonitor=false', '-c', 'credential.helper=']
+    const { konfig, env, leereHooks } = gitHaertung(temp)
     const quellPfad = quelle.unterpfad === '' ? skillPfad : `${quelle.unterpfad}/${skillPfad}`
     const lauf = (args: string[], status: number) => rufeGit(git, [...konfig, ...args], { cwd: temp, timeoutMs, env }, status)
 
@@ -162,6 +176,10 @@ export async function holeSkillQuelle(quelle: GithubQuelle & { ok: true }, sha: 
     if (!baum.ok) return scheitere(baum.status, baum.grund)
     const eintraege = baum.stdout.split('\0').filter((z) => z.length > 0)
     if (eintraege.length === 0) return scheitere(422, `Pfad '${quellPfad}' existiert im Commit ${sha} nicht`)
+    // F-1075: Pfad-Zwillinge (Schreibweise, Unicode-Form) und Datei/Ordner-Konflikte — wie im Prüflauf, sonst gewänne beim
+    // Auschecken ein anderer Eintrag als der geprüfte.
+    const zwilling = findeNamensKonflikt(eintraege.map((e) => e.slice(e.indexOf('\t') + 1)))
+    if (zwilling !== null) return scheitere(422, `Quellbaum: ${zwilling} — abgebrochen`)
     for (const eintrag of eintraege) {
       const [kopf, pfad] = eintrag.split('\t')
       const modus = kopf.split(' ')[0]

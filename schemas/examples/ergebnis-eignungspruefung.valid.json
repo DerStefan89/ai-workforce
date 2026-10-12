@@ -1,0 +1,11 @@
+{
+  "urteil": "MIT_AUFLAGEN",
+  "typ": "skill",
+  "gepinnte_version": "919dbeba520df760a157fe635be62faae88d58da",
+  "befunde": [
+    { "bereich": "lizenz", "schwere": "info", "beleg": "LICENSE: Apache-2.0" },
+    { "bereich": "modell_anweisungen", "schwere": "mittel", "beleg": "skills/x/SKILL.md Z. 12: verlangt WebFetch auf eine feste Adresse" }
+  ],
+  "auflagen": ["Nur ohne Web-Werkzeug im Lauf freischalten."],
+  "zusammenfassung": "Passt zur Aufgabe; eine Anweisung an das Modell verlangt Netzzugriff."
+}

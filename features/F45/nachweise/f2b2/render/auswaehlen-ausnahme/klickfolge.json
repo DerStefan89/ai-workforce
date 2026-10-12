@@ -1,0 +1,156 @@
+{
+  "url": "http://127.0.0.1:4393/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#sammlung tr[data-sm-id=\"repos-google-cloud-agents-skills\"]"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Phase",
+        "selector": "#sammlung [data-pruef-phase]",
+        "attribut": "data-pruef-phase"
+      },
+      {
+        "name": "Urteil",
+        "selector": "#sammlung [data-pruef-bericht]",
+        "attribut": "data-pruef-bericht"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#sammlung .pruef-ablauf .fehler"
+      },
+      {
+        "name": "Sperre",
+        "selector": "[data-pruef-sperre]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Typwahl",
+        "selector": "#sammlung [data-sm-typ]"
+      },
+      {
+        "name": "Pfad-Feld",
+        "selector": "#sammlung [data-sm-pfad]"
+      },
+      {
+        "name": "Ausnahme-Feld",
+        "selector": "#sammlung [data-sm-ausnahme]"
+      },
+      {
+        "name": "Prüfung starten",
+        "selector": "#sammlung [data-sm-pruefung-start]"
+      },
+      {
+        "name": "Fakten",
+        "selector": ".pruef-fakten"
+      },
+      {
+        "name": "Installieren",
+        "selector": "[data-installation-aktion=\"installieren\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/sammlung/pruefung/vorbereiten",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "subjekt": {
+          "schluessel": "s-repos-google-cloud-agents-skills",
+          "katalog_id": null,
+          "sammlung_id": "repos-google-cloud-agents-skills",
+          "name": "Google Cloud Agents Skills"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/google/agents-cli.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "urteil_sammlung": "Nur Ausnahme",
+        "urteil_bedeutung": "Außerhalb der Standardauswahl. Erfordert belegten Mehrwert, passende Rechte und ausdrückliche Kostenfreigabe.",
+        "ausgeschlossen": true,
+        "letzter_bericht": null
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail repos-google-cloud-agents-skills",
+      "klick": "#sammlung details[data-sm-detail=\"repos-google-cloud-agents-skills\"] summary",
+      "warteAufSelector": {
+        "selector": "#sammlung details[data-sm-detail=\"repos-google-cloud-agents-skills\"][open]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "„Auswählen“",
+      "klick": "#sammlung details[data-sm-detail=\"repos-google-cloud-agents-skills\"] [data-sm-auswaehlen]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"bestaetigen\"], #sammlung [data-pruef-phase=\"typwahl\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-erster-schritt.png"
+    },
+    {
+      "label": "Typ „Skill“, Weiter",
+      "klick": "#sammlung [data-sm-typ-weiter=\"repos-google-cloud-agents-skills\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"bestaetigen\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Bestätigung mit Pflichtfeld „Ausnahme“",
+      "screenshot": "02-ausnahme-feld.png"
+    },
+    {
+      "label": "Zu kurze Begründung",
+      "tippen": {
+        "selector": "#sammlung [data-sm-ausnahme=\"repos-google-cloud-agents-skills\"]",
+        "text": "zu kurz"
+      }
+    },
+    {
+      "label": "„Prüfung starten“",
+      "klick": "#sammlung [data-sm-pruefung-start=\"repos-google-cloud-agents-skills\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung .pruef-ablauf .fehler",
+        "timeoutMs": 5000
+      },
+      "screenshot": "03-zu-kurz.png"
+    }
+  ]
+}

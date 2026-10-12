@@ -1,0 +1,22 @@
+{
+  "ergebnis": {
+    "urteil": "GEEIGNET",
+    "typ": "mcp",
+    "gepinnte_version": "4.2.0",
+    "befunde": [],
+    "auflagen": [],
+    "zusammenfassung": "Beschreibt eine andere Version als die gepinnte Quelle."
+  },
+  "quelle": { "art": "npm", "paket": "@upstash/context7-mcp", "version": "4.3.0", "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA==" },
+  "typ": "mcp",
+  "katalog_id": "context7-mcp",
+  "sammlung_id": null,
+  "urteil_sammlung": null,
+  "ausnahme_begruendung": null,
+  "fakten": {},
+  "inhalt": { "dateien": [{ "pfad": "package.json", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }] },
+  "herkunft": { "commit_zeit": null, "geaendert": null, "pfleger": [], "lizenz_registry": null },
+  "lauf_id": "eignungspruefung-context7-mcp-0b3c",
+  "auftrag_id": "pruefung-0b3c",
+  "erstellt_am": "2026-10-12T12:00:00.000Z"
+}

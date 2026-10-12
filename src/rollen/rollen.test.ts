@@ -14,7 +14,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from './index.ts'
 
-const ERWARTETE_ROLLEN = ['architecture-advisor', 'ausfuehrung', 'code-reviewer', 'qa', 'router', 'scout', 'jarvis', 'product-coach', 'architekt'].sort()
+const ERWARTETE_ROLLEN = ['architecture-advisor', 'ausfuehrung', 'code-reviewer', 'qa', 'router', 'scout', 'jarvis', 'product-coach', 'architekt', 'eignungspruefung'].sort()
 
 test('bekannteRollen: liefert genau die neun realen Rollen, sortiert', () => {
   assert.deepStrictEqual(bekannteRollen(), ERWARTETE_ROLLEN)
@@ -48,7 +48,8 @@ test('ROLLENVERTRAEGE: ausschlussmuster byte-gleich zu den Werten vor der Migrat
   assert.deepStrictEqual(ROLLENVERTRAEGE.ausfuehrung.ausschlussmuster, [])
 })
 
-test('ROLLENVERTRAEGE: nur code-reviewer, router, scout, jarvis, product-coach und architekt tragen ein erlaubtes_output_schema', () => {
+test('ROLLENVERTRAEGE: nur code-reviewer, router, scout, jarvis, product-coach, architekt und eignungspruefung tragen ein erlaubtes_output_schema', () => {
+  assert.strictEqual(ROLLENVERTRAEGE.eignungspruefung.erlaubtes_output_schema, 'ergebnis-eignungspruefung')
   assert.strictEqual(ROLLENVERTRAEGE['code-reviewer'].erlaubtes_output_schema, 'ergebnis-code-reviewer')
   assert.strictEqual(ROLLENVERTRAEGE.router.erlaubtes_output_schema, 'ergebnis-router')
   assert.strictEqual(ROLLENVERTRAEGE.scout.erlaubtes_output_schema, 'ergebnis-scout')
@@ -84,6 +85,12 @@ test("ROLLENVERTRAEGE: product-coach ist lesend-only, für beide Worker freigege
   assert.deepStrictEqual(ROLLENVERTRAEGE['product-coach'].ausschlussmuster, ['src/**'])
 })
 
+test("ROLLENVERTRAEGE: eignungspruefung ist lesend-only, nur claude-code und schließt src/** aus (F45 F-2b-2)", () => {
+  assert.deepStrictEqual(ROLLENVERTRAEGE.eignungspruefung.erlaubte_werkzeugsatz_arten, ['lesend'])
+  assert.deepStrictEqual(ROLLENVERTRAEGE.eignungspruefung.erlaubte_worker, ['claude-code'])
+  assert.deepStrictEqual(ROLLENVERTRAEGE.eignungspruefung.ausschlussmuster, ['src/**'])
+})
+
 test("ROLLENVERTRAEGE: architekt ist lesend-only, für beide Worker freigegeben und schließt src/** aus (F39 WS-1)", () => {
   assert.deepStrictEqual(ROLLENVERTRAEGE.architekt.erlaubte_werkzeugsatz_arten, ['lesend'])
   assert.deepStrictEqual([...ROLLENVERTRAEGE.architekt.erlaubte_worker].sort(), ['claude-code', 'codex'])
@@ -97,6 +104,10 @@ test('ROLLENVERTRAEGE: nur ausfuehrung erlaubt einen schreibenden Werkzeugsatz, 
       assert.deepStrictEqual(vertrag.erlaubte_worker, ['claude-code'])
     } else if (rolle === 'scout') {
       assert.deepStrictEqual(vertrag.erlaubte_werkzeugsatz_arten, ['recherchierend'])
+      assert.deepStrictEqual(vertrag.erlaubte_worker, ['claude-code'])
+    } else if (rolle === 'eignungspruefung') {
+      // F45 F-2b-2: lesend, nur claude-code (Prüflauf mit --add-dir und Init-Gate gibt es nur dort).
+      assert.deepStrictEqual(vertrag.erlaubte_werkzeugsatz_arten, ['lesend'])
       assert.deepStrictEqual(vertrag.erlaubte_worker, ['claude-code'])
     } else {
       // Deckt hier zusätzlich 'jarvis' und 'product-coach' ab (lesend, beide Worker — Muster 'router').

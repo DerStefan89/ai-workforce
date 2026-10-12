@@ -1,0 +1,22 @@
+{
+  "ergebnis": {
+    "urteil": "MIT_AUFLAGEN",
+    "typ": "mcp",
+    "gepinnte_version": "4.3.0",
+    "befunde": [{ "bereich": "installationsweg", "schwere": "mittel", "beleg": "package.json: bin 'context7-mcp', keine Lebenszyklus-Skripte; dist/index.js ruft context7.com auf" }],
+    "auflagen": ["Nur als extern_lesend mit Einzelfreigabe nutzen."],
+    "zusammenfassung": "Liest Dokumentation von einem fremden Dienst; keine Installationsskripte."
+  },
+  "quelle": { "art": "npm", "paket": "@upstash/context7-mcp", "version": "4.3.0", "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA==" },
+  "typ": "mcp",
+  "katalog_id": "context7-mcp",
+  "sammlung_id": null,
+  "urteil_sammlung": null,
+  "ausnahme_begruendung": null,
+  "fakten": { "dateien": 3, "bytes": 1200, "uebersprungen": { "je_grund": {}, "liste": [] }, "umbenannt": [], "skripte": { ".js": 2 }, "paket": { "lebenszyklus": {}, "bin": ["context7-mcp"], "abhaengigkeiten": 4 }, "hooks": [], "skill_dateien": [], "agent_dateien": [] },
+  "inhalt": { "dateien": [{ "pfad": "package.json", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }] },
+  "herkunft": { "commit_zeit": null, "geaendert": "2026-10-09T15:37:57.202Z", "pfleger": ["mdogan"], "lizenz_registry": "MIT" },
+  "lauf_id": "eignungspruefung-context7-mcp-0b3c",
+  "auftrag_id": "pruefung-0b3c",
+  "erstellt_am": "2026-10-12T12:00:00.000Z"
+}

@@ -100,7 +100,7 @@ gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
-`docs/projekt/fixpaket-f45.md`; B0 bis F-2a gemergt, zuletzt #324; F-2b-1
+`docs/projekt/fixpaket-f45.md`; B0 bis F-2b-1 gemergt, zuletzt #325; F-2b-2a
 gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 12.10.2026).
 
@@ -158,3 +158,4 @@ gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 - F-1018 · BUG · Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor ≈ 5–10.
 - F-1049 · HARNESS_IMPROVEMENT · Eingriffsprotokoll fehlt (Challenger K15).
 - F-1056 · HARNESS_IMPROVEMENT · Keine Inhaltsprüfung der gepinnten Version vor der Freigabe (Challenger K20).
+- F-1075 · BUG · Geprüfter und installierter Inhalt können noch auseinanderfallen (F45 F-2b-2a, Delta-Review nach der Korrekturrunde).

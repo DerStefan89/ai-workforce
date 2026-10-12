@@ -1,0 +1,281 @@
+{
+  "url": "http://127.0.0.1:4393/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#sammlung tr[data-sm-id=\"repos-mengto-skills\"]"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Phase",
+        "selector": "#sammlung [data-pruef-phase]",
+        "attribut": "data-pruef-phase"
+      },
+      {
+        "name": "Urteil",
+        "selector": "#sammlung [data-pruef-bericht]",
+        "attribut": "data-pruef-bericht"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#sammlung .pruef-ablauf .fehler"
+      },
+      {
+        "name": "Sperre",
+        "selector": "[data-pruef-sperre]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Typwahl",
+        "selector": "#sammlung [data-sm-typ]"
+      },
+      {
+        "name": "Pfad-Feld",
+        "selector": "#sammlung [data-sm-pfad]"
+      },
+      {
+        "name": "Ausnahme-Feld",
+        "selector": "#sammlung [data-sm-ausnahme]"
+      },
+      {
+        "name": "Prüfung starten",
+        "selector": "#sammlung [data-sm-pruefung-start]"
+      },
+      {
+        "name": "Fakten",
+        "selector": ".pruef-fakten"
+      },
+      {
+        "name": "Installieren",
+        "selector": "[data-installation-aktion=\"installieren\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/sammlung/pruefung/vorbereiten",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "subjekt": {
+          "schluessel": "s-repos-mengto-skills",
+          "katalog_id": null,
+          "sammlung_id": "repos-mengto-skills",
+          "name": "MengTo/skills"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/MengTo/skills.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "urteil_sammlung": "Aufnehmen",
+        "urteil_bedeutung": "Priorisierter Kandidat für den kostenfreien, kommerziell erlaubten Basispfad. Vor Aktivierung Version, vollständige Rechte und Funktionstest bestätigen.",
+        "ausgeschlossen": false,
+        "letzter_bericht": null
+      }
+    },
+    {
+      "muster": "**/api/sammlung/pruefung",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "eignungspruefung-s-render-0001",
+        "auftragId": "pruefung-render"
+      }
+    },
+    {
+      "muster": "**/api/sammlung/pruefung/eignungspruefung-s-render-0001",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "lauf_id": "eignungspruefung-s-render-0001",
+        "auftrag_id": "pruefung-render",
+        "phase": "fertig",
+        "grund": null,
+        "subjekt": {
+          "schluessel": "s-repos-mengto-skills",
+          "name": "MengTo/skills"
+        },
+        "typ": "skill",
+        "quelle": {
+          "art": "git",
+          "repo": "https://github.com/MengTo/skills.git",
+          "ref": "HEAD",
+          "sha": "919dbeba520df760a157fe635be62faae88d58da",
+          "pfad": ""
+        },
+        "bericht": {
+          "artefakt_id": "pruefbericht-context7-mcp",
+          "version": 1,
+          "ergebnis": {
+            "urteil": "MIT_AUFLAGEN",
+            "typ": "mcp",
+            "gepinnte_version": "4.3.0",
+            "befunde": [
+              {
+                "bereich": "bedarf_fit",
+                "schwere": "info",
+                "beleg": "README.md Zeilen 5-21, 1377-1390: liefert zwei Werkzeuge (resolve-library-id, query-docs), die versionsgenaue Bibliotheksdokumentation in den Kontext holen – deckt sich mit der Katalogbeschreibung."
+              },
+              {
+                "bereich": "herkunft",
+                "schwere": "gering",
+                "beleg": "package.json Zeilen 6-9: Repo git+https://github.com/upstash/context7.git, Verzeichnis packages/mcp, Autor 'abdush'; Fakten zeigen 8 npm-Pfleger und Änderung am 2026-10-09 – aktiv gepflegt, kommerzielles Projekt (Upstash) mit Monetarisierung über API-Keys/Rate-Limits."
+              },
+              {
+                "bereich": "lizenz",
+                "schwere": "info",
+                "beleg": "LICENSE (MIT, Copyright Upstash, Inc. 2021) deckt sich mit package.json Zeile 21 ('license': 'MIT') und dem gezählten 'lizenz_registry':'MIT'. Katalog führte Lizenz als 'nicht angegeben' – hier konkret MIT, kein Hinderungsgrund."
+              },
+              {
+                "bereich": "installationsweg",
+                "schwere": "gering",
+                "beleg": "package.json 'scripts' (Zeilen 63-75) enthält keine Lifecycle-Hooks (kein postinstall/prepare), deckt sich mit Fakten 'lebenszyklus':{}. 'bin'→'context7-mcp':'dist/index.js' startet Code nur bei aktivem Aufruf als MCP-Server, nicht beim Installieren."
+              },
+              {
+                "bereich": "installationsweg",
+                "schwere": "mittel",
+                "beleg": "dist/index.js Zeilen 199-274: bei Werkzeugnutzung sendet der Server die Nutzer-Query per HTTPS an https://context7.com/api (dist/lib/constants.js Zeile 10, dist/lib/api.js Zeilen 120-181) – kein Datenabfluss beim Installieren, aber bei jeder Werkzeugnutzung verlässt die Anfrage den Rechner zum Betreiber Upstash."
+              },
+              {
+                "bereich": "modell_anweisungen",
+                "schwere": "gering",
+                "beleg": "dist/index.js Zeilen 143-145: Server-Feld 'instructions' weist das aufrufende Modell an, dieses Werkzeug 'even when you think you know the answer' und bevorzugt gegenüber Websuche einzusetzen – übliches MCP-Verhaltenssteuerungsmuster des Werkzeugs selbst, keine Aufforderung an das prüfende Modell und kein Fund im Prüfordner, der die Prüfung/dieses Gespräch manipulieren will."
+              },
+              {
+                "bereich": "hooks_hintergrund",
+                "schwere": "gering",
+                "beleg": "dist/index.js Zeilen 282-549: Hintergrunddienst (HTTP-Listener, Prometheus-Metriken auf 127.0.0.1:9464) entsteht nur im explizit gewählten '--transport http'-Modus; Standardtransport ist stdio (Zeile 33) ohne offenen Port, deckt sich mit Fakten 'hooks':[]."
+              },
+              {
+                "bereich": "kosten",
+                "schwere": "gering",
+                "beleg": "README.md Zeilen 56, 1438: Nutzung ohne API-Key möglich (anonym, niedrigere Rate-Limits); dist/lib/auth/auth-prompt.js Zeilen 24-34 blendet bei anonymer Nutzung einen Sign-in-Hinweis im Client ein, aber nicht im Werkzeugergebnis selbst – keine Pflichtkosten, optionales Konto für höhere Limits."
+              },
+              {
+                "bereich": "abweichung_sammlung",
+                "schwere": "info",
+                "beleg": "Kein Widerspruch zum Katalogeintrag: Lizenz ist konkret MIT (Katalog: 'nicht angegeben'), Kosten optional/kostenlos nutzbar (Katalog: 'nicht angegeben'), Wirkung 'extern_lesend' passt zum beobachteten Verhalten (Lesezugriff auf externe Doku, keine schreibenden Seiteneffekte)."
+              }
+            ],
+            "auflagen": [
+              "Keine sensiblen/vertraulichen Inhalte (Zugangsdaten, personenbezogene Daten, proprietärer Code) in die query-Parameter geben, da diese laut dist/lib/api.js an https://context7.com/api übertragen werden (das Werkzeug selbst warnt im Schema davor, siehe dist/index.js Zeile 188).",
+              "Standardtransport stdio beibehalten; '--transport http' nur verwenden, wenn ein lokaler/entfernter HTTP-Zugriff ausdrücklich gewollt ist, da dieser Modus einen Port samt Prometheus-Metrik-Endpunkt öffnet."
+            ],
+            "zusammenfassung": "Context7 MCP 4.3.0 ist ein transparent gebauter, aktiv von Upstash gepflegter MCP-Server ohne Installationsskripte, Lifecycle-Hooks oder versteckte Hintergrunddienste; Lizenz MIT ist im Inhalt klar belegt. Bei Werkzeugnutzung werden Suchanfragen an die Context7-API (context7.com) gesendet, und der Server weist das aufrufende Modell in seinem eigenen 'instructions'-Feld an, es bevorzugt gegenüber Websuche einzusetzen – beides übliche, offen dokumentierte Eigenschaften eines Doku-Abruf-Werkzeugs, keine verdeckte Prompt-Injektion gegen die Prüfung. Freigabe mit den genannten Auflagen zu Datensparsamkeit in Queries und Transportwahl vertretbar."
+          },
+          "quelle": {
+            "art": "npm",
+            "paket": "@upstash/context7-mcp",
+            "version": "4.3.0",
+            "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA=="
+          },
+          "typ": "mcp",
+          "katalog_id": "context7-mcp",
+          "sammlung_id": null,
+          "urteil_sammlung": null,
+          "ausnahme_begruendung": null,
+          "fakten": {
+            "dateien": 29,
+            "bytes": 202409,
+            "uebersprungen": {
+              "je_grund": {},
+              "liste": []
+            },
+            "umbenannt": [],
+            "skripte": {
+              ".js": 26
+            },
+            "paket": {
+              "lebenszyklus": {},
+              "bin": [
+                "context7-mcp"
+              ],
+              "abhaengigkeiten": 13
+            },
+            "hooks": [],
+            "skill_dateien": [],
+            "agent_dateien": []
+          },
+          "herkunft": {
+            "commit_zeit": null,
+            "geaendert": "2026-10-09T15:37:57.202Z",
+            "pfleger": [
+              "mdogan",
+              "buggyhunter",
+              "cahidarda",
+              "fahreddin.ozcan",
+              "upstashnpm",
+              "joshtc",
+              "burak-ups",
+              "shannonr"
+            ],
+            "lizenz_registry": "MIT"
+          },
+          "lauf_id": "eignungspruefung-context7-mcp-e6a326e8-8fd2-4e9b-9728-9d7c6c5d61fa",
+          "auftrag_id": "pruefung-e6a326e8-8fd2-4e9b-9728-9d7c6c5d61fa",
+          "erstellt_am": "2026-10-12T15:18:08.635Z"
+        },
+        "gestartet_am": "2026-10-12T15:46:18.547Z"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail repos-mengto-skills",
+      "klick": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"] summary",
+      "warteAufSelector": {
+        "selector": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"][open]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "„Auswählen“",
+      "klick": "#sammlung details[data-sm-detail=\"repos-mengto-skills\"] [data-sm-auswaehlen]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-phase=\"bestaetigen\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "„Prüfung starten“ → Bericht (Detail-Auffrischer am Poll-Tick)",
+      "klick": "#sammlung [data-sm-pruefung-start=\"repos-mengto-skills\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-pruef-bericht=\"MIT_AUFLAGEN\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-bericht.png"
+    }
+  ]
+}

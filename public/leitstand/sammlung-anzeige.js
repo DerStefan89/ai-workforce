@@ -16,11 +16,13 @@
  * - Werte aus der Sammlung (Namen, Urteile, Beschreibungen, Lizenzen, Kosten, Bewertungen, Links) sind Daten der Datei und
  *   werden nur escaped, nie übersetzt. Codes des Servers (Stand, Typ, Gründe, Zuordnung) übersetzt die Oberfläche.
  * - Links nur für https:// und mit rel="noopener noreferrer" (die Datei ist Stefans, aber ihr Inhalt stammt aus dem Web).
- * - „Auswählen“ ist in F-2b-1 noch nicht wirksam: Knopf mit Kennzeichen „kommt“ (aria-disabled), der Ablauf kommt mit F-2b-2.
+ * - Seit F45 F-2b-2a ist „Auswählen“ wirksam: der Ablauf (Typwahl, Pin, Bestätigung, Prüflauf, Bericht) steht im Detail und
+ *   kommt aus pruefung-anzeige.js (renderPruefAblauf); der letzte Prüfbericht je Eintrag (pruefbericht_letzter) steht in der
+ *   Zeile „Prüfbericht“.
  */
 
 import { formatiereZahl, t, tHtml } from './i18n.js'
-import { kommtBadge } from './kommt.js'
+import { letzterBerichtHtml, renderPruefAblauf } from './pruefung-anzeige.js'
 import { escapeHtml } from './render.js'
 
 /** Stände in Anzeigereihenfolge (höchster zuerst). */
@@ -32,8 +34,8 @@ export const ARTEN = Object.freeze(['UI', 'Repos', 'Plugins', 'Skills', 'Tools',
 /** Bekannte Codes für Übersetzungen (unbekannte Werte bleiben roh). */
 const TYPEN = new Set(['skill', 'mcp', 'agent', 'plugin', 'bibliothek', 'lokal', 'unbestimmt'])
 const TYP_QUELLEN = new Set(['katalog', 'stack-liste', 'abschnitt', 'unbestimmt'])
-const GRUENDE = new Set(['alias', 'ohne_link', 'lokal', 'bibliothek', 'plugin', 'keine_quelle'])
-const PRUEFBERICHTE = new Set(['ohne_vor_f2b', 'lokal', 'keiner'])
+const GRUENDE = new Set(['alias', 'ohne_link', 'lokal', 'bibliothek', 'plugin', 'keine_quelle', 'freigegeben', 'mcp_ohne_paket'])
+const PRUEFBERICHTE = new Set(['ohne_vor_f2b', 'lokal', 'keiner', 'vorhanden'])
 
 /**
  * Normalisiert einen Suchtext (klein, ohne Akzente).
@@ -147,19 +149,23 @@ function typHtml(e) {
 }
 
 /**
- * Auswählen-Bereich: auswählbar → Knopf „Auswählen“ mit „kommt“ (F-2b-2); ausgeschlossen → Hinweis auf die Pflicht-Begründung;
- * nicht auswählbar → Grund.
+ * Auswählen-Bereich: auswählbar → Knopf „Auswählen“ (F-2b-2a: Pin, Bestätigung, Prüflauf); ausgeschlossen → Hinweis auf die
+ * Pflicht-Begründung; nicht auswählbar → Grund. Läuft ein Ablauf für den Eintrag, steht stattdessen dieser (renderPruefAblauf).
  * @param e - Eintrag
+ * @param ablauf - Zustand des Ablaufs dieses Eintrags oder undefined
+ * @param bedeutung - urteil_bedeutung der Antwort
  * @returns HTML
  */
-export function auswahlHtml(e) {
+export function auswahlHtml(e, ablauf = undefined, bedeutung = {}) {
   if (e.auswaehlbar !== true) {
     const grund = GRUENDE.has(e.nicht_auswaehlbar_grund) ? t(`sammlung.grund.${e.nicht_auswaehlbar_grund}`) : String(e.nicht_auswaehlbar_grund ?? '')
     const vorschlag = e.typ_quelle === 'abschnitt' && (e.nicht_auswaehlbar_grund === 'plugin' || e.nicht_auswaehlbar_grund === 'bibliothek') ? ` <span class="subtle">${tHtml('sammlung.grund.vorschlag')}</span>` : ''
     return `<p class="sm-nicht-auswaehlbar" data-sm-grund="${escapeHtml(String(e.nicht_auswaehlbar_grund ?? ''))}"><strong>${tHtml('sammlung.nichtAuswaehlbar')}</strong> ${escapeHtml(grund)}${vorschlag}</p>`
   }
+  if (ablauf !== undefined && ablauf !== null) return renderPruefAblauf(e, ablauf, bedeutung)
   const ausnahme = e.ausgeschlossen === true ? `<p class="sm-ausnahme">${tHtml('sammlung.ausnahmePflicht')}</p>` : ''
-  return `${ausnahme}<button type="button" class="button kommt-knopf sm-auswaehlen" aria-disabled="true" title="${escapeHtml(t('sammlung.auswaehlenKommt'))}" data-sm-auswaehlen="${escapeHtml(String(e.id ?? ''))}">${tHtml('sammlung.auswaehlen')} ${kommtBadge()}</button><span class="subtle sm-auswaehlen-hinweis">${tHtml('sammlung.auswaehlenKommt')}</span>`
+  const erneut = e.pruefbericht_letzter !== null && e.pruefbericht_letzter !== undefined
+  return `${ausnahme}<button type="button" class="button primary sm-auswaehlen" data-sm-auswaehlen="${escapeHtml(String(e.id ?? ''))}" data-sm-typ-offen="${e.typ === 'unbestimmt'}">${tHtml(erneut ? 'pruefung.erneutPruefen' : 'sammlung.auswaehlen')}<span class="sr-only"> — ${escapeHtml(String(e.name ?? ''))}</span></button><span class="subtle sm-auswaehlen-hinweis">${tHtml('sammlung.auswaehlenHinweis')}</span>`
 }
 
 /**
@@ -167,10 +173,12 @@ export function auswahlHtml(e) {
  * @param e - Eintrag
  * @param bedeutung - antwort.urteil_bedeutung
  * @param offen - true, wenn das Detail offen gezeigt wird
+ * @param ablauf - Zustand eines laufenden Auswählen-Ablaufs oder undefined
  * @returns HTML
  */
-export function detailHtml(e, bedeutung, offen = false) {
-  const pb = PRUEFBERICHTE.has(e.pruefbericht) ? t(`sammlung.pruefbericht.${e.pruefbericht}`) : String(e.pruefbericht ?? '')
+export function detailHtml(e, bedeutung, offen = false, ablauf = undefined) {
+  const pbText = PRUEFBERICHTE.has(e.pruefbericht) ? t(`sammlung.pruefbericht.${e.pruefbericht}`) : String(e.pruefbericht ?? '')
+  const pb = e.pruefbericht_letzter !== null && e.pruefbericht_letzter !== undefined ? letzterBerichtHtml(e.pruefbericht_letzter) : escapeHtml(pbText)
   const hatBedeutung = typeof bedeutung?.[e.urteil] === 'string'
   // design-guardian 2: bei ausgeschlossenen Einträgen steht die Bedeutung nur im roten Band, nicht ein zweites Mal darunter.
   const bed = hatBedeutung && e.ausgeschlossen !== true ? `<p class="sm-bedeutung"><strong>${escapeHtml(String(e.urteil))}:</strong> ${escapeHtml(bedeutung[e.urteil])}</p>` : ''
@@ -181,10 +189,10 @@ export function detailHtml(e, bedeutung, offen = false) {
       <div><dt>${tHtml('sammlung.bewertung')}</dt><dd>${escapeHtml(String(e.bewertung ?? ''))}${bed}</dd></div>
       <div><dt>${tHtml('sammlung.zuordnung.titel')}</dt><dd>${zuordnungHtml(e.zuordnung)}</dd></div>
       <div><dt>${tHtml('sammlung.typ.titel')}</dt><dd>${typHtml(e)}</dd></div>
-      <div><dt>${tHtml('sammlung.pruefbericht.titel')}</dt><dd>${escapeHtml(pb)}</dd></div>
+      <div><dt>${tHtml('sammlung.pruefbericht.titel')}</dt><dd>${pb}</dd></div>
       <div><dt>${tHtml('sammlung.zeile')}</dt><dd><code>${escapeHtml(String(e.zeile ?? ''))}</code></dd></div>
     </dl>
-    <div class="sm-auswahl">${auswahlHtml(e)}</div>
+    <div class="sm-auswahl">${auswahlHtml(e, ablauf, bedeutung)}</div>
   </details>`
 }
 
@@ -193,12 +201,13 @@ export function detailHtml(e, bedeutung, offen = false) {
  * @param e - Eintrag
  * @param bedeutung - antwort.urteil_bedeutung
  * @param offeneDetails - Set der offenen Detail-ids
+ * @param ablaeufe - Map id → Ablauf-Zustand
  * @returns HTML
  */
-function zeileHtml(e, bedeutung, offeneDetails) {
+function zeileHtml(e, bedeutung, offeneDetails, ablaeufe) {
   const spalte = (s) => escapeHtml(t(`sammlung.spalte.${s}`))
   return `<tr class="sm-zeile" data-sm-id="${escapeHtml(String(e.id ?? ''))}" data-sm-ausgeschlossen="${e.ausgeschlossen === true}">
-    <td data-spalte="${spalte('name')}"><span class="library-name sm-name">${escapeHtml(String(e.name ?? ''))}</span><span class="library-beschreibung sm-kann">${escapeHtml(String(e.kurzbeschreibung ?? ''))}</span>${detailHtml(e, bedeutung, offeneDetails.has(e.id))}</td>
+    <td data-spalte="${spalte('name')}"><span class="library-name sm-name">${escapeHtml(String(e.name ?? ''))}</span><span class="library-beschreibung sm-kann">${escapeHtml(String(e.kurzbeschreibung ?? ''))}</span>${detailHtml(e, bedeutung, offeneDetails.has(e.id) || ablaeufe.has(e.id), ablaeufe.get(e.id))}</td>
     <td data-spalte="${spalte('urteil')}">${urteilChip(e)}</td>
     <td data-spalte="${spalte('lizenz')}">${escapeHtml(String(e.lizenz ?? ''))}</td>
     <td data-spalte="${spalte('kosten')}">${escapeHtml(String(e.kosten ?? ''))}</td>
@@ -212,16 +221,17 @@ function zeileHtml(e, bedeutung, offeneDetails) {
  * @param gruppe - { art, eintraege }
  * @param bedeutung - antwort.urteil_bedeutung
  * @param offeneDetails - Set der offenen Detail-ids
+ * @param ablaeufe - Map id → Ablauf-Zustand
  * @returns HTML
  */
-function gruppeHtml(gruppe, bedeutung, offeneDetails) {
+function gruppeHtml(gruppe, bedeutung, offeneDetails, ablaeufe) {
   const titelId = `sm-gruppe-${escapeHtml(gruppe.art.toLowerCase())}`
   const titel = ARTEN.includes(gruppe.art) ? t(`sammlung.art.${gruppe.art}`) : gruppe.art
   const th = (s) => `<th scope="col">${tHtml(`sammlung.spalte.${s}`)}</th>`
   const bibliothek = gruppe.art === 'UI' ? `<p class="subtle sm-hinweis">${tHtml('sammlung.hinweisBibliothek')}</p>` : ''
   return `<section class="sm-gruppe" aria-labelledby="${titelId}">
     <h3 id="${titelId}">${escapeHtml(titel)} <span class="fp-anzahl">${escapeHtml(formatiereZahl(gruppe.eintraege.length))}</span></h3>${bibliothek}
-    <div class="library-tabelle-rahmen"><table class="sm-tabelle"><caption class="sr-only">${escapeHtml(titel)}</caption><thead><tr>${['name', 'urteil', 'lizenz', 'kosten', 'stand', 'link'].map(th).join('')}</tr></thead><tbody>${gruppe.eintraege.map((e) => zeileHtml(e, bedeutung, offeneDetails)).join('')}</tbody></table></div>
+    <div class="library-tabelle-rahmen"><table class="sm-tabelle"><caption class="sr-only">${escapeHtml(titel)}</caption><thead><tr>${['name', 'urteil', 'lizenz', 'kosten', 'stand', 'link'].map(th).join('')}</tr></thead><tbody>${gruppe.eintraege.map((e) => zeileHtml(e, bedeutung, offeneDetails, ablaeufe)).join('')}</tbody></table></div>
   </section>`
 }
 
@@ -254,7 +264,8 @@ export function renderSammlungKopf(antwort, filter = {}) {
   const staende = STAENDE.filter((s) => (z.je_stand ?? {})[s] > 0)
   // Code-Review 3: Stand dieses Projekts nicht berechenbar → die Stände zeigen nur „vorgemerkt“/„nur Sammlung“; sichtbar machen.
   const standFehler = typeof antwort?.stand_fehler === 'string' && antwort.stand_fehler !== '' ? `<div class="note amber sm-band" data-sm-band="stand-fehler"><strong>${tHtml('sammlung.standFehler')}</strong> ${escapeHtml(antwort.stand_fehler)}</div>` : ''
-  return `<p class="sm-kennzahlen">${kennzahlen} <span class="subtle">${tHtml('sammlung.quelleDatei', {}, { pfad: `<code>${escapeHtml(String(q.pfad ?? ''))}</code>` })}</span></p>
+  const berichtFehler = typeof antwort?.pruefbericht_fehler === 'string' && antwort.pruefbericht_fehler !== '' ? `<div class="note amber sm-band" data-sm-band="pruefbericht-fehler"><strong>${tHtml('pruefung.berichteNichtLesbar')}</strong> ${escapeHtml(antwort.pruefbericht_fehler)}</div>` : ''
+  return `${berichtFehler}<p class="sm-kennzahlen">${kennzahlen} <span class="subtle">${tHtml('sammlung.quelleDatei', {}, { pfad: `<code>${escapeHtml(String(q.pfad ?? ''))}</code>` })}</span></p>
     <p class="note sm-erklaerung">${tHtml('sammlung.erklaerung')}</p>
     ${selbst}${standFehler}
     <div class="library-filterzeile sm-filterzeile">
@@ -269,15 +280,16 @@ export function renderSammlungKopf(antwort, filter = {}) {
  * @param antwort - Antwort der Route
  * @param filter - { suche, urteil, stand }
  * @param offeneDetails - Set der offenen Detail-ids
+ * @param ablaeufe - Map id → Zustand eines Auswählen-Ablaufs (F-2b-2a)
  * @returns HTML
  */
-export function renderSammlungListe(antwort, filter = {}, offeneDetails = new Set()) {
+export function renderSammlungListe(antwort, filter = {}, offeneDetails = new Set(), ablaeufe = new Map()) {
   const gefiltert = filtereSammlung(antwort?.eintraege, filter)
   const gesamt = Array.isArray(antwort?.eintraege) ? antwort.eintraege.length : 0
   const treffer = `<p class="subtle sm-treffer">${tHtml('sammlung.treffer', { anzahl: gefiltert.length, gesamt })}</p>`
   if (gefiltert.length === 0) return `${treffer}<section class="empty sm-leer"><p>${tHtml(gesamt === 0 ? 'sammlung.leer' : 'sammlung.keineTreffer')}</p></section>`
   return `${treffer}${gruppiereNachArt(gefiltert)
-    .map((g) => gruppeHtml(g, antwort.urteil_bedeutung ?? {}, offeneDetails))
+    .map((g) => gruppeHtml(g, antwort.urteil_bedeutung ?? {}, offeneDetails, ablaeufe))
     .join('')}`
 }
 

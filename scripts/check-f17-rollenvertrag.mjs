@@ -59,6 +59,8 @@ const erwarteteRollen = {
   'product-coach': ['src/**'],
   // 'architekt' kam mit F39 WS-1 hinzu — ebenso neu, kein Migrationswert.
   architekt: ['src/**'],
+  // 'eignungspruefung' kam mit F45 F-2b-2 hinzu — ebenso neu, kein Migrationswert.
+  eignungspruefung: ['src/**'],
 }
 
 const gefundeneRollen = Object.keys(ROLLENVERTRAEGE).sort()

@@ -1,0 +1,35 @@
+{
+  "lauf_id": "eignungspruefung-impeccable-87331e24-9000-432d-bd4b-75854a1bace7",
+  "phase": "fertig",
+  "grund": null,
+  "dauer_s": 172,
+  "cli": "2.1.296",
+  "modell": "claude-sonnet-5",
+  "init": {
+    "skills": [],
+    "plugins": [],
+    "mcp_servers": [],
+    "tools": [
+      "Glob",
+      "Grep",
+      "Read"
+    ],
+    "agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "design-guardian",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "scout",
+      "statusline-setup"
+    ],
+    "slash_commands_anzahl": 36
+  },
+  "permission_denials": [],
+  "kosten_usd": 0.38459740000000003,
+  "klassifikation": null,
+  "lauf_status": null
+}
