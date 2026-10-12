@@ -1,0 +1,6 @@
+| Aktion | Detail offen | Auswählen (kommt) | nicht auswählbar | ausgeschlossen | lang | Kennzahlen | Treffer | Band | erste Gruppe | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Workforce geladen | false | false | false | false | de | 176 Einträge · 172 mit Link · 126 auswählbar (ab dem nächsten Ausbau) · 10 ausgeschlossen Quelle: docs/harness/kandidate | 176 von 176 Einträgen gezeigt | (fehlt) | UI 16 | false | true |
+| Capability Library | false | false | false | false | de | 176 Einträge · 172 mit Link · 126 auswählbar (ab dem nächsten Ausbau) · 10 ausgeschlossen Quelle: docs/harness/kandidate | 176 von 176 Einträgen gezeigt | (fehlt) | UI 16 | false | true |
+| Unterreiter „Sammlung“ | false | false | false | false | de | 176 Einträge · 172 mit Link · 126 auswählbar (ab dem nächsten Ausbau) · 10 ausgeschlossen Quelle: docs/harness/kandidate | 176 von 176 Einträgen gezeigt | (fehlt) | UI 16 | false | true |
+| Detail repos-peon aufgeklappt | true | true | false | false | de | 176 Einträge · 172 mit Link · 126 auswählbar (ab dem nächsten Ausbau) · 10 ausgeschlossen Quelle: docs/harness/kandidate | 176 von 176 Einträgen gezeigt | (fehlt) | UI 16 | false | true |

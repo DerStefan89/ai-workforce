@@ -1,0 +1,66 @@
+{
+  "url": "http://127.0.0.1:4391/#/runs/d39439f0-425e-406c-9810-6463cb449b21",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#lauf-faehigkeiten"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Knopf",
+        "selector": ".faehigkeiten-im-lauf .fp-hash-voll[open] .hash-kopieren"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hash aufgeklappt",
+        "selector": ".faehigkeiten-im-lauf .fp-hash-voll[open]"
+      },
+      {
+        "name": "Hinweis Strg+C sichtbar",
+        "selector": ".faehigkeiten-im-lauf .hash-kopieren-hinweis:not([hidden])"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Lauf-Detail geladen",
+      "warteAufSelector": {
+        "selector": "#lauf-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Fähigkeiten aufgeklappt",
+      "klick": "#lauf-faehigkeiten summary",
+      "warteAufSelector": {
+        "selector": ".faehigkeiten-im-lauf",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Fokus „ganzer Hash“, Enter",
+      "fokus": ".faehigkeiten-im-lauf .fp-hash-voll summary",
+      "taste": "Enter",
+      "warteAufSelector": {
+        "selector": ".faehigkeiten-im-lauf .fp-hash-voll[open]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-hash-enter.png"
+    },
+    {
+      "label": "Fokus „Kopieren“, Enter (ohne Freigabe der Zwischenablage → markiert + Hinweis bzw. „Kopiert“)",
+      "fokus": ".faehigkeiten-im-lauf .fp-hash-voll[open] .hash-kopieren",
+      "taste": "Enter",
+      "screenshot": "02-kopieren.png"
+    }
+  ]
+}

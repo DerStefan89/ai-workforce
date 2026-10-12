@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Lauf-Detail geladen",
+    "Hash aufgeklappt": false,
+    "Hinweis Strg+C sichtbar": false,
+    "Knopf": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Fähigkeiten aufgeklappt",
+    "Hash aufgeklappt": false,
+    "Hinweis Strg+C sichtbar": false,
+    "Knopf": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Fokus „ganzer Hash“, Enter",
+    "Hash aufgeklappt": true,
+    "Hinweis Strg+C sichtbar": false,
+    "Knopf": "Kopieren",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Fokus „Kopieren“, Enter (ohne Freigabe der Zwischenablage → markiert + Hinweis bzw. „Kopiert“)",
+    "Hash aufgeklappt": true,
+    "Hinweis Strg+C sichtbar": true,
+    "Knopf": "Kopieren",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

@@ -13193,6 +13193,14 @@ button.harness-ordner-eintrag {
   color: var(--muted);
 }
 
+/* F45 F-2b-1 (F-1060 (6)): der volle Hash bricht in schmalen Zellen (Lauf-Detail, 390 px) statt zu überlaufen —
+   auch gegen das nowrap der Lauf-Detail-Tabelle (.faehigkeiten-im-lauf-tabelle code). */
+.fp-hash-voll code,
+.faehigkeiten-im-lauf-tabelle .fp-hash-voll code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .fp-freigabe-knoepfe {
   display: flex;
   flex-wrap: wrap;
@@ -13385,4 +13393,231 @@ button.harness-ordner-eintrag {
 /* F-1061 (3): Knopf „Datei geprüft – Stand übernehmen“ im Band. */
 .fp-band-knopf {
   margin-top: 10px;
+}
+
+/* ─── F45 F-2b-1: Sammlung (Capability Library) ──────────────────────────
+   Gleiche Tokens und Muster wie „Dieses Projekt“ (fp-*): Gruppen nach Art, Tabelle mit Stapelung unter 900 px,
+   aufklappbares Detail je Zeile. Keine neuen Farben oder Schatten. */
+.sm-kennzahlen {
+  margin: 0 0 10px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+/* design-guardian 5: .v10-seite .note setzt sonst margin: 20px 0 (Muster fp-*). */
+.v10-seite .sm-erklaerung,
+.v10-seite .sm-band {
+  margin: 0 0 14px;
+}
+
+.sm-treffer {
+  margin: 0 0 12px;
+}
+
+.sm-gruppe {
+  margin: 0 0 26px;
+}
+
+.sm-gruppe h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.sm-hinweis {
+  margin: 0 0 10px;
+}
+
+.sm-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sm-tabelle th,
+.sm-tabelle td {
+  box-sizing: border-box;
+  border: 0;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.sm-tabelle th {
+  padding: 14px 18px;
+  background: none;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow-wrap: normal;
+}
+
+.sm-tabelle th:first-child {
+  width: 34%;
+}
+
+/* design-guardian 4: Urteil-Chips („AUSGESCHLOSSEN“, „ZURÜCKSTELLEN“) brechen nicht mitten im Wort. */
+.sm-tabelle th:nth-child(2) {
+  width: 10.5rem;
+}
+
+.sm-tabelle td:nth-child(2),
+.sm-tabelle td:nth-child(5) {
+  overflow-wrap: normal;
+}
+
+.sm-tabelle th:nth-child(5) {
+  width: 9rem;
+}
+
+.sm-tabelle th:nth-child(6) {
+  width: 6.5rem;
+}
+
+.sm-tabelle td {
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  /* Bestätigungsprüfung design-guardian: erst an Wortgrenzen umbrechen, nur im Notfall im Wort (keine Silbentrennung — sie trennte
+     Eigennamen wie „GitHub“). */
+  overflow-wrap: break-word;
+}
+
+.sm-name {
+  display: inline;
+  cursor: default;
+}
+
+.sm-detail {
+  margin-top: 8px;
+}
+
+.sm-detail summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sm-detail[open] summary {
+  margin-bottom: 10px;
+}
+
+.sm-daten {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+/* design-guardian 3: einspaltig auch auf breiten Bildschirmen — das Detail sitzt in der Namensspalte (34 %). */
+.sm-daten div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.sm-daten dt {
+  color: var(--muted);
+}
+
+.sm-daten dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sm-bedeutung {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.v10-seite .sm-ausgeschlossen {
+  margin: 0 0 12px;
+}
+
+/* design-guardian 7: sichtbarer Titel vor jeder Chip-Reihe. */
+.sm-chipgruppe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.sm-chip-titel {
+  font-size: 12px;
+}
+
+.scout-sammlung-abweichung {
+  font-size: 12px;
+}
+
+/* F-1060 (6): „Kopieren“ am vollen Hash im Lauf-Detail. */
+.hash-kopieren {
+  margin-top: 6px;
+}
+
+.hash-kopieren-hinweis {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.sm-nicht-auswaehlbar,
+.sm-ausnahme {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sm-auswaehlen-hinweis {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.scout-sammlung-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+@media (max-width: 900px) {
+  .sm-tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .sm-tabelle,
+  .sm-tabelle tbody,
+  .sm-tabelle tr,
+  .sm-tabelle td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .sm-tabelle tr {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .sm-tabelle tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .sm-tabelle td {
+    padding: 4px 16px;
+    border-top: 0;
+  }
+
+  .sm-tabelle td:not(:first-child)::before {
+    content: attr(data-spalte) ': ';
+    color: var(--muted);
+  }
+
 }

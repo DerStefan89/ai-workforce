@@ -1,0 +1,6 @@
+| Aktion | Detail offen | Auswählen (kommt) | nicht auswählbar | ausgeschlossen | lang | Kennzahlen | Treffer | Band | erste Gruppe | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Workforce geladen | false | false | false | false | en | 176 entries · 172 with link · 126 selectable (from the next stage) · 10 excluded Source: docs/harness/kandidaten-2026-09 | 176 of 176 entries shown | (fehlt) | UI 16 | false | true |
+| Capability Library | false | false | false | false | en | 176 entries · 172 with link · 126 selectable (from the next stage) · 10 excluded Source: docs/harness/kandidaten-2026-09 | 176 of 176 entries shown | (fehlt) | UI 16 | false | true |
+| Unterreiter „Sammlung“ | false | false | false | false | en | 176 entries · 172 with link · 126 selectable (from the next stage) · 10 excluded Source: docs/harness/kandidaten-2026-09 | 176 of 176 entries shown | (fehlt) | UI 16 | false | true |
+| Detail plugins-playwright aufgeklappt | true | true | false | false | en | 176 entries · 172 with link · 126 selectable (from the next stage) · 10 excluded Source: docs/harness/kandidaten-2026-09 | 176 of 176 entries shown | (fehlt) | UI 16 | false | true |

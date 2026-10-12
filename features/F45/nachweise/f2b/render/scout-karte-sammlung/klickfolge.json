@@ -1,0 +1,382 @@
+{
+  "url": "http://127.0.0.1:4391/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#capabilities-scout"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "erste Sammlungszeile",
+        "selector": "#capabilities-scout .scout-sammlung-zeile"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Abweichung",
+        "selector": "#capabilities-scout .scout-sammlung-abweichung"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/ressourcen/abdeckung",
+      "status": 200,
+      "json": {
+        "startvorlagePfad": "C:\\Users\\stefa\\Projekte\\ai-workforce\\startvorlagen\\ai-workforce.json",
+        "rollen": [
+          {
+            "rolle": "architecture-advisor",
+            "benoetigteCapabilities": [
+              "PLAN_REVIEW",
+              "REPO_READ"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "UI_VISUAL_TESTING"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "UI_VISUAL_TESTING"
+                ]
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": false
+          },
+          {
+            "rolle": "code-reviewer",
+            "benoetigteCapabilities": [
+              "CODE_REVIEW",
+              "REPO_READ",
+              "STRUCTURED_OUTPUT"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "STRUCTURED_OUTPUT"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "qa",
+            "benoetigteCapabilities": [
+              "TEST_DESIGN",
+              "REPO_READ"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "ausfuehrung",
+            "benoetigteCapabilities": [
+              "CODE_WRITE",
+              "REPO_READ"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "router",
+            "benoetigteCapabilities": [
+              "TASK_CLASSIFICATION",
+              "STRUCTURED_OUTPUT"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "STRUCTURED_OUTPUT"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "scout",
+            "benoetigteCapabilities": [
+              "WEB_RESEARCH",
+              "STRUCTURED_OUTPUT",
+              "REPO_READ"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "STRUCTURED_OUTPUT"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "jarvis",
+            "benoetigteCapabilities": [
+              "TASK_CLASSIFICATION",
+              "STRUCTURED_OUTPUT",
+              "REPO_READ"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "STRUCTURED_OUTPUT"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "product-coach",
+            "benoetigteCapabilities": [
+              "STRUCTURED_OUTPUT",
+              "REPO_READ"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "STRUCTURED_OUTPUT"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "architekt",
+            "benoetigteCapabilities": [
+              "STRUCTURED_OUTPUT",
+              "REPO_READ"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "STRUCTURED_OUTPUT"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "POST",
+      "status": 201,
+      "json": {
+        "auftragId": "render-scout"
+      }
+    },
+    {
+      "muster": "**/api/laeufe",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "scout-render"
+      }
+    },
+    {
+      "muster": "**/api/laeufe/scout-*",
+      "status": 200,
+      "json": {
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "ERFOLGREICH"
+        },
+        "scoutErgebnis": {
+          "status": "ok",
+          "ergebnis": {
+            "gesuchte_capability": "UI_VISUAL_TESTING",
+            "hinweis_untrusted": true,
+            "kandidaten": [
+              {
+                "name": "Playwright",
+                "typ": "extern",
+                "quelle_url": "https://github.com/microsoft/playwright-mcp",
+                "capabilities": [
+                  "UI_VISUAL_TESTING"
+                ],
+                "fit": "hoch",
+                "integrationsaufwand": "mittel",
+                "rechte": "Browser-Steuerung",
+                "risiken": [],
+                "empfehlung": "Vergleichen und vormerken.",
+                "unsicherheiten": [],
+                "lizenz": "Apache-2.0 (GitHub-Metadaten)",
+                "quelle": "sammlung",
+                "urteil_sammlung": "Aufnehmen"
+              },
+              {
+                "name": "Spline",
+                "typ": "extern",
+                "quelle_url": "https://spline.design/pricing",
+                "capabilities": [
+                  "UI_VISUAL_TESTING"
+                ],
+                "fit": "hoch",
+                "integrationsaufwand": "mittel",
+                "rechte": "Browser-Steuerung",
+                "risiken": [],
+                "empfehlung": "Vergleichen und vormerken.",
+                "unsicherheiten": [],
+                "quelle": "sammlung",
+                "urteil_sammlung": "Optional"
+              },
+              {
+                "name": "Neuer Kandidat",
+                "typ": "extern",
+                "quelle_url": "https://github.com/beispiel/neu",
+                "capabilities": [
+                  "UI_VISUAL_TESTING"
+                ],
+                "fit": "hoch",
+                "integrationsaufwand": "mittel",
+                "rechte": "Browser-Steuerung",
+                "risiken": [],
+                "empfehlung": "Vergleichen und vormerken.",
+                "unsicherheiten": [],
+                "quelle": "web"
+              }
+            ]
+          }
+        },
+        "scoutSammlung": [
+          {
+            "treffer": {
+              "id": "plugins-playwright",
+              "name": "Playwright",
+              "urteil": "Aufnehmen",
+              "lizenz": "Apache-2.0 (GitHub-Metadaten)"
+            },
+            "abweichung": false
+          },
+          {
+            "treffer": {
+              "id": "ui-spline",
+              "name": "Spline",
+              "urteil": "Nur Ausnahme",
+              "lizenz": "Proprietär"
+            },
+            "abweichung": true
+          },
+          {
+            "treffer": null,
+            "abweichung": false
+          }
+        ]
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Rollen & Besetzung",
+      "klick": "#faehigkeiten-reiter-rollen",
+      "warteAufSelector": {
+        "selector": ".capabilities-scout-link",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "„Kandidaten suchen“ (Attrappen für Auftrag, Lauf, Detail)",
+      "klick": ".capabilities-scout-link",
+      "warteAufSelector": {
+        "selector": "#capabilities-scout .scout-karte",
+        "timeoutMs": 20000
+      },
+      "screenshot": "01-scout-karten.png"
+    }
+  ]
+}

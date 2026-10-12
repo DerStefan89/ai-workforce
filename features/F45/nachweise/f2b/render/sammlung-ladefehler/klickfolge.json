@@ -1,0 +1,91 @@
+{
+  "url": "http://127.0.0.1:4391/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#faehigkeiten-bereich-sammlung",
+    "hoehe": 1300
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": "#sammlung .sm-kennzahlen"
+      },
+      {
+        "name": "Treffer",
+        "selector": "#sammlung .sm-treffer"
+      },
+      {
+        "name": "Band",
+        "selector": "#sammlung .sm-band"
+      },
+      {
+        "name": "erste Gruppe",
+        "selector": "#sammlung .sm-gruppe h3"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Detail offen",
+        "selector": "#sammlung details.sm-detail[open]"
+      },
+      {
+        "name": "Auswählen (kommt)",
+        "selector": "#sammlung details[open] .sm-auswaehlen"
+      },
+      {
+        "name": "nicht auswählbar",
+        "selector": "#sammlung details[open] .sm-nicht-auswaehlbar"
+      },
+      {
+        "name": "ausgeschlossen",
+        "selector": "#sammlung details[open] .sm-ausgeschlossen"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/sammlung",
+      "status": 200,
+      "json": {
+        "status": "fehler",
+        "grund": "docs/harness/kandidaten-2026-09-15.md: Zeile 142: Tabellenkopf weicht ab (Fixture für den Render-Nachweis)"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-sm-band=\"fehler\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-fehler.png"
+    }
+  ]
+}

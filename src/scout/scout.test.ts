@@ -134,3 +134,15 @@ test('validiereErgebnisScout: ein Kandidat, der kein Objekt ist, wird gemeldet',
   daten.kandidaten = ['nicht-objekt']
   assert.ok(validiereErgebnisScout(daten).some((v) => v.includes("'kandidaten[0]' muss ein Objekt sein")))
 })
+
+// F45 F-2b-1 (F-1057): quelle und urteil_sammlung sind optional und additiv.
+test('validiereErgebnisScout: quelle und urteil_sammlung gültig; altes Ergebnis ohne beide bleibt gültig', () => {
+  assert.deepStrictEqual(validiereErgebnisScout(mutiereErstenKandidaten({ quelle: 'sammlung', urteil_sammlung: 'Aufnehmen' })), [])
+  assert.deepStrictEqual(validiereErgebnisScout(mutiereErstenKandidaten({ quelle: 'web' })), [])
+  assert.deepStrictEqual(validiereErgebnisScout(gueltigesErgebnis()), [])
+})
+
+test('validiereErgebnisScout: falscher Wert in quelle bzw. urteil_sammlung wird gemeldet', () => {
+  assert.ok(validiereErgebnisScout(mutiereErstenKandidaten({ quelle: 'Sammlung' })).some((v) => v.includes("'kandidaten[0].quelle'")))
+  assert.ok(validiereErgebnisScout(mutiereErstenKandidaten({ urteil_sammlung: 'Empfohlen' })).some((v) => v.includes("'kandidaten[0].urteil_sammlung'")))
+})
