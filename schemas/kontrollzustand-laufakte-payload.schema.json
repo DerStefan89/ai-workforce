@@ -92,6 +92,47 @@
           "description": "F45 B1b-1 (F-1026). Optional (append-only: Laufakten vor B1b-1 tragen das Feld nicht). Werkzeugname je angenommenem Hintergrund-Aufruf (tool_use_result.backgroundTaskId oder input.run_in_background === true ohne Fehler), in Reihenfolge; Länge = Anzahl. Ein Wert > 0 macht den Lauf FEHLGESCHLAGEN (Grund hintergrund_ausfuehrung, nachgerechnet aus dem Rohstrom). Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts)."
         }
       }
+    },
+    "faehigkeiten_im_lauf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eintraege", "fremde_aufrufe"],
+      "description": "F45 F-1 (F-815/F-816, Beleg 13). Optional (append-only): nur Läufe mit Katalog-Kontext. eintraege = beim Start eingefrorene Fähigkeiten (katalog: MCP/Ort-B-Skill; projekt: Agent/Skill im Arbeitsordner, hash nach Inhalt), am Ende mit den Aufrufen des Rohstroms verbunden (aufrufe/fehlgeschlagen; ohne init-Zeile null). fremde_aufrufe = Agent-/Skill-Aufrufe ohne passenden Eintrag (z. B. gesperrter eingebauter Agent). Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts).",
+      "properties": {
+        "eintraege": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "typ", "quelle", "aktiv", "aufrufe", "fehlgeschlagen"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "typ": { "enum": ["mcp", "skill", "agent"] },
+              "quelle": { "enum": ["katalog", "projekt"] },
+              "hash": { "type": "string" },
+              "pfad": { "type": "string" },
+              "aktiv": { "type": "boolean" },
+              "grund": { "type": "string" },
+              "aufrufe": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+              "fehlgeschlagen": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] }
+            }
+          }
+        },
+        "fremde_aufrufe": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["art", "name", "fehler"],
+            "properties": {
+              "art": { "enum": ["agent", "skill"] },
+              "name": { "type": "string" },
+              "fehler": { "type": "boolean" }
+            }
+          }
+        }
+      }
     }
   }
 }

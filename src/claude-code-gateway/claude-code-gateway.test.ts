@@ -1246,22 +1246,26 @@ test('F36 WS-5b baueAufruf: ohne ortB bitgenau wie vorher; mit ortB je Skill --a
 
 test('F36 WS-5b pruefeInitZeile: Skills ⊆ Ort-B, kein Agent in tools, mcp_servers = übergebene; fehlende Felder = Verstoß', () => {
   const erwartet = { skills: ['frontend-design', 'pruef-skill'], mcpServer: [] }
-  const init = { type: 'system', subtype: 'init', tools: ['Bash', 'Read', 'Skill'], skills: ['frontend-design', 'pruef-skill'], slash_commands: ['frontend-design', 'pruef-skill', 'clear'], mcp_servers: [] }
+  const init = { type: 'system', subtype: 'init', tools: ['Bash', 'Read', 'Skill'], skills: ['frontend-design', 'pruef-skill'], slash_commands: ['frontend-design', 'pruef-skill', 'clear'], mcp_servers: [], plugins: [] }
   assert.equal(pruefeInitZeile(init, erwartet), null)
   assert.equal(pruefeInitZeile({ ...init, skills: ['frontend-design'] }, erwartet), null, 'Teilmenge genügt')
   assert.match(pruefeInitZeile({ ...init, skills: ['frontend-design', 'ponytail', 'design:ux-copy'] }, erwartet) ?? '', /nicht übergebene Skills: ponytail, design:ux-copy/)
   assert.match(pruefeInitZeile({ ...init, tools: [...init.tools, 'Agent'] }, erwartet) ?? '', /init\.tools enthält Agent/)
   assert.match(pruefeInitZeile({ ...init, mcp_servers: [{ name: 'fremd' }] }, erwartet) ?? '', /fremd: fremd/)
   assert.match(pruefeInitZeile(init, { ...erwartet, mcpServer: ['pw'] }) ?? '', /fehlend: pw/)
-  assert.match(pruefeInitZeile({ type: 'system', subtype: 'init' }, erwartet) ?? '', /init\.skills fehlt.*init\.slash_commands fehlt.*init\.tools fehlt.*init\.mcp_servers fehlt/)
+  assert.match(pruefeInitZeile({ type: 'system', subtype: 'init' }, erwartet) ?? '', /init\.skills fehlt.*init\.slash_commands fehlt.*init\.tools fehlt.*init\.plugins fehlt.*init\.mcp_servers fehlt/)
 })
 
 test('F-831 pruefeInitZeile: reale init-Zeile (CLI-Messung) besteht; unbekannter Command, fehlendes oder falsch typisiertes slash_commands → Verstoß', () => {
   // Gutfall: die gemessene init-Zeile (features/F36/nachweis-f831/messung.json) mit der erwarteten Menge des Starts.
   // Die Nachweisdatei ist Messung, kein Testfixture: bei Rot die Referenzmenge nachziehen, nicht die Messung ändern.
   const messung = JSON.parse(readFileSync(join('features', 'F36', 'nachweis-f831', 'messung.json'), 'utf8'))
-  const real = { type: 'system', subtype: 'init', ...messung.init }
+  // F45 F-1 (F-910, Teil Init-Gate): die Messung lief ohne enabledPlugins-Abschaltung und trägt das eingebaute
+  // Telemetrie-Plugin — heute ein Verstoß; mit abgeschalteten Plugins (init.plugins = []) besteht dieselbe Zeile.
+  const gemessen = { type: 'system', subtype: 'init', ...messung.init }
   const erwartet = { skills: messung.ortBLauf_skillNamen, mcpServer: [], gesperrt: messung.gesperrte_namen }
+  assert.match(pruefeInitZeile(gemessen, erwartet) ?? '', /init\.plugins nicht leer: cc-plugin-telemetry@builtin/)
+  const real = { ...gemessen, plugins: [] }
   assert.ok(real.slash_commands.length > 1, 'Messung trägt slash_commands')
   assert.equal(pruefeInitZeile(real, erwartet), null)
   // Rotfall: ein neuer Command (Nutzer-, Plugin- oder CLI-Quelle) steht in keiner Menge.
@@ -1292,7 +1296,7 @@ test('F-831 Referenzmenge: an die Messung gebunden (nur gemessene Namen, ohne Du
   // fail-closed: Datei fehlt, kein JSON, falsche Form → Verstoß mit Grund.
   const dir = mkdtempSync(join(tmpdir(), 'f831-referenz-'))
   try {
-    const init = { type: 'system', subtype: 'init', tools: ['Skill'], skills: [], slash_commands: ['clear'], mcp_servers: [] }
+    const init = { type: 'system', subtype: 'init', tools: ['Skill'], skills: [], slash_commands: ['clear'], mcp_servers: [], plugins: [] }
     writeFileSync(join(dir, 'kaputt.json'), '{')
     writeFileSync(join(dir, 'leer.json'), '{"namen":[]}')
     writeFileSync(join(dir, 'form.json'), '{"namen":["clear",1]}')
@@ -1308,7 +1312,7 @@ test('F-831 starteGateway (initGate): unbekannter Slash-Command in init → Abbr
   const laufId = neueLaufId('init-gate-slash')
   try {
     const protokoll = { toolUseGesendet: false }
-    const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear', 'neuer-command'], mcp_servers: [] }
+    const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear', 'neuer-command'], mcp_servers: [], plugins: [] }
     const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [], gesperrt: ['design'] } }
     const rot = await starteGateway(gueltigeGatewayEingaben(laufId), { ...optionen, starter: initGateStarter(init, protokoll) })
     assert.ok(rot.ok)
@@ -1345,7 +1349,7 @@ test('F36 WS-5b starteGateway (initGate): fremder Skill in init → Abbruch vor 
   try {
     const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
     const rotProtokoll = { toolUseGesendet: false }
-    const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design', 'ponytail'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [] }
+    const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design', 'ponytail'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [], plugins: [] }
     const rot = await starteGateway(gueltigeGatewayEingaben(laufRot), { ...optionen, starter: initGateStarter(init, rotProtokoll) })
     assert.ok(rot.ok)
     assert.equal(rotProtokoll.toolUseGesendet, false, 'Abbruch vor tool_use')
@@ -1390,7 +1394,7 @@ test('F36 WS-5b starteGateway (initGate): tool_use vor init → Abbruch; keine i
   const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
   const roh = (ergebnis: Awaited<ReturnType<typeof starteGateway>>) => (ergebnis.ok ? JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8')) : {})
   const toolUse = { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'x' } }] }, parent_tool_use_id: null }
-  const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [] }
+  const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [], plugins: [] }
   try {
     // (1) tool_use vor der init-Zeile: das Gate bricht beim ersten tool_use ab.
     let weitergelaufen = false
@@ -1463,5 +1467,38 @@ test('starteGateway (F45 B1b-1): Bash-Zeitgrenze aus bashZeitgrenzeMs, nie über
     } finally {
       raeumeKette(laufId)
     }
+  }
+})
+
+test('F45 F-1 starteGateway: vorStartPruefung mit Grund → kein Spawn, Verweigerung; faehigkeiten_im_lauf in der Laufakte mit Aufrufen', async () => {
+  const ids = ['vorstart-rot', 'vorstart-gruen'].map((n) => neueLaufId(`f45-f1-${n}`))
+  const basis = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {} }
+  const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [], plugins: [] }
+  const faehigkeiten = [{ id: 'skill:frontend-design', name: 'frontend-design', typ: 'skill' as const, quelle: 'projekt' as const, hash: 'a'.repeat(64), pfad: 'skills/frontend-design', aktiv: true }]
+  try {
+    let gestartet = false
+    const rot = await starteGateway(gueltigeGatewayEingaben(ids[0]), {
+      ...basis,
+      faehigkeitenImLauf: faehigkeiten,
+      vorStartPruefung: () => 'Projekt-Fähigkeiten zwischen Prüfung und Start verändert: skill:frontend-design — Lauf startet nicht',
+      starter: async () => {
+        gestartet = true
+        throw new Error('darf nicht starten')
+      },
+    })
+    assert.equal(rot.ok, false)
+    assert.equal(gestartet, false)
+    assert.match(rot.ok ? '' : rot.grund, /zwischen Prüfung und Start verändert/)
+    // Wie jede Ablehnung nach der Startfreigabe, aber vor RUN_PREPARED (Muster ungültiges Startziel): NICHT_GESTARTET.
+    assert.equal(stelleLaufstatusFest(ids[0], { basisVerzeichnis: KONTROLLZUSTAND_BASIS }).status, 'NICHT_GESTARTET')
+
+    const protokoll = { toolUseGesendet: false }
+    const gruen = await starteGateway(gueltigeGatewayEingaben(ids[1]), { ...basis, faehigkeitenImLauf: faehigkeiten, vorStartPruefung: () => null, starter: initGateStarter(init, protokoll) })
+    assert.ok(gruen.ok)
+    if (!gruen.ok) return
+    assert.deepEqual(gruen.laufakte.faehigkeiten_im_lauf, { eintraege: [{ ...faehigkeiten[0], aufrufe: 1, fehlgeschlagen: 0 }], fremde_aufrufe: [] })
+    assert.deepEqual(validiereLaufakteDaten(gruen.laufakte), [])
+  } finally {
+    for (const id of ids) raeumeKette(id)
   }
 })

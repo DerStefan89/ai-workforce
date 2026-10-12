@@ -117,7 +117,7 @@ import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { pruefeStartziel, starteProzess } from './prozessstart.ts'
-import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, BeobachtungV0, LaufakteV0Daten, Starter, VerbrauchV0, Werkzeugaufruf } from './types.ts'
+import type { AufrufEingaben, AufrufTokens, BeobachtungV0, FaehigkeitenImLaufV0, FaehigkeitImLauf, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter, VerbrauchV0, Werkzeugaufruf } from './types.ts'
 
 /**
  * Von Stefan bestätigter Pfad zur aktuell gültigen Autorisierungsreferenz
@@ -256,6 +256,17 @@ interface GatewayOptionen {
    * Fehlt die Option, liest starteGateway die init-Zeile nicht (bitgenau wie vorher).
    */
   initGate?: InitGateErwartung
+  /**
+   * F45 F-1: beim Start eingefrorene Fähigkeiten (Katalog und Projekt) — starteGateway verbindet sie am Ende mit den
+   * Aufrufen des Rohstroms (verbindeFaehigkeitenMitAufrufen) und schreibt sie als faehigkeiten_im_lauf in die
+   * Laufakte. Fehlt die Option, fehlt das Feld (bitgenau wie vorher).
+   */
+  faehigkeitenImLauf?: readonly FaehigkeitImLauf[]
+  /**
+   * F45 F-1 (Advisor A6): letzte Prüfung unmittelbar vor dem Spawn (nach der Startfreigabe) — liefert sie einen Grund,
+   * startet kein Prozess (verweigereStart, wie jede andere Ablehnung vor dem Start). Fehlt sie, unverändert.
+   */
+  vorStartPruefung?: () => string | null
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -543,6 +554,50 @@ export function ermittleHintergrundAufrufe(zeilen: string[]): string[] {
 }
 
 /**
+ * F45 F-1 (F-815, Advisor A9): Agent-, Skill- und MCP-Aufrufe des Rohstroms samt Fehlerflag ihres tool_result
+ * (is_error — z. B. „denied by permission rule“ oder „disabled … in skillOverrides“). Zeilen aus Subagenten zählen
+ * mit (Muster leseBeobachtung); ein tool_use ohne tool_result gilt als nicht fehlgeschlagen. Wirft nie.
+ * @param zeilen - NDJSON-Zeilen des stdout
+ * @returns je Aufruf { art, name (subagent_type, skill bzw. MCP-Server), fehler }
+ */
+export function ermittleFaehigkeitsAufrufe(zeilen: string[]): { art: 'agent' | 'skill' | 'mcp'; name: string; fehler: boolean }[] {
+  const aufrufe: { id: string | null; art: 'agent' | 'skill' | 'mcp'; name: string }[] = []
+  const fehler = new Map<string, boolean>()
+  for (const text of zeilen) {
+    const zeile = parseObjekt(text.trim())
+    if (zeile === null) continue
+    for (const { id, name, eingabe } of leseToolUseBloecke(zeile)) {
+      if (name === 'Skill' && typeof eingabe.skill === 'string') aufrufe.push({ id, art: 'skill', name: eingabe.skill })
+      else if ((name === 'Agent' || name === 'Task') && typeof eingabe.subagent_type === 'string') aufrufe.push({ id, art: 'agent', name: eingabe.subagent_type })
+      else if (name.startsWith('mcp__')) aufrufe.push({ id, art: 'mcp', name: mcpServerName(name) })
+    }
+    for (const { toolUseId, fehler: istFehler } of leseToolResultBloecke(zeile)) fehler.set(toolUseId, istFehler)
+  }
+  return aufrufe.map(({ id, art, name }) => ({ art, name, fehler: id !== null && fehler.get(id) === true }))
+}
+
+/**
+ * F45 F-1: verbindet die beim Start eingefrorenen Fähigkeiten mit den Aufrufen des Laufs. Ein Eintrag zählt die
+ * Aufrufe seines Namens (Agent/Skill: Name, MCP: Katalog-id = Server-Schlüssel); ohne Beobachtungsbasis (keine
+ * init-Zeile) bleiben aufrufe/fehlgeschlagen null. Agent-/Skill-Aufrufe ohne passenden Eintrag landen in
+ * fremde_aufrufe (z. B. ein gesperrter eingebauter Agent). Rein.
+ * @param faehigkeiten - eingefrorene Einträge
+ * @param aufrufe - ermittleFaehigkeitsAufrufe des Rohstroms
+ * @param beobachtet - true, wenn der Lauf eine init-Zeile hatte
+ * @returns Laufakten-Feld faehigkeiten_im_lauf
+ */
+export function verbindeFaehigkeitenMitAufrufen(faehigkeiten: readonly FaehigkeitImLauf[], aufrufe: ReturnType<typeof ermittleFaehigkeitsAufrufe>, beobachtet: boolean): FaehigkeitenImLaufV0 {
+  const bekannt = new Set(faehigkeiten.map((f) => `${f.typ}:${f.name}`))
+  const eintraege = faehigkeiten.map((f) => {
+    if (!beobachtet) return { ...f, aufrufe: null, fehlgeschlagen: null }
+    const eigene = aufrufe.filter((a) => a.art === f.typ && a.name === (f.typ === 'mcp' ? f.id : f.name))
+    return { ...f, aufrufe: eigene.length, fehlgeschlagen: eigene.filter((a) => a.fehler).length }
+  })
+  const fremde = aufrufe.flatMap((a) => (a.art !== 'mcp' && !bekannt.has(`${a.art}:${a.name}`) ? [{ art: a.art, name: a.name, fehler: a.fehler }] : []))
+  return { eintraege, fremde_aufrufe: fremde }
+}
+
+/**
  * F45 B1b-1 (F-1026): Anzahl nach ermittleHintergrundAufrufe — auch ohne init-Zeile (anders als
  * leseBeobachtung). Der Result Evaluator rechnet damit aus dem hash-geprüften Rohstrom nach, statt dem
  * Laufakten-Feld zu glauben. Wirft nie.
@@ -764,6 +819,15 @@ export interface InitGateErwartung {
   mcpServer: readonly string[]
   /** Gesperrte Namen (Skill(…)/skillOverrides off); fehlt das Feld, gilt [] — das Gate wird nur strenger. */
   gesperrt?: readonly string[]
+  /**
+   * F45 F-1: nur bei ≥1 aktivem Projekt-Agent — erlaubt (aktiv) und gesperrt (Agent(…)-Sperre: eingebaute laut
+   * Referenzliste, nicht aktive Projekt-Agents). Gesetzt: 'Agent'/'Task' in init.tools zulässig, init.agents ⊆
+   * erlaubt ∪ gesperrt (Spike F-1: --allowedTools Agent(<name>) begrenzt nicht, die Sperrliste trägt). Fehlt das Feld,
+   * bleibt 'Agent'/'Task' in init.tools ein Verstoß.
+   */
+  agents?: { erlaubt: readonly string[]; gesperrt: readonly string[] }
+  /** F45 F-1 (QA 4): aktive Projekt-Skills — müssen in init.skills stehen, sonst lief der Lauf ohne den eingeschalteten Skill. */
+  pflichtSkills?: readonly string[]
   /** Quelle der Referenzmenge; Standard SLASH_COMMANDS_REFERENZ_URL (anderer Wert nur für Tests). */
   slashCommandsReferenz?: URL | string
 }
@@ -799,7 +863,9 @@ export function leseSlashCommandsReferenz(quelle: URL | string = SLASH_COMMANDS_
  * init.skills ⊆ übergebene Ort-B-Namen, 'Agent' (bzw. 'Task') ∉ init.tools, Menge init.mcp_servers[].name =
  * übergebene MCP-Server. F-831: init.slash_commands ⊆ Referenzmenge (slash-commands-referenz.json) ∪
  * gesperrte Namen ∪ Ort-B-Skills — ein unbekannter Command wäre sonst per Skill-Werkzeug aufrufbar.
- * Fehlt ein Feld oder ist es kein Array, gilt das als Verstoß (fail-closed). init.plugins wird nicht geprüft.
+ * Fehlt ein Feld oder ist es kein Array, gilt das als Verstoß (fail-closed). F45 F-1 (F-910, Teil Init-Gate):
+ * init.plugins muss leer sein (der Start schaltet die eingebauten Plugins per enabledPlugins ab, Spike F-1 S3);
+ * mit erwartet.agents sind 'Agent'/'Task' in init.tools zulässig und init.agents ⊆ erlaubt ∪ gesperrt.
  * @param init - geparste init-Zeile (type 'system', subtype 'init')
  * @param erwartet - InitGateErwartung aus dem Start (gesperrt = Namen aus Skill(…)/skillOverrides)
  * @returns null, wenn alles passt, sonst der Klartext-Grund (unbekannte Namen aufgelistet)
@@ -822,9 +888,27 @@ export function pruefeInitZeile(init: Record<string, unknown>, erwartet: InitGat
     }
   }
   if (!Array.isArray(init.tools)) verstoesse.push('init.tools fehlt')
-  else {
+  else if (erwartet.agents === undefined) {
     const agent = stringListe(init.tools).filter((name) => name === 'Agent' || name === 'Task')
     if (agent.length > 0) verstoesse.push(`init.tools enthält ${agent.join(', ')}`)
+  }
+  if (erwartet.agents !== undefined) {
+    if (!Array.isArray(init.agents)) verstoesse.push('init.agents fehlt')
+    else {
+      const bekannt = new Set([...erwartet.agents.erlaubt, ...erwartet.agents.gesperrt])
+      const fremd = stringListe(init.agents).filter((name) => !bekannt.has(name))
+      if (fremd.length > 0 || init.agents.length !== stringListe(init.agents).length) verstoesse.push(`init.agents enthält unbekannte Agents: ${fremd.join(', ') || '(kein String)'} (Referenzliste der eingebauten Agents nachmessen)`)
+      // QA 4: ein eingeschalteter Agent, den die CLI nicht geladen hat, wäre im Lauf still nicht da.
+      const fehlend = erwartet.agents.erlaubt.filter((name) => !stringListe(init.agents).includes(name))
+      if (fehlend.length > 0) verstoesse.push(`init.agents ohne eingeschaltete Agents: ${fehlend.join(', ')}`)
+    }
+  }
+  const fehlendeSkills = (erwartet.pflichtSkills ?? []).filter((name) => !stringListe(init.skills).includes(name))
+  if (fehlendeSkills.length > 0) verstoesse.push(`init.skills ohne eingeschaltete Skills: ${fehlendeSkills.join(', ')}`)
+  if (!Array.isArray(init.plugins)) verstoesse.push('init.plugins fehlt')
+  else if (init.plugins.length > 0) {
+    const namen = init.plugins.map((p) => (typeof p === 'object' && p !== null && typeof (p as Record<string, unknown>).source === 'string' ? ((p as Record<string, unknown>).source as string) : typeof p === 'string' ? p : '(ohne Namen)'))
+    verstoesse.push(`init.plugins nicht leer: ${namen.join(', ')} (Referenzliste der eingebauten Plugins nachmessen)`)
   }
   if (!Array.isArray(init.mcp_servers)) verstoesse.push('init.mcp_servers fehlt')
   else {
@@ -923,6 +1007,12 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   if (starturteil.starturteil === 'ABGELEHNT') {
     verweigereStart(eingaben.laufId, eingaben.profilReferenz, starturteil.grund, optionen)
     return { ok: false, grund: starturteil.grund }
+  }
+
+  const vorStartGrund = optionen.vorStartPruefung?.() ?? null
+  if (vorStartGrund !== null) {
+    verweigereStart(eingaben.laufId, eingaben.profilReferenz, vorStartGrund, optionen)
+    return { ok: false, grund: vorStartGrund }
   }
 
   optionen.zeitmessung?.('kontextpaket_startfreigabe')
@@ -1056,6 +1146,9 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     erstellt_am: jetzt(),
     ...(verbrauch !== null ? { verbrauch } : {}),
     ...(beobachtung !== null ? { beobachtung } : {}),
+    ...(optionen.faehigkeitenImLauf !== undefined
+      ? { faehigkeiten_im_lauf: verbindeFaehigkeitenMitAufrufen(optionen.faehigkeitenImLauf, ermittleFaehigkeitsAufrufe(prozessErgebnis.stdout.split('\n')), beobachtung !== null) }
+      : {}),
   }
 
   const { pfad, versionSequenz } = registriereKernArtefakt(
@@ -1097,6 +1190,8 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     'verbrauch',
     // F36 WS-4: additiv erlaubt, bewusst nicht Pflicht (Muster verbrauch).
     'beobachtung',
+    // F45 F-1: additiv erlaubt, bewusst nicht Pflicht (Muster beobachtung).
+    'faehigkeiten_im_lauf',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -1202,5 +1297,49 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
       }
     }
   }
+  if ('faehigkeiten_im_lauf' in obj) pruefeFaehigkeitenImLauf(obj.faehigkeiten_im_lauf, verstoesse)
   return verstoesse
+}
+
+/** F45 F-1: Felder eines Eintrags von faehigkeiten_im_lauf (Zwilling des Schemas). */
+const FAEHIGKEIT_FELDER = new Set(['id', 'name', 'typ', 'quelle', 'hash', 'pfad', 'aktiv', 'grund', 'aufrufe', 'fehlgeschlagen'])
+
+/**
+ * F45 F-1: prüft das Laufakten-Feld faehigkeiten_im_lauf gegen schemas/kontrollzustand-laufakte-payload.schema.json.
+ * @param wert - Feldwert
+ * @param verstoesse - Sammelliste
+ */
+function pruefeFaehigkeitenImLauf(wert: unknown, verstoesse: string[]): void {
+  const istObj = (w: unknown): w is Record<string, unknown> => typeof w === 'object' && w !== null && !Array.isArray(w)
+  if (!istObj(wert)) {
+    verstoesse.push("'faehigkeiten_im_lauf' muss, wenn angegeben, ein Objekt sein")
+    return
+  }
+  for (const feld of Object.keys(wert)) if (feld !== 'eintraege' && feld !== 'fremde_aufrufe') verstoesse.push(`unbekanntes Feld 'faehigkeiten_im_lauf.${feld}' (additionalProperties: false)`)
+  if (!Array.isArray(wert.eintraege)) verstoesse.push("'faehigkeiten_im_lauf.eintraege' muss ein Array sein")
+  else
+    wert.eintraege.forEach((e, i) => {
+      const pfad = `faehigkeiten_im_lauf.eintraege[${i}]`
+      if (!istObj(e)) {
+        verstoesse.push(`'${pfad}' muss ein Objekt sein`)
+        return
+      }
+      for (const feld of Object.keys(e)) if (!FAEHIGKEIT_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld '${pfad}.${feld}' (additionalProperties: false)`)
+      for (const feld of ['id', 'name']) if (typeof e[feld] !== 'string' || (e[feld] as string).length === 0) verstoesse.push(`'${pfad}.${feld}' muss ein nicht-leerer String sein`)
+      if (e.typ !== 'mcp' && e.typ !== 'skill' && e.typ !== 'agent') verstoesse.push(`'${pfad}.typ' muss mcp, skill oder agent sein`)
+      if (e.quelle !== 'katalog' && e.quelle !== 'projekt') verstoesse.push(`'${pfad}.quelle' muss katalog oder projekt sein`)
+      if (typeof e.aktiv !== 'boolean') verstoesse.push(`'${pfad}.aktiv' muss ein Boolean sein`)
+      for (const feld of ['hash', 'pfad', 'grund']) if (feld in e && typeof e[feld] !== 'string') verstoesse.push(`'${pfad}.${feld}' muss, wenn angegeben, ein String sein`)
+      for (const feld of ['aufrufe', 'fehlgeschlagen']) {
+        if (!(feld in e)) verstoesse.push(`Pflichtfeld '${pfad}.${feld}' fehlt`)
+        else if (e[feld] !== null && (typeof e[feld] !== 'number' || !Number.isInteger(e[feld]) || (e[feld] as number) < 0)) verstoesse.push(`'${pfad}.${feld}' muss null oder ein Integer >= 0 sein`)
+      }
+    })
+  if (!Array.isArray(wert.fremde_aufrufe)) verstoesse.push("'faehigkeiten_im_lauf.fremde_aufrufe' muss ein Array sein")
+  else
+    wert.fremde_aufrufe.forEach((a, i) => {
+      if (!istObj(a) || (a.art !== 'agent' && a.art !== 'skill') || typeof a.name !== 'string' || typeof a.fehler !== 'boolean' || Object.keys(a).some((k) => k !== 'art' && k !== 'name' && k !== 'fehler')) {
+        verstoesse.push(`'faehigkeiten_im_lauf.fremde_aufrufe[${i}]' muss { art: agent|skill, name, fehler } sein`)
+      }
+    })
 }

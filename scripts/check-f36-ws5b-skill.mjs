@@ -15,7 +15,9 @@
  * (c) Start (Freigabe am ZWINGEND-Start, zusammen mit einem freigegebenen lokalen MCP) → Tokens exakt
  *     V4a: --tools …,Skill ohne Agent, je Skill --add-dir, --disallowedTools Write/Edit(<cap>/<id>/**)
  *     S4b-Form + Write/Edit(**\/.claude/**) + Skill(design|doctor|<Projekt-Skill>|<Projekt-Command>) +
- *     Bash(git:*), --settings exakt, kein enabledPlugins; ortBLauf.mcpServer = Schlüssel der
+ *     Bash(git:*), --settings exakt (seit F45 F-1 mit enabledPlugins der eingebauten Plugins auf false, Spike
+ *     state/spike-f45-f1-agents.md S3 — sonst bräche das Init-Gate an init.plugins/plugin-authoring), kein --agents;
+ *     ortBLauf.mcpServer = Schlüssel der
  *     --mcp-config, eine passende init-Zeile besteht das Init-Gate;
  * Rot
  * (d) ohne installation_vorlage → 400, Empfehlung nennt den Grund; (e) unbekannte URL-Form → 400;
@@ -403,21 +405,22 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
       if (JSON.stringify(alleWerte(tokens, '--add-dir')) !== JSON.stringify([capA, capB])) befunde.push(`(c) --add-dir: ${JSON.stringify(alleWerte(tokens, '--add-dir'))}`)
       const erwartetDeny = [`Write(${s4b(capA)}/**)`, `Edit(${s4b(capA)}/**)`, `Write(${s4b(capB)}/**)`, `Edit(${s4b(capB)}/**)`, 'Write(**/.claude/**)', 'Edit(**/.claude/**)', 'Skill(design)', 'Skill(doctor)', 'Skill(anders-x)', 'Skill(lessons)', 'Skill(ordner-x)', 'Skill(ponytail)', 'Skill(sub:tief)', 'Bash(git:*)'].join(',')
       if (flag(tokens, '--disallowedTools') !== erwartetDeny) befunde.push(`(c) --disallowedTools:\n      erwartet ${erwartetDeny}\n      erhalten ${flag(tokens, '--disallowedTools')}`)
-      const erwartetSettings = JSON.stringify({ disableBundledSkills: true, skillOverrides: { design: 'off', doctor: 'off', 'anders-x': 'off', lessons: 'off', 'ordner-x': 'off', ponytail: 'off', 'sub:tief': 'off' } })
+      const plugins = Object.fromEntries(JSON.parse(readFileSync(new URL('../src/faehigkeiten/eingebaut-referenz.json', import.meta.url), 'utf8')).plugins.map((p) => [p, false]))
+      const erwartetSettings = JSON.stringify({ disableBundledSkills: true, skillOverrides: { design: 'off', doctor: 'off', 'anders-x': 'off', lessons: 'off', 'ordner-x': 'off', ponytail: 'off', 'sub:tief': 'off' }, enabledPlugins: plugins })
       if (flag(tokens, '--settings') !== erwartetSettings) befunde.push(`(c) --settings: ${flag(tokens, '--settings')}`)
-      if (tokens.join(' ').includes('enabledPlugins') || tokens.includes('--agents')) befunde.push('(c) enabledPlugins oder --agents in den Tokens')
+      if (tokens.includes('--agents')) befunde.push('(c) --agents in den Tokens')
       if (tokens.indexOf('--settings') !== tokens.indexOf('-p') - 2) befunde.push('(c) --settings steht nicht unmittelbar vor -p')
       if (JSON.stringify(eingaben.ortBLauf) !== JSON.stringify({ skillNamen: ['gate-skill', 'pruef-skill'], gesperrteNamen: ['design', 'doctor', 'anders-x', 'lessons', 'ordner-x', 'ponytail', 'sub:tief'], mcpServer: ['gate-mcp'], projektWurzel: u.repoWurzel })) befunde.push(`(c) ortBLauf: ${JSON.stringify(eingaben.ortBLauf)}`)
       // Skill + MCP (Reallauf-Kombination): Init-Gate-Menge = Schlüssel der --mcp-config; passende init besteht.
       const mcpSchluessel = Object.keys(JSON.parse(flag(tokens, '--mcp-config')).mcpServers ?? {})
       if (JSON.stringify(mcpSchluessel) !== JSON.stringify(eingaben.ortBLauf?.mcpServer)) befunde.push(`(c) ortBLauf.mcpServer ≠ --mcp-config-Schlüssel: ${JSON.stringify(mcpSchluessel)}`)
       if (!flag(tokens, '--allowedTools').split(',').includes('mcp__gate-mcp__lesen')) befunde.push('(c) MCP-Einzelname fehlt in --allowedTools')
-      const initZeile = { type: 'system', subtype: 'init', tools: [...tools, 'mcp__gate-mcp__lesen'], skills: ['gate-skill', 'pruef-skill'], slash_commands: ['gate-skill', 'pruef-skill', 'clear', 'lessons'], mcp_servers: [{ name: 'gate-mcp', status: 'connected' }] }
+      const initZeile = { type: 'system', subtype: 'init', tools: [...tools, 'mcp__gate-mcp__lesen'], skills: ['gate-skill', 'pruef-skill'], slash_commands: ['gate-skill', 'pruef-skill', 'clear', 'lessons'], mcp_servers: [{ name: 'gate-mcp', status: 'connected' }], plugins: [] }
       const urteil = pruefeInitZeile(initZeile, { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer, gesperrt: eingaben.ortBLauf.gesperrteNamen })
       if (urteil !== null) befunde.push(`(c) passende init-Zeile (Skill + MCP) besteht das Init-Gate nicht: ${urteil}`)
       if (!/Freigegebene Katalog-Fähigkeiten in diesem Lauf: gate-mcp \(Gate MCP\), gate-skill \(Gate gate-skill\), pruef-skill/.test(eingaben.auftragstext)) befunde.push('(c) Auftragszeile fehlt')
     }
-    if (befunde.length === vorC) console.log('✓ (c) Start-Tokens exakt V4a (mit freigegebenem MCP): --tools/--allowedTools mit Skill ohne Agent, je Skill --add-dir <cap>/<id>, --disallowedTools Write/Edit(C:/…/<id>/**) + Write/Edit(**/.claude/**) + Skill(design|doctor|Projekt-Skills: Ordner- und Frontmatter-name|Projekt-Commands lessons, sub:tief) + Bash(git:*), --settings disableBundledSkills + skillOverrides, kein enabledPlugins/--agents; ortBLauf.mcpServer = --mcp-config-Schlüssel, passende init-Zeile (Skill + MCP) besteht das Init-Gate.')
+    if (befunde.length === vorC) console.log('✓ (c) Start-Tokens exakt V4a (mit freigegebenem MCP): --tools/--allowedTools mit Skill ohne Agent, je Skill --add-dir <cap>/<id>, --disallowedTools Write/Edit(C:/…/<id>/**) + Write/Edit(**/.claude/**) + Skill(design|doctor|Projekt-Skills: Ordner- und Frontmatter-name|Projekt-Commands lessons, sub:tief) + Bash(git:*), --settings disableBundledSkills + skillOverrides, enabledPlugins der eingebauten Plugins aus, kein --agents; ortBLauf.mcpServer = --mcp-config-Schlüssel, passende init-Zeile (Skill + MCP) besteht das Init-Gate.')
 
     // (i) Projekt-Kollision: installierbar (kein Projekt bekannt), Start abgelehnt.
     const vorI = befunde.length
@@ -549,7 +552,7 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
     if (!basis.ok) throw new Error(`direkter Start: ${basis.grund}`)
     // Startziel/Version/Kontext auf die F4-Fixture (sonst lehnt die Startfreigabe ab); alles andere unverändert.
     const eingaben = { ...basis.eingaben, werkzeugStartziel: [process.execPath], werkzeugVersionDeklariert: UEBRIG.werkzeug_version_deklariert, berechtigungskontext: UEBRIG.berechtigungskontext }
-    const initZeile = (felder) => ({ type: 'system', subtype: 'init', tools: ['Bash', 'Edit', 'Read', 'Skill', 'Write'], skills: ['gate-skill'], slash_commands: ['gate-skill', 'clear', 'ponytail'], mcp_servers: [], agents: ['qa'], ...felder })
+    const initZeile = (felder) => ({ type: 'system', subtype: 'init', tools: ['Bash', 'Edit', 'Read', 'Skill', 'Write'], skills: ['gate-skill'], slash_commands: ['gate-skill', 'clear', 'ponytail'], mcp_servers: [], plugins: [], agents: ['qa'], ...felder })
     const toolUse = { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Skill', input: { skill: 'gate-skill' } }] }, parent_tool_use_id: null }
     const resultZeile = { type: 'result', subtype: 'success', is_error: false, result: 'ok', permission_denials: [] }
     /** Starter: init melden; bei gesetztem Abbruchsignal ABBRUCH vor dem tool_use, sonst tool_use (+ optional Schreiben unter .claude/) und result. */
@@ -577,6 +580,8 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
       ['fremder Skill in init.skills', initZeile({ skills: ['gate-skill', 'ponytail'] })],
       ['Agent in init.tools', initZeile({ tools: ['Agent', 'Read', 'Skill'] })],
       ['fremder MCP in init.mcp_servers', initZeile({ mcp_servers: [{ name: 'fremd' }] })],
+      // F45 F-1 (F-910, Teil Init-Gate): ein geladenes Plugin (z. B. ein neues eingebautes nach einem CLI-Update) bricht ab.
+      ['Plugin in init.plugins', initZeile({ plugins: [{ name: 'cc-plugin-neu', path: 'builtin', source: 'cc-plugin-neu@builtin' }] }), /init.plugins nicht leer: cc-plugin-neu@builtin/],
       // F-831: ein Command aus Nutzer-, Plugin- oder neuer CLI-Quelle wäre per Skill-Werkzeug aufrufbar.
       ['unbekannter Command in init.slash_commands', initZeile({ slash_commands: ['gate-skill', 'clear', 'neuer-command'] }), /init\.slash_commands enthält unbekannte Commands: neuer-command \(Referenzmenge nachmessen\)/],
     ]) {

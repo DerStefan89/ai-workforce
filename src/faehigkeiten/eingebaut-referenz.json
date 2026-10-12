@@ -1,0 +1,7 @@
+{
+  "cli_version": "2.1.296 (Claude Code)",
+  "quelle": "state/spike-f45-f1-agents.md (Läufe A-2, B, C, 12.10.2026)",
+  "agents": ["claude", "Explore", "general-purpose", "Plan", "statusline-setup"],
+  "plugins": ["cc-plugin-telemetry@builtin", "cc-plugin-plugin-authoring@builtin"],
+  "plugin_skills": ["plugin-authoring"]
+}

@@ -10946,23 +10946,23 @@ Maßnahme: `Host`-Header zentral gegen eine Allowlist (`127.0.0.1:<port>`, `loca
 Status: erledigt (dieser Branch, fix/f814-host-allowlist): `istUnzulaessigerHost` läuft zentral einmal am Anfang von `requestHandler`, für jede Methode (auch GET/HEAD) und vor dem CSRF-Haken. Zulässig nur `127.0.0.1:<port>`, `localhost:<port>`, `[::1]:<port>` (Hostname ohne Groß-/Kleinschreibung; Port = `req.socket.localPort`, also der tatsächlich gebundene Port). Sonst 403 `{ grund }`, ohne Body zu lesen. Beleg `scripts/check-f814-host.mjs` (echter HTTP-Testserver, roher TCP-Client; Rotfall vor dem Fix real: 53 Befunde, u. a. gestartete Läufe unter Host `evil.example:<port>`; Strukturprüfung: genau ein Host-Haken vor dem CSRF-Haken).
 Feature/Run: F-813-Fix, Reviewer-/QA-Hinweis, 29.09.2026; behoben 29.09.2026.
 
-**F-815** · `TECH_DEBT` · P2 · offen
+**F-815** · `TECH_DEBT` · P2 · erledigt
 Titel: Agents (extern + Projekt) und Projekt-Skills sind in der Ausführung weiter nicht nutzbar — WS-5b schaltet nur Ort-B-Skills.
 Beschreibung: F36 WS-5b bringt `Skill` in den Werkzeugsatz der Ausführung, aber nur, wenn ein Ort-B-Skill übergeben wird. Unter V4a lässt es nur installierte externe Skills aufrufbar. `Agent` bleibt aus `--tools`. Extern-Agents sind weder installierbar (400 „erst später“) noch im Lauf. Projekt-Skills (`<projekt>/.claude/skills`) und -Agents bleiben gesperrt, auch wenn sie im Katalog `FREIGEGEBEN` sind. E-F36-3 (Agents als Subagent-Empfehlung) ist damit nicht umgesetzt.
 Fundstelle: `src/ressourcen/ort-b-start.ts` (`baueOrtBSkillStart`); `src/ressourcen/index.ts` (`pruefeInstallierbarkeit`, `baueEmpfehlung`); `features/F36/feature.md` (WS-5b, Zurückgestellt).
 Auswirkung: Mittel — die Prüfrollen des Projekt-Harness (qa, code-reviewer, architecture-advisor) und die Projekt-Skills wirken in der Ausführung nicht (vgl. F-769).
 Maßnahme: Zurückgestellt bis zu realem Bedarf. Dann gehören dazu: der V4a-Agent-Teil mit Sperrliste `Agent(…)` je CLI-Version (eingebaute Agents driften, F-791), der Satz „Subagenten nur im Vordergrund mit run_in_background: false“ in jedem Startweg (WS-0 P2), das Init-Gate auch für `init.agents`, eine Reallauf-Zählung gesperrter Agent-Aufrufe am tool_result-Text und die Identitätsprüfung nach F-816.
-Status: offen.
+Status: erledigt (F45 F-1, 12.10.2026): Projekt-Agents und -Skills laufen in der Ausführung, wenn Stefan sie je Projekt einschaltet (Opt-in, E-F45-6, `~/.ai-workforce/faehigkeiten.lokal.json`) und ihr Inhalt freigegeben ist (F-816). Agent kommt dann in `--tools`; weil `--allowedTools Agent(<name>)` nicht begrenzt (Spike `state/spike-f45-f1-agents.md` S1, CLI 2.1.296), sperrt `--disallowedTools Agent(<n>)` jeden eingebauten (Referenzliste `src/faehigkeiten/eingebaut-referenz.json`) und jeden nicht aktiven Projekt-Agent; das Init-Gate bricht bei einem unbekannten Namen in `init.agents` ab. Satz „nur im Vordergrund (run_in_background: false)“ im Auftragstext; Zählung je Eintrag (`faehigkeiten_im_lauf`: aufrufe/fehlgeschlagen; fremde_aufrufe für gesperrte Agents). Extern-Agents bleiben nicht installierbar (F-1051). Belege: `src/faehigkeiten/`, `scripts/check-f45-f1-faehigkeiten.mjs`, Reallauf `features/F45/nachweise/f1/`.
 Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
-**F-816** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-816** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Die Freigabe von Projekt-Skills/-Agents gilt nach Namen bzw. Workforce-Pfad, der Lauf lädt aber die gleichnamige Datei des Zielprojekts.
 Beschreibung: Katalogeinträge vom Typ `skill`/`agent` verweisen auf `.claude/skills/<name>` bzw. `.claude/agents/<name>.md` der Workforce-Installationswurzel. Ein Ausführungslauf mit `--setting-sources project` lädt dagegen die Dateien des Zielprojekts. Ein Projekt kann unter demselben Namen einen anderen Inhalt tragen; `skillOverrides`/`Skill(…)`/`Agent(…)` greifen nach Namen, nicht nach Inhalt. Würde eine Katalogfreigabe eines Projekt-Skills später aus der Sperrliste herausnehmen (S7-Präzisierung „freigegebene Katalogeinträge fallen aus der Sperrliste“), wäre im Lauf ungeprüfter Inhalt aufrufbar.
 Fundstelle: `src/ressourcen/index.ts` (`loeseFrontmatterRessourceAuf`); `src/ressourcen/ort-b-start.ts` (Sperrliste nach Namen); `features/F36/feature.md` (AK4, Präzisierung S7).
 Auswirkung: Mittel — heute ohne Wirkung, weil WS-5b jeden Projekt-Skill sperrt; relevant ab der ersten Freischaltung von Projekt-Skills/-Agents (F-815).
 Maßnahme: Vor jeder Freischaltung die Identität klären, z. B. über den Hash der Zieldatei im Projekt = freigegebener Hash, beim Start neu geprüft (Muster `inhalt_hash` der Ort-B-Skills); sonst gesperrt lassen.
-Status: offen.
+Status: erledigt (F45 F-1, 12.10.2026): Identität nach Inhalt — Agent = sha256 der Datei `.claude/agents/<name>.md`, Skill = inhalt_hash des Ordners (Ort-B-Form), berechnet im Arbeitsordner des Laufs. Freigegeben, wenn der Hash gleich der Datei des gleichnamigen FREIGEGEBEN-Katalogeintrags der Workforce (exakter `herkunft.pfad`) oder gleich der Projekt-Freigabe nach Inhalt (POST …/faehigkeiten/freigabe mit angezeigtem Hash) ist; sonst gesperrt „Inhalt weicht von der Freigabe ab“. Zusätzlich gesperrt: Frontmatter außerhalb der Positivliste (z. B. permissionMode, hooks, mcpServers), Name ≠ Datei/Ordner, Unterordner, Name eines eingebauten Eintrags; mehrdeutiger aktiver Name oder Verknüpfung → Lauf startet nicht. Der Controller vergleicht die Hashes unmittelbar vor dem Spawn erneut mit der Momentaufnahme von `.claude/` (Abweichung → nicht gestartet).
 Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
@@ -11374,7 +11374,7 @@ Auswirkung: Niedrig — der Scanner-Architekt (F30) hat für Stack-Recherchen ke
 Maßnahme: Vor F30 klären, ob und wie der Scanner-Architekt einen Scout nutzt.
 Status: offen.
 Feature/Run: Scout F-800, 30.09.2026.
-Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
+Zugeordnet: F30 (Opportunity Scanner; Challenger-Zuschnitt F45 F-1, 11.10.2026: kein Fixpaket-Thema). Vorher: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-860** · `BUG` · P2 · erledigt
 Titel: Ein Projektwechsel lädt Workitems, Roadmap, P0/P1-Zahl, Verbrauch und die Auswahllisten des Direktstarts nicht neu.
@@ -11826,13 +11826,13 @@ Maßnahme: Fixpaket Arbeitsfähigkeit, B2.
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
-**F-910** · `TECH_DEBT` · P2 · offen
+**F-910** · `TECH_DEBT` · P2 · teilweise
 Titel: Plugins sind im Fähigkeitenmodell nicht abgebildet; init.plugins wird nicht geprüft.
 Beschreibung: Der Katalog kennt die Typen worker, skill, agent und extern (mcp|skill), aber keine Plugins; `init.plugins` eines Laufs prüft `pruefeInitZeile` nicht.
 Fundstelle: `ressourcen.json` (Typen worker, skill, agent, extern mcp|skill), `pruefeInitZeile`.
 Auswirkung: Das Ziel „Claude arbeitet mit Plugins“ hat keinen Weg.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B4.
-Status: offen.
+Status: teilweise (F45 F-1, 12.10.2026, Teil Init-Gate): `pruefeInitZeile` verlangt `init.plugins` leer (fehlend = Verstoß); jeder Lauf mit Init-Gate schaltet die eingebauten Plugins per `--settings enabledPlugins` ab (Spike F-1 S3: `cc-plugin-telemetry@builtin`, `cc-plugin-plugin-authoring@builtin` auch mit `--setting-sources project`). Offen (F-2): Plugins im Fähigkeitenmodell/Katalog.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-911** · `TECH_DEBT` · P2 · offen
@@ -12749,13 +12749,13 @@ Maßnahme: F45 B2b: Rechte-Rückfrage an Stefan (Spike --permission-prompt-tool;
 Status: offen.
 Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
 
-**F-1012** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1012** · `PROCESS_IMPROVEMENT` · P2 · teilweise
 Titel: Fähigkeiten lassen sich nicht je Projekt aktivieren, und „aktiv“ ist nicht sichtbar.
 Beschreibung: Der Katalog kennt nur die Freigabe (FREIGEGEBEN, OFFEN); 27 externe Einträge stehen auf OFFEN. MCPs und Ort-B-Skills sind installierbar, Agents nicht („erst später“), Plugins fehlen im Modell (F-910). Ein Ein- und Ausschalten je Projekt ohne Deinstallation gibt es nicht; der Leitstand zeigt nicht, was im nächsten Lauf aktiv ist und was im letzten Lauf benutzt wurde.
 Fundstelle: ressourcen.json, src/ressourcen/index.ts (AGENT_INSTALLATION_ERST_SPAETER, pruefeInstallierbarkeit), public/leitstand/views/capability-library.js.
 Auswirkung: Mittel — Stefan kann den Werkzeugkasten der Workforce nicht wie in VS Code steuern.
 Maßnahme: F45 WS F: installieren, aktivieren/deaktivieren je Projekt, Status installiert · aktiv · benutzt sichtbar.
-Status: offen.
+Status: teilweise (F45 F-1, 12.10.2026, Serverteil): je Projekt ein-/ausschalten (`~/.ai-workforce/faehigkeiten.lokal.json`; Katalog-MCPs/Ort-B-Skills Standard aktiv mit `aus`, Projekt-Agents/-Skills Opt-in mit `an`, wirkt ab dem nächsten Lauf; E-F45-6/7/8), Endpunkte GET /api/projekte/<id>/faehigkeiten (installiert · aktiv · benutzt im letzten Lauf), POST …/aktivierung, POST …/freigabe; Laufakte `faehigkeiten_im_lauf`. Offen (F-2): Oberfläche (Seite Workforce, Lauf-Detail), Plugins im Modell, Agents installierbar.
 Feature/Run: Entdeckt: Challenge F45, Wunsch Stefan 03.10.2026.
 
 **F-1013** · `HARNESS_IMPROVEMENT` · P2 · offen
@@ -13081,3 +13081,70 @@ Auswirkung: Gering.
 Maßnahme: (1) Nachladen mit dem nächsten Poll-Tick nach Ablauf einer Wartezeit oder Knopf „Neu laden“; (2) Unterordner als Quellen-Eintrag „nicht inventarisiert“ melden statt still auszulassen; (3) Überschrift mit Zusatz zulassen; (4) mit F-1016-Muster Codes statt Texte; (5) Anzeige ergänzen; (6) Messung bei ausreichendem Speicher wiederholen; (7) Render-Folge mit Hook-Abweichung (z. B. haushaltsbuch2).
 Status: offen.
 Feature/Run: Entdeckt: F45 B1b-2 (code-reviewer, qa), 11.10.2026.
+
+**F-1049** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: Eingriffsprotokoll fehlt (Challenger K15).
+Beschreibung: Die Bestehensbedingung M5/V1 Punkt 3 (`docs/projekt/zielfassung.md` §13.6) verlangt, dass jeder Eingriff Stefans strukturiert festgehalten wird (Klasse Entscheidung/Freigabe/Abnahme/Reparatur, optional bezug_backlog), dass jede Reparatur ein Finding wird und dass mindestens 3 Tage Protokoll vorliegen. Dafür gibt es weder Code noch Schema.
+Fundstelle: `docs/projekt/zielfassung.md` §13.6; kein Modul, kein Schema.
+Auswirkung: Hoch — ohne Protokoll zählen die ersten F30-Tage nicht; der F38-Auslöser hängt daran.
+Maßnahme: B5a (≈ 0,25 AT): Entscheidung/Freigabe/Abnahme aus vorhandenen Kontrollzustand-Artefakten ableiten, nur „Reparatur“ als neuer Knopf mit Pflichtfeld, der über den bestehenden Finding-Weg ein Finding erzeugt. Muss vor R laufen; verzögert sich B5a, als kleines Paket vor R vorziehen.
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit, B5a (vor R).
+
+**F-1050** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Codex-Nutzen messen (Challenger K16, B2b).
+Beschreibung: Ob Codex als Reviewer Befunde liefert, die die Claude-Prüfer nicht finden, ist nicht gemessen.
+Fundstelle: Laufakte des Review-Schritts (kein Feld dafür).
+Auswirkung: Mittel — Codex läuft in jeder Kette mit, ohne belegten Nutzen.
+Maßnahme: Die Laufakte zählt je Review bestätigte Befunde „nur Codex“ / „nur Claude-Prüfer“ / „beide“. Codex bleibt Reviewer, wenn er in R plus der ersten F30-Woche ≥ 1 bestätigten Befund findet, den die Claude-Prüfer nicht fanden; sonst nur noch bei Kontrolltiefe „hoch“. Voraussetzung F-829/F-929 (B2a).
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit, B2b.
+
+**F-1051** · `TECH_DEBT` · P3 · offen
+Titel: Externe Agents sind nicht installierbar (Challenger K17).
+Beschreibung: Es gibt keine Katalogeinträge für externe Agents und keinen Bedarf; `AGENT_INSTALLATION_ERST_SPAETER` bleibt. Projekt-Agents laufen seit F45 F-1 (F-815).
+Fundstelle: `src/ressourcen/index.ts` (`pruefeInstallierbarkeit`, `AGENT_INSTALLATION_ERST_SPAETER`).
+Auswirkung: Gering — heute kein Eintrag betroffen.
+Maßnahme: Beim ersten realen Eintrag das Ort-B-Muster für Agents (Installation in `<cap>/<id>/.claude/agents`, inhalt_hash, `--add-dir`, Init-Gate).
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
+
+**F-1052** · `TECH_DEBT` · P2 · offen
+Titel: extern_lesend-MCPs mit API-Schlüssel sind nicht nutzbar (Challenger K18).
+Beschreibung: E-F36-4 (geändert 01.10.2026) lässt Web- und kostenpflichtige MCPs bei Einzelfreigabe zu, aber der Lauf hat keinen Weg, einem MCP-Server ein Geheimnis (API-Schlüssel) zu übergeben.
+Fundstelle: `src/ressourcen/index.ts` (`baueMcpAufruf`, nur command/args), `installation_vorlage`.
+Auswirkung: Mittel — Scanner-Recherche (F30) mit Such-/Daten-MCPs nicht möglich.
+Maßnahme: Vor F30 prüfen (Scanner-Recherche); Geheimnis-Weitergabe ohne Klartext in Laufakte und Rohstrom.
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
+Zugeordnet: vor F30.
+
+**F-1053** · `BUG` · P1 · erledigt
+Titel: Mit CLI 2.1.296 bräche das Ort-B-Init-Gate jeden Ort-B-Lauf ab (eingebaute Plugins).
+Beschreibung: Seit CLI 2.1.296 lädt jeder Lauf trotz `--setting-sources project` die eingebauten Plugins `cc-plugin-telemetry@builtin` und `cc-plugin-plugin-authoring@builtin`; der zweite bringt den Skill `plugin-authoring`, der auch mit `disableBundledSkills` in `init.skills` steht (Spike F-1, Lauf C). Das Ort-B-Init-Gate (`init.skills ⊆ Ort-B-Namen`) hätte damit jeden Ort-B-Lauf beendet. Abgeleitet, nicht als eigener Ort-B-Lauf vor dem Fix gemessen.
+Fundstelle: `src/ressourcen/ort-b-start.ts` (`--settings` ohne enabledPlugins), `state/spike-f45-f1-agents.md`.
+Auswirkung: Hoch für Ort-B-Läufe (Skill frontend-design im Referenzlauf).
+Maßnahme: Jeder Lauf mit Init-Gate setzt `enabledPlugins` der eingebauten Plugins (Referenzliste) auf false; das Gate verlangt `init.plugins` leer.
+Status: erledigt (F45 F-1, 12.10.2026): `src/faehigkeiten/start.ts` (`baueFaehigkeitenStart`, auch für Ort-B), Gate `scripts/check-f36-ws5b-skill.mjs` (c)/(m). Beleg im echten Lauf: `features/F45/nachweise/f1/`.
+Feature/Run: Entdeckt: F45 F-1 (Spike), 12.10.2026.
+
+**F-1054** · `TECH_DEBT` · P2 · offen
+Titel: Restpunkte F45 F-1 für F-2 (Anzeige, Bindung, Gründe).
+Beschreibung: (1) Projekt-Agents/-Skills sind an die Anzeige nur über den Hash beim Start gebunden, nicht über angezeigte ids — F-2 muss eine Kennung der Projekt-Fähigkeiten im Start-Body mitgeben und vergleichen (Muster empfehlungIds). (2) Die Gründe `SKILL_AGENT_ERST_AB_WS5`/`PROJEKT_SKILL_GESPERRT` in „Passt, nicht im Lauf“ sind veraltet (Projekt-Agents/-Skills laufen jetzt über Opt-in); im Projekt abgeschaltete Katalog-Einträge stehen nur in `deaktiviert` der Empfehlung, die Oberfläche zeigt das Feld noch nicht. (3) Fortsetzungsstarts ohne angezeigte ids (Korrekturlauf, Folge-Schritte) laufen wie bisher ohne Katalog- und Projekt-Fähigkeiten. (4) Keine Oberfläche für GET/POST …/faehigkeiten. (5) GET …/faehigkeiten prüft die `tools`-Zeile der Projekt-Agents gegen den Werkzeugsatz `schreibend`, der Start gegen den tatsächlich genutzten (QA 9). (6) `fremde_aufrufe` (z. B. ein verweigerter general-purpose) wird nirgends angezeigt; der Join zählt Agent-Namen genau nach Schreibweise (QA 8). (7) „aus nach der Anzeige geändert → Start bricht ab“ (B8) hat keinen eigenen Test.
+Fundstelle: `src/ressourcen/index.ts` (`baueEmpfehlung`), `scripts/leitstand-server.mjs` (starteWorkflowSchritt), `public/leitstand/`.
+Auswirkung: Mittel — Stefan schaltet in F-1 nur über die API.
+Maßnahme: F45 F-2 (Oberfläche, Bindung an die Anzeige, Gründe neu).
+Status: offen.
+Feature/Run: Entdeckt: F45 F-1 (Advisor A17/A18), 12.10.2026.
+Zugeordnet: F45 F-2.
+
+**F-1055** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Grenzen der Fähigkeiten-Sperre (F45 F-1).
+Beschreibung: (1) Ein Lauf kann über npm-Skripte einen abgekoppelten Prozess starten, der nach Laufende `~/.ai-workforce/faehigkeiten.lokal.json` schreibt oder POST …/faehigkeiten aufruft; der Vorher/Nachher-Hash im Controller sieht nur Änderungen während des Laufs (ADR ausfuehrung-bash-allowlist: npm run check:* führt beliebigen Code aus). (2) Nicht gemessen: ob ein aktiver Subagent die Agent(…)-Sperren erbt (der Skelett-Agent hat ohnehin kein Agent-Werkzeug), Agent-Aufruf ohne subagent_type, Groß-/Kleinschreibung in `Agent(<name>)`. (3) Die Referenzlisten (`src/faehigkeiten/eingebaut-referenz.json`) driften mit der CLI — das Init-Gate bricht dann fail-closed ab, bis nachgemessen ist. (4) Die strenge Frontmatter-Grammatik ist bewusst enger als YAML; ein Projekt-Agent mit `tools` als YAML-Liste oder `model` ≠ `inherit` ist gesperrt; Namen werden für Sperrliste und Eindeutigkeit zusätzlich nachsichtig gelesen (Code-Review 1). (5) Der Vorher/Nachher-Hash vergleicht die ganze Datei, nicht nur den Abschnitt des Projekts: eine Handänderung für ein anderes Projekt während eines Laufs färbt ihn rot (die POST-Routen sind während eines Laufs gesperrt). (6) Die Skill-Sperrliste vor dem Start liest Namen weiter mit leseFrontmatter (nur ^name:); ein abweichend geschriebener Skill-Name fällt erst im Init-Gate auf. (7) Ein gleichnamiger Agent in einem Unterordner führt zum Grund „eingeschaltet, aber nicht aktiv“ statt „mehrdeutig“ (Ergebnis richtig, Grund ungenau).
+Fundstelle: `src/faehigkeiten/index.ts`, `src/execution-controller/index.ts` (hashLokaleDatei), `state/spike-f45-f1-agents.md`.
+Auswirkung: Mittel — (1) ist ein Weg zur Selbstfreigabe ab dem nächsten Lauf.
+Maßnahme: (1) Bei B2b (Rückfrage/Rechte) prüfen: Freigabe nach Inhalt nur mit Bestätigung im Leitstand (UI F-2) und Anzeige der Änderungen der lokalen Datei seit dem letzten Lauf; (2) im Referenzlauf R beobachten; (3) Nachmessen bei jedem CLI-Update (F-1044-Hinweis).
+Status: offen.
+Feature/Run: Entdeckt: F45 F-1 (Delta-Advisor B1/B9), 12.10.2026.

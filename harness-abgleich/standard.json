@@ -42,7 +42,7 @@
         "rolle": "code-reviewer"
       },
       "fehlt_im_ablauf": {
-        "begruendung": "Ablauf ohne Review-Schritt (heute nur die Vorlage fast-lane) — bewusst ohne Review; ob eine Fast-Lane ohne Review Beleg 12 erfüllen darf, entscheidet Stefan."
+        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag R nicht zulässig"
       },
       "begruendung": "Review ist eigener Workflow-Schritt mit frischem Kontext; qa als Schritt erst mit B2b (F-1031)."
     },
@@ -55,7 +55,7 @@
         "rolle": "code-reviewer"
       },
       "fehlt_im_ablauf": {
-        "begruendung": "Ablauf ohne Review-Schritt (heute nur die Vorlage fast-lane) — bewusst ohne Review; ob eine Fast-Lane ohne Review Beleg 12 erfüllen darf, entscheidet Stefan."
+        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag R nicht zulässig"
       },
       "begruendung": "Review ist eigener Workflow-Schritt mit frischem Kontext; qa als Schritt erst mit B2b (F-1031)."
     },
@@ -165,7 +165,7 @@
         "rolle": "code-reviewer"
       },
       "fehlt_im_ablauf": {
-        "begruendung": "Ablauf ohne Review-Schritt (heute nur die Vorlage fast-lane) — bewusst ohne Review; ob eine Fast-Lane ohne Review Beleg 12 erfüllen darf, entscheidet Stefan."
+        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag R nicht zulässig"
       },
       "begruendung": "Eigener Workflow-Schritt (Vorlagen standard und hoch) statt Subagent im Lauf."
     },
