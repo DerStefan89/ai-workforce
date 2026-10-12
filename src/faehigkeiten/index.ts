@@ -129,21 +129,22 @@ function leer(): FaehigkeitenLokal {
  */
 export function ladeFaehigkeitenLokal(pfad: string | null): LokaleDatei {
   if (pfad === null || !existsSync(pfad)) return { zustand: 'fehlt', daten: leer() }
-  let roh: string
+  let bytes: Buffer
   let daten: unknown
   try {
-    roh = readFileSync(pfad, 'utf8')
+    bytes = readFileSync(pfad)
   } catch (fehler) {
     return { zustand: 'ungueltig', grund: `'${pfad}' nicht lesbar (${(fehler as Error).message})` }
   }
   try {
-    daten = JSON.parse(roh)
+    daten = JSON.parse(bytes.toString('utf8'))
   } catch (fehler) {
     return { zustand: 'ungueltig', grund: `'${pfad}' ist kein gültiges JSON (${(fehler as Error).message})` }
   }
   const verstoesse = validiereFaehigkeitenLokal(daten)
   if (verstoesse.length > 0) return { zustand: 'ungueltig', grund: `'${pfad}' verletzt schemas/faehigkeiten-lokal.schema.json: ${verstoesse.join('; ')}` }
-  return { zustand: 'gueltig', daten: daten as FaehigkeitenLokal, hash: createHash('sha256').update(roh).digest('hex') }
+  // F45 F-2a (Code-Review 5): Hash der Bytes — dieselbe Form wie hashLokaleDatei (Wächter, Vorher/Nachher im Controller).
+  return { zustand: 'gueltig', daten: daten as FaehigkeitenLokal, hash: createHash('sha256').update(bytes).digest('hex') }
 }
 
 /**
@@ -221,16 +222,102 @@ function mitProjekt(daten: FaehigkeitenLokal, projektId: string, e: ProjektEinst
  * Verschränkung (Advisor A11). Wirft bei Fehler; die temp-Datei wird dann entfernt.
  * @param pfad - Zielpfad
  * @param daten - gültige Datei
+ * @returns sha256 der geschriebenen Bytes (F45 F-2a, Advisor A3: der Wächter übernimmt genau diesen Stand, ohne neu zu lesen)
  */
-export function schreibeFaehigkeitenLokal(pfad: string, daten: FaehigkeitenLokal): void {
+export function schreibeFaehigkeitenLokal(pfad: string, daten: FaehigkeitenLokal): string {
   const temp = `${pfad}.${process.pid}.tmp`
+  const inhalt = `${JSON.stringify(daten, null, 2)}\n`
   try {
-    writeFileSync(temp, `${JSON.stringify(daten, null, 2)}\n`, 'utf8')
+    writeFileSync(temp, inhalt, 'utf8')
     renameSync(temp, pfad)
   } catch (fehler) {
     rmSync(temp, { force: true })
     throw fehler
   }
+  return createHash('sha256').update(inhalt, 'utf8').digest('hex')
+}
+
+/**
+ * F45 F-2a (F-1054 (1)): Kennung eines Projekt-Eintrags für „Anzeige = Start“ — '<typ>:<name>@<sha256>' (Muster der
+ * empfehlungIds '<id>@<sha256>'). Getrennt wird über das Präfix agent:/skill: (Katalog-ids tragen kein ':').
+ * @param eintrag - Projekt-Eintrag
+ * @returns Kennung, oder null ohne Hash
+ */
+export function projektKennung(eintrag: { schluessel: string; hash: string | null }): string | null {
+  return eintrag.hash === null ? null : `${eintrag.schluessel}@${eintrag.hash}`
+}
+
+/** Form einer Projekt-Kennung ('agent:qa@<sha256>'). */
+const PROJEKT_KENNUNG_MUSTER = /^(agent|skill):[A-Za-z0-9][A-Za-z0-9._-]*@[0-9a-f]{64}$/
+
+/**
+ * F45 F-2a (Advisor A6): trennt die angezeigten ids des Start-Bodys in Katalog-Kennungen ('<id>@<sha>', ohne ':') und
+ * Projekt-Kennungen ('agent:'/'skill:' am Anfang). Eine id mit Präfix, aber falscher Form bleibt bei projekt und fällt
+ * im Vergleich als Abweichung auf (fail-closed).
+ * @param ids - angezeigte ids (Form bereits geprüft: nicht-leere Strings)
+ * @returns { katalog, projekt }
+ */
+export function trenneAngezeigteIds(ids: readonly string[]): { katalog: string[]; projekt: string[] } {
+  const istProjekt = (id: string): boolean => id.startsWith('agent:') || id.startsWith('skill:')
+  return { katalog: ids.filter((id) => !istProjekt(id)), projekt: ids.filter(istProjekt) }
+}
+
+/**
+ * F45 F-2a (F-1054 (1)): vergleicht angezeigte mit beim Start berechneten Projekt-Kennungen (als Mengen). Rein.
+ * @param angezeigt - Projekt-Kennungen aus dem Body
+ * @param beimStart - Kennungen der aktiven Projekt-Einträge
+ * @returns null bei Gleichheit, sonst beide Listen gekürzt (Hash 12 Zeichen) für den Grund
+ */
+export function vergleicheProjektKennungen(angezeigt: readonly string[], beimStart: readonly string[]): { angezeigt: string; beimStart: string } | null {
+  const a = [...new Set(angezeigt)].sort()
+  const b = [...new Set(beimStart)].sort()
+  if (a.length === b.length && a.every((x, i) => x === b[i] && PROJEKT_KENNUNG_MUSTER.test(x))) return null
+  const liste = (ids: string[]): string => (ids.length === 0 ? 'keine' : ids.map((id) => id.replace(/@([0-9a-f]{12})[0-9a-f]{52}$/, '@$1…')).join(', '))
+  return { angezeigt: liste(a), beimStart: liste(b) }
+}
+
+/**
+ * F45 F-2a (F-1054 (1)): die eingeschalteten Projekt-Einträge für den Freigabeblock (empfehlung.projektFaehigkeiten) —
+ * aktive mit Kennung (gehen mit der Freigabe zurück), eingeschaltete, aber nicht aktive mit Grund (der Start lehnt sie
+ * ab, QA 1). Nicht eingeschaltete fehlen (Opt-in). Rein.
+ * @param eintraege - ermittleProjektFaehigkeiten(...).eintraege
+ * @returns Anzeige-Einträge in Eingabereihenfolge
+ */
+export function projektFaehigkeitenFuerAnzeige(eintraege: readonly ProjektFaehigkeit[]): { id: string; name: string; typ: ProjektTyp; aktiv: boolean; kennung?: string; grund?: string; beschreibung?: string }[] {
+  return eintraege
+    .filter((e) => e.eingeschaltet)
+    .map((e) => {
+      const kennung = e.aktiv ? projektKennung(e) : null
+      return {
+        id: e.schluessel,
+        name: e.name,
+        typ: e.typ,
+        aktiv: e.aktiv,
+        ...(kennung !== null ? { kennung } : {}),
+        ...(e.grund !== null ? { grund: e.grund } : {}),
+        ...(e.beschreibung !== null && e.beschreibung !== '' ? { beschreibung: e.beschreibung } : {}),
+      }
+    })
+}
+
+/**
+ * F45 F-2a (F-1054 (2)): Projektstand je Katalog-id für die Gründe der Empfehlung (laufKontext.projektStatus) — über die
+ * Katalog-Freigaben ('<typ>:<name>' → id) rückwärts zugeordnet. Ein Katalogeintrag ohne Eintrag hier (nicht FREIGEGEBEN,
+ * Pfad nicht exakt, Datei nicht lesbar) bekommt in baueEmpfehlung „nicht im Projektordner“. Rein.
+ * @param eintraege - ermittleProjektFaehigkeiten(...).eintraege
+ * @param katalog - katalogFreigaben
+ * @param einstellungen - Einstellungen des Projekts (inhalt_freigaben: abweichend auch ohne Katalog-Hash)
+ * @returns Map Katalog-id → Stand
+ */
+export function projektStatusFuerEmpfehlung(eintraege: readonly ProjektFaehigkeit[], katalog: ReadonlyMap<string, KatalogFreigabe>, einstellungen: ProjektEinstellungen): Map<string, { aktiv: boolean; eingeschaltet: boolean; abweichend: boolean; freigegeben: boolean; grund: string | null }> {
+  const ergebnis = new Map<string, { aktiv: boolean; eingeschaltet: boolean; abweichend: boolean; freigegeben: boolean; grund: string | null }>()
+  for (const [schluessel, freigabe] of katalog) {
+    const e = eintraege.find((x) => x.schluessel === schluessel && x.hash !== null)
+    if (e === undefined) continue
+    const abweichend = e.freigabe === null && (e.katalog_hash !== null || einstellungen.inhalt_freigaben[schluessel] !== undefined)
+    ergebnis.set(freigabe.id, { aktiv: e.aktiv, eingeschaltet: e.eingeschaltet, abweichend, freigegeben: e.freigabe !== null, grund: e.grund })
+  }
+  return ergebnis
 }
 
 /**
@@ -310,9 +397,9 @@ export function alleFrontmatterNamen(inhalt: string): string[] {
  * @param typ - agent oder skill
  * @param inhalt - Inhalt der .md-Datei bzw. SKILL.md
  * @param werkzeugNamen - Werkzeugnamen des Laufs (für agent.tools)
- * @returns { name } oder Sperrgrund
+ * @returns { name, beschreibung (F45 F-2a: Wert der description-Zeile) } oder Sperrgrund
  */
-function pruefeFrontmatter(typ: ProjektTyp, inhalt: string, werkzeugNamen: readonly string[]): { ok: true; name: string } | { ok: false; grund: string } {
+function pruefeFrontmatter(typ: ProjektTyp, inhalt: string, werkzeugNamen: readonly string[]): { ok: true; name: string; beschreibung: string } | { ok: false; grund: string } {
   const gelesen = leseFrontmatterStreng(inhalt, typ === 'agent' ? AGENT_FELDER : SKILL_FELDER)
   if (!gelesen.ok) return gelesen
   const f = gelesen.felder
@@ -327,7 +414,27 @@ function pruefeFrontmatter(typ: ProjektTyp, inhalt: string, werkzeugNamen: reado
     if (f.has('model') && f.get('model') !== 'inherit') return { ok: false, grund: "Frontmatter-model nur 'inherit' (E-185: das Laufmodell gilt auch für Subagenten)" }
     if (f.has('color') && !/^[a-z]+$/.test(f.get('color') ?? '')) return { ok: false, grund: 'Frontmatter-color nicht schlicht' }
   }
-  return { ok: true, name }
+  return { ok: true, name, beschreibung: blockBeschreibung(inhalt, f.get('description') ?? '') }
+}
+
+/**
+ * F45 F-2a (Render-Nachweis): Anzeige-Text einer description in YAML-Blockform ('description: >' bzw. '|', die
+ * Fortsetzungszeilen lässt der strenge Leser als Fortsetzung zu) — die eingerückten Folgezeilen, zu einer Zeile
+ * verbunden. Sonst der Wert der Zeile. Nur für die Anzeige, nie für Freigabe oder Sperre.
+ * @param inhalt - Dateiinhalt
+ * @param wert - Wert der description-Zeile
+ * @returns Anzeigetext
+ */
+function blockBeschreibung(inhalt: string, wert: string): string {
+  if (!/^[>|][+-]?$/.test(wert)) return wert
+  const zeilen = inhalt.split(/\r?\n/)
+  const start = zeilen.findIndex((z, i) => i > 0 && /^description:/.test(z))
+  const teile: string[] = []
+  for (const zeile of zeilen.slice(start + 1)) {
+    if (zeile === '---' || !/^[ \t]/.test(zeile)) break
+    teile.push(zeile.trim())
+  }
+  return teile.join(' ').trim()
 }
 
 /**
@@ -383,7 +490,7 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
   const eingebauteSkills = new Set([...EINGEBAUTE_SKILLS_S7, ...EINGEBAUT_REST_SKILLS, ...kontext.referenz.plugin_skills].map((n) => n.toLowerCase()))
   const eingebauteAgents = new Set(kontext.referenz.agents.map((n) => n.toLowerCase()))
 
-  const bewerte = (typ: ProjektTyp, name: string, pfad: string, hash: string | null, sperre: string | null): void => {
+  const bewerte = (typ: ProjektTyp, name: string, pfad: string, hash: string | null, sperre: string | null, beschreibung: string | null): void => {
     const schluessel = `${typ}:${name}`
     const katalog = kontext.katalog.get(schluessel)
     const projekt = kontext.einstellungen.inhalt_freigaben[schluessel]
@@ -397,7 +504,7 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
     const eingeschaltet = kontext.einstellungen.an.includes(schluessel)
     const aktiv = eingeschaltet && sperre === null && freigabe !== null
     const grund = aktiv ? null : (sperre ?? freigabeGrund ?? 'nicht eingeschaltet (Opt-in je Projekt, E-F45-6)')
-    eintraege.push({ schluessel, typ, name, pfad, hash, freigabe, katalog_hash: katalog?.hash ?? null, eingeschaltet, aktiv, grund })
+    eintraege.push({ schluessel, typ, name, pfad, hash, freigabe, katalog_hash: katalog?.hash ?? null, eingeschaltet, aktiv, grund, beschreibung })
   }
 
   // Agents (rekursiv). Code-Review 1: Namen zusätzlich nachsichtig lesen (alleFrontmatterNamen) — auch eine Datei, die
@@ -427,6 +534,7 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
         let hash: string | null = null
         let sperre: string | null = null
         let fmName: string | null = null
+        let beschreibung: string | null = null
         let lose: string[] = []
         try {
           const bytes = readFileSync(voll)
@@ -434,8 +542,10 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
           const text = bytes.toString('utf8')
           lose = alleFrontmatterNamen(text)
           const fm = pruefeFrontmatter('agent', text, kontext.werkzeugNamen)
-          if (fm.ok) fmName = fm.name
-          else sperre = fm.grund
+          if (fm.ok) {
+            fmName = fm.name
+            beschreibung = fm.beschreibung
+          } else sperre = fm.grund
         } catch (fehler) {
           sperre = `Datei nicht lesbar (${(fehler as Error).message})`
         }
@@ -448,7 +558,7 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
         if (sperre === null && relativ !== 'agents') sperre = 'liegt in einem Unterordner von .claude/agents'
         if (sperre === null && fmName !== stamm) sperre = `Frontmatter-name '${fmName}' ≠ Dateiname '${stamm}'`
         if (sperre === null && eingebauteAgents.has(stamm.toLowerCase())) sperre = 'Name eines eingebauten Agents'
-        bewerte('agent', NAME_MUSTER.test(stamm) ? stamm : `(nicht sperrbar) ${stamm.slice(0, 40)}`, rel, hash, sperre)
+        bewerte('agent', NAME_MUSTER.test(stamm) ? stamm : `(nicht sperrbar) ${stamm.slice(0, 40)}`, rel, hash, sperre, beschreibung)
       }
     }
   }
@@ -486,13 +596,16 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
         let hash: string | null = null
         let sperre: string | null = null
         let fmName: string | null = null
+        let beschreibung: string | null = null
         let lose: string[] = []
         try {
           const text = readFileSync(join(voll, 'SKILL.md'), 'utf8')
           lose = alleFrontmatterNamen(text)
           const fm = pruefeFrontmatter('skill', text, kontext.werkzeugNamen)
-          if (fm.ok) fmName = fm.name
-          else sperre = fm.grund
+          if (fm.ok) {
+            fmName = fm.name
+            beschreibung = fm.beschreibung
+          } else sperre = fm.grund
           hash = berechneInhaltHash(voll)
         } catch (fehler) {
           sperre = `Skill-Ordner nicht prüfbar (${(fehler as Error).message})`
@@ -501,7 +614,7 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
         if (sperre === null && !NAME_MUSTER.test(ordner)) sperre = `Ordnername '${ordner}' nicht schlicht`
         if (sperre === null && fmName !== ordner) sperre = `Frontmatter-name '${fmName}' ≠ Ordnername '${ordner}'`
         if (sperre === null && eingebauteSkills.has(ordner.toLowerCase())) sperre = 'Name eines eingebauten Skills'
-        bewerte('skill', ordner, rel, hash, sperre)
+        bewerte('skill', ordner, rel, hash, sperre, beschreibung)
       }
     } catch (fehler) {
       verknuepfungen.push(`skills (nicht lesbar: ${(fehler as Error).message})`)
@@ -512,7 +625,7 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
   for (const schluessel of kontext.einstellungen.an) {
     const teile = zerlegeSchluessel(schluessel)
     if (teile === null || eintraege.some((e) => e.schluessel === schluessel)) continue
-    eintraege.push({ schluessel, typ: teile.typ, name: teile.name, pfad: '', hash: null, freigabe: null, katalog_hash: kontext.katalog.get(schluessel)?.hash ?? null, eingeschaltet: true, aktiv: false, grund: 'eingeschaltet, aber im Ordner nicht vorhanden' })
+    eintraege.push({ schluessel, typ: teile.typ, name: teile.name, pfad: '', hash: null, freigabe: null, katalog_hash: kontext.katalog.get(schluessel)?.hash ?? null, eingeschaltet: true, aktiv: false, grund: 'eingeschaltet, aber im Ordner nicht vorhanden', beschreibung: null })
   }
 
   // Hindernisse nur für die Art, von der ≥1 Eintrag aktiv ist.

@@ -202,6 +202,18 @@ function nameListe(liste) {
 }
 
 /**
+ * F45 F-2a: Kurzzeile „Fähigkeiten im Lauf“ aus faehigkeiten.im_lauf (Zählung von faehigkeiten_im_lauf der Laufakte);
+ * ohne Feld (Lauf ohne Fähigkeiten-Kontext) keine Zeile.
+ * @param imLauf - { aktiv, benutzt, aus, fremde } oder undefined
+ * @returns HTML oder ''
+ */
+function imLaufZeile(imLauf) {
+  if (imLauf === null || typeof imLauf !== 'object') return ''
+  const zahl = (wert) => (Number.isInteger(wert) ? wert : 0)
+  return `<div><dt>${tHtml('harnessAbgleich.kurzliste.imLauf')}</dt><dd>${tHtml('lauf.faehigkeitenImLauf.zusammenfassung', { aktiv: zahl(imLauf.aktiv), benutzt: zahl(imLauf.benutzt), aus: zahl(imLauf.aus), fremde: zahl(imLauf.fremde) })}</dd></div>`
+}
+
+/**
  * Kurzliste der benutzten Fähigkeiten des Ausführungslaufs (F-937, Teil Abnahme).
  * @param faehigkeiten - Kurzliste oder null (keine Beobachtung)
  * @param ebene - Überschriftenebene (Standard 4)
@@ -215,7 +227,7 @@ export function renderFaehigkeitenKurzliste(faehigkeiten, ebene = 4) {
     <div><dt>${tHtml('harnessAbgleich.kurzliste.skills')}</dt><dd>${nameListe(faehigkeiten.skills)}</dd></div>
     <div><dt>${tHtml('harnessAbgleich.kurzliste.subagenten')}</dt><dd>${nameListe(faehigkeiten.subagenten)}</dd></div>
     <div><dt>${tHtml('harnessAbgleich.kurzliste.mcp')}</dt><dd>${nameListe(faehigkeiten.mcp_server)}</dd></div>
-    <div><dt>${tHtml('harnessAbgleich.kurzliste.hintergrund')}</dt><dd>${hintergrund}</dd></div>
+    <div><dt>${tHtml('harnessAbgleich.kurzliste.hintergrund')}</dt><dd>${hintergrund}</dd></div>${imLaufZeile(faehigkeiten.im_lauf)}
   </dl><p class="subtle harness-kurzliste-lauf">${tHtml('harnessAbgleich.lauf', {}, { lauf: `<code>${escapeHtml(faehigkeiten.lauf_id ?? '')}</code>` })}</p>`
 }
 

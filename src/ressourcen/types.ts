@@ -135,6 +135,19 @@ export interface EmpfehlungsLaufKontext {
   projektUrlGrund?: string
   /** F45 F-1 (E-F45-6): im Projekt abgeschaltete Katalog-ids (faehigkeiten.lokal.json, aus) — fehlt das Feld, bitgleich wie vorher. */
   aus?: readonly string[]
+  /** F45 F-2a (F-1054 (2)): Stand der Projekt-Agents/-Skills je Katalog-id (aus ermittleProjektFaehigkeiten) — fehlt das Feld, allgemeiner Grund. */
+  projektStatus?: ReadonlyMap<string, ProjektStatusEintrag>
+}
+
+/** F45 F-2a: Stand eines Projekt-Agents/-Skills für die Gründe der Empfehlung. */
+export interface ProjektStatusEintrag {
+  aktiv: boolean
+  eingeschaltet: boolean
+  /** Inhalt weicht von einer vorhandenen Freigabe (Katalog oder Projekt) ab */
+  abweichend: boolean
+  /** freigegeben (Katalog oder Projekt) */
+  freigegeben: boolean
+  grund: string | null
 }
 
 /** F36 WS-3: Ergebnis von baueEmpfehlung — je Liste höchstens drei Einträge, der Rest nur als Anzahl (F-788). */

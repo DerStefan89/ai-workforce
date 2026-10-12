@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import {
+  AGENT_INSTALLATION_ERST_SPAETER,
   baueEmpfehlung,
   baueEmpfehlungsZeile,
   baueMcpAufruf,
@@ -25,7 +26,10 @@ import {
   ersetzePlatzhalter,
   fehltFuerEinsatz,
   loeseRessourcenAuf,
-  PROJEKT_SKILL_GESPERRT,
+  PROJEKT_EINTRAG_ALLGEMEIN,
+  PROJEKT_EINTRAG_AUS,
+  PROJEKT_EINTRAG_FEHLT,
+  PROJEKT_INHALT_ABWEICHEND,
   PROJEKT_URL_FEHLT,
   paketNameAus,
   pruefeAbdeckung,
@@ -879,7 +883,7 @@ test('baueEmpfehlung: deterministisch — gleiche Eingabe (auch umsortiert) gibt
   assert.deepEqual(baueEmpfehlung([...eintraege].reverse(), KONTEXT), eins)
 })
 
-test('baueEmpfehlung (WS-5b): Agents und Projekt-Skills nie in wirdGenutzt; Agents behalten „erst ab WS-5“, Projekt-Skills „gesperrt“', () => {
+test('baueEmpfehlung (F45 F-2a, F-1054 (2)): Agents/Projekt-Skills nie in wirdGenutzt; ohne Projektstand allgemeiner Grund, externer Agent „erst später“', () => {
   const internSkill = kandidat('skill-intern', { typ: 'skill', unterart: undefined, wirkung: undefined, installation: undefined, herkunft: { art: 'skill', pfad: '.claude/skills/x' } })
   const internAgent = kandidat('agent-intern', { typ: 'agent', unterart: undefined, wirkung: undefined, installation: undefined, herkunft: { art: 'agent', pfad: '.claude/agents/x.md' } })
   const externAgentFrei = kandidat('agent-extern', { unterart: 'agent', wirkung: undefined, installation: { pfad: '/x', version: '1' } })
@@ -887,10 +891,34 @@ test('baueEmpfehlung (WS-5b): Agents und Projekt-Skills nie in wirdGenutzt; Agen
   assert.deepEqual(e.wirdGenutzt, [])
   assert.equal(e.passtNichtImLauf.length, 3)
   const grund = (id: string) => e.passtNichtImLauf.find((x) => x.id === id)?.grund ?? ''
-  assert.match(grund('agent-intern'), /Skill\/Agent in der Ausführung erst ab WS-5/)
-  assert.match(grund('agent-extern'), /Skill\/Agent in der Ausführung erst ab WS-5/)
-  assert.ok(grund('skill-intern').includes(PROJEKT_SKILL_GESPERRT))
-  assert.doesNotMatch(grund('skill-intern'), /erst ab WS-5/)
+  assert.ok(grund('agent-intern').includes(PROJEKT_EINTRAG_ALLGEMEIN))
+  assert.ok(grund('skill-intern').includes(PROJEKT_EINTRAG_ALLGEMEIN))
+  assert.ok(grund('agent-extern').includes(AGENT_INSTALLATION_ERST_SPAETER))
+  for (const id of ['agent-intern', 'skill-intern', 'agent-extern']) assert.doesNotMatch(grund(id), /erst ab WS-5|im Lauf gesperrt/)
+})
+
+test('baueEmpfehlung (F45 F-2a, F-1054 (2)): Gründe aus dem Projektstand — aktiv fehlt, aus, abweichend, nicht im Ordner, eingeschaltet/gesperrt', () => {
+  const agent = (id: string) => kandidat(id, { typ: 'agent', unterart: undefined, wirkung: undefined, installation: undefined, herkunft: { art: 'agent', pfad: `.claude/agents/${id}.md` } })
+  const status = new Map([
+    ['a-aktiv', { aktiv: true, eingeschaltet: true, abweichend: false, freigegeben: true, grund: null }],
+    ['a-aus', { aktiv: false, eingeschaltet: false, abweichend: false, freigegeben: true, grund: 'nicht eingeschaltet (Opt-in je Projekt, E-F45-6)' }],
+    ['a-ohne', { aktiv: false, eingeschaltet: false, abweichend: false, freigegeben: false, grund: 'keine Freigabe (weder Katalogeintrag noch Projekt-Freigabe nach Inhalt)' }],
+    ['a-abw', { aktiv: false, eingeschaltet: true, abweichend: true, freigegeben: false, grund: 'Inhalt weicht von der Freigabe ab (…)' }],
+    ['a-gesperrt', { aktiv: false, eingeschaltet: true, abweichend: false, freigegeben: true, grund: 'Frontmatter-model nur inherit' }],
+  ])
+  const e = baueEmpfehlung(['a-aktiv', 'a-aus', 'a-ohne', 'a-abw', 'a-gesperrt', 'a-fehlt'].map(agent), KONTEXT, { projektStatus: status })
+  const grund = (id: string) => e.passtNichtImLauf.find((x) => x.id === id)?.grund
+  // Obergrenze 3 je Liste: die weiteren zählen nur; hier deshalb über weitereAnzahl + die gezeigten prüfen.
+  assert.equal(e.passtNichtImLauf.length + e.weitereAnzahl.passtNichtImLauf, 5, 'a-aktiv steht in keiner Liste')
+  assert.equal(grund('a-aktiv'), undefined)
+  const alle = baueEmpfehlung(['a-aus', 'a-ohne', 'a-abw'].map(agent), KONTEXT, { projektStatus: status })
+  const g = (id: string) => alle.passtNichtImLauf.find((x) => x.id === id)?.grund
+  assert.equal(g('a-aus'), PROJEKT_EINTRAG_AUS)
+  assert.equal(g('a-ohne'), `${PROJEKT_EINTRAG_AUS}; keine Freigabe (weder Katalogeintrag noch Projekt-Freigabe nach Inhalt)`)
+  assert.equal(g('a-abw'), PROJEKT_INHALT_ABWEICHEND)
+  const rest = baueEmpfehlung(['a-gesperrt', 'a-fehlt'].map(agent), KONTEXT, { projektStatus: status })
+  assert.equal(rest.passtNichtImLauf.find((x) => x.id === 'a-fehlt')?.grund, PROJEKT_EINTRAG_FEHLT)
+  assert.match(rest.passtNichtImLauf.find((x) => x.id === 'a-gesperrt')?.grund ?? '', /eingeschaltet, aber nicht aktiv \(Frontmatter-model nur inherit\) — der Start wird abgelehnt/)
 })
 
 test('baueEmpfehlung (WS-5b): extern skill FREIGEGEBEN + installation + verfügbar → wirdGenutzt mit empfehlungId id@hash; nicht verfügbar → Grund', () => {

@@ -247,6 +247,15 @@ export const holeHarness = () => holeJsonOderWirf(mitPraefix('/harness'), { sign
 // F45 B1b-2 (Beleg 12): Harness-Abgleich eines Ablaufs — nicht gepollt, einmal je Stand der Schritte (views/workflows.js, views/runs.js).
 export const holeHarnessAbgleich = (workflowId) => holeJsonOderWirf(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/harness-abgleich`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 export const holeHarnessDatei = (pfad) => holeJsonOderWirf(mitPraefix(`/harness/datei?pfad=${encodeURIComponent(pfad)}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+// F45 F-2a (F-1012 Oberfläche): Fähigkeiten des aktiven Projekts (scripts/leitstand/routen-faehigkeiten.mjs) — Status nur
+// beim Öffnen des Bereichs „Dieses Projekt“, per „Neu laden“ und beim Projektwechsel, NIE aus dem Poll. Die beiden POSTs
+// liefern die rohe Antwort (Status 409/400/404/500 mit grund zeigt die View selbst). stand = angezeigter Hash der lokalen
+// Datei (QA 1: der Server schreibt nichts, wenn sie sich seit der Anzeige geändert hat); Zeitlimit wie der GET (QA 10).
+export const holeFaehigkeiten = () => holeJsonOderWirf(mitPraefix('/faehigkeiten'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+export const sendeFaehigkeitAktivierung = (eintrag, aktiv, stand) => fetch(mitPraefix('/faehigkeiten/aktivierung'), { method: 'POST', body: JSON.stringify({ eintrag, aktiv, ...(typeof stand === 'string' ? { stand } : {}) }), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+// F-1061 (3): „Datei geprüft – Stand übernehmen“ — bestätigt genau den angezeigten Stand der lokalen Datei.
+export const sendeFaehigkeitBestaetigung = (stand) => fetch(mitPraefix('/faehigkeiten/bestaetigung'), { method: 'POST', body: JSON.stringify({ stand }), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+export const sendeFaehigkeitFreigabe = (eintrag, hash, stand) => fetch(mitPraefix('/faehigkeiten/freigabe'), { method: 'POST', body: JSON.stringify({ eintrag, hash, ...(typeof stand === 'string' ? { stand } : {}) }), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
 // F44 WS-3b: Titel, Ziel, Nicht-Ziele und AKs einer Feature-Akte für das Detail der Seite
 // „Entwicklung“ (views/workboard.js) — nur beim Öffnen des Details, nie aus dem Poll. 200 trägt

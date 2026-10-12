@@ -45,7 +45,10 @@ Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, i
   Arbeitsordners, damit kein Lauf sich selbst etwas freigibt; geschrieben nur von den POST-Routen
   `/api/projekte/<id>/faehigkeiten/…` auf direkte Eingabe (gesperrt, solange ein Lauf aktiv ist), vorher/nachher je
   Lauf gehasht (Abweichung = Lauf rot). Kein Kontrollzustand, keine Hash-Kette; ungültig sperrt jeden Start mit
-  Katalog-Fähigkeiten (E-F45-7).
+  Katalog-Fähigkeiten (E-F45-7). Eine Änderung, die nicht über diese Routen kam, gilt erst nach ausdrücklicher Bestätigung
+  im Leitstand (POST `/api/projekte/<id>/faehigkeiten/bestaetigung`, „Datei geprüft – Stand übernehmen“, Laufsperre wie die
+  anderen Routen); bis dahin sperren die Schreib-Routen und jeder Start mit Katalog-Fähigkeiten (F-1061, Entscheidung
+  Stefan 12.10.2026). Der bekannte Stand lebt nur im Speicher des Leitstands (Wächter, keine weitere Datei).
 - `profiles/` ist die alleinige editierbare Quelle für Profilinhalte. Der Kontrollzustand hält davon nur eine gepinnte Referenz aus Pfad, Hash und Version, nie eine Kopie.
 - Artefakte werden versioniert, nicht überschrieben. Version ist der Inhalts-Hash; die einzige Stelle, die den aktuellen Stand benennt, ist der letzte Checkpoint.
 - Produktdateien im freigegebenen Baupfad ändert ausschließlich das Ausführungswerkzeug. Der Kern liest sie read-only.

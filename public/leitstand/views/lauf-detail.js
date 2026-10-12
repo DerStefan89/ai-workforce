@@ -598,7 +598,73 @@ export function renderCheckpointTabelle(checkpoints, kopfdaten = null) {
 export function renderFaehigkeiten(laufakte) {
   const beobachtung = laufakte?.status === 'ok' && laufakte.beobachtung ? formatiereBeobachtung(laufakte.beobachtung) : ''
   const wert = beobachtung ? escapeHtml(beobachtung) : `<span class="unbekannt">${tHtml('lauf.laufakte.nichtBeobachtet')}</span>`
-  return `<p class="subtle">${tHtml('lauf.faehigkeiten.hinweis')}</p><p class="lauf-beobachtung"><strong>${tHtml('lauf.laufakte.beobachtung')}:</strong> ${wert}</p>`
+  const imLauf = laufakte?.status === 'ok' ? renderFaehigkeitenImLauf(laufakte.faehigkeitenImLauf ?? null) : ''
+  return `<p class="subtle">${tHtml('lauf.faehigkeiten.hinweis')}</p><p class="lauf-beobachtung"><strong>${tHtml('lauf.laufakte.beobachtung')}:</strong> ${wert}</p>${imLauf}`
+}
+
+/** F45 F-2a: Arten und Quellen eines Eintrags von faehigkeiten_im_lauf mit übersetztem Text; ein anderer Wert erscheint roh. */
+const IM_LAUF_ARTEN = new Set(['mcp', 'skill', 'agent'])
+const IM_LAUF_QUELLEN = new Set(['katalog', 'projekt'])
+
+/**
+ * Zelle „Aufrufe“ eines Eintrags: null (ohne Beobachtung) → „nicht beobachtet“, sonst Anzahl und Fehler.
+ * @param aufrufe - Anzahl oder null
+ * @param fehler - Anzahl mit Fehler oder null
+ * @returns HTML
+ */
+function aufrufZelle(aufrufe, fehler) {
+  if (!Number.isInteger(aufrufe)) return `<span class="unbekannt">${tHtml('lauf.faehigkeitenImLauf.nichtBeobachtet')}</span>`
+  const mitFehler = Number.isInteger(fehler) && fehler > 0 ? ` · <span class="ablauf-status fehler">${tHtml('lauf.faehigkeitenImLauf.mitFehler', { anzahl: fehler })}</span>` : ''
+  return `${escapeHtml(String(aufrufe))}${mitFehler}`
+}
+
+/**
+ * F45 F-2a (F-1012, Beleg 13): Abschnitt „Fähigkeiten im Lauf“ aus faehigkeiten_im_lauf der Laufakte — beim Start
+ * eingefroren (aktiv/aus, Quelle, Hash) und am Ende mit dem Rohstrom verbunden (Aufrufe/Fehler). Fremde Aufrufe (Agents/
+ * Skills ohne aktiven Eintrag, z. B. ein von der Sperrliste verweigerter general-purpose) stehen als eigene Zeilen.
+ * Ohne Feld: Lauf ohne Fähigkeiten-Kontext (z. B. Fortsetzungslauf ohne Anzeige, F-1054 (3)) — „nicht erfasst“.
+ * @param feld - laufakte.faehigkeitenImLauf ({ eintraege, fremde_aufrufe }) oder null
+ * @returns HTML
+ */
+export function renderFaehigkeitenImLauf(feld) {
+  const titel = `<h4>${tHtml('lauf.faehigkeitenImLauf.titel')}</h4>`
+  if (feld === null || typeof feld !== 'object' || !Array.isArray(feld.eintraege)) return `<section class="faehigkeiten-im-lauf">${titel}<p class="subtle">${tHtml('lauf.faehigkeitenImLauf.nichtErfasst')}</p></section>`
+  const eintraege = feld.eintraege.filter((e) => e !== null && typeof e === 'object')
+  const fremde = Array.isArray(feld.fremde_aufrufe) ? feld.fremde_aufrufe.filter((a) => a !== null && typeof a === 'object') : []
+  const spalte = (s) => escapeHtml(t(`lauf.faehigkeitenImLauf.spalte.${s}`))
+  const zeilen = eintraege.map((e) => {
+    const art = IM_LAUF_ARTEN.has(e.typ) ? t(`lauf.faehigkeitenImLauf.art.${e.typ}`) : String(e.typ ?? '')
+    const quelle = IM_LAUF_QUELLEN.has(e.quelle) ? t(`lauf.faehigkeitenImLauf.quelle.${e.quelle}`) : String(e.quelle ?? '')
+    const status =
+      e.aktiv === true
+        ? `<span class="ablauf-status">${tHtml('lauf.faehigkeitenImLauf.aktiv')}</span>`
+        : `<span class="ablauf-status neutral">${tHtml('lauf.faehigkeitenImLauf.aus')}</span>${typeof e.grund === 'string' && e.grund !== '' ? `<br><span class="subtle">${escapeHtml(e.grund)}</span>` : ''}`
+    const hash = typeof e.hash === 'string' && e.hash !== '' ? `<code title="${escapeHtml(e.hash)}">${escapeHtml(e.hash.slice(0, 12))}…</code>` : '—'
+    return `<tr data-aktiv="${e.aktiv === true}"><td data-spalte="${spalte('name')}"><strong>${escapeHtml(String(e.name ?? e.id ?? ''))}</strong></td><td data-spalte="${spalte('art')}">${escapeHtml(art)}</td><td data-spalte="${spalte('quelle')}">${escapeHtml(quelle)}</td><td data-spalte="${spalte('status')}">${status}</td><td data-spalte="${spalte('hash')}">${hash}</td><td data-spalte="${spalte('aufrufe')}">${aufrufZelle(e.aufrufe, e.fehlgeschlagen)}</td></tr>`
+  })
+  // Fremde Aufrufe je Art und Name zusammengefasst (Anzahl, davon mit Fehler = verweigert).
+  const gruppen = new Map()
+  for (const a of fremde) {
+    const schluessel = `${a.art}:${a.name}`
+    const g = gruppen.get(schluessel) ?? { art: a.art, name: a.name, aufrufe: 0, fehler: 0 }
+    g.aufrufe++
+    if (a.fehler === true) g.fehler++
+    gruppen.set(schluessel, g)
+  }
+  for (const g of gruppen.values()) {
+    const art = IM_LAUF_ARTEN.has(g.art) ? t(`lauf.faehigkeitenImLauf.art.${g.art}`) : String(g.art ?? '')
+    zeilen.push(
+      `<tr class="faehigkeiten-im-lauf-fremd" data-fremd="true"><td data-spalte="${spalte('name')}"><strong>${escapeHtml(String(g.name ?? ''))}</strong></td><td data-spalte="${spalte('art')}">${escapeHtml(art)}</td><td data-spalte="${spalte('quelle')}">${tHtml('lauf.faehigkeitenImLauf.fremd')}</td><td data-spalte="${spalte('status')}"><span class="ablauf-status warten">${tHtml('lauf.faehigkeitenImLauf.fremdStatus')}</span></td><td data-spalte="${spalte('hash')}">—</td><td data-spalte="${spalte('aufrufe')}">${aufrufZelle(g.aufrufe, g.fehler)}</td></tr>`
+    )
+  }
+  const aktiv = eintraege.filter((e) => e.aktiv === true).length
+  const benutzt = eintraege.filter((e) => Number.isInteger(e.aufrufe) && Number.isInteger(e.fehlgeschlagen) && e.aufrufe - e.fehlgeschlagen > 0).length
+  const zusammenfassung = tHtml('lauf.faehigkeitenImLauf.zusammenfassung', { aktiv, benutzt, aus: eintraege.length - aktiv, fremde: fremde.length })
+  const tabelle =
+    zeilen.length === 0
+      ? `<p class="leer">${tHtml('lauf.faehigkeitenImLauf.leer')}</p>`
+      : `<div class="ablauf-tabelle" role="region" tabindex="0" aria-label="${tHtml('lauf.faehigkeitenImLauf.titel')}"><table class="lauf-kopfdaten faehigkeiten-im-lauf-tabelle"><caption class="sr-only">${tHtml('lauf.faehigkeitenImLauf.titel')}</caption><thead><tr>${['name', 'art', 'quelle', 'status', 'hash', 'aufrufe'].map((s) => `<th scope="col">${spalte(s)}</th>`).join('')}</tr></thead><tbody>${zeilen.join('')}</tbody></table></div>`
+  return `<section class="faehigkeiten-im-lauf">${titel}<p class="faehigkeiten-im-lauf-zeile">${zusammenfassung}</p>${tabelle}</section>`
 }
 
 /**

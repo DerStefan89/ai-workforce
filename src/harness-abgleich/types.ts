@@ -169,6 +169,8 @@ export interface FaehigkeitenKurzliste {
   mcp_server: NameAnzahl[]
   /** Anzahl angenommener Hintergrund-Aufrufe; null, wenn die Laufakte das Feld nicht trägt (vor B1b-1). */
   hintergrund: number | null
+  /** F45 F-2a: Zählung aus faehigkeiten_im_lauf (Kurzzeile der Abnahme); fehlt bei Läufen ohne Fähigkeiten-Kontext. */
+  im_lauf?: { aktiv: number; benutzt: number; aus: number; fremde: number }
 }
 
 /** Bezug eines Ergebnisses auf einen Stand des Workflows (Artefakt passt nur zu genau diesem Stand). */

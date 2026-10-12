@@ -12749,13 +12749,14 @@ Maßnahme: F45 B2b: Rechte-Rückfrage an Stefan (Spike --permission-prompt-tool;
 Status: offen.
 Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
 
-**F-1012** · `PROCESS_IMPROVEMENT` · P2 · teilweise
+**F-1012** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Fähigkeiten lassen sich nicht je Projekt aktivieren, und „aktiv“ ist nicht sichtbar.
 Beschreibung: Der Katalog kennt nur die Freigabe (FREIGEGEBEN, OFFEN); 27 externe Einträge stehen auf OFFEN. MCPs und Ort-B-Skills sind installierbar, Agents nicht („erst später“), Plugins fehlen im Modell (F-910). Ein Ein- und Ausschalten je Projekt ohne Deinstallation gibt es nicht; der Leitstand zeigt nicht, was im nächsten Lauf aktiv ist und was im letzten Lauf benutzt wurde.
 Fundstelle: ressourcen.json, src/ressourcen/index.ts (AGENT_INSTALLATION_ERST_SPAETER, pruefeInstallierbarkeit), public/leitstand/views/capability-library.js.
 Auswirkung: Mittel — Stefan kann den Werkzeugkasten der Workforce nicht wie in VS Code steuern.
 Maßnahme: F45 WS F: installieren, aktivieren/deaktivieren je Projekt, Status installiert · aktiv · benutzt sichtbar.
 Status: teilweise (F45 F-1, 12.10.2026, Serverteil): je Projekt ein-/ausschalten (`~/.ai-workforce/faehigkeiten.lokal.json`; Katalog-MCPs/Ort-B-Skills Standard aktiv mit `aus`, Projekt-Agents/-Skills Opt-in mit `an`, wirkt ab dem nächsten Lauf; E-F45-6/7/8), Endpunkte GET /api/projekte/<id>/faehigkeiten (installiert · aktiv · benutzt im letzten Lauf), POST …/aktivierung, POST …/freigabe; Laufakte `faehigkeiten_im_lauf`. Offen (F-2): Oberfläche (Seite Workforce, Lauf-Detail), Plugins im Modell, Agents installierbar.
+Status: erledigt (F45 F-2a, 12.10.2026, Oberfläche): Seite Workforce → Capability Library → „Dieses Projekt“ (installiert · aktiv · im letzten Lauf mit Aufrufen/Fehlern, Schalter je Eintrag mit Standard je Art und „wirkt ab dem nächsten Lauf“, gesperrt während eines Laufs, „Freigeben nach Inhalt“ mit Pfad und Hash, Bänder ungültige Datei/Fremdänderung/eingeschaltet-nicht-aktiv), Lauf-Detail „Fähigkeiten im Lauf“, Kurzzeile in der Abnahme; Beleg 13 im echten Lauf (`features/F45/nachweise/f2a/`). Die übrigen Teile laufen eigenständig weiter: Plugins im Modell → F-910/F45 F-3 (E-F45-9), externe Agents installierbar → F-1051, Sammlung/Prüflauf → F-1056/F-1057 (F-2b).
 Feature/Run: Entdeckt: Challenge F45, Wunsch Stefan 03.10.2026.
 
 **F-1013** · `HARNESS_IMPROVEMENT` · P2 · offen
@@ -13130,7 +13131,7 @@ Maßnahme: Jeder Lauf mit Init-Gate setzt `enabledPlugins` der eingebauten Plugi
 Status: erledigt (F45 F-1, 12.10.2026): `src/faehigkeiten/start.ts` (`baueFaehigkeitenStart`, auch für Ort-B), Gate `scripts/check-f36-ws5b-skill.mjs` (c)/(m). Beleg im echten Lauf: `features/F45/nachweise/f1/`.
 Feature/Run: Entdeckt: F45 F-1 (Spike), 12.10.2026.
 
-**F-1054** · `TECH_DEBT` · P2 · offen
+**F-1054** · `TECH_DEBT` · P2 · erledigt
 Titel: Restpunkte F45 F-1 für F-2 (Anzeige, Bindung, Gründe).
 Beschreibung: (1) Projekt-Agents/-Skills sind an die Anzeige nur über den Hash beim Start gebunden, nicht über angezeigte ids — F-2 muss eine Kennung der Projekt-Fähigkeiten im Start-Body mitgeben und vergleichen (Muster empfehlungIds). (2) Die Gründe `SKILL_AGENT_ERST_AB_WS5`/`PROJEKT_SKILL_GESPERRT` in „Passt, nicht im Lauf“ sind veraltet (Projekt-Agents/-Skills laufen jetzt über Opt-in); im Projekt abgeschaltete Katalog-Einträge stehen nur in `deaktiviert` der Empfehlung, die Oberfläche zeigt das Feld noch nicht. (3) Fortsetzungsstarts ohne angezeigte ids (Korrekturlauf, Folge-Schritte) laufen wie bisher ohne Katalog- und Projekt-Fähigkeiten. (4) Keine Oberfläche für GET/POST …/faehigkeiten. (5) GET …/faehigkeiten prüft die `tools`-Zeile der Projekt-Agents gegen den Werkzeugsatz `schreibend`, der Start gegen den tatsächlich genutzten (QA 9). (6) `fremde_aufrufe` (z. B. ein verweigerter general-purpose) wird nirgends angezeigt; der Join zählt Agent-Namen genau nach Schreibweise (QA 8). (7) „aus nach der Anzeige geändert → Start bricht ab“ (B8) hat keinen eigenen Test.
 Fundstelle: `src/ressourcen/index.ts` (`baueEmpfehlung`), `scripts/leitstand-server.mjs` (starteWorkflowSchritt), `public/leitstand/`.
@@ -13139,12 +13140,72 @@ Maßnahme: F45 F-2 (Oberfläche, Bindung an die Anzeige, Gründe neu).
 Status: offen.
 Feature/Run: Entdeckt: F45 F-1 (Advisor A17/A18), 12.10.2026.
 Zugeordnet: F45 F-2.
+Status: erledigt (F45 F-2a, 12.10.2026): (1) Projekt-Kennungen `agent:|skill:<name>@<sha256>` gehen in `empfehlungIds` mit der Freigabe zurück (Trennung über das Präfix); verglichen im Projektordner (Vorprüfung und Start, `bereiteEmpfehlungFuerStartVor`) und im Ordner des Laufs (`loeseAusfuehrungsEingabenAuf`, im bereiten Arbeitsordner schon in der Vorprüfung) — Abweichung 409 „Anzeige veraltet“ (POST /api/laeufe 400 wie F36 WS-3); ohne angezeigte Kennungen kein Start. (2) Gründe neu („aus — je Projekt einschalten“, „Inhalt weicht ab — freigeben“, „nicht im Projektordner“, „eingeschaltet, aber nicht aktiv“); `deaktiviert` und Projekt-Fähigkeiten im Freigabeblock. (4) Oberfläche (F-1012). (6) `fremde_aufrufe` im Lauf-Detail als eigene Zeile. (7) B8-Test (`scripts/leitstand/routen-faehigkeiten.test.mjs`). Rest — (3) Fortsetzungsstarts, (5) Werkzeugsatz der Status-Route, (6) Join nach Schreibweise — in F-1060.
 
-**F-1055** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1055** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: Grenzen der Fähigkeiten-Sperre (F45 F-1).
 Beschreibung: (1) Ein Lauf kann über npm-Skripte einen abgekoppelten Prozess starten, der nach Laufende `~/.ai-workforce/faehigkeiten.lokal.json` schreibt oder POST …/faehigkeiten aufruft; der Vorher/Nachher-Hash im Controller sieht nur Änderungen während des Laufs (ADR ausfuehrung-bash-allowlist: npm run check:* führt beliebigen Code aus). (2) Nicht gemessen: ob ein aktiver Subagent die Agent(…)-Sperren erbt (der Skelett-Agent hat ohnehin kein Agent-Werkzeug), Agent-Aufruf ohne subagent_type, Groß-/Kleinschreibung in `Agent(<name>)`. (3) Die Referenzlisten (`src/faehigkeiten/eingebaut-referenz.json`) driften mit der CLI — das Init-Gate bricht dann fail-closed ab, bis nachgemessen ist. (4) Die strenge Frontmatter-Grammatik ist bewusst enger als YAML; ein Projekt-Agent mit `tools` als YAML-Liste oder `model` ≠ `inherit` ist gesperrt; Namen werden für Sperrliste und Eindeutigkeit zusätzlich nachsichtig gelesen (Code-Review 1). (5) Der Vorher/Nachher-Hash vergleicht die ganze Datei, nicht nur den Abschnitt des Projekts: eine Handänderung für ein anderes Projekt während eines Laufs färbt ihn rot (die POST-Routen sind während eines Laufs gesperrt). (6) Die Skill-Sperrliste vor dem Start liest Namen weiter mit leseFrontmatter (nur ^name:); ein abweichend geschriebener Skill-Name fällt erst im Init-Gate auf. (7) Ein gleichnamiger Agent in einem Unterordner führt zum Grund „eingeschaltet, aber nicht aktiv“ statt „mehrdeutig“ (Ergebnis richtig, Grund ungenau).
 Fundstelle: `src/faehigkeiten/index.ts`, `src/execution-controller/index.ts` (hashLokaleDatei), `state/spike-f45-f1-agents.md`.
 Auswirkung: Mittel — (1) ist ein Weg zur Selbstfreigabe ab dem nächsten Lauf.
 Maßnahme: (1) Bei B2b (Rückfrage/Rechte) prüfen: Freigabe nach Inhalt nur mit Bestätigung im Leitstand (UI F-2) und Anzeige der Änderungen der lokalen Datei seit dem letzten Lauf; (2) im Referenzlauf R beobachten; (3) Nachmessen bei jedem CLI-Update (F-1044-Hinweis).
-Status: offen.
+Status: teilweise (F45 F-2a, 12.10.2026): (1) Anzeige — Wächter im Speicher (`erzeugeLokalWaechter`, `scripts/leitstand/routen-faehigkeiten.mjs`) kennt den Stand beim Serverstart und nach jedem Schreiben über die Routen; eine andere Änderung erscheint als Band „Außerhalb des Leitstands geändert“ (Seite Workforce, mit Änderungszeit) und als Hinweis im Freigabeblock. Die Oberfläche schickt den angezeigten Hash der Datei mit (`stand`); weicht er ab, schreibt der Server nichts (409) — kein Klick übernimmt eine Änderung, die nach dem Laden der Seite geschah. Ein Laufende übernimmt bewusst keinen Stand (Plan v2, Advisor A2). Bestätigung durch eine Freigabe nach Inhalt bleibt für Projekt-Fähigkeiten ohnehin Pflicht. Rest: F-1061 und (2)–(7).
 Feature/Run: Entdeckt: F45 F-1 (Delta-Advisor B1/B9), 12.10.2026.
+
+**F-1056** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: Keine Inhaltsprüfung der gepinnten Version vor der Freigabe (Challenger K20).
+Beschreibung: Eine Fähigkeit wird heute nach Lizenz, Kosten und Wirkung freigegeben und in fester Version installiert, ihr Inhalt wird vorher aber nicht geprüft: weder die Skill-Anweisungen noch das MCP-Paket (Installationsskripte, Netzzugriffe) noch — ab F-3 — Plugin-Hooks.
+Fundstelle: `src/ressourcen/installation.ts`, `src/ressourcen/skill-installation.ts`.
+Auswirkung: Hoch — eine freigegebene Fähigkeit kann Anweisungen oder Code tragen, die Stefan nie gesehen hat.
+Maßnahme: F45 F-2b: read-only Prüfschritt nach dem Verfahren `.claude/skills/werkzeug-auswahl` mit dem Urteil aus `docs/harness/kandidaten-2026-09-15.md` als Eingabe; Prüfbericht am Eintrag; Freigabe nur mit sichtbarem Bericht; Prüfer in frischem Kontext, Inhalte der Fähigkeit sind Daten, keine Anweisungen.
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit, F-2b.
+
+**F-1057** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Der Scout kennt Stefans bewertete Sammlung nicht (Challenger K21).
+Beschreibung: `.claude/agents/scout.md` sucht nur im Web. Die rund 55 bewerteten Einträge der Sammlung mit Urteil „Optional“ oder „Offen“ (`docs/harness/kandidaten-2026-09-15.md`, `docs/harness/stack-kandidaten.md`) sind für ihn unsichtbar.
+Fundstelle: `.claude/agents/scout.md`, `docs/harness/kandidaten-2026-09-15.md`, `docs/harness/stack-kandidaten.md`.
+Auswirkung: Mittel — der Scout schlägt Bekanntes neu vor oder übersieht bereits bewertete Kandidaten.
+Maßnahme: F45 F-2b: der Scout liest zuerst `kandidaten-2026-09-15.md` und `stack-kandidaten.md`, übernimmt Urteil und Lizenz, das Web nur für Lücken.
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit, F-2b.
+
+**F-1058** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Bibliotheken aus der Sammlung lassen sich nicht je Projekt vorgeben (Challenger K22).
+Beschreibung: Produkt-Bibliotheken (Gruppe 2 der Sammlung, Stack-Liste für den Architekten) können für ein Projekt nicht als Vorgabe gesetzt werden; der Architekt wählt frei.
+Fundstelle: `docs/harness/stack-kandidaten.md`, `docs/harness/kandidaten-2026-09-15.md` (Gruppe 2).
+Auswirkung: Gering bis mittel — Design- und Motion-Projekte bekommen keine verlässlich gleiche Bibliotheksbasis.
+Maßnahme: B3 (Design & Motion, E-F45-10) bzw. Projektkarte (B2a).
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit, B3 bzw. B2a.
+
+**F-1059** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Die Workforce kann keine Website mit Motion, Interaktion und 3D auf Qualitätsniveau bauen und belegen (Challenger K23).
+Beschreibung: Es fehlen Motion-Skills im Lauf, Design-Referenzen als Eingabe, Bibliotheken je Projekt und ein Render-Nachweis mit Bewegung (Bildfolge/Video, Ladezeit-Budget, „Bewegung reduzieren“).
+Fundstelle: `docs/projekt/fixpaket-f45.md` (B3, R2, Beleg 15), `scripts/render-nachweis.mjs`.
+Auswirkung: Mittel — Website- und Design-Aufträge (E-F45-10) sind ohne Handarbeit nicht in der geforderten Qualität möglich.
+Maßnahme: B3 neu („Design & Motion in Fremdprojekten“) und Referenzauftrag R2 mit Beleg 15 (E-F45-10).
+Status: offen.
+Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit, B3 und R2.
+
+**F-1060** · `TECH_DEBT` · P2 · offen
+Titel: Restpunkte F45 F-2a (Fortsetzungsstarts, Status-Route, Anzeige-Kleinpunkte).
+Beschreibung: (1) Fortsetzungsstarts (Korrekturlauf, Folgeschritte) haben keine Anzeige und laufen deshalb ohne Katalog- und Projekt-Fähigkeiten (F-1054 (3)); „Anzeige = Start“ (E-F36-4) verbietet Fähigkeiten ohne Anzeige. (2) GET …/faehigkeiten prüft die `tools`-Zeile der Projekt-Agents gegen den Werkzeugsatz `schreibend` (kein Schritt bekannt); der Freigabeblock nutzt seit F-2a den Werkzeugsatz des Schritts (F-1054 (5), QA 9 aus F-1). (3) Der Join von `faehigkeiten_im_lauf` zählt Agent-Namen genau nach Schreibweise (F-1054 (6), QA 8 aus F-1). (4) Ist der jüngste Ausführungslauf ein Fortsetzungslauf, zeigt „Im letzten Lauf“ überall „nicht erfasst“; der Lauf davor ist dort nicht mehr sichtbar (QA 9). (5) Ein installierter Katalog-Eintrag ohne Freigabe zeigt den Schalter „an“, den Chip „aus“ — nur der Grund erklärt es (QA 7). (6) Zugänglichkeit: Der volle Hash im Lauf-Detail steht nur im title — nur per Maus erreichbar, nicht per Tastatur, Screenreader oder Touch (QA 12, design-guardian G). (7) Gründe des Servers (grund, hindernis, Laufsperre) bleiben in en/ru/tr deutsch. (8) Liefert die Empfehlung ok:false oder sind die Pfade nicht lesbar, wird sie nicht zwischengespeichert — dann rechnet der 2-s-Poll von GET /api/workflows/<id> jedes Mal auch die Projekt-Fähigkeiten (Code-Review 6). (9) Die Skelett-Skills git-flow und handoff-vertrag weichen inhaltlich von den gleichnamigen Katalog-Dateien der Workforce ab — in jedem Skelett-Projekt stehen sie auf „Inhalt weicht von der Freigabe ab“ (Beleg 13, 12.10.2026). (10) Lauf-Detail und Workforce zeigen denselben Fall verschieden: die Workforce „Inhalt weicht ab“ als gelben Chip, das Lauf-Detail als „aus“ mit grauem Grund — die Laufakte trägt den Freigabestand nicht (design-guardian 4). (11) Server-Gründe nennen interne Nummern („Opt-in je Projekt, E-F45-6“) (design-guardian 7). (12) Die Beobachtungszeile im Lauf-Detail ist fest deutsch („Geladen: … Skills“, `public/leitstand/beobachtung-zeile.js`), auch in en/ru/tr. (13) Der schwebende Knopf „Frag Jarvis“ verdeckt bei 390 px und Zoom 200 % Text der Tabellen (seitenübergreifend). (14) Gestapelte Tabellen (`display: block` auf table/tr/td) verlieren in Safari die Tabellen-Semantik; Spaltennamen bleiben über `::before` lesbar (design-guardian, Bestätigungsprüfung).
+Fundstelle: `scripts/leitstand-server.mjs` (starteWorkflowSchritt, Status-Route, ermittleAusfuehrungsEmpfehlungGecached), `scripts/leitstand/routen-faehigkeiten.mjs`, `src/claude-code-gateway/index.ts` (verbindeFaehigkeitenMitAufrufen), `public/leitstand/views/lauf-detail.js`, `vorlagen/projekt-skelett/.claude/skills/`.
+Auswirkung: Mittel für (1) (Korrekturlauf ohne Fähigkeiten), sonst gering.
+Maßnahme: (1) B2b-Rückweg: die Korrektur-Entscheidung zeigt die Empfehlung erneut und trägt die Kennungen; (2) Werkzeugsatz als Parameter der Status-Route; (3) Groß-/Kleinschreibung im Join wie die CLI; (4) „letzter Lauf mit Erfassung“ zusätzlich zeigen; (5) Schalter bei nicht freigegebenen Einträgen deaktivieren oder Chip „nicht freigegeben“; (6) Hash aufklappbar wie in der Freigabe (Behebung mit F-2b oder B3); (7) Codes statt Texte (Muster F-1016); (8) Fehlschläge kurz zwischenspeichern; (9) Skelett und Katalog angleichen (Template-Repo, F-1038) oder Skelett-Inhalt im Katalog freigeben; (10) Freigabestand in faehigkeiten_im_lauf aufnehmen und dieselben Chips nutzen; (11) Nummern aus den Gründen nehmen; (12) über i18n; (13) Abstand bzw. Ausweichen des Knopfs bei schmaler Ansicht; (14) role-Attribute (table/row/cell) beim Stapeln.
+Status: offen.
+Feature/Run: Entdeckt: F45 F-2a (code-reviewer, qa, design-guardian, Render-Nachweis, Beleg 13), 12.10.2026.
+
+**F-1061** · `HARNESS_IMPROVEMENT` · P2 · teilweise
+Titel: Grenzen des Wächters der lokalen Fähigkeiten-Datei (F45 F-2a).
+Beschreibung: (1) Der Wächter lebt nur im Speicher: nach einem Neustart des Leitstands gilt der Stand beim Start als bekannt — eine Änderung bei gestopptem Leitstand bleibt unsichtbar. (2) Eine Anfrage an die POST-Routen ohne Browser-Header und ohne `stand` (z. B. ein Prozess mit curl) gilt als Schreiben über die Routen und wird als bekannt übernommen. (3) Sieht Stefan das Band „Außerhalb des Leitstands geändert“, übernimmt der nächste Schalterklick den angezeigten Stand ohne eigene Bestätigung (Code-Review 3: Alternative „Schalter gesperrt, bis ‚Datei geprüft — Stand übernehmen‘“). (4) Ein Arbeitsordner, der vom Projektordner abweicht, lässt die Freigabe mit 409 scheitern; Abhilfe ist Stand sichern und Ablauf neu anlegen (Plan v2, Advisor A1, Variante „eigener Grund“).
+Fundstelle: `scripts/leitstand/routen-faehigkeiten.mjs` (erzeugeLokalWaechter, aendereLokaleDatei), `scripts/leitstand-server.mjs` (Freigabe-Vorprüfung, projektKennungenImOrdnerAbweichung).
+Auswirkung: Mittel — (1)/(2) sind Wege, auf denen eine Fremdänderung unbemerkt bleibt; (3) ist eine Bedienentscheidung.
+Maßnahme: (3) Entscheidung Stefan (bewusste Bestätigung vs. Übernahme mit dem nächsten Klick); (1) bei Bedarf den letzten bekannten Hash in der Laufakte des letzten Laufs gegenprüfen; (2) `stand` zur Pflicht machen, sobald kein Gate/Skript mehr ohne schreibt.
+Entscheidung (3) (Stefan, 12.10.2026, Empfehlung Challenger): Nach einer Änderung von außen gilt der Stand erst nach ausdrücklicher Bestätigung im Leitstand („Datei geprüft – Stand übernehmen“, POST …/faehigkeiten/bestaetigung, Laufsperre und CSRF wie die anderen Fähigkeiten-Routen); bis dahin startet kein Lauf mit Katalog-Fähigkeiten (Grund im Startabbruch und im Band, Muster E-F45-7).
+Status: teilweise (F45 F-2a, 12.10.2026): (3) umgesetzt — `bestaetigeLokaleDatei` (nur der angezeigte, aktuelle Stand; ungültige Datei → erst reparieren), Schreib-Routen 409 solange unbestätigt (auch ohne `stand`, damit gilt (2) nur noch ohne vorherige Fremdänderung), Start mit Katalog-Fähigkeiten abgelehnt (`loeseAusfuehrungsEingabenAuf`, Freigabe-Vorprüfung vor dem Festhalten), rotes Band mit Knopf auf der Seite Workforce, Hinweis im Freigabeblock; Tests rot/grün in `scripts/leitstand/routen-faehigkeiten.test.mjs`; ARCHITECTURE.md §2 nachgezogen. Offen: (1), (2) (Schreiben über die Routen ohne Fremdänderung), (4).
+Feature/Run: Entdeckt: F45 F-2a (Advisor A1/A3, code-reviewer 3, qa 1), 12.10.2026.

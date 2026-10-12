@@ -1,0 +1,33 @@
+{
+  "url": "http://127.0.0.1:4391/#/workflows/f45-f2a-beleg13-l1-alle-an-8dceb931",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": ".harness-kurzliste"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Kurzliste",
+        "selector": ".harness-kurzliste"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Abnahme mit Kurzzeile „Fähigkeiten im Lauf“",
+      "warteAufSelector": {
+        "selector": ".harness-kurzliste",
+        "timeoutMs": 20000
+      },
+      "screenshot": "01-kurzliste.png"
+    }
+  ]
+}

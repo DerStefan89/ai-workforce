@@ -475,18 +475,36 @@ export function ladeZuordnung(installWurzel: string, projektPfad: string | null 
  * Zahl der Aufrufe (Zählregel des Gateways, zaehleNamen), dazu die Hintergrund-Aufrufe. Rein.
  * @param beobachtung - beobachtung der Laufakte (oder null/undefined: Codex, Lauf ohne init-Zeile)
  * @param laufId - Lauf, aus dem sie stammt
+ * @param faehigkeitenImLauf - F45 F-2a: Laufakten-Feld faehigkeiten_im_lauf (optional) — dann zusätzlich im_lauf (Zahl
+ *   aktiv/benutzt/aus und fremder Aufrufe) für die Kurzzeile der Abnahme; ohne Feld fehlt im_lauf
  * @returns Kurzliste oder null ohne Beobachtung
  */
-export function baueFaehigkeitenKurzliste(beobachtung: BeobachtungSicht | null | undefined, laufId: string | null): FaehigkeitenKurzliste | null {
+export function baueFaehigkeitenKurzliste(beobachtung: BeobachtungSicht | null | undefined, laufId: string | null, faehigkeitenImLauf?: unknown): FaehigkeitenKurzliste | null {
   if (!istObjekt(beobachtung) || laufId === null) return null
   const hintergrund = beobachtung.hintergrund_aufrufe
+  const imLauf = istObjekt(faehigkeitenImLauf) && Array.isArray(faehigkeitenImLauf.eintraege) ? zaehleFaehigkeitenImLauf(faehigkeitenImLauf.eintraege, faehigkeitenImLauf.fremde_aufrufe) : null
   return {
     lauf_id: laufId,
     skills: zaehleNamen(beobachtung.skill_aufrufe),
     subagenten: zaehleNamen(beobachtung.subagent_aufrufe),
     mcp_server: zaehleNamen(beobachtung.mcp_aufrufe, mcpServerName),
     hintergrund: Array.isArray(hintergrund) ? hintergrund.length : null,
+    ...(imLauf !== null ? { im_lauf: imLauf } : {}),
   }
+}
+
+/**
+ * F45 F-2a: Zählung von faehigkeiten_im_lauf für die Kurzzeile — aktiv, benutzt (≥ 1 Aufruf ohne Fehler), aus, fremde
+ * Aufrufe. Defensiv gegen Nicht-Objekte. Rein.
+ * @param eintraege - faehigkeiten_im_lauf.eintraege
+ * @param fremde - faehigkeiten_im_lauf.fremde_aufrufe
+ * @returns { aktiv, benutzt, aus, fremde }
+ */
+function zaehleFaehigkeitenImLauf(eintraege: unknown[], fremde: unknown): { aktiv: number; benutzt: number; aus: number; fremde: number } {
+  const liste = eintraege.filter(istObjekt)
+  const aktiv = liste.filter((e) => e.aktiv === true).length
+  const benutzt = liste.filter((e) => Number.isInteger(e.aufrufe) && Number.isInteger(e.fehlgeschlagen) && (e.aufrufe as number) - (e.fehlgeschlagen as number) > 0).length
+  return { aktiv, benutzt, aus: liste.length - aktiv, fremde: Array.isArray(fremde) ? fremde.length : 0 }
 }
 
 /**
@@ -764,10 +782,20 @@ export function validiereHarnessAbgleichDaten(daten: unknown): string[] {
   if (daten.faehigkeiten !== null) {
     if (!istObjekt(daten.faehigkeiten)) verstoesse.push("'faehigkeiten' muss Objekt oder null sein")
     else {
-      pruefeFeldmenge(daten.faehigkeiten, ['lauf_id', 'skills', 'subagenten', 'mcp_server', 'hintergrund'], 'faehigkeiten', verstoesse)
+      // F45 F-2a: im_lauf ist optional (ältere Ergebnisse tragen es nicht).
+      const felder = ['lauf_id', 'skills', 'subagenten', 'mcp_server', 'hintergrund', ...('im_lauf' in daten.faehigkeiten ? ['im_lauf'] : [])]
+      pruefeFeldmenge(daten.faehigkeiten, felder, 'faehigkeiten', verstoesse)
       if (!istNichtLeererString(daten.faehigkeiten.lauf_id)) verstoesse.push("'faehigkeiten.lauf_id' muss ein nicht-leerer String sein")
       for (const feld of ['skills', 'subagenten', 'mcp_server']) pruefeNameAnzahlListe(daten.faehigkeiten[feld], `faehigkeiten.${feld}`, verstoesse)
       if (!istZahlOderNull(daten.faehigkeiten.hintergrund)) verstoesse.push("'faehigkeiten.hintergrund' muss eine ganze Zahl ≥ 0 oder null sein")
+      if ('im_lauf' in daten.faehigkeiten) {
+        const imLauf = daten.faehigkeiten.im_lauf
+        if (!istObjekt(imLauf)) verstoesse.push("'faehigkeiten.im_lauf' muss ein Objekt sein")
+        else {
+          pruefeFeldmenge(imLauf, ['aktiv', 'benutzt', 'aus', 'fremde'], 'faehigkeiten.im_lauf', verstoesse)
+          for (const feld of ['aktiv', 'benutzt', 'aus', 'fremde']) if (!Number.isInteger(imLauf[feld]) || (imLauf[feld] as number) < 0) verstoesse.push(`'faehigkeiten.im_lauf.${feld}' muss eine ganze Zahl ≥ 0 sein`)
+        }
+      }
     }
   }
   return verstoesse

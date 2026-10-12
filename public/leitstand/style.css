@@ -13045,3 +13045,344 @@ button.harness-ordner-eintrag {
   border-left-color: var(--amber);
   background: var(--note-amber-bg);
 }
+
+/* ─── F45 F-2a: Capability Library „Dieses Projekt“ (views/faehigkeiten-projekt.js) und Lauf-Detail „Fähigkeiten im Lauf“ ───
+   Nur vorhandene Tokens; Tabelle nach dem Muster .library-tabelle, ab 900 px gestapelt. Der Schalter ist ein role=switch-Knopf
+   (aria-checked), Zustand nie nur über Farbe: Text „an“/„aus“ steht daneben. */
+.fp-bereich {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* design-guardian 3: .v10-seite .note setzt margin 20px 0 — im Raster zählt nur gap. */
+.v10-seite .fp-band,
+.v10-seite .fp-meldung,
+.v10-seite .fp-wirkt,
+.fp-band,
+.fp-meldung,
+.fp-wirkt {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fp-band code,
+.fp-freigabe code {
+  overflow-wrap: anywhere;
+}
+
+.fp-gruppe h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.fp-anzahl {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fp-standard {
+  margin: 0 0 10px;
+}
+
+.fp-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.fp-tabelle th,
+.fp-tabelle td {
+  box-sizing: border-box;
+  border: 0;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.fp-tabelle th {
+  padding: 14px 18px;
+  background: none;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Render-Nachweis: „INSTALLIERT“ brach mit Großbuchstaben-Laufweite mitten im Wort — breiter und nur zwischen Wörtern. */
+.fp-tabelle th:nth-child(2) {
+  width: 9.5rem;
+}
+
+.fp-tabelle th:not(:first-child) {
+  overflow-wrap: normal;
+}
+
+.fp-tabelle th:nth-child(3),
+.fp-tabelle th:nth-child(4) {
+  width: 11rem;
+}
+
+.fp-tabelle th:nth-child(5) {
+  width: 7.5rem;
+}
+
+.fp-tabelle td {
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.fp-name {
+  display: inline;
+  cursor: default;
+}
+
+.fp-grund,
+.fp-unterzeile {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.fp-freigabe-oeffnen {
+  margin-top: 8px;
+}
+
+.fp-freigabe {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--note-amber-bg);
+}
+
+.fp-freigabe-satz {
+  margin: 0 0 8px;
+}
+
+.fp-freigabe-daten {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.fp-freigabe-daten div {
+  display: grid;
+  grid-template-columns: minmax(0, 4rem) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.fp-freigabe-daten dt {
+  color: var(--muted);
+}
+
+.fp-freigabe-daten dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.fp-hash-voll summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fp-freigabe-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fp-schalter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.fp-schalter-knopf {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 18px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--track);
+  transition: background-color 0.15s ease;
+}
+
+.fp-schalter-knopf::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.fp-schalter[aria-checked='true'] .fp-schalter-knopf {
+  border-color: var(--mint);
+}
+
+.fp-schalter[aria-checked='true'] .fp-schalter-knopf::after {
+  background: var(--mint);
+  transform: translateX(16px);
+}
+
+.fp-schalter:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.v10-seite .fp-schalter:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fp-schalter-knopf,
+  .fp-schalter-knopf::after {
+    transition: none;
+  }
+}
+
+.fp-nicht-installiert summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.fp-nicht-installiert ul {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.faehigkeiten-im-lauf {
+  margin: 16px 0 24px;
+}
+
+/* design-guardian 6: Namen nicht im Wort umbrechen, Status bekommt den Rest. */
+.faehigkeiten-im-lauf-tabelle td:first-child {
+  min-width: 10rem;
+}
+
+.faehigkeiten-im-lauf h4 {
+  margin: 0 0 6px;
+}
+
+.faehigkeiten-im-lauf-zeile {
+  margin: 0 0 8px;
+}
+
+/* Render-Nachweis: Art und Quelle brachen mitten im Wort („MC P“, „Katalo g“) — kurze Spalten ohne Umbruch. */
+.faehigkeiten-im-lauf-tabelle td:nth-child(2),
+.faehigkeiten-im-lauf-tabelle td:nth-child(3),
+.faehigkeiten-im-lauf-tabelle td:nth-child(6) {
+  white-space: nowrap;
+}
+
+.faehigkeiten-im-lauf-tabelle code {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .fp-tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .fp-tabelle,
+  .fp-tabelle tbody,
+  .fp-tabelle tr,
+  .fp-tabelle td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .fp-tabelle tr {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .fp-tabelle tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .fp-tabelle td {
+    padding: 4px 16px;
+    border-top: 0;
+  }
+
+  .fp-tabelle td:not(:first-child)::before {
+    content: attr(data-spalte) ': ';
+    color: var(--muted);
+  }
+}
+
+/* design-guardian 1/F: nur diese Tabelle — unter 900 px (auch 1440 px bei Zoom 200 % = 720 CSS-px) als gestapelte Blöcke
+   wie .fp-tabelle; sonst brachen Namen Buchstabe für Buchstabe und Status/Hash wurden abgeschnitten. */
+@media (max-width: 900px) {
+  .faehigkeiten-im-lauf-tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .faehigkeiten-im-lauf-tabelle,
+  .faehigkeiten-im-lauf-tabelle tbody,
+  .faehigkeiten-im-lauf-tabelle tr,
+  .faehigkeiten-im-lauf-tabelle td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .faehigkeiten-im-lauf-tabelle tr {
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .faehigkeiten-im-lauf-tabelle td,
+  .faehigkeiten-im-lauf-tabelle td:nth-child(n) {
+    padding: 3px 12px;
+    border: 0;
+    white-space: normal;
+  }
+
+  .faehigkeiten-im-lauf-tabelle code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .faehigkeiten-im-lauf-tabelle td:not(:first-child)::before {
+    content: attr(data-spalte) ': ';
+    color: var(--muted);
+  }
+}
+
+/* F-1061 (3): Knopf „Datei geprüft – Stand übernehmen“ im Band. */
+.fp-band-knopf {
+  margin-top: 10px;
+}

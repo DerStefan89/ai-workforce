@@ -345,6 +345,35 @@
         },
         "hintergrund": {
           "$ref": "#/$defs/zahlOderNull"
+        },
+        "im_lauf": {
+          "description": "F45 F-2a: Zählung aus faehigkeiten_im_lauf der Ausführungs-Laufakte (aktiv, benutzt, aus, fremde Aufrufe); fehlt bei Läufen ohne Fähigkeiten-Kontext.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "aktiv",
+            "benutzt",
+            "aus",
+            "fremde"
+          ],
+          "properties": {
+            "aktiv": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benutzt": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "aus": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fremde": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },

@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.41 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.42 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -80,6 +80,8 @@ v1.38 → v1.39: **§13.6 um E-M5-18, E-M5-19 und E-F45-1 ergänzt, E-F36-4 geä
 v1.39 → v1.40: **§13.6 E-M5-18 um die neue Reihenfolge ergänzt, E-F46-1 und E-F46-2 neu** (Stefan, 02.10.2026, F46 D0): E-M5-18 geändert — Design-Nachbau (F46) → Fixpaket „Arbeitsfähigkeit“ (B1 → B2 → B5 → B3 → B4) → F30 mit der Workforce selbst → Flow durchspielen → großes Fixpaket UX/UI → V0.9; der alte Wortlaut bleibt stehen. F44 ist abgenommen (WS-0 bis WS-8b gemergt und verifiziert). E-F46-1 (Terminal-Panel neben Jarvis nicht Teil von F46, eigenes Vorhaben nach dem Fixpaket mit eigener Sicherheitsprüfung; bis dahin bleibt „Ins Terminal“ ein Baustein „kommt“). E-F46-2 (wirksame Konfiguration im Leitstand nur lesbar; Änderungen nur als Vorschlag, wirksam erst durch den Menschen über Git). Feature-Nummer: F45 bleibt nach E-F45-1 dem Fixpaket vorbehalten, der Design-Nachbau ist F46 (`features/F46/feature.md`). Findings F-972 bis F-983.
 
 v1.40 → v1.41: **§13.6 um E-F45-3 = A ergänzt** (Stefan, 11.10.2026, Fixpaket „Arbeitsfähigkeit“, B1a): jeder schreibende Ablauf arbeitet in einem eigenen Git-Worktree auf eigenem Branch neben dem Projekt; der Projektordner bleibt unberührt; Löschen im eigenen Worktree nur über eine vom Server geprüfte Löschliste (F-715). Umsetzung F45 B1a-1.
+
+v1.41 → v1.42: **§13.6 um E-F45-6 bis E-F45-10 und die Sammlung ergänzt** (Stefan, 11./12.10.2026, Fixpaket „Arbeitsfähigkeit“, WS F): E-F45-6/7/8 aus F-1 nachgetragen (Opt-in je Projekt für Projekt-Agents/-Skills; kaputte lokale Datei sperrt Läufe mit Fähigkeiten; Ablage `~/.ai-workforce/faehigkeiten.lokal.json`). E-F45-9 = B (Plugins installierbar und im Lauf nutzbar, gegen die Empfehlung A; eigener Workstream F-3 mit Sicherheitsprüfung). E-F45-10 = A (Website-Fähigkeit mit Motion, Interaktion und 3D ins Fixpaket vor F30, gegen die Empfehlung B; B3 wird „Design & Motion in Fremdprojekten“, neuer Referenzauftrag R2 und Beleg 15). Stefans Sammlung `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl (F-2b). Findings F-1056 bis F-1059 (K20–K23).
 
 ---
 
@@ -1022,6 +1024,46 @@ auf eigenem Branch neben dem Projekt. Stefans Projektordner bleibt unberührt.
 Im eigenen Worktree darf der Ablauf Dateien löschen — über eine Löschliste,
 die der Server prüft und ausführt. Umsetzung F45 B1a-1
 (`features/F45/plan-b1a1.md`).
+
+**E-F45-6 = Opt-in je Projekt** *(Stefan, 12.10.2026, Fixpaket „Arbeitsfähigkeit“, F-1)* —
+Projekt-Agents und -Skills sind im Lauf nur aktiv, wenn Stefan sie je Projekt
+einschaltet und ihr Inhalt freigegeben ist; ohne Einstellung bleibt alles wie
+vorher. MCPs und installierte Skills sind Standard aktiv und je Projekt
+abschaltbar.
+
+**E-F45-7 = kaputte Datei sperrt** *(Stefan, 12.10.2026, F-1)* — Ist die lokale
+Fähigkeiten-Datei vorhanden, aber ungültig oder nicht lesbar, startet kein Lauf
+mit Fähigkeiten, bis sie repariert oder gelöscht ist; Server und alle anderen
+Läufe laufen weiter.
+
+**E-F45-8 = Ablage außerhalb jedes Repos** *(Stefan, 12.10.2026, F-1)* — Die
+Aktivierung je Projekt liegt in `~/.ai-workforce/faehigkeiten.lokal.json`,
+außerhalb jedes Repos und Arbeitsordners; geändert wird sie nur über den
+Leitstand, nie während eines Laufs (ARCHITECTURE.md §2).
+
+**E-F45-9 = B** *(Stefan, 11.10.2026, gegen die Empfehlung A)* — Plugins sind
+installierbar und im Lauf nutzbar. Folge: eigener Workstream F-3 mit
+Sicherheitsprüfung — Katalogtyp `plugin`; Installation gepinnt (Commit-SHA und
+Inhalt-Hash); Bestandteile einzeln ausgewiesen und nur über die Wege aus F-1
+nutzbar; Plugin-Hooks nur nach eigener Freigabe je Hook-Hash; das Init-Gate
+verlangt `init.plugins` = erwartete Menge. Erste Kandidaten aus
+`docs/harness/kandidaten-2026-09-15.md`: Claude Code Setup, Code Review (nur
+lokaler Bericht).
+
+**E-F45-10 = A** *(Stefan, 12.10.2026, gegen die Empfehlung B)* — Die
+Website-Fähigkeit (Motion, Interaktion, 3D; Website- und Design-Empfehlungen
+durch die Workforce) gehört ins Fixpaket, vor F30. B3 wird „Design & Motion in
+Fremdprojekten“: impeccable, design-guardian und Token-Gate wie bisher, dazu
+Bibliotheken je Projekt aus der Sammlung, Design-Referenzen (Beispielseiten)
+als Eingabe mit Empfehlung, Motion-Skills über den Weg aus WS F und ein
+Render-Nachweis mit Bewegung (Bildfolge oder Video, Ladezeit-Budget, „Bewegung
+reduzieren“). Neuer Referenzauftrag R2 nach R: eine kleine Landingpage mit
+Scroll-Animation, Interaktion und einem 3D-Element; neuer Beleg 15.
+
+**Sammlung als Basis** *(Stefan, 12.10.2026)* — Stefans bewertete Sammlung
+`docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl.
+Sie kommt in F-2b in den Leitstand (Kurzbeschreibung, Urteil, Lizenz, Kosten,
+Stand) mit „Auswählen“ → Prüflauf → Katalog.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

@@ -18,7 +18,7 @@ import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis
 const EMPFEHLUNG = {
   schrittId: 'schritt-1-ausfuehrung',
   wirdGenutzt: [{ id: 'gate-mcp', name: 'Gate <MCP>', typ: 'extern', unterart: 'mcp', grund: 'task_typen_any erfüllt (bugfix)' }],
-  passtNichtImLauf: [{ id: 'qa', name: 'qa', typ: 'agent', grund: 'Skill/Agent in der Ausführung erst ab WS-5' }],
+  passtNichtImLauf: [{ id: 'qa', name: 'qa', typ: 'agent', grund: 'aus — je Projekt einschalten (Seite Workforce)' }],
   weitereAnzahl: { wirdGenutzt: 0, passtNichtImLauf: 2 },
   nichtFreigebbarAnzahl: 1,
   hinweise: ['keine Router-Klassifikation'],
@@ -29,7 +29,7 @@ test('renderEmpfehlung: beide Listen mit Grund, +n weitere, Zählzeile, Hinweis,
   assert.match(html, /Wird genutzt/)
   assert.match(html, /Passt, nicht im Lauf/)
   assert.match(html, /<code>gate-mcp<\/code> Gate &lt;MCP&gt; — task_typen_any erfüllt \(bugfix\)/)
-  assert.match(html, /erst ab WS-5/)
+  assert.match(html, /aus — je Projekt einschalten/)
   assert.match(html, /\+2 weitere<\/li>/)
   const genutztUeber = renderEmpfehlung({ ...EMPFEHLUNG, weitereAnzahl: { wirdGenutzt: 1, passtNichtImLauf: 0 } })
   assert.match(genutztUeber, /\+1 weitere passend, in diesem Lauf nicht genutzt/)
@@ -97,4 +97,39 @@ test('renderEmpfehlung (F-849): gesperrte Projekt-URL nennt ihren Grund statt �
   assert.ok(html.includes(`Projekt-URL gesperrt: ${VORSCHAU_LEITSTAND_PORT}.`), html)
   assert.ok(!html.includes('nicht gesetzt'), html)
   assert.ok(renderEmpfehlung({ ...EMPFEHLUNG, projektUrl: null }).includes('Projekt-URL: nicht gesetzt'))
+})
+
+test('F45 F-2a (F-1054 (1)): empfehlungIdsFuerFreigabe nimmt die Kennungen der aktiven Projekt-Fähigkeiten mit, nicht die gesperrten', () => {
+  const mit = {
+    ...EMPFEHLUNG,
+    wirdGenutzt: [{ ...EMPFEHLUNG.wirdGenutzt[0], empfehlungId: `gate-mcp@${'c'.repeat(64)}` }],
+    projektFaehigkeiten: [
+      { id: 'agent:qa', name: 'qa', typ: 'agent', aktiv: true, kennung: `agent:qa@${'a'.repeat(64)}` },
+      { id: 'skill:ponytail', name: 'ponytail', typ: 'skill', aktiv: false, grund: 'Inhalt weicht ab' },
+    ],
+  }
+  assert.deepEqual(empfehlungIdsFuerFreigabe(mit), [`gate-mcp@${'c'.repeat(64)}`, `agent:qa@${'a'.repeat(64)}`])
+  assert.deepEqual(empfehlungIdsFuerFreigabe({ ...EMPFEHLUNG, wirdGenutzt: [], projektFaehigkeiten: [] }), [])
+})
+
+test('F45 F-2a (F-1054 (1)/(2), F-1055 (1)): Freigabeblock zeigt Projekt-Fähigkeiten im Lauf, „Im Projekt ausgeschaltet“ und das Fremd-Band', () => {
+  const html = renderEmpfehlung({
+    ...EMPFEHLUNG,
+    projektFaehigkeiten: [
+      { id: 'agent:qa', name: 'qa', typ: 'agent', aktiv: true, kennung: `agent:qa@${'a'.repeat(64)}` },
+      { id: 'skill:ponytail', name: 'ponytail', typ: 'skill', aktiv: false, grund: 'Inhalt <weicht> ab' },
+    ],
+    deaktiviert: [{ id: 'playwright-mcp', name: 'Playwright', typ: 'extern', unterart: 'mcp', grund: 'im Projekt deaktiviert' }],
+    lokaleDateiFremd: { bekannt_seit: '2026-10-12T08:00:00.000Z', quelle: 'route' },
+  })
+  assert.match(html, /Projekt-Fähigkeiten im Lauf/)
+  assert.match(html, /<input type="checkbox" disabled checked \/><span><code>agent:qa<\/code> Agent — im Projekt eingeschaltet, läuft mit/)
+  assert.match(html, /<code>skill:ponytail<\/code> Skill — <span class="fehler">eingeschaltet, aber nicht aktiv \(Inhalt &lt;weicht&gt; ab\) — der Start wird abgelehnt/)
+  assert.match(html, /Im Projekt ausgeschaltet<\/strong>/)
+  assert.match(html, /<code>playwright-mcp<\/code> Playwright — im Projekt ausgeschaltet/)
+  assert.match(html, /empfehlung-fremd/)
+  assert.match(html, /außerhalb des Leitstands geändert/)
+  // Ohne die Felder bleibt der Block wie vorher.
+  const ohne = renderEmpfehlung(EMPFEHLUNG)
+  assert.doesNotMatch(ohne, /Projekt-Fähigkeiten im Lauf|Im Projekt ausgeschaltet|empfehlung-fremd/)
 })

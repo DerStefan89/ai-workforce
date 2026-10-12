@@ -26,7 +26,7 @@ import { dirname, join } from 'node:path'
 import { registriereAuftrag } from '../../../../src/auftrag/index.ts'
 import { sha256Hex } from '../../../../src/checkpoint-store/index.ts'
 import { fuehreAufgabeDurch } from '../../../../src/execution-controller/index.ts'
-import { katalogFreigaben, ladeFaehigkeitenLokal } from '../../../../src/faehigkeiten/index.ts'
+import { ermittleProjektFaehigkeiten, katalogFreigaben, ladeFaehigkeitenLokal, leseEingebautReferenz, projektEinstellungen, projektKennung } from '../../../../src/faehigkeiten/index.ts'
 import { fuehreGitSync } from '../../../../src/git-starter/index.ts'
 import { ermittleIstZustand } from '../../../../src/invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../../../../src/lineage-registry/index.ts'
@@ -107,6 +107,10 @@ async function lauf(name, an, mitOrtB, auftragstext) {
     installWurzel: INSTALL,
     faehigkeitenKontext: { lokal: ladeFaehigkeitenLokal(lokalPfad), lokalPfad, projektId: 'testprojekt', katalog: katalogFreigaben(katalogRoh, INSTALL), deaktiviert: [] },
   }
+  // F45 F-2a (Advisor A4): der Kontext verlangt die angezeigten Projekt-Kennungen — hier die aktiven Einträge des Testprojekts.
+  const referenz = leseEingebautReferenz()
+  const ermittelt = ermittleProjektFaehigkeiten(projekt, { katalog: optionen.faehigkeitenKontext.katalog, einstellungen: projektEinstellungen(optionen.faehigkeitenKontext.lokal.daten, 'testprojekt'), werkzeugNamen: [...new Set(vorlage.werkzeugsaetze.schreibend.erlaubte_werkzeuge.map((r) => r.split('(')[0]))], referenz: referenz.ok ? referenz.referenz : { cli_version: '', agents: [], plugins: [], plugin_skills: [] } })
+  optionen.faehigkeitenKontext.angezeigteProjektKennungen = ermittelt.eintraege.filter((e) => e.aktiv).flatMap((e) => projektKennung(e) ?? [])
   const eingaben = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'schreibend', auftragstext, vorlage, projekt, optionen)
   if (!eingaben.ok) throw new Error(`${name}: Start abgelehnt — ${eingaben.grund}`)
   const laufId = `f45-f1-${name}-${randomUUID()}`

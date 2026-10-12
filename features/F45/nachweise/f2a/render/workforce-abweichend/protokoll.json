@@ -1,0 +1,62 @@
+[
+  {
+    "label": "Workforce geladen",
+    "Schalter gesperrt": false,
+    "Freigabe-Block": false,
+    "lang": "de",
+    "Band": "Eingeschaltet, aber nicht aktiv. agent:qa — solange das so ist, startet kein Lauf mit Fähigkeiten in diesem Projekt. Inh",
+    "Meldung": "(fehlt)",
+    "erste Gruppe": "MCPs 1",
+    "qa-Zeile": "qaPrueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature a",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Capability Library",
+    "Schalter gesperrt": false,
+    "Freigabe-Block": false,
+    "lang": "de",
+    "Band": "Eingeschaltet, aber nicht aktiv. agent:qa — solange das so ist, startet kein Lauf mit Fähigkeiten in diesem Projekt. Inh",
+    "Meldung": "(fehlt)",
+    "erste Gruppe": "MCPs 1",
+    "qa-Zeile": "qaPrueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature a",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Unterreiter „Dieses Projekt“",
+    "Schalter gesperrt": false,
+    "Freigabe-Block": false,
+    "lang": "de",
+    "Band": "Eingeschaltet, aber nicht aktiv. agent:qa — solange das so ist, startet kein Lauf mit Fähigkeiten in diesem Projekt. Inh",
+    "Meldung": "(fehlt)",
+    "erste Gruppe": "MCPs 1",
+    "qa-Zeile": "qaPrueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature a",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "„Freigeben nach Inhalt“ geöffnet",
+    "Schalter gesperrt": false,
+    "Freigabe-Block": true,
+    "lang": "de",
+    "Band": "Eingeschaltet, aber nicht aktiv. agent:qa — solange das so ist, startet kein Lauf mit Fähigkeiten in diesem Projekt. Inh",
+    "Meldung": "(fehlt)",
+    "erste Gruppe": "MCPs 1",
+    "qa-Zeile": "qaPrueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature a",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Bestätigt, Server antwortet 409 (Inhalt geändert)",
+    "Schalter gesperrt": false,
+    "Freigabe-Block": false,
+    "lang": "de",
+    "Band": "Eingeschaltet, aber nicht aktiv. agent:qa — solange das so ist, startet kein Lauf mit Fähigkeiten in diesem Projekt. Inh",
+    "Meldung": "Nicht freigegeben — Inhalt von 'agent:qa' hat sich seit der Anzeige geändert (jetzt cccccccccccc…) — nichts freigegeben,",
+    "erste Gruppe": "MCPs 1",
+    "qa-Zeile": "qaPrueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature a",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

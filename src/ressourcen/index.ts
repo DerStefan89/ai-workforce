@@ -865,10 +865,15 @@ export function baueMcpAufruf(mcpEintraege: readonly Ressource[], platzhalterWer
 
 /** F-788: höchstens so viele Einträge je Empfehlungsliste, der Rest nur als Anzahl. */
 const EMPFEHLUNG_OBERGRENZE = 3
-/** Seit Variante 3b (Spike WS-2s S6) sind Agents nicht im Werkzeugsatz der Ausführung; WS-5b schaltet nur Ort-B-Skills — für Agents bleibt der Grund. */
-const SKILL_AGENT_ERST_AB_WS5 = 'Skill/Agent in der Ausführung erst ab WS-5'
-/** F36 WS-5b: Projekt-Skills (typ 'skill') bleiben im Lauf gesperrt (skillOverrides/Skill(…)), auch wenn FREIGEGEBEN. */
-export const PROJEKT_SKILL_GESPERRT = 'Projekt-Skill im Lauf gesperrt (nur installierte Ort-B-Skills sind aufrufbar, F36 WS-5b)'
+/**
+ * F45 F-2a (F-1054 (2)): Gründe für Projekt-Agents/-Skills (Katalogtyp agent/skill) in „Passt, nicht im Lauf“ — seit F-1
+ * laufen sie über das Opt-in je Projekt (E-F45-6), nicht mehr „erst ab WS-5“ bzw. „gesperrt“. Ohne Projektstand
+ * (laufKontext.projektStatus) der allgemeine Grund.
+ */
+export const PROJEKT_EINTRAG_AUS = 'aus — je Projekt einschalten (Seite Workforce)'
+export const PROJEKT_INHALT_ABWEICHEND = 'Inhalt weicht ab — auf der Seite Workforce freigeben'
+export const PROJEKT_EINTRAG_FEHLT = 'nicht im Projektordner'
+export const PROJEKT_EINTRAG_ALLGEMEIN = 'Projekt-Agent/-Skill: je Projekt einschalten (Seite Workforce)'
 /** F45 F-1 (E-F45-6): Grund eines im Projekt abgeschalteten Katalog-Eintrags (faehigkeiten.lokal.json, aus). */
 export const IM_PROJEKT_DEAKTIVIERT = 'im Projekt deaktiviert'
 /** F36 WS-5a (E-F36-7): Grund, wenn ein Eintrag mit {projekt_origins} ohne vorschau_url des Projekts empfohlen würde. */
@@ -898,9 +903,12 @@ function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintra
  *   FREIGEGEBEN, installation gesetzt, wirkung 'lokal', verfuegbar; seit F36 WS-5b auch typ 'extern',
  *   unterart 'skill', FREIGEGEBEN, installation gesetzt, verfuegbar (Ordner da, inhalt_hash stimmt).
  *   Agents (intern oder extern) und Projekt-Skills (typ 'skill') nie.
- * - passtNichtImLauf: alle übrigen anwendbaren Einträge, grund aus fehltFuerEinsatz, bei Agents
- *   zusätzlich SKILL_AGENT_ERST_AB_WS5, bei Projekt-Skills PROJEKT_SKILL_GESPERRT, bei einem nicht
- *   installierbaren externen Skill ohne installation der Grund aus pruefeInstallierbarkeit.
+ * - passtNichtImLauf: alle übrigen anwendbaren Einträge, grund aus fehltFuerEinsatz, bei einem nicht
+ *   installierbaren externen Skill ohne installation der Grund aus pruefeInstallierbarkeit, bei externen Agents
+ *   AGENT_INSTALLATION_ERST_SPAETER. Seit F45 F-2a (F-1054 (2)) Projekt-Agents/-Skills (typ agent/skill) nach
+ *   laufKontext.projektStatus: aktiv → in keiner Liste (läuft mit, Opt-in E-F45-6); sonst PROJEKT_INHALT_ABWEICHEND,
+ *   PROJEKT_EINTRAG_AUS, PROJEKT_EINTRAG_FEHLT oder „eingeschaltet, aber nicht aktiv“; ohne projektStatus
+ *   PROJEKT_EINTRAG_ALLGEMEIN.
  * - MCP mit wirkung ≠ 'lokal' (E-F36-4, in V1 nicht freigebbar) steht in keiner Liste, nur in
  *   nichtFreigebbarAnzahl.
  * - Seit F36 WS-5a: ein MCP, dessen args {projekt_origins} tragen, kommt ohne Projekt-URL nie in
@@ -913,7 +921,8 @@ function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintra
  * Rangfolge und Obergrenze siehe sortiereUndBegrenze. Die Eingabereihenfolge beeinflusst das Ergebnis nicht.
  * @param aufgeloest - Katalog nach loeseRessourcenAuf
  * @param kontext - task_typen des Auftrags (Router) und Pfade des Projekts
- * @param laufKontext - { projektUrlVorhanden, projektUrlGrund?, aus? (F45 F-1: im Projekt abgeschaltete Katalog-ids) } des Projekts; Default {} = keine Projekt-URL (fail-closed)
+ * @param laufKontext - { projektUrlVorhanden, projektUrlGrund?, aus? (F45 F-1: im Projekt abgeschaltete Katalog-ids),
+ *   projektStatus? (F45 F-2a: Stand der Projekt-Agents/-Skills je Katalog-id) } des Projekts; Default {} = keine Projekt-URL (fail-closed)
  * @returns die beiden Listen, je Liste die Anzahl weiterer Einträge, die Anzahl nicht freigebbarer
  */
 export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], kontext: AnwendbarkeitsKontext, laufKontext: EmpfehlungsLaufKontext = {}): Empfehlung {
@@ -944,10 +953,19 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
       genutzt.push({ rang, eintrag: { ...basis, grund: anwendbarkeit.begruendung, empfehlungId: empfehlungsKennung(ressource) } })
       continue
     }
-    const gruende = fehltFuerEinsatz(ressource, ressource)
+    let gruende = fehltFuerEinsatz(ressource, ressource)
     const nichtInstallierbar = (istMcp || istOrtBSkill) && ressource.installation === undefined ? pruefeInstallierbarkeit(ressource) : null
-    if (ressource.typ === 'skill') gruende.push(PROJEKT_SKILL_GESPERRT)
-    else if (!istMcp && !istOrtBSkill) gruende.push(SKILL_AGENT_ERST_AB_WS5)
+    if (ressource.typ === 'skill' || ressource.typ === 'agent') {
+      // F45 F-2a (F-1054 (2)): Projekt-Agent/-Skill — Grund aus dem Projektstand (Opt-in, Freigabe nach Inhalt); aktiv → er
+      // läuft mit (steht in projektFaehigkeiten der Anzeige), also nicht in „Passt, nicht im Lauf“.
+      const status = laufKontext.projektStatus?.get(ressource.id)
+      if (status?.aktiv === true) continue
+      if (laufKontext.projektStatus === undefined) gruende.push(PROJEKT_EINTRAG_ALLGEMEIN)
+      else if (status === undefined) gruende = [PROJEKT_EINTRAG_FEHLT]
+      else if (status.abweichend) gruende = [PROJEKT_INHALT_ABWEICHEND]
+      else if (!status.eingeschaltet) gruende = status.freigegeben || status.grund === null ? [PROJEKT_EINTRAG_AUS] : [PROJEKT_EINTRAG_AUS, status.grund]
+      else gruende = [`eingeschaltet, aber nicht aktiv (${status.grund ?? 'unbekannt'}) — der Start wird abgelehnt`]
+    } else if (ressource.typ === 'extern' && ressource.unterart === 'agent') gruende.push(AGENT_INSTALLATION_ERST_SPAETER)
     // Nur für Skills als Grund angezeigt (neu in WS-5b); die MCP-Gründe bleiben wie in WS-5a.
     if (istOrtBSkill && nichtInstallierbar !== null) gruende.push(`nicht installierbar: ${nichtInstallierbar}`)
     if (ohneProjektUrl) gruende.push(laufKontext.projektUrlGrund ?? PROJEKT_URL_FEHLT)
