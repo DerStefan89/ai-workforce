@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { baueAufruf, pruefeInitZeile } from '../src/claude-code-gateway/index.ts'
 import { erfasseClaudeOrdner } from '../src/execution-controller/index.ts'
-import { katalogFreigaben, ladeFaehigkeitenLokal, pruefeGegenMomentaufnahme } from '../src/faehigkeiten/index.ts'
+import { ermittleProjektFaehigkeiten, katalogFreigaben, ladeFaehigkeitenLokal, leseEingebautReferenz, projektEinstellungen, projektKennung, pruefeGegenMomentaufnahme } from '../src/faehigkeiten/index.ts'
 import { pruefeAufrufparameter } from '../src/invocation-policy/index.ts'
 import { ladeStartvorlage } from '../src/startvorlage/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
@@ -59,11 +59,26 @@ function lokal(inhalt) {
   return pfad
 }
 
+/**
+ * F45 F-2a (Advisor A4): die Kennungen, die die Oberfläche für diesen Ordner angezeigt hätte (aktive Projekt-Einträge) —
+ * der Kontext verlangt sie; das Gate prüft hier den F-1-Start, nicht die Anzeige-Bindung (die prüft der Servertest).
+ */
+function angezeigteKennungen(wurzel, lokal) {
+  if (lokal.zustand === 'ungueltig') return []
+  const referenz = leseEingebautReferenz()
+  const werkzeugNamen = [...new Set(vorlage.werkzeugsaetze.schreibend.erlaubte_werkzeuge.map((r) => r.split('(')[0]))]
+  const ermittelt = ermittleProjektFaehigkeiten(wurzel, { katalog: KATALOG, einstellungen: projektEinstellungen(lokal.daten, 'gate'), werkzeugNamen, referenz: referenz.ok ? referenz.referenz : { cli_version: '', agents: [], plugins: [], plugin_skills: [] } })
+  return ermittelt.eintraege.filter((e) => e.aktiv).flatMap((e) => projektKennung(e) ?? [])
+}
+
 /** Start über loeseAusfuehrungsEingabenAuf mit optionalem Katalog-Kontext. */
 function starte(wurzel, lokalPfad) {
   const roh = { rolle: 'ausfuehrung', anfragen: [], budget: vorlage.standardBudget, aufrufEingaben: { modell: 'claude-sonnet-5' }, auftragId: 'gate' }
   const optionen = { leseAusfuehrungsVorbedingung: () => ({ ok: true }) }
-  if (lokalPfad !== undefined) optionen.faehigkeitenKontext = { lokal: ladeFaehigkeitenLokal(lokalPfad), lokalPfad, projektId: 'gate', katalog: KATALOG, deaktiviert: [] }
+  if (lokalPfad !== undefined) {
+    const lokal = ladeFaehigkeitenLokal(lokalPfad)
+    optionen.faehigkeitenKontext = { lokal, lokalPfad, projektId: 'gate', katalog: KATALOG, deaktiviert: [], angezeigteProjektKennungen: angezeigteKennungen(wurzel, lokal) }
+  }
   return loeseAusfuehrungsEingabenAuf(roh, 'schreibend', 'AUFTRAG', vorlage, wurzel, optionen)
 }
 

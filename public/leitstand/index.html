@@ -700,6 +700,7 @@
           <div id="werkstatt-bereich-faehigkeiten" role="tabpanel" aria-labelledby="werkstatt-reiter-faehigkeiten" hidden>
             <div id="faehigkeiten-register" class="tabs werkstatt-register werkstatt-unterregister" role="tablist" aria-label="Bereiche der Fähigkeiten" data-i18n-aria-label="werkstatt.unterregister">
               <button type="button" role="tab" id="faehigkeiten-reiter-werkzeuge" class="active" aria-controls="faehigkeiten-bereich-werkzeuge" aria-selected="true" tabindex="0" data-i18n="werkstatt.reiter.werkzeuge">Katalog</button>
+              <button type="button" role="tab" id="faehigkeiten-reiter-projekt" aria-controls="faehigkeiten-bereich-projekt" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.projekt">Dieses Projekt</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-rollen" aria-controls="faehigkeiten-bereich-rollen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.rollen">Rollen &amp; Besetzung</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-empfehlungen" aria-controls="faehigkeiten-bereich-empfehlungen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.empfehlungen">Empfehlungen</button>
             </div>
@@ -729,6 +730,14 @@
                 <summary data-i18n="werkstatt.technik">Technische Angaben</summary>
                 <p id="capabilities-startvorlage"></p>
               </details>
+            </div>
+
+            <!-- F45 F-2a (F-1012 Oberfläche, F-1054, F-1055 (1)): Fähigkeiten dieses Projekts — installiert · aktiv · im letzten
+                 Lauf benutzt, Schalter je Eintrag (wirkt ab dem nächsten Lauf) und „Freigeben nach Inhalt“ (views/faehigkeiten-projekt.js,
+                 GET/POST …/faehigkeiten). Kein Poll; geschrieben wird nur ~/.ai-workforce/faehigkeiten.lokal.json über die Routen. -->
+            <div id="faehigkeiten-bereich-projekt" role="tabpanel" aria-labelledby="faehigkeiten-reiter-projekt" hidden>
+              <h2 class="sr-only" data-i18n="werkstatt.reiter.projekt">Dieses Projekt</h2>
+              <div id="faehigkeiten-projekt"></div>
             </div>
 
             <!-- J7/J8: Liste je Rolle mit Coverage und Gap-Zeilen je Worker; Details lädt die Ebenen 1–4 lazy. -->

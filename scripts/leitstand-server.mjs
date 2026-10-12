@@ -476,7 +476,7 @@ import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/work
 import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, empfehlungsKennung, loeseRessourcenAuf, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
 import { bereiteInstallationVor, installiereRessource, npmReal } from '../src/ressourcen/installation.ts'
 import { baueOrtBSkillStart } from '../src/ressourcen/ort-b-start.ts'
-import { ermittleProjektFaehigkeiten, katalogFreigaben, STANDARD_FAEHIGKEITEN_LOKAL_PFAD, ladeFaehigkeitenLokal, leseEingebautReferenz, projektEinstellungen } from '../src/faehigkeiten/index.ts'
+import { ermittleProjektFaehigkeiten, hashLokaleDatei, katalogFreigaben, ladeFaehigkeitenLokal, leseEingebautReferenz, projektEinstellungen, projektFaehigkeitenFuerAnzeige, projektKennung, projektStatusFuerEmpfehlung, STANDARD_FAEHIGKEITEN_LOKAL_PFAD, trenneAngezeigteIds, vergleicheProjektKennungen } from '../src/faehigkeiten/index.ts'
 import { baueFaehigkeitenStart } from '../src/faehigkeiten/start.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
@@ -535,7 +535,7 @@ import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-ak
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper } from './leitstand/routen-arbeitsordner.mjs'
-import { aendereLokaleDatei, baueFaehigkeitenStatus, einschaltSperrgrund, freigabeSperrgrund, pruefeAktivierungKoerper, pruefeFreigabeKoerper } from './leitstand/routen-faehigkeiten.mjs'
+import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, einschaltSperrgrund, erzeugeLokalWaechter, FREMD_UNBESTAETIGT, fremdGeaendert, freigabeSperrgrund, pruefeAktivierungKoerper, pruefeFreigabeKoerper } from './leitstand/routen-faehigkeiten.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
 import { baueHarnessAbgleichAntwort, baueHarnessAbgleichOhneLauf, schreibeHarnessAbgleichAmKettenende } from './leitstand/routen-harness-abgleich.mjs'
@@ -859,6 +859,7 @@ function baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis, auftragMemo) {
  * Bedeutung, also wird nichts erfunden).
  *
  * F36 WS-4 (AK8) additiv: beobachtung (Laufakten-Feld, sonst null).
+ * F45 F-2a additiv: faehigkeitenImLauf (Laufakten-Feld faehigkeiten_im_lauf, sonst null).
  * @param laufakteVersion - ArtefaktVersion der Laufakte, oder null
  * @returns { status: 'ok', ... } | { status: 'nicht_vorhanden' }
  */
@@ -874,6 +875,9 @@ export function baueLaufakteProjektion(laufakteVersion) {
     modellDeklariert: daten.modell_deklariert ?? null,
     // F36 WS-4 (AK8): unverändert durchgereicht; fehlt es (alte Laufakte, Codex), bleibt es null — nie geraten.
     beobachtung: daten.beobachtung ?? null,
+    // F45 F-2a (F-1012, Beleg 13): beim Start eingefrorene Fähigkeiten samt Aufrufen; fehlt es (Lauf ohne Fähigkeiten-
+    // Kontext, z. B. Fortsetzungslauf), null — das Lauf-Detail sagt dann „nicht erfasst“.
+    faehigkeitenImLauf: daten.faehigkeiten_im_lauf ?? null,
   }
 }
 
@@ -2495,8 +2499,12 @@ function leseVersionierteDateien(repoWurzel) {
  *   kommt kein Eintrag mit {projekt_origins} in „Wird genutzt“ (E-F36-7). F-849: { leitstandPort } =
  *   gebundener Port (req.socket.localPort); zeigt vorschau_url darauf oder fehlt er, gilt die
  *   Projekt-URL als nicht vorhanden, mit eigenem Grund (vorschauLeitstandSperre, fail-closed). F45 F-1: { aus } = im
- *   Projekt abgeschaltete Katalog-ids (faehigkeiten.lokal.json, E-F45-6) — fehlt es, bitgleich wie vorher
- * @returns { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl, katalog (F45 F-1: validierte Einträge), projektUrlGrund? (F-849) } (genutzteEintraege =
+ *   Projekt abgeschaltete Katalog-ids (faehigkeiten.lokal.json, E-F45-6) — fehlt es, bitgleich wie vorher. F45 F-2a:
+ *   { faehigkeiten: { einstellungen, werkzeugNamen } } = Einstellungen des Projekts und Werkzeugnamen des Schritts — dann
+ *   werden die Projekt-Agents/-Skills im Projektordner bewertet (Gründe in „Passt, nicht im Lauf“, F-1054 (2)) und
+ *   empfehlung.projektFaehigkeiten gesetzt (eingeschaltete Einträge, aktive mit Kennung, F-1054 (1)); fehlt es, bitgleich
+ * @returns { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl, katalog (F45 F-1: validierte Einträge), projektUrlGrund? (F-849),
+ *   projektKennungen? (F45 F-2a: Kennungen der aktiven Projekt-Einträge, nur mit zusatz.faehigkeiten) } (genutzteEintraege =
  *   aufgelöste Einträge von wirdGenutzt in Anzeigereihenfolge) oder { ok: false, grund }
  */
 export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, zusatz = {}) {
@@ -2514,9 +2522,30 @@ export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWur
     if (pfade === null) hinweise.push(PFADE_NICHT_LESBAR)
     const aufgeloest = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
     const aus = Array.isArray(zusatz.aus) && zusatz.aus.length > 0 ? { aus: zusatz.aus } : {}
-    const empfehlung = baueEmpfehlung(aufgeloest, { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] }, { projektUrlVorhanden: projektUrl !== null, ...(sperre !== null ? { projektUrlGrund: sperre } : {}), ...aus })
+    // F45 F-2a (F-1054 (1)/(2)): Projekt-Agents/-Skills im Projektordner — nur hier (also bei einem Cache-Fehlschlag der
+    // Anzeige bzw. frisch beim Start), nie zusätzlich im Poll (Advisor A7). Die Referenzliste dient nur Sperrgründen der
+    // Anzeige; nicht lesbar → leere Liste (der Start prüft sie selbst, loeseAusfuehrungsEingabenAuf).
+    let projekt = null
+    if (zusatz.faehigkeiten !== undefined) {
+      const katalogFrei = katalogFreigaben(ressourcenRoh.ressourcen, installWurzel)
+      const eingebaut = leseEingebautReferenz()
+      const ermittelt = ermittleProjektFaehigkeiten(repoWurzel, {
+        katalog: katalogFrei,
+        einstellungen: zusatz.faehigkeiten.einstellungen,
+        werkzeugNamen: zusatz.faehigkeiten.werkzeugNamen,
+        referenz: eingebaut.ok ? eingebaut.referenz : { cli_version: '', agents: [], plugins: [], plugin_skills: [] },
+      })
+      projekt = { ermittelt, status: projektStatusFuerEmpfehlung(ermittelt.eintraege, katalogFrei, zusatz.faehigkeiten.einstellungen) }
+    }
+    const empfehlungRoh = baueEmpfehlung(
+      aufgeloest,
+      { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] },
+      { projektUrlVorhanden: projektUrl !== null, ...(sperre !== null ? { projektUrlGrund: sperre } : {}), ...aus, ...(projekt !== null ? { projektStatus: projekt.status } : {}) }
+    )
+    const empfehlung = projekt === null ? empfehlungRoh : { ...empfehlungRoh, projektFaehigkeiten: projektFaehigkeitenFuerAnzeige(projekt.ermittelt.eintraege) }
     const genutzteEintraege = empfehlung.wirdGenutzt.map((eintrag) => aufgeloest.find((r) => r.id === eintrag.id))
-    return { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl, katalog: ressourcenRoh.ressourcen, ...(sperre !== null ? { projektUrlGrund: sperre } : {}) }
+    const projektKennungen = projekt === null ? undefined : empfehlung.projektFaehigkeiten.flatMap((e) => (e.kennung !== undefined ? [e.kennung] : []))
+    return { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl, katalog: ressourcenRoh.ressourcen, ...(sperre !== null ? { projektUrlGrund: sperre } : {}), ...(projektKennungen !== undefined ? { projektKennungen } : {}) }
   } catch (fehler) {
     return { ok: false, grund: fehler.message }
   }
@@ -2537,7 +2566,10 @@ function empfehlungCacheSchluessel(auftragId, repoWurzel, installWurzel, startvo
     const katalog = statSync(join(installWurzel, 'ressourcen.json'))
     const head = fuehreGitSync(['--no-optional-locks', 'rev-parse', 'HEAD'], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
     // F45 F-1 (Advisor A10, Delta B5): aus als Wert im Schlüssel — eine Aktivierung über POST wirkt sofort in der Anzeige.
-    return JSON.stringify([auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz.vorschauUrl ?? null, zusatz.leitstandPort ?? null, katalog.mtimeMs, katalog.size, head, zusatz.aus ?? []])
+    // F45 F-2a (Advisor A7): ebenso an, inhalt_freigaben und Werkzeugnamen, und ob Projekt-Fähigkeiten mitgerechnet wurden.
+    const f = zusatz.faehigkeiten
+    const faehigkeiten = f === undefined ? null : [f.einstellungen.an, Object.entries(f.einstellungen.inhalt_freigaben).sort(), f.werkzeugNamen]
+    return JSON.stringify([auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz.vorschauUrl ?? null, zusatz.leitstandPort ?? null, katalog.mtimeMs, katalog.size, head, zusatz.aus ?? [], faehigkeiten])
   } catch {
     return null
   }
@@ -2601,14 +2633,16 @@ export function pruefeEmpfehlungIdsForm(wert) {
  * Funktion die MCP-Einträge für optionen.mcpEintraege (genau die angezeigten) und die Auftragszeile
  * (null bei leerer Liste). Aufrufer: starteWorkflowSchritt, POST .../freigabe (Vorprüfung) und
  * POST /api/laeufe — jeweils nur für erhaeltKatalogFaehigkeiten und nur mit mitgeschickten ids.
- * @param angezeigteIds - wirdGenutzt-ids aus der Anzeige (Form bereits geprüft)
+ * @param angezeigteIds - wirdGenutzt-ids aus der Anzeige (Form bereits geprüft); seit F45 F-2a zusätzlich die Kennungen
+ *   der aktiven Projekt-Fähigkeiten ('agent:<n>@<sha>'/'skill:<n>@<sha>', empfehlung.projektFaehigkeiten)
  * @param auftragId - Auftrag des Laufs
  * @param repoWurzel - Projekt-Repo-Wurzel
  * @param installWurzel - Installationswurzel
  * @param startvorlagePfad - Startvorlage
  * @param ladeOptionen - basisVerzeichnis/schreiber
- * @param zusatz - F36 WS-5a: { vorschauUrl, leitstandPort (F-849) } wie ermittleAusfuehrungsEmpfehlung
- * @returns { ok: true, mcpEintraege, skillEintraege (F36 WS-5b), deaktiviert und katalog (F45 F-1), zeile } oder { ok: false, grund }
+ * @param zusatz - F36 WS-5a: { vorschauUrl, leitstandPort (F-849), aus, faehigkeiten (F45 F-2a) } wie ermittleAusfuehrungsEmpfehlung
+ *   — derselbe zusatz wie in der Anzeige (Advisor A7), sonst landet das frische Ergebnis unter einem anderen Cache-Schlüssel
+ * @returns { ok: true, mcpEintraege, skillEintraege (F36 WS-5b), deaktiviert und katalog (F45 F-1), projektKennungen (F45 F-2a), zeile } oder { ok: false, grund }
  *
  * Seit F36 WS-5a (F-808) sind die ids die empfehlungIds '<id>@<sha256 der installation>' — ändert sich
  * die installation eines angezeigten Eintrags zwischen Anzeige und Start, weicht der Hash ab und der
@@ -2625,13 +2659,30 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
     console.error(`[leitstand] Katalog-Empfehlung für Auftrag '${auftragId}' beim Start nicht ermittelbar:`, ermittelt.grund)
     return { ok: false, grund: `Katalog-Empfehlung beim Start nicht ermittelbar (${ermittelt.grund}) — Start abgebrochen` }
   }
+  // F45 F-2a (F-1054 (1), Advisor A6): die angezeigten ids tragen Katalog- ('<id>@<sha>') und Projekt-Kennungen
+  // ('agent:'/'skill:<name>@<sha>') — getrennt über das Präfix, je Art eigener Vergleich.
+  const angezeigt = trenneAngezeigteIds(angezeigteIds)
   const beimStart = ermittelt.empfehlung.wirdGenutzt.map((eintrag) => eintrag.empfehlungId)
   // Hash gekürzt, damit der Grund lesbar bleibt (voller Wert steht in der Anzeige/im Body).
   const liste = (ids) => (ids.length === 0 ? 'keine' : ids.map((id) => String(id).replace(/@([0-9a-f]{12})[0-9a-f]{52}$/, '@$1…')).join(', '))
-  if (JSON.stringify([...angezeigteIds].sort()) !== JSON.stringify([...beimStart].sort())) {
+  if (JSON.stringify([...angezeigt.katalog].sort()) !== JSON.stringify([...beimStart].sort())) {
     return {
       ok: false,
-      grund: `Katalog-Empfehlung hat sich seit der Anzeige geändert (angezeigt: ${liste(angezeigteIds)}; beim Start: ${liste(beimStart)}) — Start abgebrochen, Anzeige neu laden und erneut freigeben`,
+      grund: `Katalog-Empfehlung hat sich seit der Anzeige geändert (angezeigt: ${liste(angezeigt.katalog)}; beim Start: ${liste(beimStart)}) — Start abgebrochen, Anzeige neu laden und erneut freigeben`,
+    }
+  }
+  // F45 F-2a (Code-Review 2): eingeschaltet, aber nicht aktiv — der Start lehnte ohnehin ab (QA 1 aus F-1); hier vor dem
+  // Festhalten der Freigabe, damit der Ablauf nicht im Halt KLAERUNG_ERFORDERLICH landet.
+  const nichtAktiv = (ermittelt.empfehlung.projektFaehigkeiten ?? []).filter((e) => e.aktiv !== true)
+  if (nichtAktiv.length > 0) {
+    return { ok: false, grund: `Projekt-Fähigkeiten eingeschaltet, aber nicht aktiv: ${nichtAktiv.map((e) => `${e.id} (${e.grund ?? 'unbekannt'})`).join('; ')} — auf der Seite Workforce ausschalten oder den Inhalt freigeben; Start abgebrochen` }
+  }
+  // Ohne Projektstand (Aufrufer ohne zusatz.faehigkeiten) gilt jede angezeigte Projekt-Kennung als Abweichung (fail-closed).
+  const projektAbweichung = vergleicheProjektKennungen(angezeigt.projekt, ermittelt.projektKennungen ?? [])
+  if (projektAbweichung !== null) {
+    return {
+      ok: false,
+      grund: `Anzeige veraltet: Projekt-Fähigkeiten haben sich seit der Anzeige geändert (angezeigt: ${projektAbweichung.angezeigt}; beim Start: ${projektAbweichung.beimStart}) — Start abgebrochen, Anzeige neu laden und erneut freigeben`,
     }
   }
   // F36 WS-5b: „Wird genutzt“ trägt MCPs UND Ort-B-Skills — getrennt übergeben (MCP-Weg unverändert).
@@ -2642,6 +2693,8 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
     // F45 F-1: abgeschaltete Katalog-Einträge (faehigkeiten_im_lauf, aktiv false) und der validierte Katalog (Katalog-Hashes der Projekt-Einträge).
     deaktiviert: ermittelt.empfehlung.deaktiviert ?? [],
     katalog: ermittelt.katalog,
+    // F45 F-2a: angezeigte (= beim Start im Projektordner berechnete) Projekt-Kennungen — zweiter Vergleich im Ordner des Laufs.
+    projektKennungen: angezeigt.projekt,
     // F-827: projektUrl ist nur gesetzt, wenn vorschau_url gültige Origins liefert (ermittleAusfuehrungsEmpfehlung).
     zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt, ermittelt.projektUrl, ermittelt.genutzteEintraege),
   }
@@ -2744,11 +2797,12 @@ export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leits
  *   capWurzel (F36 WS-5b): Workforce-Ordner der Installationen — Pflicht, sobald skillEintraege übergeben werden
  *   projektOrdner/installWurzel (F45 B1b-1, F-818): Projektordner (nicht der Worktree) und Installation — nur bei
  *   gleichem realpath ist vorlagen/projekt-skelett/.claude vom Vorstart-Scan ausgenommen; fehlt installWurzel, keine Ausnahme
- *   faehigkeitenKontext (F45 F-1): { lokal, lokalPfad, projektId, katalog, deaktiviert } — nur mit angezeigter Empfehlung
- *   gesetzt; dann Projekt-Agents/-Skills nach Inhalt (src/faehigkeiten), eingefrorene faehigkeitenImLauf und Init-Gate.
+ *   faehigkeitenKontext (F45 F-1): { lokal, lokalPfad, projektId, katalog, deaktiviert, angezeigteProjektKennungen (F45 F-2a,
+ *   Pflicht), fremd (F-1061 (3): unbestätigte Änderung von außen → Start abgelehnt) } — nur mit angezeigter Empfehlung gesetzt; dann Projekt-Agents/-Skills nach Inhalt (src/faehigkeiten),
+ *   Vergleich mit den angezeigten Kennungen, eingefrorene faehigkeitenImLauf und Init-Gate.
  *   faehigkeitenLokalPfad (F45 F-1, Code-Review 2): Pfad der lokalen Datei — geht bei jedem schreibenden Lauf in die
  *   Eingaben (Vorher/Nachher-Hash im Controller)
- * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
+ * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund, konflikt? (F45 F-2a: Anzeige veraltet → 409 im Workflow) }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
   // Worker-Vorgabe (F16 WS-3a, AK11): fehlt das Feld, ist es 'claude-code'.
@@ -2963,6 +3017,8 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   const fk = erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, werkzeugsatz.art) ? optionen.faehigkeitenKontext : undefined
   let projektFaehigkeiten = { eintraege: [], agentNamen: [], hindernis: null }
   if (fk !== undefined && fk.lokal.zustand === 'ungueltig') return { ok: false, grund: `Fähigkeiten-Start abgelehnt: ${fk.lokal.grund} — reparieren oder löschen (E-F45-7)` }
+  // F-1061 (3) (Muster E-F45-7): eine nicht bestätigte Änderung von außen sperrt den Start mit Katalog-Fähigkeiten.
+  if (fk?.fremd !== undefined && fk.fremd !== null) return { ok: false, grund: `Fähigkeiten-Start abgelehnt: ${FREMD_UNBESTAETIGT} (bekannter Stand seit ${fk.fremd.bekannt_seit})` }
   const einstellungen = fk !== undefined ? projektEinstellungen(fk.lokal.daten, fk.projektId) : null
   // Referenzliste der eingebauten Agents/Plugins — Pflicht nur, wenn etwas eingeschaltet ist oder Ort-B läuft (Code-Review 6);
   // sonst dient sie nur den Sperrgründen der Anzeige, ein Lesefehler fällt dann auf eine leere Liste zurück.
@@ -2981,6 +3037,19 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     if (nichtAktiv.length > 0) {
       const liste = nichtAktiv.map((e) => `${e.schluessel} (${e.grund})`).join('; ')
       return { ok: false, grund: `Fähigkeiten-Start abgelehnt: eingeschaltet, aber im Arbeitsordner nicht aktiv — ${liste} — im Projekt ausschalten, Inhalt freigeben oder den Stand des Projekts sichern` }
+    }
+    // F45 F-2a (F-1054 (1)): „Anzeige = Start“ auch für Projekt-Fähigkeiten — angezeigt (und beim Start im Projektordner
+    // bestätigt) gegen den Ordner des Laufs. Ohne angezeigte Kennungen kein Start (Advisor A4, fail-closed). Abweichung
+    // heißt meist: der Arbeitsordner (wf/<Ablauf>) trägt einen anderen Stand als der Projektordner (Advisor A1).
+    if (!Array.isArray(fk.angezeigteProjektKennungen)) return { ok: false, grund: 'Fähigkeiten-Start abgelehnt: angezeigte Projekt-Kennungen fehlen (faehigkeitenKontext.angezeigteProjektKennungen)' }
+    const imOrdner = projektFaehigkeiten.eintraege.filter((e) => e.aktiv).flatMap((e) => projektKennung(e) ?? [])
+    const abweichung = vergleicheProjektKennungen(fk.angezeigteProjektKennungen, imOrdner)
+    if (abweichung !== null) {
+      return {
+        ok: false,
+        konflikt: true,
+        grund: `Fähigkeiten-Start abgelehnt: Projekt-Fähigkeiten im Ordner des Laufs weichen von der Anzeige ab (angezeigt: ${abweichung.angezeigt}; im Ordner des Laufs: ${abweichung.beimStart}) — der Start unterbleibt; im Ablauf folgt der Halt KLAERUNG_ERFORDERLICH: Stand des Projekts sichern und eine korrigierte Fassung bzw. einen neuen Ablauf anlegen oder die Fähigkeit auf der Seite Workforce ausschalten`,
+      }
     }
   }
   const aktiveProjekt = projektFaehigkeiten.eintraege.filter((e) => e.aktiv)
@@ -3515,7 +3584,8 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
   // Default {} — jeder andere Aufrufer bleibt bitgenau wie bisher.
   const ergebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, schritt.werkzeugsatz, auftragstext, vorlage, repoWurzel, ausfuehrungsOptionen)
   if (!ergebnis.ok) {
-    return { ok: false, grund: `Schritt '${schritt.schritt_id}': ${ergebnis.grund}` }
+    // F45 F-2a (Advisor A5): konflikt (Anzeige veraltet) bleibt erhalten — starteWorkflowSchritt antwortet dann 409.
+    return { ok: false, grund: `Schritt '${schritt.schritt_id}': ${ergebnis.grund}`, ...(ergebnis.konflikt === true ? { konflikt: true } : {}) }
   }
   return { ok: true, eingaben: { ...ergebnis.eingaben, anfragen: [...artefaktAnfragen, ...ergebnis.eingaben.anfragen] } }
 }
@@ -5044,35 +5114,66 @@ export function erzeugeRequestHandler(optionen = {}) {
     // POST-Routen 500). Nur der CLI-Bindeblock und baueProjektHandlerMap setzen ~/.ai-workforce/faehigkeiten.lokal.json,
     // damit kein Gate/Test Stefans echte Datei liest oder schreibt.
     faehigkeitenLokalPfad = null,
+    // F45 F-2a (F-1055 (1)): Wächter der lokalen Datei (erzeugeLokalWaechter) — einer je Prozess, vom CLI-Bindeblock an alle
+    // Projektinstanzen gereicht (sie teilen die Datei); ohne Option eigener Wächter dieser Instanz (Tests).
+    faehigkeitenLokalWaechter = faehigkeitenLokalPfad === null ? null : erzeugeLokalWaechter(faehigkeitenLokalPfad),
   } = optionen
 
   /**
-   * F45 F-1 (E-F45-6): im Projekt abgeschaltete Katalog-ids dieser Instanz für Anzeige und Start der Empfehlung — eine
-   * ungültige Datei liefert [] (der Start bricht dann ohnehin in loeseAusfuehrungsEingabenAuf ab, E-F45-7).
-   * @returns Katalog-ids
-   */
-  function faehigkeitenAus() {
-    return ausDerDatei(ladeFaehigkeitenLokal(faehigkeitenLokalPfad))
-  }
-
-  /**
-   * F45 F-1: aus dieser Instanz aus einer bereits gelesenen lokalen Datei ([] bei ungültiger Datei).
+   * F45 F-2a (Advisor A7): zusatz der Empfehlung (aus, faehigkeiten: Einstellungen des Projekts und Werkzeugnamen des
+   * Schritts) aus EINER gelesenen lokalen Datei — Anzeige, Vorprüfung und Start übergeben dieselbe Form, damit der
+   * Cache-Schlüssel gleich bleibt. Eine ungültige Datei gilt hier als leer (der Start bricht dann ohnehin in
+   * loeseAusfuehrungsEingabenAuf ab, E-F45-7).
    * @param lokal - Ergebnis von ladeFaehigkeitenLokal
-   * @returns Katalog-ids
+   * @param werkzeugsatzName - Werkzeugsatz des Schritts bzw. Startauftrags (Advisor A8)
+   * @returns { aus, faehigkeiten: { einstellungen, werkzeugNamen } }
    */
-  function ausDerDatei(lokal) {
-    return lokal.zustand === 'ungueltig' ? [] : projektEinstellungen(lokal.daten, projektId).aus
+  function empfehlungsZusatz(lokal, werkzeugsatzName) {
+    const einstellungen = lokal.zustand === 'ungueltig' ? { an: [], aus: [], inhalt_freigaben: {} } : projektEinstellungen(lokal.daten, projektId)
+    const werkzeugNamen = [...new Set((loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)?.erlaubte_werkzeuge ?? []).map((regel) => regel.split('(')[0]))]
+    return { aus: einstellungen.aus, faehigkeiten: { einstellungen, werkzeugNamen } }
   }
 
   /**
    * F45 F-1: Katalog-Kontext für loeseAusfuehrungsEingabenAuf (optionen.faehigkeitenKontext) — lokale Datei (frisch
-   * gelesen), Projekt-id dieser Instanz, Katalog-Hashes der internen agent/skill-Einträge, abgeschaltete Katalog-Einträge.
+   * gelesen), Projekt-id dieser Instanz, Katalog-Hashes der internen agent/skill-Einträge, abgeschaltete Katalog-Einträge,
+   * seit F45 F-2a die angezeigten Projekt-Kennungen (Vergleich im Ordner des Laufs).
    * @param vorbereitet - Ergebnis von bereiteEmpfehlungFuerStartVor (ok)
    * @param lokal - dieselbe gelesene lokale Datei wie für aus (Code-Review 7)
    * @returns faehigkeitenKontext
    */
   function baueFaehigkeitenKontext(vorbereitet, lokal) {
-    return { lokal, lokalPfad: faehigkeitenLokalPfad, projektId, katalog: katalogFreigaben(vorbereitet.katalog, installWurzel), deaktiviert: vorbereitet.deaktiviert }
+    return { lokal, lokalPfad: faehigkeitenLokalPfad, projektId, katalog: katalogFreigaben(vorbereitet.katalog, installWurzel), deaktiviert: vorbereitet.deaktiviert, angezeigteProjektKennungen: vorbereitet.projektKennungen, fremd: fremdUnbestaetigt(lokal) }
+  }
+
+  /**
+   * F-1061 (3): unbestätigte Änderung von außen an der lokalen Datei — aus dem Hash der bereits gelesenen Datei (kein
+   * weiteres Lesen). Bei ungültiger Datei null (dann greift E-F45-7).
+   * @param lokal - Ergebnis von ladeFaehigkeitenLokal
+   * @returns null oder { bekannt_seit, quelle }
+   */
+  function fremdUnbestaetigt(lokal) {
+    if (faehigkeitenLokalWaechter === null || lokal.zustand === 'ungueltig') return null
+    return faehigkeitenLokalWaechter.pruefe(lokal.zustand === 'gueltig' ? lokal.hash : 'fehlt')
+  }
+
+  /**
+   * F45 F-2a (Code-Review 1): Vorprüfung der Freigabe im bereiten Arbeitsordner — dieselbe Bewertung wie beim Start
+   * (ermittleProjektFaehigkeiten mit den Werkzeugnamen des Schritts), verglichen mit den angezeigten Projekt-Kennungen.
+   * @param ordner - Arbeitsordner des Ablaufs
+   * @param vorbereitet - Ergebnis von bereiteEmpfehlungFuerStartVor (ok)
+   * @param werkzeugsatzName - Werkzeugsatz des Schritts
+   * @returns null bei Gleichheit, sonst Grund
+   */
+  function projektKennungenImOrdnerAbweichung(ordner, vorbereitet, werkzeugsatzName) {
+    const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
+    const { faehigkeiten } = empfehlungsZusatz(lokal, werkzeugsatzName)
+    const eingebaut = leseEingebautReferenz()
+    const ermittelt = ermittleProjektFaehigkeiten(ordner, { katalog: katalogFreigaben(vorbereitet.katalog, installWurzel), einstellungen: faehigkeiten.einstellungen, werkzeugNamen: faehigkeiten.werkzeugNamen, referenz: eingebaut.ok ? eingebaut.referenz : { cli_version: '', agents: [], plugins: [], plugin_skills: [] } })
+    const nichtAktiv = ermittelt.eintraege.filter((e) => e.eingeschaltet && !e.aktiv)
+    if (nichtAktiv.length > 0) return `Arbeitsordner des Ablaufs: eingeschaltet, aber dort nicht aktiv — ${nichtAktiv.map((e) => `${e.schluessel} (${e.grund})`).join('; ')} — Stand des Projekts sichern und den Ablauf neu anlegen oder die Fähigkeit ausschalten`
+    const abweichung = vergleicheProjektKennungen(vorbereitet.projektKennungen, ermittelt.eintraege.filter((e) => e.aktiv).flatMap((e) => projektKennung(e) ?? []))
+    return abweichung === null ? null : `Arbeitsordner des Ablaufs weicht vom Projektordner ab (angezeigt: ${abweichung.angezeigt}; im Arbeitsordner: ${abweichung.beimStart}) — Stand des Projekts sichern und den Ablauf neu anlegen oder die Fähigkeit ausschalten`
   }
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -5326,6 +5427,17 @@ export function erzeugeRequestHandler(optionen = {}) {
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
     return angenommeneLaufIds.has(laufId) || existsSync(join(basisVerzeichnis, laufId))
+  }
+
+  /**
+   * F45 F-2a: Sperre der Fähigkeiten-Schalter zur Anzeige (GET /api/faehigkeiten) — dieselben Bedingungen wie
+   * pruefeGlobaleLaufSperre, ohne Antwort zu senden. Die 409 der POST-Routen bleibt die Grenze.
+   * @returns { aktiv: false } oder { aktiv: true, grund }
+   */
+  function laufSperreAnzeige() {
+    if (aufrufAktiv) return { aktiv: true, grund: 'ein Projekt-Aufruf (F43) läuft in diesem Projekt — nach seinem Ende erneut versuchen' }
+    if (globalerLaufZustand.aktiv) return { aktiv: true, grund: `ein Lauf ('${globalerLaufZustand.laufId}') ist aktiv — Fähigkeiten ändern erst nach seinem Ende (E-F45-8)` }
+    return { aktiv: false }
   }
 
   /**
@@ -5987,7 +6099,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     // F45 F-1 (Code-Review 7): die lokale Datei einmal lesen — aus (Empfehlung) und an/inhalt_freigaben (Kontext) aus demselben Stand.
     const lokaleDatei = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
     if (angezeigteEmpfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(schritt.rolle, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)) {
-      const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort, aus: ausDerDatei(lokaleDatei) })
+      const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort, ...empfehlungsZusatz(lokaleDatei, schritt.werkzeugsatz) })
       if (!vorbereitet.ok) return { ok: false, art: 'konflikt', grund: vorbereitet.grund }
       // F45 B1b-1 (F-818): projektOrdner/installWurzel für die Skelett-Ausnahme des Vorstart-Scans (realpath-Vergleich).
       ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leitstandPort), projektOrdner: repoWurzel, installWurzel, faehigkeitenKontext: baueFaehigkeitenKontext(vorbereitet, lokaleDatei) }
@@ -6010,7 +6122,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       ausfuehrungsOptionen
     )
     if (!eingabenErgebnis.ok) {
-      return { ok: false, art: 'ungueltig', grund: eingabenErgebnis.grund }
+      return { ok: false, art: eingabenErgebnis.konflikt === true ? 'konflikt' : 'ungueltig', grund: eingabenErgebnis.grund }
     }
 
     // Die neue Workflow-Version wird geschrieben, BEVOR der Lauf startet: stirbt der Server
@@ -6965,7 +7077,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // sind dieselben, per Referenz geteilten Objekte, die GET /api/projekte bzw. der Dispatcher
         // lesen (kein zweiter, divergierender Zustand).
         projekte.push(neuerEintrag)
-        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad })
+        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad, faehigkeitenLokalWaechter })
         for (const [id, handler] of neueTeilkarte) projektHandlerMap.set(id, handler)
 
         // F42 WS-1 (E-PH-1 = B): read-only-Erkennung, KEIN Schreibzugriff auf ~/.claude.json — der
@@ -7267,10 +7379,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (naechster?.art === 'haltFreigabe') {
         const faelligerSchritt = version.daten.schritte.find((s) => s.schritt_id === naechster.schrittId)
         if (erhaeltKatalogFaehigkeiten(faelligerSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, faelligerSchritt?.werkzeugsatz)?.art)) {
-          // F36 WS-5a: zwischengespeichert (Poll-Last), Projekt-URL mit angezeigt.
-          const ermittelt = ermittleAusfuehrungsEmpfehlungGecached(version.daten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl, leitstandPort: req.socket?.localPort, aus: faehigkeitenAus() })
+          // F36 WS-5a: zwischengespeichert (Poll-Last), Projekt-URL mit angezeigt. F45 F-2a: dieselbe einmal gelesene lokale
+          // Datei liefert aus/an/inhalt_freigaben (Cache-Schlüssel) und den Hash für das Band „außerhalb geändert“ (A3) —
+          // kein zusätzliches Lesen im Poll.
+          const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
+          const ermittelt = ermittleAusfuehrungsEmpfehlungGecached(version.daten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl, leitstandPort: req.socket?.localPort, ...empfehlungsZusatz(lokal, faelligerSchritt?.werkzeugsatz) })
+          const fremd = faehigkeitenLokalWaechter === null || lokal.zustand === 'ungueltig' ? null : faehigkeitenLokalWaechter.pruefe(lokal.zustand === 'gueltig' ? lokal.hash : 'fehlt')
           empfehlung = ermittelt.ok
-            ? { schrittId: naechster.schrittId, ...ermittelt.empfehlung, hinweise: ermittelt.hinweise, projektUrl: ermittelt.projektUrl, ...(ermittelt.projektUrlGrund !== undefined ? { projektUrlGrund: ermittelt.projektUrlGrund } : {}) }
+            ? { schrittId: naechster.schrittId, ...ermittelt.empfehlung, hinweise: ermittelt.hinweise, projektUrl: ermittelt.projektUrl, ...(ermittelt.projektUrlGrund !== undefined ? { projektUrlGrund: ermittelt.projektUrlGrund } : {}), ...(fremd !== null ? { lokaleDateiFremd: fremd } : {}) }
             : { schrittId: naechster.schrittId, fehler: ermittelt.grund }
         }
       }
@@ -7379,6 +7495,32 @@ export function erzeugeRequestHandler(optionen = {}) {
     // freigeben. Logik in scripts/leitstand/routen-faehigkeiten.mjs und src/faehigkeiten; hier nur Registrierung. Die
     // POST-Routen sind während eines Laufs gesperrt (pruefeGlobaleLaufSperre, E-F45-8) und schreiben nur
     // faehigkeiten.lokal.json. Nicht im Poll.
+    // F45 F-2a (F-1061 (3), Entscheidung Stefan 12.10.2026): „Datei geprüft – Stand übernehmen“ — bestätigt eine Änderung
+    // von außen an faehigkeiten.lokal.json; bis dahin sperren Schreib-Routen und Starts mit Katalog-Fähigkeiten. Laufsperre wie
+    // die anderen Fähigkeiten-Routen, CSRF/Host zentral. Schreibt keine Datei (nur den Wächter im Speicher).
+    if (pfad === '/api/faehigkeiten/bestaetigung') {
+      if (req.method !== 'POST') {
+        sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+      let body
+      try {
+        body = JSON.parse(await leseBody(req))
+      } catch {
+        sendeJson(res, 400, { grund: 'Body ist kein gültiges JSON' })
+        return
+      }
+      const bestaetigt = bestaetigeLokaleDatei(body, faehigkeitenLokalPfad, faehigkeitenLokalWaechter)
+      if (!bestaetigt.ok) {
+        console.error(`[leitstand] Bestätigung der lokalen Fähigkeiten-Datei für Projekt '${projektId}' abgelehnt (${bestaetigt.status}):`, bestaetigt.grund)
+        sendeJson(res, bestaetigt.status, { grund: bestaetigt.grund })
+        return
+      }
+      sendeJson(res, 200, { projekt_id: projektId, bekannt: bestaetigt.bekannt })
+      return
+    }
+
     if (pfad === '/api/faehigkeiten' || pfad === '/api/faehigkeiten/aktivierung' || pfad === '/api/faehigkeiten/freigabe') {
       const istGet = pfad === '/api/faehigkeiten'
       if (req.method !== (istGet ? 'GET' : 'POST')) {
@@ -7424,6 +7566,12 @@ export function erzeugeRequestHandler(optionen = {}) {
             projekt: projektStand,
             letzterLauf: letzte === null ? null : { laufId: letzte.laufId, daten: laufakte?.daten ?? null },
             kennung: empfehlungsKennung,
+            // F45 F-2a: Schalter vorab sperren (dieselben Bedingungen wie pruefeGlobaleLaufSperre; die 409 bleibt die Grenze)
+            // und Änderungen der lokalen Datei, die nicht über diese Routen kamen (F-1055 (1)).
+            laufAktiv: laufSperreAnzeige(),
+            fremd: fremdGeaendert(faehigkeitenLokalWaechter, faehigkeitenLokalPfad),
+            standHash: faehigkeitenLokalPfad === null ? null : hashLokaleDatei(faehigkeitenLokalPfad),
+            lokalPfad: faehigkeitenLokalPfad,
           })
         )
         return
@@ -7436,6 +7584,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
       let aenderung
+      // F45 F-2a (QA 1): angezeigter Hash der lokalen Datei — weicht er ab, schreibt aendereLokaleDatei nichts (409).
+      let stand
       if (pfad === '/api/faehigkeiten/aktivierung') {
         const geprueft = pruefeAktivierungKoerper(body, katalogRoh.ressourcen)
         if (!geprueft.ok) {
@@ -7448,6 +7598,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           return
         }
         aenderung = { art: 'aktivierung', eintrag: geprueft.eintrag, aktiv: geprueft.aktiv }
+        stand = geprueft.stand
       } else {
         const geprueft = pruefeFreigabeKoerper(body)
         if (!geprueft.ok) {
@@ -7460,13 +7611,16 @@ export function erzeugeRequestHandler(optionen = {}) {
           return
         }
         aenderung = { art: 'freigabe', eintrag: geprueft.eintrag, hash: geprueft.hash }
+        stand = geprueft.stand
       }
-      const ergebnis = aendereLokaleDatei(faehigkeitenLokalPfad, projektId, aenderung)
+      const ergebnis = aendereLokaleDatei(faehigkeitenLokalPfad, projektId, aenderung, stand, faehigkeitenLokalWaechter)
       if (!ergebnis.ok) {
         console.error(`[leitstand] Fähigkeiten-Änderung '${pfad}' für Projekt '${projektId}' abgelehnt (${ergebnis.status}):`, ergebnis.grund)
         sendeJson(res, ergebnis.status, { grund: ergebnis.grund })
         return
       }
+      // F45 F-2a (F-1055 (1), Advisor A3): genau der geschriebene Stand gilt als bekannt.
+      faehigkeitenLokalWaechter?.nachRoute(ergebnis.hash)
       sendeJson(res, 200, { projekt_id: projektId, ...ergebnis.einstellungen, wirkt_ab: 'nächster Lauf' })
       return
     }
@@ -8010,7 +8164,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // F45 F-1 (Code-Review 7): die lokale Datei einmal lesen.
       const lokaleDatei = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
       if (empfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)?.art)) {
-        const vorbereitet = bereiteEmpfehlungFuerStartVor(empfehlungIds, eingabenRoh.auftragId, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl, leitstandPort: req.socket?.localPort, aus: ausDerDatei(lokaleDatei) })
+        const vorbereitet = bereiteEmpfehlungFuerStartVor(empfehlungIds, eingabenRoh.auftragId, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl, leitstandPort: req.socket?.localPort, ...empfehlungsZusatz(lokaleDatei, werkzeugsatzName) })
         if (!vorbereitet.ok) {
           sendeJson(res, 400, { grund: vorbereitet.grund })
           return
@@ -9339,14 +9493,20 @@ export function erzeugeRequestHandler(optionen = {}) {
       // berechneten ab, wird nichts festgehalten und nichts gestartet — 409, Anzeige neu laden.
       // Verbindlich bleibt die zweite Prüfung in starteWorkflowSchritt (dieselbe Funktion).
       const freizugebenderSchritt = workflowDaten.schritte.find((s) => s.schritt_id === schrittId)
+      let vorpruefung = null
       if (
         body.entscheidung === 'FREIGEGEBEN' &&
         body.empfehlungIds !== undefined &&
         erhaeltKatalogFaehigkeiten(freizugebenderSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, freizugebenderSchritt?.werkzeugsatz)?.art)
       ) {
-        const vorpruefung = bereiteEmpfehlungFuerStartVor(body.empfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort: req.socket?.localPort, aus: faehigkeitenAus() })
+        vorpruefung = bereiteEmpfehlungFuerStartVor(body.empfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort: req.socket?.localPort, ...empfehlungsZusatz(ladeFaehigkeitenLokal(faehigkeitenLokalPfad), freizugebenderSchritt?.werkzeugsatz) })
         if (!vorpruefung.ok) {
           sendeJson(res, 409, { grund: `${vorpruefung.grund}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
+          return
+        }
+        // F-1061 (3): unbestätigte Änderung von außen → vor dem Festhalten abbrechen (der Start lehnte ohnehin ab).
+        if (fremdUnbestaetigt(ladeFaehigkeitenLokal(faehigkeitenLokalPfad)) !== null) {
+          sendeJson(res, 409, { grund: `Fähigkeiten-Start abgelehnt: ${FREMD_UNBESTAETIGT}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
           return
         }
       }
@@ -9359,6 +9519,16 @@ export function erzeugeRequestHandler(optionen = {}) {
         if (arbeitsordnerHalt !== null) {
           sendeJson(res, arbeitsordnerHalt.status, arbeitsordnerHalt.koerper)
           return
+        }
+        // F45 F-2a (Code-Review 1): ist der Arbeitsordner BEREIT, gleicht die Vorprüfung die angezeigten Projekt-Kennungen
+        // auch dort ab — VOR dem Festhalten; sonst endete der Start im Halt KLAERUNG_ERFORDERLICH.
+        if (vorpruefung !== null) {
+          const ordner = laufwurzelFuer(workflowId, workflowDaten)
+          const abweichung = ordner === repoWurzel ? null : projektKennungenImOrdnerAbweichung(ordner, vorpruefung, freizugebenderSchritt?.werkzeugsatz)
+          if (abweichung !== null) {
+            sendeJson(res, 409, { grund: `${abweichung}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
+            return
+          }
         }
       }
 
@@ -10623,11 +10793,12 @@ export function belegeInstanzLock(basisVerzeichnis, port) {
  * @param projekte - validierte Registereinträge (src/projekte/index.ts, ladeProjektregister)
  * @param repoWurzelBasis - Referenzpunkt für ein relatives repo_pfad
  * @param globalerLaufZustand - projektübergreifend geteiltes D13-Zustandsobjekt
- * @param optionen - { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad (F45 F-1) } — optional, Muster oben
+ * @param optionen - { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad (F45 F-1), faehigkeitenLokalWaechter (F45 F-2a:
+ *   ein Wächter für alle Instanzen) } — optional, Muster oben
  * @returns Map von Projekt-id auf Request-Handler
  */
 export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZustand, optionen = {}) {
-  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null } = optionen
+  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null, faehigkeitenLokalWaechter = undefined } = optionen
   const map = new Map()
   const gesehenePfade = new Map()
   for (const projekt of projekte) {
@@ -10673,6 +10844,8 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           arbeitsordner: true,
           // F45 F-1 (E-F45-8): Pfad der lokalen Fähigkeiten-Datei (null ohne Angabe — Gates bleiben isoliert).
           faehigkeitenLokalPfad,
+          // F45 F-2a (F-1055 (1)): derselbe Wächter für alle Instanzen (sie teilen die Datei); undefined → eigener.
+          faehigkeitenLokalWaechter,
         })
       )
     } catch (fehler) {
@@ -10879,11 +11052,14 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // F45 B1a-1 (E-F45-3 = A): der reale Server arbeitet immer mit eigenem Arbeitsordner je schreibendem Ablauf (kein Schalter).
   // F45 F-1 (E-F45-8): nur hier zeigt der Pfad auf Stefans echte Datei (Delta B7).
   const faehigkeitenLokalPfad = process.env.LEITSTAND_FAEHIGKEITEN_LOKAL_PFAD ?? STANDARD_FAEHIGKEITEN_LOKAL_PFAD
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, arbeitsordner: true })
+  // F45 F-2a (F-1055 (1)): ein Wächter je Prozess — der Stand beim Start gilt als bekannt.
+  const faehigkeitenLokalWaechter = erzeugeLokalWaechter(faehigkeitenLokalPfad)
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, arbeitsordner: true })
   const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,
     faehigkeitenLokalPfad,
+    faehigkeitenLokalWaechter,
   })
   for (const [id, handler] of anfangsHandlerKarte) projektHandlerMap.set(id, handler)
   const dispatcher = erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler)

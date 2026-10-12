@@ -1,0 +1,46 @@
+{
+  "url": "http://127.0.0.1:4391/#/runs/d39439f0-425e-406c-9810-6463cb449b21",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#lauf-faehigkeiten"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Zusammenfassung",
+        "selector": ".faehigkeiten-im-lauf-zeile"
+      },
+      {
+        "name": "Fremd",
+        "selector": ".faehigkeiten-im-lauf-fremd"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Lauf-Detail geladen",
+      "warteAufSelector": {
+        "selector": "#lauf-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Fähigkeiten aufgeklappt",
+      "klick": "#lauf-faehigkeiten summary",
+      "warteAufSelector": {
+        "selector": ".faehigkeiten-im-lauf",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-faehigkeiten-im-lauf.png"
+    }
+  ],
+  "farbschema": "light"
+}

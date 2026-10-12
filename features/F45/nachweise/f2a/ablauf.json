@@ -1,0 +1,172 @@
+{
+  "wurzel": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-f2a-beleg13-zVDvk2",
+  "vorschauUrl": "http://127.0.0.1:55179",
+  "basis": "http://127.0.0.1:4391",
+  "schritte": [
+    {
+      "schritt": "vorher",
+      "eintraege": [
+        {
+          "id": "playwright-mcp",
+          "aktiv": true,
+          "eingeschaltet": true
+        },
+        {
+          "id": "frontend-design",
+          "aktiv": true,
+          "eingeschaltet": true
+        },
+        {
+          "id": "agent:architecture-advisor",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "agent:code-reviewer",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "agent:qa",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "skill:advisor-pass",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "skill:git-flow",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "skill:handoff-vertrag",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "skill:ponytail",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "skill:repo-audit",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "skill:spec-schreiben",
+          "aktiv": false,
+          "eingeschaltet": false
+        },
+        {
+          "id": "skill:werkzeug-auswahl",
+          "aktiv": false,
+          "eingeschaltet": false
+        }
+      ]
+    },
+    {
+      "schritt": "qa einschalten",
+      "status": 200,
+      "antwort": {
+        "projekt_id": "testprojekt",
+        "an": [
+          "agent:qa"
+        ],
+        "aus": [],
+        "inhalt_freigaben": {},
+        "wirkt_ab": "nächster Lauf"
+      }
+    },
+    {
+      "schritt": "nach L1",
+      "letzter_lauf_id": "d39439f0-425e-406c-9810-6463cb449b21",
+      "eintraege": [
+        {
+          "id": "playwright-mcp",
+          "aktiv": true,
+          "letzter_lauf": {
+            "im_lauf": "aktiv",
+            "benutzt": true,
+            "aufrufe": 1,
+            "fehler": 0
+          }
+        },
+        {
+          "id": "frontend-design",
+          "aktiv": true,
+          "letzter_lauf": {
+            "im_lauf": "aktiv",
+            "benutzt": true,
+            "aufrufe": 1,
+            "fehler": 0
+          }
+        },
+        {
+          "id": "agent:qa",
+          "aktiv": true,
+          "letzter_lauf": {
+            "im_lauf": "aktiv",
+            "benutzt": true,
+            "aufrufe": 1,
+            "fehler": 0
+          }
+        }
+      ]
+    },
+    {
+      "schritt": "qa ausschalten",
+      "status": 200,
+      "antwort": {
+        "projekt_id": "testprojekt",
+        "an": [],
+        "aus": [],
+        "inhalt_freigaben": {},
+        "wirkt_ab": "nächster Lauf"
+      }
+    },
+    {
+      "schritt": "nach L2",
+      "letzter_lauf_id": "c54315c6-b1c5-48b3-9496-cf6b22aebb04",
+      "eintraege": [
+        {
+          "id": "playwright-mcp",
+          "aktiv": true,
+          "letzter_lauf": {
+            "im_lauf": "aktiv",
+            "benutzt": true,
+            "aufrufe": 1,
+            "fehler": 0
+          }
+        },
+        {
+          "id": "frontend-design",
+          "aktiv": true,
+          "letzter_lauf": {
+            "im_lauf": "aktiv",
+            "benutzt": true,
+            "aufrufe": 1,
+            "fehler": 0
+          }
+        },
+        {
+          "id": "agent:qa",
+          "aktiv": false,
+          "letzter_lauf": {
+            "im_lauf": "nicht_aktiv",
+            "benutzt": false,
+            "aufrufe": 0,
+            "fehler": 0
+          }
+        }
+      ]
+    }
+  ],
+  "laeufe": {
+    "l1": "d39439f0-425e-406c-9810-6463cb449b21",
+    "l2": "c54315c6-b1c5-48b3-9496-cf6b22aebb04"
+  }
+}

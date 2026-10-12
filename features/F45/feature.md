@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gebaut (Branch `feat/f45-b1b2-harness-abgleich`, Basis `febcc86`, nicht committet; Abschnitt „Stand B1b-2“). F-1 (WS F, Teil 1: Fähigkeiten im Lauf, Server) gebaut (Branch `f45/f1-faehigkeiten-im-lauf`, Basis `581269a`, nicht committet; Abschnitt „Stand F-1“), nächster Schritt F-2. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a (Fähigkeiten-Oberfläche, Bindung an die Anzeige, Lauf-Detail, Beleg 13) gebaut (Branch `f45/f2a-faehigkeiten-oberflaeche`, Basis `849fda5`, nicht committet; Abschnitt „Stand F-2a“), nächster Schritt F-2b. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -28,6 +28,10 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-F45-6 = Opt-in je Projekt** (Stefan, 12.10.2026) — Projekt-Agents/-Skills sind im Lauf nur aktiv, wenn Stefan sie je Projekt einschaltet (und ihr Inhalt freigegeben ist); ohne Einstellung bleibt alles wie vorher. MCPs und installierte Skills bleiben Standard aktiv und sind je Projekt abschaltbar. Grundlage `features/F45/plan-f1.md`.
 - **E-F45-7 = kaputte Datei sperrt** (Stefan, 12.10.2026) — Ist `faehigkeiten.lokal.json` vorhanden, aber ungültig oder nicht lesbar, startet kein Lauf mit Katalog-Fähigkeiten („reparieren oder löschen“); Server und alle anderen Läufe laufen weiter.
 - **E-F45-8 = Ablage `~/.ai-workforce/faehigkeiten.lokal.json`** (Stefan, 12.10.2026) — außerhalb jedes Repos und Arbeitsordners; die Änderungs-Endpunkte sind gesperrt, solange ein Lauf aktiv ist (ARCHITECTURE.md §2).
+- **E-F45-9 = B** (Stefan, 11.10.2026, gegen die Empfehlung A) — Plugins sind installierbar und im Lauf nutzbar. Folge: eigener Workstream F-3 mit Sicherheitsprüfung (Katalogtyp `plugin`, Installation gepinnt mit Commit-SHA und Inhalt-Hash, Bestandteile einzeln ausgewiesen und nur über die F-1-Wege, Plugin-Hooks nur nach eigener Freigabe je Hook-Hash, Init-Gate `init.plugins` = erwartete Menge). Erste Kandidaten aus `docs/harness/kandidaten-2026-09-15.md`: Claude Code Setup, Code Review (nur lokaler Bericht).
+- **E-F45-10 = A** (Stefan, 12.10.2026, gegen die Empfehlung B) — Website-Fähigkeit (Motion, Interaktion, 3D; Website- und Design-Empfehlungen durch die Workforce) gehört ins Fixpaket, vor F30. B3 wird „Design & Motion in Fremdprojekten“ (bisheriger Inhalt plus Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung: Bildfolge/Video, Ladezeit-Budget, „Bewegung reduzieren“). Neuer Referenzauftrag R2 nach R (kleine Landingpage mit Scroll-Animation, Interaktion und einem 3D-Element), neuer Beleg 15.
+- **Sammlung als Basis** (Stefan, 12.10.2026) — `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl; sie kommt in F-2b in den Leitstand (Kurzbeschreibung, Urteil, Lizenz, Kosten, Stand) mit „Auswählen“ → Prüflauf → Katalog. Reihenfolge ab F: F-1 → F-2a → F-2b → F-3 → B2a → B2b → B5a/B5b → B3 → R → R2.
+- **F-1061 (3) — Bestätigung nach Fremdänderung** (Stefan, 12.10.2026, Empfehlung Challenger) — Nach einer Änderung von außen an `~/.ai-workforce/faehigkeiten.lokal.json` gilt der Stand erst nach ausdrücklicher Bestätigung im Leitstand („Datei geprüft – Stand übernehmen“); bis dahin startet kein Lauf mit Katalog-Fähigkeiten (Muster E-F45-7). Umsetzung F-2a, ARCHITECTURE.md §2.
 - **F-1015-Kriterium** (Challenger, 11.10.2026) — Seitenspeicher, JS-Heap, DOM-Knoten und Listener am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen); Grundlage Abschnitt 2.
 
 ## Scope
@@ -39,13 +43,17 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 | S | Härtung klein: ein Git-Starter für alle Aufrufe, Geheimnis-Maskierung (Live-Aktivität, env im Harness-Detail), Abbruch-Formulierung | F-1000, F-1005, F-1003 | – | vor Merge | 0,3 | |
 | B1a | Lauf-Umgebung: Branch/Worktree je Lauf (Gültigkeitsschlüssel misst die Einstellungen des Lauf-Ordners), Vorlage nachziehen (513), Mindest-Gates im Skelett, check:template, Standard-Startvorlage aus dem Register, Löschen im Lauf, Kontrollzustand in Fremdprojekten | F-954, F-939, F-701, F-1009, F-715, F-766 | E-F45-3 | Advisor-Pass, vor Merge | 1–1,25 | |
 | B1b | Harness im Lauf, geschnitten am 11.10.2026: **B1b-1** Hintergrund-Ausführung abschalten und als unvollständig werten, Lauf-Härtung (npm-Installationsskripte aus, Schreiben nur im Arbeitsordner), Hooks im -p-Lauf belegen, commit-guard härten, „vorgesehen gegen benutzt“ ans Review, Vorstart-Scan; **B1b-2** Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce, Kurzliste der benutzten Fähigkeiten an die Abnahme. Verschoben: Projekt-Agents/-Skills im Lauf und Freigabe nach Inhalt (F-815/F-816 → F), Codex-Harness-Regeln (F-929 → B2a), /lessons (F-933 → Teil 2) | B1b-1: F-1026, F-1027, F-1035, F-818, F-932, F-937 (Review); B1b-2: F-937 (Abnahme), Beleg 12 | B1a | vor Merge | 0,75 | |
-| F | Fähigkeiten verwalten: MCPs, Skills, Agents und Plugins im Leitstand installieren (auch aus den OFFEN-Einträgen), je Projekt aktivieren/deaktivieren (wirkt ab dem nächsten Lauf, gespeichert im Workforce-Register, nicht in settings.json — E-F46-2), Agents installierbar und im Lauf nutzbar, Plugins im Fähigkeitenmodell; sichtbar: installiert · aktiv · im letzten Lauf benutzt (Seite Workforce, Lauf-Detail); MCP-Grenzen nach E-F36-4 (Einzelfreigabe, Kosten sichtbar, nur lesend); aus B1b: Projekt-Agents/-Skills im Lauf, Freigabe nach Inhalt | F-815, F-816, F-910, F-859, F-1012 | B1b | Advisor-Pass, vor Merge | 1,25–1,5 | |
+| F-1 | Fähigkeiten im Lauf (Server): Aktivierung je Projekt (E-F45-6/7/8), Projekt-Agents/-Skills nach Inhalt und Opt-in, Agent-Sperre, Init-Gate, Laufakte aktiv/benutzt, Endpunkte | F-815, F-816, F-1012 (Server), F-910 (teilweise) | B1b | Advisor-Pass, vor Merge | Teil von 1,25–1,5 (Zeile F bis 12.10.2026) | gemergt #323 (849fda5) |
+| F-2a | Fähigkeiten-Oberfläche: Seite Workforce, Bindung an die Anzeige, Gründe der Empfehlung, Lauf-Detail, Beleg 13 | F-1054, F-1012 (Oberfläche), F-1055 (1) Anzeige | F-1 | Advisor-Pass, vor Merge | Teil von 1,25–1,5 | |
+| F-2b | Sammlung im Leitstand mit „Auswählen“ → Prüflauf → Katalog, Scout liest die Sammlung, extern_lesend-MCPs | F-1056 (K20), F-1057 (K21), F-1052 | F-2a | Advisor-Pass, vor Merge | Schätzung fehlt | |
+| F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate | F-910 | F-2b | Advisor-Pass, vor Merge | Schätzung fehlt | |
 | B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte an alle planenden/prüfenden Rollen; DoD und Checkliste an Review/qa; Feature ↔ Ablauf; aus B1b: Codex-Harness-Regeln | F-938, F-936, F-829, F-931, F-989, F-998, F-959, F-929 | B1b | vor Merge | 1 | |
 | B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011 | B2a | Advisor-Pass, vor Merge | 1,25–1,5 | |
 | B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 | |
 | B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 | |
-| B3 | Design in Fremdprojekten: impeccable installierbar, design-guardian und Token-Gate im Skelett | F-911 | B1a, B2b | nach Merge | 0,3 | |
+| B3 | Design & Motion in Fremdprojekten (E-F45-10): impeccable, design-guardian und Token-Gate im Skelett; Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung | F-911, F-1058 (K22), F-1059 (K23) | B1a, B2b, F-2b | nach Merge | ≈ 1,4–1,55 | |
 | R | Referenzauftrag in einem Fremdprojekt (Vorschlag: haushaltsbuch2; nicht F30, damit die F30-Messcheckliste unberührt bleibt), Belege 1–14, eine Fixrunde, Abschluss F45 | F-980 | alle | echter Lauf | 1–2 | |
+| R2 | Referenzauftrag Website (E-F45-10): Landingpage mit Scroll-Animation, Interaktion, 3D-Element; Beleg 15 | F-1059 (K23) | R, B3 | echter Lauf | ≈ 1 | |
 
 Die Spalte „Ist“ trägt der Challenger nach Abschluss eines Workstreams nach.
 
@@ -493,3 +501,42 @@ weiterlebenden Prozess, ungemessene CLI-Fälle, Drift der Referenzlisten).
 **Nächster Schritt: F-2** — Oberfläche (Seite Workforce, Lauf-Detail: installiert · aktiv · benutzt, Schalter und
 „Freigeben nach Inhalt“ mit angezeigtem Hash), Bindung der Projekt-Fähigkeiten an die Anzeige im Start-Body, Plugins im
 Fähigkeitenmodell (F-910), Gründe der Empfehlung neu.
+
+## Stand F-2a
+Branch `f45/f2a-faehigkeiten-oberflaeche` (Basis `849fda5` = main mit F-1, #323), nicht committet. Bau 12.10.2026.
+Plan `features/F45/plan-f2a.md` (v1 → Advisor-Pass „freigegeben mit Hinweisen“, A1–A11 → v2 → Bau → Prüfpass →
+Korrekturrunde, Nachtrag v2.1).
+
+**Beleg 13 (Fähigkeiten): erbracht im echten Lauf über die Wege der Oberfläche** (`features/F45/nachweise/f2a/nachweis.md`):
+L1 `d39439f0…` — qa über den Schalter eingeschaltet, playwright-mcp und frontend-design an: alle drei „aktiv“ und je
+1 Aufruf ohne Fehler laut Laufakte; L2 `c54315c6…` — qa ausgeschaltet: im Lauf nicht verfügbar („Agent-Werkzeug nicht
+vorhanden“). Für R (Referenzauftrag) erneut im Fremdprojekt zu erbringen (haushaltsbuch2 erst nach F-1047).
+
+**Gebaut:**
+- **Seite Workforce → Capability Library → „Dieses Projekt“** (`views/faehigkeiten-projekt.js`,
+  `faehigkeiten-projekt-anzeige.js`): MCPs · Skills (Katalog) · Projekt-Skills · Projekt-Agents mit Kurzbeschreibung,
+  installiert · aktiv · im letzten Lauf (Aufrufe/Fehler), Schalter je Eintrag (Standard je Art erklärt, „wirkt ab dem
+  nächsten Lauf“, gesperrt während eines Laufs mit Grund), „Freigeben nach Inhalt“ mit Pfad und Hash (409 → „Inhalt hat
+  sich geändert, neu laden“), Bänder: ungültige lokale Datei (E-F45-7), außerhalb geändert (F-1055 (1)),
+  eingeschaltet-aber-nicht-aktiv, Hindernis. Nicht im Poll.
+- **Bindung an die Anzeige (F-1054 (1))**: Projekt-Kennungen `agent:|skill:<name>@<sha256>` gehen in `empfehlungIds`
+  mit; Vergleich im Projektordner (Vorprüfung/Start), im bereiten Arbeitsordner schon in der Vorprüfung und im Ordner des
+  Laufs (`konflikt` → 409 im Workflow); ohne angezeigte Kennungen kein Start (Advisor A4); eingeschaltet-aber-nicht-aktiv
+  bricht die Freigabe vor dem Festhalten ab.
+- **Gründe neu (F-1054 (2))** in „Passt, nicht im Lauf“, Freigabeblock mit „Projekt-Fähigkeiten im Lauf“ und „Im Projekt
+  ausgeschaltet“.
+- **Wächter der lokalen Datei (F-1055 (1))**: Stand beim Serverstart und nach Route-Schreiben bekannt; Fremdänderung als
+  Band (Workforce, Freigabeblock); POST mit veraltetem Datei-Stand → 409.
+- **Lauf-Detail „Fähigkeiten im Lauf“** (aktiv/aus, Quelle, Hash, Aufrufe/Fehler, fremde Aufrufe) und **Kurzzeile in der
+  Abnahme** (Schema `kontrollzustand-harness-abgleich-payload` additiv `faehigkeiten.im_lauf`).
+- **Doku/Register**: E-F45-6 bis E-F45-10 und die Sammlung in Zielfassung §13.6 (v1.42), Fixpaket §2/§3/§5, Akte;
+  F-1056 bis F-1059 (K20–K23), F-1054/F-1012 erledigt, F-1055 teilweise, neu F-1060/F-1061.
+
+**Prüfpass** (frischer Kontext): code-reviewer „freigegeben mit Hinweisen“, qa „freigegeben mit Hinweisen“; eine
+Korrekturrunde (Plan Nachtrag v2.1). design-guardian siehe Nachtrag.
+
+**Grenzen:** F-1060 (Fortsetzungsstarts ohne Fähigkeiten → B2b, Status-Route mit Werkzeugsatz `schreibend`, Kleinpunkte),
+F-1061 (Wächter nur im Speicher, POST ohne `stand`; (3) entschieden und umgesetzt: nach einer Änderung von außen
+sperren Schreib-Routen und Starts mit Katalog-Fähigkeiten bis „Datei geprüft – Stand übernehmen“).
+
+**Nächster Schritt: F-2b** — Sammlung im Leitstand mit „Auswählen“ → Prüflauf → Katalog (F-1056, F-1057), extern_lesend-MCPs.

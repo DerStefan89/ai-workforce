@@ -1,0 +1,73 @@
+{
+  "url": "http://127.0.0.1:4391/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#faehigkeiten-bereich-projekt"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Band",
+        "selector": "#faehigkeiten-projekt .fp-band"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#faehigkeiten-projekt .fp-meldung"
+      },
+      {
+        "name": "erste Gruppe",
+        "selector": "#faehigkeiten-projekt .fp-gruppe h3"
+      },
+      {
+        "name": "qa-Zeile",
+        "selector": "#faehigkeiten-projekt tr[data-fp-id=\"agent:qa\"]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Schalter gesperrt",
+        "selector": "#faehigkeiten-projekt .fp-schalter:disabled"
+      },
+      {
+        "name": "Freigabe-Block",
+        "selector": "#faehigkeiten-projekt .fp-freigabe"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Dieses Projekt“",
+      "klick": "#faehigkeiten-reiter-projekt",
+      "warteAufSelector": {
+        "selector": "#faehigkeiten-projekt .fp-gruppe",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-dieses-projekt.png"
+    }
+  ],
+  "farbschema": "light"
+}

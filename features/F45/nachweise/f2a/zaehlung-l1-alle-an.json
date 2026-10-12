@@ -1,0 +1,328 @@
+{
+  "lauf": "l1-alle-an",
+  "lauf_id": "d39439f0-425e-406c-9810-6463cb449b21",
+  "workflow_id": "f45-f2a-beleg13-l1-alle-an-8dceb931",
+  "fertig": true,
+  "modell": "claude-haiku-4-5",
+  "cli": "2.1.296",
+  "freigabe": {
+    "status": 202,
+    "grund": null
+  },
+  "angezeigt": {
+    "wird_genutzt": [
+      "frontend-design@d97a00cd5df2a5b0dce14f2fb11012437f6f8422fcc785faabbaf94bf1064607",
+      "playwright-mcp@400dcf35dc95a9c72b5eb9c1f453066c2a230e709d603849cb642887049e63cb"
+    ],
+    "projekt_faehigkeiten": [
+      {
+        "id": "agent:qa",
+        "name": "qa",
+        "typ": "agent",
+        "aktiv": true,
+        "kennung": "agent:qa@5aed8133c1084e55839535b9384d3d1afbfce9689e7c585c9b9122570b103874",
+        "beschreibung": "Prueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature als fertig gilt. Meldet Luecken, aendert selbst nichts."
+      }
+    ],
+    "deaktiviert": null,
+    "passt_nicht_im_lauf": [
+      {
+        "id": "image-to-code",
+        "name": "Image to code",
+        "typ": "extern",
+        "unterart": "skill",
+        "grund": "freigabe OFFEN; installation fehlt; nicht installierbar: installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+      },
+      {
+        "id": "mengto-skills",
+        "name": "MengTo/skills",
+        "typ": "extern",
+        "unterart": "skill",
+        "grund": "freigabe OFFEN; installation fehlt; nicht installierbar: installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+      },
+      {
+        "id": "addyosmani-agent-skills",
+        "name": "Addy Osmani Agent Skills",
+        "typ": "extern",
+        "unterart": "skill",
+        "grund": "freigabe OFFEN; installation fehlt; nicht installierbar: installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar"
+      }
+    ]
+  },
+  "empfehlung_ids_gesendet": [
+    "frontend-design@d97a00cd5df2a5b0dce14f2fb11012437f6f8422fcc785faabbaf94bf1064607",
+    "playwright-mcp@400dcf35dc95a9c72b5eb9c1f453066c2a230e709d603849cb642887049e63cb",
+    "agent:qa@5aed8133c1084e55839535b9384d3d1afbfce9689e7c585c9b9122570b103874"
+  ],
+  "init": {
+    "tools": [
+      "Task",
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Skill",
+      "Write",
+      "mcp__playwright-mcp__browser_click",
+      "mcp__playwright-mcp__browser_close",
+      "mcp__playwright-mcp__browser_console_messages",
+      "mcp__playwright-mcp__browser_drag",
+      "mcp__playwright-mcp__browser_drop",
+      "mcp__playwright-mcp__browser_emulate_media",
+      "mcp__playwright-mcp__browser_evaluate",
+      "mcp__playwright-mcp__browser_file_upload",
+      "mcp__playwright-mcp__browser_fill_form",
+      "mcp__playwright-mcp__browser_find",
+      "mcp__playwright-mcp__browser_handle_dialog",
+      "mcp__playwright-mcp__browser_hover",
+      "mcp__playwright-mcp__browser_navigate",
+      "mcp__playwright-mcp__browser_navigate_back",
+      "mcp__playwright-mcp__browser_network_request",
+      "mcp__playwright-mcp__browser_network_requests",
+      "mcp__playwright-mcp__browser_press_key",
+      "mcp__playwright-mcp__browser_resize",
+      "mcp__playwright-mcp__browser_run_code_unsafe",
+      "mcp__playwright-mcp__browser_select_option",
+      "mcp__playwright-mcp__browser_snapshot",
+      "mcp__playwright-mcp__browser_tabs",
+      "mcp__playwright-mcp__browser_take_screenshot",
+      "mcp__playwright-mcp__browser_type",
+      "mcp__playwright-mcp__browser_wait_for"
+    ],
+    "agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "statusline-setup"
+    ],
+    "skills": [
+      "frontend-design"
+    ],
+    "plugins": [],
+    "mcp_servers": [
+      {
+        "name": "playwright-mcp",
+        "status": "connected",
+        "source": "dynamic"
+      }
+    ]
+  },
+  "beobachtung": {
+    "hintergrund_aufrufe": [],
+    "init_agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "statusline-setup"
+    ],
+    "init_mcp_server": [
+      "playwright-mcp"
+    ],
+    "init_skills": [
+      "frontend-design"
+    ],
+    "init_tools": [
+      "Task",
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Skill",
+      "Write",
+      "mcp__playwright-mcp__browser_click",
+      "mcp__playwright-mcp__browser_close",
+      "mcp__playwright-mcp__browser_console_messages",
+      "mcp__playwright-mcp__browser_drag",
+      "mcp__playwright-mcp__browser_drop",
+      "mcp__playwright-mcp__browser_emulate_media",
+      "mcp__playwright-mcp__browser_evaluate",
+      "mcp__playwright-mcp__browser_file_upload",
+      "mcp__playwright-mcp__browser_fill_form",
+      "mcp__playwright-mcp__browser_find",
+      "mcp__playwright-mcp__browser_handle_dialog",
+      "mcp__playwright-mcp__browser_hover",
+      "mcp__playwright-mcp__browser_navigate",
+      "mcp__playwright-mcp__browser_navigate_back",
+      "mcp__playwright-mcp__browser_network_request",
+      "mcp__playwright-mcp__browser_network_requests",
+      "mcp__playwright-mcp__browser_press_key",
+      "mcp__playwright-mcp__browser_resize",
+      "mcp__playwright-mcp__browser_run_code_unsafe",
+      "mcp__playwright-mcp__browser_select_option",
+      "mcp__playwright-mcp__browser_snapshot",
+      "mcp__playwright-mcp__browser_tabs",
+      "mcp__playwright-mcp__browser_take_screenshot",
+      "mcp__playwright-mcp__browser_type",
+      "mcp__playwright-mcp__browser_wait_for"
+    ],
+    "mcp_aufrufe": [
+      "mcp__playwright-mcp__browser_navigate"
+    ],
+    "navigate_adressen": [
+      "http://127.0.0.1:55179"
+    ],
+    "skill_aufrufe": [
+      "frontend-design"
+    ],
+    "subagent_aufrufe": [
+      "qa"
+    ]
+  },
+  "faehigkeiten_im_lauf": {
+    "eintraege": [
+      {
+        "aktiv": true,
+        "aufrufe": 1,
+        "fehlgeschlagen": 0,
+        "hash": "400dcf35dc95a9c72b5eb9c1f453066c2a230e709d603849cb642887049e63cb",
+        "id": "playwright-mcp",
+        "name": "Playwright MCP",
+        "quelle": "katalog",
+        "typ": "mcp"
+      },
+      {
+        "aktiv": true,
+        "aufrufe": 1,
+        "fehlgeschlagen": 0,
+        "hash": "89a6e59de80320a32e8b4c597a329ef3c503f624a2e68874bb0475dfb66dbf4b",
+        "id": "frontend-design",
+        "name": "frontend-design",
+        "quelle": "katalog",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "2424c036b50b4c714258659b2a162feca78e987617590b8133bf80230a9bc26a",
+        "id": "agent:architecture-advisor",
+        "name": "architecture-advisor",
+        "pfad": "agents/architecture-advisor.md",
+        "quelle": "projekt",
+        "typ": "agent"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "62c37feb911dcf1045d1b5af6a23606780e7c0d847ab42ce61d3f41e81e9ca93",
+        "id": "agent:code-reviewer",
+        "name": "code-reviewer",
+        "pfad": "agents/code-reviewer.md",
+        "quelle": "projekt",
+        "typ": "agent"
+      },
+      {
+        "aktiv": true,
+        "aufrufe": 1,
+        "fehlgeschlagen": 0,
+        "hash": "5aed8133c1084e55839535b9384d3d1afbfce9689e7c585c9b9122570b103874",
+        "id": "agent:qa",
+        "name": "qa",
+        "pfad": "agents/qa.md",
+        "quelle": "projekt",
+        "typ": "agent"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "07f62d335f1e760c9ca5d852fa2e7fb4d99204ffefbc6932a5afc495462528af",
+        "id": "skill:advisor-pass",
+        "name": "advisor-pass",
+        "pfad": "skills/advisor-pass",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "Inhalt weicht von der Freigabe ab (Datei 8103332c86ba…, Katalog d7ab6770fda8…)",
+        "hash": "8103332c86baa7aa058f6f8a1cb7389e40ac980d728e1feb7bc1317540f81148",
+        "id": "skill:git-flow",
+        "name": "git-flow",
+        "pfad": "skills/git-flow",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "Inhalt weicht von der Freigabe ab (Datei 5a64ecff8035…, Katalog a463e34e9a20…)",
+        "hash": "5a64ecff8035c73072482a310110c6c12ea4976dacedc97267bb0068eac7a102",
+        "id": "skill:handoff-vertrag",
+        "name": "handoff-vertrag",
+        "pfad": "skills/handoff-vertrag",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "1f9e4ddd507d4a27a305881fcc51ea4e5185bd793a138ae25e75ec0c24e38874",
+        "id": "skill:ponytail",
+        "name": "ponytail",
+        "pfad": "skills/ponytail",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "cc6efda724c50428895beb52d79fd659e3bd09cb6aaf86ccca312f66cea35e9d",
+        "id": "skill:repo-audit",
+        "name": "repo-audit",
+        "pfad": "skills/repo-audit",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "91f02bcbd5beb5e6cb31f340b93e7149e3e54c40d65720af4a872207900d1be3",
+        "id": "skill:spec-schreiben",
+        "name": "spec-schreiben",
+        "pfad": "skills/spec-schreiben",
+        "quelle": "projekt",
+        "typ": "skill"
+      },
+      {
+        "aktiv": false,
+        "aufrufe": 0,
+        "fehlgeschlagen": 0,
+        "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+        "hash": "c730f1ccd024c97e496d67af739f6b573871e4d39592bdccc8a2bb631240eb48",
+        "id": "skill:werkzeug-auswahl",
+        "name": "werkzeug-auswahl",
+        "pfad": "skills/werkzeug-auswahl",
+        "quelle": "projekt",
+        "typ": "skill"
+      }
+    ],
+    "fremde_aufrufe": []
+  },
+  "workflow_status": "ABGESCHLOSSEN",
+  "permission_denials": [],
+  "ergebnistext": "✓ Schritt 3: Subagent-Antwort = \"OK-QA\"\n\n---\n\n**Zusammenfassung Testlauf:**\n\n- Schritt 1: Skill \"frontend-design\" erfolgreich geladen\n- Schritt 2: Seitentitel \"Beleg 13 Testseite\"\n- Schritt 3: Subagent-Antwort \"OK-QA\"\n- [x] Alle Schritte erfolgreich abgeschlossen"
+}

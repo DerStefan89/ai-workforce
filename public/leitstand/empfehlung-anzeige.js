@@ -11,6 +11,9 @@
  * „Freigeben & installieren“ samt Platz für den Bestätigungsblock (Ablauf: empfehlung-installation.js).
  * Seit F-826: renderInstallierbarHinweis liefert den Hinweis neben „Freigeben“, solange ein
  * installierbarer Eintrag in „Passt, nicht im Lauf“ steht (Text, kein Blocker).
+ * Seit F45 F-2a (F-1054, F-1055 (1)): Liste „Projekt-Fähigkeiten im Lauf“ (empfehlung.projektFaehigkeiten, deren
+ * Kennungen mit der Freigabe zurückgehen), Liste „Im Projekt ausgeschaltet“ (Feld deaktiviert) und ein Hinweis, wenn
+ * faehigkeiten.lokal.json außerhalb des Leitstands geändert wurde (empfehlung.lokaleDateiFremd).
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/workflows.js (Freigabedialog im haltFreigabe, F44 WS-4a)
@@ -31,7 +34,7 @@
  */
 
 // F44 WS-4b (F-940): txHtml ist als tHtml nach i18n.js gezogen (ein zentraler, vom i18n-Gate geprüfter Aufruf).
-import { t, tHtml } from './i18n.js'
+import { formatiereDatum, t, tHtml } from './i18n.js'
 import { escapeHtml } from './render.js'
 
 /**
@@ -125,6 +128,49 @@ function renderProjektUrl(empfehlung) {
 }
 
 /**
+ * F45 F-2a (F-1054 (1)): eingeschaltete Projekt-Agents/-Skills — aktive gehen mit ihrer Kennung in den Lauf (angekreuzt),
+ * eingeschaltete, aber nicht aktive stehen mit Grund da (der Start lehnt sie ab). Nur, wenn der Server das Feld liefert
+ * und mindestens ein Eintrag eingeschaltet ist.
+ * @param empfehlung - detail.empfehlung
+ * @returns HTML oder ''
+ */
+function renderProjektFaehigkeiten(empfehlung) {
+  const liste = Array.isArray(empfehlung.projektFaehigkeiten) ? empfehlung.projektFaehigkeiten.filter((e) => e !== null && typeof e === 'object') : []
+  if (liste.length === 0) return ''
+  const zeilen = liste.map((e) => {
+    const art = escapeHtml(t(e.typ === 'agent' ? 'empfehlung.projekt.agent' : 'empfehlung.projekt.skill'))
+    const zusatz = e.aktiv === true ? escapeHtml(t('empfehlung.projekt.laeuftMit')) : `<span class="fehler">${escapeHtml(t('empfehlung.projekt.nichtAktiv', { grund: String(e.grund ?? '') }))}</span>`
+    return `<li><label class="check"><input type="checkbox" disabled${e.aktiv === true ? ' checked' : ''} /><span><code>${escapeHtml(String(e.id ?? ''))}</code> ${art} — ${zusatz}</span></label></li>`
+  })
+  return `<p><strong>${escapeHtml(t('empfehlung.projekt.titel'))}</strong></p><ul class="empfehlung-liste">${zeilen.join('')}</ul>`
+}
+
+/**
+ * F45 F-2a (F-1054 (2)): im Projekt ausgeschaltete Katalog-Einträge (Feld deaktiviert, ohne Obergrenze) — nur, wenn
+ * der Server welche liefert.
+ * @param empfehlung - detail.empfehlung
+ * @returns HTML oder ''
+ */
+function renderDeaktiviert(empfehlung) {
+  const liste = Array.isArray(empfehlung.deaktiviert) ? empfehlung.deaktiviert.filter((e) => e !== null && typeof e === 'object') : []
+  if (liste.length === 0) return ''
+  const zeilen = liste.map((e) => `<li><label class="check"><input type="checkbox" disabled /><span><code>${escapeHtml(String(e.id ?? ''))}</code> ${escapeHtml(String(e.name ?? ''))} — ${escapeHtml(t('empfehlung.deaktiviert.grund'))}</span></label></li>`)
+  return `<p><strong>${escapeHtml(t('empfehlung.deaktiviert.titel'))}</strong></p><ul class="empfehlung-liste">${zeilen.join('')}</ul>`
+}
+
+/**
+ * F45 F-2a (F-1055 (1), Advisor A3): faehigkeiten.lokal.json wurde außerhalb des Leitstands geändert — dort, wo
+ * gestartet wird. Quelle: empfehlung.lokaleDateiFremd (Server, aus dem ohnehin gelesenen Hash).
+ * @param empfehlung - detail.empfehlung
+ * @returns HTML oder ''
+ */
+function renderFremdBand(empfehlung) {
+  const fremd = empfehlung.lokaleDateiFremd
+  if (fremd === null || typeof fremd !== 'object') return ''
+  return `<p class="hinweis empfehlung-fremd">${escapeHtml(t('empfehlung.fremd', { seit: typeof fremd.bekannt_seit === 'string' ? formatiereDatum(fremd.bekannt_seit, { dateStyle: 'medium', timeStyle: 'short' }) : '—' }))}</p>`
+}
+
+/**
  * Rendert den Empfehlungsblock; leerer String, wenn der Server keine Empfehlung liefert (kein
  * ZWINGEND-Start einer Ausführung mit Katalog-Fähigkeiten).
  * @param empfehlung - detail.empfehlung aus GET /api/workflows/<id>, oder null/undefined
@@ -142,10 +188,13 @@ export function renderEmpfehlung(empfehlung) {
   return `<div class="unterabschnitt">
     <h3>${escapeHtml(t('empfehlung.titel'))}</h3>
     ${[...empfehlung.wirdGenutzt, ...empfehlung.passtNichtImLauf].some((e) => e.id === installationsMeldung.id) ? installationsMeldung.html : ''}
+    ${renderFremdBand(empfehlung)}
     ${renderProjektUrl(empfehlung)}
     ${hinweise}
     ${renderListe(t('empfehlung.wirdGenutzt'), empfehlung.wirdGenutzt, genutztWeitere > 0 ? t('empfehlung.weitereGenutzt', { anzahl: String(genutztWeitere) }) : null, true)}
+    ${renderProjektFaehigkeiten(empfehlung)}
     ${renderListe(t('empfehlung.passtNicht'), empfehlung.passtNichtImLauf, passtWeitere > 0 ? t('empfehlung.weitere', { anzahl: String(passtWeitere) }) : null)}
+    ${renderDeaktiviert(empfehlung)}
     ${nichtFreigebbar}
   </div>`
 }
@@ -177,12 +226,15 @@ export function renderInstallierbarHinweis(empfehlung) {
 /**
  * Die angezeigten wirdGenutzt-Kennungen (empfehlungId, F-808) für den Freigabe-Body — undefined, wenn nichts (fehlerfrei)
  * angezeigt wurde: dann schickt die Oberfläche kein Feld und der Lauf bekommt keine
- * Katalog-Fähigkeiten.
+ * Katalog-Fähigkeiten. Seit F45 F-2a (F-1054 (1)) zusätzlich die Kennungen der angezeigten aktiven Projekt-Fähigkeiten
+ * ('agent:<n>@<sha>'/'skill:<n>@<sha>') — der Server trennt über das Präfix und vergleicht je Art.
  * @param empfehlung - detail.empfehlung, oder null/undefined
  * @returns string[] oder undefined
  */
 export function empfehlungIdsFuerFreigabe(empfehlung) {
   if (empfehlung === null || empfehlung === undefined || typeof empfehlung.fehler === 'string') return undefined
   // Ohne empfehlungId (älterer Server) geht die nackte id mit — der Start lehnt sie dann ab (fail-closed).
-  return empfehlung.wirdGenutzt.map((e) => e.empfehlungId ?? e.id)
+  const katalog = empfehlung.wirdGenutzt.map((e) => e.empfehlungId ?? e.id)
+  const projekt = Array.isArray(empfehlung.projektFaehigkeiten) ? empfehlung.projektFaehigkeiten.filter((e) => e?.aktiv === true && typeof e.kennung === 'string').map((e) => e.kennung) : []
+  return [...katalog, ...projekt]
 }

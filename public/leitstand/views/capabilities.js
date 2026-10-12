@@ -5,7 +5,9 @@
  * d_faehigkeiten_rollen; seit F46 D6 nach docs/design/abgleich-f46.md §4.14, Bilder 01-workforce-harness--Main
  * und --Library). Drei clientseitige Register in der Reihenfolge des Bildes: Harness-Aufbau (Standard;
  * views/harness-aufbau.js über GET /api/harness), Capability Library (Unterbereiche Katalog —
- * views/capability-library.js über GET /api/ressourcen —, Rollen & Besetzung mit Scout, Empfehlungen) und
+ * views/capability-library.js über GET /api/ressourcen —, seit F45 F-2a „Dieses Projekt“ — views/faehigkeiten-projekt.js
+ * über GET …/faehigkeiten: installiert · aktiv · benutzt, Schalter, Freigeben nach Inhalt —, Rollen & Besetzung mit
+ * Scout, Empfehlungen) und
  * Phasen & Rollen (Baustein „kommt“ aus F44 WS-7a). Titel und Beschreibung des Kopfes folgen dem Register.
  * Diese Datei hält die Register, Rollen & Besetzung (GET /api/ressourcen/abdeckung, Details lazy über
  * GET /api/ressourcen/rollen/<rolle>), den Scout und das Laden; die Regeln für Zählung, Filter und
@@ -20,8 +22,9 @@
  *
  * Wichtig: rein lesend außer dem Scout/Vormerken-Weg (F27 WS-2; Ablauf und Guards unverändert, Darstellung seit
  * WS-7b als Karten) und — seit F46 D6 — „Prüfen & freigeben“ im Detail der Library, das ist der bestehende
- * F36-Installationsweg mit Bestätigung (empfehlung-installation.js, unverändert). Kein Schreiben in
- * Harness-Dateien, settings.json oder Hooks (E-F46-2).
+ * F36-Installationsweg mit Bestätigung (empfehlung-installation.js, unverändert), seit F45 F-2a die Schalter und
+ * „Freigeben nach Inhalt“ im Bereich „Dieses Projekt“ (schreiben nur ~/.ai-workforce/faehigkeiten.lokal.json über die
+ * Routen, E-F45-8). Kein Schreiben in Harness-Dateien, settings.json oder Hooks (E-F46-2).
  * Serverwerte (IDs, Capability-Namen, anzeigeGrund, fehltFuerEinsatz, Phasen, Pfade, Dateiinhalte) bleiben roh
  * und gehen durch escapeHtml, nie durch t(). Seit WS-7b sind auch die Scout-Texte übersetzt (werkstatt.scout.*);
  * baueScoutAuftragstext bleibt deutsch (geht an das Modell, Vertrag der Rolle scout).
@@ -44,6 +47,7 @@ import {
   zeigeCapabilityLibraryFehler,
   zeigeCapabilityLibraryLaedt,
 } from './capability-library.js'
+import { initFaehigkeitenProjekt, ladeFaehigkeitenProjekt, setzeFaehigkeitenProjektZurueck } from './faehigkeiten-projekt.js'
 import { initHarnessAufbau, oeffneHarnessOrt, renderHarness, setzeHarnessZurueck, zeigeHarnessFehler, zeigeHarnessLaedt } from './harness-aufbau.js'
 
 // ─── Register (role=tablist) ─────────────────────────────────────────────
@@ -739,6 +743,8 @@ async function ladeCapabilities() {
   zeigeCapabilityLibraryLaedt()
   zeigeHarnessLaedt()
   document.getElementById('capabilities-abdeckung').innerHTML = `<p class="leer">${tHtml('werkstatt.laedt')}</p>`
+  // F45 F-2a: „Dieses Projekt“ lädt parallel und zeigt seinen Fehler selbst (eigener Überholschutz).
+  void ladeFaehigkeitenProjekt()
   const [libraryErgebnis, abdeckungErgebnis, harnessErgebnis] = await Promise.allSettled([holeRessourcen(), holeAbdeckung(), holeHarness()])
   if (meineNummer !== ladeZaehler) return
 
@@ -804,6 +810,7 @@ export function initCapabilitiesView() {
   })
   initAbdeckungBedienung()
   initScoutBedienung()
+  initFaehigkeitenProjekt()
   document.getElementById('harness-zur-library').addEventListener('click', () => wechsleZuReiter('werkstatt-reiter-faehigkeiten'))
   abonniereDetailAuffrischer(() => {
     void aktualisiereScoutZustand()
@@ -813,6 +820,7 @@ export function initCapabilitiesView() {
     setzeScoutZurueck()
     setzeHarnessZurueck()
     setzeCapabilityLibraryZurueck()
+    setzeFaehigkeitenProjektZurueck()
     void ladeCapabilities()
   })
   document.getElementById('capabilities-neu-laden').addEventListener('click', () => {

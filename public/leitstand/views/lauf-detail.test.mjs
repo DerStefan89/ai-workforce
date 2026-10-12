@@ -18,6 +18,8 @@ import {
   laufStatusPunkt,
   renderAufklappInhalte,
   renderEinordnung,
+  renderFaehigkeiten,
+  renderFaehigkeitenImLauf,
   renderLaufDialog,
   renderLaufHarnessAbgleich,
   renderLaufListe,
@@ -245,4 +247,37 @@ test('F45 B1b-2: Harness-Abgleich im Lauf-Detail — Zuordnung offen, Einzellauf
   assert.match(renderLaufHarnessAbgleich('ohneAblauf'), /gehört zu keinem Ablauf/)
   assert.match(renderLaufHarnessAbgleich(undefined), /Harness-Abgleich lädt/)
   assert.match(renderLaufHarnessAbgleich({ fehler: '404 weg' }), /nicht ladbar: 404 weg/)
+})
+
+test('F45 F-2a (Beleg 13): „Fähigkeiten im Lauf“ — aktiv/aus mit Grund, Quelle, Hash gekürzt, Aufrufe/Fehler, fremde Aufrufe als eigene Zeile', () => {
+  const feld = {
+    eintraege: [
+      { id: 'playwright-mcp', name: 'Playwright', typ: 'mcp', quelle: 'katalog', hash: 'c'.repeat(64), aktiv: true, aufrufe: 4, fehlgeschlagen: 1 },
+      { id: 'agent:qa', name: 'qa', typ: 'agent', quelle: 'projekt', hash: 'a'.repeat(64), pfad: 'agents/qa.md', aktiv: true, aufrufe: 1, fehlgeschlagen: 0 },
+      { id: 'skill:ponytail', name: 'ponytail', typ: 'skill', quelle: 'projekt', hash: 'b'.repeat(64), aktiv: false, grund: `nicht eingeschaltet ${BOESE}`, aufrufe: 0, fehlgeschlagen: 0 },
+    ],
+    fremde_aufrufe: [
+      { art: 'agent', name: 'general-purpose', fehler: true },
+      { art: 'agent', name: 'general-purpose', fehler: true },
+    ],
+  }
+  const html = renderFaehigkeitenImLauf(feld)
+  assert.match(html, /Fähigkeiten im Lauf/)
+  assert.match(html, /2 aktiv · 2 benutzt · 1 aus · 2 fremde Aufrufe/)
+  assert.match(html, /<code title="a{64}">a{12}…<\/code>/)
+  assert.match(html, /data-aktiv="true"><td[^>]*><strong>Playwright<\/strong><\/td><td[^>]*>MCP<\/td><td[^>]*>Katalog<\/td>/)
+  assert.match(html, /4 · <span class="ablauf-status fehler">1 mit Fehler<\/span>/)
+  assert.match(html, /<strong>qa<\/strong><\/td><td[^>]*>Agent<\/td><td[^>]*>Projekt<\/td><td[^>]*><span class="ablauf-status">aktiv<\/span>/)
+  assert.match(html, /<span class="ablauf-status neutral">aus<\/span><br><span class="subtle">nicht eingeschaltet &lt;img/)
+  assert.match(html, /data-fremd="true"><td[^>]*><strong>general-purpose<\/strong>.*fremder Aufruf.*2 · <span class="ablauf-status fehler">2 mit Fehler/)
+  assert.doesNotMatch(html, /<img/)
+})
+
+test('F45 F-2a: „Fähigkeiten im Lauf“ ohne Feld → nicht erfasst; ohne Beobachtung → nicht beobachtet; im Aufklappbereich nur mit Laufakte', () => {
+  assert.match(renderFaehigkeitenImLauf(null), /Nicht erfasst — nur Ausführungsläufe mit angezeigter Empfehlung tragen einen Fähigkeiten-Kontext/)
+  assert.match(renderFaehigkeitenImLauf({ eintraege: [{ id: 'x', name: 'x', typ: 'agent', quelle: 'projekt', aktiv: true, aufrufe: null, fehlgeschlagen: null }], fremde_aufrufe: [] }), /nicht beobachtet/)
+  assert.match(renderFaehigkeitenImLauf({ eintraege: [], fremde_aufrufe: [] }), /Keine Fähigkeiten in diesem Lauf/)
+  const mitAkte = renderFaehigkeiten({ status: 'ok', beobachtung: null, faehigkeitenImLauf: { eintraege: [], fremde_aufrufe: [] } })
+  assert.match(mitAkte, /Fähigkeiten im Lauf/)
+  assert.doesNotMatch(renderFaehigkeiten({ status: 'nicht_vorhanden' }), /Fähigkeiten im Lauf/)
 })

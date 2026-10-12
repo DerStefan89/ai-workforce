@@ -123,3 +123,10 @@ test('en: Zählzeile und Status übersetzt', () => {
     setzeSprache('de')
   }
 })
+
+test('F45 F-2a: Kurzliste trägt die Kurzzeile „Fähigkeiten im Lauf“, wenn im_lauf da ist; sonst keine Zeile', () => {
+  const basis = { lauf_id: 'lauf-1', skills: [], subagenten: [], mcp_server: [], hintergrund: 0 }
+  const mit = renderFaehigkeitenKurzliste({ ...basis, im_lauf: { aktiv: 3, benutzt: 2, aus: 1, fremde: 1 } })
+  assert.match(mit, /<dt>Fähigkeiten im Lauf<\/dt><dd>3 aktiv · 2 benutzt · 1 aus · 1 fremde Aufrufe<\/dd>/)
+  assert.doesNotMatch(renderFaehigkeitenKurzliste(basis), /Fähigkeiten im Lauf/)
+})

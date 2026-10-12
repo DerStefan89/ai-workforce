@@ -100,7 +100,7 @@ export function berechneAbgleichFuerWorkflow({ workflowId, workflowDaten, wurzel
       zaehlung: ergebnis.zaehlung,
       bestanden: ergebnis.bestanden,
       eintraege: ergebnis.eintraege,
-      faehigkeiten: baueFaehigkeitenKurzliste(beobachtung, laufId),
+      faehigkeiten: baueFaehigkeitenKurzliste(beobachtung, laufId, laufakte?.daten?.faehigkeiten_im_lauf),
       geaenderte_harness_dateien: geaendert,
       berechnet_am: new Date().toISOString(),
     }

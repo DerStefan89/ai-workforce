@@ -55,6 +55,8 @@ export interface ProjektFaehigkeit {
   aktiv: boolean
   /** Grund, wenn nicht aktiv (Sperre, fehlende Freigabe, nicht eingeschaltet) */
   grund: string | null
+  /** F45 F-2a: Frontmatter-description (strenger Leser, Advisor A11); null, wenn die Frontmatter gesperrt oder nicht lesbar ist */
+  beschreibung: string | null
 }
 
 /** Katalog-Freigabe eines internen agent/skill-Eintrags: id und Hash der Datei der Workforce. */
