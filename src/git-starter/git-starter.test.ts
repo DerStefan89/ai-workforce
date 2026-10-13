@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os'
 import { delimiter, isAbsolute, join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
-import { findeGitProgramm, fuehreGitSync, GIT_NICHT_GEFUNDEN, gitProgramm, gitUmgebung } from './index.ts'
+import { findeGitProgramm, fuehreGitAsync, fuehreGitSync, GIT_NICHT_GEFUNDEN, gitProgramm, gitUmgebung } from './index.ts'
 
 /**
  * Legt ein Wegwerf-Repo mit Attrappen git.exe, git.com (unter Windows) und git (ausführbares Skript, das
@@ -140,6 +140,61 @@ test('fuehreGitSync: geerbtes GIT_DIR lenkt nicht um; Fehler wie execFileSync (W
   } finally {
     if (vorher === undefined) delete process.env.GIT_DIR
     else process.env.GIT_DIR = vorher
+    raeumeVerzeichnis(repo)
+  }
+})
+
+test('fuehreGitAsync (F45 B2a-3b, Zeitgrenze): ein hängendes git (hash-object --stdin, stdin offen) endet mit abbruch zeitgrenze', { timeout: 20_000 }, async () => {
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), 'git-starter-zeit-')))
+  try {
+    fuehreGitSync(['init', '--quiet'], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const ergebnis = await fuehreGitAsync(['hash-object', '--stdin'], { cwd: repo, zeitgrenzeMs: 50 })
+    assert.equal(ergebnis.code, null)
+    assert.equal(ergebnis.abbruch, 'zeitgrenze')
+  } finally {
+    raeumeVerzeichnis(repo)
+  }
+})
+
+test('fuehreGitAsync (F45 B2a-3b, Node-execFile-Wettlauf): Zeitgrenze wird nie als Erfolg mit leerer Ausgabe gemeldet', { timeout: 30_000 }, async () => {
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), 'git-starter-wettlauf-')))
+  try {
+    fuehreGitSync(['init', '--quiet'], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    // rev-parse --show-toplevel liefert im Erfolgsfall immer eine Zeile — code 0 mit leerer Ausgabe ist ein verdeckter Abbruch.
+    const ergebnisse = await Promise.all(Array.from({ length: 50 }, () => fuehreGitAsync(['rev-parse', '--show-toplevel'], { cwd: repo, zeitgrenzeMs: 1 })))
+    const stilleAbbrueche = ergebnisse.filter((e) => e.code === 0 && e.stdout === '')
+    assert.equal(stilleAbbrueche.length, 0, `${stilleAbbrueche.length} von 50 Aufrufen: code 0 mit leerer Ausgabe`)
+    for (const e of ergebnisse) if (e.code !== 0) assert.equal(e.abbruch, 'zeitgrenze', JSON.stringify(e))
+  } finally {
+    raeumeVerzeichnis(repo)
+  }
+})
+
+test('fuehreGitAsync (F45 B2a-3b, Code-Review-Nachpass 1): ein Enkelprozess mit geerbten Pipes (Hook) hält die Zeitgrenze nicht auf', { timeout: 20_000 }, async () => {
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), 'git-starter-enkel-')))
+  const hooks = join(repo, '.hooks')
+  let start = Date.now()
+  try {
+    const git = (...a: string[]) => fuehreGitSync(a, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    git('init', '--quiet')
+    git('-c', 'user.email=t@example.invalid', '-c', 'user.name=T', 'commit', '--quiet', '--allow-empty', '-m', 'init')
+    mkdirSync(hooks)
+    // post-checkout schläft 5 s und erbt stdout/stderr von git — bei Ablauf der Zeitgrenze (1 s) läuft er sicher, und ohne
+    // Abbau der Pipes hielte er 'close' bis zu seinem Ende auf (vor der Korrektur gemessen: Testlauf ≈ 5,8 s, rot).
+    writeFileSync(join(hooks, 'post-checkout'), '#!/bin/sh\nsleep 5\n')
+    chmodSync(join(hooks, 'post-checkout'), 0o755)
+    git('config', 'core.hooksPath', hooks)
+    start = Date.now()
+    const ergebnis = await fuehreGitAsync(['checkout', '--quiet', '-b', 'zweig'], { cwd: repo, zeitgrenzeMs: 1000 })
+    const dauer = Date.now() - start
+    assert.equal(ergebnis.code, null)
+    assert.equal(ergebnis.stdout, '')
+    assert.equal(ergebnis.abbruch, 'zeitgrenze', JSON.stringify(ergebnis))
+    assert.ok(dauer < 3000, `Ergebnis erst nach ${dauer} ms (Zeitgrenze 1000 ms)`)
+  } finally {
+    // Der Hook läuft ggf. weiter und hält den Ordner — erst nach seinem Ende aufräumen (gemessen ab dem Start des Hooks).
+    const rest = 5500 - (Date.now() - start)
+    if (rest > 0) await new Promise((r) => setTimeout(r, rest))
     raeumeVerzeichnis(repo)
   }
 })

@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, renderAbnahme, renderAbnahmeBlick, reviewHinweise, zaehleAkUrteile } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, renderAbnahme, renderAbnahmeBlick, reviewHinweise, reviewHinweisKennung, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -355,4 +355,38 @@ test('Lage entscheidbar: Review-Kachel zeigt Kontextlücken; Befund v2 zeigt id,
 test('Befund v1 (ohne neue Felder) rendert unverändert ohne leere Zusatzzeilen', () => {
   const r = renderAbnahme('wf-1', abnahme())
   assert.doesNotMatch(r.oben, /abnahme-befund-v2/)
+})
+
+test('F45 B2a-3b: Review veraltet / Stand nicht bestimmbar — amber, in Review-Kachel und Zählzeile; ohne Grund oder false still', () => {
+  const stand = { commit: 'a'.repeat(40), inhalt: 'b'.repeat(64) }
+  const veraltet = reviewHinweise({ ...URTEIL, geprueft_stand: stand, aktueller_stand: { ...stand, inhalt: 'c'.repeat(64) }, veraltet: true, stand_grund: null })
+  assert.deepEqual(
+    veraltet.map((h) => h.art),
+    ['reviewVeraltet']
+  )
+  assert.match(veraltet[0].text, /Review veraltet — der Arbeitsordner hat sich seit dem Review geändert/)
+  const unbestimmt = reviewHinweise({ ...URTEIL, geprueft_stand: stand, aktueller_stand: null, veraltet: null, stand_grund: 'kein Commit <HEAD>' })
+  assert.equal(unbestimmt[0].art, 'standUnbestimmt')
+  assert.match(unbestimmt[0].text, /Stand des Reviews nicht bestimmbar: kein Commit <HEAD>/)
+  assert.deepEqual(reviewHinweise({ ...URTEIL, geprueft_stand: stand, aktueller_stand: stand, veraltet: false, stand_grund: null }), [])
+  assert.deepEqual(reviewHinweise({ ...URTEIL, geprueft_stand: null, aktueller_stand: null, veraltet: null, stand_grund: null }), [], 'Abnahme nicht offen: still')
+  const seite = renderAbnahme('wf-1', abnahme({ urteil: { ...URTEIL, veraltet: null, stand_grund: 'kein Commit <HEAD>' } }))
+  assert.equal(seite.lage, 'entscheidbar')
+  assert.match(seite.oben, /note amber abnahme-review-hinweise/)
+  assert.ok(seite.oben.includes('<span lang="de">kein Commit &lt;HEAD&gt;</span>'))
+  const kachel = renderAbnahme('wf-1', abnahme({ urteil: { ...URTEIL, veraltet: true } }))
+  assert.match(kachel.oben, /data-review-hinweis="reviewVeraltet"/)
+  const blick = renderAbnahmeBlick(abnahme({ urteil: { ...URTEIL, veraltet: true } }))
+  assert.match(blick, /ablauf-status warten" data-review-hinweise-anzahl="1"/)
+  assert.match(blick, /ablauf-status ok">Bereit/)
+})
+
+test('F45 B2a-3b (qa 1): reviewHinweisKennung ändert sich mit „veraltet“ und dem Grund — die offene Abnahme wird neu gezeichnet', () => {
+  const frisch = reviewHinweisKennung({ ...URTEIL, veraltet: false, stand_grund: null })
+  const veraltet = reviewHinweisKennung({ ...URTEIL, veraltet: true, stand_grund: null })
+  const unbestimmtA = reviewHinweisKennung({ ...URTEIL, veraltet: null, stand_grund: 'Grund A' })
+  const unbestimmtB = reviewHinweisKennung({ ...URTEIL, veraltet: null, stand_grund: 'Grund B' })
+  assert.equal(frisch, '')
+  assert.equal(new Set([frisch, veraltet, unbestimmtA, unbestimmtB]).size, 4)
+  assert.equal(reviewHinweisKennung(undefined), '')
 })

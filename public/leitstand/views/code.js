@@ -27,7 +27,7 @@
 
 import { holeArbeitsordner, holeCodeDiff } from '../api.js'
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
-import { commitUrl, FREIGABE_MINUTEN, filtereVerlauf, freigabeZustand, gruppiereNachOrdner, nameVon, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from '../code-daten.js'
+import { commitUrl, FREIGABE_MINUTEN, filtereVerlauf, freigabeZustand, gruppiereNachOrdner, nameVon, pruefstandBefehle, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from '../code-daten.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { renderArbeitsordnerListe } from './arbeitsordner-anzeige.js'
 import { entwicklungsReiterHtml } from '../entwicklung-reiter.js'
@@ -224,7 +224,17 @@ function diffHtml(daten) {
 }
 
 /**
- * „Sichern“: Befehlsblock mit echten Dateien (code-daten.js sicherBefehle) oder ein Grund. Nach einem
+ * Je Block ein Befehlsblock mit eigenem „Kopieren“ und „Ins Terminal“ (F45 B2a-3b, F-959).
+ * @param bloecke - Zeilen je Block (erste Zeile cd)
+ * @returns HTML
+ */
+function renderBloecke(bloecke) {
+  return bloecke.map((zeilen) => renderBefehlsblock({ sprache: 'powershell', zeilen }, { zusatzHtml: insTerminal(), echteWerte: true })).join('')
+}
+
+/**
+ * „Sichern“: Befehlsblöcke mit echten Dateien (code-daten.js sicherBefehle; F45 B2a-3b: je Block erste Zeile cd, push
+ * getrennt, jeder mit eigenem „Kopieren“) oder ein Grund. Nach einem
  * gescheiterten Aktualisieren kein Befehl aus dem alten Stand (Prüfpass qa 5); läuft gerade ein Lauf,
  * ein Hinweis (aus dem Poll, Prüfpass qa 8).
  * @param daten - Antwort der Route
@@ -233,7 +243,7 @@ function diffHtml(daten) {
  */
 function sichernHtml(daten, veraltet) {
   const befehle = sicherBefehle(daten, { veraltet })
-  const block = befehle.zeilen ? renderBefehlsblock({ sprache: 'powershell', zeilen: befehle.zeilen }, { zusatzHtml: insTerminal(), echteWerte: true }) : `<p class="subtle code-sichern-grund">${tHtml(`code.sichern.grund.${befehle.grund}`)}</p>`
+  const block = befehle.bloecke ? renderBloecke(befehle.bloecke) : `<p class="subtle code-sichern-grund">${tHtml(`code.sichern.grund.${befehle.grund}`)}</p>`
   const hinweise = (befehle.hinweise ?? []).map((h) => `<p class="subtle code-sichern-grund">${tHtml(`code.sichern.hinweis.${h}`)}</p>`).join('')
   const lauf = aktiverLauf?.aktiv === true ? `<div class="note amber"><p>${tHtml('code.sichern.laeuft')}</p></div>` : ''
   return `<div class="code-sichern">
@@ -299,19 +309,19 @@ function freigabeHtml(daten, geladenAm) {
 
 /**
  * Karte „Prüfstand“: Ergebnis, Tests, Prüfskripte, CI und „berührt“ kommen (F-962); der Prüfbefehl ist
- * echt (Startvorlage der Instanz).
+ * echt (Startvorlage der Instanz), seit F45 B2a-3b mit cd auf den Projektpfad als erster Zeile (pruefstandBefehle).
  * @param daten - Antwort der Route oder null
  * @returns HTML
  */
 function pruefstandHtml(daten) {
-  const befehl = daten?.startvorlage?.status === 'ok' && typeof daten.startvorlage.pruefbefehl === 'string' ? daten.startvorlage.pruefbefehl : null
+  const befehle = pruefstandBefehle(daten)
   const kachel = (schluessel) => `<div class="code-pruef-kachel"><span>${tHtml(`code.pruefstand.${schluessel}`)}</span>${kommtBadge()}</div>`
-  const block = befehl === null ? `<p class="subtle">${daten === null ? tHtml('entwicklung.laedt') : tHtml('code.pruefstand.keinBefehl')}</p>` : renderBefehlsblock({ sprache: 'powershell', zeilen: [befehl] }, { zusatzHtml: insTerminal(), echteWerte: true })
+  const block = befehle.bloecke ? renderBloecke(befehle.bloecke) : `<p class="subtle">${daten === null ? tHtml('entwicklung.laedt') : tHtml(`code.pruefstand.${befehle.grund}`)}</p>`
   return `<div class="code-karte-kopf"><h2 id="code-pruefstand-titel">${tHtml('code.pruefstand.titel')}</h2>${kommtBadge()}</div>
     <p class="code-karte-text">${tHtml('code.pruefstand.text')}</p>
     <div class="code-pruef-kacheln">${kachel('tests')}${kachel('skripte')}${kachel('ci')}</div>
-    <p class="code-eyebrow">${tHtml('code.pruefstand.beruehrt')} ${kommtBadge()}</p>
-    ${block}`
+    ${block}
+    <p class="code-eyebrow">${tHtml('code.pruefstand.beruehrt')} ${kommtBadge()}</p>`
 }
 
 // ─── Verlauf auf main ────────────────────────────────────────────────────────

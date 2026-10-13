@@ -1,0 +1,20 @@
+{
+  "laufakte_schema": "v0",
+  "lauf_id": "beispiel-review-lauf-ungueltig",
+  "werkzeug_version_deklariert": "2.1.241",
+  "berechtigungskontext": "profil-standard",
+  "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+  "modell_beobachtet": null,
+  "beobachtungsbasis_vollstaendig": true,
+  "rohstrom_referenz": {
+    "pfad": "kontrollzustand-roh/beispiel-lauf/rohstrom.json",
+    "inhalts_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "erstellt_am": "2026-08-31T09:00:00.000Z",
+  "review": {
+    "policy_version": "review-policy-1",
+    "geprueft_stand": {
+      "commit": "2fd1ac56228c845e24621b106396e058b95af8fb"
+    }
+  }
+}

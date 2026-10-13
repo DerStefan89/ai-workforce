@@ -620,12 +620,15 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Ausführung, AK-Entwurf aus der Finding-Maßnahme, Einrichtungsliste im
   Ablauf mit Startsperre, Prüfmaßstab des Reviews im Stand vor dem Bau);
   gemergt #330 (`a6d3411`). B2a-3 geteilt (Stefan 13.10.2026) in B2a-3a
-  und B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut, nicht
-  committet (Branch `f45/b2a3-codex-review`: Spec-Datei, Review-Policy für
-  Codex und Claude, Review-Schema v2, Regel 1k und sichtbare Fehlerfälle,
-  Jarvis-Regel mit cd-Pfad und „Deine Schritte“).
-  Reihenfolge ab F: B2a-3a → B2a-3b → F-3 → B2b → B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1085. Nach F46, vor F30
+  und B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gemergt #331
+  (`2fd1ac5`). B2a-3b „Geprüfter Stand und Review veraltet“ gebaut, nicht
+  committet (Branch `f45/b2a3b-review-stand`: Inhalts-Fingerabdruck des
+  Laufordners lesend in der Laufakte, „Review veraltet“/„nicht bestimmbar“
+  in der Abnahme, Befehlsblöcke im Leitstand mit cd und getrenntem push,
+  Nachweis des echten Codex-Laufs B2a-3a nachgezogen, F-1085 (6)/(7)/(11));
+  damit ist B2a nach dem Merge abgeschlossen.
+  Reihenfolge ab F: B2a-3b → F-3 → B2b → B5a/B5b → B3 → R → R2.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1089. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

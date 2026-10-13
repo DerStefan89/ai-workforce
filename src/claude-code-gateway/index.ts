@@ -1330,6 +1330,7 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
 
 /**
  * F45 B2a-3a: prüft das Laufakten-Feld review gegen schemas/kontrollzustand-laufakte-payload.schema.json (Zwilling).
+ * F45 B2a-3b: dazu geprueft_stand (null oder { commit, inhalt }) und stand_grund.
  * @param wert - Feldwert
  * @param verstoesse - Sammelliste, wird ergänzt
  */
@@ -1339,9 +1340,24 @@ function pruefeReview(wert: unknown, verstoesse: string[]): void {
     return
   }
   const review = wert as Record<string, unknown>
-  for (const feld of Object.keys(review)) if (feld !== 'policy_version') verstoesse.push(`unbekanntes Feld 'review.${feld}' (additionalProperties: false)`)
+  for (const feld of Object.keys(review)) if (!REVIEW_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld 'review.${feld}' (additionalProperties: false)`)
   if (typeof review.policy_version !== 'string' || review.policy_version === '') verstoesse.push("'review.policy_version' muss ein nicht leerer String sein")
+  if ('geprueft_stand' in review && review.geprueft_stand !== null) {
+    const stand = review.geprueft_stand
+    if (typeof stand !== 'object' || Array.isArray(stand)) {
+      verstoesse.push("'review.geprueft_stand' muss null oder ein Objekt sein")
+    } else {
+      const s = stand as Record<string, unknown>
+      for (const feld of Object.keys(s)) if (feld !== 'commit' && feld !== 'inhalt') verstoesse.push(`unbekanntes Feld 'review.geprueft_stand.${feld}' (additionalProperties: false)`)
+      if (typeof s.commit !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(s.commit)) verstoesse.push("'review.geprueft_stand.commit' muss ein Commit-Hash (40 oder 64 hex) sein")
+      if (typeof s.inhalt !== 'string' || !/^[0-9a-f]{64}$/.test(s.inhalt)) verstoesse.push("'review.geprueft_stand.inhalt' muss ein sha256 (64 hex) sein")
+    }
+  }
+  if ('stand_grund' in review && (typeof review.stand_grund !== 'string' || review.stand_grund === '')) verstoesse.push("'review.stand_grund' muss, wenn angegeben, ein nicht leerer String sein")
 }
+
+/** F45 B2a-3a/B2a-3b: zulässige Felder von review (Zwilling von schemas/kontrollzustand-laufakte-payload.schema.json). */
+const REVIEW_FELDER = new Set(['policy_version', 'geprueft_stand', 'stand_grund'])
 
 /**
  * F45 B2a-1: prüft das Laufakten-Feld projektkarte gegen schemas/kontrollzustand-laufakte-payload.schema.json (Zwilling).

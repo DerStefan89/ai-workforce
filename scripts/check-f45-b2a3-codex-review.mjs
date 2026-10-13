@@ -7,7 +7,7 @@
  *     am 13.10.2026 aus dem Bauauftrag geschriebenen Stand; Kopfabschnitt „Umsetzung in der Workforce“ vorhanden.
  * (b) Über den echten HTTP-Pfad (Attrappe für fuehreAufgabeDurch): der Review-Auftrag von Codex UND Claude trägt den
  *     Policy-Block genau einmal, mit Version, hinter der Projektkarte; Codex ohne Beobachtungsblock, Claude mit (davor);
- *     die Ausführung bekommt keine Policy; eingaben.review = { policy_version }. Der Policy-Text ist an die Version
+ *     die Ausführung bekommt keine Policy; eingaben.review.policy_version gesetzt (den geprüften Stand prüft f45-b2a3b). Der Policy-Text ist an die Version
  *     gekoppelt (fester sha256 je Version); baueReviewPolicyBlock( steht genau einmal im Server.
  * (c) Schema ergebnis-code-reviewer v2: id, dimension, evidenz, korrekturrichtung in required und nullable, KRITISCH;
  *     strict-tauglich bleibt Sache von check-fix-f639; eine alte Laufakte ohne review ist gültig, ein Ergebnis v1 über
@@ -388,13 +388,15 @@ try {
     const codexLauf = await fuehreDurch(repoMit, 'codex', { ergebnis: ergebnis({}) })
     const codexReview = codexLauf.gesehen.get('code-reviewer')
     befunde.push(...pruefeReviewAuftrag(codexReview?.auftragstext ?? '', 'codex'))
-    if (JSON.stringify(codexReview?.review) !== JSON.stringify({ policy_version: REVIEW_POLICY_VERSION })) befunde.push(`(b) codex: eingaben.review ${JSON.stringify(codexReview?.review)}`)
+    // F45 B2a-3b (Advisor N1): nur policy_version — geprueft_stand/stand_grund prüft check-f45-b2a3b-review-stand.mjs (b).
+    if (codexReview?.review?.policy_version !== REVIEW_POLICY_VERSION) befunde.push(`(b) codex: eingaben.review ${JSON.stringify(codexReview?.review)}`)
     if ((codexLauf.gesehen.get('ausfuehrung')?.auftragstext ?? '').includes('## Review-Policy') || codexLauf.gesehen.get('ausfuehrung')?.review !== undefined) befunde.push('(b) die Ausführung bekommt die Review-Policy')
     if (codexLauf.workflow?.status !== 'ABGESCHLOSSEN') befunde.push(`(b) Grünfall (BEREIT, Satz vorhanden) endet ${codexLauf.workflow?.status}: ${codexLauf.workflow?.grund}`)
     const claudeLauf = await fuehreDurch(repoMit, 'claude-code', { ergebnis: ergebnis({}) })
     const claudeReview = claudeLauf.gesehen.get('code-reviewer')
     befunde.push(...pruefeReviewAuftrag(claudeReview?.auftragstext ?? '', 'claude-code'))
-    if (JSON.stringify(claudeReview?.review) !== JSON.stringify({ policy_version: REVIEW_POLICY_VERSION })) befunde.push(`(b) claude-code: eingaben.review ${JSON.stringify(claudeReview?.review)}`)
+    // F45 B2a-3b (Advisor N1): nur policy_version — geprueft_stand/stand_grund prüft check-f45-b2a3b-review-stand.mjs (b).
+    if (claudeReview?.review?.policy_version !== REVIEW_POLICY_VERSION) befunde.push(`(b) claude-code: eingaben.review ${JSON.stringify(claudeReview?.review)}`)
     if (befunde.length === vor) console.log('✓ (b) Policy genau einmal hinter der Karte im Codex- und im Claude-Review-Auftrag; Codex ohne, Claude mit Beobachtungsblock; review.policy_version in den Eingaben; Ausführung ohne Policy.')
   }
 

@@ -1,0 +1,52 @@
+{
+  "url": "http://127.0.0.1:4199/#/workflows/wf-b2a3b-veraltet-1791910457932",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweise zum Review",
+        "selector": ".abnahme-review-hinweise"
+      },
+      {
+        "name": "Auf einen Blick",
+        "selector": ".abnahme-blick"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-review-hinweise.amber"
+      },
+      {
+        "name": "Hinweis rot (darf nicht)",
+        "selector": ".abnahme-review-hinweise.red"
+      },
+      {
+        "name": "Review veraltet",
+        "selector": "[data-review-hinweis=\"reviewVeraltet\"]"
+      },
+      {
+        "name": "Stand nicht bestimmbar",
+        "selector": "[data-review-hinweis=\"standUnbestimmt\"]"
+      },
+      {
+        "name": "Zählzeile im Blick",
+        "selector": "[data-review-hinweise-anzahl=\"1\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "390 px",
+      "warteAufSelector": {
+        "selector": ".abnahme-review-hinweise",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-veraltet-390.webp"
+    }
+  ]
+}

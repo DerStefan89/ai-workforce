@@ -91,3 +91,6 @@ scripts/.aufraeumen-reste/
 # Messdatei wird committet.
 features/**/*.heapsnapshot
 features/**/*.zwischenstand.json
+
+# F45 B2a-3b, F-1088: lokale Ausgaben der Claude-App, nie committen; wirkt auf Fingerabdruck des Reviews, Sichern-Block und Ausführungsvorbedingung.
+Claude outputs/

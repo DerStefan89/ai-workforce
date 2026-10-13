@@ -19,7 +19,8 @@
  * Dazu die Zeilen „Review-Urteil“ und „Deine Abnahme“ für „Auf einen Blick“.
  * F45 B2a-3a (Codex-Review-Spec §9.8): Fehlerfälle und Vertrag des Reviews sind sichtbar statt still — reviewHinweise
  * (eine Quelle) erscheint im Blick (jeder Urteilsstatus), im Block der Lage 'vorab' (KLAERUNG_ERFORDERLICH) und in der
- * Review-Kachel; Befunde v2 zeigen ID, Dimension, Evidenz und Korrekturrichtung.
+ * Review-Kachel; Befunde v2 zeigen ID, Dimension, Evidenz und Korrekturrichtung. F45 B2a-3b (§9.6): „Review veraltet“ bzw.
+ * „Stand des Reviews nicht bestimmbar“ (urteil.veraltet/stand_grund, nur bei offener Abnahme gesetzt) über dieselbe Quelle.
  *
  * Reine Render-Funktionen: kein fetch, kein DOM, kein Import schreibender api.js-Funktionen; in Node
  * ohne DOM importierbar. Laden, Kennzeichen und alle POSTs bleiben in views/workflows.js.
@@ -208,7 +209,23 @@ export function reviewHinweise(urteil) {
   }
   // qa 3: beim verletzten Vertrag sieht Stefan, was der Reviewer tatsächlich geschrieben hat.
   if (hinweise.some((h) => h.art === 'vertragVerletzt')) hinweise.splice(1, 0, hinweis('empfehlung', typeof urteil.empfehlung === 'string' && urteil.empfehlung !== '' ? urteil.empfehlung : t('abnahme.empfehlung.keine')))
+  // F45 B2a-3b (Spec §9.6): der geprüfte Stand gegen den aktuellen — veraltet, oder (bei offener Abnahme) nicht bestimmbar mit
+  // Grund; der Server setzt stand_grund nur dann, sonst bleibt es still (Abnahme entschieden, nicht berechnet).
+  if (urteil.veraltet === true) hinweise.push({ art: 'reviewVeraltet', server: null, text: t('abnahme.review.reviewVeraltet') })
+  else if (urteil.veraltet === null && typeof urteil.stand_grund === 'string' && urteil.stand_grund !== '') hinweise.push(hinweis('standUnbestimmt', urteil.stand_grund))
   return hinweise
+}
+
+/**
+ * F45 B2a-3b (qa 1): Kennung der Review-Hinweise für das Render-Kennzeichen der Abnahme (views/workflows.js) — ändert sich
+ * ein Hinweis ohne Statuswechsel (z. B. „Review veraltet“ aus dem Poll), wird die Abnahme neu gezeichnet.
+ * @param urteil - abnahme.urteil
+ * @returns Text (leer ohne Hinweise)
+ */
+export function reviewHinweisKennung(urteil) {
+  return reviewHinweise(urteil)
+    .map((h) => `${h.art}:${h.server ?? ''}`)
+    .join(';')
 }
 
 /** Arten, die eine rote Notiz und den Satz zum nächsten Schritt auslösen (der Review trägt nicht). */

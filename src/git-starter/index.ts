@@ -26,6 +26,7 @@
  * - scripts/leitstand/routen-code.mjs (asynchron über gitProgramm + gitUmgebung)
  * - scripts/zustand-sichern.mjs (git)
  * - src/arbeitsordner/index.ts (fuehreGitAsync und fuehreGitSync: worktree, branch, symbolic-ref, status)
+ * - src/review-stand/index.ts (fuehreGitAsync und fuehreGitSync: geprüfter Stand des Reviews, nur Plumbing, lesend)
  * - src/git-starter/git-starter.test.ts (node:test)
  *
  * Durchsetzungsgrad: geprüft, nicht ERZWUNGEN — Rotfall-Test (Attrappe in der Repo-Wurzel, in
@@ -119,17 +120,27 @@ export interface GitErgebnis {
   code: number | null
   stdout: string
   stderr: string
+  /** F45 B2a-3b: Abbruch durch die Zeitgrenze oder die Ausgabegrenze (maxBuffer); fehlt sonst. */
+  abbruch?: 'zeitgrenze' | 'ausgabe_zu_gross'
 }
 
 /**
  * Führt git asynchron aus (F45 B1a-1, Arbeitsordner: worktree add/remove dürfen den Event-Loop nicht
  * blockieren) — absoluter Programmpfad, bereinigte Umgebung, ohne Shell, kein Terminal-Prompt. Wirft nie:
  * jeder Fehler (Exit ≠ 0, Zeitgrenze, kein git) kommt als code ≠ 0 bzw. null mit Text in stderr zurück.
+ * F45 B2a-3b: optional `eingabe` (Text auf stdin, z. B. für `hash-object --stdin-paths`) und `umgebung` (feste
+ * Zusatzwerte wie LC_ALL) — der geprüfte Stand des Reviews braucht beides, ohne einen weiteren Starter.
  * @param argumente - Git-Argumente
- * @param optionen - cwd, Zeitgrenze in ms (Standard 60 s), maxBuffer in Bytes (Standard 8 MB)
- * @returns GitErgebnis
+ * @param optionen - cwd, Zeitgrenze in ms (Standard 60 s; anders als bei execFile heißt 0 nicht „keine Grenze“, sondern
+ *   sofortiger Abbruch), maxBuffer in Bytes (Standard 8 MB), eingabe (stdin), umgebung
+ * @returns GitErgebnis — bei abgelaufener Zeitgrenze immer { code: null, stdout: '', abbruch: 'zeitgrenze' } (F-1089).
+ *   Achtung: „Zeitgrenze“ heißt nicht, dass git beendet ist — unter Windows läuft das echte git hinter dem Wrapper weiter,
+ *   überall ein gestarteter Hook; nach einem Abbruch nicht sofort aufräumen oder neu starten, als liefe nichts mehr.
  */
-export function fuehreGitAsync(argumente: readonly string[], optionen: { cwd: string; zeitgrenzeMs?: number; maxBuffer?: number }): Promise<GitErgebnis> {
+export function fuehreGitAsync(
+  argumente: readonly string[],
+  optionen: { cwd: string; zeitgrenzeMs?: number; maxBuffer?: number; eingabe?: string; umgebung?: Record<string, string> }
+): Promise<GitErgebnis> {
   return new Promise((aufloesen) => {
     let programm: string
     try {
@@ -138,25 +149,52 @@ export function fuehreGitAsync(argumente: readonly string[], optionen: { cwd: st
       aufloesen({ code: null, stdout: '', stderr: (fehler as Error).message })
       return
     }
-    execFile(
+    // F45 B2a-3b (Node-execFile-Wettlauf): die Zeitgrenze läuft über einen eigenen Merker statt über die Option `timeout`
+    // von execFile. Dort zerstört Node beim Ablauf zuerst stdout/stderr und tötet dann das Kind; war git schon mit 0
+    // beendet, kam der Rückruf ohne Fehler und mit leerer Ausgabe — ein Abbruch sah aus wie ein Erfolg (in CI belegt).
+    // Mit dem Merker ist ein Ablauf immer { code: null, abbruch: 'zeitgrenze' }, gleich wie der Rückruf aussieht. Beim
+    // Ablauf werden stdout/stderr abgebaut, bevor das Kind beendet wird (Code-Review-Nachpass 1): ein Enkelprozess mit
+    // geerbten Pipes (Hook, Filter, Credential-Helper, unter Windows der git-Wrapper) hielte 'close' sonst bis zu seinem
+    // Ende auf. Gewollte Folge: endet git genau zwischen 'exit' und 'close', gilt auch ein Erfolg als Zeitgrenze (fail closed).
+    const zeitgrenzeMs = optionen.zeitgrenzeMs ?? 60_000
+    let zeitAbgelaufen = false
+    let zeitgrenze: ReturnType<typeof setTimeout> | undefined
+    const kind = execFile(
       programm,
       argumente,
       {
         cwd: optionen.cwd,
-        env: gitUmgebung(process.env, { GIT_TERMINAL_PROMPT: '0' }),
-        timeout: optionen.zeitgrenzeMs ?? 60_000,
+        env: gitUmgebung(process.env, { GIT_TERMINAL_PROMPT: '0', ...(optionen.umgebung ?? {}) }),
         maxBuffer: optionen.maxBuffer ?? 8 * 1024 * 1024,
         windowsHide: true,
         encoding: 'utf8',
       },
       (fehler, stdout, stderr) => {
+        clearTimeout(zeitgrenze)
+        if (zeitAbgelaufen) {
+          // Fail closed: eine Teilausgabe wird nie weitergegeben.
+          aufloesen({ code: null, stdout: '', stderr: `Zeitgrenze von ${zeitgrenzeMs} ms überschritten`, abbruch: 'zeitgrenze' })
+          return
+        }
         if (fehler === null) {
           aufloesen({ code: 0, stdout, stderr })
           return
         }
         const code = typeof fehler.code === 'number' ? fehler.code : null
-        aufloesen({ code, stdout: stdout ?? '', stderr: stderr !== undefined && stderr.length > 0 ? stderr : fehler.message })
+        const abbruch = fehler.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' ? 'ausgabe_zu_gross' : undefined
+        aufloesen({ code, stdout: stdout ?? '', stderr: stderr !== undefined && stderr.length > 0 ? stderr : fehler.message, ...(abbruch !== undefined ? { abbruch } : {}) })
       }
     )
+    zeitgrenze = setTimeout(() => {
+      zeitAbgelaufen = true
+      kind.stdout?.destroy()
+      kind.stderr?.destroy()
+      kind.kill()
+    }, zeitgrenzeMs)
+    if (optionen.eingabe !== undefined) {
+      // Ein früh beendetes git schließt stdin — EPIPE ist dann kein eigener Fehler, das Ergebnis kommt über den Rückruf.
+      kind.stdin?.on('error', () => {})
+      kind.stdin?.end(optionen.eingabe)
+    }
   })
 }

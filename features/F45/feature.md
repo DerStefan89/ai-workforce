@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). B2a-2 gemergt #330 (`a6d3411`). B2a-3 nach dem Advisor-Pass geteilt (Stefan, 13.10.2026) in B2a-3a/B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut (Branch `f45/b2a3-codex-review`, Basis `a6d3411`, nicht committet; Abschnitt „Stand B2a-3a“). B2a gilt als abgeschlossen, wenn auch B2a-3b gemergt ist. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). B2a-2 gemergt #330 (`a6d3411`). B2a-3 nach dem Advisor-Pass geteilt (Stefan, 13.10.2026) in B2a-3a/B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut (Branch `f45/b2a3-codex-review`, Basis `a6d3411`, nicht committet; Abschnitt „Stand B2a-3a“). B2a-3a gemergt #331 (`2fd1ac5`). B2a-3b „Geprüfter Stand und Review veraltet, Befehlsblöcke im Leitstand“ gebaut (Branch `f45/b2a3b-review-stand`, Basis `2fd1ac5`, nicht committet; Abschnitt „Stand B2a-3b“). B2a gilt als abgeschlossen, wenn auch B2a-3b gemergt ist. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -895,4 +895,57 @@ bei verletztem Vertrag neutral, Servertexte in `lang="de"`, übersetzter Status,
 
 **Belege der Bestehensbedingung:** 1 Projektkarte → B2a-1 (#329); 2 Arbeitspaket → B2a-2 (#330); 10 „Stefan muss keinen
 Zwischentext lesen“ → B2a-3a (Jarvis „Deine Schritte“, Review-Hinweise statt stiller Status) und B2b („Bereit zum Sichern“).
-Offen als Beleg: echter Codex-Lauf mit Schema v2 (nullbare Enums im Strict-Modus, Pflichtsatz) — mit B2a-3b oder R.
+Echter Codex-Lauf mit Schema v2 (Merge-Bedingung, nachgezogen mit B2a-3b): belegt am 13.10.2026 —
+`features/F45/nachweise/b2a3/codex-review-lauf.md` (Lauf `0960f9cc-7d6d-4fe9-a37e-843daded8dd8`, codex/`gpt-6-astra`, Vorlage
+standard): Schema im Strict-Modus angenommen (nullbare Enums ohne Fehler), Befund B1 mit `id`, `dimension`, `evidenz`,
+`korrekturrichtung`, Laufakte mit `review.policy_version`. Der Fall „leere Befunde mit Pflichtsatz“ trat im echten Lauf nicht ein
+(belegt über Gate f45-b2a3 (e3/e4) und Unit-Tests). Befund B1 des Laufs → F-1085 (11), behoben in B2a-3b.
+
+## Stand B2a-3b
+
+Branch `f45/b2a3b-review-stand`, Basis `2fd1ac5` (main mit B2a-3a, #331). Plan `features/F45/plan-b2a3b.md` (Plan v1 → Advisor-Pass
+„freigegeben mit Hinweisen“ (N1–N6) → Plan v2 → Bau → Prüfpass → eine Korrekturrunde → qa-Nachpass).
+
+**Nachweis B2a-3a nachgezogen:** kein eigener Nachweis-Commit auf `f45/b2a3-codex-review` (`f912773` = Baum von `2fd1ac5`);
+übernommen wurden genau die ungesicherten Dateien `features/F45/nachweise/b2a3/codex-review-lauf.{mjs,json,md}` (echter Lauf
+`0960f9cc-…`) und F-1085 (7)/(11). Daraus F-1086 (Merge erst nach echtem Lauf, Nachweis auf dem Remote-Branch prüfen).
+
+**Geprüfter Stand (F-1063, Spec §9.6):** `src/review-stand` — Inhalts-Fingerabdruck `{ commit, inhalt }` des Laufordners nach
+Advisor B1: `ls-tree -r -z HEAD`, `diff-index --raw -z --no-renames HEAD`, `ls-files --others --exclude-standard -z`, Inhalte
+über `hash-object --stdin-paths` ohne `-w` (erst `--no-filters` gegen den HEAD-Blob, dann mit EOL-Umwandlung — CRLF in beiden
+Lagen ohne Fehlalarm, am Wegwerf-Repo geprüft), gelöschte fallen weg, Ausschluss über `istAusnahmePfad` in JS, Toplevel-Prüfung,
+Filter-Treiber und Submodule → nicht bestimmbar mit Grund, Gesamtbudget 5 s, Kappen, maxBuffer. Ein Ablauf als Generator, zwei
+Hüllen: synchron beim Start des code-reviewer-Schritts (Laufakte `review.geprueft_stand`/`stand_grund`, Schema + Validator), asynchron
+in GET …/abnahme nur bei offener Abnahme, Laufort über `ermittleLaufort` (fail-closed), 10 s Zwischenspeicher je Laufort (Poll).
+Projektion `urteil` additiv `geprueft_stand`, `aktueller_stand`, `veraltet` (true/false/null), `stand_grund`; „veraltet“ nur über
+`inhalt` (ein Commit derselben Inhalte zählt nicht). Anzeige über `reviewHinweise`: „Review veraltet — …“ (mit nächstem Schritt)
+und „Stand des Reviews nicht bestimmbar: …“, amber, in Review-Kachel und Zählzeile „Auf einen Blick“; das Render-Kennzeichen
+der Abnahme enthält die Hinweise (`reviewHinweisKennung`), damit der Poll neu zeichnet. Rein lesend: Index und `.git/objects`
+bleiben unverändert (Gate misst es je Aufruf). Kein neuer `starteWorkflowSchritt(`-Aufruf.
+
+**Befehlsblöcke (F-959 Leitstand):** `cdZeile` (eine Quelle für Leitstand, „Wo gearbeitet wird“ und Jarvis; `-LiteralPath` bei
+`[ ] * ?` und Backtick), `befehlsBloecke`; „Sichern“ (#/code, Workboard) als [cd, add…, commit] und [cd, push], ohne origin ein Block,
+„Prüfstand“ [cd, Prüfbefehl], ohne Pfad ein Grund; je Block ein „Kopieren“. Workboard-„Sichern“ nach einem Ablauf im
+Arbeitsordner zeigt den Projektordner — nicht gelöst, F-1087 (B2b).
+
+**F-1085:** (6) HTTP-Fall „Projektion folgt dem neuesten Review-Lauf nach ANPASSUNG“ (Gate (e6)); (7) Nachweis; (11)
+`pruefeReviewErgebnis` meldet leere `fundstelle`/`zusammenfassung`/`beleg` als Hinweis (gleiche Policy-Version, Kopfkommentar
+präzisiert). Rest (1)(2)(3)(4)(5)(10) → B2b, (8)(9) → UX nach F30.
+
+**Tests/Gates:** neues Gate `scripts/check-f45-b2a3b-review-stand.mjs` (in der Kette nach f45-b2a3; 14 Rotfälle kalibriert);
+Unit-Tests `src/review-stand` (neu), `src/review-policy`, beide Gateways, `code-daten.test.mjs`, `workflow-abnahme.test.mjs`,
+`routen-code.test.mjs` (führt jetzt [cd, git add] real in PowerShell aus einem fremden Ordner aus). Bewusst angepasst:
+`check-f45-b2a3-codex-review.mjs` (b) vergleicht nur noch `review.policy_version` statt des ganzen Objekts (Advisor N1; den
+geprüften Stand prüft f45-b2a3b (b) gegen den echten Fingerabdruck); `check-f6a-claude-code-gateway.mjs` (e) führt die
+Review-Beispiele (valid + neues invalid) aus (N6). Render-Nachweis `features/F45/nachweise/b2a3b/`.
+
+**Prüfpass** (frischer Kontext): design-guardian und code-reviewer „freigegeben mit Hinweisen“, qa „nicht freigegeben“ (Kennzeichen
+ohne Stand-Felder). Eine Korrekturrunde (Liste im Plan, Abschnitt „Prüfpass und Korrekturrunde“), qa-Nachpass „freigegeben mit
+Hinweisen“. Grenzen: F-1088. Korrekturrunde nach dem Challenger (CI, Node 24 Linux): `fuehreGitAsync` meldete eine
+Zeitgrenze teils als Erfolg mit leerer Ausgabe (Node-execFile-Wettlauf, vorbestehend) — jetzt eigener Merker, Ablauf immer
+`abbruch: 'zeitgrenze'`, Tests im Git-Starter (F-1089).
+
+**Belege der Bestehensbedingung, B2a abgeschlossen (mit dem Merge von B2a-3b):** 1 Projektkarte → B2a-1 (#329); 2 Arbeitspaket →
+B2a-2 (#330); 10 „Stefan muss keinen Zwischentext lesen“ → B2a-3a (Jarvis „Deine Schritte“, Review-Hinweise statt stiller
+Status) und B2a-3b („Review veraltet“ sichtbar statt eines stillen alten Urteils; Befehlsblöcke direkt ausführbar mit cd);
+„Bereit zum Sichern“ folgt mit B2b.

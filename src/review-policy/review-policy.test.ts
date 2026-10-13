@@ -89,6 +89,13 @@ test('pruefeReviewErgebnis: null/fehlende Pflichtwerte und doppelte id → Hinwe
   assert.ok(r.hinweise.some((h) => h.includes("doppelte id 'B1'")))
 })
 
+test('F45 B2a-3b (F-1085 (11), Befund B1 des echten Codex-Laufs): leere fundstelle, zusammenfassung, beleg → Hinweise, kein Halt', () => {
+  const r = pruefeReviewErgebnis({ befunde: [{ ...VOLLER_BEFUND, fundstelle: '', zusammenfassung: '  ', beleg: null }], empfehlung: 'Korrektur' })
+  assert.deepEqual(r.halt, [])
+  for (const feld of ['fundstelle', 'zusammenfassung', 'beleg']) assert.ok(r.hinweise.includes(`Befund 1 (B1): '${feld}' fehlt`), `${feld}: ${JSON.stringify(r.hinweise)}`)
+  assert.equal(r.hinweise.length, 3)
+})
+
 test('pruefeReviewErgebnis: unbekannte Dimension/Evidenz → Hinweis', () => {
   const r = pruefeReviewErgebnis({ befunde: [{ ...VOLLER_BEFUND, dimension: 'stil', evidenz: 'sicher' }], empfehlung: 'x' })
   assert.ok(r.hinweise.some((h) => h.includes("unbekannte dimension 'stil'")))
