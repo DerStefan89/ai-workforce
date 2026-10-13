@@ -202,13 +202,18 @@ export function baenderHtml(status, beschaeftigt = false) {
   if (fremd !== null && typeof fremd === 'object') {
     const geaendert = typeof fremd.geaendert_am === 'string' ? escapeHtml(formatiereDatum(fremd.geaendert_am, { dateStyle: 'medium', timeStyle: 'short' })) : escapeHtml(t('faehigkeitenProjekt.band.fremd.unbekannt'))
     const seit = typeof fremd.bekannt_seit === 'string' ? escapeHtml(formatiereDatum(fremd.bekannt_seit, { dateStyle: 'medium', timeStyle: 'short' })) : '—'
-    const quelle = ['route', 'serverstart', 'bestaetigt'].includes(fremd.quelle) ? t(`faehigkeitenProjekt.band.fremd.quelle.${fremd.quelle}`) : String(fremd.quelle ?? '')
+    const quelle = ['route', 'serverstart', 'bestaetigt', 'neustart', 'unbekannt'].includes(fremd.quelle) ? t(`faehigkeitenProjekt.band.fremd.quelle.${fremd.quelle}`) : String(fremd.quelle ?? '')
     // F-1061 (3): rot, weil Läufe mit Fähigkeiten bis zur Bestätigung gesperrt sind; der Knopf schickt genau den angezeigten
     // Stand (lokale_datei.hash) — hat sich die Datei seither erneut geändert, lehnt der Server ab (409).
     const knopfSperre = status?.lokale_datei?.zustand === 'ungueltig' ? 'datei' : status?.lauf_aktiv?.aktiv === true ? 'lauf' : beschaeftigt ? 'beschaeftigt' : null
     const stand = typeof status?.lokale_datei?.hash === 'string' ? status.lokale_datei.hash : ''
     const knopf = `<button type="button" class="button primary fp-bestaetigen" data-fp-bestaetigen="${escapeHtml(stand)}"${knopfSperre !== null ? ` disabled aria-describedby="fp-sperre-${knopfSperre}"` : ''}>${tHtml('faehigkeitenProjekt.band.fremd.knopf')}</button>`
-    baender.push(`<div class="note red fp-band" data-fp-band="fremd"><strong id="fp-sperre-fremd">${tHtml('faehigkeitenProjekt.band.fremd.titel')}</strong> ${tHtml('faehigkeitenProjekt.band.fremd.text', { quelle }, { pfad, geaendert, seit })}<div class="fp-freigabe-knoepfe fp-band-knopf">${knopf}</div></div>`)
+    // F45 F-2b-2c (QA M3): ohne gespeicherten Stand (erster Start nach dem Update, Ablage fehlt/beschädigt) ist nichts „geändert“ —
+    // eigener Titel und Text, ohne „bekannt seit“.
+    const unbekannt = fremd.quelle === 'unbekannt'
+    const titel = tHtml(unbekannt ? 'faehigkeitenProjekt.band.unbekannt.titel' : 'faehigkeitenProjekt.band.fremd.titel')
+    const text = unbekannt ? tHtml('faehigkeitenProjekt.band.unbekannt.text', {}, { pfad }) : tHtml('faehigkeitenProjekt.band.fremd.text', { quelle }, { pfad, geaendert, seit })
+    baender.push(`<div class="note red fp-band" data-fp-band="fremd" data-fp-quelle="${escapeHtml(String(fremd.quelle ?? ''))}"><strong id="fp-sperre-fremd">${titel}</strong> ${text}<div class="fp-freigabe-knoepfe fp-band-knopf">${knopf}</div></div>`)
   }
   if (status?.lauf_aktiv?.aktiv === true) {
     baender.push(`<div class="note fp-band" data-fp-band="lauf" id="fp-sperre-lauf"><strong>${tHtml('faehigkeitenProjekt.band.lauf.titel')}</strong> ${escapeHtml(String(status.lauf_aktiv.grund ?? ''))}</div>`)

@@ -358,7 +358,7 @@ const angezeigteIds = (detail) => (detail.empfehlung?.wirdGenutzt ?? []).map((e)
 for (const [fall, runnerOptionen, muster] of [
   ['(c)', { lockIntegrity: 'sha512-QU5ERVJFUw==' }, /integrity im Lockfile ≠ angezeigte/],
   ['(d)', { binFehlt: true }, /bin 'cli\.js' fehlt/],
-  ['(e)', { werkzeuge: ['browser_navigate'] }, /fehlend: mcp__pw-mcp__browser_snapshot/],
+  ['(e)', { werkzeuge: ['browser_navigate'] }, /fehlend: mcp__pw-mcp__browser_snapshot; angeboten: browser_navigate/],
 ]) {
   const vor = befunde.length
   const u = await umgebung({ runner: stubRunner(runnerOptionen) })

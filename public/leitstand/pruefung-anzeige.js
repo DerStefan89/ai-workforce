@@ -150,15 +150,18 @@ export function letzterBerichtHtml(letzter) {
  * @param e - Sammlungseintrag
  * @param ablauf - { phase, vorbereitung, zustand, meldung, typ } oder undefined
  * @param bedeutung - urteil_bedeutung der Antwort
+ * @param praefix - Präfix der DOM-ids (Standard 'sm')
  * @returns HTML
  */
-export function renderPruefAblauf(e, ablauf, bedeutung = {}) {
+export function renderPruefAblauf(e, ablauf, bedeutung = {}, praefix = 'sm') {
   const id = escapeHtml(String(e?.id ?? ''))
+  /** DOM-id je Feld mit Präfix (F45 F-2b-2c: Sammlung 'sm', Capability Library 'lib' auf derselben Seite). @param name - Feld @returns id */
+  const dom = (name) => `${escapeHtml(praefix)}-${name}-${id}`
   const laufLink = ablauf?.laufLink !== false
   const abbrechen = `<button type="button" class="button" data-sm-pruefung-zurueck="${id}"${ablauf?.phase === 'startet' ? ' disabled' : ''}>${tHtml('pruefung.zurueck')}</button>`
   if (ablauf === undefined || ablauf === null) return ''
   if (ablauf.phase === 'typwahl')
-    return `<div class="pruef-ablauf" data-pruef-phase="typwahl"><label for="sm-typ-${id}">${tHtml('pruefung.typWaehlen')}</label> <select id="sm-typ-${id}" data-sm-typ="${id}">${e?.pruefbare_quelle?.art === 'npm' ? '' : `<option value="skill">${tHtml('sammlung.typ.skill')}</option>`}${e?.pruefbare_quelle?.art === 'git' ? '' : `<option value="mcp">${tHtml('sammlung.typ.mcp')}</option>`}</select> <button type="button" class="button primary" data-sm-typ-weiter="${id}">${tHtml('pruefung.weiter')}</button> ${abbrechen}</div>`
+    return `<div class="pruef-ablauf" data-pruef-phase="typwahl"><label for="${dom('typ')}">${tHtml('pruefung.typWaehlen')}</label> <select id="${dom('typ')}" data-sm-typ="${id}">${e?.pruefbare_quelle?.art === 'npm' ? '' : `<option value="skill">${tHtml('sammlung.typ.skill')}</option>`}${e?.pruefbare_quelle?.art === 'git' ? '' : `<option value="mcp">${tHtml('sammlung.typ.mcp')}</option>`}</select> <button type="button" class="button primary" data-sm-typ-weiter="${id}">${tHtml('pruefung.weiter')}</button> ${abbrechen}</div>`
   if (ablauf.phase === 'laedt') return `<p class="hinweis pruef-ablauf" data-pruef-phase="laedt" tabindex="-1" data-pruef-fokus>${tHtml('pruefung.pinnt')}</p>`
   if (ablauf.phase === 'fehler') return `<div class="pruef-ablauf" data-pruef-phase="fehler"><p class="fehler" tabindex="-1" data-pruef-fokus>${escapeHtml(String(ablauf.meldung ?? ''))}</p>${ablauf.zustand?.lauf_id ? `<p class="subtle">${laufVerweis(ablauf.zustand.lauf_id, laufLink)}</p>` : ''}${abbrechen}</div>`
   if (ablauf.phase === 'bestaetigen' || ablauf.phase === 'startet') {
@@ -167,13 +170,13 @@ export function renderPruefAblauf(e, ablauf, bedeutung = {}) {
     const letzter = v.letzter_bericht ? `<li><strong>${tHtml('pruefung.letzterBericht')}</strong> ${letzterBerichtHtml(v.letzter_bericht)} ${v.letzter_bericht.aktuell === true ? `<span class="subtle">${tHtml('pruefung.letzterAktuell')}</span>` : `<span class="subtle">${tHtml('pruefung.letzterVeraltet')}</span>`}</li>` : ''
     const ausnahme =
       v.ausgeschlossen === true
-        ? `<div class="pruef-ausnahme"><label for="sm-ausnahme-${id}"><strong>${tHtml('pruefung.ausnahmeLabel')}</strong></label><textarea id="sm-ausnahme-${id}" data-sm-ausnahme="${id}" rows="3" minlength="20" maxlength="2000" aria-describedby="sm-ausnahme-hilfe-${id}${ablauf.meldung ? ` sm-meldung-${id}` : ''}"${ablauf.meldung ? ' aria-invalid="true"' : ''}>${escapeHtml(String(ablauf.ausnahme ?? ''))}</textarea><p class="subtle" id="sm-ausnahme-hilfe-${id}">${tHtml('pruefung.ausnahmeHilfe')}</p></div>`
+        ? `<div class="pruef-ausnahme"><label for="${dom('ausnahme')}"><strong>${tHtml('pruefung.ausnahmeLabel')}</strong></label><textarea id="${dom('ausnahme')}" data-sm-ausnahme="${id}" rows="3" minlength="20" maxlength="2000" aria-describedby="${dom('ausnahme-hilfe')}${ablauf.meldung ? ` ${dom('meldung')}` : ''}"${ablauf.meldung ? ' aria-invalid="true"' : ''}>${escapeHtml(String(ablauf.ausnahme ?? ''))}</textarea><p class="subtle" id="${dom('ausnahme-hilfe')}">${tHtml('pruefung.ausnahmeHilfe')}</p></div>`
         : ''
     const startet = ablauf.phase === 'startet'
     // Nur git: einen Ordner im Repo prüfen statt des ganzen Repos (Monorepos mit vielen Kopien eines Skills).
     const pfadFeld =
       v.quelle?.art === 'git'
-        ? `<div class="pruef-pfad"><label for="sm-pfad-${id}">${tHtml('pruefung.pfadLabel')}</label> <input type="text" id="sm-pfad-${id}" data-sm-pfad="${id}" value="${escapeHtml(String(v.quelle.pfad ?? ''))}" autocomplete="off" spellcheck="false" aria-describedby="sm-pfad-hilfe-${id}" /> <button type="button" class="button" data-sm-pfad-uebernehmen="${id}"${startet ? ' disabled' : ''}>${tHtml('pruefung.pfadUebernehmen')}</button><p class="subtle" id="sm-pfad-hilfe-${id}">${tHtml('pruefung.pfadHilfe')}</p></div>`
+        ? `<div class="pruef-pfad"><label for="${dom('pfad')}">${tHtml('pruefung.pfadLabel')}</label> <input type="text" id="${dom('pfad')}" data-sm-pfad="${id}" value="${escapeHtml(String(ablauf.pfadEingabe ?? v.quelle.pfad ?? ''))}" autocomplete="off" spellcheck="false" aria-describedby="${dom('pfad-hilfe')}" /> <button type="button" class="button" data-sm-pfad-uebernehmen="${id}"${startet ? ' disabled' : ''}>${tHtml('pruefung.pfadUebernehmen')}</button><p class="subtle" id="${dom('pfad-hilfe')}">${tHtml('pruefung.pfadHilfe')}</p></div>`
         : ''
     return `<div class="pruef-ablauf pruef-bestaetigung" data-pruef-phase="${ablauf.phase}">
       <p class="pruef-frage"${ablauf.meldung ? '' : ' tabindex="-1" data-pruef-fokus'}><strong>${tHtml('pruefung.frage', { name: String(v.subjekt?.name ?? e?.name ?? '') })}</strong></p>
@@ -184,7 +187,7 @@ export function renderPruefAblauf(e, ablauf, bedeutung = {}) {
       </ul>
       ${pfadFeld}
       ${ausnahme}
-      ${ablauf.meldung ? `<p class="fehler" id="sm-meldung-${id}" tabindex="-1" data-pruef-fokus>${escapeHtml(String(ablauf.meldung))}</p>` : ''}
+      ${ablauf.meldung ? `<p class="fehler" id="${dom('meldung')}" tabindex="-1" data-pruef-fokus>${escapeHtml(String(ablauf.meldung))}</p>` : ''}
       <p class="hinweis">${tHtml('pruefung.kostenHinweis')}</p>
       <button type="button" class="button primary" data-sm-pruefung-start="${id}"${startet ? ' disabled' : ''}>${tHtml(startet ? 'pruefung.startet' : 'pruefung.starten')}</button> ${abbrechen}
     </div>`
@@ -199,12 +202,20 @@ export function renderPruefAblauf(e, ablauf, bedeutung = {}) {
 
 /**
  * Prüfbericht-Block im Freigabedialog (Antwort von …/installation/vorbereiten, additiv pruefbericht/pruefbericht_sperre).
+ * Seit F45 F-2b-2c: mit optionen.eignungPruefen (nur die Capability Library, die den Ablauf selbst führt) steht bei einer Sperre
+ * OHNE geltenden Bericht statt des Verweises auf die Sammlung der Knopf „Eignung prüfen“ (data-sm-auswaehlen, Katalog-id).
+ * NICHT_GEEIGNET oder übersprungene Dateien (ein Bericht liegt vor) zeigen keinen Verweis — ein neuer Lauf derselben Version
+ * änderte daran nichts.
  * @param daten - Antwort von vorbereiten
+ * @param optionen - { eignungPruefen: boolean }
  * @returns { html, gesperrt }
  */
-export function renderBerichtFuerFreigabe(daten) {
+export function renderBerichtFuerFreigabe(daten, optionen = {}) {
   const sperre = typeof daten?.pruefbericht_sperre === 'string' && daten.pruefbericht_sperre !== '' ? daten.pruefbericht_sperre : null
-  const bericht = daten?.pruefbericht !== null && typeof daten?.pruefbericht === 'object' ? renderPruefBericht(daten.pruefbericht) : ''
-  const sperrBlock = sperre === null ? '' : `<div class="note red pruef-sperre" data-pruef-sperre="1" id="installation-sperre"><strong>${tHtml('pruefung.freigabeGesperrt')}</strong> ${escapeHtml(sperre)}<br /><a href="#/capabilities">${tHtml('pruefung.eignungPruefenHinweis')}</a></div>`
+  const hatBericht = daten?.pruefbericht !== null && typeof daten?.pruefbericht === 'object'
+  const bericht = hatBericht ? renderPruefBericht(daten.pruefbericht) : ''
+  const id = escapeHtml(String(daten?.id ?? ''))
+  const weiter = hatBericht ? '' : optionen.eignungPruefen === true ? `<div class="pruef-sperre-aktion"><button type="button" class="button primary" data-sm-auswaehlen="${id}" data-sm-typ-offen="false">${tHtml('pruefung.eignungPruefen')}</button> <span class="subtle">${tHtml('pruefung.eignungPruefenText')}</span></div>` : `<br /><a href="#/capabilities">${tHtml('pruefung.eignungPruefenHinweis')}</a>`
+  const sperrBlock = sperre === null ? '' : `<div class="note red pruef-sperre" data-pruef-sperre="1" id="installation-sperre"><strong>${tHtml('pruefung.freigabeGesperrt')}</strong> ${escapeHtml(sperre)}${weiter}</div>`
   return { html: `${sperrBlock}${bericht}`, gesperrt: sperre !== null }
 }

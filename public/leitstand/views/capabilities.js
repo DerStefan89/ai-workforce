@@ -30,7 +30,7 @@
  * baueScoutAuftragstext bleibt deutsch (geht an das Modell, Vertrag der Rolle scout).
  */
 
-import { holeAbdeckung, holeHarness, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
+import { holeAbdeckung, holeHarness, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, starteLauf } from '../api.js'
 import { naechsterRegisterIndex, WERKZEUG_TYPEN } from '../faehigkeiten-anzeige.js'
 import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
@@ -38,6 +38,7 @@ import { escapeHtml } from '../render.js'
 import { rollenName } from '../rollen-anzeige.js'
 import { scoutSammlungHtml } from '../sammlung-anzeige.js'
 import { navigiere, registriere } from '../router.js'
+import { legeVormerkenAnUndRoute } from '../vormerken-ablauf.js'
 import { ableiteRessourcenId, baueVormerkenAuftragstext } from '../vormerken-auftrag.js'
 import { abonniereDetailAuffrischer } from '../zustand.js'
 import {
@@ -544,34 +545,12 @@ async function vormerkenKandidat(index) {
   const kandidat = scoutZustand.ergebnis.kandidaten[index]
   if (kandidat === undefined) return
   const laufId = scoutZustand.laufId
-  let auftragId = vormerkenZustaende.get(index)?.auftragId ?? null
+  const auftragId = vormerkenZustaende.get(index)?.auftragId ?? null
   vormerkenZustaende.set(index, { phase: 'unterwegs', auftragId })
   renderScoutPanel()
-  try {
-    if (auftragId === null) {
-      const auftragAntwort = await legeAuftragAn({ titel: `Vormerken: ${kandidat.name}`, auftragstext: baueVormerkenAuftragstext(kandidat, laufId) })
-      const auftragInhalt = await auftragAntwort.json().catch(() => ({}))
-      if (auftragAntwort.status !== 201) {
-        vormerkenZustaende.set(index, { phase: 'fehler', auftragId: null, meldung: t('werkstatt.scout.fehler.auftrag', { details: `${auftragAntwort.status} ${auftragInhalt.grund ?? ''}`.trim() }) })
-        renderScoutPanel()
-        return
-      }
-      auftragId = auftragInhalt.auftragId
-    }
-    const workflowId = `router-${auftragId}`
-    const routeAntwort = await routeAuftrag(auftragId)
-    if (!routeAntwort.ok) {
-      const routeInhalt = await routeAntwort.json().catch(() => ({}))
-      vormerkenZustaende.set(index, { phase: 'fehler', auftragId, meldung: t('werkstatt.scout.fehler.routen', { auftrag: auftragId, details: `${routeAntwort.status} ${routeInhalt.grund ?? ''}`.trim() }) })
-      renderScoutPanel()
-      return
-    }
-    vormerkenZustaende.set(index, { phase: 'geroutet', auftragId, workflowId })
-    renderScoutPanel()
-  } catch (fehler) {
-    vormerkenZustaende.set(index, { phase: 'fehler', auftragId, meldung: t('werkstatt.scout.fehler.anfrage', { grund: fehler.message }) })
-    renderScoutPanel()
-  }
+  // F45 F-2b-2c: Anlegen + Routen gemeinsam mit der Sammlung (vormerken-ablauf.js), Ablauf unverändert.
+  vormerkenZustaende.set(index, await legeVormerkenAnUndRoute({ titel: `Vormerken: ${kandidat.name}`, auftragstext: baueVormerkenAuftragstext(kandidat, laufId), auftragId }))
+  renderScoutPanel()
 }
 
 /**

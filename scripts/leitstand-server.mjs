@@ -535,6 +535,7 @@ import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-ak
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper } from './leitstand/routen-arbeitsordner.mjs'
+import { standPfadFuer } from '../src/faehigkeiten/stand.ts'
 import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, einschaltSperrgrund, erzeugeLokalWaechter, FREMD_UNBESTAETIGT, fremdGeaendert, freigabeSperrgrund, pruefeAktivierungKoerper, pruefeFreigabeKoerper } from './leitstand/routen-faehigkeiten.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
@@ -8907,6 +8908,8 @@ export function erzeugeRequestHandler(optionen = {}) {
               }
               zustand.phase = 'fertig'
               zustand.bericht = { artefakt_id: bericht.artefakt_id, version: bericht.version, ...bericht.daten }
+              // F45 F-2b-2c: Kurzform wie GET …/sammlung (typ, geprüftes bin, SKILL.md) — „Vormerken“ ohne Neuladen der Sammlung.
+              zustand.bericht_kurz = berichtKurz({ artefakt_id: bericht.artefakt_id, version: bericht.version, daten: bericht.daten })
               console.log(`[leitstand] Prüflauf '${laufId}': Bericht '${bericht.artefakt_id}' Version ${bericht.version} (${bericht.daten.ergebnis.urteil}).`)
             } catch (fehlerNachbereitung) {
               console.error(`[leitstand] Prüflauf '${laufId}': Nachbereitung gescheitert:`, fehlerNachbereitung)
@@ -11367,8 +11370,9 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // F45 B1a-1 (E-F45-3 = A): der reale Server arbeitet immer mit eigenem Arbeitsordner je schreibendem Ablauf (kein Schalter).
   // F45 F-1 (E-F45-8): nur hier zeigt der Pfad auf Stefans echte Datei (Delta B7).
   const faehigkeitenLokalPfad = process.env.LEITSTAND_FAEHIGKEITEN_LOKAL_PFAD ?? STANDARD_FAEHIGKEITEN_LOKAL_PFAD
-  // F45 F-2a (F-1055 (1)): ein Wächter je Prozess — der Stand beim Start gilt als bekannt.
-  const faehigkeitenLokalWaechter = erzeugeLokalWaechter(faehigkeitenLokalPfad)
+  // F45 F-2a (F-1055 (1)): ein Wächter je Prozess. Seit F45 F-2b-2c (F-1061 (1)) überdauert der bekannte Stand Neustarts
+  // (faehigkeiten.stand.json neben der lokalen Datei, ARCHITECTURE.md §2); abweichend oder unbekannt → gesperrt bis zur Bestätigung.
+  const faehigkeitenLokalWaechter = erzeugeLokalWaechter(faehigkeitenLokalPfad, undefined, standPfadFuer(faehigkeitenLokalPfad))
   // F45 F-2b-2 (A4): Prüfordner früherer Prüfläufe (Absturz, Neustart während eines Laufs) entfernen — kein Lauf ist aktiv.
   const verwaist = raeumeVerwaistePruefordner()
   if (verwaist > 0) console.log(`[leitstand] ${verwaist} verwaiste(r) Prüfordner entfernt.`)

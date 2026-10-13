@@ -63,7 +63,7 @@ test('sammleFakten: Lebenszyklus, bin, Hooks, Skill- und Agent-Dateien, überspr
     [{ pfad: 'l', grund: 'symlink' }],
     [{ von: '.claude/x', nach: '_.claude/x' }]
   )
-  assert.deepEqual(fakten.paket, { lebenszyklus: { postinstall: 'node x.js' }, bin: ['ctx'], abhaengigkeiten: 2 })
+  assert.deepEqual(fakten.paket, { lebenszyklus: { postinstall: 'node x.js' }, bin: ['ctx'], abhaengigkeiten: 2, bin_ziele: { ctx: 'dist/cli.js' } })
   assert.deepEqual(fakten.hooks, ['hooks/hooks.json', 'cfg/settings.json'])
   assert.deepEqual(fakten.skill_dateien, ['skills/s/SKILL.md'])
   assert.deepEqual(fakten.agent_dateien, ['agents/a.md'])
@@ -72,3 +72,11 @@ test('sammleFakten: Lebenszyklus, bin, Hooks, Skill- und Agent-Dateien, überspr
   assert.equal(fakten.umbenannt.length, 1)
 })
 
+
+test('sammleFakten (F45 F-2b-2c): bin_ziele — bin als String trägt den Paketnamen ohne Scope, Nicht-Strings fallen weg', () => {
+  const datei = (pfad: string, text: string) => ({ pfad, bytes: Buffer.from(text) })
+  const alsText = sammleFakten([datei('package.json', JSON.stringify({ name: '@upstash/context7-mcp', bin: './dist/index.js' }))], [], [])
+  assert.deepEqual(alsText.paket?.bin_ziele, { 'context7-mcp': './dist/index.js' })
+  const gemischt = sammleFakten([datei('package.json', JSON.stringify({ bin: { a: 'a.js', b: 7 } }))], [], [])
+  assert.deepEqual(gemischt.paket?.bin_ziele, { a: 'a.js' })
+})

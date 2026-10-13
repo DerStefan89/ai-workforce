@@ -16,6 +16,8 @@
  * - Werte aus der Sammlung (Namen, Urteile, Beschreibungen, Lizenzen, Kosten, Bewertungen, Links) sind Daten der Datei und
  *   werden nur escaped, nie übersetzt. Codes des Servers (Stand, Typ, Gründe, Zuordnung) übersetzt die Oberfläche.
  * - Links nur für https:// und mit rel="noopener noreferrer" (die Datei ist Stefans, aber ihr Inhalt stammt aus dem Web).
+ * - Seit F45 F-2b-2c steht das Detail in einer eigenen, vollen Tabellenzeile (F-1068 (3)) und trägt „Vormerken“ für Einträge
+ *   ohne Katalog mit Prüfbericht (vormerkenHtml, F-1056 Rest).
  * - Seit F45 F-2b-2a ist „Auswählen“ wirksam: der Ablauf (Typwahl, Pin, Bestätigung, Prüflauf, Bericht) steht im Detail und
  *   kommt aus pruefung-anzeige.js (renderPruefAblauf); der letzte Prüfbericht je Eintrag (pruefbericht_letzter) steht in der
  *   Zeile „Prüfbericht“.
@@ -24,6 +26,7 @@
 import { formatiereZahl, t, tHtml } from './i18n.js'
 import { letzterBerichtHtml, renderPruefAblauf } from './pruefung-anzeige.js'
 import { escapeHtml } from './render.js'
+import { sammlungNichtVormerkbar } from './vormerken-auftrag.js'
 
 /** Stände in Anzeigereihenfolge (höchster zuerst). */
 export const STAENDE = Object.freeze(['benutzt', 'aktiv', 'installiert', 'geprueft', 'vorgemerkt', 'nur_sammlung'])
@@ -149,6 +152,33 @@ function typHtml(e) {
 }
 
 /**
+ * F45 F-2b-2c (F-1056 Rest): „Vormerken“ eines Sammlungseintrags ohne Katalog mit Prüfbericht — legt über den bestehenden
+ * Vormerken-Weg (Auftrag → Routen → Freigabe am Ausführungsschritt) einen Katalogeintrag OFFEN mit installation_vorlage an.
+ * Ohne Bericht oder mit Katalogeintrag steht nichts (dort ist „Auswählen“ bzw. der Katalog der Weg); sonst der Grund.
+ * @param e - Eintrag
+ * @param vormerken - { zustand (undefined | { phase: 'unterwegs'|'fehler'|'geroutet', auftragId, workflowId, meldung }), workforce }
+ * @returns HTML
+ */
+export function vormerkenHtml(e, vormerken = {}) {
+  const grund = sammlungNichtVormerkbar(e)
+  if (grund === 'katalog' || grund === 'ohne_bericht') return ''
+  if (grund !== null) return `<p class="subtle sm-vormerken-nicht" data-sm-vormerken-grund="${escapeHtml(grund)}">${tHtml('sammlung.vormerken.nicht', { grund: t(`sammlung.vormerken.grund.${grund}`) })}</p>`
+  if (vormerken.workforce !== true) return `<p class="subtle sm-vormerken-nicht" data-sm-vormerken-grund="workforce">${tHtml('sammlung.vormerken.nurWorkforce')}</p>`
+  const id = escapeHtml(String(e.id ?? ''))
+  const name = `<span class="sr-only"> — ${escapeHtml(String(e.name ?? ''))}</span>`
+  const u = e.pruefbericht_letzter?.uebersprungen
+  // Code-Review 3: ohne lesbare Angabe sperrt die Installation ebenfalls (uebersprungenSperre) — dann auch hier warnen.
+  const warnung = u === null || u === undefined ? `<p class="note amber sm-vormerken-warnung">${tHtml('sammlung.vormerken.uebersprungenUnbekannt')}</p>` : Number(u) > 0 ? `<p class="note amber sm-vormerken-warnung">${tHtml('sammlung.vormerken.uebersprungen', { anzahl: Number(u) })}</p>` : ''
+  const z = vormerken.zustand
+  let inhalt
+  if (z?.phase === 'unterwegs') inhalt = `<p class="hinweis" tabindex="-1" data-sm-vormerken-fokus>${tHtml('werkstatt.scout.wirdVorgemerkt')}</p>`
+  else if (z?.phase === 'fehler') inhalt = `<p class="fehler" tabindex="-1" data-sm-vormerken-fokus>${escapeHtml(String(z.meldung ?? ''))}</p><button type="button" class="button primary" data-sm-vormerken="${id}">${tHtml('werkstatt.scout.erneut')}${name}</button>`
+  else if (z?.phase === 'geroutet') inhalt = `<p class="hinweis" tabindex="-1" data-sm-vormerken-fokus>${tHtml('werkstatt.scout.vorgemerkt', {}, { auftrag: `<code>${escapeHtml(String(z.auftragId))}</code>`, ablauf: `<a href="#/workflows/${encodeURIComponent(String(z.workflowId))}">${escapeHtml(String(z.workflowId))}</a>` })}</p>`
+  else inhalt = `<button type="button" class="button primary" data-sm-vormerken="${id}">${tHtml('werkstatt.scout.vormerken')}${name}</button><span class="subtle sm-auswaehlen-hinweis">${tHtml('sammlung.vormerken.hinweis')}</span>`
+  return `<div class="sm-vormerken">${warnung}${inhalt}</div>`
+}
+
+/**
  * Auswählen-Bereich: auswählbar → Knopf „Auswählen“ (F-2b-2a: Pin, Bestätigung, Prüflauf); ausgeschlossen → Hinweis auf die
  * Pflicht-Begründung; nicht auswählbar → Grund. Läuft ein Ablauf für den Eintrag, steht stattdessen dieser (renderPruefAblauf).
  * @param e - Eintrag
@@ -156,34 +186,40 @@ function typHtml(e) {
  * @param bedeutung - urteil_bedeutung der Antwort
  * @returns HTML
  */
-export function auswahlHtml(e, ablauf = undefined, bedeutung = {}) {
+export function auswahlHtml(e, ablauf = undefined, bedeutung = {}, vormerken = {}) {
   if (e.auswaehlbar !== true) {
     const grund = GRUENDE.has(e.nicht_auswaehlbar_grund) ? t(`sammlung.grund.${e.nicht_auswaehlbar_grund}`) : String(e.nicht_auswaehlbar_grund ?? '')
     const vorschlag = e.typ_quelle === 'abschnitt' && (e.nicht_auswaehlbar_grund === 'plugin' || e.nicht_auswaehlbar_grund === 'bibliothek') ? ` <span class="subtle">${tHtml('sammlung.grund.vorschlag')}</span>` : ''
     return `<p class="sm-nicht-auswaehlbar" data-sm-grund="${escapeHtml(String(e.nicht_auswaehlbar_grund ?? ''))}"><strong>${tHtml('sammlung.nichtAuswaehlbar')}</strong> ${escapeHtml(grund)}${vorschlag}</p>`
   }
-  if (ablauf !== undefined && ablauf !== null) return renderPruefAblauf(e, ablauf, bedeutung)
+  if (ablauf !== undefined && ablauf !== null) return `${renderPruefAblauf(e, ablauf, bedeutung)}${ablauf.phase === 'fertig' ? vormerkenHtml(e, vormerken) : ''}`
   const ausnahme = e.ausgeschlossen === true ? `<p class="sm-ausnahme">${tHtml('sammlung.ausnahmePflicht')}</p>` : ''
   const erneut = e.pruefbericht_letzter !== null && e.pruefbericht_letzter !== undefined
-  return `${ausnahme}<button type="button" class="button primary sm-auswaehlen" data-sm-auswaehlen="${escapeHtml(String(e.id ?? ''))}" data-sm-typ-offen="${e.typ === 'unbestimmt'}">${tHtml(erneut ? 'pruefung.erneutPruefen' : 'sammlung.auswaehlen')}<span class="sr-only"> — ${escapeHtml(String(e.name ?? ''))}</span></button><span class="subtle sm-auswaehlen-hinweis">${tHtml('sammlung.auswaehlenHinweis')}</span>`
+  // F-2b-2c (design-guardian 2): steht ein Vormerken-Block darüber (Knopf, unterwegs, Fehler, vorgemerkt), ist „Erneut prüfen“
+  // in jedem Zustand die zweite Handlung (sekundär).
+  const vormerkenBlock = vormerkenHtml(e, vormerken)
+  const primaer = !vormerkenBlock.includes('class="sm-vormerken"')
+  return `${vormerkenBlock}${ausnahme}<button type="button" class="button${primaer ? ' primary' : ''} sm-auswaehlen" data-sm-auswaehlen="${escapeHtml(String(e.id ?? ''))}" data-sm-typ-offen="${e.typ === 'unbestimmt'}">${tHtml(erneut ? 'pruefung.erneutPruefen' : 'sammlung.auswaehlen')}<span class="sr-only"> — ${escapeHtml(String(e.name ?? ''))}</span></button><span class="subtle sm-auswaehlen-hinweis">${tHtml('sammlung.auswaehlenHinweis')}</span>`
 }
 
 /**
- * Aufklappbares Detail einer Zeile.
+ * Inhalt des Details einer Zeile — seit F45 F-2b-2c (F-1068 (3)) in einer eigenen, vollen Tabellenzeile (zeileHtml), geöffnet
+ * über den Knopf „Details“ in der Namensspalte (aria-expanded/aria-controls).
  * @param e - Eintrag
  * @param bedeutung - antwort.urteil_bedeutung
- * @param offen - true, wenn das Detail offen gezeigt wird
  * @param ablauf - Zustand eines laufenden Auswählen-Ablaufs oder undefined
+ * @param vormerken - { zustand, workforce } für „Vormerken“ (vormerkenHtml)
  * @returns HTML
  */
-export function detailHtml(e, bedeutung, offen = false, ablauf = undefined) {
+export function detailHtml(e, bedeutung, ablauf = undefined, vormerken = {}) {
   const pbText = PRUEFBERICHTE.has(e.pruefbericht) ? t(`sammlung.pruefbericht.${e.pruefbericht}`) : String(e.pruefbericht ?? '')
   const pb = e.pruefbericht_letzter !== null && e.pruefbericht_letzter !== undefined ? letzterBerichtHtml(e.pruefbericht_letzter) : escapeHtml(pbText)
   const hatBedeutung = typeof bedeutung?.[e.urteil] === 'string'
   // design-guardian 2: bei ausgeschlossenen Einträgen steht die Bedeutung nur im roten Band, nicht ein zweites Mal darunter.
   const bed = hatBedeutung && e.ausgeschlossen !== true ? `<p class="sm-bedeutung"><strong>${escapeHtml(String(e.urteil))}:</strong> ${escapeHtml(bedeutung[e.urteil])}</p>` : ''
   const ausgeschlossen = e.ausgeschlossen === true ? `<div class="note red sm-ausgeschlossen"><strong>${tHtml('sammlung.ausgeschlossen.titel')}</strong> <strong>${escapeHtml(String(e.urteil ?? ''))}:</strong> ${escapeHtml(hatBedeutung ? bedeutung[e.urteil] : '')}</div>` : ''
-  return `<details class="sm-detail" data-sm-detail="${escapeHtml(String(e.id ?? ''))}"${offen ? ' open' : ''}><summary>${tHtml('sammlung.details')}<span class="sr-only"> — ${escapeHtml(String(e.name ?? ''))}</span></summary>
+  const id = escapeHtml(String(e.id ?? ''))
+  return `<div class="sm-detail" id="sm-detail-${id}" data-sm-detail="${id}" role="region" aria-label="${escapeHtml(t('sammlung.detailsZu', { name: String(e.name ?? '') }))}">
     ${ausgeschlossen}
     <dl class="sm-daten">
       <div><dt>${tHtml('sammlung.bewertung')}</dt><dd>${escapeHtml(String(e.bewertung ?? ''))}${bed}</dd></div>
@@ -192,8 +228,8 @@ export function detailHtml(e, bedeutung, offen = false, ablauf = undefined) {
       <div><dt>${tHtml('sammlung.pruefbericht.titel')}</dt><dd>${pb}</dd></div>
       <div><dt>${tHtml('sammlung.zeile')}</dt><dd><code>${escapeHtml(String(e.zeile ?? ''))}</code></dd></div>
     </dl>
-    <div class="sm-auswahl">${auswahlHtml(e, ablauf, bedeutung)}</div>
-  </details>`
+    <div class="sm-auswahl">${auswahlHtml(e, ablauf, bedeutung, vormerken)}</div>
+  </div>`
 }
 
 /**
@@ -202,18 +238,24 @@ export function detailHtml(e, bedeutung, offen = false, ablauf = undefined) {
  * @param bedeutung - antwort.urteil_bedeutung
  * @param offeneDetails - Set der offenen Detail-ids
  * @param ablaeufe - Map id → Ablauf-Zustand
- * @returns HTML
+ * @param extras - { vormerken: Map id → Vormerken-Zustand, workforce: boolean }
+ * @returns HTML (eine Zeile; offen zusätzlich die Detailzeile mit colspan, F-1068 (3))
  */
-function zeileHtml(e, bedeutung, offeneDetails, ablaeufe) {
+function zeileHtml(e, bedeutung, offeneDetails, ablaeufe, extras) {
   const spalte = (s) => escapeHtml(t(`sammlung.spalte.${s}`))
-  return `<tr class="sm-zeile" data-sm-id="${escapeHtml(String(e.id ?? ''))}" data-sm-ausgeschlossen="${e.ausgeschlossen === true}">
-    <td data-spalte="${spalte('name')}"><span class="library-name sm-name">${escapeHtml(String(e.name ?? ''))}</span><span class="library-beschreibung sm-kann">${escapeHtml(String(e.kurzbeschreibung ?? ''))}</span>${detailHtml(e, bedeutung, offeneDetails.has(e.id) || ablaeufe.has(e.id), ablaeufe.get(e.id))}</td>
+  const id = escapeHtml(String(e.id ?? ''))
+  const offen = offeneDetails.has(e.id)
+  // Die Detailzeile wird nur gerendert, wenn sie offen ist — kein [hidden] gegen display:block der Mobilregel (F-622).
+  const knopf = `<button type="button" class="werkstatt-textlink sm-detail-knopf" data-sm-detail-knopf="${id}" aria-expanded="${offen}"${offen ? ` aria-controls="sm-detail-${id}"` : ''}>${tHtml('sammlung.details')}<span class="sr-only"> — ${escapeHtml(String(e.name ?? ''))}</span></button>`
+  const detailZeile = offen ? `<tr class="sm-detailzeile" data-sm-detailzeile="${id}"><td colspan="6">${detailHtml(e, bedeutung, ablaeufe.get(e.id), { zustand: extras?.vormerken?.get(e.id), workforce: extras?.workforce === true })}</td></tr>` : ''
+  return `<tr class="sm-zeile${offen ? ' sm-zeile-offen' : ''}" data-sm-id="${id}" data-sm-ausgeschlossen="${e.ausgeschlossen === true}">
+    <td data-spalte="${spalte('name')}"><span class="library-name sm-name">${escapeHtml(String(e.name ?? ''))}</span><span class="library-beschreibung sm-kann">${escapeHtml(String(e.kurzbeschreibung ?? ''))}</span>${knopf}</td>
     <td data-spalte="${spalte('urteil')}">${urteilChip(e)}</td>
     <td data-spalte="${spalte('lizenz')}">${escapeHtml(String(e.lizenz ?? ''))}</td>
     <td data-spalte="${spalte('kosten')}">${escapeHtml(String(e.kosten ?? ''))}</td>
     <td data-spalte="${spalte('stand')}">${standChip(e)}</td>
     <td data-spalte="${spalte('link')}">${linkHtml(e)}</td>
-  </tr>`
+  </tr>${detailZeile}`
 }
 
 /**
@@ -222,16 +264,17 @@ function zeileHtml(e, bedeutung, offeneDetails, ablaeufe) {
  * @param bedeutung - antwort.urteil_bedeutung
  * @param offeneDetails - Set der offenen Detail-ids
  * @param ablaeufe - Map id → Ablauf-Zustand
+ * @param extras - { vormerken, workforce } (zeileHtml)
  * @returns HTML
  */
-function gruppeHtml(gruppe, bedeutung, offeneDetails, ablaeufe) {
+function gruppeHtml(gruppe, bedeutung, offeneDetails, ablaeufe, extras) {
   const titelId = `sm-gruppe-${escapeHtml(gruppe.art.toLowerCase())}`
   const titel = ARTEN.includes(gruppe.art) ? t(`sammlung.art.${gruppe.art}`) : gruppe.art
   const th = (s) => `<th scope="col">${tHtml(`sammlung.spalte.${s}`)}</th>`
   const bibliothek = gruppe.art === 'UI' ? `<p class="subtle sm-hinweis">${tHtml('sammlung.hinweisBibliothek')}</p>` : ''
   return `<section class="sm-gruppe" aria-labelledby="${titelId}">
     <h3 id="${titelId}">${escapeHtml(titel)} <span class="fp-anzahl">${escapeHtml(formatiereZahl(gruppe.eintraege.length))}</span></h3>${bibliothek}
-    <div class="library-tabelle-rahmen"><table class="sm-tabelle"><caption class="sr-only">${escapeHtml(titel)}</caption><thead><tr>${['name', 'urteil', 'lizenz', 'kosten', 'stand', 'link'].map(th).join('')}</tr></thead><tbody>${gruppe.eintraege.map((e) => zeileHtml(e, bedeutung, offeneDetails, ablaeufe)).join('')}</tbody></table></div>
+    <div class="library-tabelle-rahmen"><table class="sm-tabelle"><caption class="sr-only">${escapeHtml(titel)}</caption><thead><tr>${['name', 'urteil', 'lizenz', 'kosten', 'stand', 'link'].map(th).join('')}</tr></thead><tbody>${gruppe.eintraege.map((e) => zeileHtml(e, bedeutung, offeneDetails, ablaeufe, extras)).join('')}</tbody></table></div>
   </section>`
 }
 
@@ -281,15 +324,16 @@ export function renderSammlungKopf(antwort, filter = {}) {
  * @param filter - { suche, urteil, stand }
  * @param offeneDetails - Set der offenen Detail-ids
  * @param ablaeufe - Map id → Zustand eines Auswählen-Ablaufs (F-2b-2a)
+ * @param extras - { vormerken: Map id → Vormerken-Zustand, workforce: Workforce aktiv } (F45 F-2b-2c)
  * @returns HTML
  */
-export function renderSammlungListe(antwort, filter = {}, offeneDetails = new Set(), ablaeufe = new Map()) {
+export function renderSammlungListe(antwort, filter = {}, offeneDetails = new Set(), ablaeufe = new Map(), extras = {}) {
   const gefiltert = filtereSammlung(antwort?.eintraege, filter)
   const gesamt = Array.isArray(antwort?.eintraege) ? antwort.eintraege.length : 0
   const treffer = `<p class="subtle sm-treffer">${tHtml('sammlung.treffer', { anzahl: gefiltert.length, gesamt })}</p>`
   if (gefiltert.length === 0) return `${treffer}<section class="empty sm-leer"><p>${tHtml(gesamt === 0 ? 'sammlung.leer' : 'sammlung.keineTreffer')}</p></section>`
   return `${treffer}${gruppiereNachArt(gefiltert)
-    .map((g) => gruppeHtml(g, antwort.urteil_bedeutung ?? {}, offeneDetails, ablaeufe))
+    .map((g) => gruppeHtml(g, antwort.urteil_bedeutung ?? {}, offeneDetails, ablaeufe, extras))
     .join('')}`
 }
 

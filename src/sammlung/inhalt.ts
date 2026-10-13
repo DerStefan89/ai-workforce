@@ -173,8 +173,12 @@ export interface InhaltFakten {
   umbenannt: Array<{ von: string; nach: string }>
   /** Dateien je Endung, die ausführbar sein können */
   skripte: Record<string, number>
-  /** package.json der Wurzel: Lebenszyklus-Skripte, bin, Zahl der Abhängigkeiten (null ohne package.json) */
-  paket: { lebenszyklus: Record<string, string>; bin: string[]; abhaengigkeiten: number } | null
+  /**
+   * package.json der Wurzel: Lebenszyklus-Skripte, bin (Namen; bei `bin` als String der Pfad), Zahl der Abhängigkeiten und seit
+   * F45 F-2b-2c bin_ziele (Name → Pfad wie in package.json, roh und ungeprüft — fremde Eingabe; berichtKurz prüft Form und
+   * Dateiliste, bevor ein Pfad in einen Vormerken-Auftrag geht, Advisor B4). null ohne package.json.
+   */
+  paket: { lebenszyklus: Record<string, string>; bin: string[]; abhaengigkeiten: number; bin_ziele?: Record<string, string> } | null
   /** Pfade mit Hook-Konfiguration (settings*.json mit „hooks“, hooks/hooks.json) */
   hooks: string[]
   /** SKILL.md-Dateien und Agent-Dateien (agents/*.md) */
@@ -218,7 +222,10 @@ export function sammleFakten(dateien: readonly InhaltDatei[], uebersprungen: rea
         for (const s of LEBENSZYKLUS) if (typeof skripteJson[s] === 'string') lebenszyklus[s] = skripteJson[s] as string
         const bin = typeof json.bin === 'string' ? [json.bin] : typeof json.bin === 'object' && json.bin !== null ? Object.keys(json.bin) : []
         const zaehle = (feld: unknown) => (typeof feld === 'object' && feld !== null ? Object.keys(feld).length : 0)
-        paket = { lebenszyklus, bin, abhaengigkeiten: zaehle(json.dependencies) + zaehle(json.optionalDependencies) + zaehle(json.peerDependencies) }
+        const binZiele: Record<string, string> = {}
+        if (typeof json.bin === 'string') binZiele[String(json.name ?? '').split('/').pop() || 'bin'] = json.bin.slice(0, 300)
+        else if (typeof json.bin === 'object' && json.bin !== null) for (const [n, z] of Object.entries(json.bin).slice(0, 20)) if (typeof z === 'string') binZiele[n.slice(0, 100)] = z.slice(0, 300)
+        paket = { lebenszyklus, bin, abhaengigkeiten: zaehle(json.dependencies) + zaehle(json.optionalDependencies) + zaehle(json.peerDependencies), bin_ziele: binZiele }
       } catch {
         paket = { lebenszyklus: { '(package.json nicht lesbar)': '' }, bin: [], abhaengigkeiten: 0 }
       }

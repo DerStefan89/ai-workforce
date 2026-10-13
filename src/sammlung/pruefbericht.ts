@@ -14,7 +14,9 @@
  *   (Pfad + sha256); jede Abweichung (fehlend, zusätzlich, anderer Hash) bricht ab — installiert wird nur Geprüftes.
  * - waehleBericht: welcher Bericht für eine angezeigte, gepinnte Version gilt (Plan v3 §4, Advisor A2/A15, C11) — Suche nach
  *   QUELLE (nicht nach Schlüssel), es gilt der neueste passende Bericht; NICHT_GEEIGNET, ein Bericht nur für eine andere
- *   Version oder gar keiner sperren „Freigeben & installieren“ (409).
+ *   Version oder gar keiner sperren „Freigeben & installieren“ (409). Seit F45 F-2b-2c (F-1078 (b)) sperrt auch ein Bericht,
+ *   dessen Prüflauf Dateien im installierten Pfad übersprungen hat (uebersprungenSperre); vergleicheInhalt nennt solche Pfade
+ *   „im Prüflauf übersprungen (<grund>)“.
  *
  * Wird aufgerufen von: scripts/leitstand/routen-pruefung.mjs (Nachbereitung des Prüflaufs, Sammlung-Stand),
  * scripts/leitstand-server.mjs (Rückruf pruefeBericht der Installation), src/sammlung/pruefbericht.test.ts,
@@ -248,6 +250,9 @@ function leseInstalliert(ordner: string): { dateien: Map<string, string>; fremd:
 export function vergleicheInhalt(bericht: GespeicherterBericht, ordner: string, optionen: { unterpfad: string }): string | null {
   const praefix = optionen.unterpfad === '' ? '' : `${optionen.unterpfad}/`
   const geprueft = new Map(bericht.daten.inhalt.dateien.filter((d) => d.pfad.startsWith(praefix)).map((d) => [d.pfad.slice(praefix.length), d.sha256]))
+  // F45 F-2b-2c (F-1078 (b)): im Prüflauf übersprungene Pfade (Fakt des Berichts) beim Namen nennen statt nur „nicht geprüft“.
+  const liste = Array.isArray(bericht.daten.fakten?.uebersprungen?.liste) ? bericht.daten.fakten.uebersprungen.liste : []
+  const uebersprungen = new Map(liste.filter((u) => typeof u?.pfad === 'string' && u.pfad.startsWith(praefix)).map((u) => [u.pfad.slice(praefix.length), String(u.grund)]))
   let ist: ReturnType<typeof leseInstalliert>
   try {
     ist = leseInstalliert(ordner)
@@ -259,7 +264,7 @@ export function vergleicheInhalt(bericht: GespeicherterBericht, ordner: string, 
   for (const f of ist.fremd) abweichungen.push(`${f} (keine reguläre Datei)`)
   for (const [pfad, hash] of ist.dateien) {
     const soll = geprueft.get(pfad)
-    if (soll === undefined) abweichungen.push(`${pfad} (nicht geprüft)`)
+    if (soll === undefined) abweichungen.push(uebersprungen.has(pfad) ? `${pfad} (im Prüflauf übersprungen (${uebersprungen.get(pfad)}))` : `${pfad} (nicht geprüft)`)
     else if (soll !== hash) abweichungen.push(`${pfad} (Inhalt anders als geprüft)`)
   }
   for (const pfad of geprueft.keys()) if (!ist.dateien.has(pfad)) abweichungen.push(`${pfad} (geprüft, aber nicht installiert)`)
@@ -379,6 +384,51 @@ export function neuesterZuerst(a: GespeicherterBericht, b: GespeicherterBericht)
   return a.artefakt_id < b.artefakt_id ? 1 : a.artefakt_id > b.artefakt_id ? -1 : 0
 }
 
+/**
+ * Pfad des installierten Ordners relativ zum Pfad des Berichts ('' = gleich; npm immer ''). Ein git-Bericht über einen höheren
+ * Pfad gilt nur mit seinen Dateien darunter (gleicheQuelle prüft das Präfix an einer Segmentgrenze).
+ * @param q - Quelle des Berichts
+ * @param angezeigt - angezeigte Quelle
+ * @returns relativer Unterpfad
+ */
+export function unterpfadImBericht(q: PruefQuelle, angezeigt: AngezeigteQuelle): string {
+  if (angezeigt.art !== 'git' || q.art !== 'git' || q.pfad === angezeigt.quellPfad) return ''
+  return q.pfad === '' ? angezeigt.quellPfad : angezeigt.quellPfad.slice(q.pfad.length + 1)
+}
+
+/**
+ * F45 F-2b-2c (F-1078 (b)): Sperre, wenn der Prüflauf Dateien übersprungen hat, die installiert würden (jeder Grund: binär,
+ * zu groß, Pfad abgelehnt, Symlink, Submodul, Eintragstyp, Kollision) — die Installation endete sonst erst nach dem Holen im
+ * Inhalts-Abgleich (npm) bzw. am Symlink/Submodul (Skill) mit 422. Bericht über einen höheren git-Pfad: gezählt werden nur
+ * Einträge im installierten Pfad (gleich oder darunter), wenn die Liste vollständig ist; ist sie gekürzt
+ * (GRENZEN.maxAufgezaehlt), zählen alle (fail-closed). Fehlt die Angabe oder ist sie unlesbar → Sperre.
+ * @param bericht - neuester passender Bericht
+ * @param angezeigt - angezeigte Quelle
+ * @returns Grund oder null
+ */
+export function uebersprungenSperre(bericht: GespeicherterBericht, angezeigt: AngezeigteQuelle): string | null {
+  const u = (bericht.daten.fakten as Partial<InhaltFakten> | null | undefined)?.uebersprungen
+  const jeGrund = u?.je_grund
+  if (typeof u !== 'object' || u === null || typeof jeGrund !== 'object' || jeGrund === null || !Array.isArray(u.liste) || !Object.values(jeGrund).every((n) => Number.isInteger(n) && n >= 0) || !u.liste.every((e) => typeof e?.pfad === 'string' && typeof e?.grund === 'string')) {
+    return 'Prüfbericht ohne lesbare Angabe übersprungener Dateien — nicht installierbar, erneut prüfen'
+  }
+  const summe = Object.values(jeGrund).reduce((a, n) => a + n, 0)
+  const unterpfad = unterpfadImBericht(bericht.daten.quelle, angezeigt)
+  let zaehlung: Record<string, number> = jeGrund
+  if (unterpfad !== '' && summe === u.liste.length) {
+    zaehlung = {}
+    // gleich, darunter, oder ein übersprungener Ordner darüber (z. B. Symlink/Submodul „x“, installiert wird „x/y“).
+    for (const e of u.liste) if (e.pfad === unterpfad || e.pfad.startsWith(`${unterpfad}/`) || unterpfad.startsWith(`${e.pfad}/`)) zaehlung[e.grund] = (zaehlung[e.grund] ?? 0) + 1
+  }
+  const n = Object.values(zaehlung).reduce((a, x) => a + x, 0)
+  if (n === 0) return null
+  const teile = Object.entries(zaehlung)
+    .filter(([, x]) => x > 0)
+    .map(([g, x]) => `${g} ${x}`)
+    .join(', ')
+  return `Prüflauf hat ${n} ${n === 1 ? 'Datei' : 'Dateien'} übersprungen (${teile}) — nicht installierbar (F-1078)`
+}
+
 /** Ergebnis von waehleBericht. */
 export interface BerichtWahl {
   /** der geltende Bericht zur angezeigten Version, sonst null */
@@ -399,10 +449,10 @@ export function waehleBericht(berichte: readonly GespeicherterBericht[], angezei
   const neuester = gleiche.find((b) => passt(b.daten.quelle))
   if (neuester !== undefined) {
     if (neuester.daten.ergebnis.urteil === 'NICHT_GEEIGNET') return { bericht: neuester, sperre: `Prüfbericht zu ${versionVon(angezeigt)} lautet NICHT_GEEIGNET — keine Freigabe dieser Version` }
-    return { bericht: neuester, sperre: null }
+    return { bericht: neuester, sperre: uebersprungenSperre(neuester, angezeigt) }
   }
   const anderer = gleiche[0]
   const kennung = (q: PruefQuelle | AngezeigteQuelle): string => (q.art === 'npm' ? `${q.version} (${q.integrity.slice(0, 19)}…)` : q.sha)
-  if (anderer !== undefined) return { bericht: null, sperre: `Prüfbericht nur für ${kennung(anderer.daten.quelle)}, angezeigt ist ${kennung(angezeigt)} — in der Sammlung erneut „Auswählen“ (Eignungsprüfung)` }
-  return { bericht: null, sperre: 'ohne Prüfbericht zur angezeigten Version — erst in der Sammlung „Auswählen“ (Eignungsprüfung)' }
+  if (anderer !== undefined) return { bericht: null, sperre: `Prüfbericht nur für ${kennung(anderer.daten.quelle)}, angezeigt ist ${kennung(angezeigt)} — erneut die Eignung prüfen` }
+  return { bericht: null, sperre: 'ohne Prüfbericht zur angezeigten Version — erst die Eignung prüfen' }
 }

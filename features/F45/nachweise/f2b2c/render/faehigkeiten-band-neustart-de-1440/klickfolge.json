@@ -1,0 +1,53 @@
+{
+  "url": "http://127.0.0.1:4395/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#faehigkeiten-bereich-projekt",
+    "hoehe": 700
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Band",
+        "selector": "[data-fp-band=\"fremd\"]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Knopf bestätigen",
+        "selector": "[data-fp-bestaetigen]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Dieses Projekt“",
+      "klick": "#faehigkeiten-reiter-projekt",
+      "warteAufSelector": {
+        "selector": "[data-fp-band=\"fremd\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-band-neustart.png"
+    }
+  ],
+  "farbschema": "dark"
+}

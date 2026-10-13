@@ -1,0 +1,773 @@
+{
+  "url": "http://127.0.0.1:4395/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#faehigkeiten-bereich-projekt",
+    "hoehe": 700
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Band",
+        "selector": "[data-fp-band=\"fremd\"]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Knopf bestätigen",
+        "selector": "[data-fp-bestaetigen]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Dieses Projekt“",
+      "klick": "#faehigkeiten-reiter-projekt",
+      "warteAufSelector": {
+        "selector": "[data-fp-band=\"fremd\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-band-neustart.png"
+    }
+  ],
+  "farbschema": "dark",
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/faehigkeiten",
+      "status": 200,
+      "json": {
+        "projekt_id": "ai-workforce",
+        "lokale_datei": {
+          "zustand": "gueltig",
+          "pfad": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-f2b2c-render-qq0KmP\\ai-workforce-home\\faehigkeiten.lokal.json",
+          "hash": "1d668a2dff8b53c4f684fecc4f23c645ba5612313f489f6d3a9f8e5476232fe1",
+          "fremd_geaendert": {
+            "bekannt_seit": null,
+            "quelle": "unbekannt",
+            "geaendert_am": "2026-10-13T08:24:39.346Z"
+          }
+        },
+        "lauf_aktiv": {
+          "aktiv": false
+        },
+        "letzter_lauf_id": null,
+        "hindernis": null,
+        "eintraege": [
+          {
+            "id": "playwright-mcp",
+            "name": "Playwright MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Browser-Automatisierung für Agenten über Accessibility-Snapshots: Seiten öffnen, klicken, Formulare füllen, strukturiert auslesen.",
+            "installiert": true,
+            "freigabe": "FREIGEGEBEN",
+            "hash": "400dcf35dc95a9c72b5eb9c1f453066c2a230e709d603849cb642887049e63cb",
+            "eingeschaltet": true,
+            "aktiv": true,
+            "grund": null,
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "supabase-mcp",
+            "name": "Supabase MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Direkter Zugriff auf ein Supabase-Projekt: SQL ausführen, Schema und Migrationen verwalten, Edge Functions ausrollen, Logs lesen.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "firecrawl-mcp",
+            "name": "Firecrawl MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Web-Extraktion für Agenten: scrapen, crawlen, suchen, strukturiert extrahieren, Ausgabe als Markdown, HTML oder JSON.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "context7-mcp",
+            "name": "Context7 MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Liefert versionsgenaue, aktuelle Bibliotheks-Dokumentation in den Kontext.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "claude-in-chrome",
+            "name": "Claude in Chrome",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Browser-Steuerung durch Claude selbst: Seiten öffnen, Inhalt nach JavaScript-Ausführung lesen, Formulare bedienen.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "perplexity-mcp",
+            "name": "Perplexity MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Websuche mit Quellenangaben: Kurzantworten und längere Rechercheberichte.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "magic-21st-dev-mcp",
+            "name": "21st.dev Magic MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Generiert UI-Komponenten aus natürlicher Sprache und schreibt sie in das Arbeitsverzeichnis, dazu Suche in einem Komponenten-Katalog.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "obsidian-mcp",
+            "name": "Obsidian MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Lese- und Schreibzugriff auf einen Obsidian-Wissensspeicher: Notizen anlegen, durchsuchen, verknüpfen.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "frontend-design",
+            "name": "frontend-design",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Erstanbieter-Plugin, das Claudes Frontend-Ausgabe von der Standard-AI-Optik wegführt (Typografie, Farbwahl, Motion, räumliche Komposition).",
+            "installiert": true,
+            "freigabe": "FREIGEGEBEN",
+            "hash": "89a6e59de80320a32e8b4c597a329ef3c503f624a2e68874bb0475dfb66dbf4b",
+            "eingeschaltet": true,
+            "aktiv": true,
+            "grund": null,
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "taste-skill",
+            "name": "taste-skill",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Liest die Design-Entscheidungen einer bestehenden Website aus und liefert Design-Tokens mit Begründung.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "animate-skill",
+            "name": "animate-skill",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Animations- und Motion-Regeln (Dauer, Easing-Kurven, reduced-motion-Fallbacks).",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "impeccable",
+            "name": "Impeccable",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Design-Kontext-Protokoll (Zielgruppe, Markenpersönlichkeit, Anwendungsfall) mit Katalog von AI-Design-Mustern und Browser-Editiermodus.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "ui-ux-pro-max",
+            "name": "UI/UX Pro Max",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Nachschlage-Ansatz aus UI-Stilen, Paletten, Schriftpaarungen, UX-Regeln und Accessibility-Prüfungen.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "mengto-skills",
+            "name": "MengTo/skills",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Design- und Entwicklungs-Skills, auch für agentengestützte Oberflächen.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "mattpocock-skills",
+            "name": "Matt Pocock Skills",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Engineering-Skills für Anforderungen, Planung, Umsetzung und Review.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "addyosmani-agent-skills",
+            "name": "Addy Osmani Agent Skills",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Engineering-Skills für nachvollziehbare Codequalität und Entwicklungsabläufe.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "github-mcp",
+            "name": "GitHub MCP",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Offizieller GitHub-MCP für Repos, Issues und Pull Requests.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "last30days-skill",
+            "name": "Last30days",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Rechercheskill für aktuelle Web-/Social-Themen.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "archify",
+            "name": "Archify",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Erzeugt Architektur-/Ablaufdiagramme aus strukturierten Beschreibungen als HTML/SVG.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "diagram-design",
+            "name": "Diagram Design",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Skill für gestaltete, eigenständige HTML-/SVG-Diagramme.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "humanizer",
+            "name": "Humanizer",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Redigiert typische KI-Schreibmuster aus Texten.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "simplify-codebase",
+            "name": "Simplify Codebase",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Skill zum belegten Entfernen unnötiger Codekomplexität.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "open-code-review",
+            "name": "Alibaba Open Code Review",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Code-Review mit deterministischen Prüfungen und LLM-Agenten.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "iannuttall-seo",
+            "name": "iannuttall/seo",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Lokaler SEO-CLI/MCP für Audits aus Crawl-, Search-Console- und GA4-Daten.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "okf-agent-memory",
+            "name": "OKF Agent Memory",
+            "typ": "mcp",
+            "quelle": "katalog",
+            "beschreibung": "Git-native Markdown-Memory mit lokalem BM25-Index und MCP.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "claude-code-setup",
+            "name": "Claude Code Setup",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Erstanbieter-Plugin mit dem Skill claude-automation-recommender: analysiert ein Projekt und schlägt passende Skills, Hooks und MCPs vor, installiert nichts.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "image-to-code",
+            "name": "Image to code",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Skill aus leonxlnx/taste-skill: Designbild erzeugen, analysieren und das Frontend danach umsetzen.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "i-have-adhd",
+            "name": "i-have-adhd",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Ausgabestil für kürzere, leichter erfassbare Agentenantworten; nur auf ausdrücklichen Stilbedarf, kein medizinisches Produkt.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "browser-use",
+            "name": "Browser Use",
+            "typ": "skill",
+            "quelle": "katalog",
+            "beschreibung": "Agentenbasierte Browserautomatisierung über Sprachmodelle (Skill skills/browser-use, setzt die browser-use-CLI voraus). Wirkt über den Browser nach außen; nur mit eigenem Testaccount und Sandbox. Für reproduzierbare Tests zuerst Playwright.",
+            "installiert": false,
+            "freigabe": "OFFEN",
+            "eingeschaltet": true,
+            "aktiv": false,
+            "grund": "extern, installation fehlt",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "agent:architecture-advisor",
+            "name": "architecture-advisor",
+            "typ": "agent",
+            "quelle": "projekt",
+            "beschreibung": "Challenged einen Architektur- oder Datenmodell-Plan VOR der Umsetzung — findet unbelegte Annahmen, unnoetige Komplexitaet, fehlende Fehlerpfade und Abweichungen von ARCHITECTURE.md. Nutzen, bevor eine neue Tabelle/Relation/API-Route/groessere Refaktorierung gebaut wird, oder wenn der Nutzer sagt \"pruef meinen Plan\", \"Architektur-Review\", \"ist das overengineered\" oder \"Advisor-Pass\". NICHT nutzen fuer fertigen Code (dafuer code-reviewer/qa) oder fuer Design-Treue (dafuer design-guardian, falls vorhanden).",
+            "pfad": ".claude/agents/architecture-advisor.md",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "2424c036b50b4c714258659b2a162feca78e987617590b8133bf80230a9bc26a",
+            "katalog_hash": "2424c036b50b4c714258659b2a162feca78e987617590b8133bf80230a9bc26a",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "agent:code-reviewer",
+            "name": "code-reviewer",
+            "typ": "agent",
+            "quelle": "projekt",
+            "beschreibung": "Prueft fertigen Code auf Wartbarkeit, Robustheit und Einhaltung von ARCHITECTURE.md. Nach jeder abgeschlossenen Aufgabe einsetzen, bevor etwas freigegeben oder committet wird. Meldet Befunde, aendert selbst nichts.",
+            "pfad": ".claude/agents/code-reviewer.md",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "62c37feb911dcf1045d1b5af6a23606780e7c0d847ab42ce61d3f41e81e9ca93",
+            "katalog_hash": "62c37feb911dcf1045d1b5af6a23606780e7c0d847ab42ce61d3f41e81e9ca93",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "agent:design-guardian",
+            "name": "design-guardian",
+            "typ": "agent",
+            "quelle": "projekt",
+            "beschreibung": "Prueft eine UI-Umsetzung des Leitstands gegen die Designvorlage V10 und den Abgleich F-725. Nach jeder sichtbaren Aenderung an public/leitstand/ einsetzen, vor Freigabe und Commit. Meldet Abweichungen, aendert selbst nichts.",
+            "pfad": ".claude/agents/design-guardian.md",
+            "installiert": true,
+            "freigabe": "keine",
+            "hash": "d2cdec05b72ba9193dac5bffcdda88aa5f89388e087352cd92bb7d4b2c60e5f7",
+            "katalog_hash": null,
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "keine Freigabe (weder Katalogeintrag noch Projekt-Freigabe nach Inhalt)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "agent:qa",
+            "name": "qa",
+            "typ": "agent",
+            "quelle": "projekt",
+            "beschreibung": "Prueft ein Feature aus Sicht echter Nutzer und definiert Akzeptanztests und Randfaelle. Einsetzen, bevor ein Feature als fertig gilt. Meldet Luecken, aendert selbst nichts.",
+            "pfad": ".claude/agents/qa.md",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "5aed8133c1084e55839535b9384d3d1afbfce9689e7c585c9b9122570b103874",
+            "katalog_hash": "5aed8133c1084e55839535b9384d3d1afbfce9689e7c585c9b9122570b103874",
+            "eingeschaltet": true,
+            "aktiv": true,
+            "grund": null,
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "agent:scout",
+            "name": "scout",
+            "typ": "agent",
+            "quelle": "projekt",
+            "beschreibung": null,
+            "pfad": ".claude/agents/scout.md",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "2051b3536bca47bd27685fa279ecddb1a5cc84a4dc72bb9223d8f5efe003d4e3",
+            "katalog_hash": "2051b3536bca47bd27685fa279ecddb1a5cc84a4dc72bb9223d8f5efe003d4e3",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "Frontmatter-tools außerhalb des Werkzeugsatzes: WebSearch, WebFetch",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "skill:advisor-pass",
+            "name": "advisor-pass",
+            "typ": "skill",
+            "quelle": "projekt",
+            "beschreibung": "Führt einen Advisor-Pass auf einen Plan durch, BEVOR gebaut wird — Plan v1 als Datei, frischer Kontext, Findings mit Evidenz-Marker und Belegstelle, vierstufiges Urteil, Plan v2 als eigene Datei. Nutzen vor jeder Umsetzung mit Nebenwirkungen (Auth, Geld, öffentliche Endpunkte, DB-Schreibzugriff, neues Gate, Schema-Änderung), oder wenn der Nutzer sagt \"Advisor-Pass\", \"prüf meinen Plan\", \"ist das overengineered\", \"bevor ich baue\". NICHT nutzen für fertigen Code — dafür Reviewer (code-reviewer/qa) — und nicht als Ersatz für Spec oder Handoff-Vertrag.",
+            "pfad": ".claude/skills/advisor-pass",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "07f62d335f1e760c9ca5d852fa2e7fb4d99204ffefbc6932a5afc495462528af",
+            "katalog_hash": "07f62d335f1e760c9ca5d852fa2e7fb4d99204ffefbc6932a5afc495462528af",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "skill:git-flow",
+            "name": "git-flow",
+            "typ": "skill",
+            "quelle": "projekt",
+            "beschreibung": "Fuehrt den Standard-Workflow fuer eine freigegebene, kleine Aenderung aus — Branch anlegen, gezielt stagen, Diff zur Freigabe zeigen, ehrlich committen, pushen, PR-Link/Status nennen. Nutzen nach jeder abgeschlossenen Iteration, wenn eine geprueft Aenderung committet und ein PR eroeffnet werden soll. Ersetzt NICHT die Freigabe des Menschen und merged niemals selbst.",
+            "pfad": ".claude/skills/git-flow",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "d7ab6770fda85929ec904a822318a26d2711e9340731030b3de86cb0c42d0708",
+            "katalog_hash": "d7ab6770fda85929ec904a822318a26d2711e9340731030b3de86cb0c42d0708",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "skill:handoff-vertrag",
+            "name": "handoff-vertrag",
+            "typ": "skill",
+            "quelle": "projekt",
+            "beschreibung": "Schreibt einen Handoff-Vertrag für eine abgegrenzte Teilaufgabe, die ein frischer Kontext oder ein anderer Agent ausführen soll — Minimalform plus Evidenz-Marker, Zuschnittprüfung und Stop-Grenzen. Nutzen, bevor eine Aufgabe an eine neue Sitzung/einen Subagenten übergeben wird, oder wenn der Nutzer sagt \"Task-Datei\", \"Handoff\", \"Auftrag schreiben\", \"gib mir den Prompt\". NICHT nutzen für triviale Einzelbefehle und nicht als Ersatz für Spec oder Plan bei mittleren und großen Vorhaben.",
+            "pfad": ".claude/skills/handoff-vertrag",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "a463e34e9a20ae22ff831575d95368704031df8e65aca93b35053d5dae757d2e",
+            "katalog_hash": "a463e34e9a20ae22ff831575d95368704031df8e65aca93b35053d5dae757d2e",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "skill:ponytail",
+            "name": "ponytail",
+            "typ": "skill",
+            "quelle": "projekt",
+            "beschreibung": "Forces the laziest solution that actually works, simplest, shortest, most minimal. Channels a senior dev who has seen everything: question whether the task needs to exist at all (YAGNI), reach for the standard library before custom code, native platform features before dependencies, one line before fifty. Supports intensity levels: lite, full (default), ultra. Use on ANY coding task: writing, adding, refactoring, fixing, reviewing, or designing code, and choosing libraries or dependencies. Also use whenever the user says \"ponytail\", \"be lazy\", \"lazy mode\", \"simplest solution\", \"minimal solution\", \"yagni\", \"do less\", or \"shortest path\", or complains about over-engineering, bloat, boilerplate, or unnecessary dependencies. Do NOT use for non-coding requests (general knowledge, prose, translation, summaries, recipes).",
+            "pfad": ".claude/skills/ponytail",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "1f9e4ddd507d4a27a305881fcc51ea4e5185bd793a138ae25e75ec0c24e38874",
+            "katalog_hash": "1f9e4ddd507d4a27a305881fcc51ea4e5185bd793a138ae25e75ec0c24e38874",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "skill:repo-audit",
+            "name": "repo-audit",
+            "typ": "skill",
+            "quelle": "projekt",
+            "beschreibung": "Fuehrt eine Sanierungs-Pruefung durch, gleicht Anweisungsdokumente (CLAUDE.md, ARCHITECTURE.md, README.md, .claude/agents/*.md) gegen die reale Repo-Struktur ab und findet tote Verweise, veraltete Behauptungen und ungeprueft Kopien. Nutzen nach mehreren abgeschlossenen Zyklen, vor einem neuen Zyklus, oder wenn der Nutzer sagt \"Sanierungsdurchgang\", \"Repo-Audit\", \"Doku gegen Realitaet pruefen\", \"Drift-Check\" oder \"ist das noch aktuell\". NICHT nutzen fuer einzelne Code-Reviews (dafuer code-reviewer/qa).",
+            "pfad": ".claude/skills/repo-audit",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "cc6efda724c50428895beb52d79fd659e3bd09cb6aaf86ccca312f66cea35e9d",
+            "katalog_hash": "cc6efda724c50428895beb52d79fd659e3bd09cb6aaf86ccca312f66cea35e9d",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "skill:spec-schreiben",
+            "name": "spec-schreiben",
+            "typ": "skill",
+            "quelle": "projekt",
+            "beschreibung": "Schreibt eine Spec für ein Vorhaben — Problem, prüfbare V-Aussagen (aus denen später Tests werden), Nicht-Ziele als Pflichtsektion, Constraints, offene Fragen. Nutzen VOR Plan und Handoff-Vertrag bei jedem mittleren oder größeren Vorhaben, oder wenn der Nutzer sagt \"Spec\", \"was soll das können\", \"User Story\", \"Anforderungen aufschreiben\". NICHT nutzen für triviale Einzeländerungen und nicht als Ersatz für den Plan — die Spec sagt WAS, der Plan sagt WIE.",
+            "pfad": ".claude/skills/spec-schreiben",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "91f02bcbd5beb5e6cb31f340b93e7149e3e54c40d65720af4a872207900d1be3",
+            "katalog_hash": "91f02bcbd5beb5e6cb31f340b93e7149e3e54c40d65720af4a872207900d1be3",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          },
+          {
+            "id": "skill:werkzeug-auswahl",
+            "name": "werkzeug-auswahl",
+            "typ": "skill",
+            "quelle": "projekt",
+            "beschreibung": "Prueft, ob ein Skill, MCP oder Plugin in dieses Projekt gehoert — Bedarf feststellen, Herkunft pruefen, Risiko bewerten, Entscheidung nach state/tooling.md schreiben. Nutzen, wenn ein neues Werkzeug im Gespraech ist, beim Aufsetzen eines neuen Projekts, oder wenn der Nutzer sagt \"brauche ich das\", \"welches Werkzeug\", \"soll ich das installieren\". NICHT nutzen, um ein bereits installiertes Werkzeug zu bedienen, und nicht als Ersatz fuer einen Advisor-Pass bei Aufgaben mit Nebenwirkungen.",
+            "pfad": ".claude/skills/werkzeug-auswahl",
+            "installiert": true,
+            "freigabe": "katalog",
+            "hash": "c730f1ccd024c97e496d67af739f6b573871e4d39592bdccc8a2bb631240eb48",
+            "katalog_hash": "c730f1ccd024c97e496d67af739f6b573871e4d39592bdccc8a2bb631240eb48",
+            "eingeschaltet": false,
+            "aktiv": false,
+            "grund": "nicht eingeschaltet (Opt-in je Projekt, E-F45-6)",
+            "letzter_lauf": {
+              "im_lauf": "ohne_erfassung",
+              "benutzt": null
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

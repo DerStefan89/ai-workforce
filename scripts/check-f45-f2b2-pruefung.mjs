@@ -14,7 +14,8 @@
  *     (D13); gültig → 202 → Prüflauf mit Prüfordner (.claude/CLAUDE.md neutralisiert, Werkzeuge Read/Grep/Glob, Init-Gate
  *     skills = ∅, CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0) → Bericht als Kernartefakt; Temp-Ordner danach weg;
  *     ein Ergebnis mit falscher Version → kein Bericht (Fehlerstand); Abbruch beim Holen → Sperre frei.
- * (f) Freigabe: ohne Bericht / Bericht für andere Version / NICHT_GEEIGNET → 409, vorbereiten zeigt pruefbericht_sperre;
+ * (f) Freigabe: ohne Bericht / Bericht für andere Version / NICHT_GEEIGNET / übersprungene Dateien (F-1078 (b), F45 F-2b-2c)
+ *     → 409, vorbereiten zeigt pruefbericht_sperre;
  *     neuester passender GEEIGNET → Installation läuft.
  * (g) vorbereiten zeigt den letzten Bericht (aktuell = gleicher Pin); Netzfehler der Registry beim Pin → 502 mit Grund.
  * (h) starteWorkflowSchritt( bleibt 6-mal; Neutralisierung rot; kein eigener Tar-Leser, kein npm pack mehr — Prüflauf und
@@ -24,6 +25,9 @@
  *     gleich bis auf den --prefix-Ordner (Wurzelname der package.json bewusst verschieden: aiw-cap-pruefung / aiw-cap-<id>);
  *     (i2) verschachteltes node_modules → Prüflauf Fehlerstand ohne Bericht, Installation 422 (gleicher Grund), Katalog
  *     unverändert, Zielordner weg; (i3) installierter Inhalt ≠ Bericht (zusätzliche Datei) → 422.
+ * (j) F45 F-2b-2c (F-1056 Rest): Sammlungseintrag ohne Katalog mit Bericht → Vormerken-Text → Skelett (Platzhalter ersetzt)
+ *     erfüllt validiereRessourcenDaten und pruefeInstallierbarkeit (Skill und MCP), ordneZu führt die Zeile danach als
+ *     „zugeordnet“; im Katalog gilt der Bericht der Sammlung (vorbereiten ohne Sperre) und die Installation läuft (200).
  *
  * Wird aufgerufen von: npm run check.
  *
@@ -31,7 +35,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -42,11 +46,14 @@ import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { ECHTE_RUNNER } from '../src/ressourcen/installation.ts'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { neutralisierePfad } from '../src/sammlung/inhalt.ts'
-import { ladePruefberichte, validiereErgebnisEignungspruefung, validierePruefberichtDaten } from '../src/sammlung/pruefbericht.ts'
+import { pruefeInstallierbarkeit, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
+import { ordneZu } from '../src/sammlung/index.ts'
+import { ladePruefberichte, registrierePruefbericht, validiereErgebnisEignungspruefung, validierePruefberichtDaten } from '../src/sammlung/pruefbericht.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { LEER_SHA256, legePassendenBerichtAn } from './leitstand/pruefbericht-testhilfe.mjs'
-import { PRUEF_TEMP_PRAEFIX } from './leitstand/routen-pruefung.mjs'
+import { berichtKurz, PRUEF_TEMP_PRAEFIX } from './leitstand/routen-pruefung.mjs'
+import { baueSammlungVormerkenAuftragstext, sammlungNichtVormerkbar } from '../public/leitstand/vormerken-auftrag.js'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -389,13 +396,97 @@ try {
       const anders = await installiere()
       const kat = JSON.parse(readFileSync(join(u3.install, 'ressourcen.json'), 'utf8')).ressourcen.find((r) => r.id === 'pw-mcp')
       if (anders.i.status !== 422 || !/≠ geprüfter Inhalt[^]*cli\.js \(Inhalt anders als geprüft\)/.test(anders.i.inhalt.grund ?? '') || kat.freigabe !== 'OFFEN') befunde.push(`(f) Inhalt ≠ geprüft: ${anders.i.status} ${anders.i.inhalt.grund} / freigabe ${kat.freigabe}`)
+      // F45 F-2b-2c (F-1078 (b)) rot: Bericht GEEIGNET, aber der Prüflauf hat eine Datei übersprungen → Knopf gesperrt (Grund im
+      // vorbereiten) und Installation 409, nichts geholt.
+      const mitUebersprungen = { dateien: 1, bytes: 0, uebersprungen: { je_grund: { binaer: 1 }, liste: [{ pfad: 'logo.png', grund: 'binaer' }] }, umbenannt: [], skripte: {}, paket: null, hooks: [], skill_dateien: [], agent_dateien: [] }
+      legePassendenBerichtAn(ohne.v.inhalt, u3.profilReferenz, u3.basisVerzeichnis, 'GEEIGNET', '2026-10-12T11:45:00.000Z', undefined, mitUebersprungen)
+      const uebersprungen = await installiere()
+      const muster = /Prüflauf hat 1 Datei übersprungen \(binaer 1\) — nicht installierbar \(F-1078\)/
+      if (uebersprungen.i.status !== 409 || !muster.test(uebersprungen.i.inhalt.grund ?? '') || !muster.test(uebersprungen.v.inhalt.pruefbericht_sperre ?? '') || uebersprungen.v.inhalt.pruefbericht?.urteil !== 'GEEIGNET') befunde.push(`(f) übersprungene Datei (F-1078 (b)): ${uebersprungen.i.status} ${uebersprungen.i.inhalt.grund} / ${uebersprungen.v.inhalt.pruefbericht_sperre}`)
       legePassendenBerichtAn(ohne.v.inhalt, u3.profilReferenz, u3.basisVerzeichnis, 'MIT_AUFLAGEN', '2026-10-12T12:00:00.000Z')
       const gut = await installiere()
       if (gut.i.status !== 200 || gut.v.inhalt.pruefbericht_sperre !== null || gut.v.inhalt.pruefbericht?.urteil !== 'MIT_AUFLAGEN') befunde.push(`(f) passender neuester Bericht: ${gut.i.status} ${gut.i.inhalt.grund} / ${JSON.stringify(gut.v.inhalt.pruefbericht_sperre)}`)
     } finally {
       await u3.ende()
     }
-    if (befunde.length === vorF) console.log('✓ (f) Freigabe: ohne / veraltet / NICHT_GEEIGNET → 409 (Grund auch im vorbereiten); Inhalt ≠ geprüft → 422 (F-1075); neuester passender MIT_AUFLAGEN → installiert.')
+    if (befunde.length === vorF) console.log('✓ (f) Freigabe: ohne / veraltet / NICHT_GEEIGNET → 409 (Grund auch im vorbereiten); Inhalt ≠ geprüft → 422 (F-1075); übersprungene Datei → 409 mit Grund (F-1078 (b)); neuester passender MIT_AUFLAGEN → installiert.')
+  }
+  // ─── (j) F45 F-2b-2c: Sammlung → Vormerken-Text → Katalogeintrag → „Freigeben & installieren“ mit dem Bericht der Sammlung ───
+  {
+    const vorJ = befunde.length
+    const u6 = await umgebung()
+    try {
+      const sammlungsBericht = (schluessel, sammlungId, quelle, dateien, fakten) =>
+        registrierePruefbericht(
+          schluessel,
+          {
+            ergebnis: { urteil: 'GEEIGNET', typ: quelle.art === 'git' ? 'skill' : 'mcp', gepinnte_version: quelle.art === 'git' ? quelle.sha : quelle.version, befunde: [], auflagen: [], zusammenfassung: 'Gate (j).' },
+            quelle,
+            typ: quelle.art === 'git' ? 'skill' : 'mcp',
+            katalog_id: null,
+            sammlung_id: sammlungId,
+            urteil_sammlung: 'Aufnehmen',
+            ausnahme_begruendung: null,
+            fakten: { dateien: dateien.length, bytes: 0, uebersprungen: { je_grund: {}, liste: [] }, umbenannt: [], skripte: {}, hooks: [], skill_dateien: quelle.art === 'git' ? ['SKILL.md'] : [], agent_dateien: [], ...fakten },
+            inhalt: { dateien },
+            herkunft: { commit_zeit: null, geaendert: null, pfleger: [], lizenz_registry: null },
+            lauf_id: `gate-j-${sammlungId}`,
+            auftrag_id: `gate-j-${sammlungId}`,
+            erstellt_am: new Date().toISOString(),
+          },
+          null,
+          u6.profilReferenz,
+          { basisVerzeichnis: u6.basisVerzeichnis, schreiber: STILL }
+        )
+      const sha = (s) => createHash('sha256').update(s).digest('hex')
+      const skillMd = readFileSync(join(REMOTE, 'pruef-skill', 'skills', 'p', 'SKILL.md'))
+      const zeilen = [
+        { id: 'gate-skill', name: 'Gate Skill', kurzbeschreibung: 'Prüf-Skill aus der Sammlung.', lizenz: 'MIT', kosten: 'kostenlos', link: 'https://github.com/fixture/pruef-skill/tree/HEAD/skills/p', zeile: 1, urteil: 'Aufnehmen', zuordnung: { status: 'keine' } },
+        { id: 'gate-mcp', name: 'Gate MCP', kurzbeschreibung: 'Prüf-MCP aus der Sammlung.', lizenz: 'MIT', kosten: '', link: 'https://example.invalid/gate-mcp', zeile: 2, urteil: 'Aufnehmen', zuordnung: { status: 'keine' } },
+      ]
+      const quellen = {
+        'gate-skill': { quelle: { art: 'git', repo: 'https://github.com/fixture/pruef-skill.git', ref: 'HEAD', sha: SHA_SKILL, pfad: 'skills/p' }, dateien: [{ pfad: 'SKILL.md', sha256: sha(skillMd) }], fakten: {} },
+        'gate-mcp': { quelle: { art: 'npm', paket: '@fixture/pw', version: VERSION, integrity: INTEGRITY }, dateien: [{ pfad: 'cli.js', sha256: LEER_SHA256 }], fakten: { paket: { lebenszyklus: {}, bin: ['pw'], abhaengigkeiten: 0, bin_ziele: { pw: './cli.js' } } } },
+      }
+      const katalog = JSON.parse(readFileSync(join(u6.install, 'ressourcen.json'), 'utf8'))
+      // Die Fixture 'schon-frei' belegt denselben Skill (Frontmatter-name 'p') aus demselben Repo — hier nicht im Katalog.
+      katalog.ressourcen = katalog.ressourcen.filter((r) => r.id !== 'schon-frei')
+      for (const z of zeilen) {
+        const q = quellen[z.id]
+        const r = sammlungsBericht(`s-${z.id}`, z.id, q.quelle, q.dateien, q.fakten)
+        const gespeichert = ladePruefberichte(u6.basisVerzeichnis).find((b) => b.artefakt_id === r.artefakt_id)
+        const eintragSammlung = { ...z, pruefbericht_letzter: berichtKurz(gespeichert) }
+        if (sammlungNichtVormerkbar(eintragSammlung) !== null) befunde.push(`(j) ${z.id} nicht vormerkbar: ${sammlungNichtVormerkbar(eintragSammlung)}`)
+        const text = baueSammlungVormerkenAuftragstext(eintragSammlung, eintragSammlung.pruefbericht_letzter)
+        // Die ausführende Rolle ersetzt nur die Platzhalter (hier: Beispielwerte) — alles andere übernimmt sie aus dem Text.
+        const json = /```json\n([\s\S]*?)\n```/.exec(text)?.[1] ?? '{}'
+        const eintrag = JSON.parse(json.replaceAll('<CAPABILITY>', 'REPO_READ').replaceAll('<WIRKUNG>', 'lokal').replaceAll('<WERKZEUG>', 'browser_navigate'))
+        if (/<[A-Z]+>/.test(JSON.stringify(eintrag))) befunde.push(`(j) ${z.id}: unerwarteter Platzhalter im Skelett — ${JSON.stringify(eintrag)}`)
+        const v = validiereRessourcenDaten({ ressourcen_schema: 'v0', ressourcen: [eintrag] })
+        if (v.length > 0) befunde.push(`(j) ${z.id}: Skelett verletzt validiereRessourcenDaten — ${v.join('; ')}`)
+        const inst = pruefeInstallierbarkeit(eintrag)
+        if (inst !== null) befunde.push(`(j) ${z.id}: nicht installierbar — ${inst}`)
+        // Advisor B3: nach dem Vormerken führt die Sammlung die Zeile als „zugeordnet“ (keine zweite Vormerkung).
+        const zu = ordneZu([z], [...katalog.ressourcen, eintrag]).get(z.id)
+        if (zu?.status !== 'zugeordnet' || zu.katalog_id !== eintrag.id) befunde.push(`(j) ${z.id}: nach dem Vormerken nicht zugeordnet — ${JSON.stringify(zu)}`)
+        katalog.ressourcen.push(eintrag)
+      }
+      writeFileSync(join(u6.install, 'ressourcen.json'), `${JSON.stringify(katalog, null, 2)}\n`)
+      // Der Bericht der Sammlung gilt für den neuen Katalogeintrag (Bindung an die Quelle) — bis „Installieren“ 200.
+      for (const id of ['gate-skill', 'gate-mcp']) {
+        const v = await u6.anfrage('POST', `/api/ressourcen/${id}/installation/vorbereiten`)
+        if (v.status !== 200 || v.inhalt.pruefbericht_sperre !== null || v.inhalt.pruefbericht?.artefakt_id !== `pruefbericht-s-${id}`) {
+          befunde.push(`(j) ${id} vorbereiten: ${v.status} ${v.inhalt.grund ?? ''} / Sperre ${JSON.stringify(v.inhalt.pruefbericht_sperre)} / Bericht ${v.inhalt.pruefbericht?.artefakt_id}`)
+          continue
+        }
+        const i = await u6.anfrage('POST', `/api/ressourcen/${id}/installation`, { version: v.inhalt.version, integrity: v.inhalt.integrity ?? '', eintragHash: v.inhalt.eintragHash })
+        const kat = JSON.parse(readFileSync(join(u6.install, 'ressourcen.json'), 'utf8')).ressourcen.find((r) => r.id === id)
+        if (i.status !== 200 || kat?.freigabe !== 'FREIGEGEBEN') befunde.push(`(j) ${id} installieren: ${i.status} ${i.inhalt.grund ?? ''} / freigabe ${kat?.freigabe}`)
+      }
+    } finally {
+      await u6.ende()
+    }
+    if (befunde.length === vorJ) console.log('✓ (j) Sammlung → Vormerken-Skelett (Skill + MCP) erfüllt validiereRessourcenDaten und pruefeInstallierbarkeit, die Zeile ist danach zugeordnet; der Bericht der Sammlung gilt für den Katalogeintrag → vorbereiten ohne Sperre → Installation 200.')
   }
   // ─── (i) F-1075 Variante C: Prüflauf und Installation über dieselbe npm-Installation, keine Sperre, keine Ausnahme ───
   {

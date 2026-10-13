@@ -1,0 +1,148 @@
+{
+  "url": "http://127.0.0.1:4395/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#sammlung .sm-liste",
+    "hoehe": 1400
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Knopf Details",
+        "selector": "#sammlung [data-sm-detail-knopf]",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Vormerken-Zustand",
+        "selector": "#sammlung [data-sm-vormerken-fokus]"
+      },
+      {
+        "name": "Grund (nicht vormerkbar)",
+        "selector": "#sammlung [data-sm-vormerken-grund]",
+        "attribut": "data-sm-vormerken-grund"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "class"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Detailzeile (colspan)",
+        "selector": "#sammlung tr.sm-detailzeile td[colspan=\"6\"]"
+      },
+      {
+        "name": "Vormerken",
+        "selector": "#sammlung [data-sm-vormerken]"
+      },
+      {
+        "name": "Prüfbericht-Zeile",
+        "selector": "#sammlung .sm-detail [data-pruef-urteil]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/auftraege",
+      "methode": "POST",
+      "status": 201,
+      "json": {
+        "auftragId": "render-vormerken"
+      }
+    },
+    {
+      "muster": "**/api/auftraege/render-vormerken/routen",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "workflowId": "router-render-vormerken"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Unterreiter „Sammlung“",
+      "klick": "#faehigkeiten-reiter-sammlung",
+      "warteAufSelector": {
+        "selector": "#sammlung .sm-gruppe",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Suche „planning“",
+      "tippen": {
+        "selector": "#sammlung-suche",
+        "text": "planning"
+      },
+      "warteAufSelector": {
+        "selector": "#sammlung tr[data-sm-id=\"repos-planning-with-files\"]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-zeile-zu.png"
+    },
+    {
+      "label": "„Details“ → volle Detailzeile mit Bericht und „Vormerken“",
+      "klick": "#sammlung [data-sm-detail-knopf=\"repos-planning-with-files\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung tr.sm-detailzeile [data-sm-vormerken]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "02-detail-vormerken.png"
+    },
+    {
+      "label": "„Vormerken“ (Auftrag + Routen als Attrappe)",
+      "klick": "#sammlung [data-sm-vormerken=\"repos-planning-with-files\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-sm-vormerken-fokus] a[href^=\"#/workflows/\"]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "03-vorgemerkt.png"
+    },
+    {
+      "label": "Suche „gstack“, Details: Bericht über das ganze Repo → Grund",
+      "tippen": {
+        "selector": "#sammlung-suche",
+        "text": "gstack"
+      },
+      "warteAufSelector": {
+        "selector": "#sammlung tr[data-sm-id=\"repos-gstack\"]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Details gstack",
+      "klick": "#sammlung [data-sm-detail-knopf=\"repos-gstack\"]",
+      "warteAufSelector": {
+        "selector": "#sammlung [data-sm-vormerken-grund=\"ganzes_repo\"]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "04-grund-ganzes-repo.png"
+    }
+  ],
+  "farbschema": "dark"
+}

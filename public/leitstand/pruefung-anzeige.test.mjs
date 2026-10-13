@@ -79,3 +79,21 @@ test('letzterBerichtHtml: Chip, Version und Datum; null → leer', () => {
   assert.match(letzterBerichtHtml({ urteil: 'GEEIGNET', gepinnte_version: 'abc', erstellt_am: '2026-10-12T10:00:00Z' }), /geeignet[^]*Version abc · 2026-10-12/)
   assert.equal(letzterBerichtHtml(null), '')
 })
+
+test('F45 F-2b-2c: „Eignung prüfen“ im Sperrblock nur mit Option und nur ohne Bericht; Präfix der DOM-ids; gemerkte Pfad-Eingabe', () => {
+  const mcp = { art: 'mcp', id: 'pw', name: 'PW', paket: 'p', version: '1.0.0', integrity: 'sha512-x', lizenz: null, lizenzRegistry: null, kosten: null, wirkung: 'lokal', werkzeuge: [], zielordner: 'z', herkunftUrl: 'u', eintragHash: 'h' }
+  const ohne = { ...mcp, pruefbericht: null, pruefbericht_sperre: 'ohne Prüfbericht zur angezeigten Version' }
+  const mitKnopf = renderInstallationsBestaetigung(ohne, { eignungPruefen: true })
+  assert.match(mitKnopf, /<button type="button" class="button primary" data-sm-auswaehlen="pw" data-sm-typ-offen="false">Eignung prüfen<\/button>/)
+  assert.doesNotMatch(mitKnopf, /href="#\/capabilities"/)
+  assert.match(renderInstallationsBestaetigung(ohne), /href="#\/capabilities"/, 'ohne Option (Workboard, Workflows) bleibt der Verweis')
+  const mitBericht = renderBerichtFuerFreigabe({ ...mcp, pruefbericht: PAYLOAD, pruefbericht_sperre: 'Prüflauf hat 1 Datei übersprungen (binaer 1) — nicht installierbar (F-1078)' }, { eignungPruefen: true })
+  assert.equal(mitBericht.gesperrt, true)
+  assert.doesNotMatch(mitBericht.html, /data-sm-auswaehlen|href="#\/capabilities"/, 'ein neuer Lauf derselben Version änderte nichts')
+  assert.match(mitBericht.html, /Prüflauf hat 1 Datei übersprungen/)
+  const v = { quelle: { art: 'git', repo: 'https://github.com/o/r.git', ref: 'HEAD', sha: 'a'.repeat(40), pfad: 'skills/x' }, typ: 'skill' }
+  const lib = renderPruefAblauf(EINTRAG, { phase: 'bestaetigen', vorbereitung: v, pfadEingabe: 'skills/y' }, {}, 'lib')
+  assert.match(lib, /<label for="lib-pfad-mcp-x">/)
+  assert.match(lib, /id="lib-pfad-mcp-x" data-sm-pfad="mcp-x" value="skills\/y"/)
+  assert.doesNotMatch(lib, /id="sm-/)
+})

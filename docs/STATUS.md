@@ -610,13 +610,13 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   (`83a576c`), F-2b-1 „Sammlung im Leitstand“ #325 (`1985e9b`); F-2b-2 geteilt
   (Delta-Advisor 12.10.2026): F-2b-2a „Auswählen → Eignungsprüfung →
   Freigabe nur mit Bericht“ gemergt #326 (`2af1b54`); F-2b-2b „npm-
-  Strukturfix Variante C“ gebaut, nicht committet (Branch
-  `f45/f2b2b-npm-strukturfix`; F-1075 erledigt, npm-Installation nach
-  Prüfung wieder möglich); F-2b-2b geteilt (Advisor 13.10.2026), danach
-  F-2b-2c (Vormerken, „Eignung prüfen“ im Katalog, Detail als volle Zeile,
-  F-1061 (1)). Reihenfolge ab F: F-2b-2b → F-2b-2c → B2a → F-3 → B2b →
+  Strukturfix Variante C“ gemergt #327 (`ec4ad21`; F-1075 erledigt);
+  F-2b-2c „Sammlung → Katalog“ gebaut, nicht committet (Branch
+  `f45/f2b2c-sammlung-katalog`: Vormerken mit installation_vorlage,
+  „Eignung prüfen“ im Freigabedialog, Detail als volle Zeile, Stand der
+  lokalen Datei über Neustarts, F-1078 (b)). Reihenfolge ab F: F-2b-2c → B2a → F-3 → B2b →
   B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1078. Nach F46, vor F30
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1081. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

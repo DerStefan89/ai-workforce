@@ -23,39 +23,76 @@
  * - Geschrieben wird nur ~/.ai-workforce/faehigkeiten.lokal.json (E-F45-8), nie ressourcen.json, projekte.json oder
  *   .claude/settings.json (E-F46-2). Über eine ungültige Datei wird nie geschrieben (409, E-F45-7).
  * - Die Laufsperre (409 während eines Laufs, E-F45-8) und CSRF/Host (zentral) prüft der Server vor diesen Bausteinen.
- * - Der Wächter lebt nur im Speicher (keine weitere Datei, ARCHITECTURE.md §2) und rechnet nur auf GET/POST bzw. aus dem
- *   ohnehin gelesenen Hash im Poll — nie mit eigenem Lesen im 2-s-Takt.
+ * - Der Wächter rechnet im Speicher; seit F45 F-2b-2c speichert er den bekannten Stand in faehigkeiten.stand.json neben der
+ *   lokalen Datei (ARCHITECTURE.md §2, Ausnahme) und liest ihn nur beim Erzeugen — nie mit eigenem Lesen im 2-s-Takt.
  */
 
 import { mkdirSync, statSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { aendereAktivierung, hashLokaleDatei, ladeFaehigkeitenLokal, projektEinstellungen, SHA256_MUSTER, schreibeFaehigkeitenLokal, setzeInhaltsfreigabe, zerlegeSchluessel } from '../../src/faehigkeiten/index.ts'
+import { ladeLokalStand, schreibeLokalStand } from '../../src/faehigkeiten/stand.ts'
 import { ID_MUSTER } from '../../src/projekte/index.ts'
 
 /**
  * F45 F-2a (F-1055 (1)): Wächter der lokalen Datei — merkt den zuletzt bekannten Stand (Hash) und meldet eine Änderung,
  * die nicht über die POST-Routen kam (z. B. ein nach Laufende weiterlebender Prozess oder eine Handänderung).
- * Bekannt wird ein Stand nur beim Erzeugen (Serverstart) und nach einem Schreiben über die Routen (Hash der geschriebenen
+ * Bekannt wird ein Stand beim Erzeugen (Serverstart) und nach einem Schreiben über die Routen (Hash der geschriebenen
  * Bytes, Advisor A3). Ein Laufende übernimmt nichts (Advisor A2): eine Änderung im Lauf färbt den Lauf rot, eine danach
  * bliebe sonst unsichtbar. Seit der Entscheidung zu F-1061 (3) (Stefan, 12.10.2026, Empfehlung Challenger) gilt ein fremd
  * geänderter Stand erst nach ausdrücklicher Bestätigung (bestaetige, POST …/faehigkeiten/bestaetigung); bis dahin sperren
- * die Schreib-Routen und jeder Start mit Katalog-Fähigkeiten. Grenzen: nach einem Neustart gilt der Stand beim Start als
- * bekannt; eine Anfrage an die POST-Routen ohne Browser-Header gilt als Route-Schreiben, solange nichts fremd geändert ist
- * (F-1061).
+ * die Schreib-Routen und jeder Start mit Katalog-Fähigkeiten.
+ * Seit F45 F-2b-2c (F-1061 (1)) überdauert der bekannte Stand Neustarts, wenn ein standPfad gegeben ist (nur der
+ * CLI-Bindeblock, src/faehigkeiten/stand.ts): Startregel (Advisor A1/A2, fail-closed) —
+ * - gespeicherter Stand gültig und für denselben Pfad: gleich → bekannt; abweichend → bekannt bleibt der gespeicherte Hash
+ *   mit quelle 'neustart' (Band + Sperre bis zur Bestätigung);
+ * - kein, ein ungültiger oder ein Stand für einen anderen Pfad: nur wenn die lokale Datei fehlt, gilt 'fehlt' als bekannt
+ *   (und wird gespeichert); sonst ist der Stand 'unbekannt' (quelle 'unbekannt') → gesperrt bis zur Bestätigung (einmalig
+ *   beim ersten Start mit F-2b-2c).
+ * nachRoute/bestaetige speichern den neuen Stand; ein Schreibfehler wird geloggt (nach dem nächsten Neustart zeigt der alte
+ * Stand ein Band — fail-closed). Grenze (F-1061 (2)): eine Anfrage an die POST-Routen ohne Browser-Header gilt als
+ * Route-Schreiben, solange nichts fremd geändert ist.
  * @param pfad - Pfad der lokalen Datei
  * @param jetzt - Zeitquelle (Tests), liefert ISO-Zeit
+ * @param standPfad - Ablage des bekannten Stands (standPfadFuer) oder null (nur im Speicher: Gates, Tests)
  * @returns { nachRoute(hash), bestaetige(hash), pruefe(aktuellerHash), bekannt() }
  */
-export function erzeugeLokalWaechter(pfad, jetzt = () => new Date().toISOString()) {
-  let bekannt = { hash: hashLokaleDatei(pfad), zeitpunkt: jetzt(), quelle: 'serverstart' }
+export function erzeugeLokalWaechter(pfad, jetzt = () => new Date().toISOString(), standPfad = null) {
+  const absolut = resolve(pfad)
+  /** Speichert einen bekannten Stand (wirft nie). @param stand - { hash, zeitpunkt, quelle } */
+  const speichere = (stand) => {
+    if (standPfad === null || !/^([0-9a-f]{64}|fehlt)$/.test(stand.hash)) return
+    try {
+      mkdirSync(dirname(standPfad), { recursive: true })
+      schreibeLokalStand(standPfad, { faehigkeiten_stand_schema: 'v0', pfad: absolut, ...stand })
+    } catch (fehler) {
+      console.error(`[faehigkeiten] Stand '${standPfad}' nicht schreibbar (nach dem nächsten Neustart erscheint ein Band):`, fehler)
+    }
+  }
+  const aktuell = hashLokaleDatei(pfad)
+  let bekannt = { hash: aktuell, zeitpunkt: jetzt(), quelle: 'serverstart' }
+  if (standPfad !== null) {
+    const geladen = ladeLokalStand(standPfad)
+    if (geladen.zustand === 'gueltig' && geladen.stand.pfad === absolut) {
+      const { hash, zeitpunkt, quelle } = geladen.stand
+      bekannt = hash === aktuell ? { hash, zeitpunkt, quelle } : { hash, zeitpunkt, quelle: 'neustart' }
+    } else if (aktuell === 'fehlt') {
+      speichere(bekannt)
+    } else {
+      const grund = geladen.zustand === 'ungueltig' ? geladen.grund : geladen.zustand === 'gueltig' ? `Stand gehört zu '${geladen.stand.pfad}'` : 'kein gespeicherter Stand'
+      console.error(`[faehigkeiten] Stand von '${pfad}' unbekannt (${grund}) — gesperrt bis zur Bestätigung auf der Seite Workforce.`)
+      bekannt = { hash: 'unbekannt', zeitpunkt: null, quelle: 'unbekannt' }
+    }
+  }
   return {
     /** Nach einem erfolgreichen Schreiben über die Routen. @param hash - sha256 der geschriebenen Bytes */
     nachRoute(hash) {
       bekannt = { hash, zeitpunkt: jetzt(), quelle: 'route' }
+      speichere(bekannt)
     },
     /** F-1061 (3): Stefan hat den angezeigten, fremd geänderten Stand geprüft und übernommen. @param hash - bestätigter Hash */
     bestaetige(hash) {
       bekannt = { hash, zeitpunkt: jetzt(), quelle: 'bestaetigt' }
+      speichere(bekannt)
     },
     /**
      * Vergleicht den aktuellen Stand mit dem bekannten.

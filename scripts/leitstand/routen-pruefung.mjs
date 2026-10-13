@@ -34,7 +34,7 @@ import { STANDARD_ZEITGRENZEN } from '../../src/ressourcen/installation.ts'
 import { zerlegeGithubUrl } from '../../src/ressourcen/skill-dateien.ts'
 import { loeseSkillCommitAuf } from '../../src/ressourcen/skill-installation.ts'
 import { AUSGESCHLOSSENE_URTEILE, baueSammlungAnsicht } from '../../src/sammlung/index.ts'
-import { ladePruefberichte, neuesterZuerst, normalisiereRepo, registrierePruefbericht, validiereErgebnisEignungspruefung, vergleicheInhalt, versionVon, waehleBericht } from '../../src/sammlung/pruefbericht.ts'
+import { ladePruefberichte, neuesterZuerst, normalisiereRepo, registrierePruefbericht, unterpfadImBericht, validiereErgebnisEignungspruefung, vergleicheInhalt, versionVon, waehleBericht } from '../../src/sammlung/pruefbericht.ts'
 import { pruefePfad } from '../../src/sammlung/inhalt.ts'
 import { holeGitInhalt, holeNpmInhalt, pinneNpm } from '../../src/sammlung/quelle.ts'
 import { leseSammlungDateien } from './routen-sammlung.mjs'
@@ -360,12 +360,39 @@ export function erzeugeBericht({ geparst, subjekt, quelle, fakten, dateien, herk
 }
 
 /**
- * Kurzform eines Berichts für Listen (Sammlung, letzter Bericht).
+ * F45 F-2b-2c (Advisor B4): der eine bin-Pfad eines geprüften npm-Pakets, der fest in einen Vormerken-Auftrag darf — aus
+ * fakten.paket.bin_ziele (fremde Eingabe), nur in der Form von installation_vorlage.bin (relativ, „/“, ohne „..“, ohne
+ * Backslash/Laufwerk; „./“ vorn entfernt) und nur, wenn er in der geprüften Dateiliste steht. Mehrere verschiedene oder kein
+ * gültiger Pfad → null (die ausführende Rolle bekommt dann einen Platzhalter mit Regel).
+ * @param daten - Payload des Berichts
+ * @returns Pfad oder null
+ */
+export function gepruefterBinPfad(daten) {
+  const ziele = daten.fakten?.paket?.bin_ziele
+  if (typeof ziele !== 'object' || ziele === null) return null
+  const dateien = new Set(daten.inhalt.dateien.map((d) => d.pfad))
+  const gueltig = new Set()
+  for (const roh of Object.values(ziele)) {
+    if (typeof roh !== 'string') continue
+    const bin = roh.replace(/^(\.\/)+/, '')
+    if (bin === '' || bin.length > 200 || bin.includes('\\') || bin.startsWith('/') || /^[A-Za-z]:/.test(bin) || bin.split('/').some((t) => t === '..' || t === '' || t === '.')) continue
+    if (dateien.has(bin)) gueltig.add(bin)
+  }
+  return gueltig.size === 1 ? [...gueltig][0] : null
+}
+
+/**
+ * Kurzform eines Berichts für Listen (Sammlung, letzter Bericht). Seit F45 F-2b-2c zusätzlich für „Vormerken“ aus der Sammlung:
+ * typ, bin (gepruefterBinPfad), skill_md (SKILL.md direkt im geprüften Ordner — die Skill-Installation verlangt sie) und
+ * uebersprungen (Zahl der im Prüflauf übersprungenen Dateien, null ohne lesbare Angabe; F-1078 (b)).
  * @param b - GespeicherterBericht
  * @returns Kurzform
  */
 export function berichtKurz(b) {
-  return { artefakt_id: b.artefakt_id, version: b.version, urteil: b.daten.ergebnis.urteil, gepinnte_version: versionVon(b.daten.quelle), quelle: b.daten.quelle, erstellt_am: b.daten.erstellt_am, lauf_id: b.daten.lauf_id }
+  const je = b.daten.fakten?.uebersprungen?.je_grund
+  const uebersprungen = typeof je === 'object' && je !== null ? Object.values(je).reduce((a, n) => a + (Number.isInteger(n) ? n : 0), 0) : null
+  const skillMd = Array.isArray(b.daten.fakten?.skill_dateien) && b.daten.fakten.skill_dateien.includes('SKILL.md')
+  return { artefakt_id: b.artefakt_id, version: b.version, urteil: b.daten.ergebnis.urteil, gepinnte_version: versionVon(b.daten.quelle), quelle: b.daten.quelle, erstellt_am: b.daten.erstellt_am, lauf_id: b.daten.lauf_id, typ: b.daten.typ, bin: b.daten.quelle.art === 'npm' ? gepruefterBinPfad(b.daten) : null, skill_md: skillMd, uebersprungen }
 }
 
 /**
@@ -463,8 +490,7 @@ export function baueInhaltPruefer(basisVerzeichnis, schreiber) {
   return (_eintrag, angezeigt, ordner) => {
     const wahl = waehleBericht(ladePruefberichte(basisVerzeichnis, schreiber), angezeigt)
     if (wahl.bericht === null || wahl.sperre !== null) return wahl.sperre ?? 'ohne geltenden Prüfbericht'
-    const q = wahl.bericht.daten.quelle
-    const unterpfad = angezeigt.art === 'git' && q.art === 'git' && q.pfad !== angezeigt.quellPfad ? (q.pfad === '' ? angezeigt.quellPfad : angezeigt.quellPfad.slice(q.pfad.length + 1)) : ''
+    const unterpfad = unterpfadImBericht(wahl.bericht.daten.quelle, angezeigt)
     // F-1075 Variante C: keine Ausnahme mehr (früher npm: node_modules) — jeder Eintrag im installierten Ordner zählt.
     return vergleicheInhalt(wahl.bericht, ordner, { unterpfad })
   }
