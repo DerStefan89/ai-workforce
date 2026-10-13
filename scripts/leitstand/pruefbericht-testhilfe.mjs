@@ -31,9 +31,10 @@ const LEERE_FAKTEN = Object.freeze({ dateien: 0, bytes: 0, uebersprungen: { je_g
  * @param urteil - Urteil (Standard GEEIGNET)
  * @param erstelltAm - Zeitstempel (Standard jetzt)
  * @param dateien - geprüfte Dateiliste [{ pfad, sha256 }] (F-1075: muss dem entsprechen, was die Gate-Installation schreibt)
+ * @param fakten - Fakten des Prüflaufs (Standard leer; F45 F-2b-2c: mit übersprungenen Dateien für F-1078 (b))
  * @returns { artefakt_id, version }
  */
-export function legePassendenBerichtAn(daten, profilReferenz, basisVerzeichnis, urteil = 'GEEIGNET', erstelltAm = new Date().toISOString(), dateien = [{ pfad: 'cli.js', sha256: LEER_SHA256 }]) {
+export function legePassendenBerichtAn(daten, profilReferenz, basisVerzeichnis, urteil = 'GEEIGNET', erstelltAm = new Date().toISOString(), dateien = [{ pfad: 'cli.js', sha256: LEER_SHA256 }], fakten = LEERE_FAKTEN) {
   const a = angezeigteQuelleAus(daten)
   const quelle = a.art === 'git' ? { art: 'git', repo: a.repo, ref: daten.ref, sha: a.sha, pfad: a.quellPfad } : a
   const typ = a.art === 'git' ? 'skill' : 'mcp'
@@ -47,7 +48,7 @@ export function legePassendenBerichtAn(daten, profilReferenz, basisVerzeichnis, 
       sammlung_id: null,
       urteil_sammlung: null,
       ausnahme_begruendung: null,
-      fakten: LEERE_FAKTEN,
+      fakten,
       inhalt: { dateien },
       herkunft: { commit_zeit: null, geaendert: null, pfleger: [], lizenz_registry: null },
       lauf_id: `gate-${daten.id}`,

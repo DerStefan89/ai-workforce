@@ -48,7 +48,15 @@ Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, i
   Katalog-Fähigkeiten (E-F45-7). Eine Änderung, die nicht über diese Routen kam, gilt erst nach ausdrücklicher Bestätigung
   im Leitstand (POST `/api/projekte/<id>/faehigkeiten/bestaetigung`, „Datei geprüft – Stand übernehmen“, Laufsperre wie die
   anderen Routen); bis dahin sperren die Schreib-Routen und jeder Start mit Katalog-Fähigkeiten (F-1061, Entscheidung
-  Stefan 12.10.2026). Der bekannte Stand lebt nur im Speicher des Leitstands (Wächter, keine weitere Datei).
+  Stefan 12.10.2026).
+- Weitere Ausnahme (F45 F-2b-2c, F-1061 (1)): `~/.ai-workforce/faehigkeiten.stand.json` (immer im Ordner der lokalen
+  Datei) — der zuletzt bekannte Stand (Pfad, Hash, Zeitpunkt, Quelle) der lokalen Fähigkeiten-Datei, damit eine
+  Änderung bei gestopptem Leitstand sichtbar bleibt. Geschrieben atomar (tmp + rename, LF) nur vom Wächter des Leitstands nach
+  einem Schreiben über die Fähigkeiten-Routen und nach einer Bestätigung; gelesen nur beim Serverstart. Kein Kontrollzustand und
+  kein Kern-Artefakt: Laufzeitstand eines Rechners, für alle Checkouts derselbe, nicht im getrackten `kontrollzustand/`
+  (Advisor-Pass F-2b-2c A4). Startregel fail-closed: weicht der Hash ab, fehlt der Stand, ist er beschädigt oder gehört er zu
+  einem anderen Pfad, gilt die Datei als außerhalb geändert (gesperrt bis zur Bestätigung) — nur wenn die lokale Datei fehlt,
+  ist nichts zu bestätigen. Schutz gegen einen Prozess mit Nutzerrechten ist sie nicht (er kann beide Dateien ändern).
 - `profiles/` ist die alleinige editierbare Quelle für Profilinhalte. Der Kontrollzustand hält davon nur eine gepinnte Referenz aus Pfad, Hash und Version, nie eine Kopie.
 - Artefakte werden versioniert, nicht überschrieben. Version ist der Inhalts-Hash; die einzige Stelle, die den aktuellen Stand benennt, ist der letzte Checkpoint.
 - Produktdateien im freigegebenen Baupfad ändert ausschließlich das Ausführungswerkzeug. Der Kern liest sie read-only.

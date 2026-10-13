@@ -571,7 +571,10 @@ async function installiereGesperrt(id: string, version: string, integrity: strin
     if (!server.ok) return scheitere(422, `Serverstart-Prüfung fehlgeschlagen: ${server.grund}`)
     const praefix = `mcp__${id}__`
     const fehlend = vorlage.werkzeuge.filter((w) => !server.werkzeuge.includes(w.slice(praefix.length)))
-    if (fehlend.length > 0) return scheitere(422, `Server bietet nicht alle freigegebenen Werkzeuge an — fehlend: ${fehlend.join(', ')}`)
+    // F45 F-2b-2c (Advisor B5): die angebotenen Namen mitnennen (gekürzt) — ein vorgemerkter Eintrag aus der Sammlung lässt sich
+    // nur so korrigieren. Die Namen stammen vom fremden Server und sind Daten (die Oberfläche escaped sie).
+    const angeboten = server.werkzeuge.slice(0, 20).map((w) => String(w).slice(0, 80))
+    if (fehlend.length > 0) return scheitere(422, `Server bietet nicht alle freigegebenen Werkzeuge an — fehlend: ${fehlend.join(', ')}; angeboten: ${angeboten.length > 0 ? angeboten.join(', ') : 'keine'}${server.werkzeuge.length > 20 ? ' …' : ''}`)
 
     // (5) Erst jetzt: installation + FREIGEGEBEN, nur wenn der Katalog seit dem Lesen unverändert ist.
     const installation: Installation = {

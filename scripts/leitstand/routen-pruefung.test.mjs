@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
-import { baueAuftragstext, bestimmeSubjekt, ergaenzeSammlung, gleicherPin, pruefeAusnahme, pruefeKoerper, PRUEF_TEMP_PRAEFIX, raeumeVerwaistePruefordner, VERWAIST_AB_MS } from './routen-pruefung.mjs'
+import { baueAuftragstext, berichtKurz, bestimmeSubjekt, ergaenzeSammlung, gepruefterBinPfad, gleicherPin, pruefeAusnahme, pruefeKoerper, PRUEF_TEMP_PRAEFIX, raeumeVerwaistePruefordner, VERWAIST_AB_MS } from './routen-pruefung.mjs'
 
 const INSTALL = join(import.meta.dirname, '..', '..')
 const KATALOG = [
@@ -146,4 +146,27 @@ test('raeumeVerwaistePruefordner: entfernt nur Ordner mit dem Präfix', () => {
   } finally {
     raeumeVerzeichnis(basis)
   }
+})
+
+test('berichtKurz / gepruefterBinPfad (F45 F-2b-2c, Advisor B4): bin nur geprüft und eindeutig, SKILL.md, übersprungen', () => {
+  const npm = (binZiele, dateien, je = {}) => ({
+    artefakt_id: 'pruefbericht-s-x',
+    version: 2,
+    daten: { typ: 'mcp', erstellt_am: 'z', lauf_id: 'l', ergebnis: { urteil: 'GEEIGNET' }, quelle: { art: 'npm', paket: 'p', version: '1.0.0', integrity: 'x' }, fakten: { paket: { bin_ziele: binZiele }, uebersprungen: { je_grund: je, liste: [] }, skill_dateien: [] }, inhalt: { dateien: dateien.map((pfad) => ({ pfad, sha256: 'a'.repeat(64) })) } },
+  })
+  assert.equal(gepruefterBinPfad(npm({ x: './dist/index.js' }, ['dist/index.js']).daten), 'dist/index.js', './ entfernt, in der Dateiliste')
+  assert.equal(gepruefterBinPfad(npm({ a: 'dist/a.js', b: './dist/a.js' }, ['dist/a.js']).daten), 'dist/a.js', 'gleicher Pfad zweimal = eindeutig')
+  assert.equal(gepruefterBinPfad(npm({ a: 'a.js', b: 'b.js' }, ['a.js', 'b.js']).daten), null, 'mehrdeutig')
+  assert.equal(gepruefterBinPfad(npm({ x: 'fehlt.js' }, ['a.js']).daten), null, 'nicht geprüft')
+  for (const boese of ['../x.js', '/abs.js', 'C:/x.js', 'a\\b.js', 'a//b.js', 'a/./b.js']) assert.equal(gepruefterBinPfad(npm({ x: boese }, [boese]).daten), null, boese)
+  assert.equal(gepruefterBinPfad({ ...npm({}, []).daten, fakten: { paket: null } }), null)
+  const k = berichtKurz(npm({ x: 'cli.js' }, ['cli.js'], { binaer: 2, zu_gross: 1 }))
+  assert.equal(k.typ, 'mcp')
+  assert.equal(k.bin, 'cli.js')
+  assert.equal(k.uebersprungen, 3)
+  assert.equal(k.skill_md, false)
+  const skill = berichtKurz({ artefakt_id: 'a', version: 1, daten: { typ: 'skill', erstellt_am: 'z', lauf_id: 'l', ergebnis: { urteil: 'GEEIGNET' }, quelle: { art: 'git', repo: 'https://github.com/o/r.git', ref: 'main', sha: 'a'.repeat(40), pfad: 'skills/x' }, fakten: { skill_dateien: ['SKILL.md', 'sub/SKILL.md'] }, inhalt: { dateien: [] } } })
+  assert.equal(skill.skill_md, true)
+  assert.equal(skill.bin, null)
+  assert.equal(skill.uebersprungen, null, 'ohne lesbare Angabe')
 })

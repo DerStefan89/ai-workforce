@@ -14,6 +14,9 @@
  * (loeseAusfuehrungsEingabenAuf, konflikt, Advisor A4); neue Gründe (F-1054 (2)); B8 (F-1054 (7)) — gegen eine
  * Wegwerf-Installationswurzel, unabhängig von dem, was auf dem Rechner installiert ist.
  *
+ * F45 F-2b-2c (F-1061 (1)): bekannter Stand über Neustarts (faehigkeiten.stand.json neben der lokalen Datei) — Neustart nach
+ * Fremdänderung → Band + Sperre, ohne Änderung frei, leerer/kaputter/fremder Stand bei vorhandener Datei gesperrt.
+ *
  * Wird aufgerufen von: npm run test (node --test)
  *
  * Wichtig: Nie ~/.ai-workforce — jede Instanz bekommt einen Pfad in os.tmpdir().
@@ -34,6 +37,7 @@ import { registriereWorkflow } from '../../src/workflow/index.ts'
 import { empfehlungIdsFuerFreigabe as empfehlungIdsAus } from '../../public/leitstand/empfehlung-anzeige.js'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { bereiteEmpfehlungFuerStartVor, ermittleAusfuehrungsEmpfehlung, erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, loeseSchrittEingabenAuf } from '../leitstand-server.mjs'
+import { standPfadFuer } from '../../src/faehigkeiten/stand.ts'
 import { baueFaehigkeitenStatus, erzeugeLokalWaechter, fremdGeaendert } from './routen-faehigkeiten.mjs'
 
 const INSTALLATION = join(import.meta.dirname, '..', '..')
@@ -530,5 +534,96 @@ describe('Bindung über HTTP: Freigabe-Vorprüfung, Workflow-Start, POST /api/la
     assert.equal(ergebnis.ok, false)
     assert.equal(ergebnis.konflikt, true)
     assert.match(ergebnis.grund, /Fähigkeiten-Start abgelehnt/)
+  })
+})
+
+describe('Stand der lokalen Datei über Neustarts (F45 F-2b-2c, F-1061 (1))', () => {
+  const GUELTIG = JSON.stringify({ faehigkeiten_stand_schema: 'v0', projekte: {} })
+  /** Uhr für die Tests. @returns ISO-Zeit-Quelle */
+  const uhr = () => {
+    let n = 0
+    return () => `2026-10-13T10:00:${String(n++).padStart(2, '0')}.000Z`
+  }
+
+  it('Neustart nach Fremdänderung → Band (quelle neustart) + Sperre; Bestätigung hält über den nächsten Neustart', async () => {
+    const u = baueUmgebung()
+    const standPfad = standPfadFuer(u.lokalPfad)
+    const erster = erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad)
+    assert.equal(erster.bekannt().hash, 'fehlt', 'Datei und Stand fehlen → fehlt gilt als bekannt')
+    assert.equal(JSON.parse(readFileSync(standPfad, 'utf8')).hash, 'fehlt', 'erster Start schreibt den Stand')
+    const s1 = await starte(u, { faehigkeitenLokalWaechter: erster })
+    try {
+      assert.equal((await s1.senden('/api/faehigkeiten/aktivierung', { eintrag: 'agent:qa', aktiv: true, stand: 'fehlt' })).status, 200)
+    } finally {
+      await s1.schliessen()
+    }
+    const nachRoute = JSON.parse(readFileSync(standPfad, 'utf8'))
+    assert.equal(nachRoute.quelle, 'route')
+    assert.equal(nachRoute.hash, hashLokaleDatei(u.lokalPfad))
+    assert.equal(nachRoute.pfad, join(u.lokalPfad))
+    assert.ok(!readFileSync(standPfad, 'utf8').includes(String.fromCharCode(13)), 'nur LF')
+    // Leitstand gestoppt: jemand ändert die Datei. Neustart.
+    writeFileSync(u.lokalPfad, JSON.stringify({ faehigkeiten_lokal_schema: 'v0', projekte: { 'hb-test': { an: ['agent:qa', 'skill:ponytail'] } } }))
+    const zweiter = erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad)
+    const s2 = await starte(u, { faehigkeitenLokalWaechter: zweiter })
+    try {
+      const datei = (await s2.holen('/api/faehigkeiten')).koerper.lokale_datei
+      assert.equal(datei.fremd_geaendert.quelle, 'neustart')
+      assert.equal(datei.fremd_geaendert.bekannt_seit, nachRoute.zeitpunkt)
+      const gesperrt = await s2.senden('/api/faehigkeiten/aktivierung', { eintrag: 'skill:ponytail', aktiv: false, stand: datei.hash })
+      assert.equal(gesperrt.status, 409, 'Schalter gesperrt bis zur Bestätigung')
+      assert.match(gesperrt.koerper.grund, /außerhalb des Leitstands geändert/)
+      assert.equal((await s2.senden('/api/faehigkeiten/bestaetigung', { stand: datei.hash })).status, 200)
+      assert.equal((await s2.holen('/api/faehigkeiten')).koerper.lokale_datei.fremd_geaendert, null)
+    } finally {
+      await s2.schliessen()
+    }
+    assert.equal(JSON.parse(readFileSync(standPfad, 'utf8')).quelle, 'bestaetigt')
+    const dritter = erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad)
+    assert.equal(fremdGeaendert(dritter, u.lokalPfad), null, 'bestätigter Stand gilt nach dem nächsten Neustart')
+  })
+
+  it('Neustart ohne Änderung → frei (gespeicherter Zeitpunkt und quelle bleiben)', () => {
+    const u = baueUmgebung()
+    const standPfad = standPfadFuer(u.lokalPfad)
+    erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad)
+    writeFileSync(u.lokalPfad, GUELTIG)
+    const w = erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad)
+    // Datei kam ohne Route dazu → der zweite Start sperrt; nach der Bestätigung ist jeder weitere Neustart frei.
+    assert.equal(fremdGeaendert(w, u.lokalPfad).quelle, 'neustart')
+    w.bestaetige(hashLokaleDatei(u.lokalPfad))
+    const danach = erzeugeLokalWaechter(u.lokalPfad, () => '2026-10-13T11:00:00.000Z', standPfad)
+    assert.equal(fremdGeaendert(danach, u.lokalPfad), null)
+    assert.equal(danach.bekannt().quelle, 'bestaetigt')
+    assert.notEqual(danach.bekannt().zeitpunkt, '2026-10-13T11:00:00.000Z', 'Zeitpunkt aus der Ablage, nicht der Startzeit')
+  })
+
+  it('Stand fehlt, ist kaputt oder gehört zu einem anderen Pfad, Datei vorhanden → unbekannt, gesperrt (Advisor A1/A2)', () => {
+    const u = baueUmgebung()
+    mkdirSync(join(u.lokalPfad, '..'), { recursive: true })
+    writeFileSync(u.lokalPfad, GUELTIG)
+    const standPfad = standPfadFuer(u.lokalPfad)
+    const leer = erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad)
+    assert.equal(fremdGeaendert(leer, u.lokalPfad).quelle, 'unbekannt', 'leerer Stand übernimmt nichts still')
+    assert.equal(fremdGeaendert(leer, u.lokalPfad).bekannt_seit, null, 'unbekannt hat keinen bekannten Zeitpunkt (Code-Review 5)')
+    assert.equal(existsSync(standPfad), false, 'unbekannter Stand wird nicht geschrieben')
+    writeFileSync(standPfad, '{kaputt')
+    assert.equal(fremdGeaendert(erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad), u.lokalPfad).quelle, 'unbekannt')
+    writeFileSync(standPfad, JSON.stringify({ faehigkeiten_stand_schema: 'v0', pfad: join(u.basis, 'anders.json'), hash: hashLokaleDatei(u.lokalPfad), zeitpunkt: '2026-10-13T09:00:00.000Z', quelle: 'route' }))
+    assert.equal(fremdGeaendert(erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad), u.lokalPfad).quelle, 'unbekannt', 'Stand einer anderen Datei gilt nicht')
+    // Bestätigen löst die Sperre und schreibt den Stand für diesen Pfad.
+    const w = erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad)
+    w.bestaetige(hashLokaleDatei(u.lokalPfad))
+    assert.equal(fremdGeaendert(erzeugeLokalWaechter(u.lokalPfad, uhr(), standPfad), u.lokalPfad), null)
+  })
+
+  it('ohne Stand-Pfad (Gates, Tests) bleibt alles im Speicher wie bisher', () => {
+    const u = baueUmgebung()
+    mkdirSync(join(u.lokalPfad, '..'), { recursive: true })
+    writeFileSync(u.lokalPfad, GUELTIG)
+    const w = erzeugeLokalWaechter(u.lokalPfad, uhr())
+    assert.equal(fremdGeaendert(w, u.lokalPfad), null)
+    w.nachRoute(hashLokaleDatei(u.lokalPfad))
+    assert.equal(existsSync(standPfadFuer(u.lokalPfad)), false)
   })
 })

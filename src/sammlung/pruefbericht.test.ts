@@ -3,7 +3,8 @@
  *
  * Zweck: Tests des Prüfberichts (F45 F-2b-2): Validator gegen Schema-Beispiele (grün/rot) und gegen den Pin (typ/Version),
  * Payload, waehleBericht (ohne/veraltet/NICHT_GEEIGNET → Sperre, passend → frei, neuester gilt, Skill-Pfad an Segmentgrenze,
- * npm Version + Integrity) und die Ablage im Kontrollzustand.
+ * npm Version + Integrity) und die Ablage im Kontrollzustand. F45 F-2b-2c (F-1078 (b)): übersprungene Dateien sperren, der
+ * Inhalts-Abgleich nennt sie.
  *
  * Wird aufgerufen von: npm run test (node --test).
  */
@@ -133,4 +134,64 @@ test('Validator: typ und gepinnte_version müssen dem Pin entsprechen', () => {
   assert.deepEqual(validiereErgebnisEignungspruefung(gueltig, { typ: 'skill', version: gueltig.gepinnte_version }), [])
   assert.match(validiereErgebnisEignungspruefung(gueltig, { typ: 'agent', version: gueltig.gepinnte_version }).join(), /vorgegeben war 'agent'/)
   assert.match(validiereErgebnisEignungspruefung(gueltig, { typ: 'skill', version: 'a'.repeat(40) }).join(), /gepinnte_version/)
+})
+
+/**
+ * Bericht mit übersprungenen Dateien (F-1078 (b)).
+ * @param quelle - Quelle
+ * @param liste - übersprungene Einträge
+ * @param jeGrund - Zählung (Standard: aus der Liste)
+ * @returns Bericht
+ */
+function mitUebersprungen(quelle: PruefQuelle, liste: Array<{ pfad: string; grund: string }>, jeGrund?: Record<string, number>): GespeicherterBericht {
+  const b = bericht({ quelle })
+  const zaehlung = jeGrund ?? liste.reduce<Record<string, number>>((z, e) => ({ ...z, [e.grund]: (z[e.grund] ?? 0) + 1 }), {})
+  return { ...b, daten: { ...b.daten, fakten: { ...b.daten.fakten, uebersprungen: { je_grund: zaehlung, liste: liste as PruefberichtDaten['fakten']['uebersprungen']['liste'] } } } }
+}
+
+test('waehleBericht (F-1078 (b)): übersprungene Dateien sperren — npm, Skill, höherer Pfad, gekürzte Liste, fehlende Angabe', () => {
+  const angezeigtNpm = { art: 'npm' as const, paket: '@upstash/context7-mcp', version: '4.3.0', integrity: sri('x') }
+  const npmB = mitUebersprungen(npmQ('4.3.0'), [{ pfad: 'logo.png', grund: 'binaer' }, { pfad: 'dist/big.js', grund: 'zu_gross' }])
+  const w = waehleBericht([npmB], angezeigtNpm)
+  assert.equal(w.bericht, npmB, 'der Bericht bleibt sichtbar')
+  assert.equal(w.sperre, 'Prüflauf hat 2 Dateien übersprungen (binaer 1, zu_gross 1) — nicht installierbar (F-1078)')
+  // Skill mit gleichem Pfad: jeder Grund zählt (Symlink bricht die Skill-Installation ohnehin ab).
+  const angezeigtGit = { art: 'git' as const, repo: 'https://github.com/owner/repo', sha: SHA_A, quellPfad: 'skills/x' }
+  assert.match(String(waehleBericht([mitUebersprungen(git(SHA_A, 'skills/x'), [{ pfad: 'link.md', grund: 'symlink' }])], angezeigtGit).sperre), /1 Datei übersprungen \(symlink 1\)/)
+  // Höherer Pfad, Liste vollständig: nur Einträge im installierten Pfad zählen (gleich oder darunter).
+  const hoeher = (liste: Array<{ pfad: string; grund: string }>, jeGrund?: Record<string, number>) => mitUebersprungen(git(SHA_A, 'skills'), liste, jeGrund)
+  assert.equal(waehleBericht([hoeher([{ pfad: 'y/bild.png', grund: 'binaer' }])], angezeigtGit).sperre, null, 'außerhalb des installierten Pfads')
+  assert.match(String(waehleBericht([hoeher([{ pfad: 'x/bild.png', grund: 'binaer' }])], angezeigtGit).sperre), /1 Datei übersprungen/)
+  assert.match(String(waehleBericht([hoeher([{ pfad: 'x', grund: 'symlink' }])], angezeigtGit).sperre), /symlink 1/, 'der Ordner selbst')
+  assert.equal(waehleBericht([hoeher([{ pfad: 'xy/a.png', grund: 'binaer' }])], angezeigtGit).sperre, null, 'Segmentgrenze')
+  // Gekürzte Liste (Summe ≠ Länge): alle zählen (fail-closed).
+  assert.match(String(waehleBericht([hoeher([{ pfad: 'y/a.png', grund: 'binaer' }], { binaer: 30 })], angezeigtGit).sperre), /30 Dateien übersprungen/)
+  // Ohne lesbare Angabe → Sperre.
+  const ohne = bericht({ quelle: npmQ('4.3.0') })
+  const kaputt = { ...ohne, daten: { ...ohne.daten, fakten: { ...ohne.daten.fakten, uebersprungen: undefined as unknown as PruefberichtDaten['fakten']['uebersprungen'] } } }
+  assert.match(String(waehleBericht([kaputt], angezeigtNpm).sperre), /ohne lesbare Angabe übersprungener Dateien/)
+  // NICHT_GEEIGNET bleibt der erste Grund.
+  assert.match(String(waehleBericht([{ ...npmB, daten: { ...npmB.daten, ergebnis: { ...npmB.daten.ergebnis, urteil: 'NICHT_GEEIGNET' } } }], angezeigtNpm).sperre), /NICHT_GEEIGNET/)
+})
+
+test('vergleicheInhalt (F-1078 (b)): ein im Prüflauf übersprungener Pfad heißt so (auch unter einem Unterpfad)', () => {
+  const ordner = mkdtempSync(join(tmpdir(), 'aiw-test-vergleich-ue-'))
+  try {
+    const h = (s: string) => createHash('sha256').update(s).digest('hex')
+    writeFileSync(join(ordner, 'SKILL.md'), 'a')
+    writeFileSync(join(ordner, 'logo.png'), 'bild')
+    const b = mitUebersprungen(git(SHA_A, 'skills'), [{ pfad: 'x/logo.png', grund: 'binaer' }])
+    const mit = { ...b, daten: { ...b.daten, inhalt: { dateien: [{ pfad: 'x/SKILL.md', sha256: h('a') }] } } }
+    assert.match(String(vergleicheInhalt(mit, ordner, { unterpfad: 'x' })), /logo\.png \(im Prüflauf übersprungen \(binaer\)\)/)
+  } finally {
+    raeumeVerzeichnis(ordner)
+  }
+})
+
+test('uebersprungenSperre (Code-Review F-2b-2c 2a/2b): kaputte Listeneinträge → Sperre statt Wurf; übersprungener Ordner oberhalb zählt', () => {
+  const angezeigtGit = { art: 'git' as const, repo: 'https://github.com/owner/repo', sha: SHA_A, quellPfad: 'skills/x/y' }
+  const kaputt = mitUebersprungen(git(SHA_A, 'skills'), [{ pfad: 7 as unknown as string, grund: 'binaer' }])
+  assert.match(String(waehleBericht([kaputt], angezeigtGit).sperre), /ohne lesbare Angabe übersprungener Dateien/)
+  assert.match(String(waehleBericht([mitUebersprungen(git(SHA_A, 'skills'), [{ pfad: 'x', grund: 'symlink' }])], angezeigtGit).sperre), /symlink 1/, 'Ordner x oberhalb von x/y')
+  assert.equal(waehleBericht([mitUebersprungen(git(SHA_A, 'skills'), [{ pfad: 'x/z', grund: 'binaer' }])], angezeigtGit).sperre, null, 'Geschwister zählt nicht')
 })
