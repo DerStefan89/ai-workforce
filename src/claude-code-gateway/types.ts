@@ -130,6 +130,18 @@ export interface LaufakteV0Daten {
   beobachtung?: BeobachtungV0
   /** F45 F-1: beim Start eingefrorene Fähigkeiten des Laufs, am Ende mit dem Rohstrom verbunden (Aufrufe je Eintrag). Optional (append-only) — nur Läufe mit Katalog-Kontext tragen das Feld. */
   faehigkeiten_im_lauf?: FaehigkeitenImLaufV0
+  /** F45 B2a-1 (F-1064): Hash, Abschnitte und Lücken der Projektkarte, die im Auftrag dieses Laufs stand. Optional (append-only) — nur Läufe der Rollen architekt, architecture-advisor, code-reviewer aus einem Workflow. Gilt für beide Worker. */
+  projektkarte?: ProjektkarteV0
+}
+
+/** F45 B2a-1: Laufakten-Feld projektkarte (Zwilling von ProjektkarteMeta in src/projektkarte/types.ts und des Schemas). */
+export interface ProjektkarteV0 {
+  /** sha256 (hex) über den Kartentext */
+  hash: string
+  /** Abschnitte im Zuschnitt der Rolle, in Reihenfolge */
+  abschnitte: string[]
+  /** benannte Lücken (fehlende/unlesbare Quellen) */
+  fehlend: string[]
 }
 
 /** F45 F-1: Art einer Fähigkeit im Lauf. */

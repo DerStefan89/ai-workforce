@@ -1093,12 +1093,13 @@ const GATE_FRAGE = {
   }
 
   try {
-    // (n1) Ohne Herkunft (Alt-Auftrag/manuell): Modus 'feature', keine Capability-Auszug-Zeile.
+    // (n1) Ohne Herkunft (Alt-Auftrag/manuell): Modus 'feature'. Seit F45 B2a-1 (F-1065) trägt auch der Modus
+    // 'feature' den Capability-Auszug — bewusst umgedrehte Erwartung (vorher: keine Auszug-Zeile).
     const featureText = await starteArchitektSchrittUndLiesAuftragstext(undefined)
     if (typeof featureText !== 'string' || !/"modus":\s*"feature"/.test(featureText) || !featureText.includes('GATE-PLANUNGSTEXT-EINDEUTIG-F39-N')) {
       befunde.push(`(n1) realer Schrittstart ohne Herkunft: erwartet umhüllten Auftragstext mit "modus": "feature" und dem Planungstext, erhalten: ${JSON.stringify(featureText)?.slice(0, 300)}…`)
-    } else if (featureText.includes('Verfügbare Ressourcen (Capability-Auszug):')) {
-      befunde.push("(n1) realer Schrittstart ohne Herkunft: Modus 'feature' sollte KEINEN Capability-Auszug tragen")
+    } else if (!featureText.includes('Verfügbare Ressourcen (Capability-Auszug):')) {
+      befunde.push("(n1) realer Schrittstart ohne Herkunft: Modus 'feature' sollte seit F45 B2a-1 (F-1065) den Capability-Auszug tragen")
     }
 
     // (n2) herkunft.art 'projekt_interview': Modus 'projekt', inkl. real gebautem Capability-Auszug.
@@ -1125,7 +1126,7 @@ const GATE_FRAGE = {
 
     if (befunde.length === befundeVor) {
       console.log(
-        "✓ (n1)/(n2)/(n3): der REALE Schrittstart-Pfad (POST /api/workflows/<id>/starten -> starteWorkflowSchritt) umhüllt den Auftragstext eines 'architekt'-Schritts über baueArchitektAuftragstext — Modus 'feature' ohne Herkunft (kein Capability-Auszug), Modus 'projekt' bei herkunft.art 'projekt_interview' (inkl. real gebautem Capability-Auszug), UND gegen DIESES Repo (Stack gefüllt) ohne den Stack-Hinweis."
+        "✓ (n1)/(n2)/(n3): der REALE Schrittstart-Pfad (POST /api/workflows/<id>/starten -> starteWorkflowSchritt) umhüllt den Auftragstext eines 'architekt'-Schritts über baueArchitektAuftragstext — Modus 'feature' ohne Herkunft (seit F45 B2a-1 mit Capability-Auszug, F-1065), Modus 'projekt' bei herkunft.art 'projekt_interview' (inkl. real gebautem Capability-Auszug), UND gegen DIESES Repo (Stack gefüllt) ohne den Stack-Hinweis."
       )
     }
   } finally {

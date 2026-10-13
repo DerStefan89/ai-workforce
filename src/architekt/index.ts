@@ -34,7 +34,7 @@
  * AUSSCHLIESSLICH Kontext, kein Bauauftrag; der Auftrags-Scope hat Vorrang
  * (F-712). pruefeProjektmodusScope prüft die real geänderten Dateien eines
  * Projektmodus-'ausfuehrung'-Laufs deterministisch gegen die Allowlist
- * (docs/**, features/**, CLAUDE.md) — die zweite, technische Hälfte von
+ * (docs/**, features/**, CLAUDE.md, ARCHITECTURE.md) — die zweite, technische Hälfte von
  * F-712, neben der Instruktion. baueStackEntscheidungsInstruktion verlangt
  * nach einer 'kategorie: stack'-Entscheidung verpflichtend den
  * CLAUDE.md-Stack-Abschnitt und ein ADR (F-714) — beide Schreibziele liegen
@@ -543,11 +543,19 @@ export function baueAdrBlock(entschiedeneAdrs: string): string[] {
 const STACK_OFFEN_HINWEIS =
   "Der Stack (Laufzeit, Sprache, Speicherform) dieses Projekts ist NOCH OFFEN (CLAUDE.md trägt den Füllungs-Marker oder existiert noch nicht) — lege ihn NICHT selbst fest, auch nicht als ADR-Entwurf. Trage stattdessen einen Eintrag in 'entscheidungen_mensch' mit 'kategorie': 'stack' ein, mit mindestens zwei 'optionen' inkl. je eigener Vor-/Nachteile; 'empfehlung' nennt den Titel einer dieser Optionen."
 
+/**
+ * F45 B2a-1 (F-1065): Lese-Anweisung für beide Modi — Codex läuft `--sandbox read-only` und kann lesen, wurde aber
+ * nie dazu angewiesen; die Projektkarte (Abschnitt Bestand) nennt die Einstiegspunkte.
+ */
+export const ARCHITEKT_LESE_ANWEISUNG =
+  "Lies die für den Auftrag relevanten Dateien des Projekts VOR dem Entwurf (Einstieg: Projektkarte, Abschnitt 'Bestand') und belege jede Aussage über den Bestand im evidenz-Array als [Fakt] mit Dateipfad. Ein Entwurf, der vorhandene Module oder Konventionen nicht kennt, ist unbrauchbar."
+
 function baueFeatureRolleninstruktion(stackOffen: boolean): string[] {
   const zeilen = [
     "Du bist als Rolle 'architekt' verantwortlich für einen Architekturentwurf VOR dem Bau eines einzelnen Features — Modulschnitt, ADR-würdige Entscheidungen, Datenmodell als Schema, ohne selbst Code zu schreiben.",
     'Prüfrolle bleibt der Subagent architecture-advisor — dein Entwurf ist ein Vorschlag, keine Freigabe.',
     'Schlage nur, was der Auftrag tatsächlich verlangt — keine Vorratsarchitektur für hypothetische künftige Anforderungen. Jede Aussage trägt einen Evidenz-Marker ([Fakt]/[Schlussfolgerung]/[Annahme]/[offene Unsicherheit], .claude/skills/advisor-pass) im evidenz-Array.',
+    ARCHITEKT_LESE_ANWEISUNG,
     'Deine GESAMTE Antwort besteht aus GENAU EINEM JSON-Objekt und sonst NICHTS: kein einleitender Satz, keine Erklärung davor oder danach, kein Markdown, kein Codezaun (```). Die allererste Zeile deiner Antwort ist "{", die letzte Zeile ist "}".',
     'Das JSON-Objekt hat GENAU diese Form (schemas/ergebnis-architektur.schema.json):',
     '{',
@@ -619,14 +627,14 @@ export function leseStackKandidatenAuszug(installWurzel: string): string | null 
 
 /**
  * Baut den Auftragstext für einen Architekt-Lauf: Rolleninstruktion (je
- * 'modus' unterschiedlich), gefolgt vom optionalen Capability-Auszug (nur
- * Modus 'projekt', F36/E-M5-13) und dem eigentlichen Planungstext. Ausgabe
+ * 'modus' unterschiedlich), gefolgt vom optionalen Capability-Auszug (seit F45 B2a-1, F-1065, in
+ * beiden Modi; vorher nur 'projekt', F36/E-M5-13) und dem eigentlichen Planungstext. Ausgabe
  * NUR als JSON gemäß Schema (F-337-Lehre, Muster baueCoachAuftragstext).
- * Reine Funktion, kein I/O.
+ * Reine Funktion, kein I/O. Die Projektkarte hängt der Server danach an (starteWorkflowSchritt).
  * @param planungstext - der vom Menschen/Vorgängerschritt gelieferte Planungsauftrag
  * @param modus - 'feature' (Default) oder 'projekt' (Architektur-Grundlage, E-M5-13)
  * @param capabilityAuszug - vorab gebauter Text (baueCapabilityAuszug, aus src/product-coach
- *   importiert) — nur bei modus 'projekt' und nicht-null eingefügt; im Modus 'feature' ignoriert
+ *   importiert) — nicht-null in beiden Modi eingefügt
  * @param stackOffen - F42 WS-2 (löst F-685): true, wenn istStackOffen(repoWurzel) für das
  *   Zielprojekt true liefert — hängt STACK_OFFEN_HINWEIS an die Rolleninstruktion an. Default
  *   false, rückwärtskompatibel.
@@ -647,7 +655,7 @@ export function baueArchitektAuftragstext(
   stackKandidatenAuszug: string | null = null
 ): string {
   const zeilen = modus === 'projekt' ? baueProjektRolleninstruktion(stackOffen) : baueFeatureRolleninstruktion(stackOffen)
-  if (modus === 'projekt' && capabilityAuszug !== null) {
+  if (capabilityAuszug !== null) {
     zeilen.push('', 'Verfügbare Ressourcen (Capability-Auszug):', capabilityAuszug)
   }
   zeilen.push(...baueAdrBlock(entschiedeneAdrs))
@@ -745,7 +753,7 @@ export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature', tra
     return [
       "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor — im Projektmodus ist er AUSSCHLIESSLICH Kontext für deine Entscheidungen, KEIN Bauauftrag.",
       'Der Scope des ursprünglichen Auftrags (oben im Auftragstext) hat Vorrang vor dem Architekturentwurf: setze NUR um, was der Auftrag tatsächlich verlangt — auch wenn der Entwurf weitere Module, ADRs oder Schemas beschreibt, die über diesen Scope hinausgehen.',
-      'Solange der Auftrag nicht ausdrücklich mehr verlangt: kein Produktcode, keine Schemas (schemas/**), keine Skripte (scripts/**), keine Änderung an package.json oder scripts/check-*. Erlaubt sind Dokumentationsänderungen (docs/**, features/**, CLAUDE.md), soweit der Auftrag sie verlangt.',
+      'Solange der Auftrag nicht ausdrücklich mehr verlangt: kein Produktcode, keine Schemas (schemas/**), keine Skripte (scripts/**), keine Änderung an package.json oder scripts/check-*. Erlaubt sind Dokumentationsänderungen (docs/**, features/**, CLAUDE.md, ARCHITECTURE.md), soweit der Auftrag sie verlangt.',
       "Liegt eine bereits erfasste menschliche Architektur-Entscheidung vor (Eingabe 'entscheidung-@', nicht leer): übernimm sie als Dokumentation (z. B. ADR unter docs/adr/), nicht als Freibrief für weitergehende Umsetzung.",
       'Widerspricht dein Umsetzungsvorschlag diesem Scope, dokumentiere die Abweichung ausdrücklich statt sie stillschweigend umzusetzen (CLAUDE.md, Entscheidungsregel 5).',
     ]
@@ -780,8 +788,8 @@ export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature', tra
  * eine Entscheidung mit 'kategorie': 'stack' trägt UND für die bereits eine menschliche Antwort
  * erfasst ist (der Aufrufer prüft beides, diese Funktion nimmt nur noch die Artefakt-Referenz
  * entgegen). Seit F-753 in JEDEM Modus angehängt — dieselbe Vorbedingung wie Regel 1h, die
- * ebenfalls modusunabhängig prüft. Beide verlangten Schreibziele (CLAUDE.md, docs/adr/) liegen innerhalb der
- * F-712-Allowlist — kein Widerspruch zu baueUmsetzungsInstruktion(modus: 'projekt').
+ * ebenfalls modusunabhängig prüft. Alle drei verlangten Schreibziele (CLAUDE.md, docs/adr/, seit F45 B2a-1 ARCHITECTURE.md)
+ * liegen innerhalb der F-712-Allowlist — kein Widerspruch zu baueUmsetzungsInstruktion(modus: 'projekt').
  * @param entscheidungArtefaktId - Kernartefakt-Id der erfassten Entscheidung (workflowEntscheidungArtefaktId), für die Referenz im ADR
  * @returns Zeilen des Zusatzblocks, an den bestehenden Auftragstext anzuhängen
  */
@@ -791,7 +799,8 @@ export function baueStackEntscheidungsInstruktion(entscheidungArtefaktId: string
     "- Fülle in CLAUDE.md den Abschnitt 'Technischer Stack' mit der gewählten Option (Framework/Sprache/Datenbank/Hosting) — entferne dabei den Füllungs-Marker '[FÜLLUNG]' aus der Überschriftzeile.",
     `- Lege ein ADR unter 'docs/adr/' an (fortlaufende Nummer, Muster 'docs/adr/TEMPLATE.md'), das die Entscheidung dokumentiert und ausdrücklich auf das Entscheidungsartefakt '${entscheidungArtefaktId}' verweist.`,
     "- Nenne im ADR unter der Überschrift 'Prüfkette' die Glob-Muster für das Startvorlagenfeld 'pruefketten_pfade' (Dateien, die die Prüfkette des gewählten Stacks steuern; relativ zur Repo-Wurzel, '*'/'**' erlaubt, kein '..'). Beispiel Python: [\"pyproject.toml\", \"pytest.ini\", \"setup.cfg\", \"tests/conftest.py\", \".github/workflows/*\"]. Die Startvorlage selbst trägt der Mensch nach — solange das Feld dort fehlt oder leer ist, hält der Workflow (F-735).",
-    'Beide Schreibziele sind Pflicht, nicht optional: ohne sie bleibt der Stack für jeden künftigen Architektur-Lauf gegen dieses Projekt offen (F-714) — der Bau darf sich nicht darauf verlassen, dass ein späterer Lauf das nachholt.',
+    "- Fülle in ARCHITECTURE.md die Abschnitte 'Ordnerstruktur' (mit den Modulen bzw. Ordnern des gewählten Stacks und ihrem Zweck) und 'Datenzugriff' (wer liest und schreibt was, Transaktions- bzw. Schreibgrenzen) und entferne dort den Füllungs-Marker '[FÜLLUNG]' (F-1066).",
+    'Alle Schreibziele sind Pflicht, nicht optional: ohne sie bleibt der Stack für jeden künftigen Architektur-Lauf gegen dieses Projekt offen (F-714) bzw. die Projektkarte ohne Bestand (F-1066) — der Bau darf sich nicht darauf verlassen, dass ein späterer Lauf das nachholt.',
   ]
 }
 
@@ -806,7 +815,7 @@ export function baueStackEntscheidungsInstruktion(entscheidungArtefaktId: string
 const PROJEKTMODUS_SCOPE_ALLOWLIST_PRAEFIXE = ['docs/', 'features/']
 
 /** F42 WS-4 (löst F-712): einzelne, nicht präfixartig erlaubte Pfade der Allowlist (siehe PROJEKTMODUS_SCOPE_ALLOWLIST_PRAEFIXE). */
-const PROJEKTMODUS_SCOPE_ALLOWLIST_DATEIEN = new Set(['CLAUDE.md'])
+const PROJEKTMODUS_SCOPE_ALLOWLIST_DATEIEN = new Set(['CLAUDE.md', 'ARCHITECTURE.md'])
 
 /**
  * Reine Funktion (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen

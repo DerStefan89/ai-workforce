@@ -249,7 +249,7 @@ export interface SchrittErgebnis {
   pruefergebnisAusgabeEnde?: string
   /**
    * OPTIONAL (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
-   * Pfade außerhalb der Projektmodus-Allowlist (docs/**, features/**, CLAUDE.md), die ein gerade
+   * Pfade außerhalb der Projektmodus-Allowlist (docs/**, features/**, CLAUDE.md, ARCHITECTURE.md), die ein gerade
    * gelaufener 'ausfuehrung'-Schritt real geändert hat — der Aufrufer (scripts/leitstand-
    * server.mjs) berechnet das Feld NUR im Projektmodus (herkunft.art === 'projekt_interview') und
    * NUR für diese Rolle (pruefeProjektmodusScope, src/architekt/index.ts, gegen die bereits
@@ -279,6 +279,13 @@ export interface SchrittErgebnis {
    * fehlend). Fehlendes Feld: folgenlos, wie 'stackNichtGefuellt'.
    */
   stackPruefkettenPfadeFehlen?: boolean
+  /**
+   * OPTIONAL (F45 B2a-1, F-1066, Regel 1h): true, wenn unter derselben Voraussetzung wie 'stackNichtGefuellt'
+   * (Stack-Entscheidung erfasst) ARCHITECTURE.md fehlt oder die Pflichtabschnitte Ordnerstruktur/Datenzugriff noch
+   * Platzhalter tragen (analysiereArchitektur, src/projektkarte — dieselbe Regel wie die Projektkarte). Fehlendes
+   * Feld: folgenlos.
+   */
+  stackArchitekturFehlt?: boolean
   /**
    * OPTIONAL (F35 WS-2, löst M5-Bestehensbedingung 2 "jedes AK trägt am Ende ein Urteil im
    * Review"): die Verstöße von pruefeAkUrteile (src/ak-pruefung/index.ts) gegen das ak_urteile-

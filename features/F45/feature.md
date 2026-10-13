@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -33,6 +33,8 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **Sammlung als Basis** (Stefan, 12.10.2026) — `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl; sie kommt in F-2b in den Leitstand (Kurzbeschreibung, Urteil, Lizenz, Kosten, Stand) mit „Auswählen“ → Prüflauf → Katalog. Reihenfolge ab F (Challenger, 12.10.2026): F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2 — B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht. (Vorher, Stefan 12.10.2026: F-1 → F-2a → F-2b → F-3 → B2a → …)
 - **F-2b geteilt** (Stefan, 12.10.2026, nach dem Advisor-Pass, Befund A1 „Zuschnitt zu groß“) — F-2b-1: Sammlung lesen und zeigen, Zuordnung zum Katalog, Scout liest die Sammlung, F-1060 (6); F-2b-2: Auswählen → Eignungsprüfung (Prüfbericht) → Katalog, Sperre der Freigabe, F-1061 (1). Sammlung: alle 176 Zeilen der Bewertungsmatrix sichtbar (172 mit Link, die 4 ohne Link nicht auswählbar; O1). extern_lesend-MCPs von F-2b nach F-3.
 - **Reihenfolge ab F** (Challenger, 12.10.2026) — F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2; B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht.
+- **B2a geteilt** (Challenger, 13.10.2026) — B2a-1 Projektkarte (≈ 0,6–0,7 AT), B2a-2 Arbeitspaket (≈ 0,5–0,6 AT), B2a-3 Codex-Review-Spec + Ausgaberegel (≈ 0,4 AT); F-1072 (API-Schlüssel) nach B2b. Grundlage Abschnitt 5.
+- **O2 B2a-1 — Pflichtabschnitte von ARCHITECTURE.md** (Challenger, 13.10.2026, Vorschlag Advisor) — Pflicht beim Stack-Entscheid sind „Ordnerstruktur“ und „Datenzugriff“; „Module“ steht nur als Satz in der Stack-Instruktion; das Skelett bleibt unverändert.
 - **F-1061 (3) — Bestätigung nach Fremdänderung** (Stefan, 12.10.2026, Empfehlung Challenger) — Nach einer Änderung von außen an `~/.ai-workforce/faehigkeiten.lokal.json` gilt der Stand erst nach ausdrücklicher Bestätigung im Leitstand („Datei geprüft – Stand übernehmen“); bis dahin startet kein Lauf mit Katalog-Fähigkeiten (Muster E-F45-7). Umsetzung F-2a, ARCHITECTURE.md §2.
 - **F-1015-Kriterium** (Challenger, 11.10.2026) — Seitenspeicher, JS-Heap, DOM-Knoten und Listener am Ende ≤ 1,2 × Wert nach 15 min (Aufwärmphase ausgenommen); Grundlage Abschnitt 2.
 
@@ -50,8 +52,10 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 | F-2b-1 | Sammlung im Leitstand (Unterreiter „Sammlung“: Urteil, Lizenz, Kosten, Stand, Zuordnung, Typ, Auswahlgrund), Scout liest die Sammlung, voller Hash im Lauf-Detail | F-1057 (K21), F-1060 (6) | F-2a | Advisor-Pass, vor Merge | ≈ 0,6 | |
 | F-2b-2 | „Auswählen“ → Eignungsprüfung (Prüfbericht) → Katalog, Freigabe nur mit Bericht, Stand der lokalen Datei über Neustarts — geteilt in F-2b-2a (Prüflauf, #326), F-2b-2b (npm-Strukturfix Variante C, F-1075) und F-2b-2c (Vormerken/Katalog, „Eignung prüfen“, Detail als volle Zeile, F-1061 (1)) | F-1056 (K20), F-1061 (1), F-1075 | F-2b-1 | Advisor-Pass, vor Merge | ≈ 1–1,25 | |
 | F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge | Schätzung fehlt | |
-| B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte mit Zuschnitt je Rolle an alle planenden/prüfenden Rollen (Vorhaben, Bestand, Ausführungsrahmen, aktive Fähigkeiten, Qualität; Hash je Lauf; K26–K28); DoD und Checkliste an Review/qa; Feature ↔ Ablauf; aus B1b: Codex-Harness-Regeln; Codex-Review-Spec (`docs/projekt/codex-review-spec.md`: Audit-Block nur für claude-code, Review-Schema v2 additiv; K24, K25) | F-938, F-936, F-829, F-931, F-989, F-998, F-959, F-929, F-1062 (K24), F-1063 (K25), F-1064 (K26), F-1065 (K27), F-1066 (K28) | B1b | vor Merge | 1,5–1,85 | |
-| B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011 | B2a | Advisor-Pass, vor Merge | 1,25–1,5 | |
+| B2a-1 | Projektkarte (geteilt am 13.10.2026): `src/projektkarte`, Zuschnitt je Rolle an Architekt, Advisor, Code-Reviewer (Claude und Codex gleich, als Text), Hash in der Laufakte; Architekt im Feature-Modus mit Karte, Capability-Auszug, Lese-Anweisung; ARCHITECTURE.md Pflicht beim Stack-Entscheid; DoD/Checkliste mit Urteil je Punkt; Beobachtungsblock nur claude-code | F-936, F-1064 (K26), F-1065 (K27), F-1066 (K28), F-929, F-931, F-829, F-1062 (K24) | B1b | Advisor-Pass, vor Merge | ≈ 0,6–0,7 | |
+| B2a-2 | Arbeitspaket: Auftrag v0 additiv (DoD-Verweis, betroffene Bereiche, Risiko/Kontrolltiefe, „Einrichtung durch Stefan“, Feature-Bezug), AK-Entwurf aus der Finding-Maßnahme, Server rendert den Prompt, Gate Pflichtfelder, Einrichtungsliste vor dem Bau | F-938, F-989, F-1071 (K31) | B2a-1 | Advisor-Pass, vor Merge | ≈ 0,5–0,6 | |
+| B2a-3 | Codex-Review-Spec (`docs/projekt/codex-review-spec.md`), Review-Schema v2 additiv, Regel „direkt ausführbar“ | F-1063 (K25), F-959, F-998 | B2a-1 | vor Merge | ≈ 0,4 | |
+| B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011, F-1072 (K32, aus B2a am 13.10.2026) | B2a | Advisor-Pass, vor Merge | 1,25–1,5 (ohne F-1072) | |
 | B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 | |
 | B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 | |
 | B3 | Design & Motion in Fremdprojekten (E-F45-10): impeccable, design-guardian und Token-Gate im Skelett; Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung | F-911, F-1058 (K22), F-1059 (K23) | B1a, B2b, F-2b | nach Merge | ≈ 1,4–1,55 | |
@@ -761,3 +765,46 @@ installierten Pfads zählt (Code-Review 2); vorgemerkter Zustand bleibt nach „
 Warnung, Fehlerzustand und Band „unbekannt“ (`features/F45/nachweise/f2b2c/`). Bestätigungsprüfung design-guardian: „freigegeben mit
 Hinweisen“ (zwei Hauptknöpfe im gesperrten Library-Dialog, doppelter Weg im Sperrtext, „(F-1078)“ im Servertext). Offen als F-1081.
 
+
+## Stand B2a-1
+
+Branch `f45/b2a1-projektkarte`, Basis `c62e7e7` (main mit F-2b-2c, #328). Plan `features/F45/plan-b2a1.md` (Plan v1 →
+Advisor-Pass „freigegeben mit Hinweisen“ → Plan v2; O2 vom Challenger bestätigt).
+
+**Projektkarte (F-1064, F-936, F-929):** `src/projektkarte` (`baueProjektkarte`, rein, deterministisch, je Lauf neu) mit Zuschnitt
+je Rolle — architekt: Vorhaben, Bestand, Ausführungsrahmen, im Projekt eingeschaltete Fähigkeiten, Qualität; architecture-advisor:
+ohne Fähigkeiten; code-reviewer: Vorhaben (AK nur als Verweis auf den AK-Block), Bestand (ARCHITECTURE.md als Prüfmaßstab, ADR-Text,
+F-931), Qualität (DoD + Checkliste mit Urteil je Punkt, F-829). Größengrenze je Rolle (Marker zählt mit), Quellstand je Datei im Text,
+eingebettete Überschriften auf Ebene 4. Der Server liest die Eingaben über die bestehenden Wege (`leseHarnessInventar`,
+`leseEntschiedeneAdrs`, `leseVersionierteDateien`, `ladeFaehigkeitenGrundlage` — aus dem GET-Handler herausgezogen) und
+`leseKarteDatei` (fail-open) für ARCHITECTURE.md, Projektbeschreibung und Checkliste. Einspeisen in `starteWorkflowSchritt` nach dem
+AK-Block, für Claude und Codex gleich; `{ hash, abschnitte, fehlend }` als `projektkarte` in die Laufakte beider Gateways (Schema
+additiv). Ausführung, jarvis und router bekommen keine Karte (Ausführung: Rahmen steht schon im Auftrag, DoD aus CLAUDE.md).
+
+**Architekt (F-1065):** Karte auch im Modus „feature“, Capability-Auszug in beiden Modi (Feature fail-open), Lese-Anweisung
+„[Fakt] mit Pfad“. **F-1066:** ARCHITECTURE.md in der Projektmodus-Allowlist; Stack-Instruktion verlangt Ordnerstruktur und
+Datenzugriff; Regel 1h prüft sie als dritte Pflicht (`stackArchitekturFehlt`, auch im VERWEIGERT-Pfad). **F-1062:** Beobachtungsblock
+nur für Worker claude-code.
+
+**Tests/Gates:** `src/projektkarte/projektkarte.test.ts` (neu), Gate `scripts/check-f45-b2a1-projektkarte.mjs` (neu, in der
+Check-Kette, Rot-Fälle kalibriert); begründet angepasst: check-f39 (n1), check-f42 (h3 → Rot-Fall F-1066, neu h4),
+check-f35-ws2 (e), check-fixpaket-f35 (a), `review-beobachtung.test.mjs` (Worker-Parameter, F-1062), Rollenschlüssel als `Map`
+(check-f17 AK1).
+
+**Echter Lauf** (`features/F45/nachweise/b2a1/`): Architekt (Codex, Modus feature) gegen dieses Repo, 80 s, 160 684 Eingabe-
+(104 832 aus dem Cache) und 1 949 Ausgabe-Tokens; Entwurf mit 6 Bestandsbelegen mit Pfad, ohne git-Schritt, Prüfung nur über
+`npm run check:<name>`/`npm run check`. Der Entwurf fand einen echten Fehler (Kürzungsmarker über der Grenze) — behoben.
+
+**Prüfpass** (frischer Kontext): code-reviewer „nicht freigegeben“ und qa „nicht freigegeben“ — beide aus demselben Grund: beim
+Code-Reviewer schnitt die Gesamtgrenze (14 000) in diesem Repo den letzten Abschnitt Qualität (DoD, Checkliste, Urteil je Punkt) ab,
+ohne dass die Laufakte es zeigte; das Gate prüfte nur kleine Eingaben. **Eine Korrekturrunde:** Bestand steht in jeder Karte zuletzt,
+Grenzen 24 000/20 000/20 000; eine Gesamtkürzung nimmt den gekürzten Abschnitt aus `abschnitte` und nennt ihn in `fehlend` (QA L2);
+Gate (k) mit den echten Eingaben dieses Repos (alle ADRs, git ls-files) für alle drei Rollen, Rot-Fall kalibriert; „nicht beschrieben“
+nur ohne belastbaren Inhalt — eine gefüllte Datei mit anderen Titeln zeigt ihren Auszug (Code-Review 2, QA L4); Regel 1h mit
+Unit-Test in `src/workflow` und VERWEIGERT-Pfad (check-f42 h5, Rot-Fall kalibriert; Code-Review 3, QA L5); Fehler je Quelle werden
+Lücken statt Kartenverlust (Code-Review 5); unlesbare ressourcen.json im Feature-Modus als Lücke (QA L8); Quellstand der ADRs,
+locale-unabhängige Sortierung (Code-Review 4); realpath-Prüfung in `leseKarteDatei` (Code-Review 8); viele Unterordner nur als
+Anzahl (Code-Review 9); Codeblöcke behalten ihre Kommentarzeilen, ARCHITECTURE-Abschnitt bis 2 000 Zeichen (QA L10); leeres Repo
+und fehlende CLAUDE.md ohne irreführende Lücke (QA L9); gemeinsame Konstante `ABSCHNITT_IDS` für Typ und Validator (Code-Review 6);
+Kommentar zu den drei Schreibzielen (Code-Review 7). Offen in F-1082: Entscheidung QA L3 (Prüfmaßstab aus dem Arbeitsordner),
+fehlende Tests Arbeitsordner und Controller → Claude-Gateway, Quellstand der Ordnerübersicht.

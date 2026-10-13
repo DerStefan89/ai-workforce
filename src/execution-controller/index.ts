@@ -437,6 +437,8 @@ export async function fuehreAufgabeDurch(
             zeitgrenzeMs: optionen.zeitgrenzeMs,
             abbruchSignal: optionen.abbruchSignal,
             cwd: optionen.cwd,
+            // F45 B2a-1: Projektkarte für die Laufakte — für beide Worker gleich.
+            ...(eingaben.projektkarte !== undefined ? { projektkarte: eingaben.projektkarte } : {}),
           }
         )
       : await starteGateway(
@@ -477,6 +479,7 @@ export async function fuehreAufgabeDurch(
             ...(eingaben.faehigkeitenImLauf !== undefined
               ? { faehigkeitenImLauf: eingaben.faehigkeitenImLauf, vorStartPruefung: () => pruefeGegenMomentaufnahme(eingaben.faehigkeitenImLauf ?? [], claudeOrdnerVorher ?? null) }
               : {}),
+            ...(eingaben.projektkarte !== undefined ? { projektkarte: eingaben.projektkarte } : {}),
           }
         )
   if (!gatewayErgebnis.ok) {

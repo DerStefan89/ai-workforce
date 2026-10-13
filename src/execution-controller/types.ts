@@ -48,7 +48,7 @@
  * ohne dass der Controller eine gemeinsame Form erzwingen müsste.
  */
 
-import type { AufrufEingaben, FaehigkeitImLauf, Starter, Werkzeugaufruf } from '../claude-code-gateway/types.ts'
+import type { AufrufEingaben, FaehigkeitImLauf, ProjektkarteV0, Starter, Werkzeugaufruf } from '../claude-code-gateway/types.ts'
 import type { Anfrage, Budget, KontextpaketErgebnis } from '../context-builder/types.ts'
 import type { LaufStatus } from '../checkpoint-store/types.ts'
 import type { KlassifikationsErgebnis } from '../result-evaluator/types.ts'
@@ -134,6 +134,8 @@ export interface AusfuehrungsEingaben {
   faehigkeitenImLauf?: FaehigkeitImLauf[]
   /** F45 F-1 (Delta B1): Pfad von faehigkeiten.lokal.json — vorher/nachher gehasht; eine Änderung im Lauf färbt ihn rot. */
   faehigkeitenLokalPfad?: string | null
+  /** F45 B2a-1: Metadaten der Projektkarte im Auftragstext (nur architekt, architecture-advisor, code-reviewer im Workflow) — der Controller reicht sie an beide Gateways (Laufakte projektkarte). */
+  projektkarte?: ProjektkarteV0
 }
 
 /** Diskriminierte Union über die drei möglichen Ausgänge der Kette (Abbruch bei F5, Abbruch bei F6a, vollständiger Durchlauf). */
