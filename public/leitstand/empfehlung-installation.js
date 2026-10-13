@@ -25,6 +25,9 @@
  * Auflagen, Ausnahme-Begründung); ohne passenden Bericht oder bei NICHT_GEEIGNET steht statt „Installieren“ der Grund
  * (pruefbericht_sperre) — der Server lehnt in diesem Fall ohnehin mit 409 ab.
  *
+ * F45 F-2b-2c: mit der Option eignungPruefen (Capability Library) steht bei fehlendem Bericht im Sperrblock der Knopf „Eignung
+ * prüfen“; den Ablauf führt views/capability-library.js (views/pruefung-ablauf.js).
+ *
  * Wichtig: Jeder Serverwert wird escaped (escapeHtml). Die version/integrity des Klicks „Installieren“
  * stammen aus den data-Attributen des angezeigten Bestätigungsblocks — installiert wird genau, was
  * angezeigt wurde.
@@ -48,13 +51,14 @@ function gesperrterKnopf() {
 /**
  * Bestätigungsblock vor dem Klick „Installieren“.
  * @param daten - Antwort von POST .../installation/vorbereiten
+ * @param optionen - { eignungPruefen } (F45 F-2b-2c: Knopf „Eignung prüfen“ im Sperrblock, nur Capability Library)
  * @returns HTML
  */
-export function renderInstallationsBestaetigung(daten) {
+export function renderInstallationsBestaetigung(daten, optionen = {}) {
   const zeile = (titelSchluessel, wert) => `<li><strong>${escapeHtml(t(titelSchluessel))}:</strong> ${wert}</li>`
   const text = (wert) => (wert === null || wert === undefined || wert === '' ? `<span class="hinweis">${escapeHtml(t('installation.nichtAngegeben'))}</span>` : escapeHtml(wert))
   // F45 F-2b-2a: Prüfbericht zur angezeigten Version bzw. Sperrgrund (ohne Bericht / veraltet / NICHT_GEEIGNET → kein Knopf).
-  const bericht = renderBerichtFuerFreigabe(daten)
+  const bericht = renderBerichtFuerFreigabe(daten, optionen)
   if (daten.art === 'skill') return renderSkillBestaetigung(daten, zeile, text, bericht)
   const lizenz = daten.lizenzRegistry !== null && daten.lizenzRegistry !== undefined ? `${text(daten.lizenz)} ${escapeHtml(t('installation.registry', { lizenz: daten.lizenzRegistry }))}` : text(daten.lizenz)
   const werkzeuge = (daten.werkzeuge ?? []).map((w) => `<code>${escapeHtml(w)}</code>`).join(', ')
@@ -144,8 +148,9 @@ let ablaufLaeuft = false
  * Bindet den Ablauf per Ereignis-Delegation an einen Container, der renderEmpfehlung-HTML enthält.
  * @param wurzel - DOM-Element (bleibt über Neu-Renderings bestehen)
  * @param neuLaden - () => void|Promise, lädt die Empfehlung nach erfolgreicher Installation neu
+ * @param optionen - { eignungPruefen } an renderInstallationsBestaetigung (F45 F-2b-2c, nur die Capability Library)
  */
-export function bindeEmpfehlungInstallation(wurzel, neuLaden) {
+export function bindeEmpfehlungInstallation(wurzel, neuLaden, optionen = {}) {
   wurzel.addEventListener('click', async (ereignis) => {
     const knopf = ereignis.target instanceof Element ? ereignis.target.closest('[data-installation-aktion]') : null
     if (knopf === null || !wurzel.contains(knopf)) return
@@ -172,7 +177,7 @@ export function bindeEmpfehlungInstallation(wurzel, neuLaden) {
       if (aktion === 'vorbereiten') {
         zeige(`<p class="hinweis">${escapeHtml(t('installation.loestAuf'))}</p>`)
         const antwort = await bereiteInstallationVor(id)
-        zeige(antwort.ok ? renderInstallationsBestaetigung(await antwort.json()) : renderInstallationsErgebnis(false, t('installation.nichtInstallierbar', { grund: await grundAus(antwort) })))
+        zeige(antwort.ok ? renderInstallationsBestaetigung(await antwort.json(), optionen) : renderInstallationsErgebnis(false, t('installation.nichtInstallierbar', { grund: await grundAus(antwort) })))
       } else if (aktion === 'installieren') {
         zeige(`<p class="hinweis">${escapeHtml(t('installation.laeuft'))}</p>`)
         const antwort = await installiereRessource(id, { version: knopf.dataset.version, integrity: knopf.dataset.integrity, eintragHash: knopf.dataset.eintragHash })

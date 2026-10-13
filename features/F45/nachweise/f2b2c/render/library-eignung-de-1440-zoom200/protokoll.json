@@ -1,0 +1,93 @@
+[
+  {
+    "label": "Workforce geladen",
+    "Eignung prüfen": false,
+    "Installieren aktiv": false,
+    "Eignung prüfen deaktiviert (Ablauf offen)": false,
+    "DOM-ids mit Präfix lib": false,
+    "lang": "de",
+    "Sperre": "(fehlt)",
+    "Phase": "(fehlt)",
+    "Bericht": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Capability Library",
+    "Eignung prüfen": false,
+    "Installieren aktiv": false,
+    "Eignung prüfen deaktiviert (Ablauf offen)": false,
+    "DOM-ids mit Präfix lib": false,
+    "lang": "de",
+    "Sperre": "(fehlt)",
+    "Phase": "(fehlt)",
+    "Bericht": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Suche „taste“",
+    "Eignung prüfen": false,
+    "Installieren aktiv": false,
+    "Eignung prüfen deaktiviert (Ablauf offen)": false,
+    "DOM-ids mit Präfix lib": false,
+    "lang": "de",
+    "Sperre": "(fehlt)",
+    "Phase": "(fehlt)",
+    "Bericht": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Katalog: taste-skill wählen",
+    "Eignung prüfen": false,
+    "Installieren aktiv": false,
+    "Eignung prüfen deaktiviert (Ablauf offen)": false,
+    "DOM-ids mit Präfix lib": false,
+    "lang": "de",
+    "Sperre": "(fehlt)",
+    "Phase": "(fehlt)",
+    "Bericht": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "„Prüfen & freigeben“ → Sperre ohne Bericht mit „Eignung prüfen“",
+    "Eignung prüfen": true,
+    "Installieren aktiv": false,
+    "Eignung prüfen deaktiviert (Ablauf offen)": false,
+    "DOM-ids mit Präfix lib": false,
+    "lang": "de",
+    "Sperre": "Freigabe gesperrt: ohne Prüfbericht zur angezeigten Version — erst die Eignung prüfenEignung prüfen prüft genau diese Ve",
+    "Phase": "(fehlt)",
+    "Bericht": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "„Eignung prüfen“ → Bestätigung im Detail",
+    "Eignung prüfen": true,
+    "Installieren aktiv": false,
+    "Eignung prüfen deaktiviert (Ablauf offen)": true,
+    "DOM-ids mit Präfix lib": true,
+    "lang": "de",
+    "Sperre": "Freigabe gesperrt: ohne Prüfbericht zur angezeigten Version — erst die Eignung prüfenEignung prüfen prüft genau diese Ve",
+    "Phase": "bestaetigen",
+    "Bericht": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "„Prüfung starten“ → Prüflauf fertig → Dialog neu vorbereitet mit Bericht",
+    "Eignung prüfen": false,
+    "Installieren aktiv": true,
+    "Eignung prüfen deaktiviert (Ablauf offen)": false,
+    "DOM-ids mit Präfix lib": false,
+    "lang": "de",
+    "Sperre": "(fehlt)",
+    "Phase": "(fehlt)",
+    "Bericht": "GEEIGNET",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

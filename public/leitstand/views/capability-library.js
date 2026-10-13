@@ -23,16 +23,21 @@
  * - Einziger Schreibweg ist der F36-Installationsweg mit Bestätigung (Regel 2 des Abgleichs); kein Schalter
  *   „aktiv“ in der Tabelle — der Status ist eine Anzeige.
  * - Serverwerte (IDs, Namen, Beschreibungen, Pfade, Gründe) gehen roh durch escapeHtml, nie durch t().
- * - Kein Netzabruf für Suche und Filter; kein Poll.
+ * - Kein Netzabruf für Suche und Filter; kein Poll (der Ablauf „Eignung prüfen“ fragt nur über den Detail-Auffrischer nach,
+ *   solange ein Prüflauf holt/läuft).
+ * - F45 F-2b-2c: „Eignung prüfen“ im Freigabedialog, wenn zur angezeigten Version kein Bericht gilt (Knopf im Sperrblock); Ablauf
+ *   wie in der Sammlung (views/pruefung-ablauf.js, POST /api/sammlung/pruefung[/vorbereiten] mit katalog_id).
  */
 
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
-import { installationsAnzeigeFuer, installationsMeldungFuer } from '../empfehlung-anzeige.js'
+import { installationsAnzeigeFuer, installationsMeldungFuer, setzeInstallationsAnzeige } from '../empfehlung-anzeige.js'
 import { filtereWerkzeuge, istAktiv, ortImHarness, WERKZEUG_TYPEN, zaehleLibrary } from '../faehigkeiten-anzeige.js'
 import { AGENTS_ORDNER, agentsOhneKatalog, harnessOrtZuPfad } from '../harness-anzeige.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge } from '../kommt.js'
+import { renderPruefAblauf } from '../pruefung-anzeige.js'
 import { escapeHtml } from '../render.js'
+import { erzeugePruefAblauf } from './pruefung-ablauf.js'
 
 /** Zeilen, die ohne „Alle anzeigen“ sichtbar sind (Bild 01-Library: „12 von 42 gezeigt“). */
 export const ZEILEN_VORAB = 12
@@ -57,6 +62,62 @@ let auswahlId = null
 
 /** true, wenn „Alle anzeigen“ gedrückt wurde. */
 let alleZeigen = false
+
+/**
+ * F45 F-2b-2c: Ablauf „Eignung prüfen“ (Katalog-id) — gestartet über den Knopf im Sperrblock des Freigabedialogs, gezeigt im
+ * Platz .library-eignung des Details; nach dem Bericht wird der Freigabedialog neu vorbereitet (der Bericht steht dann dort).
+ */
+const eignung = erzeugePruefAblauf({
+  container: () => document.getElementById('library-detail'),
+  schluessel: 'katalog_id',
+  zeichne: (id) => zeichneEignung(id),
+  block: (id) => eignungsPlatz(id),
+  nachBericht: (id) => {
+    eignung.setze(id, null, false)
+    // QA M1: der gemerkte Sperrblock „ohne Prüfbericht“ ist jetzt veraltet — verwerfen, auch wenn gerade ein anderer Eintrag
+    // gewählt ist (bei der Rückkehr steht dann wieder nur „Prüfen & freigeben“).
+    setzeInstallationsAnzeige(id, '')
+    const detail = document.getElementById('library-detail')
+    const platz = [...(detail?.querySelectorAll('.empfehlung-installation') ?? [])].find((el) => el.dataset.installationFuer === id)
+    if (platz !== undefined) platz.innerHTML = ''
+    // Derselbe Weg wie Stefans Klick „Prüfen & freigeben“ (empfehlung-installation.js) — vorbereiten mit dem neuen Bericht.
+    detail?.querySelector(`[data-installation-aktion="vorbereiten"][data-ressource-id="${CSS.escape(id)}"]`)?.click()
+    return true
+  },
+})
+
+/**
+ * Platz des Ablaufs im Detail.
+ * @param id - Katalog-id
+ * @returns Element oder null
+ */
+function eignungsPlatz(id) {
+  return document.getElementById('library-detail')?.querySelector(`.library-eignung[data-eignung-fuer="${CSS.escape(id)}"]`) ?? null
+}
+
+/**
+ * HTML des Ablaufs einer Katalog-id ('' ohne Ablauf).
+ * @param eintrag - Katalogeintrag ({ id, name })
+ * @returns HTML
+ */
+function eignungHtml(eintrag) {
+  const ablauf = eignung.ablaeufe().get(eintrag.id)
+  return ablauf === undefined ? '' : renderPruefAblauf({ id: eintrag.id, name: eintrag.name ?? eintrag.id }, ablauf, {}, 'lib')
+}
+
+/**
+ * Zeichnet nur den Ablauf-Platz neu (der Freigabedialog daneben bleibt stehen).
+ * @param id - Katalog-id
+ */
+function zeichneEignung(id) {
+  const platz = eignungsPlatz(id)
+  const eintrag = (Array.isArray(letzteLibrary?.eintraege) ? letzteLibrary.eintraege : []).find((e) => e?.id === id)
+  if (platz !== null && eintrag !== undefined) platz.innerHTML = eignungHtml(eintrag)
+  // Code-Review 1 / QA M2: solange ein Ablauf offen ist, ist „Eignung prüfen“ im Sperrblock nicht bedienbar.
+  const ablauf = eignung.ablaeufe().get(id)
+  const knopf = document.getElementById('library-detail')?.querySelector(`[data-sm-auswaehlen="${CSS.escape(id)}"]`)
+  if (knopf instanceof HTMLButtonElement) knopf.disabled = ablauf !== undefined && ablauf.phase !== 'fertig' && ablauf.phase !== 'fehler'
+}
 
 /** Rückruf „Im Harness-Aufbau zeigen“ (setzt capabilities.js). */
 let zeigeImHarness = () => {}
@@ -239,6 +300,7 @@ function renderDetail() {
         <p>${tHtml('library.freigabe.text')}</p>
         <button type="button" class="button primary" data-installation-aktion="vorbereiten" data-ressource-id="${id}">${tHtml('library.freigabe.knopf')}</button>
         <div class="empfehlung-installation" data-installation-fuer="${id}">${installationsAnzeigeFuer(eintrag.id)}</div>
+        <div class="library-eignung" data-eignung-fuer="${id}">${eignungHtml(eintrag)}</div>
       </div>`
       : ''
   container.innerHTML = `${ausgeblendet}<div class="library-detail-eyebrow${aktiv ? ' aktiv' : ''}">${tHtml(aktiv ? 'library.detail.aktiv' : 'library.detail.nichtAktiv')}</div>
@@ -321,6 +383,7 @@ export function aktualisiereLibraryHinweis(harness) {
 /** Projektwechsel: Auswahl und „Alle anzeigen“ verwerfen. */
 export function setzeCapabilityLibraryZurueck() {
   auswahlId = null
+  eignung.zuruecksetzen()
   alleZeigen = false
   harnessFuerAbgleich = null
 }
@@ -401,5 +464,6 @@ export function initCapabilityLibrary({ neuLaden, zeigeImHarnessAufbau }) {
     const knopf = ereignis.target instanceof Element ? ereignis.target.closest('.library-zum-harness') : null
     if (knopf !== null) zeigeImHarness(knopf.dataset.harnessOrt)
   })
-  bindeEmpfehlungInstallation(detail, neuLaden)
+  bindeEmpfehlungInstallation(detail, neuLaden, { eignungPruefen: true })
+  eignung.init()
 }

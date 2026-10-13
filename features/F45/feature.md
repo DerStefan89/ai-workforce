@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt, nächster Schritt F-2b-2c. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -710,3 +710,54 @@ Temp-Ordner. Offen als Finding: F-1078 (b) Bericht mit übersprungenen Dateien l
 **Nächster Schritt: F-2b-2c** — Vormerken/Katalog für Sammlungseinträge ohne Katalog, „Eignung prüfen“ in der Capability
 Library, Detail als volle Tabellenzeile (F-1068 (3)), F-1061 (1) mit eigenem Advisor-Pass (Ablage als Kern-Artefakt der
 Workforce, ARCHITECTURE.md §2).
+
+## Stand F-2b-2c
+
+Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21` (main mit F-2b-2b, #327). Plan `features/F45/plan-f2b2c.md` (Plan v1 →
+Advisor-Pass „überarbeiten“: Punkt 4 an zwei Stellen fail-open, Kern-Artefakt ungeeignet, Zuschnitt zu groß → Plan v2). Ist ≈ 0,5 AT
+(Schätzung 0,3).
+
+**Ziel erreicht (Gate F-2b-2 (j)):** Ein Sammlungseintrag ohne Katalog kommt ohne Handarbeit bis „Freigeben & installieren“:
+Auswählen → Prüfbericht → „Vormerken“ (Auftrag mit JSON-Skelett inkl. `installation_vorlage`, freigabe OFFEN) → im Katalog
+„Installieren“ mit dem Bericht der Sammlung (`waehleBericht` bindet an die Quelle, nichts umgeschlüsselt).
+
+**Teil 1 (Server/Sicherheit):**
+- F-1061 (1): `faehigkeiten.stand.json` neben der lokalen Datei (`src/faehigkeiten/stand.ts`, atomar, LF, mit Pfad), geschrieben
+  vom Wächter nach Route und Bestätigung, gelesen beim Start. Startregel fail-closed (Advisor A1/A2): abweichend → Band „Stand vor
+  dem letzten Neustart“ + Sperre; Stand fehlt/beschädigt/anderer Pfad bei vorhandener Datei → „kein gespeicherter Stand“ + Sperre
+  (einmalig beim ersten Start mit F-2b-2c: Datei prüfen, „Datei geprüft – Stand übernehmen“). ARCHITECTURE.md §2: neue Ausnahme
+  statt „lebt nur im Speicher“.
+- F-1078 (b): `uebersprungenSperre` in `waehleBericht` — übersprungene Dateien im installierten Pfad sperren Vorbereiten (Knopf aus,
+  Grund im Dialog) und Installation (409); der Inhalts-Abgleich nennt „im Prüflauf übersprungen (<grund>)“.
+- Vormerken-Daten: `fakten.paket.bin_ziele`, `berichtKurz` mit typ, geprüftem `bin` (nur eindeutig und in der Dateiliste),
+  `skill_md`, `uebersprungen`; Zustand des Prüflaufs trägt `bericht_kurz`; 422 „Werkzeuge“ nennt die angebotenen Werkzeuge.
+
+**Teil 2 (Oberfläche):**
+- Vormerken im Detail der Sammlung (`vormerkenHtml`, `baueSammlungVormerkenAuftragstext`, gemeinsamer Weg
+  `vormerken-ablauf.js` mit dem Scout); nur in der Workforce; Gründe, warum nicht (Urteil, Typ, ganzes Repo, Pfad, SKILL.md).
+- „Eignung prüfen“ im Sperrblock des Freigabedialogs der Capability Library (nur ohne geltenden Bericht); Ablauf-Steuerung aus der
+  Sammlung herausgelöst (`views/pruefung-ablauf.js`), DOM-ids mit Präfix, Eingaben überleben das Neuzeichnen (D3).
+- Detail der Sammlung als eigene volle Tabellenzeile (`colspan`, Knopf mit aria-expanded, F-1068 (3)).
+
+**Tests/Gates:** `src/faehigkeiten/stand.test.ts` (neu), `routen-faehigkeiten.test.mjs` (4 Neustart-Fälle), `pruefbericht.test.ts`
+(Sperre npm/Skill/höherer Pfad/gekürzte Liste/fehlende Angabe; Abgleich), `inhalt.test.ts` (bin_ziele), `routen-pruefung.test.mjs`
+(berichtKurz, gepruefterBinPfad), `vormerken-auftrag.test.mjs`, `sammlung-anzeige.test.mjs`, `pruefung-anzeige.test.mjs`; Gate
+F-2b-2 (f) übersprungene Datei → 409, (j) Sammlung → Katalog → Installation 200; Gate WS-5a (e) angebotene Werkzeuge.
+
+**Register:** F-1056 erledigt; F-1061 (1), F-1068 (3), F-1078 (b) erledigt; neu F-1079 (K36, Terminalblock mit cd), F-1080 (K37,
+Binärdateien nicht installierbar), F-1081 (Restpunkte der Prüfpässe).
+
+**Prüfpass** (frischer Kontext): code-reviewer „freigegeben mit Hinweisen“ (keine kritischen Befunde; Startregel fail-closed, Sperre,
+bin-Prüfung und Vormerken-Text bestätigt), qa „freigegeben mit Hinweisen“ (Hauptweg belegt, fünf mittlere Lücken), design-guardian
+„nicht freigegeben“ (Knopfhierarchie, Knopfname in en/tr, Lücken im Render-Nachweis — kein Sicherheitsbruch). **Eine Korrekturrunde:**
+ein laufender Ablauf „Eignung prüfen“ wird nicht überschrieben (Klick ignoriert, Knopf im Sperrblock deaktiviert; Code-Review 1, QA M2);
+nach dem Bericht wird der veraltete Sperrblock verworfen, auch wenn ein anderer Eintrag gewählt ist (QA M1); Band „Noch kein
+gespeicherter Stand“ mit eigenem Text und ohne „bekannt seit“ (QA M3, Code-Review 5); „Eignung prüfen“ und „Erneut versuchen“ primär,
+„Erneut prüfen“ neben jedem Vormerken-Zustand sekundär (design-guardian 2/3); Knopfname in en/tr, „shortlist“ in en, ohne „(F-1078)“
+in der Oberfläche (design-guardian 1/7/8); Sperrtexte des Servers nur noch mit dem Sachgrund (design-guardian 4); Warnung auch ohne
+lesbare Angabe übersprungener Dateien (Code-Review 3); kaputte Listeneinträge → Sperre statt Wurf, übersprungener Ordner oberhalb des
+installierten Pfads zählt (Code-Review 2); vorgemerkter Zustand bleibt nach „Erneut prüfen“ (QA M5 teilweise); Hinweistext zur Ref
+(QA G2); ARCHITECTURE.md §2 genau wie der Code (Code-Review 4). Render-Nachweis ergänzt um Zoom 200 %, reduzierte Bewegung, ru/tr,
+Warnung, Fehlerzustand und Band „unbekannt“ (`features/F45/nachweise/f2b2c/`). Bestätigungsprüfung design-guardian: „freigegeben mit
+Hinweisen“ (zwei Hauptknöpfe im gesperrten Library-Dialog, doppelter Weg im Sperrtext, „(F-1078)“ im Servertext). Offen als F-1081.
+

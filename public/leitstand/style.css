@@ -13489,18 +13489,26 @@ button.harness-ordner-eintrag {
   cursor: default;
 }
 
-.sm-detail {
+/* F45 F-2b-2c (F-1068 (3)): „Details“ als Textknopf in der Namensspalte, das Detail in einer eigenen vollen Tabellenzeile. */
+.sm-detail-knopf {
+  display: block;
   margin-top: 8px;
-}
-
-.sm-detail summary {
-  cursor: pointer;
   font-size: 12px;
-  color: var(--muted);
 }
 
-.sm-detail[open] summary {
-  margin-bottom: 10px;
+.sm-tabelle tr.sm-zeile-offen td {
+  padding-bottom: 8px;
+}
+
+.sm-tabelle tr.sm-detailzeile td {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sm-detail {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
 .sm-daten {
@@ -13509,11 +13517,11 @@ button.harness-ordner-eintrag {
   margin: 0 0 12px;
 }
 
-/* design-guardian 3: einspaltig auch auf breiten Bildschirmen — das Detail sitzt in der Namensspalte (34 %). */
+/* Breit: Begriff links (feste Spalte), Wert rechts; unter 900 px gestapelt (Mobilregel unten). */
 .sm-daten div {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 2px;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  gap: 2px 16px;
 }
 
 .sm-daten dt {
@@ -13618,6 +13626,20 @@ button.harness-ordner-eintrag {
   .sm-tabelle td:not(:first-child)::before {
     content: attr(data-spalte) ': ';
     color: var(--muted);
+  }
+
+  /* F-2b-2c: die Detailzeile hängt ohne Trennlinie an ihrer Zeile; Begriffe stehen über den Werten. */
+  .sm-tabelle tr.sm-detailzeile {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .sm-detail {
+    padding: 12px;
+  }
+
+  .sm-daten div {
+    grid-template-columns: minmax(0, 1fr);
   }
 
 }
@@ -13792,4 +13814,36 @@ button.harness-ordner-eintrag {
   cursor: pointer;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* ─── F45 F-2b-2c: Vormerken aus der Sammlung, „Eignung prüfen“ in der Capability Library ────────
+   Gleiche Tokens wie Sammlung und Freigabedialog; keine neuen Farben oder Schatten. */
+.sm-vormerken {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.sm-vormerken > .note,
+.sm-vormerken > p {
+  margin: 0;
+}
+
+.sm-vormerken-nicht {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pruef-sperre-aktion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+
+.library-eignung:empty {
+  display: none;
 }

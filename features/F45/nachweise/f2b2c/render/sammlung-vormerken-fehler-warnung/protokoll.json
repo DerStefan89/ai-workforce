@@ -1,0 +1,80 @@
+[
+  {
+    "label": "Workforce geladen",
+    "Detailzeile (colspan)": false,
+    "Vormerken": false,
+    "Prüfbericht-Zeile": false,
+    "lang": "de",
+    "Knopf Details": "false",
+    "Vormerken-Zustand": "(fehlt)",
+    "Grund (nicht vormerkbar)": "(fehlt)",
+    "Fokus": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Capability Library",
+    "Detailzeile (colspan)": false,
+    "Vormerken": false,
+    "Prüfbericht-Zeile": false,
+    "lang": "de",
+    "Knopf Details": "false",
+    "Vormerken-Zustand": "(fehlt)",
+    "Grund (nicht vormerkbar)": "(fehlt)",
+    "Fokus": "active",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Unterreiter „Sammlung“",
+    "Detailzeile (colspan)": false,
+    "Vormerken": false,
+    "Prüfbericht-Zeile": false,
+    "lang": "de",
+    "Knopf Details": "false",
+    "Vormerken-Zustand": "(fehlt)",
+    "Grund (nicht vormerkbar)": "(fehlt)",
+    "Fokus": "active",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Suche „planning“",
+    "Detailzeile (colspan)": false,
+    "Vormerken": false,
+    "Prüfbericht-Zeile": false,
+    "lang": "de",
+    "Knopf Details": "false",
+    "Vormerken-Zustand": "(fehlt)",
+    "Grund (nicht vormerkbar)": "(fehlt)",
+    "Fokus": "library-suche",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Details: Warnung „2 Dateien übersprungen“",
+    "Detailzeile (colspan)": true,
+    "Vormerken": true,
+    "Prüfbericht-Zeile": true,
+    "lang": "de",
+    "Knopf Details": "true",
+    "Vormerken-Zustand": "(fehlt)",
+    "Grund (nicht vormerkbar)": "(fehlt)",
+    "Fokus": "werkstatt-textlink sm-detail-knopf",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "„Vormerken“ → Fehler (500) mit „Erneut versuchen“ (primär)",
+    "Detailzeile (colspan)": true,
+    "Vormerken": true,
+    "Prüfbericht-Zeile": true,
+    "lang": "de",
+    "Knopf Details": "true",
+    "Vormerken-Zustand": "Auftrag konnte nicht angelegt werden: 500 Render-Fixture: Ablage nicht schreibbar",
+    "Grund (nicht vormerkbar)": "(fehlt)",
+    "Fokus": "fehler",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

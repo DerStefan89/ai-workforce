@@ -141,7 +141,7 @@ test('F-1061 (3): unbestätigte Änderung von außen → rotes Band mit „Datei
   const s = status({ lokale_datei: { zustand: 'gueltig', pfad: '/h/f.json', hash: 'f'.repeat(64), fremd_geaendert: { bekannt_seit: '2026-10-12T08:00:00.000Z', quelle: 'bestaetigt', geaendert_am: '2026-10-12T09:00:00.000Z' } } })
   assert.equal(sperreFuer(s), 'fremd')
   const html = renderFaehigkeitenProjekt(s)
-  assert.match(html, /class="note red fp-band" data-fp-band="fremd"><strong id="fp-sperre-fremd">/)
+  assert.match(html, /class="note red fp-band" data-fp-band="fremd" data-fp-quelle="bestaetigt"><strong id="fp-sperre-fremd">/)
   assert.match(html, /Läufe mit Fähigkeiten gesperrt/)
   assert.match(html, /zuletzt hier bestätigt/)
   assert.match(html, /data-fp-bestaetigen="f{64}">Datei geprüft – Stand übernehmen</)
@@ -157,4 +157,13 @@ test('design-guardian A: während ein POST läuft, ist auch „Datei geprüft �
   assert.match(html, /data-fp-bestaetigen="f{64}" disabled aria-describedby="fp-sperre-beschaeftigt"/)
   assert.match(html, /id="fp-sperre-beschaeftigt"/)
   assert.doesNotMatch(renderFaehigkeitenProjekt(s), /data-fp-bestaetigen="f{64}" disabled/)
+})
+
+test('baenderHtml (F45 F-2b-2c, F-1061 (1)): neustart nennt den Stand vor dem Neustart; unbekannt eigener Titel ohne „bekannt seit“', () => {
+  const neustart = baenderHtml(status({ lokale_datei: { zustand: 'gueltig', pfad: '/h/f.json', hash: 'f'.repeat(64), fremd_geaendert: { bekannt_seit: '2026-10-12T08:00:00.000Z', quelle: 'neustart', geaendert_am: '2026-10-12T09:00:00.000Z' } } }))
+  assert.match(neustart, /Außerhalb des Leitstands geändert[^]*Stand vor dem letzten Neustart des Leitstands/)
+  const unbekannt = baenderHtml(status({ lokale_datei: { zustand: 'gueltig', pfad: '/h/f.json', hash: 'f'.repeat(64), fremd_geaendert: { bekannt_seit: null, quelle: 'unbekannt', geaendert_am: '2026-10-12T09:00:00.000Z' } } }))
+  assert.match(unbekannt, /data-fp-quelle="unbekannt"/)
+  assert.doesNotMatch(unbekannt, /Außerhalb des Leitstands geändert|bekannter Stand seit/)
+  assert.match(unbekannt, /data-fp-bestaetigen="f{64}"/, 'Bestätigen bleibt der Weg')
 })

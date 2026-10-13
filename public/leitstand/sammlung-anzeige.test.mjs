@@ -4,7 +4,8 @@
  * Zweck: Tests der Anzeigeregeln der Sammlung (F45 F-2b-1): Filter (Suche, Urteil, Stand), Gruppen nach Art, Link nur
  * https, Auswählen (kommt / Grund / Ausnahme), Detail mit Zuordnung und Prüfbericht, Escaping fremder Werte, alle
  * dynamischen i18n-Schlüssel vorhanden (das i18n-Gate prüft nur literale), Scout-Karte mit Sammlungsangabe — gegen die
- * echte Antwort der Bausteine (baueSammlungAnsicht über die Datei dieses Repos).
+ * echte Antwort der Bausteine (baueSammlungAnsicht über die Datei dieses Repos). F45 F-2b-2c: Detail als eigene Tabellenzeile,
+ * „Vormerken“ im Detail.
  *
  * Wird aufgerufen von: npm run test (node --test).
  */
@@ -15,7 +16,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { baueSammlungAnsicht } from '../../src/sammlung/index.ts'
 import { WOERTERBUECHER } from './i18n.js'
-import { auswahlHtml, detailHtml, filtereSammlung, gruppiereNachArt, linkHtml, renderSammlungKopf, renderSammlungListe, renderSammlungZustand, STAENDE, scoutSammlungHtml, standChip, urteilChip } from './sammlung-anzeige.js'
+import { auswahlHtml, detailHtml, vormerkenHtml, filtereSammlung, gruppiereNachArt, linkHtml, renderSammlungKopf, renderSammlungListe, renderSammlungZustand, STAENDE, scoutSammlungHtml, standChip, urteilChip } from './sammlung-anzeige.js'
 
 const WURZEL = join(import.meta.dirname, '..', '..')
 const ANTWORT = (() => {
@@ -91,7 +92,7 @@ test('detailHtml: Bewertung, Bedeutung des Urteils, Zuordnung, Typ mit Quelle, P
   assert.match(detailHtml({ ...playwright, zuordnung: { status: 'mehrdeutig', kandidaten: ['x'], stufe: 'link' } }, {}), /ein anderer Sammlungseintrag trifft denselben Katalogeintrag <code>x<\/code>/)
   const boese = detailHtml({ ...playwright, bewertung: BOESE, name: BOESE }, {})
   assert.doesNotMatch(boese, /<img/)
-  assert.match(detailHtml(playwright, {}, true), /<details class="sm-detail" data-sm-detail="[^"]+" open>/)
+  assert.match(detailHtml(playwright, {}), /<div class="sm-detail" id="sm-detail-[^"]+" data-sm-detail="[^"]+" role="region"/)
 })
 
 test('Chips: Urteil (ausgeschlossen rot), Stand übersetzt, benutzt mit Aufrufen', () => {
@@ -149,4 +150,34 @@ test('scoutSammlungHtml: Urteil laut Sammlung, Abweichung, Web; ohne Feld leer',
   assert.match(scoutSammlungHtml({ quelle: 'web' }, { treffer: null, abweichung: false }), /aus dem Web/)
   assert.equal(scoutSammlungHtml({}, undefined), '')
   assert.doesNotMatch(scoutSammlungHtml({}, { treffer: { urteil: BOESE }, abweichung: false }), /<img/)
+})
+
+test('Detail als eigene volle Tabellenzeile (F45 F-2b-2c, F-1068 (3)): Knopf mit aria-expanded, Detailzeile nur offen, colspan 6', () => {
+  const zu = renderSammlungListe(ANTWORT, { suche: 'scraper' })
+  assert.match(zu, /<button type="button" class="werkstatt-textlink sm-detail-knopf" data-sm-detail-knopf="[^"]+" aria-expanded="false">/)
+  assert.doesNotMatch(zu, /sm-detailzeile|<details class="sm-detail"/)
+  const id = /data-sm-detail-knopf="([^"]+)"/.exec(zu)[1]
+  const offen = renderSammlungListe(ANTWORT, { suche: 'scraper' }, new Set([id]))
+  assert.match(offen, new RegExp(`aria-expanded="true" aria-controls="sm-detail-${id}"`))
+  assert.match(offen, new RegExp(`</tr><tr class="sm-detailzeile" data-sm-detailzeile="${id}"><td colspan="6"><div class="sm-detail" id="sm-detail-${id}"`))
+  // Ein laufender Ablauf allein öffnet das Detail nicht mehr (der Knopf entscheidet; Stefans Klick öffnet es ohnehin).
+  assert.doesNotMatch(renderSammlungListe(ANTWORT, { suche: 'scraper' }, new Set(), new Map([[id, { phase: 'holen', zustand: { lauf_id: 'l' } }]])), /sm-detailzeile/)
+})
+
+test('vormerkenHtml (F45 F-2b-2c): nur ohne Katalog mit Bericht; Grund sonst; nur in der Workforce; Phasen; Warnung bei übersprungenen Dateien', () => {
+  const bericht = { artefakt_id: 'pruefbericht-s-x', version: 1, urteil: 'GEEIGNET', gepinnte_version: 'a'.repeat(40), typ: 'skill', quelle: { art: 'git', repo: 'https://github.com/o/r.git', ref: 'main', sha: 'a'.repeat(40), pfad: 'skills/x' }, bin: null, skill_md: true, uebersprungen: 0 }
+  const e = { id: 'x', name: 'X <b>', zuordnung: { status: 'keine' }, pruefbericht_letzter: bericht }
+  assert.equal(vormerkenHtml({ ...e, pruefbericht_letzter: null }, { workforce: true }), '', 'ohne Bericht: Auswählen ist der Weg')
+  assert.equal(vormerkenHtml({ ...e, zuordnung: { status: 'zugeordnet', katalog_id: 'k' } }, { workforce: true }), '')
+  assert.match(vormerkenHtml({ ...e, pruefbericht_letzter: { ...bericht, urteil: 'NICHT_GEEIGNET' } }, { workforce: true }), /data-sm-vormerken-grund="nicht_geeignet"/)
+  assert.match(vormerkenHtml(e, { workforce: false }), /data-sm-vormerken-grund="workforce"/)
+  const knopf = vormerkenHtml(e, { workforce: true })
+  assert.match(knopf, /<button type="button" class="button primary" data-sm-vormerken="x">Vormerken<span class="sr-only"> — X &lt;b&gt;<\/span><\/button>/)
+  assert.match(vormerkenHtml(e, { workforce: true, zustand: { phase: 'unterwegs' } }), /Wird vorgemerkt/)
+  assert.match(vormerkenHtml(e, { workforce: true, zustand: { phase: 'fehler', auftragId: 'a1', meldung: '<x>' } }), /&lt;x&gt;[^]*data-sm-vormerken="x">Erneut versuchen/)
+  assert.match(vormerkenHtml(e, { workforce: true, zustand: { phase: 'geroutet', auftragId: 'a1', workflowId: 'router-a1' } }), /href="#\/workflows\/router-a1"/)
+  assert.match(vormerkenHtml({ ...e, pruefbericht_letzter: { ...bericht, uebersprungen: 2 } }, { workforce: true }), /note amber sm-vormerken-warnung/)
+  // Bei einem fertigen Prüflauf steht Vormerken unter dem Bericht.
+  assert.match(auswahlHtml({ ...e, auswaehlbar: true }, { phase: 'fertig', zustand: { bericht: { ergebnis: { urteil: 'GEEIGNET' } } } }, {}, { workforce: true }), /data-sm-vormerken="x"/)
+  for (const grund of ['nicht_geeignet', 'typ', 'ganzes_repo', 'skill_pfad', 'ohne_skill_md']) assert.ok(typeof WOERTERBUECHER.de[`sammlung.vormerken.grund.${grund}`] === 'string', grund)
 })
