@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -808,3 +808,44 @@ Anzahl (Code-Review 9); Codeblöcke behalten ihre Kommentarzeilen, ARCHITECTURE-
 und fehlende CLAUDE.md ohne irreführende Lücke (QA L9); gemeinsame Konstante `ABSCHNITT_IDS` für Typ und Validator (Code-Review 6);
 Kommentar zu den drei Schreibzielen (Code-Review 7). Offen in F-1082: Entscheidung QA L3 (Prüfmaßstab aus dem Arbeitsordner),
 fehlende Tests Arbeitsordner und Controller → Claude-Gateway, Quellstand der Ordnerübersicht.
+
+## Stand B2a-2
+
+Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9` (main mit B2a-1, #329). Plan `features/F45/plan-b2a2.md` (Plan v1 → Advisor-Pass
+„nicht freigegeben“ (V1–V5) → Plan v2 mit E1–E4 → Advisor-Nachpass „freigegeben mit Hinweisen“ (H1–H5)). Der Bau der risikoarmen
+Teile begann parallel zum ersten Pass (Abweichung vom Ablauf, im Plan vermerkt).
+
+**Arbeitspaket = Auftrag v0 (F-938):** additive Felder `bereiche`, `risiko`, `feature_ref`, `einrichtung`, Herkunft `finding`;
+Finding- und Feature-Akte-Aufträge brauchen ≥ 1 AK (`validiereAuftragPflichtfelder`, auch in `registriereAuftrag`, das jetzt vor
+dem Schreiben prüft). `baueArbeitspaketBlock` ist die einzige Textquelle für Architekt und Ausführung; ein Auftrag ohne
+Arbeitspaket-Feld bleibt bitgenau (Gate gegen festen Text aus `b3fcbf9`); das Review behält den AK-Block, die Projektkarte des
+Architekten verweist auf den Block. Click-to-Work aus einem Finding zeigt zuerst einen AK-Entwurf aus der Maßnahme
+(`public/leitstand/ak-entwurf.js`), angelegt wird erst mit „Auftrag anlegen“; das Formular nimmt AK nur mit Herkunft `finding` (E3).
+
+**Feature-Bezug (F-989, teilweise):** Aufträge aus Feature-Akten tragen `feature_ref`; GET /api/auftraege und `baueVerknuepfung`
+nutzen ihn vor der Referenzzeile; die Karte nennt die Akte.
+
+**Einrichtung (F-1071):** Architekt-Ergebnis additiv `einrichtung` (Codex-Dialekt, Formblock der Instruktion, E1); Übernahme als
+Auftragsversion über `registriereAuftrag` im Nachlauf und vor jedem Ausführungsstart (`gleicheEinrichtungAb`: gleiche Folge
+Schritt/wann → keine Version, Abhaken bleibt; ungültiges Ergebnis löscht nichts und lehnt den Bau ab). Startsperre zentral in
+`starteWorkflowSchritt` und als Vorprüfung in POST /freigabe (409 `einrichtungOffen` mit Grund, nichts festgehalten). Leitstand:
+Karte „Arbeitspaket“ der Freigabe-Seite und Timeline zeigen „Einrichtung durch dich“ mit „Erledigt“/„Wieder öffnen“
+(POST …/einrichtung, CSRF/Host zentral, Laufsperre, Abgleich über den angezeigten Text, nach Ablaufende gesperrt).
+
+**QA L3 (F-1082 (7)):** Die Review-Karte liest CLAUDE.md (DoD) und ARCHITECTURE.md per `git show` aus dem Stand vor dem Bau
+(Basis-Commit des Arbeitsordners, sonst `workflow.basis_commit` = HEAD beim ersten Schrittstart der ersten Fassung; vom Server
+gesetzt, aus eingereichten Fassungen nicht übernommen); geänderte Maßstabsdateien stehen als „Prüfmaßstab im Bau geändert:
+<Datei> — die Änderung ist Teil des Reviews“, ein nicht lesbarer Vorher-Stand als Lücke in `fehlend`.
+
+**Tests/Gates:** Gate `scripts/check-f45-b2a2-arbeitspaket.mjs` (neu, in der Kette; Mutationen kalibriert: Block immer an, Sperren
+aus, Vorher-Stand aus, zentrale Sperre aus → jeweils rot); Unit-Tests `src/auftrag`, `src/projektkarte`, `ak-entwurf.test.mjs`,
+`entwicklung-daten.test.mjs`, `workflow-detail.test.mjs`, `workflow-entscheiden.test.mjs`, `workboard-detail.test.mjs`; begründet
+angepasst: `projekt-wechsel.test.mjs` (Click-to-Work öffnet erst den Entwurf; Body mit Herkunft und AK geprüft).
+
+**Prüfpass** (frischer Kontext): code-reviewer „freigegeben mit Hinweisen“, qa und design-guardian „nicht freigegeben“ (u. a.
+bestehender Test rot, zentrale Sperre ohne Rotfall, basis_commit zu spät, zweite Live-Region, Nachweis unvollständig). **Eine
+Korrekturrunde:** Test umgestellt plus Abbrechen-Test, Rotfall (d2) für die zentrale Sperre, echter Selbsttest (h), basis_commit nur
+beim ersten Start und serverseitig, Abhaken mit Textabgleich und Statusprüfung, Entwurf bleibt nach Anlegefehler, Trim im
+Architekt-Validator, git-Fehler ≠ „fehlt“, Live-Region entfernt (Fokus), Label und Knopfnamen über i18n, Hierarchie und
+Zurücknahme in der Karte, Render-Nachweis mit Zoom 200 %, reduzierter Bewegung, hell und aufgeklappter Timeline
+(`features/F45/nachweise/b2a2/`). Rest: F-1083.

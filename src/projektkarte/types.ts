@@ -55,6 +55,10 @@ export interface ProjektkarteEingaben {
     ziel: string | null
     akzeptanzkriterien: { id: string; text: string }[]
     nicht_ziele: string[]
+    /** F45 B2a-2: true, wenn der Auftrag denselben Inhalt als Arbeitspaket-Block trägt (dann verweist die Karte des Architekten darauf); fehlt = false */
+    arbeitspaket?: boolean
+    /** F45 B2a-2 (F-989): Feature-Bezug des Auftrags (Feature-ID) oder null; fehlt = null */
+    feature_ref?: string | null
   }
   architektur: KarteDatei | null
   /** Ergebnis von leseEntschiedeneAdrs ('' = keine entschiedenen ADRs) */
@@ -66,6 +70,12 @@ export interface ProjektkarteEingaben {
   /** DoD-Punkte aus CLAUDE.md, null = nicht lesbar */
   dod: string[] | null
   reviewCheckliste: KarteDatei | null
+  /**
+   * F45 B2a-2 (QA L3, F-1082 (7)): nur Code-Reviewer — CLAUDE.md (DoD) und ARCHITECTURE.md kommen aus dem Stand vor dem
+   * Bau (basis = Commit), geaendert nennt die Dateien, die der Bau verändert hat. null/fehlt = nicht ermittelt (die Lücke
+   * steht dann in lesefehler).
+   */
+  pruefmassstab?: { basis: string; geaendert: string[] } | null
   /** Lesefehler des Servers je Quelle („ARCHITECTURE.md: fehlt“) — gehen unverändert nach fehlend */
   lesefehler: string[]
 }

@@ -12079,13 +12079,13 @@ Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1. Das Review prüft �
 Status: teilweise (F45 B1b-1, 11.10.2026): der code-reviewer-Schritt (Claude und Codex) bekommt die Beobachtung des Ausführungslaufs als kurzen, deterministischen Block (geladen gegen aufgerufen: Skills, Subagenten, MCP-Server; Hintergrund-Aufrufe; ohne Beobachtung der Satz „keine Beobachtung“) — `baueBeobachtungsBlock`, Test `scripts/leitstand/review-beobachtung.test.mjs`. Seit F45 B1b-2 (11.10.2026) zeigt die Abnahme (und das Lauf-Detail) die Kurzliste der benutzten Fähigkeiten des Ausführungslaufs — Skills, Subagenten, MCP-Server je mit Anzahl, Hintergrund-Aufrufe (`baueFaehigkeitenKurzliste`, Zählregel `zaehleNamen` des Gateways; Feld `faehigkeiten` im Artefakt `harness-abgleich-<workflowId>`; Tests `src/harness-abgleich/harness-abgleich.test.ts`, `public/leitstand/harness-abgleich-anzeige.test.mjs`). Offen: „vorgesehen“ aus dem Arbeitspaket (B2a).
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
-**F-938** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-938** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Aufträge aus Findings tragen weder AK noch Nicht-Ziele, und keine Rolle bekommt eine DoD.
 Beschreibung: Ein Auftrag aus einer Feature-Akte (F35) trägt AK und Nicht-Ziele. Das Review urteilt dann je AK; berührt eine Änderung ein Nicht-Ziel, ist das ein Befund HOCH (`src/ak-pruefung/index.ts` ca. Z. 112). Ein Auftrag per Click-to-Work aus einem Finding trägt nur einen Auftragstext, und das Review läuft dann ohne AK-Block. Eine DoD als Eingabe gibt es für keine Rolle (siehe F-829).
 Fundstelle: `baueAuftragstext` (`public/leitstand/views/workboard.js`), `src/ak-pruefung`, F-829.
 Auswirkung: Mittel. Aufträge aus Findings sind bei der Abnahme nicht gegen AK prüfbar.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 2. Das „Arbeitspaket“ wird das einzige Übergabeformat, mit den Pflichtfeldern Ziel, AK mit IDs, Nicht-Ziele, DoD, betroffene Bereiche, Risiko und Kontrolltiefe. Bei Findings entsteht ein AK-Entwurf aus der Maßnahme, den Stefan bestätigt.
-Status: offen.
+Status: erledigt (F45 B2a-2, 13.10.2026): Arbeitspaket = Auftrag v0 additiv (`bereiche`, `risiko`, `feature_ref`, `einrichtung`; kein neuer Artefakttyp, DoD über die Projektkarte aus CLAUDE.md). „Auftrag vorbereiten“ an einem Finding zeigt zuerst einen AK-Entwurf aus der Maßnahme (`public/leitstand/ak-entwurf.js`), Stefan ändert oder ergänzt ihn, erst „Auftrag anlegen“ legt an (herkunft `finding`). Aufträge aus Findings und Feature-Akten brauchen ≥ 1 AK (`validiereAuftragPflichtfelder`, wirkt in `validiereAuftragDaten`, `registriereAuftrag` und POST /api/auftraege). Der Block für Architekt und Ausführung kommt aus `baueArbeitspaketBlock` (alte Aufträge bitgenau); das Review urteilt über den bestehenden AK-Block je AK. Rest (Bereiche/Risiko ohne Setzer, Entwurf nur aus der Maßnahme) → F-1083.
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
 **F-939** · `HARNESS_IMPROVEMENT` · P2 · teilweise
@@ -12542,13 +12542,13 @@ Maßnahme: Bei Bedarf ein Registerfeld `zielfassung_pfad` wie `kontext_pfad` (Fi
 Status: offen.
 Feature/Run: Entdeckt: F46 D1, Prüfpass cr 9.
 
-**F-989** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-989** · `PROCESS_IMPROVEMENT` · P3 · teilweise
 Titel: Feature und Ablauf sind nur über die Auftragsreferenz verknüpft.
 Beschreibung: Der Rollen-Kreis der Übersicht findet den Ablauf eines Features nur über `workitem_referenz` des Auftrags (Click-to-Work, „Bauen“). Ein Ablauf aus einem Auftrag ohne Referenz (freier Auftrag, Chat) erscheint als „Ablauf ohne Feature“, das Feature als „Noch kein Ablauf gestartet“.
 Fundstelle: `public/leitstand/entwicklung-daten.js` (`baueVerknuepfung`, `waehleFeatureInArbeit`).
 Auswirkung: Gering — die Zuordnung ist dann unvollständig, nichts wird falsch behauptet.
 Maßnahme: Fixpaket B2 (Arbeitspaket als Daten mit Feature-Bezug).
-Status: offen.
+Status: teilweise (F45 B2a-2, 13.10.2026): Aufträge aus einer Feature-Akte (auch „Bauen“) tragen `feature_ref`; GET /api/auftraege liefert ihn, `baueVerknuepfung` nutzt `workitem:feature:<feature_ref>` vor der Referenzzeile; die Projektkarte nennt `features/<ref>/feature.md`. Rest: ein freier Auftrag oder Chat ohne bekannten Feature-Bezug bleibt „Ablauf ohne Feature“ (F-1083 (2)).
 Feature/Run: Entdeckt: F46 D1.
 
 **F-990** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -13309,13 +13309,13 @@ Maßnahme: nach F30 — Einzelauftrag mit vorbelegter Fähigkeit (fast-lane).
 Status: offen.
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 
-**F-1071** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1071** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Einrichtungsschritte für Stefan haben keinen eigenen Ort (Challenger K31).
 Beschreibung: Konten, Schlüssel, Dienste und Berechtigungen, die Stefan vor oder während eines Baus einrichten muss, stehen nirgends gesammelt; der Bau startet ohne sie.
 Fundstelle: Arbeitspaket/Architekt (`src/architekt/`), Leitstand.
 Auswirkung: Mittel — Bauläufe scheitern an fehlender Einrichtung oder warten unbemerkt.
 Maßnahme: B2a — Feld „Einrichtung durch Stefan“ im Arbeitspaket (Schritt, wann nötig, Status), vom Architekten befüllt, Liste im Leitstand vor dem Bau; der Bau startet erst, wenn die als „vor dem Bau“ markierten Schritte erledigt sind.
-Status: offen.
+Status: erledigt (F45 B2a-2, 13.10.2026): Architekt-Ergebnis additiv `einrichtung` (Schema im Codex-Dialekt, Formblock der Rolleninstruktion); der Server übernimmt die Liste als neue Auftragsversion über `registriereAuftrag` (`gleicheEinrichtungAb` im Nachlauf des Architekten und vor jedem Ausführungsstart; gleiche Folge von Schritt/wann = keine neue Version, Abhaken bleibt; ungültiges Ergebnis löscht nichts und lehnt den Bau ab). Der Ablauf zeigt „Einrichtung durch dich“ vor dem Ausführungsschritt mit „Erledigt“/„Wieder öffnen“ (POST /api/workflows/<id>/einrichtung, CSRF/Host zentral, Laufsperre); Freigabe und Start des Baus werden mit offenem „vor dem Bau“-Schritt abgelehnt (409 `einrichtungOffen`, Grund nennt die Schritte). Rest → F-1083 (3), (6), (7).
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 Zugeordnet: F45 B2a.
 
@@ -13425,11 +13425,20 @@ Maßnahme: (1) Gate (j) mit zweiter Zeile desselben Repos, bei „mehrdeutig“ 
 Status: offen.
 Feature/Run: Entdeckt: F45 F-2b-2c (code-reviewer, qa, design-guardian), 13.10.2026.
 
-**F-1082** · `TECH_DEBT` · P3 · offen
+**F-1082** · `TECH_DEBT` · P3 · teilweise
 Titel: Restpunkte von F45 B2a-1 (Projektkarte).
 Beschreibung: (1) Roadmap/Vision und Lagebild (F-936) stehen nicht in der Projektkarte — Größe; jarvis/router bekommen sie weiter. (2) „Feature-Akte“ in der Karte ist immer „kein Feature-Bezug“, weil Auftrag v0 keinen Bezug trägt (→ B2a-2). (3) Urteil je DoD-/Checklisten-Punkt nur im Befund-Format (Präfix, Zählzeile in `empfehlung`), nicht strukturiert (→ B2a-3, Review-Schema v2). (4) Ob die Ausführung ARCHITECTURE.md liest, ist nur über die CLAUDE.md-Pflichtlektüre gedeckt; einen qa-Schritt mit Karte gibt es erst mit B2b (F-931). (5) „Im Projekt eingeschaltete Fähigkeiten“ ist der Stand der Seite Workforce im Projektordner, nicht der beim Bau eingefrorene F-1-Satz (der entsteht erst mit der Empfehlung am Ausführungsstart); die Karte sagt das. (6) Die Größengrenzen je Rolle (24 000 / 20 000 / 20 000 Zeichen nach der Korrekturrunde) sind geschätzt; die Karte dieses Repos für den Architekten hatte im echten Lauf 15 614 Zeichen. (7) Entscheidung Stefan (QA L3): der Code-Reviewer liest seinen Prüfmaßstab (ARCHITECTURE.md, DoD, ADRs, Checkliste) aus dem Arbeitsordner, also nach dem Bau — die Ausführung könnte ihn abschwächen, ohne dass die Karte das zeigt; keine der Dateien steht in `STANDARD_PRUEFKETTEN_MUSTER`. Optionen: Maßstab aus dem Basis-Commit lesen, oder in der Karte „im Lauf geändert“ markieren (Abgleich mit der Änderungsübersicht); im Projektmodus ist eine geänderte ARCHITECTURE.md gewollt. (8) Ungetestet: Karte bei Workflow mit eigenem Arbeitsordner (QA L6; liest aus `laufWurzel`), Weitergabe Controller → Claude-Gateway (QA L10; Codex-Weg durch den echten Lauf belegt). (9) Was die Gesamtkürzung am Ende des Bestands abschneidet (z. B. Teile der Ordnerübersicht), trägt keinen eigenen Quellstand — der Hash kann dort eine Änderung verpassen (Code-Review 4, Rest; Dateien mit Quellstand: Beschreibung, ARCHITECTURE.md, ADRs, Checkliste). (10) Die Pflichtregel (Regel 1h) erkennt nur die Skelett-Titel „Ordnerstruktur“/„Datenzugriff“; eine gefüllte Datei mit anderen Titeln zeigt ihren Auszug, hält aber nach einer Stack-Entscheidung an (O2, bewusst).
 Fundstelle: `src/projektkarte/index.ts`, `scripts/leitstand-server.mjs` (`leseProjektkarteEingaben`).
 Auswirkung: Gering bis mittel — jeweils benannt und in der Karte sichtbar, kein stiller Verlust.
 Maßnahme: (2) mit B2a-2, (3) mit B2a-3, (4) mit B2b; (1)/(6) nach dem Referenzauftrag R messen (Verbrauch je Rolle, F-930); (7) Entscheidung Stefan; (8) Testfälle im Gate f45-b2a1 nachziehen; (9) Quellstand der Ordnerübersicht; (10) bei Bedarf Titelliste je Sprache.
-Status: offen.
+Status: teilweise (F45 B2a-2, 13.10.2026): (2) erledigt — die Karte nennt bei Feature-Bezug `features/<feature_ref>/feature.md`. (7) erledigt (Challenger 13.10.2026: Maßstab vor dem Bau) — die Review-Karte liest CLAUDE.md (DoD) und ARCHITECTURE.md per `git show` aus dem Basis-Commit (Arbeitsordner; ohne Arbeitsordner `workflow.basis_commit` = HEAD beim ersten Schrittstart), zeigt „Prüfmaßstab im Bau geändert: <Datei> — die Änderung ist Teil des Reviews“ und vermerkt einen nicht lesbaren Vorher-Stand als Lücke in `fehlend`; ADRs und Checkliste bleiben im Stand nach dem Bau (F-1083 (4)). Übrige Punkte offen.
 Feature/Run: Entdeckt: F45 B2a-1 (Plan, Advisor-Pass, echter Lauf, code-reviewer, qa), 13.10.2026.
+
+**F-1083** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B2a-2 (Arbeitspaket).
+Beschreibung: (1) `bereiche` und `risiko` stehen im Auftrag und im Arbeitspaket-Block, aber niemand setzt sie (kein Formularfeld, kein Architekt-Feld, keine Kopplung an die Kontrolltiefe des Routers). (2) F-989: ein freier Auftrag oder Chat ohne bekannten Feature-Bezug bleibt „Ablauf ohne Feature“. (3) Woher eine Einrichtungsliste stammt (lauf_id des Architekten), ist im Auftrag nicht nachvollziehbar — die Auftragsversion zitiert den Lauf nicht (`eingaben: []`). (4) Das Review liest ADRs und die Checkliste weiter im Stand nach dem Bau; die Checkliste ist über den Schreibschutz für `.claude/**` gedeckt, die ADRs nicht. (5) Der AK-Entwurf entsteht nur aus der Maßnahme (ein Kriterium); Nicht-Ziele lassen sich im Click-to-Work nicht angeben. (6) Was Stefan im Projektordner einrichtet (z. B. eine ungetrackte `.env`), fehlt im Arbeitsordner des Baus; der Leitstand sagt nur, es müsse für den Bau erreichbar sein (Regel mit F-1072/B2b). (7) Ist das Ergebnis des Architekten beim Ausführungsstart nicht mehr lesbar (Rohstrom fehlt), wird der Bau bis zu einem Replan abgelehnt (bewusst: nie ohne Liste, Advisor H1). (8) Entscheidungen im Bau zur Bestätigung (Plan v2 E1–E4): Formblock der Architekt-Instruktion um `einrichtung` ergänzt; „bitgenau“ gilt für Ausführungs- und Review-Auftrag ohne Projektkarte; AK im POST-Formular nur mit Herkunft `finding`; `feature_ref` nur bei bekanntem Feature-Bezug. (9) Prüfpass-Reste: „während des Baus“-Schritte lassen sich während eines laufenden Baus nicht abhaken (Laufsperre); Gate ohne Fälle für Arbeitsordner, Altbestand ohne `basis_commit` über HTTP, Replan mit geänderter Liste, Laufsperre beim Abhaken und claude-code-Review bitgenau; die Einrichtungs-Prüfung kann vor späteren Ablehnungsgründen eine (idempotente) Auftragsversion schreiben; bis zu fünf synchrone git-Aufrufe beim Review-Start; ein Sprachwechsel im Entwurf verwirft getippten Text; die Meldung nach dem Abhaken steht weit vom Knopf (Bestand); ohne eigenen Test (QA-Nachpass): 409 von …/einrichtung nach ABGESCHLOSSEN/GESTOPPT, 400 bei unbekannten Feldern, Trim im Architekt-Validator, Entwurf bleibt nach Anlegefehler, Rotfall „kein basis_commit bei spätem Start/Altbestand“.
+Fundstelle: `src/auftrag/index.ts`, `scripts/leitstand-server.mjs` (`gleicheEinrichtungAb`, `pruefeEinrichtungVorBau`, `leseVorherStand`), `public/leitstand/views/workboard.js`.
+Auswirkung: Gering bis mittel — jeweils benannt, kein stiller Verlust.
+Maßnahme: (1) mit B2b (Kontrolltiefe/Budget je Arbeitspaket) oder B5a; (2) mit B5a (Akte im Leitstand); (3) Feld `einrichtung_quelle` oder Lineage-Eingabe, wenn nötig; (4) mit B2a-3 (Review-Spec); (5) nach dem Referenzauftrag R; (6) mit F-1072 (B2b); (7) beobachten; (8) Challenger bestätigt oder ändert; (9) nach Bedarf, Gate-Fälle mit B2a-3.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2a-2 (Plan, Advisor-Pass und Nachpass, code-reviewer, qa, design-guardian), 13.10.2026.

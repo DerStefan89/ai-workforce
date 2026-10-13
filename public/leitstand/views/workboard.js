@@ -70,6 +70,7 @@
  */
 
 import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, holeRoadmap, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { baueAkEntwurf, baueAkzeptanzkriterien } from '../ak-entwurf.js'
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
 import { sicherBefehle } from '../code-daten.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
@@ -786,6 +787,35 @@ function renderTerminalBlock() {
 }
 
 /**
+ * F45 B2a-2 (F-938): der AK-Entwurf vor dem Anlegen — je AK ein Textfeld (vorbelegt aus der Maßnahme), „Entfernen“,
+ * „AK hinzufügen“, „Auftrag anlegen“, „Abbrechen“. Die Feldwerte stehen nur beim Rendern im HTML (zustand.entwurf);
+ * getippt wird im DOM, gelesen beim Klick (leseEntwurfTexte).
+ * @param workitem - das Finding
+ * @param zustand - bearbeitungsZustand in Phase 'entwurf'
+ * @returns HTML
+ */
+function renderAkEntwurf(workitem, zustand) {
+  const id = escapeHtml(workitem.id)
+  const felder = zustand.entwurf
+    .map((text, index) => {
+      const feldId = `wb-ak-${index}`
+      const feld = t('entwicklung.ctw.entwurf.feld', { nummer: String(index + 1) })
+      // Design-Prüfung B2a-2 (3): jeder „Entfernen“-Knopf nennt sein Kriterium (Screenreader-Knopfliste).
+      const entfernen = zustand.entwurf.length > 1 ? `<button type="button" class="button wb-ak-entfernen" data-entwurf="entfernen" data-index="${index}" data-id="${id}" aria-label="${escapeHtml(t('entwicklung.ctw.entwurf.entfernenFeld', { feld }))}">${tHtml('entwicklung.ctw.entwurf.entfernen')}</button>` : ''
+      return `<li class="wb-ak-zeile"><label for="${feldId}">${escapeHtml(feld)}</label><textarea id="${feldId}" class="wb-ak-text" rows="${Math.min(6, Math.max(2, Math.ceil(text.length / 90)))}">${escapeHtml(text)}</textarea>${entfernen}</li>`
+    })
+    .join('')
+  return `<section class="workboard-vorschlag workboard-entwurf" aria-labelledby="workboard-entwurf-titel">
+      <h3 id="workboard-entwurf-titel" ${zustand.meldung ? 'tabindex="-1"' : FOKUS}>${tHtml('entwicklung.ctw.entwurf.titel')}</h3>
+      <p class="subtle">${tHtml('entwicklung.ctw.entwurf.hinweis')}</p>
+      <ol class="wb-ak-liste">${felder}</ol>
+      <div class="action-row"><button type="button" class="button wb-ak-hinzu" data-entwurf="hinzu" data-id="${id}">${tHtml('entwicklung.ctw.entwurf.hinzu')}</button></div>
+      ${zustand.meldung ? `<div class="note red" ${FOKUS}><p>${escapeHtml(zustand.meldung)}</p></div>` : ''}
+      <div class="action-row"><button type="button" class="button primary wb-ak-anlegen" data-entwurf="anlegen" data-id="${id}">${tHtml('entwicklung.ctw.entwurf.anlegen')}</button><button type="button" class="button wb-ak-abbrechen" data-entwurf="abbrechen" data-id="${id}">${tHtml('entwicklung.ctw.entwurf.abbrechen')}</button></div>
+    </section>`
+}
+
+/**
  * Der Inhalt von #workboard-bearbeitung für EIN Workitem, je nach bearbeitungsZustand.phase.
  * Texte über i18n; Server- und Projekttexte (Gründe, IDs, Ziel) escaped.
  * @param workitem - das Workitem, dessen Detail offen ist
@@ -798,6 +828,7 @@ function renderBearbeitungsInhalt(workitem, zustand) {
   const wiederholen = `<button type="button" class="button wb-wiederholen" data-id="${id}">${tHtml('entwicklung.ctw.wiederholen')}</button>`
   // FOKUS markiert je Zustand das Element, das nach einem Zustandswechsel den Fokus übernimmt
   // (schreibeBearbeitung) — ohne zweite Live-Region.
+  if (zustand.phase === 'entwurf') return renderAkEntwurf(workitem, zustand)
   if (zustand.phase === 'wird_angelegt') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.wirdAngelegt')}</p>`
   if (zustand.phase === 'wird_geroutet') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.routet')}</p>`
   if (zustand.phase === 'wird_gestartet') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.wirdGestartet')}</p>`
@@ -874,11 +905,13 @@ function hatEinstieg(workitem) {
  * 'vorschlag' bzw. 'aktiv' bei einem Bearbeitungszustand dieses Eintrags, 'keiner' ohne Einstieg,
  * sonst 'frei', 'laedt' oder 'gesperrt' nach auftragsSperre.
  * @param workitem - das Workitem des offenen Details
- * @returns 'frei' | 'gesperrt' | 'laedt' | 'vorschlag' | 'aktiv' | 'keiner'
+ * @returns 'frei' | 'gesperrt' | 'laedt' | 'vorschlag' | 'entwurf' | 'stoerung' | 'aktiv' | 'keiner'
  */
 function ctwStand(workitem) {
   if (bearbeitungsZustand !== null && bearbeitungsZustand.workitemId === workitem.id) {
     if (bearbeitungsZustand.phase === 'vorschlag') return 'vorschlag'
+    // F45 B2a-2: der AK-Entwurf wartet auf Stefan wie der Vorschlag.
+    if (bearbeitungsZustand.phase === 'entwurf') return 'entwurf'
     return bearbeitungsZustand.phase === 'fehler' || bearbeitungsZustand.phase === 'konflikt' ? 'stoerung' : 'aktiv'
   }
   if (!hatEinstieg(workitem)) return 'keiner'
@@ -1051,12 +1084,74 @@ function baueLeerenBearbeitungsZustand(workitem) {
   return { workitemId: workitem.id, projektId: holeAktivesProjekt().id, phase: 'wird_angelegt', auftragId: null, laufId: null, workflowId: null, meldung: null, workflowDetail: null }
 }
 
-/** Klick auf „Auftrag vorbereiten“ an einem Finding (#workboard-bearbeiten, bis F44 WS-3b „Bearbeiten“): legt den Auftrag an (mit Referenzzeile, baueAuftragstext) und routet ihn sofort. @param workitem - das geklickte Finding */
-async function starteBearbeitung(workitem) {
-  const zustand = baueLeerenBearbeitungsZustand(workitem)
+/**
+ * Klick auf „Auftrag vorbereiten“ an einem Finding (#workboard-bearbeiten, bis F44 WS-3b „Bearbeiten“). F45 B2a-2
+ * (F-938): zuerst der AK-Entwurf aus der Maßnahme (Phase 'entwurf') — angelegt wird erst mit „Auftrag anlegen“
+ * (legeEntwurfAn). @param workitem - das geklickte Finding
+ */
+function starteBearbeitung(workitem) {
+  const zustand = { ...baueLeerenBearbeitungsZustand(workitem), phase: 'entwurf', entwurf: baueAkEntwurf(workitem) }
   bearbeitungsZustand = zustand
   renderBearbeitungsAbschnitt(workitem)
-  await fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, () => legeAuftragAn({ titel: workitem.titel, auftragstext: baueAuftragstext(workitem) }))
+}
+
+/**
+ * Liest die Texte des AK-Entwurfs aus den Feldern (Stefans Änderungen stehen nur im DOM, damit ein Poll-Render das
+ * Tippen nicht überschreibt — der HTML-Text der Phase ändert sich nur bei Hinzufügen/Entfernen).
+ * @returns Texte in Reihenfolge
+ */
+function leseEntwurfTexte() {
+  return [...document.getElementById('workboard-bearbeitung').querySelectorAll('.wb-ak-text')].map((feld) => feld.value)
+}
+
+/**
+ * „AK hinzufügen“ / „Entfernen“ im Entwurf: übernimmt die getippten Texte und ändert die Liste.
+ * @param workitem - das Finding des offenen Entwurfs
+ * @param aenderung - (texte) => neue Texte
+ */
+function aendereEntwurf(workitem, aenderung) {
+  const zustand = bearbeitungsZustand
+  if (zustand === null || zustand.workitemId !== workitem.id || zustand.phase !== 'entwurf') return
+  const neu = aenderung(leseEntwurfTexte())
+  zustand.entwurf = neu.length > 0 ? neu : ['']
+  zustand.meldung = null
+  renderBearbeitungsAbschnitt(workitem)
+}
+
+/**
+ * „Auftrag anlegen“ im Entwurf (F-938): mindestens ein nicht leeres AK, sonst bleibt der Entwurf mit Hinweis stehen; dann
+ * POST /api/auftraege mit herkunft 'finding' und den AK und sofort routen (wie bisher).
+ * @param workitem - das Finding des offenen Entwurfs
+ */
+async function legeEntwurfAn(workitem) {
+  const zustand = bearbeitungsZustand
+  if (zustand === null || zustand.workitemId !== workitem.id || zustand.phase !== 'entwurf') return
+  const texte = leseEntwurfTexte()
+  const akzeptanzkriterien = baueAkzeptanzkriterien(texte)
+  if (akzeptanzkriterien.length === 0) {
+    zustand.entwurf = texte.length > 0 ? texte : ['']
+    zustand.meldung = t('entwicklung.ctw.entwurf.keinAk')
+    renderBearbeitungsAbschnitt(workitem)
+    return
+  }
+  zustand.phase = 'wird_angelegt'
+  zustand.meldung = null
+  renderBearbeitungsAbschnitt(workitem)
+  await fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, () => legeAuftragAn({ titel: workitem.titel, auftragstext: baueAuftragstext(workitem), herkunft: { art: 'finding' }, akzeptanzkriterien }))
+  // QA B2a-2 (L5): scheitert schon das Anlegen (kein Auftrag), bleibt der Entwurf mit dem Grund stehen — sonst wären die
+  // getippten AK verloren und es gäbe keinen Weg weiter.
+  if (zustand.phase === 'fehler' && zustand.auftragId === null && pruefeUndUebernimmZustand(workitem, zustand)) {
+    zustand.phase = 'entwurf'
+    zustand.entwurf = texte
+    renderBearbeitungsAbschnitt(workitem)
+  }
+}
+
+/** „Abbrechen“ im Entwurf: nichts wird angelegt, der Einstieg steht wieder da. @param workitem - das Finding */
+function brecheEntwurfAb(workitem) {
+  if (bearbeitungsZustand?.workitemId !== workitem.id || bearbeitungsZustand.phase !== 'entwurf') return
+  bearbeitungsZustand = null
+  renderBearbeitungsAbschnitt(workitem)
 }
 
 /** Klick auf „Auftrag vorbereiten“ an einer Feature-Akte (#workboard-bauen, F35 WS-1, bis F44 WS-3b „Bauen“): leitet den Auftrag deterministisch aus der Feature-Akte ab (baueAuftragAusFeature) und routet ihn sofort. @param workitem - die geklickte Feature-Akte */
@@ -1659,6 +1754,18 @@ function initBearbeitungBedienung() {
     if (bauenKnopf) {
       const workitem = findeWorkitem(bauenKnopf.dataset.id)
       if (workitem !== null) void starteBauenFeature(workitem)
+      return
+    }
+    // F45 B2a-2 (F-938): AK-Entwurf — hinzufügen, entfernen, anlegen, abbrechen.
+    const entwurfKnopf = ereignis.target.closest('[data-entwurf]')
+    if (entwurfKnopf) {
+      const workitem = findeWorkitem(entwurfKnopf.dataset.id)
+      if (workitem === null) return
+      const art = entwurfKnopf.dataset.entwurf
+      if (art === 'hinzu') aendereEntwurf(workitem, (texte) => [...texte, ''])
+      else if (art === 'entfernen') aendereEntwurf(workitem, (texte) => texte.filter((_, index) => index !== Number(entwurfKnopf.dataset.index)))
+      else if (art === 'anlegen') void legeEntwurfAn(workitem)
+      else if (art === 'abbrechen') brecheEntwurfAb(workitem)
       return
     }
     const wiederholenKnopf = ereignis.target.closest('.wb-wiederholen')

@@ -216,12 +216,15 @@ function timelineKlasse(schritt, faellig, cursor) {
  * Satz und Verantwortung (Worker; bei ZWINGEND der Hinweis auf deine Freigabe). Leer bei einer
  * Fassung ohne lesbare Schritte.
  * @param geordnet - Ergebnis von ordneSchritteNachPlan
- * @param kontext - { naechster, cursorId, aktiveLaufIds }
+ * @param kontext - { naechster, cursorId, aktiveLaufIds, einrichtung (F45 B2a-2: Liste oder null), workflowId (für die Knöpfe der Einrichtung) }
  * @returns HTML
  */
-export function renderTimeline(geordnet, { naechster = null, cursorId = null, aktiveLaufIds = new Set() } = {}) {
+export function renderTimeline(geordnet, { naechster = null, cursorId = null, aktiveLaufIds = new Set(), einrichtung = null, workflowId = '' } = {}) {
   if (!Array.isArray(geordnet) || geordnet.length === 0) return `<p class="subtle ablauf-leer">${tHtml('ablauf.weg.leer')}</p>`
   const faelligId = naechster?.schrittId ?? null
+  // F45 B2a-2 (F-1071): die Einrichtung steht vor dem ersten Ausführungsschritt (ohne Ausführungsschritt am Ende).
+  const einrichtungHtml = renderEinrichtung(einrichtung, workflowId)
+  const ausfuehrungIndex = geordnet.findIndex(({ schritt }) => schritt.rolle === 'ausfuehrung')
   const eintraege = geordnet.map(({ schritt, inKette }) => {
     const faellig = faelligId !== null && schritt.schritt_id === faelligId
     const cursor = cursorId !== null && schritt.schritt_id === cursorId
@@ -239,7 +242,49 @@ export function renderTimeline(geordnet, { naechster = null, cursorId = null, ak
       <small>${tHtml('ablauf.weg.verantwortung', { wer: workerName(schritt.worker) || '–' })}${freigabe} · <code>${escapeHtml(schritt.schritt_id)}</code></small>
     </li>`
   })
+  if (einrichtungHtml !== '') eintraege.splice(ausfuehrungIndex === -1 ? eintraege.length : ausfuehrungIndex, 0, einrichtungHtml)
   return `<ol class="timeline">${eintraege.join('')}</ol>`
+}
+
+/**
+ * F45 B2a-2 (F-1071): „Einrichtung durch dich“ als Eintrag der Timeline (vor dem Ausführungsschritt). Leer ohne Liste.
+ * @param einrichtung - Liste aus GET /api/workflows/<id> (einrichtung) oder null
+ * @param workflowId - Kennung des Ablaufs (für die Knöpfe)
+ * @returns HTML eines Timeline-Eintrags oder ''
+ */
+export function renderEinrichtung(einrichtung, workflowId) {
+  const liste = renderEinrichtungsListe(einrichtung, workflowId)
+  if (liste === null) return ''
+  // Design-Prüfung B2a-2 (8): offen bleibt neutral — „current“ trägt nur der fällige Schritt (kein zweiter Punkt).
+  return `<li class="ablauf-einrichtung${liste.offenVorBau > 0 ? '' : ' done'}">
+      <h3>${tHtml('ablauf.einrichtung.titel')}</h3>
+      ${liste.html}
+    </li>`
+}
+
+/**
+ * F45 B2a-2 (F-1071): Inhalt der Einrichtung — Hinweis, je Schritt Text, Zeitpunkt, Status und „Erledigt“ bzw. „Wieder
+ * öffnen“ (.wf-aktion data-aktion="einrichtung" → POST …/einrichtung), darunter, wie viel vor dem Bau noch offen ist.
+ * Offene Schritte „vor dem Bau“ halten den Bau an (der Server lehnt die Freigabe mit Grund ab). Für die Timeline und die
+ * Karte „Arbeitspaket“ der Freigabe-Seite (views/workflow-entscheiden.js).
+ * @param einrichtung - Liste aus GET /api/workflows/<id> (einrichtung) oder null
+ * @param workflowId - Kennung des Ablaufs (für die Knöpfe)
+ * @returns { html, offenVorBau } oder null ohne Liste
+ */
+export function renderEinrichtungsListe(einrichtung, workflowId) {
+  if (!Array.isArray(einrichtung) || einrichtung.length === 0) return null
+  const kennung = escapeHtml(workflowId)
+  const offenVorBau = einrichtung.filter((e) => e?.wann === 'vor_dem_bau' && e?.status === 'offen').length
+  const zeilen = einrichtung.map((e) => {
+    const erledigt = e?.status === 'erledigt'
+    const wann = e?.wann === 'waehrend_des_baus' ? 'waehrend_des_baus' : 'vor_dem_bau'
+    const knopf = `<button type="button" class="button wf-aktion" data-aktion="einrichtung" data-workflow-id="${kennung}" data-id="${escapeHtml(e?.id ?? '')}" data-status="${erledigt ? 'offen' : 'erledigt'}" aria-label="${escapeHtml(t(erledigt ? 'ablauf.einrichtung.oeffnenSchritt' : 'ablauf.einrichtung.abhakenSchritt', { id: String(e?.id ?? '') }))}" data-schritt="${escapeHtml(e?.schritt ?? '')}">${tHtml(erledigt ? 'ablauf.einrichtung.oeffnen' : 'ablauf.einrichtung.abhaken')}</button>`
+    return `<li data-status="${erledigt ? 'erledigt' : 'offen'}"><span class="einrichtung-text"><strong>${escapeHtml(e?.id ?? '')}</strong> ${escapeHtml(e?.schritt ?? '')}<small> · ${tHtml(`ablauf.einrichtung.wann.${wann}`)} · ${tHtml(erledigt ? 'ablauf.einrichtung.status.erledigt' : 'ablauf.einrichtung.status.offen')}</small></span>${knopf}</li>`
+  })
+  const html = `<p class="subtle einrichtung-hinweis">${tHtml('ablauf.einrichtung.hinweis')}</p>
+      <ul class="einrichtung-liste">${zeilen.join('')}</ul>
+      <small class="einrichtung-stand">${offenVorBau > 0 ? tHtml('ablauf.einrichtung.offen', { anzahl: String(offenVorBau) }) : tHtml('ablauf.einrichtung.bereit')}</small>`
+  return { html, offenVorBau }
 }
 
 /**

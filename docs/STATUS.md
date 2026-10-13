@@ -613,13 +613,14 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Strukturfix Variante C“ gemergt #327 (`ec4ad21`; F-1075 erledigt);
   F-2b-2c „Sammlung → Katalog“ gemergt #328 (`c62e7e7`). B2a geteilt
   (Challenger 13.10.2026) in B2a-1 Projektkarte, B2a-2 Arbeitspaket,
-  B2a-3 Codex-Review-Spec; F-1072 nach B2b. B2a-1 „Projektkarte“ gebaut,
-  nicht committet (Branch `f45/b2a1-projektkarte`: Karte mit Zuschnitt
-  je Rolle an Architekt, Advisor und Code-Reviewer, Hash in der Laufakte,
-  ARCHITECTURE.md Pflicht beim Stack-Entscheid, Beobachtungsblock nur
-  claude-code). Reihenfolge ab F: B2a-1 → B2a-2 → B2a-3 → F-3 → B2b →
-  B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1082. Nach F46, vor F30
+  B2a-3 Codex-Review-Spec; F-1072 nach B2b. B2a-1 „Projektkarte“ gemergt
+  #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut, nicht committet (Branch
+  `f45/b2a2-arbeitspaket`: Auftrag v0 additiv um Bereiche, Risiko,
+  Feature-Bezug und Einrichtung, Arbeitspaket-Block an Architekt und
+  Ausführung, AK-Entwurf aus der Finding-Maßnahme, Einrichtungsliste im
+  Ablauf mit Startsperre, Prüfmaßstab des Reviews im Stand vor dem Bau).
+  Reihenfolge ab F: B2a-2 → B2a-3 → F-3 → B2b → B5a/B5b → B3 → R → R2.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1083. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

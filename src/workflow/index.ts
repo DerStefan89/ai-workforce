@@ -134,6 +134,9 @@ const WORKFLOW_FELDER = new Set([
   // ungültig. Dieselbe Überlegung, aus der grenzen.max_replans nicht entfernt
   // werden konnte (F-203).
   'grund',
+  // OPTIONAL (F45 B2a-2, QA L3): HEAD des Projekts beim ersten Schrittstart eines Ablaufs ohne eigenen Arbeitsordner —
+  // der Stand vor dem Bau, aus dem das Review seinen Prüfmaßstab liest. Fehlt bei allen älteren Versionen.
+  'basis_commit',
   'grenzen',
   'schritte',
 ])
@@ -338,6 +341,9 @@ export function validiereWorkflowDaten(daten: unknown): string[] {
   // als Verstoß, so wie es bei jedem Pflichtfeld auch soll.
   if ('grund' in obj && !istStringOderNull(obj, 'grund')) {
     verstoesse.push("'grund' muss ein nicht-leerer String oder null sein (optionales Feld)")
+  }
+  if ('basis_commit' in obj && (typeof obj.basis_commit !== 'string' || !/^[0-9a-f]{40,64}$/.test(obj.basis_commit))) {
+    verstoesse.push("'basis_commit' muss ein Commit-Hash (40–64 Hex-Zeichen) sein (optionales Feld)")
   }
 
   if (!istObjekt(obj.grenzen)) {

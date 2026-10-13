@@ -1,0 +1,52 @@
+{
+  "url": "http://127.0.0.1:4396/#/workflows/wf-b2a2-render-1791896680862",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 2200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Einrichtung",
+        "selector": ".ablauf-einrichtung"
+      },
+      {
+        "name": "Meldung am Ablauf",
+        "selector": "#workflow-bedienung-meldung"
+      },
+      {
+        "name": "Dialogmeldung",
+        "selector": "#workflow-dialog-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Einrichtung offen",
+        "selector": ".ablauf-einrichtung.current"
+      },
+      {
+        "name": "Einrichtung erledigt",
+        "selector": ".ablauf-einrichtung.done"
+      },
+      {
+        "name": "Knopf E1 Erledigt",
+        "selector": "[data-aktion=\"einrichtung\"][data-id=\"E1\"][data-status=\"erledigt\"]"
+      },
+      {
+        "name": "Knopf E1 Wieder öffnen",
+        "selector": "[data-aktion=\"einrichtung\"][data-id=\"E1\"][data-status=\"offen\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "390 px, langer Text",
+      "warteAufSelector": {
+        "selector": ".ablauf-einrichtung",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-offen-390.webp"
+    }
+  ]
+}

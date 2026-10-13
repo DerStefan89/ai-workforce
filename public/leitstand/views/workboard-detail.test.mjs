@@ -342,3 +342,10 @@ test('F-996 im Detail: ein laufender Ablauf (haltKlaerung bei Status LAEUFT) zei
   assert.match(detailStatusBlockHtml(s), /<dt>Phase<\/dt><dd><span title="LAEUFT">In Ausführung<\/span><\/dd>/)
   assert.match(detailKurzHtml(s), /Code Review arbeitet \(Codex\)\./)
 })
+
+test('F45 B2a-2 (F-938): AK-Entwurf wartet auf Stefan — Jetzt-Band „dran-verbunden“ ohne eigenen Knopf', () => {
+  const jetzt = detailJetzt(sicht({ workitem: bug, workflow: null, ctw: 'entwurf' }))
+  assert.equal(jetzt.zustand, 'dran-verbunden')
+  assert.match(jetzt.html, /Akzeptanzkriterien bestätigen\?/)
+  assert.doesNotMatch(jetzt.html, /button primary/)
+})

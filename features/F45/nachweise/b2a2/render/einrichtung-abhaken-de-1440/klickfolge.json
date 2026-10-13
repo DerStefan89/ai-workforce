@@ -1,0 +1,69 @@
+{
+  "url": "http://127.0.0.1:4396/#/workflows/wf-b2a2-render-1791896680862",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1300
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Einrichtung",
+        "selector": ".ablauf-einrichtung"
+      },
+      {
+        "name": "Meldung am Ablauf",
+        "selector": "#workflow-bedienung-meldung"
+      },
+      {
+        "name": "Dialogmeldung",
+        "selector": "#workflow-dialog-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Einrichtung offen",
+        "selector": ".ablauf-einrichtung.current"
+      },
+      {
+        "name": "Einrichtung erledigt",
+        "selector": ".ablauf-einrichtung.done"
+      },
+      {
+        "name": "Knopf E1 Erledigt",
+        "selector": "[data-aktion=\"einrichtung\"][data-id=\"E1\"][data-status=\"erledigt\"]"
+      },
+      {
+        "name": "Knopf E1 Wieder öffnen",
+        "selector": "[data-aktion=\"einrichtung\"][data-id=\"E1\"][data-status=\"offen\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Vor dem Abhaken",
+      "warteAufSelector": {
+        "selector": ".ablauf-einrichtung",
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "label": "E1 erledigt",
+      "klick": "[data-aktion=\"einrichtung\"][data-id=\"E1\"]",
+      "warteAufSelector": {
+        "selector": "[data-aktion=\"einrichtung\"][data-id=\"E1\"][data-status=\"offen\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-e1-erledigt.webp"
+    },
+    {
+      "label": "E2 erledigt → alles vor dem Bau erledigt",
+      "klick": "[data-aktion=\"einrichtung\"][data-id=\"E2\"]",
+      "warteAufSelector": {
+        "selector": ".ablauf-einrichtung.done",
+        "timeoutMs": 8000
+      },
+      "screenshot": "02-bereit.webp"
+    }
+  ]
+}

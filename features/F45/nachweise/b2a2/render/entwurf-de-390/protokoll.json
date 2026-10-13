@@ -1,0 +1,56 @@
+[
+  {
+    "label": "Detail F-1083",
+    "Feld AK1": false,
+    "Feld AK2": false,
+    "Hinweis kein AK": false,
+    "Entwurf": "(fehlt)",
+    "Jetzt-Band": "Gerade wartet nichts auf dich.",
+    "Seite geladen": true
+  },
+  {
+    "label": "Auftrag vorbereiten → AK-Entwurf aus der Maßnahme",
+    "Feld AK1": true,
+    "Feld AK2": false,
+    "Hinweis kein AK": false,
+    "Entwurf": "Entwurf der Akzeptanzkriterien Entwurf aus der Maßnahme des Eintrags. Ändere oder ergänze die Kriterien — das Review urt",
+    "Jetzt-Band": "Jetzt · Deine Entscheidung Akzeptanzkriterien bestätigen? Prüfe den Entwurf unten. Ohne dein „Auftrag anlegen“ entsteht ",
+    "Seite geladen": true
+  },
+  {
+    "label": "Kriterium hinzufügen",
+    "Feld AK1": true,
+    "Feld AK2": true,
+    "Hinweis kein AK": false,
+    "Entwurf": "Entwurf der Akzeptanzkriterien Entwurf aus der Maßnahme des Eintrags. Ändere oder ergänze die Kriterien — das Review urt",
+    "Jetzt-Band": "Jetzt · Deine Entscheidung Akzeptanzkriterien bestätigen? Prüfe den Entwurf unten. Ohne dein „Auftrag anlegen“ entsteht ",
+    "Seite geladen": true
+  },
+  {
+    "label": "Beide Felder leeren",
+    "Feld AK1": true,
+    "Feld AK2": true,
+    "Hinweis kein AK": false,
+    "Entwurf": "Entwurf der Akzeptanzkriterien Entwurf aus der Maßnahme des Eintrags. Ändere oder ergänze die Kriterien — das Review urt",
+    "Jetzt-Band": "Jetzt · Deine Entscheidung Akzeptanzkriterien bestätigen? Prüfe den Entwurf unten. Ohne dein „Auftrag anlegen“ entsteht ",
+    "Seite geladen": true
+  },
+  {
+    "label": "Zweites Feld leer",
+    "Feld AK1": true,
+    "Feld AK2": true,
+    "Hinweis kein AK": false,
+    "Entwurf": "Entwurf der Akzeptanzkriterien Entwurf aus der Maßnahme des Eintrags. Ändere oder ergänze die Kriterien — das Review urt",
+    "Jetzt-Band": "Jetzt · Deine Entscheidung Akzeptanzkriterien bestätigen? Prüfe den Entwurf unten. Ohne dein „Auftrag anlegen“ entsteht ",
+    "Seite geladen": true
+  },
+  {
+    "label": "Auftrag anlegen ohne Text → Hinweis, nichts angelegt",
+    "Feld AK1": true,
+    "Feld AK2": true,
+    "Hinweis kein AK": true,
+    "Entwurf": "Entwurf der Akzeptanzkriterien Entwurf aus der Maßnahme des Eintrags. Ändere oder ergänze die Kriterien — das Review urt",
+    "Jetzt-Band": "Jetzt · Deine Entscheidung Akzeptanzkriterien bestätigen? Prüfe den Entwurf unten. Ohne dein „Auftrag anlegen“ entsteht ",
+    "Seite geladen": true
+  }
+]

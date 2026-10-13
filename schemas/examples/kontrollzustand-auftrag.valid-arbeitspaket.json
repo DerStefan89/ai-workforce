@@ -1,0 +1,17 @@
+{
+  "auftrag_schema": "v0",
+  "auftrag_id": "beispiel-auftrag-arbeitspaket",
+  "titel": "CSV-Export der Buchungen",
+  "auftragstext": "Ziel\nBuchungen als CSV exportieren.\n\nworkitem:feature:F12",
+  "erstellt_am": "2026-10-13T09:00:00.000Z",
+  "herkunft": { "art": "feature_akte" },
+  "akzeptanzkriterien": [{ "id": "AK1", "text": "Export enthält alle Buchungen des Monats." }],
+  "nicht_ziele": ["Kein Import."],
+  "bereiche": ["src/export/", "public/"],
+  "risiko": "mittel",
+  "feature_ref": "F12",
+  "einrichtung": [
+    { "id": "E1", "schritt": "Testkonto beim Zahlungsdienst anlegen.", "wann": "vor_dem_bau", "status": "erledigt" },
+    { "id": "E2", "schritt": "API-Schlüssel als Umgebungsvariable setzen.", "wann": "waehrend_des_baus", "status": "offen" }
+  ]
+}

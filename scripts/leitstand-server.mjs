@@ -466,7 +466,7 @@ import { entscheideStale, importiereAntwort } from '../src/human-transport/index
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
-import { registriereAuftrag, validiereAuftragHerkunft } from '../src/auftrag/index.ts'
+import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, registriereAuftrag, traegtArbeitspaket, validiereAuftragAkzeptanzkriterien, validiereAuftragHerkunft, validiereAuftragPflichtfelder } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { baueBeobachtungsBlock, leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
 import { arbeitsverzeichnisseGleich } from '../src/invocation-policy/index.ts'
@@ -508,7 +508,7 @@ import {
   validiereErgebnisArchitektur,
 } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
-import { leseHarnessInventar } from '../src/harness-abgleich/index.ts'
+import { leseDodPunkte, leseHarnessInventar } from '../src/harness-abgleich/index.ts'
 import { analysiereArchitektur, baueProjektkarte, istKarteRolle } from '../src/projektkarte/index.ts'
 import { istAusnahmePfad, pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
 import {
@@ -1346,13 +1346,15 @@ const auftragKopfdatenCache = new Map()
  * @param auftragId - Kennung aus dem Verzeichnisnamen
  * @param verzeichnisName - lineage-auftrag-<auftragId>
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
- * @returns { auftragId, titel, erstellt_am, workitem_referenz } oder null, wenn die Kette keine gültige Version liefert
+ * F45 B2a-2 (F-989): feature_ref nur, wenn der Auftrag ihn trägt (alte Aufträge behalten die bisherige Form).
+ * @returns { auftragId, titel, erstellt_am, workitem_referenz, feature_ref? } oder null, wenn die Kette keine gültige Version liefert
  */
 function baueAuftragKopfdaten(auftragId, verzeichnisName, basisVerzeichnis) {
   const version = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
   if (version === null) return null
   const erstelltAm = version.daten?.erstellt_am ?? statSync(join(basisVerzeichnis, verzeichnisName)).mtime.toISOString()
-  return { auftragId, titel: version.daten?.titel, erstellt_am: erstelltAm, workitem_referenz: leseWorkitemReferenz(version.daten?.auftragstext) }
+  const featureRef = typeof version.daten?.feature_ref === 'string' ? { feature_ref: version.daten.feature_ref } : {}
+  return { auftragId, titel: version.daten?.titel, erstellt_am: erstelltAm, workitem_referenz: leseWorkitemReferenz(version.daten?.auftragstext), ...featureRef }
 }
 
 /**
@@ -1758,7 +1760,7 @@ async function sammleWorkitems(repoWurzel, filter = {}) {
   }
 }
 
-/** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Pflichtfelder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). F39 WS-2a: optionales 'herkunft' (validiereAuftragHerkunft, src/auftrag/index.ts — eine Quelle, kein zweiter Regelsatz), unbekannte 'herkunft.art' → 400. @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext/herkunft (herkunft undefined ohne Feld), sonst grund der Ablehnung */
+/** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Pflichtfelder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). F39 WS-2a: optionales 'herkunft' (validiereAuftragHerkunft, src/auftrag/index.ts — eine Quelle, kein zweiter Regelsatz), unbekannte 'herkunft.art' → 400. F45 B2a-2 (E3): 'akzeptanzkriterien' nur mit herkunft.art 'finding' und dort Pflicht (≥ 1). @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext und nur die gesetzten Felder herkunft/akzeptanzkriterien, sonst grund der Ablehnung */
 export function pruefeAuftragsformular(body) {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return { ok: false, grund: 'Body muss ein JSON-Objekt sein' }
@@ -1779,9 +1781,23 @@ export function pruefeAuftragsformular(body) {
     if (herkunftVerstoesse.length > 0) {
       return { ok: false, grund: herkunftVerstoesse.join('; ') }
     }
-    return { ok: true, titel: body.titel, auftragstext: body.auftragstext, herkunft: body.herkunft }
   }
-  return { ok: true, titel: body.titel, auftragstext: body.auftragstext }
+  // F45 B2a-2 (E3, F-938): AK nur aus Click-to-Work eines Findings — dort Pflicht (validiereAuftragPflichtfelder, eine Quelle
+  // mit validiereAuftragDaten); jeder andere Weg bleibt ohne AK im Formular (F35 AK2).
+  const herkunftArt = body.herkunft?.art
+  if ('akzeptanzkriterien' in body && herkunftArt !== 'finding') {
+    return { ok: false, grund: "unbekanntes Feld 'akzeptanzkriterien' (nur mit herkunft.art 'finding' erlaubt)" }
+  }
+  const akVerstoesse = [...('akzeptanzkriterien' in body ? validiereAuftragAkzeptanzkriterien(body.akzeptanzkriterien) : []), ...validiereAuftragPflichtfelder(herkunftArt, body.akzeptanzkriterien)]
+  if (akVerstoesse.length > 0) return { ok: false, grund: akVerstoesse.join('; ') }
+  // Nur gesetzte Felder zurückgeben — kein Schlüssel mit undefined (check-f39-architekt (d)).
+  return {
+    ok: true,
+    titel: body.titel,
+    auftragstext: body.auftragstext,
+    ...('herkunft' in body ? { herkunft: body.herkunft } : {}),
+    ...('akzeptanzkriterien' in body ? { akzeptanzkriterien: body.akzeptanzkriterien } : {}),
+  }
 }
 
 const ENTSCHEIDUNG_ARTEN = new Set(['antwort', 'stale', 'terminal', 'kenntnisnahme'])
@@ -2110,8 +2126,8 @@ function ermittleFreigabeAbschwaechungen(vorherigeSchritte, neueSchritte) {
   return treffer
 }
 
-/** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). F39 WS-2a: 'herkunft' additiv/optional. */
-const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext', 'herkunft'])
+/** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). F39 WS-2a: 'herkunft' additiv/optional. F45 B2a-2 (E3): 'akzeptanzkriterien' nur zusammen mit herkunft.art 'finding' (pruefeAuftragsformular) — sonst bleibt das Formular für AK zu (F35 AK2). */
+const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext', 'herkunft', 'akzeptanzkriterien'])
 
 /**
  * F-265: POST .../freigabe und POST .../stoppen liegen im selben Bedienfeld wie D13s
@@ -2439,6 +2455,84 @@ export function leseKarteDatei(relPfad, wurzel) {
   } catch (fehler) {
     return { datei: null, fehler: `nicht lesbar (${fehler.message})` }
   }
+}
+
+/**
+ * F45 B2a-2 (QA L3): liest eine Datei im Stand eines Commits (`git show <commit>:<pfad>`, rein lesend) im Ordner des Laufs.
+ * @param wurzel - Ordner des Laufs (Projekt- oder Arbeitsordner; teilt die Objekte des Projekts)
+ * @param commit - Commit-Hash
+ * @param relPfad - repo-relativer Pfad
+ * @returns { status: 'ok', text } | { status: 'fehlt' } | { status: 'fehler', grund }
+ */
+function leseDateiImCommit(wurzel, commit, relPfad) {
+  const git = (argumente) => fuehreGitSync(['--no-optional-locks', ...argumente], { cwd: wurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000 })
+  // Existenz über den Exit-Code (kein Deuten lokalisierter Meldungen); der Commit selbst ist vorher geprüft.
+  try {
+    git(['cat-file', '-e', `${commit}:${relPfad}`])
+  } catch (fehler) {
+    // Ein beendeter git-Prozess mit Exit-Code ≠ 0 heißt hier: Pfad fehlt im Commit. Zeitgrenze, Signal oder Startfehler
+    // sind Lesefehler (Code-Review 6) — sonst meldete die Karte „im Bau geändert“ statt der Lücke.
+    if (typeof fehler?.status === 'number' && fehler.signal == null) return { status: 'fehlt' }
+    return { status: 'fehler', grund: String(fehler?.message ?? fehler).trim().split('\n')[0] || 'git cat-file fehlgeschlagen' }
+  }
+  try {
+    const text = git(['show', `${commit}:${relPfad}`])
+    return text.trim() === '' ? { status: 'fehlt' } : { status: 'ok', text }
+  } catch (fehler) {
+    return { status: 'fehler', grund: String(fehler?.stderr ?? fehler?.message ?? fehler).trim().split('\n')[0] || 'git show fehlgeschlagen' }
+  }
+}
+
+/** Zeilenenden vereinheitlichen, damit ein CRLF-Checkout nicht als Änderung gilt. @param text - Text oder null @returns Text mit LF oder null */
+function mitLf(text) {
+  return text === null ? null : text.replace(/\r\n?/g, '\n')
+}
+
+/**
+ * F45 B2a-2 (QA L3, F-1082 (7)): Prüfmaßstab des Reviews im Stand vor dem Bau — CLAUDE.md (DoD) und ARCHITECTURE.md aus
+ * dem Basis-Commit, dazu welche der beiden Dateien der Bau im Laufordner geändert hat. Fail-open mit sichtbarer Lücke:
+ * ohne Basis-Commit (Ablauf von vor B2a-2) oder bei einem Lesefehler gilt für die betroffene Datei der Stand nach dem Bau
+ * und lesefehler nennt das — nie still.
+ * @param laufWurzel - Ordner des Laufs
+ * @param basisCommit - Commit vor dem Bau oder null
+ * @param lesefehler - Sammelliste (wird ergänzt)
+ * @returns null ohne Basis-Commit (dann liest der Aufrufer wie bisher), sonst { architektur, dod, pruefmassstab }
+ */
+export function leseVorherStand(laufWurzel, basisCommit, lesefehler) {
+  if (typeof basisCommit !== 'string' || basisCommit === '') {
+    lesefehler.push('Prüfmaßstab: Stand vor dem Bau unbekannt (Ablauf ohne Basis-Commit) — CLAUDE.md und ARCHITECTURE.md im Stand nach dem Bau')
+    return null
+  }
+  try {
+    fuehreGitSync(['--no-optional-locks', 'cat-file', '-e', `${basisCommit}^{commit}`], { cwd: laufWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000 })
+  } catch (fehler) {
+    const grund = String(fehler?.stderr ?? fehler?.message ?? fehler).trim().split('\n')[0] || 'Commit nicht vorhanden'
+    lesefehler.push(`Prüfmaßstab: Stand vor dem Bau (Commit ${basisCommit.slice(0, 12)}) nicht lesbar (${grund}) — CLAUDE.md und ARCHITECTURE.md im Stand nach dem Bau`)
+    return null
+  }
+  const geaendert = []
+  const jeDatei = (relPfad) => {
+    const nachher = leseKarteDatei(relPfad, laufWurzel).datei
+    const vorher = leseDateiImCommit(laufWurzel, basisCommit, relPfad)
+    if (vorher.status === 'fehler') {
+      lesefehler.push(`${relPfad}: im Stand vor dem Bau nicht lesbar (${vorher.grund}) — Stand nach dem Bau verwendet`)
+      return nachher
+    }
+    const vorherText = vorher.status === 'ok' ? vorher.text : null
+    if (mitLf(vorherText) !== mitLf(nachher?.text ?? null)) geaendert.push(relPfad)
+    return vorherText === null ? null : { pfad: relPfad, text: vorherText }
+  }
+  const claude = jeDatei('CLAUDE.md')
+  const architektur = jeDatei('ARCHITECTURE.md')
+  let dod = null
+  if (claude === null) {
+    lesefehler.push('CLAUDE.md: im Stand vor dem Bau nicht vorhanden')
+  } else {
+    const punkte = leseDodPunkte(claude.text)
+    if (punkte.ok) dod = punkte.punkte.map((p) => p.text)
+    else lesefehler.push(`CLAUDE.md: ${punkte.grund}`)
+  }
+  return { architektur, dod, pruefmassstab: { basis: basisCommit, geaendert } }
 }
 
 /**
@@ -4277,7 +4371,7 @@ function leseUrteilAusLaufakte(laufakteDaten) {
  * zusätzlich zwischen einem Lese- und einem Schemafehler unterscheiden
  * müssen.
  * @param laufakteDaten - bereits geladene LaufakteV0Daten des Architektur-Laufs
- * @returns { verstoesse, entscheidungenMensch } — 'entscheidungenMensch' bleibt
+ * @returns { verstoesse, entscheidungenMensch, einrichtung } — 'entscheidungenMensch' bleibt
  *   [] bei jedem Lese-/Parsefehler (dann trägt 'verstoesse' bereits den Grund)
  */
 /**
@@ -4289,11 +4383,13 @@ function leseUrteilAusLaufakte(laufakteDaten) {
 function leseArchitekturErgebnisAusLaufakte(laufakteDaten, stackOffen = false) {
   const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
   if (!gelesen.ok) {
-    return { verstoesse: [`Ergebnistext nicht lesbar: ${gelesen.grund}`], entscheidungenMensch: [] }
+    return { verstoesse: [`Ergebnistext nicht lesbar: ${gelesen.grund}`], entscheidungenMensch: [], einrichtung: [] }
   }
   const verstoesse = validiereErgebnisArchitektur(gelesen.geparst, undefined, stackOffen)
   const entscheidungenMensch = verstoesse.length === 0 && Array.isArray(gelesen.geparst?.entscheidungen_mensch) ? gelesen.geparst.entscheidungen_mensch : []
-  return { verstoesse, entscheidungenMensch }
+  // F45 B2a-2 (F-1071): Einrichtung durch Stefan — nur aus einem gültigen Ergebnis; fehlt das Feld (vor B2a-2), leer.
+  const einrichtung = verstoesse.length === 0 && Array.isArray(gelesen.geparst?.einrichtung) ? gelesen.geparst.einrichtung : []
+  return { verstoesse, entscheidungenMensch, einrichtung }
 }
 
 /**
@@ -5255,9 +5351,11 @@ export function erzeugeRequestHandler(optionen = {}) {
    * @param auftragDaten - geladener Auftrag (titel, akzeptanzkriterien, nicht_ziele)
    * @param arbeitsordner - true, wenn der Ablauf einen eigenen Arbeitsordner hat
    * @param zusatzLuecken - Lücken, die der Aufrufer schon kennt (z. B. Capability-Auszug nicht lesbar, QA L8)
+   * @param basisCommit - F45 B2a-2 (QA L3): Stand vor dem Bau (Arbeitsordner bzw. workflow.basis_commit); nur der
+   *   code-reviewer liest CLAUDE.md (DoD) und ARCHITECTURE.md aus diesem Commit (leseVorherStand). null = unbekannt.
    * @returns ProjektkarteEingaben (src/projektkarte/types.ts)
    */
-  function leseProjektkarteEingaben(rolle, laufWurzel, workflowDaten, auftragDaten, arbeitsordner, zusatzLuecken = []) {
+  function leseProjektkarteEingaben(rolle, laufWurzel, workflowDaten, auftragDaten, arbeitsordner, zusatzLuecken = [], basisCommit = null) {
     const lesefehler = [...zusatzLuecken]
     // Code-Review 5: ein Fehler in einer Quelle wird eine Lücke, nicht der Verlust der ganzen Karte.
     const versuche = (name, fn, ersatz) => {
@@ -5279,7 +5377,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (eintrag.art === 'dod' && typeof eintrag.detail === 'string') dod.push(eintrag.detail)
       if (eintrag.art === 'quelle' && eintrag.name === 'CLAUDE.md') claudeMdFehler.push(`CLAUDE.md: ${eintrag.grund}`)
     }
-    lesefehler.push(...claudeMdFehler)
+    // F45 B2a-2 (QA L3): der Prüfmaßstab des Reviews im Stand vor dem Bau — DoD und ARCHITECTURE.md aus dem Basis-Commit.
+    // Dann gelten die Lücken des Vorher-Stands, nicht die der CLAUDE.md nach dem Bau.
+    const vorher = rolle === 'code-reviewer' ? leseVorherStand(laufWurzel, basisCommit, lesefehler) : null
+    if (vorher === null) lesefehler.push(...claudeMdFehler)
     const satz = versuche('Ausführungsrahmen', () => {
       const ausfuehrung = findeAusfuehrungsSchritt(workflowDaten)
       return ausfuehrung === null ? undefined : loeseWerkzeugsatzAuf(vorlage, ausfuehrung.werkzeugsatz)
@@ -5293,8 +5394,11 @@ export function erzeugeRequestHandler(optionen = {}) {
         ziel: typeof workflowDaten.ziel === 'string' ? workflowDaten.ziel : null,
         akzeptanzkriterien: Array.isArray(auftragDaten.akzeptanzkriterien) ? auftragDaten.akzeptanzkriterien : [],
         nicht_ziele: Array.isArray(auftragDaten.nicht_ziele) ? auftragDaten.nicht_ziele : [],
+        // F45 B2a-2: Arbeitspaket-Block im selben Auftrag (dann verweist die Karte des Architekten darauf) und Feature-Bezug.
+        arbeitspaket: traegtArbeitspaket(auftragDaten),
+        feature_ref: typeof auftragDaten.feature_ref === 'string' ? auftragDaten.feature_ref : null,
       },
-      architektur: lese('ARCHITECTURE.md'),
+      architektur: vorher !== null ? vorher.architektur : lese('ARCHITECTURE.md'),
       adrs: versuche('docs/adr', () => leseEntschiedeneAdrs(laufWurzel), ''),
       dateien: versuche('Ordnerübersicht', () => leseVersionierteDateien(laufWurzel), null),
       rahmen:
@@ -5302,10 +5406,88 @@ export function erzeugeRequestHandler(optionen = {}) {
           ? null
           : { werkzeuge: [...satz.erlaubte_werkzeuge], bashZeitgrenzeMs: vorlage.bashZeitgrenzeMs ?? null, pruefbefehl: vorlage.pruefbefehl ?? null, arbeitsordner },
       faehigkeiten: faehigkeiten.faehigkeiten,
-      dod: claudeMdFehler.length > 0 || dod.length === 0 ? null : dod,
+      dod: vorher !== null ? vorher.dod : claudeMdFehler.length > 0 || dod.length === 0 ? null : dod,
       reviewCheckliste: rolle === 'code-reviewer' ? lese('.claude/agents/code-reviewer.md') : null,
+      pruefmassstab: vorher?.pruefmassstab ?? null,
       lesefehler,
     }
+  }
+
+  /**
+   * F45 B2a-2 (F-1071): Einrichtungsliste des Auftrags für die Anzeige (GET /api/workflows/<id>) — nur aus dem Artefakt.
+   * @param auftragId - auftrag_id des Workflows
+   * @returns Liste oder null (Auftrag ohne Liste bzw. nicht ladbar)
+   */
+  function leseEinrichtungProjektion(auftragId) {
+    if (typeof auftragId !== 'string' || LAUFID_UNZULAESSIGE_ZEICHEN.test(auftragId)) return null
+    const auftrag = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+    return Array.isArray(auftrag?.daten?.einrichtung) ? auftrag.daten.einrichtung : null
+  }
+
+  /**
+   * F45 B2a-2 (QA L3): HEAD des Projektordners (rein lesend, synchron), für workflow.basis_commit.
+   * @returns Commit-Hash oder null, wenn nicht lesbar (protokolliert)
+   */
+  function leseProjektHead() {
+    try {
+      const head = fuehreGitSync(['--no-optional-locks', 'rev-parse', 'HEAD'], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
+      return /^[0-9a-f]{40,64}$/.test(head) ? head : null
+    } catch (fehler) {
+      console.error(`[leitstand] HEAD des Projekts nicht lesbar — Ablauf ohne basis_commit: ${fehler?.message ?? fehler}`)
+      return null
+    }
+  }
+
+  /**
+   * F45 B2a-2 (F-1071): übernimmt die Einrichtungsliste aus dem Ergebnis eines Architekt-Laufs als neue Auftragsversion —
+   * über registriereAuftrag, kein zweiter Schreibweg. Gleiche Liste → nichts (gleicheEinrichtungslisteAb, Status zählt
+   * nicht). Ein ungültiges oder unlesbares Ergebnis lässt die Liste des Auftrags unverändert und meldet einen Grund
+   * (Advisor H1) — der Aufrufer hält dann an bzw. lehnt den Bau ab. Synchron.
+   * @param auftragId - Auftrag des Workflows
+   * @param architektLaufId - lauf_id des Architekt-Schritts
+   * @param ladeOptionen - { basisVerzeichnis, schreiber }
+   * @returns { ok: true, geschrieben } oder { ok: false, grund }
+   */
+  function gleicheEinrichtungAb(auftragId, architektLaufId, ladeOptionen) {
+    const laufakte = ladeArtefaktVersion(`laufakte-${architektLaufId}`, undefined, ladeOptionen)
+    if (laufakte === null) return { ok: false, grund: `Laufakte des Architekt-Laufs '${architektLaufId}' nicht gefunden` }
+    const ergebnis = leseArchitekturErgebnisAusLaufakte(laufakte.daten, false)
+    if (ergebnis.verstoesse.length > 0) return { ok: false, grund: `Ergebnis des Architekten nicht verwertbar: ${ergebnis.verstoesse.join('; ')}` }
+    const auftrag = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, ladeOptionen)
+    if (auftrag === null) return { ok: false, grund: `Auftrag '${auftragId}' nicht gefunden` }
+    const neu = gleicheEinrichtungslisteAb(auftrag.daten.einrichtung, ergebnis.einrichtung)
+    if (neu === null) return { ok: true, geschrieben: false }
+    try {
+      registriereAuftrag(auftragId, profilReferenz, auftrag.daten.titel, auftrag.daten.auftragstext, { ...optionenAusAuftrag(auftrag.daten), einrichtung: neu, basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+    } catch (fehler) {
+      return { ok: false, grund: `Einrichtung konnte nicht in den Auftrag übernommen werden: ${fehler.message}` }
+    }
+    return { ok: true, geschrieben: true }
+  }
+
+  /**
+   * F45 B2a-2 (F-1071): Vorbedingung des Baus — gleicht vor einem Ausführungsschritt die Einrichtungsliste mit dem
+   * Architekt-Ergebnis ab, auf das der Schritt verweist (Advisor V4: so greift die Sperre auf jedem Startweg, auch nach
+   * einer gescheiterten Übernahme im Nachlauf), und lehnt ab, solange ein Schritt „vor dem Bau“ offen ist. Synchron.
+   * @param workflowDaten - geladene Workflow-Daten
+   * @param schritt - der Ausführungsschritt
+   * @param ladeOptionen - { basisVerzeichnis, schreiber }
+   * @returns { ok: true, auftragVersion (frisch geladen) } oder { ok: false, grund, offen }
+   */
+  function pruefeEinrichtungVorBau(workflowDaten, schritt, ladeOptionen) {
+    const treffer = findeArchitektEingabeTreffer(schritt, workflowDaten)
+    const architektLaufId = treffer === undefined ? null : (workflowDaten.schritte.find((s) => s.schritt_id === treffer[1])?.lauf_id ?? null)
+    if (architektLaufId !== null) {
+      const abgleich = gleicheEinrichtungAb(workflowDaten.auftrag_id, architektLaufId, ladeOptionen)
+      if (!abgleich.ok) return { ok: false, grund: `Einrichtung durch Stefan nicht abgeglichen — der Bau startet nicht: ${abgleich.grund}`, offen: [] }
+    }
+    const auftragVersion = ladeArtefaktVersion(`auftrag-${workflowDaten.auftrag_id}`, undefined, ladeOptionen)
+    if (auftragVersion === null) return { ok: false, grund: `Auftrag '${workflowDaten.auftrag_id}' nicht gefunden`, offen: [] }
+    const offen = offeneEinrichtungVorDemBau(auftragVersion.daten)
+    if (offen.length > 0) {
+      return { ok: false, grund: `Einrichtung vor dem Bau offen: ${offen.map((e) => `${e.id} „${e.schritt}“`).join('; ')} — im Ablauf als erledigt abhaken, dann den Bau erneut freigeben`, offen }
+    }
+    return { ok: true, auftragVersion }
   }
 
   /**
@@ -6088,9 +6270,17 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowDaten.auftrag_id)) {
       return { ok: false, art: 'ungueltig', grund: `'auftrag_id' des Workflows enthält unzulässige Zeichen: ${JSON.stringify(workflowDaten.auftrag_id)}` }
     }
-    const auftragVersion = ladeArtefaktVersion(`auftrag-${workflowDaten.auftrag_id}`, undefined, ladeOptionen)
+    let auftragVersion = ladeArtefaktVersion(`auftrag-${workflowDaten.auftrag_id}`, undefined, ladeOptionen)
     if (auftragVersion === null) {
       return { ok: false, art: 'ungueltig', grund: `Auftrag '${workflowDaten.auftrag_id}' nicht gefunden` }
+    }
+    // F45 B2a-2 (F-1071): ein Ausführungsschritt startet erst, wenn die Einrichtung „vor dem Bau“ erledigt ist — hier, an
+    // der einen Stelle, die jeder Startweg durchläuft. Der Abgleich kann eine neue Auftragsversion schreiben; danach gilt
+    // die frisch geladene Version (Advisor H4).
+    if (schritt.rolle === 'ausfuehrung') {
+      const einrichtung = pruefeEinrichtungVorBau(workflowDaten, schritt, ladeOptionen)
+      if (!einrichtung.ok) return { ok: false, art: 'konflikt', grund: einrichtung.grund }
+      auftragVersion = einrichtung.auftragVersion
     }
 
     // F39 WS-3a (löst state/findings.md, neues P1-Finding "baueArchitektAuftragstext nie am
@@ -6141,6 +6331,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       // die Dokumentations-Schreibschritte und bat um Schreibzugriff, statt zu bewerten.
       // F-750: entschiedene ADRs des PROJEKTS (repoWurzel, nicht installWurzel) als bindender Kontext.
       auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext, leseEntschiedeneAdrs(laufWurzel))
+    }
+
+    // F45 B2a-2 (F-938, F-1071): der Arbeitspaket-Block für architekt und ausfuehrung — einzige Textquelle ist
+    // baueArbeitspaketBlock (src/auftrag). Ein Auftrag ohne Arbeitspaket-Feld liefert null: der Text bleibt bitgenau.
+    // Der Review-Schritt bekommt keinen Block (er hat den AK-Prüfblock weiter unten, keine Doppelung).
+    if (schritt.rolle === 'architekt' || schritt.rolle === 'ausfuehrung') {
+      const arbeitspaket = baueArbeitspaketBlock(auftragVersion.daten, typeof workflowDaten.ziel === 'string' ? workflowDaten.ziel : null)
+      if (arbeitspaket !== null) auftragstext = `${auftragstext}\n\n${arbeitspaket}`
     }
 
     // F39 WS-3a, Punkt 2 (Ergebnis-Umsetzung): ein 'ausfuehrung'-Schritt, der ein
@@ -6261,7 +6459,10 @@ export function erzeugeRequestHandler(optionen = {}) {
     let projektkarteMeta
     if (istKarteRolle(schritt.rolle)) {
       try {
-        const karte = baueProjektkarte(leseProjektkarteEingaben(schritt.rolle, laufWurzel, workflowDaten, auftragVersion.daten, laufort.arbeitsordner !== null, kartenLuecken), schritt.rolle)
+        // F45 B2a-2 (QA L3): Stand vor dem Bau — Basis-Commit des Arbeitsordners, ohne Arbeitsordner der beim Ablaufstart
+        // festgehaltene HEAD (workflow.basis_commit).
+        const basisCommit = schritt.rolle !== 'code-reviewer' ? null : laufort.arbeitsordner !== null ? (ermittleArbeitsordnerLage(workflowId, workflowDaten).daten?.basis_commit ?? null) : (workflowDaten.basis_commit ?? null)
+        const karte = baueProjektkarte(leseProjektkarteEingaben(schritt.rolle, laufWurzel, workflowDaten, auftragVersion.daten, laufort.arbeitsordner !== null, kartenLuecken, basisCommit), schritt.rolle)
         auftragstext = `${auftragstext}\n\n${karte.text}`
         projektkarteMeta = { hash: karte.hash, abschnitte: karte.abschnitte, fehlend: karte.fehlend }
       } catch (fehler) {
@@ -6359,11 +6560,19 @@ export function erzeugeRequestHandler(optionen = {}) {
     //
     // grund geht auf null (WS-2c (a5)): ein laufender Schritt hat keinen Halt-Grund, und ein
     // stehengebliebener Text aus dem vorigen Halt wäre eine Lüge auf der Platte.
+    //
+    // F45 B2a-2 (QA L3): ohne eigenen Arbeitsordner hält der erste Schrittstart den HEAD des Projekts als basis_commit fest
+    // (Stand vor dem Bau für den Prüfmaßstab des Reviews; rein lesend, synchron). Ist HEAD nicht lesbar, bleibt das Feld
+    // weg — die Review-Karte nennt die Lücke.
+    // Nur beim echten Ablaufstart (Code-Review 1, QA L2-3): erste Fassung und noch kein Schritt gelaufen — ein Altbestand
+    // oder ein später Start bekäme sonst einen HEAD nach dem Bau; dann bleibt die Lücke in der Review-Karte sichtbar.
+    const ersterStart = (workflowDaten.version ?? 1) === 1 && workflowDaten.schritte.every((s) => s.lauf_id === null)
+    const basisCommitNeu = laufort.arbeitsordner === null && workflowDaten.basis_commit === undefined && ersterStart ? leseProjektHead() : null
     const fortschritt = schreibeWorkflowFortschritt(
       workflowId,
       schritt.schritt_id,
       { status: 'LAEUFT', lauf_id: laufId },
-      () => ({ status: 'LAEUFT', aktiver_schritt_id: ausgang.aktiverSchrittId, grund: null }),
+      () => ({ status: 'LAEUFT', aktiver_schritt_id: ausgang.aktiverSchrittId, grund: null, ...(basisCommitNeu !== null ? { basis_commit: basisCommitNeu } : {}) }),
       profilReferenz,
       ladeOptionen
     )
@@ -6553,6 +6762,12 @@ export function erzeugeRequestHandler(optionen = {}) {
             ? leseArchitekturErgebnisAusLaufakte(laufakteVersion.daten, istStackOffen(laufWurzel))
             : { verstoesse: [`Laufakte 'laufakte-${laufId}' nicht gefunden`], entscheidungenMensch: [] }
         architekturVerstoesse = architekturErgebnis.verstoesse
+        // F45 B2a-2 (F-1071): die Einrichtungsliste des Architekten wird sofort Teil des Auftrags (sichtbar im Ablauf vor
+        // dem Bau). Scheitert die Übernahme, hält Regel 1c an — der Bau startet nie ohne Liste (Startsperre ebenso).
+        if (architekturVerstoesse.length === 0) {
+          const uebernahme = gleicheEinrichtungAb(workflowDaten.auftrag_id, laufId, ladeOptionen)
+          if (!uebernahme.ok) architekturVerstoesse = [uebernahme.grund]
+        }
         architekturAnzahlFragen = architekturErgebnis.entscheidungenMensch.length
         architekturEntscheidungAusstehend =
           architekturVerstoesse.length === 0 &&
@@ -7639,6 +7854,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         pruefergebnis: pruefergebnisProjektion,
         // F45 B1a-1 (F-954): additiv — eigener Arbeitsordner des Ablaufs (nur aus dem Artefakt, kein Git im Poll).
         arbeitsordner: baueArbeitsordnerProjektion(workflowId, version.daten),
+        // F45 B2a-2 (F-1071): additiv — Einrichtung durch Stefan aus dem Auftrag (null: der Auftrag trägt keine Liste).
+        einrichtung: leseEinrichtungProjektion(version.daten.auftrag_id),
       })
       return
     }
@@ -8050,7 +8267,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // ist eine async function, deren Promise niemand awaitet — ein ungefangener Wurf würde zur
       // unhandled promise rejection und (Node 24) zum Prozessabsturz führen, Reviewer-Pass F12 WS-2.
       try {
-        registriereAuftrag(auftragId, profilReferenz, pruefung.titel, pruefung.auftragstext, { basisVerzeichnis, herkunft: pruefung.herkunft })
+        registriereAuftrag(auftragId, profilReferenz, pruefung.titel, pruefung.auftragstext, { basisVerzeichnis, herkunft: pruefung.herkunft, akzeptanzkriterien: pruefung.akzeptanzkriterien })
       } catch (fehler) {
         console.error(`[leitstand] Auftrag '${auftragId}' konnte nicht registriert werden:`, fehler)
         sendeJson(res, 500, { grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` })
@@ -8407,8 +8624,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       // typischerweise aus der aktuellen Version, und dann kopiert er das Feld versehentlich
       // mit. Die Wirkung ist die sichere Richtung — eine neue Fassung ist ein neuer Plan und
       // braucht eine neue Freigabe; der Schritt hält wieder an, statt ungefragt loszulaufen.
+      // F45 B2a-2 (Code-Review 4): basis_commit gehört dem Server (Stand vor dem Bau, Prüfmaßstab des Reviews) — aus dem
+      // Body nie übernommen; eine neue Fassung desselben Ablaufs behält den festgehaltenen Wert.
+      const { basis_commit: _basisAusBody, ...bodyOhneBasis } = body
+      const festgehalteneBasis = ladeArtefaktVersion(`workflow-${body.workflow_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })?.daten?.basis_commit
       const koerperOhneFreigaben = {
-        ...body,
+        ...bodyOhneBasis,
+        ...(typeof festgehalteneBasis === 'string' ? { basis_commit: festgehalteneBasis } : {}),
         grund: null,
         schritte: body.schritte.map((schritt) => {
           const { freigabe_erteilt: _verworfen, ...rest } = schritt
@@ -9798,6 +10020,78 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    // ─── POST /api/workflows/<id>/einrichtung (F45 B2a-2, F-1071) ───────────────────────
+    // Stefan hakt einen Einrichtungsschritt ab (status 'erledigt') oder öffnet ihn wieder ('offen'). Schreibt eine neue
+    // Auftragsversion über registriereAuftrag (kein zweiter Schreibweg). CSRF/Host prüft der zentrale Haken; während ein
+    // Lauf aktiv ist, bleibt die Liste gesperrt (Laufsperre wie die anderen schreibenden Routen, eigener Grund).
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/einrichtung')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/einrichtung'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      // QA B2a-2 (L6): 'schritt' ist der Text, den Stefan gesehen hat — weicht er nach einem Replan ab, wird nichts abgehakt.
+      const formFalsch =
+        body === null || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some((feld) => !['id', 'status', 'schritt'].includes(feld)) || typeof body.id !== 'string' || typeof body.schritt !== 'string' || (body.status !== 'offen' && body.status !== 'erledigt')
+      if (formFalsch) {
+        sendeJson(res, 400, { grund: "Body muss { id: 'E<n>', schritt: '<angezeigter Text>', status: 'offen' | 'erledigt' } sein" })
+        return
+      }
+      if (laufAktiv || aufrufAktiv || globalerLaufZustand.aktiv) {
+        sendeJson(res, 409, { grund: 'Während ein Lauf aktiv ist, kann die Einrichtung nicht geändert werden — nach seinem Ende erneut abhaken.' })
+        return
+      }
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const auftragId = workflowVersion.daten.auftrag_id
+      const auftrag = typeof auftragId === 'string' && !LAUFID_UNZULAESSIGE_ZEICHEN.test(auftragId) ? ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, ladeOptionen) : null
+      if (auftrag === null) {
+        sendeJson(res, 404, { grund: `Auftrag des Workflows '${workflowId}' nicht gefunden` })
+        return
+      }
+      // QA L9 / Code-Review 7: nach dem Ende des Ablaufs ändert sich die Einrichtung nicht mehr (sie gehört zum Bau).
+      if (workflowVersion.daten.status === 'ABGESCHLOSSEN' || workflowVersion.daten.status === 'GESTOPPT') {
+        sendeJson(res, 409, { grund: `Der Ablauf ist ${workflowVersion.daten.status === 'GESTOPPT' ? 'gestoppt' : 'abgeschlossen'} — die Einrichtung ist nicht mehr änderbar` })
+        return
+      }
+      const liste = Array.isArray(auftrag.daten.einrichtung) ? auftrag.daten.einrichtung : []
+      const ziel = liste.find((e) => e.id === body.id)
+      if (ziel === undefined) {
+        sendeJson(res, 404, { grund: `Einrichtungsschritt '${body.id}' gibt es in diesem Auftrag nicht` })
+        return
+      }
+      // Zeilenenden angleichen: der Browser liest CR aus dem data-Attribut als LF zurück (QA-Nachpass B2a-2).
+      if (mitLf(ziel.schritt) !== mitLf(body.schritt)) {
+        sendeJson(res, 409, { grund: `Einrichtungsschritt '${body.id}' hat sich geändert (neue Liste des Architekten) — Anzeige neu laden und erneut abhaken` })
+        return
+      }
+      const neu = liste.map((e) => (e.id === body.id ? { ...e, status: body.status } : e))
+      if (neu.some((e, i) => e.status !== liste[i].status)) {
+        try {
+          registriereAuftrag(auftragId, profilReferenz, auftrag.daten.titel, auftrag.daten.auftragstext, { ...optionenAusAuftrag(auftrag.daten), einrichtung: neu, basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        } catch (fehler) {
+          console.error(`[leitstand] Einrichtung für Auftrag '${auftragId}' nicht gespeichert:`, fehler)
+          sendeJson(res, 500, { grund: `Einrichtung nicht gespeichert: ${fehler.message}` })
+          return
+        }
+      }
+      sendeJson(res, 200, { workflowId, einrichtung: neu })
+      return
+    }
+
     // ─── POST /api/workflows/<id>/freigabe (F15 WS-2c (b1), AK7, löst F-207) ─────────────
     //
     // Der Ausweg aus WARTET_FREIGABE — bis hierher der einzige Halt ohne jeden Weg zurück:
@@ -9991,6 +10285,15 @@ export function erzeugeRequestHandler(optionen = {}) {
       // die Freigabe NICHT festgehalten — die Vorbereitung beginnt, die Antwort ist 202 mit vorbereitung: true, und
       // die Oberfläche reicht dieselbe Freigabe ein, sobald der Arbeitsordner BEREIT ist.
       if (body.entscheidung === 'FREIGEGEBEN') {
+        // F45 B2a-2 (F-1071): Bau mit offener Einrichtung „vor dem Bau“ → nichts festhalten, 409 mit Grund; nach dem Abhaken
+        // gilt dieselbe Freigabe. Dieselbe Prüfung wie in starteWorkflowSchritt (dort verbindlich für jeden Startweg).
+        if (freizugebenderSchritt?.rolle === 'ausfuehrung') {
+          const einrichtung = pruefeEinrichtungVorBau(workflowDaten, freizugebenderSchritt, ladeOptionen)
+          if (!einrichtung.ok) {
+            sendeJson(res, 409, { grund: `${einrichtung.grund}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}`, art: 'einrichtungOffen', offen: einrichtung.offen })
+            return
+          }
+        }
         const arbeitsordnerHalt = arbeitsordnerVorStart(workflowId, workflowDaten, workflowVersion.versionSequenz)
         if (arbeitsordnerHalt !== null) {
           sendeJson(res, arbeitsordnerHalt.status, arbeitsordnerHalt.koerper)

@@ -76,6 +76,11 @@ import type {
 } from './types.ts'
 
 const ERGEBNIS_ARCHITEKTUR_FELDER = new Set(['modus', 'zusammenfassung', 'module', 'adr_entwuerfe', 'schema_entwuerfe', 'entscheidungen_mensch', 'capabilities_bedarf', 'evidenz'])
+// F45 B2a-2 (F-1071): 'einrichtung' ist erlaubt, aber NICHT Pflicht — Ausgaben von vor B2a-2 bleiben gültig (Muster
+// 'kategorie'); im Schema (Codex-Dialekt) steht es trotzdem in 'required'.
+const ERGEBNIS_ARCHITEKTUR_ERLAUBT = new Set([...ERGEBNIS_ARCHITEKTUR_FELDER, 'einrichtung'])
+const EINRICHTUNG_FELDER = new Set(['schritt', 'wann'])
+const EINRICHTUNG_WANN = ['vor_dem_bau', 'waehrend_des_baus']
 const MODUS_WERTE = ['feature', 'projekt']
 const MODUL_FELDER = new Set(['name', 'zweck', 'abhaengigkeiten'])
 const ADR_FELDER = new Set(['titel', 'kontext', 'entscheidung', 'alternativen', 'konsequenzen'])
@@ -307,6 +312,24 @@ function validiereCapabilityBedarf(eintrag: unknown, index: number, bekannteRess
 }
 
 /**
+ * F45 B2a-2 (F-1071): prüft ein Element von daten.einrichtung — { schritt (nicht leer), wann }.
+ * @param eintrag - geparstes, sonst unbekanntes Objekt
+ * @param index - Position im Array, für die Fehlermeldung
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+function validiereEinrichtungEintrag(eintrag: unknown, index: number): string[] {
+  if (!istObjekt(eintrag)) return [`'einrichtung[${index}]' muss ein Objekt sein`]
+  const verstoesse: string[] = []
+  for (const feld of Object.keys(eintrag)) {
+    if (!EINRICHTUNG_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld 'einrichtung[${index}].${feld}' (additionalProperties: false)`)
+  }
+  // Getrimmt wie der Auftrag-Validator (QA L7) — sonst wäre das Ergebnis gültig, die Übernahme aber nicht.
+  if (typeof eintrag.schritt !== 'string' || eintrag.schritt.trim() === '') verstoesse.push(`'einrichtung[${index}].schritt' muss ein nicht-leerer String sein`)
+  if (typeof eintrag.wann !== 'string' || !EINRICHTUNG_WANN.includes(eintrag.wann)) verstoesse.push(`'einrichtung[${index}].wann' muss einer von ${EINRICHTUNG_WANN.join(', ')} sein`)
+  return verstoesse
+}
+
+/**
  * Prüft ein einzelnes Element von daten.evidenz gegen die
  * schemas/ergebnis-architektur.schema.json'-Form.
  * @param eintrag - geparstes, sonst unbekanntes Objekt
@@ -352,7 +375,7 @@ export function validiereErgebnisArchitektur(daten: unknown, bekannteRessourcenI
   const verstoesse: string[] = []
 
   for (const feld of Object.keys(daten)) {
-    if (!ERGEBNIS_ARCHITEKTUR_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
+    if (!ERGEBNIS_ARCHITEKTUR_ERLAUBT.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
   for (const feld of ERGEBNIS_ARCHITEKTUR_FELDER) {
     if (!(feld in daten)) verstoesse.push(`Pflichtfeld '${feld}' fehlt`)
@@ -392,6 +415,10 @@ export function validiereErgebnisArchitektur(daten: unknown, bekannteRessourcenI
       verstoesse.push(...daten.evidenz.flatMap((eintrag, index) => validiereEvidenzEintrag(eintrag, index)))
       if (daten.evidenz.length === 0) verstoesse.push("'evidenz' muss mindestens einen Eintrag tragen — ein Architekturentwurf ohne belegte Aussage ist eine Behauptung ohne Grundlage")
     }
+  }
+  if ('einrichtung' in daten) {
+    if (!Array.isArray(daten.einrichtung)) verstoesse.push("'einrichtung' muss ein Array sein")
+    else verstoesse.push(...daten.einrichtung.flatMap((eintrag, index) => validiereEinrichtungEintrag(eintrag, index)))
   }
 
   // F42 WS-2 (löst F-685): bei offenem Stack darf der Architekt ihn nicht selbst festlegen,
@@ -566,8 +593,10 @@ function baueFeatureRolleninstruktion(stackOffen: boolean): string[] {
     '  "schema_entwuerfe": [ { "name": "<string>", "zweck": "<string>", "json_schema": "<JSON-Text eines JSON-Schema-Fragments, als STRING, kein verschachteltes Objekt>" }, ... ] (leer, wenn kein Datenmodell),',
     '  "entscheidungen_mensch": [ { "frage": "<string>", "optionen": [ { "titel": "<string>", "vorteile": ["<string>", ...], "nachteile": ["<string>", ...] }, ... ] (mindestens ein Eintrag), "auswirkung_bestand": "<string, auch \'keine\'>", "empfehlung": "<Titel einer der Optionen oben>", "begruendung": "<string>", "kategorie": "stack" | "fachlich" | "sonstig" | null (optional, F42 WS-2) }, ... ] (leer, wenn keine offene Entscheidung),',
     '  "capabilities_bedarf": [ { "bedarf": "<string>", "ressource_id": "<id aus dem Capability-Auszug>" | null, "status": "vorhanden" | "offen" | "fehlt" }, ... ] (leer, wenn kein Capability-Bedarf),',
-    '  "evidenz": [ { "marker": "[Fakt]" | "[Schlussfolgerung]" | "[Annahme]" | "[offene Unsicherheit]", "aussage": "<string>" }, ... ] (mindestens ein Eintrag)',
+    '  "evidenz": [ { "marker": "[Fakt]" | "[Schlussfolgerung]" | "[Annahme]" | "[offene Unsicherheit]", "aussage": "<string>" }, ... ] (mindestens ein Eintrag),',
+    '  "einrichtung": [ { "schritt": "<was Stefan selbst einrichten muss: Konto, API-Schlüssel als Umgebungsvariable, Dienst, Berechtigung>", "wann": "vor_dem_bau" | "waehrend_des_baus" }, ... ] (leer, wenn nichts einzurichten ist; F45 B2a-2)',
     '}',
+    "'einrichtung' nennt nur, was der Bau selbst nicht herstellen kann. Ein Schritt 'vor_dem_bau' hält den Bau an, bis Stefan ihn im Leitstand abgehakt hat.",
     "In 'entscheidungen_mensch[].empfehlung' NUR einen Titel nennen, der auch in 'optionen' steht — keine Option erfinden. In 'capabilities_bedarf[].ressource_id' NUR eine ID aus dem eingespeisten Capability-Auszug nennen, sonst 'null' und 'status': 'fehlt' — keine Ressource erfinden. 'schema_entwuerfe[].json_schema' ist ein STRING mit dem JSON-Text des Schema-Fragments (z. B. \"{\\\"type\\\":\\\"object\\\",\\\"additionalProperties\\\":false,...}\"), KEIN verschachteltes JSON-Objekt. Kein weiteres Feld außer den genannten.",
   ]
   if (stackOffen) zeilen.push(STACK_OFFEN_HINWEIS)

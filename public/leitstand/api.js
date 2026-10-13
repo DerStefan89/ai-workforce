@@ -126,6 +126,8 @@ export const holeWorkflows = () => fetch(mitPraefix('/workflows')).then((r) => r
 export const holeWorkflowDetail = (workflowId, signal) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}`), { signal })
 export const reicheWorkflowFassungEin = (koerper) => fetch(mitPraefix('/workflows'), { method: 'POST', body: JSON.stringify(koerper) })
 export const starteWorkflowSchritt = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/starten`), { method: 'POST', body: JSON.stringify({}) })
+/** F45 B2a-2 (F-1071): Einrichtungsschritt abhaken bzw. wieder öffnen — { id, schritt (angezeigter Text), status: 'erledigt' | 'offen' }. */
+export const sendeEinrichtung = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/einrichtung`), { method: 'POST', body: JSON.stringify(koerper) })
 export const sendeWorkflowFreigabe = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/freigabe`), { method: 'POST', body: JSON.stringify(koerper) })
 /** F36 WS-5a: „Freigeben & installieren“ Schritt 1 — Version/integrity aus der Registry, nur lesend. */
 export const bereiteInstallationVor = (id) => fetch(mitPraefix(`/ressourcen/${encodeURIComponent(id)}/installation/vorbereiten`), { method: 'POST', body: '{}' })

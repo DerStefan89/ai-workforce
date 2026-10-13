@@ -35,7 +35,7 @@ import { rollenName, workerName } from '../rollen-anzeige.js'
 import { renderArbeitsordnerKarte } from './arbeitsordner-anzeige.js'
 import { renderEntscheidungsPanel } from './entscheidung-panel.js'
 import { abnahmeEinleitung, abnahmeLage } from './workflow-abnahme.js'
-import { ordneSchritteNachPlan } from './workflow-detail.js'
+import { ordneSchritteNachPlan, renderEinrichtungsListe } from './workflow-detail.js'
 
 /** Optionen der Freigabe in der Reihenfolge der Vorlage. */
 export const FREIGABE_OPTIONEN = ['freigeben', 'installieren', 'ablehnen']
@@ -128,13 +128,27 @@ function renderWasStartet(detail) {
 }
 
 /**
- * „Arbeitspaket“ (Umfang, Nicht hier, Risiko, Fertig wenn) — „kommt“ (Fixpaket B2).
+ * „Arbeitspaket“ (Umfang, Nicht hier, Risiko, Fertig wenn) — „kommt“ (Fixpaket B2). F45 B2a-2 (F-1071): trägt der Auftrag
+ * eine Einrichtungsliste, steht sie hier mit Abhaken — auf der Freigabe-Seite ist die Timeline eingeklappt, und genau
+ * hier entscheidet Stefan, ob der Bau startet.
+ * @param einrichtung - detail.einrichtung oder null
+ * @param workflowId - Kennung des Ablaufs
  * @returns HTML
  */
-function renderArbeitspaket() {
-  return `<section class="entscheiden-karte" aria-labelledby="freigabe-arbeitspaket" aria-disabled="true">
+function renderArbeitspaket(einrichtung, workflowId) {
+  const liste = renderEinrichtungsListe(einrichtung, workflowId)
+  const rest = `<p class="subtle">${tHtml('entscheiden.freigabe.arbeitspaketText')}</p>`
+  if (liste === null) {
+    return `<section class="entscheiden-karte" aria-labelledby="freigabe-arbeitspaket" aria-disabled="true">
     <h2 id="freigabe-arbeitspaket">${tHtml('entscheiden.freigabe.arbeitspaket')} ${kommtBadge()}</h2>
-    <p class="subtle">${tHtml('entscheiden.freigabe.arbeitspaketText')}</p>
+    ${rest}
+  </section>`
+  }
+  return `<section class="entscheiden-karte entscheiden-einrichtung" aria-labelledby="freigabe-arbeitspaket">
+    <h2 id="freigabe-arbeitspaket">${tHtml('entscheiden.freigabe.arbeitspaket')}</h2>
+    <h3>${tHtml('ablauf.einrichtung.titel')}</h3>
+    ${liste.html}
+    <p class="subtle">${kommtBadge()} ${tHtml('entscheiden.freigabe.arbeitspaketText')}</p>
   </section>`
 }
 
@@ -163,11 +177,11 @@ function renderFaehigkeiten(empfehlung) {
 
 /**
  * Hauptspalte der Freigabe.
- * @param detail - { daten, naechster, empfehlung, arbeitsordner, codeStand } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js
+ * @param detail - { workflowId, daten, naechster, empfehlung, arbeitsordner, codeStand, einrichtung } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js; F45 B2a-2: einrichtung aus GET /api/workflows/<id>
  * @returns HTML
  */
 export function renderFreigabeSeite(detail) {
-  return `<div class="entscheiden-inhalt">${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket()}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
+  return `<div class="entscheiden-inhalt">${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket(detail.einrichtung ?? null, detail.workflowId ?? '')}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
 }
 
 /**

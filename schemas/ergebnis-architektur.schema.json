@@ -5,7 +5,7 @@
   "description": "F39 WS-1 (E-M5-3′/E-M5-13, docs/projekt/zielfassung.md §13.6). Output-Schema für die Rolle 'architekt' (src/rollen/index.ts). Ein Architektur-Lauf referenziert es als output_schema: \"ergebnis-architektur\" — der Name wird zu schemas/<name>.schema.json aufgelöst, nie als freier Pfad übergeben (Muster: ergebnis-product-coach.schema.json). Anders als 'product-coach' hat 'architekt' kein 'art'-Feld mit sich ausschließenden Ausgängen — jeder Lauf liefert dieselbe feste Form; 'modus' unterscheidet nur die Rolleninstruktion ('feature': Architekturentwurf für ein einzelnes Feature/eine ADR-würdige Einzelentscheidung; 'projekt': Projektmodus 'Architektur-Grundlage' — Stack-ADR, Modulschnitt, Datenmodell als Schemas, E-M5-13), nicht die Antwortform. Ein Array ist leer, wenn seine Kategorie für diesen Lauf nichts beiträgt — kein 'null', keine Kopplung an 'modus' im Schema (einfacher als ergebnis-product-coach.schema.json, weil es hier keinen Ausgangs-Diskriminator gibt). Codex-kompatibler Dialekt (F-423-Muster, ergebnis-product-coach.schema.json): kein 'allOf'/'if'/'then'/'oneOf', JEDE unter 'properties' gelistete Eigenschaft steht auch in 'required' — auch in jedem verschachtelten Objekt, UND jede Objektebene trägt 'additionalProperties: false' (F-638, HTTP 400 invalid_json_schema real gemessen, Lauf 635dbad1-9ed8-4489-8386-12590d180cb0, 23.09.2026 — OpenAIs strikter Structured-Output-Modus verlangt das rekursiv, nicht nur auf der Wurzel). 'schema_entwuerfe[].json_schema' war bis F-638 ein opakes 'object' ohne eigene 'properties'/'required', um ein beliebig strukturiertes, vom Architekten entworfenes JSON-Schema-Fragment aufzunehmen — genau das verletzt aber den rekursiven additionalProperties-Zwang, weil ein wirklich beliebig strukturiertes Objekt kein 'additionalProperties: false' tragen kann, ohne seinen Zweck zu verlieren. Deshalb jetzt ein STRING (JSON-Text des Fragments) statt eines verschachtelten Objekts — für den Dialekt-Zwang unsichtbar, weil er kein 'properties' ist. Konsumenten (validiereErgebnisArchitektur, baueUmsetzungsInstruktion/die 'ausfuehrung'-Rolle) parsen den String selbst. 'evidenz[].marker' ist die geschlossene Wertemenge aus .claude/skills/advisor-pass (Evidenz-Marker [Fakt]/[Schlussfolgerung]/[Annahme]/[offene Unsicherheit]) — dieselbe Konvention wie ein Advisor-Pass-Finding, hier auf einen Architektur-Entwurf angewendet. Dies ist KEIN Rollenvertrag: das Schema beschreibt allein die Form der Antwort, nicht die Pflichten oder Befugnisse der Rolle (die stehen in src/rollen/index.ts). F42 WS-2 (löst F-685): 'entscheidungen_mensch[].kategorie' ergänzt, siehe dessen eigene Beschreibung.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["modus", "zusammenfassung", "module", "adr_entwuerfe", "schema_entwuerfe", "entscheidungen_mensch", "capabilities_bedarf", "evidenz"],
+  "required": ["modus", "zusammenfassung", "module", "adr_entwuerfe", "schema_entwuerfe", "entscheidungen_mensch", "capabilities_bedarf", "evidenz", "einrichtung"],
   "properties": {
     "modus": {
       "enum": ["feature", "projekt"],
@@ -134,6 +134,19 @@
         "properties": {
           "marker": { "enum": ["[Fakt]", "[Schlussfolgerung]", "[Annahme]", "[offene Unsicherheit]"] },
           "aussage": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "einrichtung": {
+      "type": "array",
+      "description": "F45 B2a-2 (F-1071, K31): Einrichtung durch Stefan — was der Mensch selbst einrichten muss, damit der Bau gelingt (Konto, API-Schlüssel als Umgebungsvariable, externer Dienst, Berechtigung), je Schritt mit Zeitpunkt: 'vor_dem_bau' (der Bau startet erst, wenn der Schritt im Leitstand abgehakt ist) oder 'waehrend_des_baus'. Leer, wenn nichts einzurichten ist. Im Codex-Dialekt strukturell Pflicht; der Validator (validiereErgebnisArchitektur) behandelt ein fehlendes Feld (Ausgaben von vor B2a-2) wie ein leeres. Der Server übernimmt die Liste als neue Auftragsversion (Feld 'einrichtung' in schemas/kontrollzustand-auftrag-payload.schema.json, id und status vergibt er).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schritt", "wann"],
+        "properties": {
+          "schritt": { "type": "string", "minLength": 1 },
+          "wann": { "enum": ["vor_dem_bau", "waehrend_des_baus"] }
         }
       }
     }

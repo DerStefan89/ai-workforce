@@ -1,0 +1,57 @@
+[
+  {
+    "label": "Ablauf mit offener Einrichtung",
+    "Einrichtung offen": false,
+    "Einrichtung erledigt": false,
+    "Knopf E1 Erledigt": true,
+    "Knopf E1 Wieder öffnen": false,
+    "Einrichtung": "Einrichtung durch dich Diese Schritte richtest du selbst ein — so, dass der Bau sie erreicht (Umgebungsvariable bzw. Arb",
+    "Meldung am Ablauf": "",
+    "Dialogmeldung": "(fehlt)",
+    "Seite geladen": true
+  },
+  {
+    "label": "Option Freigeben",
+    "Einrichtung offen": false,
+    "Einrichtung erledigt": false,
+    "Knopf E1 Erledigt": true,
+    "Knopf E1 Wieder öffnen": false,
+    "Einrichtung": "Einrichtung durch dich Diese Schritte richtest du selbst ein — so, dass der Bau sie erreicht (Umgebungsvariable bzw. Arb",
+    "Meldung am Ablauf": "",
+    "Dialogmeldung": "(fehlt)",
+    "Seite geladen": true
+  },
+  {
+    "label": "Begründung",
+    "Einrichtung offen": false,
+    "Einrichtung erledigt": false,
+    "Knopf E1 Erledigt": true,
+    "Knopf E1 Wieder öffnen": false,
+    "Einrichtung": "Einrichtung durch dich Diese Schritte richtest du selbst ein — so, dass der Bau sie erreicht (Umgebungsvariable bzw. Arb",
+    "Meldung am Ablauf": "",
+    "Dialogmeldung": "(fehlt)",
+    "Seite geladen": true
+  },
+  {
+    "label": "Bestätigen öffnet den Dialog",
+    "Einrichtung offen": false,
+    "Einrichtung erledigt": false,
+    "Knopf E1 Erledigt": true,
+    "Knopf E1 Wieder öffnen": false,
+    "Einrichtung": "Einrichtung durch dich Diese Schritte richtest du selbst ein — so, dass der Bau sie erreicht (Umgebungsvariable bzw. Arb",
+    "Meldung am Ablauf": "",
+    "Dialogmeldung": "",
+    "Seite geladen": true
+  },
+  {
+    "label": "Freigeben → 409, Grund sichtbar",
+    "Einrichtung offen": false,
+    "Einrichtung erledigt": false,
+    "Knopf E1 Erledigt": true,
+    "Knopf E1 Wieder öffnen": false,
+    "Einrichtung": "Einrichtung durch dich Diese Schritte richtest du selbst ein — so, dass der Bau sie erreicht (Umgebungsvariable bzw. Arb",
+    "Meldung am Ablauf": "",
+    "Dialogmeldung": "409: Einrichtung vor dem Bau offen: E1 „Testkonto beim Zahlungsdienst anlegen und den Schlüssel als Umgebungsvariable ZA",
+    "Seite geladen": true
+  }
+]

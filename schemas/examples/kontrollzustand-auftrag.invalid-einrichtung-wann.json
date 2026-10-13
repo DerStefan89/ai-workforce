@@ -1,0 +1,8 @@
+{
+  "auftrag_schema": "v0",
+  "auftrag_id": "beispiel-auftrag-einrichtung-wann",
+  "titel": "Einrichtung mit unbekanntem Zeitpunkt",
+  "auftragstext": "Auftragstext.",
+  "erstellt_am": "2026-10-13T09:00:00.000Z",
+  "einrichtung": [{ "id": "E1", "schritt": "Konto anlegen.", "wann": "irgendwann", "status": "offen" }]
+}
