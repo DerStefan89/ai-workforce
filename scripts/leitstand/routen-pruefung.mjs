@@ -13,8 +13,9 @@
  * - holeSubjekt: Inhalt read-only in den Prüfordner (src/sammlung/quelle.ts).
  * - baueAuftragstext: Auftrag an die Rolle eignungspruefung (P5-Vertrag, Prüfliste aus werkzeug-auswahl, Fakten, Pin).
  * - erzeugeBericht: Ergebnis des Laufs gegen Schema und Pin prüfen und als Kernartefakt ablegen.
- * - ergaenzeSammlung / ergaenzeVorbereitung / berichtSperre: Prüfbericht in GET /api/sammlung, im Freigabedialog
- *   (vorbereiten) und als 409-Sperre der Installation.
+ * - ergaenzeSammlung / ergaenzeVorbereitung / baueBerichtPruefer / baueInhaltPruefer: Prüfbericht in GET /api/sammlung, im
+ *   Freigabedialog (vorbereiten), als 409-Sperre der Installation und als Inhalts-Abgleich danach (F-1075; seit F-2b-2b ohne
+ *   Ausnahme, die npm-Sperre der Rückfallebene ist aufgehoben).
  * - raeumeVerwaistePruefordner: Temp-Ordner früherer Prüfläufe beim Serverstart entfernen (A4).
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs, scripts/leitstand/routen-pruefung.test.mjs,
@@ -29,6 +30,7 @@ import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { paketNameAus } from '../../src/ressourcen/index.ts'
+import { STANDARD_ZEITGRENZEN } from '../../src/ressourcen/installation.ts'
 import { zerlegeGithubUrl } from '../../src/ressourcen/skill-dateien.ts'
 import { loeseSkillCommitAuf } from '../../src/ressourcen/skill-installation.ts'
 import { AUSGESCHLOSSENE_URTEILE, baueSammlungAnsicht } from '../../src/sammlung/index.ts'
@@ -40,21 +42,17 @@ import { leseSammlungDateien } from './routen-sammlung.mjs'
 /** Präfix der Temp-Wurzeln eines Prüflaufs (os.tmpdir()). */
 export const PRUEF_TEMP_PRAEFIX = 'aiw-pruefung-'
 
-/**
- * F-1075 Rückfallebene (Auftrag Runde 3, 12.10.2026): der eigene Tar-Leser kann Bytes anders auflösen als node-tar (Delta-
- * Review Runde 3), die Gleichheit „geprüft = installiert“ ist für npm deshalb nicht nachgewiesen. Bis F-2b-2b ist jede
- * npm-Installation (MCP) nach Prüfung gesperrt; Skills über git bleiben (dort hält der Abgleich). Grund für Route (409) und Dialog.
- */
-export const NPM_SPERRE = 'npm-Installation nach Prüfung noch nicht freigegeben, F-1075 — Skills über git bleiben installierbar'
-
 /** Mindestlänge der Ausnahme-Begründung (A21). */
 export const AUSNAHME_MIN = 20
 
 /** Zeitgrenze des Prüflaufs (Modell) in ms (A16). */
 export const PRUEF_ZEITGRENZE_MS = 900_000
 
-/** Zeitgrenzen der Quell-Aufrufe in ms. */
-export const QUELL_ZEITGRENZEN = Object.freeze({ gitMs: 120_000, npmMs: 120_000 })
+/**
+ * Zeitgrenzen der Quell-Aufrufe in ms: gitMs je git-Aufruf, npmMs für npm view (Pin), installMs für das npm install des
+ * Prüflaufs (F45 F-2b-2b: dieselbe Grenze wie die Installation, STANDARD_ZEITGRENZEN.installMs in installation.ts).
+ */
+export const QUELL_ZEITGRENZEN = Object.freeze({ gitMs: 120_000, npmMs: 120_000, installMs: STANDARD_ZEITGRENZEN.installMs })
 
 /** Zulässige Felder der Körper. */
 const FELDER_VORBEREITEN = new Set(['sammlung_id', 'katalog_id', 'typ', 'pfad'])
@@ -242,7 +240,7 @@ export function pruefeAusnahme(subjekt, ausnahme) {
 export async function holeSubjekt(quelle, runner) {
   const wurzel = mkdtempSync(join(tmpdir(), PRUEF_TEMP_PRAEFIX))
   try {
-    const ergebnis = quelle.art === 'git' ? await holeGitInhalt({ repoUrl: quelle.repo, sha: quelle.sha, pfad: quelle.pfad }, runner.git, wurzel, QUELL_ZEITGRENZEN.gitMs) : await holeNpmInhalt(quelle, runner.npm, wurzel, QUELL_ZEITGRENZEN.npmMs)
+    const ergebnis = quelle.art === 'git' ? await holeGitInhalt({ repoUrl: quelle.repo, sha: quelle.sha, pfad: quelle.pfad }, runner.git, wurzel, QUELL_ZEITGRENZEN.gitMs) : await holeNpmInhalt(quelle, runner.npm, wurzel, QUELL_ZEITGRENZEN.installMs)
     return { wurzel, ergebnis }
   } catch (fehler) {
     console.error('[pruefung] Holen geworfen:', fehler)
@@ -257,7 +255,8 @@ export async function holeSubjekt(quelle, runner) {
 export function raeumeAuf(wurzel) {
   if (wurzel === null || wurzel === undefined) return
   try {
-    rmSync(wurzel, { recursive: true, force: true })
+    // Advisor F-2b-2b F6: ein npm-Baum hat viele Dateien — Virenscanner/Indexer halten sie unter Windows kurz fest.
+    rmSync(wurzel, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   } catch (fehler) {
     console.error(`[pruefung] Temp-Ordner '${wurzel}' nicht entfernbar:`, fehler)
   }
@@ -432,13 +431,11 @@ export function angezeigteQuelleAus(daten) {
  * pruefbericht_sperre (Grund oder null).
  * @param daten - Antwort von bereiteInstallationVor
  * @param berichte - alle Berichte der Ablage
- * @param optionen - { npmInstallationNachPruefung } (Rückfallebene F-1075: ohne true ist jede npm-Installation gesperrt)
  * @returns ergänzte Antwort
  */
-export function ergaenzeVorbereitung(daten, berichte, optionen = {}) {
+export function ergaenzeVorbereitung(daten, berichte) {
   const wahl = waehleBericht(berichte, angezeigteQuelleAus(daten))
-  // F-1075 Rückfallebene: npm-Installation nach Prüfung gesperrt (der Bericht bleibt sichtbar).
-  const sperre = daten.art !== 'skill' && optionen.npmInstallationNachPruefung !== true ? NPM_SPERRE : wahl.sperre
+  const sperre = wahl.sperre
   return { ...daten, pruefbericht: wahl.bericht === null ? null : { ...berichtKurz(wahl.bericht), ergebnis: wahl.bericht.daten.ergebnis, fakten: wahl.bericht.daten.fakten, ausnahme_begruendung: wahl.bericht.daten.ausnahme_begruendung, urteil_sammlung: wahl.bericht.daten.urteil_sammlung }, pruefbericht_sperre: sperre }
 }
 
@@ -446,13 +443,11 @@ export function ergaenzeVorbereitung(daten, berichte, optionen = {}) {
  * Rückruf pruefeBericht der Installation: liest die Ablage frisch (unter der Installationssperre) und liefert die Sperre.
  * @param basisVerzeichnis - Ablage der Workforce
  * @param schreiber - stiller Schreiber
- * @param optionen - { npmInstallationNachPruefung } — nur Gates setzen true (Mechanik WS-5a), der reale Server nie
  * @returns (eintrag, angezeigt) => Grund | null
  */
-export function baueBerichtPruefer(basisVerzeichnis, schreiber, optionen = {}) {
+export function baueBerichtPruefer(basisVerzeichnis, schreiber) {
   return (_eintrag, angezeigt) => {
-    // F-1075 Rückfallebene: npm-Installation nach Prüfung gesperrt (409), Skills über git bleiben installierbar.
-    if (angezeigt.art === 'npm' && optionen.npmInstallationNachPruefung !== true) return NPM_SPERRE
+    // F45 F-2b-2b: die Rückfallebene „npm-Installation nach Prüfung gesperrt“ (F-1075) ist aufgehoben (Variante C).
     return waehleBericht(ladePruefberichte(basisVerzeichnis, schreiber), angezeigt).sperre
   }
 }
@@ -470,6 +465,7 @@ export function baueInhaltPruefer(basisVerzeichnis, schreiber) {
     if (wahl.bericht === null || wahl.sperre !== null) return wahl.sperre ?? 'ohne geltenden Prüfbericht'
     const q = wahl.bericht.daten.quelle
     const unterpfad = angezeigt.art === 'git' && q.art === 'git' && q.pfad !== angezeigt.quellPfad ? (q.pfad === '' ? angezeigt.quellPfad : angezeigt.quellPfad.slice(q.pfad.length + 1)) : ''
-    return vergleicheInhalt(wahl.bericht, ordner, { unterpfad, ohne: angezeigt.art === 'npm' ? ['node_modules'] : [] })
+    // F-1075 Variante C: keine Ausnahme mehr (früher npm: node_modules) — jeder Eintrag im installierten Ordner zählt.
+    return vergleicheInhalt(wahl.bericht, ordner, { unterpfad })
   }
 }

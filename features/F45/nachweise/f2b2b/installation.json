@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "grund": null,
+  "version": "4.3.0",
+  "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA==",
+  "dauer_ms": 24784,
+  "werkzeuge_gefunden": [
+    "resolve-library-id",
+    "query-docs"
+  ],
+  "paketordner": {
+    "dateien": 29,
+    "bytes": 202409
+  },
+  "node_modules_gesamt": {
+    "dateien": 6610,
+    "bytes": 43666949
+  },
+  "abgleich": "installierter Paketordner = geprüfte Dateiliste (Pfade + sha256), sonst wäre die Route 422",
+  "katalog_kopie_freigabe": "FREIGEGEBEN"
+}

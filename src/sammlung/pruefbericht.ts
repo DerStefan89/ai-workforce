@@ -31,7 +31,7 @@ import { join } from 'node:path'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { listeVersionen, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import type { LineageSchreiber } from '../lineage-registry/types.ts'
-import type { InhaltFakten } from './inhalt.ts'
+import { GRENZEN, type InhaltFakten, SHA512_INTEGRITY } from './inhalt.ts'
 
 /** Urteile des Prüfberichts. */
 export const PRUEF_URTEILE = Object.freeze(['GEEIGNET', 'MIT_AUFLAGEN', 'NICHT_GEEIGNET'] as const)
@@ -174,7 +174,8 @@ function validiereQuelle(q: unknown): string[] {
   if (o.art === 'npm') {
     for (const k of Object.keys(o)) if (!['art', 'paket', 'version', 'integrity'].includes(k)) v.push(`'quelle' trägt unbekanntes Feld '${k}'`)
     for (const k of ['paket', 'version', 'integrity']) if (typeof o[k] !== 'string' || (o[k] as string).length === 0) v.push(`'quelle.${k}' fehlt`)
-    if (typeof o.integrity === 'string' && !o.integrity.startsWith('sha512-')) v.push("'quelle.integrity' muss eine sha512-SRI sein")
+    // F-1074 (9): volle Form wie beim Pin (pinneNpm), nicht nur das Präfix.
+    if (typeof o.integrity === 'string' && !SHA512_INTEGRITY.test(o.integrity)) v.push("'quelle.integrity' muss eine sha512-SRI sein")
     return v
   }
   return ["'quelle.art' muss 'git' oder 'npm' sein"]
@@ -213,21 +214,22 @@ export function validierePruefberichtDaten(daten: unknown): string[] {
 
 /**
  * Alle regulären Dateien unter ordner mit sha256 (relativ, „/“). Symlinks und andere Einträge sind Abweichungen (fail-closed).
+ * Seit F45 F-2b-2b (F-1075 Variante C) gibt es keine Ausnahme mehr: jeder Eintrag im installierten Ordner zählt, auch ein
+ * node_modules (das die npm-Installation ohnehin schon mit 422 ablehnt).
  * @param ordner - installierter Ordner
- * @param ohne - Namen von Unterordnern der obersten Ebene, die nicht zum geprüften Inhalt gehören (npm: node_modules)
  * @returns Karte Pfad → sha256 und fremde Einträge
  */
-function leseInstalliert(ordner: string, ohne: readonly string[]): { dateien: Map<string, string>; fremd: string[] } {
+function leseInstalliert(ordner: string): { dateien: Map<string, string>; fremd: string[] } {
   const dateien = new Map<string, string>()
   const fremd: string[] = []
   const gehe = (absolut: string, relativ: string): void => {
     for (const e of readdirSync(absolut, { withFileTypes: true })) {
       const rel = relativ === '' ? e.name : `${relativ}/${e.name}`
-      if (relativ === '' && ohne.includes(e.name)) continue
       const pfad = join(absolut, e.name)
       const st = lstatSync(pfad)
       if (st.isDirectory()) gehe(pfad, rel)
-      else if (st.isFile()) dateien.set(rel, createHash('sha256').update(readFileSync(pfad)).digest('hex'))
+      // Code-Review F-2b-2b 10: eine Datei über der Grenze des Prüflaufs kann nie geprüft sein — nicht erst vollständig lesen.
+      else if (st.isFile()) dateien.set(rel, st.size > GRENZEN.maxDateiBytes ? `zu groß (${st.size} Bytes)` : createHash('sha256').update(readFileSync(pfad)).digest('hex'))
       else fremd.push(rel)
     }
   }
@@ -240,26 +242,21 @@ function leseInstalliert(ordner: string, ohne: readonly string[]): { dateien: Ma
  * (git, Präfix) gilt nur mit seinen Dateien unter dem installierten Pfad.
  * @param bericht - geltender Bericht
  * @param ordner - installierter Ordner (Skill-Ordner bzw. node_modules/<paket>)
- * @param optionen - { unterpfad: Pfad des installierten Ordners relativ zum Berichtspfad ('' = gleich), ohne: z. B. ['node_modules'] }
+ * @param optionen - { unterpfad: Pfad des installierten Ordners relativ zum Berichtspfad ('' = gleich) }
  * @returns null (gleich) oder Grund
  */
-export function vergleicheInhalt(bericht: GespeicherterBericht, ordner: string, optionen: { unterpfad: string; ohne?: readonly string[] }): string | null {
+export function vergleicheInhalt(bericht: GespeicherterBericht, ordner: string, optionen: { unterpfad: string }): string | null {
   const praefix = optionen.unterpfad === '' ? '' : `${optionen.unterpfad}/`
-  // F-1075 Runde 3: ausgenommene Ordner (npm: node_modules = von npm angelegter Abhängigkeitsbaum) gelten nur, wenn nachweislich
-  // nichts davon aus dem geprüften Paket stammt — der Tar-Leser weist node_modules im Paket ab; trägt der Bericht trotzdem einen
-  // solchen Pfad, gibt es keine Ausnahme, sondern Abbruch.
-  const ohne = optionen.ohne ?? []
-  const imBericht = bericht.daten.inhalt.dateien.find((d) => d.pfad.toLowerCase().split('/').some((s) => ohne.includes(s)))
-  if (imBericht !== undefined) return `Prüfbericht enthält '${imBericht.pfad}' — ausgenommene Ordner (${ohne.join(', ')}) dürfen nicht aus dem Paket stammen; abgebrochen`
   const geprueft = new Map(bericht.daten.inhalt.dateien.filter((d) => d.pfad.startsWith(praefix)).map((d) => [d.pfad.slice(praefix.length), d.sha256]))
   let ist: ReturnType<typeof leseInstalliert>
   try {
-    ist = leseInstalliert(ordner, ohne)
+    ist = leseInstalliert(ordner)
   } catch (fehler) {
+    console.error(`[pruefbericht] installierter Inhalt '${ordner}' nicht lesbar:`, fehler)
     return `installierter Inhalt nicht lesbar: ${(fehler as Error).message}`
   }
   const abweichungen: string[] = []
-  for (const f of ist.fremd) abweichungen.push(`${f} (kein reguläre Datei)`)
+  for (const f of ist.fremd) abweichungen.push(`${f} (keine reguläre Datei)`)
   for (const [pfad, hash] of ist.dateien) {
     const soll = geprueft.get(pfad)
     if (soll === undefined) abweichungen.push(`${pfad} (nicht geprüft)`)

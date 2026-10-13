@@ -3,7 +3,8 @@
  *
  * Zweck: Tests des Holens (F45 F-2b-2): echter git gegen ein lokales Wegwerf-Repo (ganzes Repo ohne Pfadargument und
  * Unterpfad, A8; Symlink, zu große Datei, .claude-Ordner und CLAUDE.md werden Fakt bzw. neutralisiert, nichts davon kommt
- * unverändert in den Prüfordner) sowie npm mit Attrappen-Runner (Integrity, Tar, Pin nur mit sha512).
+ * unverändert in den Prüfordner) sowie npm mit Attrappen-Runner (F-2b-2b: gemeinsame npm-Installation, Paketordner von der
+ * Platte, Rot-Fälle verschachteltes node_modules/Junction/Lockfile/Nicht-Registry; Pin nur mit sha512).
  *
  * Wird aufgerufen von: npm run test (node --test).
  */
@@ -11,15 +12,14 @@
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { after, test } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
-import { gzipSync } from 'node:zlib'
 import { fuehreGitSync } from '../git-starter/index.ts'
-import { ECHTE_RUNNER, type NpmRunner } from '../ressourcen/installation.ts'
+import { ECHTE_RUNNER, npmInstallArgs, type NpmRunner } from '../ressourcen/installation.ts'
 import { holeSkillQuelle } from '../ressourcen/skill-installation.ts'
 import { GRENZEN } from './inhalt.ts'
-import { holeGitInhalt, holeNpmInhalt, pinneNpm, sriSha512 } from './quelle.ts'
+import { holeGitInhalt, holeNpmInhalt, pinneNpm } from './quelle.ts'
 
 const wurzeln: string[] = []
 after(() => {
@@ -149,47 +149,96 @@ test('holeGitInhalt (F-1075 rot): Pfad-Zwillinge im GANZEN gepinnten Baum → 42
   if (inst.ok) inst.aufraeumen()
 })
 
+/** Angezeigter Pin der Attrappe. */
+const NPM_PIN = { paket: '@fixture/p', version: '1.0.0', integrity: `sha512-${'A'.repeat(86)}==` }
+
 /**
- * Minimaler npm-Tarball.
- * @returns .tgz
+ * Attrappen-npm: `npm install` schreibt einen Paketordner (Dateien relativ zu node_modules/@fixture/p) und ein Lockfile —
+ * Abweichungen je Fall. Merkt sich jeden Aufruf (args, env.npm_config_ignore_scripts).
+ * @param o - { dateien, lock (überschreibt Felder des Paket-Eintrags), weitereLock (zusätzliche Lockfile-Einträge), junction (Unterordner als Junction) }
+ * @returns Runner + Aufrufe
  */
-function tarball(): Buffer {
-  const daten = Buffer.from('{"name":"p","scripts":{"postinstall":"node evil.js"}}')
-  const kopf = Buffer.alloc(512)
-  kopf.write('package/package.json', 0)
-  kopf.write('0000644\0', 100)
-  kopf.write(`${daten.length.toString(8).padStart(11, '0')}\0`, 124)
-  kopf.write('00000000000\0', 136)
-  kopf.write('0', 156)
-  kopf.write('ustar\0', 257)
-  let s = 0
-  for (let i = 0; i < 512; i++) s += i >= 148 && i < 156 ? 0x20 : kopf[i]
-  kopf.write(`${s.toString(8).padStart(6, '0')}\0 `, 148)
-  return gzipSync(Buffer.concat([kopf, daten, Buffer.alloc(512 - daten.length), Buffer.alloc(1024)]))
+function npmAttrappe(o: { dateien?: Record<string, string>; lock?: Record<string, unknown>; weitereLock?: Record<string, unknown>; junction?: string } = {}): NpmRunner & { aufrufe: Array<{ args: string[]; ignoreScripts: string | undefined }> } {
+  const aufrufe: Array<{ args: string[]; ignoreScripts: string | undefined }> = []
+  const runner = (async (args, optionen) => {
+    aufrufe.push({ args, ignoreScripts: optionen.env?.npm_config_ignore_scripts })
+    const prefix = args[args.indexOf('--prefix') + 1]
+    const paketOrdner = join(prefix, 'node_modules', '@fixture', 'p')
+    mkdirSync(paketOrdner, { recursive: true })
+    const dateien = o.dateien ?? { 'package.json': '{"name":"@fixture/p","scripts":{"postinstall":"node evil.js"}}', 'index.js': 'x', '.claude/skills/s/SKILL.md': '---\nname: s\n---' }
+    for (const [pfad, inhalt] of Object.entries(dateien)) {
+      mkdirSync(dirname(join(paketOrdner, pfad)), { recursive: true })
+      writeFileSync(join(paketOrdner, pfad), inhalt)
+    }
+    if (o.junction !== undefined) symlinkSync(prefix, join(paketOrdner, o.junction), 'junction')
+    const lock = { packages: { '': { name: 'x' }, 'node_modules/@fixture/p': { version: NPM_PIN.version, integrity: NPM_PIN.integrity, resolved: 'https://registry.npmjs.org/@fixture/p/-/p-1.0.0.tgz', ...o.lock }, ...o.weitereLock } }
+    writeFileSync(join(prefix, 'package-lock.json'), JSON.stringify(lock))
+    return { code: 0, stdout: '', stderr: '', zeitueberschritten: false }
+  }) as NpmRunner & { aufrufe: typeof aufrufe }
+  runner.aufrufe = aufrufe
+  return runner
 }
 
-test('holeNpmInhalt: pack mit --ignore-scripts, Integrity geprüft, Lebenszyklus-Skript als Fakt', async () => {
-  const tgz = tarball()
-  const aufrufe: string[][] = []
-  const npm: NpmRunner = async (args) => {
-    aufrufe.push(args)
-    const ziel = args[args.indexOf('--pack-destination') + 1]
-    writeFileSync(join(ziel, 'p-1.0.0.tgz'), tgz)
-    return { code: 0, stdout: '[]', stderr: '', zeitueberschritten: false }
+test('holeNpmInhalt (F-2b-2b): dieselbe npm-Installation wie „Installieren“, Paketordner von der Platte, Lebenszyklus als Fakt, install/ entfernt', async () => {
+  const npm = npmAttrappe()
+  const wurzel = neu('npm')
+  const e = await holeNpmInhalt(NPM_PIN, npm, wurzel, 10_000)
+  assert.equal(e.ok, true, e.ok ? '' : e.grund)
+  if (!e.ok) return
+  assert.deepEqual(npm.aufrufe[0].args, npmInstallArgs(NPM_PIN.paket, NPM_PIN.version, join(wurzel, 'install')))
+  assert.equal(npm.aufrufe[0].ignoreScripts, 'true', 'Skripte auch über die Umgebung aus (Advisor F4)')
+  assert.deepEqual(e.fakten.paket?.lebenszyklus, { postinstall: 'node evil.js' })
+  assert.deepEqual(
+    e.dateien.map((d) => d.pfad),
+    ['.claude/skills/s/SKILL.md', 'index.js', 'package.json'],
+    'Original-Pfade im Bericht'
+  )
+  assert.ok(existsSync(join(wurzel, 'inhalt', '_.claude', 'skills', 's', 'SKILL.md')), 'im Prüfordner neutralisiert')
+  assert.equal(existsSync(join(wurzel, 'install')), false, 'Installationsordner vor dem Modelllauf entfernt (Advisor F6)')
+})
+
+test('holeNpmInhalt (F-2b-2b rot): verschachteltes node_modules, Junction, Lockfile abweichend, Nicht-Registry-Abhängigkeit → 422', async () => {
+  const faelle: Array<[string, Parameters<typeof npmAttrappe>[0], RegExp]> = [
+    ['(a) node_modules/hidden', { dateien: { 'index.js': 'x', 'node_modules/hidden/index.js': 'versteckt' } }, /verschachtelte Abhängigkeiten oder bundleDependencies im Paketordner nicht unterstützt \(F-1075\)/],
+    ['(c) Junction im Paketordner', { junction: 'lib' }, /'lib' im Paketordner ist ein Symlink bzw\. eine Junction/],
+    ['(d) Lockfile-Version', { lock: { version: '1.0.1' } }, /installierte Version '1\.0\.1' ≠ angezeigte '1\.0\.0'/],
+    ['(d) Lockfile-Integrity', { lock: { integrity: `sha512-${'B'.repeat(86)}==` } }, /integrity im Lockfile ≠ angezeigte/],
+    ['(F4) git-Abhängigkeit', { weitereLock: { 'node_modules/dep': { version: '1.0.0', resolved: 'git+ssh://git@github.com/x/dep.git#abc' } } }, /Abhängigkeit 'node_modules\/dep' nicht als https-Tarball mit Integrity/],
+    ['(F4) link-Abhängigkeit', { weitereLock: { 'node_modules/dep': { link: true, resolved: '../dep' } } }, /nicht als https-Tarball mit Integrity/],
+  ]
+  for (const [name, optionen, muster] of faelle) {
+    const wurzel = neu('npm-rot')
+    const e = await holeNpmInhalt(NPM_PIN, npmAttrappe(optionen), wurzel, 10_000)
+    assert.ok(!e.ok && e.status === 422 && muster.test(e.grund), `${name}: ${e.ok ? 'ok' : e.grund}`)
+    assert.equal(existsSync(join(wurzel, 'inhalt')), false, `${name}: kein Prüfordner`)
   }
-  const e = await holeNpmInhalt({ paket: 'p', version: '1.0.0', integrity: sriSha512(tgz) }, npm, neu('npm'), 10_000)
-  assert.equal(e.ok, true)
-  assert.ok(aufrufe[0].includes('--ignore-scripts'))
-  assert.equal(aufrufe[0][0], 'pack')
-  if (e.ok) assert.deepEqual(e.fakten.paket?.lebenszyklus, { postinstall: 'node evil.js' })
-  const falsch = await holeNpmInhalt({ paket: 'p', version: '1.0.0', integrity: sriSha512(Buffer.from('anders')) }, npm, neu('npm-falsch'), 10_000)
-  assert.equal(falsch.ok, false)
-  if (!falsch.ok) assert.match(falsch.grund, /Integrity/)
+  const kurz = await holeNpmInhalt({ ...NPM_PIN, integrity: 'sha512-x' }, npmAttrappe(), neu('npm-kurz'), 10_000)
+  assert.ok(!kurz.ok && /keine sha512-SRI/.test(kurz.grund))
+})
+
+test('holeNpmInhalt (QA F-2b-2b 4): npm-Fehler → 422 ohne Prüfordner; binär/zu groß als Fakt, nicht in der Dateiliste', async () => {
+  const fehlerWurzel = neu('npm-fehler')
+  const fehler: NpmRunner = async () => ({ code: 1, stdout: '', stderr: 'npm error code E404\nnpm error 404 Not Found', zeitueberschritten: false })
+  const f = await holeNpmInhalt(NPM_PIN, fehler, fehlerWurzel, 10_000)
+  assert.ok(!f.ok && f.status === 422 && /Exit 1, E404/.test(f.grund), f.ok ? 'ok' : f.grund)
+  assert.equal(existsSync(join(fehlerWurzel, 'inhalt')), false)
+  assert.equal(existsSync(join(fehlerWurzel, 'install')), false)
+  const zeit: NpmRunner = async () => ({ code: null, stdout: '', stderr: '', zeitueberschritten: true })
+  const z = await holeNpmInhalt(NPM_PIN, zeit, neu('npm-zeit'), 10_000)
+  assert.ok(!z.ok && /Zeitgrenze \(10000 ms\)/.test(z.grund))
+  const gefiltert = await holeNpmInhalt(NPM_PIN, npmAttrappe({ dateien: { 'index.js': 'x', 'logo.png': '\u0000PNG', 'gross.js': 'x'.repeat(GRENZEN.maxDateiBytes + 1) } }), neu('npm-filter'), 10_000)
+  assert.ok(gefiltert.ok, gefiltert.ok ? '' : gefiltert.grund)
+  if (!gefiltert.ok) return
+  assert.deepEqual(
+    gefiltert.dateien.map((d) => d.pfad),
+    ['index.js']
+  )
+  assert.deepEqual(gefiltert.fakten.uebersprungen.je_grund, { binaer: 1, zu_gross: 1 })
 })
 
 test('pinneNpm: nur sha512; Version exakt', async () => {
   const antwort = (integrity: string): NpmRunner => async () => ({ code: 0, stdout: JSON.stringify({ version: '4.3.0', 'dist.integrity': integrity, license: 'MIT', maintainers: ['a <a@x>'] }), stderr: '', zeitueberschritten: false })
-  const gut = await pinneNpm('@upstash/context7-mcp', antwort(sriSha512(Buffer.from('x'))), neu('pin'), 1000)
+  const gut = await pinneNpm('@upstash/context7-mcp', antwort(NPM_PIN.integrity), neu('pin'), 1000)
   assert.equal(gut.ok, true)
   if (gut.ok) assert.deepEqual(gut.pfleger, ['a'])
   const sha1 = await pinneNpm('p', antwort('sha1-AAAAAAAAAAAAAAAAAAAAAAAAAAA='), neu('pin1'), 1000)

@@ -34,13 +34,18 @@
  * angezeigten Version, Urteil ≠ NICHT_GEEIGNET; sonst 409) und nach dem Schreiben kontext.pruefeInhalt (F-1075: geschriebene
  * Dateien = geprüfte Dateiliste mit sha256; sonst 422).
  *
+ * F45 F-2b-2b (F-1075 Variante C, Entscheidung Stefan 12.10.2026): installiereNpmPaketInOrdner ist die eine npm-Installation
+ * für Prüflauf (src/sammlung/quelle.ts holeNpmInhalt) und Installation (installiereGesperrt): gleiche Argumente, Lockfile =
+ * angezeigt, nur Registry-Abhängigkeiten, kein verschachteltes node_modules im Paketordner (sonst 422). Geprüft wird damit,
+ * was npm selbst schreibt — kein eigener Tar-Leser mehr.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (POST /api/ressourcen/<id>/installation/
  * vorbereiten, POST /api/ressourcen/<id>/installation), scripts/check-f36-ws5a-installation.mjs,
- * src/ressourcen/installation.test.ts.
+ * src/ressourcen/installation.test.ts, src/sammlung/quelle.ts, src/ressourcen/npm-echt.test.ts.
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
@@ -213,13 +218,14 @@ export interface SkillErgebnis {
   dauerMs: number
 }
 
-const STANDARD_ZEITGRENZEN = {
+/** Zeitgrenzen je Schritt in ms (installMs gilt auch für das npm install des Prüflaufs, routen-pruefung.mjs QUELL_ZEITGRENZEN). */
+export const STANDARD_ZEITGRENZEN = Object.freeze({
   viewMs: 60_000,
   installMs: 300_000,
   serverMs: 60_000,
   /** F36 WS-5b: je git-Aufruf (ls-remote, fetch, ls-tree, checkout). */
   gitMs: 120_000,
-}
+})
 /** Exakte Version (keine Range, kein Tag). */
 const EXAKTE_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 /** SRI-integrity, wie npm sie im Lockfile führt. */
@@ -481,7 +487,8 @@ async function installiereGesperrt(id: string, version: string, integrity: strin
   /** Fehlschlag nach dem Anlegen des Zielordners: eigenen Ordner wieder entfernen, ressourcen.json bleibt unberührt. */
   const scheitere = (status: number, grund: string): InstallationsAntwort<InstallationsErgebnis> => {
     try {
-      rmSync(zielordner, { recursive: true, force: true })
+      // Code-Review F-2b-2b 7: der Zielordner trägt jetzt den ganzen Abhängigkeitsbaum — Virenscanner halten Dateien kurz fest.
+      rmSync(zielordner, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
     } catch (fehler) {
       console.error(`[installation] Zielordner '${zielordner}' nach Fehlschlag nicht entfernbar:`, fehler)
       return {
@@ -521,40 +528,15 @@ async function installiereGesperrt(id: string, version: string, integrity: strin
     return scheitere(500, `Installation unerwartet abgebrochen: ${(fehler as Error).message}`)
   }
 
-  /** Schritte (0)–(5) nach dem Anlegen des Zielordners. */
+  /** Schritte (1)–(5) nach dem Anlegen des Zielordners. */
   async function pruefeUndSchreibe(): Promise<InstallationsAntwort<InstallationsErgebnis>> {
-    writeFileSync(join(zielordner, 'package.json'), `${JSON.stringify({ name: `aiw-cap-${id}`, private: true }, null, 2)}\n`)
-
-    // (1) npm install — exakte Version, keine Install-Skripte.
-    const npmArgs = ['install', `${paket}@${version}`, '--prefix', zielordner, '--ignore-scripts', '--save-exact', '--no-audit', '--no-fund']
-    let npmErgebnis: ProzessErgebnis
-    try {
-      npmErgebnis = await runner.npm(npmArgs, {
-        cwd: zielordner,
-        timeoutMs: zeitgrenzen.installMs,
-      })
-    } catch (fehler) {
-      console.error(`[installation] npm install für '${id}' nicht ausführbar:`, fehler)
-      return scheitere(422, `npm install nicht ausführbar: ${(fehler as Error).message}`)
-    }
-    if (npmErgebnis.zeitueberschritten) return scheitere(422, `npm install ${paket}@${version}: Zeitgrenze (${zeitgrenzen.installMs} ms) überschritten`)
-    if (npmErgebnis.code !== 0) return scheitere(422, `npm install ${paket}@${version} fehlgeschlagen (Exit ${npmErgebnis.code}): ${ausgabeKurz(npmErgebnis)}`)
-
-    // (2) Lockfile: installierte version und integrity = angezeigte (F-786, Registry-Integrität).
-    let lock: {
-      packages?: Record<string, { version?: unknown; integrity?: unknown }>
-    }
-    try {
-      lock = JSON.parse(readFileSync(join(zielordner, 'package-lock.json'), 'utf8'))
-    } catch (fehler) {
-      return scheitere(422, `package-lock.json im Zielordner nicht lesbar: ${(fehler as Error).message}`)
-    }
-    const gesperrt = lock.packages?.[`node_modules/${paket}`]
-    if (gesperrt?.version !== version) return scheitere(422, `installierte Version '${String(gesperrt?.version)}' ≠ angezeigte '${version}' — abgelehnt`)
-    if (gesperrt?.integrity !== integrity) return scheitere(422, `integrity im Lockfile ≠ angezeigte — abgelehnt (Lockfile: ${String(gesperrt?.integrity)})`)
+    // (1)+(2) F-1075 Variante C: dieselbe Funktion wie der Prüflauf — npm install (exakte Version, keine Install-Skripte),
+    // Lockfile = angezeigt, Paketordner ohne verschachteltes node_modules.
+    const npmInstallation = await installiereNpmPaketInOrdner({ paket, version, integrity, ordner: zielordner, wurzelName: `aiw-cap-${id}`, npm: runner.npm, timeoutMs: zeitgrenzen.installMs })
+    if (!npmInstallation.ok) return scheitere(npmInstallation.status, npmInstallation.grund)
 
     // (3) bin existiert und liegt im Paket.
-    const paketOrdner = join(zielordner, 'node_modules', ...paket.split('/'))
+    const paketOrdner = npmInstallation.paketOrdner
     const binPfad = resolve(paketOrdner, ...vorlage.bin.split('/'))
     if (relative(paketOrdner, binPfad).startsWith('..') || !binPfad.startsWith(paketOrdner + sep)) return scheitere(422, `bin '${vorlage.bin}' liegt außerhalb des Pakets — abgelehnt`)
     if (!existsSync(binPfad)) return scheitere(422, `bin '${vorlage.bin}' fehlt im Paket (${binPfad}) — abgelehnt`)
@@ -614,6 +596,125 @@ async function installiereGesperrt(id: string, version: string, integrity: strin
       },
     }
   }
+}
+
+// ─── F45 F-2b-2b (F-1075 Variante C): npm-Installation in einen Ordner — Prüflauf und Installation ──────────
+
+/** Ergebnis der gemeinsamen npm-Installation. */
+export type NpmOrdnerErgebnis = { ok: true; paketOrdner: string } | { ok: false; status: number; grund: string }
+
+/**
+ * Argumente des npm-Aufrufs — für Prüflauf und Installation genau gleich (bis auf den Ordner).
+ * @param paket - Paketname
+ * @param version - exakte Version
+ * @param ordner - --prefix
+ * @returns argv ohne „npm“
+ */
+export function npmInstallArgs(paket: string, version: string, ordner: string): string[] {
+  return ['install', `${paket}@${version}`, '--prefix', ordner, '--ignore-scripts', '--save-exact', '--no-audit', '--no-fund']
+}
+
+/**
+ * true, wenn pfad ein echtes Verzeichnis ist (kein Symlink, keine Junction).
+ * @param pfad - Pfad
+ * @returns echtes Verzeichnis
+ */
+function istEchterOrdner(pfad: string): boolean {
+  const st = lstatSync(pfad, { throwIfNoEntry: false })
+  return st !== undefined && st.isDirectory() && !st.isSymbolicLink()
+}
+
+/**
+ * Prüft, was npm in ordner geschrieben hat (Schritte 3–5 der gemeinsamen Installation; getrennt, damit der Test mit echtem
+ * npm gegen eine lokale .tgz dieselbe Prüfung fährt): Lockfile `node_modules/<paket>` hat genau version und integrity; jede
+ * andere Abhängigkeit stammt aus der Registry (`resolved` https://, `integrity` vorhanden, kein `link`, Advisor F4);
+ * `node_modules`, ein Scope-Ordner und der Paketordner sind echte Verzeichnisse; im Paketordner liegt kein `node_modules`
+ * (npm entpackt `package/node_modules/…` auch ohne bundleDependencies dorthin, ohne Lockfile-Eintrag — F-1075).
+ * @param ordner - --prefix der Installation
+ * @param paket - Paketname
+ * @param version - angezeigte exakte Version
+ * @param integrity - angezeigte Integrity
+ * @returns Paketordner oder 422
+ */
+export function pruefeNpmInstallation(ordner: string, paket: string, version: string, integrity: string): NpmOrdnerErgebnis {
+  const nein = (grund: string): NpmOrdnerErgebnis => ({ ok: false, status: 422, grund })
+  let lock: unknown
+  try {
+    lock = JSON.parse(readFileSync(join(ordner, 'package-lock.json'), 'utf8'))
+  } catch (fehler) {
+    return nein(`package-lock.json im Zielordner nicht lesbar: ${(fehler as Error).message}`)
+  }
+  // Code-Review F-2b-2b 5: ein kaputtes Lockfile ist eine Ablehnung (422), kein Wurf.
+  const roh = typeof lock === 'object' && lock !== null ? (lock as { packages?: unknown }).packages : undefined
+  if (typeof roh !== 'object' || roh === null || Array.isArray(roh)) return nein('package-lock.json ohne packages — abgelehnt')
+  const pakete = roh as Record<string, unknown>
+  const gesperrtRoh = pakete[`node_modules/${paket}`]
+  if (typeof gesperrtRoh !== 'object' || gesperrtRoh === null) return nein(`Paket '${paket}' fehlt im Lockfile — abgelehnt`)
+  const gesperrt = gesperrtRoh as { version?: unknown; integrity?: unknown }
+  if (gesperrt.version !== version) return nein(`installierte Version '${String(gesperrt.version)}' ≠ angezeigte '${version}' — abgelehnt`)
+  if (gesperrt.integrity !== integrity) return nein(`integrity im Lockfile ≠ angezeigte — abgelehnt (Lockfile: ${String(gesperrt.integrity)})`)
+  // Das Paket selbst ist über version + integrity gebunden (resolved wird dort nicht geprüft — der Test mit echtem npm installiert
+  // es aus einer lokalen .tgz). Jede Abhängigkeit muss als https-Tarball mit Integrity aufgelöst sein (Advisor F4).
+  for (const [schluessel, wert] of Object.entries(pakete)) {
+    if (schluessel === '' || schluessel === `node_modules/${paket}`) continue
+    const eintrag = (typeof wert === 'object' && wert !== null ? wert : {}) as { integrity?: unknown; resolved?: unknown; link?: unknown; inBundle?: unknown }
+    if (eintrag.inBundle === true) return nein(`Abhängigkeit '${schluessel}' ist gebündelt (bundleDependencies) — nicht unterstützt (F-1078), nichts installiert`)
+    const httpsMitIntegrity = eintrag.link !== true && typeof eintrag.resolved === 'string' && eintrag.resolved.startsWith('https://') && typeof eintrag.integrity === 'string'
+    if (!httpsMitIntegrity) return nein(`Abhängigkeit '${schluessel}' nicht als https-Tarball mit Integrity aus der Registry aufgelöst (git/file/link: ${String(eintrag.resolved ?? (eintrag.link === true ? 'link' : 'ohne resolved'))}) — nicht unterstützt (F-1078), nichts installiert`)
+  }
+  const segmente = paket.split('/')
+  const modulOrdner = join(ordner, 'node_modules')
+  const paketOrdner = join(modulOrdner, ...segmente)
+  const zuPruefen = [modulOrdner, ...(segmente.length === 2 ? [join(modulOrdner, segmente[0])] : []), paketOrdner]
+  for (const p of zuPruefen) if (!istEchterOrdner(p)) return nein(`'${relative(ordner, p)}' ist kein echtes Verzeichnis (fehlt, Symlink oder Junction) — abgelehnt`)
+  if (lstatSync(join(paketOrdner, 'node_modules'), { throwIfNoEntry: false }) !== undefined) return nein('verschachtelte Abhängigkeiten oder bundleDependencies im Paketordner nicht unterstützt (F-1075)')
+  return { ok: true, paketOrdner }
+}
+
+/**
+ * Installiert genau paket@version in einen leeren Ordner — dieselbe Funktion für den Prüflauf (src/sammlung/quelle.ts) und die
+ * Installation (installiereGesperrt), damit geprüft wird, was npm selbst schreibt (F-1075 Variante C, Entscheidung Stefan
+ * 12.10.2026). Schreibt package.json { name: wurzelName, private: true }, ruft npmInstallArgs (Umgebung zusätzlich
+ * npm_config_ignore_scripts=true, damit auch innere npm-Aufrufe für git-Abhängigkeiten keine Skripte starten, Advisor F4)
+ * und prüft mit pruefeNpmInstallation. Aufräumen bleibt beim Aufrufer.
+ * @param e - { paket, version, integrity, ordner (existiert, leer), wurzelName, npm, timeoutMs }
+ * @returns Paketordner oder Ablehnung 422
+ */
+export async function installiereNpmPaketInOrdner(e: { paket: string; version: string; integrity: string; ordner: string; wurzelName: string; npm: NpmRunner; timeoutMs: number }): Promise<NpmOrdnerErgebnis> {
+  const nein = (grund: string): NpmOrdnerErgebnis => ({ ok: false, status: 422, grund })
+  let vorhanden: string[]
+  try {
+    vorhanden = readdirSync(e.ordner)
+  } catch (fehler) {
+    return nein(`Installationsordner nicht lesbar: ${(fehler as Error).message}`)
+  }
+  // Advisor F3: eine liegengebliebene .npmrc wirkte als Projekt-Konfiguration.
+  if (vorhanden.length > 0) return nein(`Installationsordner ist nicht leer (${vorhanden.slice(0, 3).join(', ')}) — abgelehnt`)
+  try {
+    writeFileSync(join(e.ordner, 'package.json'), `${JSON.stringify({ name: e.wurzelName, private: true }, null, 2)}\n`, { flag: 'wx' })
+  } catch (fehler) {
+    console.error(`[installation] package.json in '${e.ordner}' nicht schreibbar:`, fehler)
+    return nein(`package.json im Installationsordner nicht schreibbar: ${(fehler as Error).message}`)
+  }
+  // Code-Review F-2b-2b 6: unter Windows sind Umgebungsnamen ohne Groß-/Kleinschreibung — jede andere Schreibweise entfernen,
+  // sonst gewinnt z. B. NPM_CONFIG_IGNORE_SCRIPTS=false.
+  const env: NodeJS.ProcessEnv = {}
+  for (const [k, v] of Object.entries(process.env)) if (k.toLowerCase() !== 'npm_config_ignore_scripts') env[k] = v
+  env.npm_config_ignore_scripts = 'true'
+  let ergebnis: ProzessErgebnis
+  try {
+    ergebnis = await e.npm(npmInstallArgs(e.paket, e.version, e.ordner), { cwd: e.ordner, timeoutMs: e.timeoutMs, env })
+  } catch (fehler) {
+    console.error(`[installation] npm install ${e.paket}@${e.version} nicht ausführbar:`, fehler)
+    return nein(`npm install nicht ausführbar: ${(fehler as Error).message}`)
+  }
+  if (ergebnis.zeitueberschritten) return nein(`npm install ${e.paket}@${e.version}: Zeitgrenze (${e.timeoutMs} ms) überschritten`)
+  if (ergebnis.code !== 0) {
+    // QA F-2b-2b 5: die letzten Zeilen von npm 11 sind oft nur der Log-Hinweis — den Fehlercode (ENOTFOUND, E404, ERESOLVE …) voranstellen.
+    const code = /npm (?:error|ERR!) code (\S+)/.exec(`${ergebnis.stderr}\n${ergebnis.stdout}`)?.[1]
+    return nein(`npm install ${e.paket}@${e.version} fehlgeschlagen (Exit ${ergebnis.code}${code === undefined ? '' : `, ${code}`}): ${ausgabeKurz(ergebnis)}`)
+  }
+  return pruefeNpmInstallation(e.ordner, e.paket, e.version, e.integrity)
 }
 
 // ─── F36 WS-5b: Skill ──────────────────────────────────────────────────────────

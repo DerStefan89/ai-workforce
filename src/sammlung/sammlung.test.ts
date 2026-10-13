@@ -193,6 +193,10 @@ test('auswahl: Gründe in fester Reihenfolge', () => {
   assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git, k('OFFEN')), { auswaehlbar: false, grund: 'mcp_ohne_paket' })
   assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git, k('OFFEN', 'npm:x')), { auswaehlbar: true, grund: null })
   assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git), { auswaehlbar: false, grund: 'mcp_ohne_paket' })
+  // F-1074 (8): dieselbe Namensprüfung wie die Route (paketNameAus) — ein ungültiger Name zeigt kein „Auswählen“.
+  assert.deepEqual(auswahl(zeile('a', 'A', 'https://github.com/a/b'), 'mcp', git, k('OFFEN', 'npm:UNGÜLTIG NAME')), { auswaehlbar: false, grund: 'mcp_ohne_paket' })
+  assert.deepEqual(auswahl(zeile('a', 'A', 'https://www.npmjs.com/package/x'), 'mcp', { art: 'npm', paket: '../böse' }), { auswaehlbar: false, grund: 'mcp_ohne_paket' })
+  assert.deepEqual(auswahl(zeile('a', 'A', 'https://www.npmjs.com/package/@a/x'), 'mcp', { art: 'npm', paket: '@a/x' }), { auswaehlbar: true, grund: null })
 })
 
 test('berechneStand: benutzt > aktiv > installiert > vorgemerkt; FREIGEGEBEN extern → ohne_vor_f2b', () => {

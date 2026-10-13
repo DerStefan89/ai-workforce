@@ -1,5 +1,10 @@
 # F36 WS-5a — Echter Installationsnachweis (einmalig, nicht in `npm run check`)
 
+> **Historisch (F45 F-2b-2b, 13.10.2026).** Seit F45 F-2b-2a verlangt „Freigeben & installieren“ einen Prüfbericht zur
+> angezeigten Version und den Inhalts-Abgleich (`pruefeInhalt`, F-1075). Das Installationsskript dieses Nachweises endet
+> deshalb mit „seit F-2b-2a nur mit Prüfbericht; historischer Nachweis“ (Exit 1) statt mit 500. Der aktuelle echte
+> Installationsnachweis (npm, Variante C) steht in `features/F45/nachweise/f2b2b/`. Die Werte unten gelten für den Stand vom 29.09.2026.
+
 Stand 29.09.2026, Worktree `aiw-f36-ws5a`, node v24.16.0, npm 11.18.0.
 
 ## Durchführung

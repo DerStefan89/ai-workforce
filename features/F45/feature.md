@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gebaut (Branch `f45/f2b2-pruefung-freigabe`, Basis `1985e9b`, nicht committet; Abschnitt „Stand F-2b-2a“), nächster Schritt F-2b-2b. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt, nächster Schritt F-2b-2c. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -48,7 +48,7 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 | F-1 | Fähigkeiten im Lauf (Server): Aktivierung je Projekt (E-F45-6/7/8), Projekt-Agents/-Skills nach Inhalt und Opt-in, Agent-Sperre, Init-Gate, Laufakte aktiv/benutzt, Endpunkte | F-815, F-816, F-1012 (Server), F-910 (teilweise) | B1b | Advisor-Pass, vor Merge | Teil von 1,25–1,5 (Zeile F bis 12.10.2026) | gemergt #323 (849fda5) |
 | F-2a | Fähigkeiten-Oberfläche: Seite Workforce, Bindung an die Anzeige, Gründe der Empfehlung, Lauf-Detail, Beleg 13 | F-1054, F-1012 (Oberfläche), F-1055 (1) Anzeige | F-1 | Advisor-Pass, vor Merge | Teil von 1,25–1,5 | |
 | F-2b-1 | Sammlung im Leitstand (Unterreiter „Sammlung“: Urteil, Lizenz, Kosten, Stand, Zuordnung, Typ, Auswahlgrund), Scout liest die Sammlung, voller Hash im Lauf-Detail | F-1057 (K21), F-1060 (6) | F-2a | Advisor-Pass, vor Merge | ≈ 0,6 | |
-| F-2b-2 | „Auswählen“ → Eignungsprüfung (Prüfbericht) → Katalog, Freigabe nur mit Bericht, Stand der lokalen Datei über Neustarts | F-1056 (K20), F-1061 (1) | F-2b-1 | Advisor-Pass, vor Merge | ≈ 1–1,25 | |
+| F-2b-2 | „Auswählen“ → Eignungsprüfung (Prüfbericht) → Katalog, Freigabe nur mit Bericht, Stand der lokalen Datei über Neustarts — geteilt in F-2b-2a (Prüflauf, #326), F-2b-2b (npm-Strukturfix Variante C, F-1075) und F-2b-2c (Vormerken/Katalog, „Eignung prüfen“, Detail als volle Zeile, F-1061 (1)) | F-1056 (K20), F-1061 (1), F-1075 | F-2b-1 | Advisor-Pass, vor Merge | ≈ 1–1,25 | |
 | F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge | Schätzung fehlt | |
 | B2a | Arbeitspaket als Daten (einziges Übergabeformat, Server rendert den Prompt, Gate prüft Pflichtfelder) und Projektkarte mit Zuschnitt je Rolle an alle planenden/prüfenden Rollen (Vorhaben, Bestand, Ausführungsrahmen, aktive Fähigkeiten, Qualität; Hash je Lauf; K26–K28); DoD und Checkliste an Review/qa; Feature ↔ Ablauf; aus B1b: Codex-Harness-Regeln; Codex-Review-Spec (`docs/projekt/codex-review-spec.md`: Audit-Block nur für claude-code, Review-Schema v2 additiv; K24, K25) | F-938, F-936, F-829, F-931, F-989, F-998, F-959, F-929, F-1062 (K24), F-1063 (K25), F-1064 (K26), F-1065 (K27), F-1066 (K28) | B1b | vor Merge | 1,5–1,85 | |
 | B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011 | B2a | Advisor-Pass, vor Merge | 1,25–1,5 | |
@@ -661,4 +661,52 @@ lebt im Speicher (nach Neustart zählt nur der Bericht); die echten Läufe beleg
 die mechanischen Fakten getrennt davor (C14).
 
 **Nächster Schritt: F-2b-2b** — Vormerken-Variante für Sammlungseinträge ohne Katalog, „Eignung prüfen“ in der Capability Library,
-Detail als volle Tabellenzeile (F-1068 (3)), F-1061 (1).
+Detail als volle Tabellenzeile (F-1068 (3)), F-1061 (1). (Nachtrag 13.10.2026: F-2b-2b wurde der npm-Strukturfix nach F-1075, der
+Rest ist F-2b-2c — siehe „Stand F-2b-2b“.)
+
+## Stand F-2b-2b
+
+Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54` (main mit F-2b-2a, #326). Plan `features/F45/plan-f2b2b.md` (Plan v1 →
+Advisor-Pass „TEIL 1 freigegeben mit Hinweisen, TEIL 1 + TEIL 2 zu groß“ → Plan v2 nur TEIL 1). Grundlage: Entscheidung Stefan
+12.10.2026 (Challenger claude/599) — **Variante C „Prüfen, was npm selbst schreibt“**; der Plan aus F-1075 „Rest“ (a)–(c) wird
+nicht umgesetzt, keine neue Abhängigkeit.
+
+**Befund bestätigt** (npm 11.18.0 des Repos, Test mit echter .tgz): npm entpackt `package/node_modules/…` ohne
+bundleDependencies verschachtelt und ohne Lockfile-Eintrag, verwirft Symlinks, der letzte doppelte Eintrag gewinnt. Die Lücke
+war die Ausnahme `node_modules` im Inhalts-Abgleich.
+
+**Gebaut (TEIL 1):**
+- Eine npm-Installation für Prüflauf und Installation: `installiereNpmPaketInOrdner` (`src/ressourcen/installation.ts`) —
+  leerer Ordner, `npm install <paket>@<version> --prefix <ordner> --ignore-scripts --save-exact --no-audit --no-fund` (Skripte
+  zusätzlich per Umgebung aus), Lockfile = angezeigt, nur Registry-Abhängigkeiten (git/file/link → 422, Advisor F4,
+  Entscheidung im Plan v2 dokumentiert), echte Verzeichnisse, kein verschachteltes `node_modules` im Paketordner (422).
+- Prüflauf (`holeNpmInhalt`): installiert damit in `<temp>/install` (300 s), liest den Paketordner per lstat von der Platte
+  (Symlink/Junction → 422, Einträge gedeckelt), Neutralisierung und Dateiliste wie bisher, `install/` vor dem Modelllauf
+  entfernt. `npm pack`, `sriSha512` und der eigene Tar-Leser sind entfernt.
+- Inhalts-Abgleich ohne Ausnahme; Rückfallebene aufgehoben (`NPM_SPERRE`, Schalter `npmInstallationNachPruefung`) —
+  „Freigeben & installieren“ für npm-MCPs ist mit passendem Prüfbericht wieder möglich.
+- F-1074 (8) Auswahl prüft den Paketnamen wie die Route; (9) Integrity im Bericht in voller sha512-Form (Validator + Schema).
+- F36-Nachweisskripte (WS-5a, WS-5b Teil 9a) als historisch markiert, enden mit klarer Meldung statt 500.
+
+**Tests/Gates:** Rot-Tests (a) verschachteltes `node_modules` (Prüflauf, Installation), (b) Datei nicht im Bericht, (c) Junction,
+(d) Lockfile-Version/-Integrity, dazu Nicht-Registry-Abhängigkeit, Ordner nicht leer; echtes npm (`src/ressourcen/npm-echt.test.ts`,
+sucht npm auch unter `../lib/node_modules` für CI); Gate F-2b-2 (h)/(i) umgebaut.
+
+**Echter Nachweis** (`features/F45/nachweise/f2b2b/`): Prüflauf context7-mcp 4.3.0 (Holen ≈ 17 s, gesamt 143 s, 0,45 USD,
+MIT_AUFLAGEN, 29 Dateien), Installation gegen eine Temp-installWurzel 200 in 24,8 s, Paketordner 29 Dateien / 202 KB = Bericht
+(Fixture-Abweichung: in der Katalog-Kopie `wirkung: lokal` + Vorlage; im echten Katalog bleibt context7 extern_lesend).
+
+**Register:** F-1075 erledigt; Nachträge F-1074 (8)/(9), F-1056, F-1061 (1), F-1068 (3) (→ F-2b-2c); neu F-1077 (K33, Jarvis weist
+Produktprojekte ab, B5a), F-1078 (K35, verschachtelte npm-Abhängigkeiten nicht installierbar; Hinweis Advisor F1 zu `~/.npmrc`).
+
+**Prüfpass** (frischer Kontext): code-reviewer und qa je „freigegeben mit Hinweisen“, kein Weg gefunden, auf dem installierter
+Inhalt im Paketordner ohne 422 vom geprüften abweicht. Eine Korrekturrunde: Rot-Tests Junction an `node_modules`/Scope/Paketordner,
+Lockfile kaputt/ohne Paket, Abhängigkeit ohne https+Integrity, gebündelt, npm-Fehlercode im Grund, npm-Fehler/Filter im Prüflauf,
+zweiter Prüflauf nach Fehlerstand (Gate (i2)); kaputtes Lockfile und package.json-Schreibfehler → 422 statt Wurf; Umgebung
+`npm_config_ignore_scripts` ohne andere Schreibweise; Zielordner-Aufräumen mit Wiederholung; `SHA512_INTEGRITY` im reinen Modul
+`inhalt.ts`; Zeitgrenze `installMs` einmal definiert; Hinweistexte des Prüflaufs (de/en/ru/tr) nennen die npm-Installation in einen
+Temp-Ordner. Offen als Finding: F-1078 (b) Bericht mit übersprungenen Dateien lässt „Installieren“ aktiv (endet sicher in 422).
+
+**Nächster Schritt: F-2b-2c** — Vormerken/Katalog für Sammlungseinträge ohne Katalog, „Eignung prüfen“ in der Capability
+Library, Detail als volle Tabellenzeile (F-1068 (3)), F-1061 (1) mit eigenem Advisor-Pass (Ablage als Kern-Artefakt der
+Workforce, ARCHITECTURE.md §2).

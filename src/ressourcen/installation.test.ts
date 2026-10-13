@@ -13,13 +13,13 @@
  */
 
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import { validiereRessourcenDaten } from './index.ts'
-import { bereiteInstallationVor, ECHTE_RUNNER, eintragsKennung, type InstallationsRunner, installiereRessource, type ProzessErgebnis } from './installation.ts'
+import { bereiteInstallationVor, ECHTE_RUNNER, eintragsKennung, type InstallationsRunner, installiereNpmPaketInOrdner, installiereRessource, npmInstallArgs, type ProzessErgebnis, pruefeNpmInstallation } from './installation.ts'
 import type { Ressource } from './types.ts'
 
 const VERSION = '1.2.3'
@@ -78,7 +78,7 @@ function angezeigt(text = katalogText()): { version: string; integrity: string; 
 
 /** Stub-Runner: npm install legt Paket + Lockfile an (Werte überschreibbar), der Server meldet die gegebenen Werkzeuge. */
 function stubRunner(
-  o: { lockVersion?: string; lockIntegrity?: string; werkzeuge?: string[]; npmVerzoegerungMs?: number; view?: ProzessErgebnis; install?: ProzessErgebnis; server?: { ok: false; grund: string }; beimInstall?: () => void } = {}
+  o: { lockVersion?: string; lockIntegrity?: string; verschachtelt?: boolean; werkzeuge?: string[]; npmVerzoegerungMs?: number; view?: ProzessErgebnis; install?: ProzessErgebnis; server?: { ok: false; grund: string }; beimInstall?: () => void } = {}
 ): InstallationsRunner & { aufrufe: string[][] } {
   const aufrufe: string[][] = []
   const ok = (stdout = ''): ProzessErgebnis => ({ code: 0, stdout, stderr: '', zeitueberschritten: false })
@@ -93,6 +93,11 @@ function stubRunner(
       const prefix = args[args.indexOf('--prefix') + 1]
       mkdirSync(join(prefix, 'node_modules', '@fixture', 'pw'), { recursive: true })
       writeFileSync(join(prefix, 'node_modules', '@fixture', 'pw', 'cli.js'), '')
+      // F-2b-2b (a): npm entpackt package/node_modules/… auch ohne bundleDependencies hierher (ohne Lockfile-Eintrag).
+      if (o.verschachtelt === true) {
+        mkdirSync(join(prefix, 'node_modules', '@fixture', 'pw', 'node_modules', 'hidden'), { recursive: true })
+        writeFileSync(join(prefix, 'node_modules', '@fixture', 'pw', 'node_modules', 'hidden', 'index.js'), 'versteckt')
+      }
       const lock = { packages: { 'node_modules/@fixture/pw': { version: o.lockVersion ?? VERSION, integrity: o.lockIntegrity ?? INTEGRITY } } }
       writeFileSync(join(prefix, 'package-lock.json'), JSON.stringify(lock))
       return ok()
@@ -252,6 +257,10 @@ test('installiereRessource: Lockfile-Version, npm-Fehler, Zeitgrenze und Serverf
   try {
     const faelle: Array<[Parameters<typeof stubRunner>[0], RegExp]> = [
       [{ lockVersion: '9.9.9' }, /installierte Version '9.9.9'/],
+      // F-2b-2b (d): Lockfile-Integrity ≠ angezeigt.
+      [{ lockIntegrity: 'sha512-QUJE' }, /integrity im Lockfile ≠ angezeigte/],
+      // F-2b-2b (a): verschachteltes node_modules im Paketordner — vor bin, Inhalts-Abgleich und Serverstart.
+      [{ verschachtelt: true }, /verschachtelte Abhängigkeiten oder bundleDependencies im Paketordner nicht unterstützt \(F-1075\)/],
       [{ install: { code: 1, stdout: '', stderr: 'npm ERR! 404', zeitueberschritten: false } }, /fehlgeschlagen \(Exit 1\).*404/],
       [{ install: { code: null, stdout: '', stderr: '', zeitueberschritten: true } }, /Zeitgrenze/],
       [{ server: { ok: false, grund: 'Server beendet ohne tools/list-Antwort (Exit 1)' } }, /Serverstart-Prüfung fehlgeschlagen/],
@@ -264,6 +273,88 @@ test('installiereRessource: Lockfile-Version, npm-Fehler, Zeitgrenze und Serverf
     }
   } finally {
     u.aufraeumen()
+  }
+})
+
+test('installiereNpmPaketInOrdner (F-2b-2b): Argv exakt, Skripte auch per Umgebung aus; Ordner nicht leer (.npmrc) → 422 ohne npm', async () => {
+  const ordner = mkdtempSync(join(tmpdir(), 'aiw-test-npmordner-'))
+  try {
+    const runner = stubRunner()
+    let env: NodeJS.ProcessEnv | undefined
+    const npm: InstallationsRunner['npm'] = async (args, optionen) => {
+      env = optionen.env
+      return runner.npm(args, optionen)
+    }
+    const e = await installiereNpmPaketInOrdner({ paket: '@fixture/pw', version: VERSION, integrity: INTEGRITY, ordner, wurzelName: 'aiw-cap-pw-mcp', npm, timeoutMs: 1000 })
+    assert.ok(e.ok, e.ok ? '' : e.grund)
+    assert.deepEqual(runner.aufrufe, [['install', `@fixture/pw@${VERSION}`, '--prefix', ordner, '--ignore-scripts', '--save-exact', '--no-audit', '--no-fund']])
+    assert.deepEqual(runner.aufrufe[0], npmInstallArgs('@fixture/pw', VERSION, ordner))
+    assert.equal(env?.npm_config_ignore_scripts, 'true')
+    assert.deepEqual(JSON.parse(readFileSync(join(ordner, 'package.json'), 'utf8')), { name: 'aiw-cap-pw-mcp', private: true })
+    const voll = mkdtempSync(join(tmpdir(), 'aiw-test-npmordner-voll-'))
+    try {
+      writeFileSync(join(voll, '.npmrc'), 'registry=https://boese.invalid/')
+      const leerRunner = stubRunner()
+      const nein = await installiereNpmPaketInOrdner({ paket: '@fixture/pw', version: VERSION, integrity: INTEGRITY, ordner: voll, wurzelName: 'x', npm: leerRunner.npm, timeoutMs: 1000 })
+      assert.ok(!nein.ok && nein.status === 422 && /nicht leer \(\.npmrc\)/.test(nein.grund), nein.ok ? 'ok' : nein.grund)
+      assert.deepEqual(leerRunner.aufrufe, [], 'npm nicht aufgerufen')
+    } finally {
+      raeumeVerzeichnis(voll)
+    }
+  } finally {
+    raeumeVerzeichnis(ordner)
+  }
+})
+
+test('pruefeNpmInstallation (F-2b-2b rot): Junction/fehlend an node_modules, Scope, Paketordner; Lockfile kaputt/ohne Paket; Abhängigkeit ohne https+Integrity oder gebündelt → 422', () => {
+  const wurzeln: string[] = []
+  /** Baut einen Installationsordner wie npm (Scope-Paket @fixture/pw) und wendet eine Störung an. */
+  const ordnerMit = (stoerung: (o: string) => void, lock: unknown = { packages: { '': {}, 'node_modules/@fixture/pw': { version: VERSION, integrity: INTEGRITY } } }): string => {
+    const o = mkdtempSync(join(tmpdir(), 'aiw-test-npmpruef-'))
+    wurzeln.push(o)
+    mkdirSync(join(o, 'node_modules', '@fixture', 'pw'), { recursive: true })
+    writeFileSync(join(o, 'node_modules', '@fixture', 'pw', 'cli.js'), '')
+    writeFileSync(join(o, 'package-lock.json'), typeof lock === 'string' ? lock : JSON.stringify(lock))
+    stoerung(o)
+    return o
+  }
+  const ersetzeDurchJunction = (o: string, rel: string[]): void => {
+    const ziel = join(o, 'woanders')
+    renameSync(join(o, ...rel), ziel)
+    symlinkSync(ziel, join(o, ...rel), 'junction')
+  }
+  try {
+    const gruen = pruefeNpmInstallation(ordnerMit(() => {}), '@fixture/pw', VERSION, INTEGRITY)
+    assert.ok(gruen.ok, gruen.ok ? '' : gruen.grund)
+    const faelle: Array<[string, string, RegExp]> = [
+      ['Paketordner Junction', ordnerMit((o) => ersetzeDurchJunction(o, ['node_modules', '@fixture', 'pw'])), /'node_modules[\\/]@fixture[\\/]pw' ist kein echtes Verzeichnis/],
+      ['Scope Junction', ordnerMit((o) => ersetzeDurchJunction(o, ['node_modules', '@fixture'])), /'node_modules[\\/]@fixture' ist kein echtes Verzeichnis/],
+      ['node_modules Junction', ordnerMit((o) => ersetzeDurchJunction(o, ['node_modules'])), /'node_modules' ist kein echtes Verzeichnis/],
+      ['Lockfile fehlt', ordnerMit((o) => rmSync(join(o, 'package-lock.json'))), /package-lock\.json im Zielordner nicht lesbar/],
+      ['Lockfile null', ordnerMit(() => {}, 'null'), /ohne packages/],
+      ['Paket fehlt im Lockfile', ordnerMit(() => {}, { packages: { '': {} } }), /Paket '@fixture\/pw' fehlt im Lockfile/],
+      ['Abhängigkeit https ohne Integrity', ordnerMit(() => {}, { packages: { 'node_modules/@fixture/pw': { version: VERSION, integrity: INTEGRITY }, 'node_modules/dep': { resolved: 'https://registry.npmjs.org/dep/-/dep-1.0.0.tgz' } } }), /nicht als https-Tarball mit Integrity/],
+      ['Abhängigkeit http', ordnerMit(() => {}, { packages: { 'node_modules/@fixture/pw': { version: VERSION, integrity: INTEGRITY }, 'node_modules/dep': { resolved: 'http://registry.npmjs.org/dep/-/dep-1.0.0.tgz', integrity: INTEGRITY } } }), /nicht als https-Tarball mit Integrity/],
+      ['Abhängigkeit null', ordnerMit(() => {}, { packages: { 'node_modules/@fixture/pw': { version: VERSION, integrity: INTEGRITY }, 'node_modules/dep': null } }), /nicht als https-Tarball mit Integrity/],
+      ['gebündelt', ordnerMit(() => {}, { packages: { 'node_modules/@fixture/pw': { version: VERSION, integrity: INTEGRITY }, 'node_modules/x/node_modules/y': { inBundle: true } } }), /gebündelt \(bundleDependencies\)/],
+    ]
+    for (const [name, ordner, muster] of faelle) {
+      const e = pruefeNpmInstallation(ordner, '@fixture/pw', VERSION, INTEGRITY)
+      assert.ok(!e.ok && e.status === 422 && muster.test(e.grund), `${name}: ${e.ok ? 'ok' : e.grund}`)
+    }
+  } finally {
+    for (const w of wurzeln) raeumeVerzeichnis(w)
+  }
+})
+
+test('installiereNpmPaketInOrdner (QA F-2b-2b 5): npm-Fehlercode steht im Grund', async () => {
+  const ordner = mkdtempSync(join(tmpdir(), 'aiw-test-npmfehler-'))
+  try {
+    const runner = stubRunner({ install: { code: 1, stdout: '', stderr: 'npm error code ENOTFOUND\nnpm error network request failed\nnpm error A complete log of this run can be found in: x.log', zeitueberschritten: false } })
+    const e = await installiereNpmPaketInOrdner({ paket: '@fixture/pw', version: VERSION, integrity: INTEGRITY, ordner, wurzelName: 'x', npm: runner.npm, timeoutMs: 1000 })
+    assert.ok(!e.ok && e.status === 422 && /fehlgeschlagen \(Exit 1, ENOTFOUND\)/.test(e.grund), e.ok ? 'ok' : e.grund)
+  } finally {
+    raeumeVerzeichnis(ordner)
   }
 })
 

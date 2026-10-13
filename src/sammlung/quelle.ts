@@ -1,8 +1,8 @@
 /**
  * Datei: src/sammlung/quelle.ts
  *
- * Zweck: Pinnen und Holen einer fremden Quelle für den Prüflauf (F45 F-2b-2, F-1056) — nur lesend, ohne Installation,
- * ohne Ausführung von Code der Quelle:
+ * Zweck: Pinnen und Holen einer fremden Quelle für den Prüflauf (F45 F-2b-2, F-1056) — ohne Ausführung von Code der Quelle
+ * und ohne Installation in die Workforce (npm installiert seit F-2b-2b ohne Skripte in einen Temp-Ordner, siehe holeNpmInhalt):
  * - pinneNpm: `npm view <paket>@latest …` → exakte Version + Integrity (nur sha512, Advisor A7), Lizenz, Pflege-Daten;
  *   cwd ist ein leerer Temp-Ordner (keine .npmrc eines Projekts).
  * - holeGitInhalt: Temp-Repo mit der Härtung der Installation (gitHaertung, skill-installation.ts), flacher Fetch GENAU
@@ -10,24 +10,26 @@
  *   VOR dem Checkout (nur reguläre Dateien ≤ 1 MB mit zulässigem Pfad; Symlink/Submodul/zu groß/abgelehnt → Fakt),
  *   Checkout NUR der ausgewählten Dateien (`--literal-pathspecs`, Pfadliste per Datei) — dieselbe Checkout-Mechanik wie
  *   die Installation, damit geprüft wird, was installiert würde. Danach Kopie in den Prüfordner mit Neutralisierung.
- * - holeNpmInhalt: `npm pack <paket>@<version> --ignore-scripts` in einen Temp-Ordner (lädt nur das Tarball), sha512 der
- *   Datei = angezeigte Integrity, eigener Tar-Leser (src/sammlung/inhalt.ts), Kopie mit Neutralisierung.
+ * - holeNpmInhalt (F45 F-2b-2b, F-1075 Variante C „prüfen, was npm selbst schreibt“): `npm install` mit derselben Funktion
+ *   wie die Installation (installiereNpmPaketInOrdner, src/ressourcen/installation.ts) in <wurzel>/install — Lockfile-version
+ *   und -integrity = angezeigt, nur Registry-Abhängigkeiten, kein verschachteltes node_modules —, dann den Paketordner von der
+ *   Platte lesen (lstat; Symlink/Junction → 422), Filter und Kopie mit Neutralisierung. Kein npm pack, kein Tar-Leser mehr.
  * Beide liefern den Prüfordner (`<wurzel>/inhalt`), mechanische Fakten und die geprüfte Dateiliste mit sha256 je Datei
  * (F-1075: die Installation vergleicht sie mit dem, was sie tatsächlich schreibt). Pfad-Zwillinge (Schreibweise, Unicode-Form)
  * und Datei/Ordner-Konflikte im GANZEN gepinnten git-Baum (alle ls-tree-Einträge, ohne Größengrenze) → 422 vor dem Checkout.
  *
- * Wird aufgerufen von: scripts/leitstand/routen-pruefung.mjs, src/sammlung/quelle.test.ts.
+ * Wird aufgerufen von: scripts/leitstand/routen-pruefung.mjs, src/sammlung/quelle.test.ts, src/ressourcen/npm-echt.test.ts.
  *
  * Wichtig: Runner (git, npm) sind injizierbar (Tests ohne Netz). Jeder Fehlschlag liefert { ok:false, status, grund };
  * aufräumen muss der Aufrufer (er besitzt die Wurzel). Kein Fehlschlag lässt einen halben Prüfordner als Erfolg stehen.
  */
 
 import { createHash } from 'node:crypto'
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
-import type { NpmRunner, ProzessErgebnis } from '../ressourcen/installation.ts'
+import { installiereNpmPaketInOrdner, type NpmRunner, type ProzessErgebnis } from '../ressourcen/installation.ts'
 import { type GitRunner, gitHaertung, rufeGit } from '../ressourcen/skill-installation.ts'
-import { findeNamensKonflikt, GRENZEN, type InhaltDatei, type InhaltFakten, istBinaer, leseTarGz, neutralisierePfad, pfadSchluessel, pruefePfad, sammleFakten, type Uebersprungen } from './inhalt.ts'
+import { findeNamensKonflikt, GRENZEN, SHA512_INTEGRITY, type InhaltDatei, type InhaltFakten, istBinaer, neutralisierePfad, pfadSchluessel, pruefePfad, sammleFakten, type Uebersprungen } from './inhalt.ts'
 
 /** Ablehnung mit HTTP-Status für den Aufrufer. */
 export type QuellFehler = { ok: false; status: number; grund: string }
@@ -35,8 +37,11 @@ export type QuellFehler = { ok: false; status: number; grund: string }
 /** Exakte npm-Version (keine Range, kein Tag) — Zwilling von EXAKTE_VERSION in installation.ts. */
 export const EXAKTE_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 
-/** Nur sha512-SRI (A7: sha1 ist für einen Inhaltspin zu schwach). */
-export const SHA512_INTEGRITY = /^sha512-[A-Za-z0-9+/]{86}==$/
+/** Nur sha512-SRI — definiert in inhalt.ts (reines Modul, auch für pruefbericht.ts), hier für bestehende Aufrufer. */
+export { SHA512_INTEGRITY }
+
+/** package.json-Name der Wurzel im Installationsordner des Prüflaufs (die Installation nimmt `aiw-cap-<id>`). */
+export const NPM_PRUEF_WURZELNAME = 'aiw-cap-pruefung'
 
 /** Ergebnis von pinneNpm. */
 export type NpmPin = { ok: true; paket: string; version: string; integrity: string; lizenz: string | null; geaendert: string | null; pfleger: string[] } | QuellFehler
@@ -159,7 +164,7 @@ function schreibeInhalt(inhaltOrdner: string, dateien: readonly InhaltDatei[], u
  * @returns null oder Fehler 422
  */
 function pruefeGrenzen(anzahl: number, bytes: number): QuellFehler | null {
-  const hinweis = ' — bei einem Repo einen Ordner wählen (Pfad im Repo)'
+  const hinweis = ' — bei einem Repo einen Ordner wählen (Pfad im Repo); ein npm-Paket dieser Größe ist nicht prüfbar'
   if (anzahl > GRENZEN.maxDateien) return { ok: false, status: 422, grund: `Quelle zu groß für die Prüfung: ${anzahl} Dateien (höchstens ${GRENZEN.maxDateien})${hinweis}` }
   if (bytes > GRENZEN.maxBytes) return { ok: false, status: 422, grund: `Quelle zu groß für die Prüfung: ${bytes} Bytes (höchstens ${GRENZEN.maxBytes})${hinweis}` }
   if (anzahl === 0) return { ok: false, status: 422, grund: 'Quelle enthält keine prüfbare Datei' }
@@ -245,48 +250,89 @@ export async function holeGitInhalt(quelle: { repoUrl: string; sha: string; pfad
 }
 
 /**
- * sha512-SRI einer Datei.
- * @param bytes - Inhalt
- * @returns „sha512-<base64>“
+ * Liest den Paketordner, den npm geschrieben hat (F-1075 Variante C), rekursiv mit lstat: ein Symlink, eine Junction oder
+ * ein sonstiger Nicht-Datei-/Nicht-Ordner-Eintrag → 422 (npm verwirft Symlinks selbst; ein solcher Eintrag heißt, der Ordner
+ * ist nicht der von npm geschriebene). Dateien gehen durch dieselben Filter wie beim git-Holen: pruefePfad → pfad_abgelehnt,
+ * zu groß → zu_gross (ohne Lesen), binär → binaer. Besuchte Einträge, ausgewählte Dateien und Bytes sind gedeckelt (Advisor F7).
+ * @param paketOrdner - node_modules/<paket>
+ * @returns Dateien (Pfad relativ, „/“) und Übersprungene oder Fehler
  */
-export function sriSha512(bytes: Buffer): string {
-  return `sha512-${createHash('sha512').update(bytes).digest('base64')}`
+function lesePaketordner(paketOrdner: string): { dateien: InhaltDatei[]; uebersprungen: Uebersprungen[] } | QuellFehler {
+  const dateien: InhaltDatei[] = []
+  const uebersprungen: Uebersprungen[] = []
+  let eintraege = 0
+  let bytes = 0
+  const stapel: Array<{ absolut: string; relativ: string }> = [{ absolut: paketOrdner, relativ: '' }]
+  while (stapel.length > 0) {
+    const { absolut, relativ } = stapel.pop() as { absolut: string; relativ: string }
+    for (const name of readdirSync(absolut).sort()) {
+      eintraege++
+      if (eintraege > GRENZEN.maxEintraege) return { ok: false, status: 422, grund: `Quelle zu groß für die Prüfung: mehr als ${GRENZEN.maxEintraege} Einträge im Paketordner` }
+      const pfad = join(absolut, name)
+      const rel = relativ === '' ? name : `${relativ}/${name}`
+      const st = lstatSync(pfad)
+      if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile())) return { ok: false, status: 422, grund: `'${rel}' im Paketordner ist ${st.isSymbolicLink() ? 'ein Symlink bzw. eine Junction' : 'keine reguläre Datei'} — npm schreibt so etwas nicht; abgebrochen, nichts geprüft` }
+      if (st.isDirectory()) {
+        stapel.push({ absolut: pfad, relativ: rel })
+        continue
+      }
+      const pfadGrund = pruefePfad(rel)
+      if (pfadGrund !== null) uebersprungen.push({ pfad: rel, grund: 'pfad_abgelehnt', detail: pfadGrund })
+      else if (st.size > GRENZEN.maxDateiBytes) uebersprungen.push({ pfad: rel, grund: 'zu_gross', detail: `${st.size} Bytes` })
+      else {
+        const inhalt = readFileSync(pfad)
+        if (istBinaer(inhalt)) uebersprungen.push({ pfad: rel, grund: 'binaer' })
+        else {
+          dateien.push({ pfad: rel, bytes: inhalt })
+          bytes += inhalt.length
+          const grenze = dateien.length > GRENZEN.maxDateien || bytes > GRENZEN.maxBytes ? pruefeGrenzen(dateien.length, bytes) : null
+          if (grenze !== null) return grenze
+        }
+      }
+    }
+  }
+  return { dateien, uebersprungen }
 }
 
 /**
- * Lädt genau version des Pakets als Tarball (ohne Installation, ohne Skripte), prüft die Integrity und legt den Inhalt
- * neutralisiert in den Prüfordner.
+ * Installiert genau version des Pakets mit derselben Funktion wie „Freigeben & installieren“ (installiereNpmPaketInOrdner:
+ * gleiche npm-Argumente, ohne Skripte, Lockfile = angezeigt, kein verschachteltes node_modules) in <wurzel>/install, liest den
+ * Paketordner von der Platte und legt ihn neutralisiert in den Prüfordner (F-1075 Variante C: geprüft wird, was npm schreibt).
+ * <wurzel>/install wird danach entfernt (Advisor F6); den Rest räumt der Aufrufer.
  * @param quelle - { paket, version, integrity } wie angezeigt
  * @param npm - Runner
  * @param wurzel - Temp-Wurzel des Prüflaufs
- * @param timeoutMs - Zeitgrenze
+ * @param timeoutMs - Zeitgrenze des npm install
  * @returns Prüfordner + Fakten oder Fehler
  */
 export async function holeNpmInhalt(quelle: { paket: string; version: string; integrity: string }, npm: NpmRunner, wurzel: string, timeoutMs: number): Promise<GeholterInhalt> {
   if (!SHA512_INTEGRITY.test(quelle.integrity)) return { ok: false, status: 422, grund: 'angezeigte Integrity ist keine sha512-SRI' }
-  const leer = join(wurzel, 'leer')
-  const pack = join(wurzel, 'pack')
-  mkdirSync(leer, { recursive: true })
-  mkdirSync(pack, { recursive: true })
-  const r = await rufeNpm(npm, ['pack', `${quelle.paket}@${quelle.version}`, '--ignore-scripts', '--json', '--pack-destination', pack], leer, timeoutMs)
-  if (!r.ok) return r
-  const tgz = readdirSync(pack).filter((n) => n.endsWith('.tgz'))
-  if (tgz.length !== 1) return { ok: false, status: 502, grund: `npm pack: erwartet genau ein Tarball, gefunden ${tgz.length}` }
-  const bytes = readFileSync(join(pack, tgz[0]))
-  if (sriSha512(bytes) !== quelle.integrity) return { ok: false, status: 422, grund: 'Integrity des Tarballs ≠ angezeigte — abgebrochen' }
-  const tar = leseTarGz(bytes)
-  if (!tar.ok) return { ok: false, status: 422, grund: tar.grund }
-  const grenze = pruefeGrenzen(
-    tar.dateien.length,
-    tar.dateien.reduce((s, d) => s + d.bytes.length, 0)
-  )
-  if (grenze !== null) return grenze
-  const uebersprungen = [...tar.uebersprungen]
-  const geschriebenErgebnis = schreibeInhalt(join(wurzel, 'inhalt'), tar.dateien, uebersprungen)
-  if ('ok' in geschriebenErgebnis) return geschriebenErgebnis
-  const { umbenannt, geschrieben } = geschriebenErgebnis
-  if (geschrieben.length === 0) return { ok: false, status: 422, grund: 'Quelle enthält nach dem Filtern (Binärdateien) keine prüfbare Datei' }
-  return { ok: true, inhaltOrdner: join(wurzel, 'inhalt'), fakten: sammleFakten(geschrieben, uebersprungen, umbenannt), commitZeit: null, dateien: dateiListe(geschrieben) }
+  const install = join(wurzel, 'install')
+  mkdirSync(install, { recursive: true })
+  try {
+    const npmInstallation = await installiereNpmPaketInOrdner({ ...quelle, ordner: install, wurzelName: NPM_PRUEF_WURZELNAME, npm, timeoutMs })
+    if (!npmInstallation.ok) return npmInstallation
+    const gelesen = lesePaketordner(npmInstallation.paketOrdner)
+    if ('ok' in gelesen) return gelesen
+    const grenze = pruefeGrenzen(
+      gelesen.dateien.length,
+      gelesen.dateien.reduce((s, d) => s + d.bytes.length, 0)
+    )
+    if (grenze !== null) return grenze
+    const uebersprungen = [...gelesen.uebersprungen]
+    const geschriebenErgebnis = schreibeInhalt(join(wurzel, 'inhalt'), gelesen.dateien, uebersprungen)
+    if ('ok' in geschriebenErgebnis) return geschriebenErgebnis
+    const { umbenannt, geschrieben } = geschriebenErgebnis
+    if (geschrieben.length === 0) return { ok: false, status: 422, grund: 'Quelle enthält nach dem Filtern (Binärdateien) keine prüfbare Datei' }
+    return { ok: true, inhaltOrdner: join(wurzel, 'inhalt'), fakten: sammleFakten(geschrieben, uebersprungen, umbenannt), commitZeit: null, dateien: dateiListe(geschrieben) }
+  } finally {
+    try {
+      rmSync(install, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+    } catch (fehler) {
+      // Der Aufrufer räumt die ganze Wurzel ohnehin; liegen lassen ist besser als den Prüflauf daran scheitern zu lassen.
+      console.error(`[pruefung] Installationsordner '${install}' nicht entfernbar:`, fehler)
+    }
+  }
 }
 
 /**
