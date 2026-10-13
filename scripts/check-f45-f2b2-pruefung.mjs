@@ -17,8 +17,13 @@
  * (f) Freigabe: ohne Bericht / Bericht für andere Version / NICHT_GEEIGNET → 409, vorbereiten zeigt pruefbericht_sperre;
  *     neuester passender GEEIGNET → Installation läuft.
  * (g) vorbereiten zeigt den letzten Bericht (aktuell = gleicher Pin); Netzfehler der Registry beim Pin → 502 mit Grund.
- * (h) starteWorkflowSchritt( bleibt 6-mal; Tar/Neutralisierung Rot-Fälle.
- * (i) F-1075 Rückfallebene: ohne Gate-Schalter ist jede npm-Installation nach Prüfung gesperrt (409, Grund im Freigabedialog).
+ * (h) starteWorkflowSchritt( bleibt 6-mal; Neutralisierung rot; kein eigener Tar-Leser, kein npm pack mehr — Prüflauf und
+ *     Installation rufen dieselbe npm-Installation (installiereNpmPaketInOrdner, F-1075 Variante C, F45 F-2b-2b).
+ * (i) F-1075 Variante C (die Rückfallebene „npm-Installation nach Prüfung gesperrt“ ist aufgehoben): (i1) npm-Prüflauf über die
+ *     Routen → Bericht mit der Dateiliste des von npm geschriebenen Paketordners → Installation 200; npm-Argv beider Seiten
+ *     gleich bis auf den --prefix-Ordner (Wurzelname der package.json bewusst verschieden: aiw-cap-pruefung / aiw-cap-<id>);
+ *     (i2) verschachteltes node_modules → Prüflauf Fehlerstand ohne Bericht, Installation 422 (gleicher Grund), Katalog
+ *     unverändert, Zielordner weg; (i3) installierter Inhalt ≠ Bericht (zusätzliche Datei) → 422.
  *
  * Wird aufgerufen von: npm run check.
  *
@@ -36,11 +41,11 @@ import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { ECHTE_RUNNER } from '../src/ressourcen/installation.ts'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
-import { leseTarGz, neutralisierePfad } from '../src/sammlung/inhalt.ts'
+import { neutralisierePfad } from '../src/sammlung/inhalt.ts'
 import { ladePruefberichte, validiereErgebnisEignungspruefung, validierePruefberichtDaten } from '../src/sammlung/pruefbericht.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
-import { legePassendenBerichtAn } from './leitstand/pruefbericht-testhilfe.mjs'
+import { LEER_SHA256, legePassendenBerichtAn } from './leitstand/pruefbericht-testhilfe.mjs'
 import { PRUEF_TEMP_PRAEFIX } from './leitstand/routen-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
@@ -75,15 +80,22 @@ const warte = (ms) => new Promise((r) => setTimeout(r, ms))
   if (befunde.length === 0) console.log('✓ (a) Rolle eignungspruefung lesend/claude-code/Schema; Beispiele grün/rot.')
 }
 
-// ─── (h) Struktur, Tar/Neutralisierung ────────────────────────────────────────
+// ─── (h) Struktur, Neutralisierung, kein Tar-Leser ────────────────────────────
 {
   const vorH = befunde.length
   const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
   const anzahl = server.split('starteWorkflowSchritt(').length - 1
   if (anzahl !== 6) befunde.push(`(h) starteWorkflowSchritt( kommt ${anzahl}-mal vor, erwartet 6`)
   if (neutralisierePfad('.ClAuDe/skills/x/SKILL.md').pfad !== '_.ClAuDe/skills/x/SKILL.md' || neutralisierePfad('a/CLAUDE.md').pfad !== 'a/_CLAUDE.md') befunde.push('(h) Neutralisierung greift nicht')
-  if (leseTarGz(Buffer.from('kein gzip')).ok) befunde.push('(h) Tar-Leser nimmt Unsinn an')
-  if (befunde.length === vorH) console.log('✓ (h) starteWorkflowSchritt( 6-mal; Neutralisierung und Tar-Leser rot.')
+  // F-2b-2b (F-1075 Variante C): kein eigener Tar-Leser, kein npm pack — beide Seiten über die gemeinsame npm-Installation.
+  const inhaltQuelle = readFileSync('src/sammlung/inhalt.ts', 'utf8')
+  const quelleQuelle = readFileSync('src/sammlung/quelle.ts', 'utf8')
+  const installationQuelle = readFileSync('src/ressourcen/installation.ts', 'utf8')
+  if (/function leseTarGz|function pruefeTarName/.test(inhaltQuelle)) befunde.push('(h) eigener Tar-Leser noch vorhanden (inhalt.ts)')
+  if (/'pack'/.test(quelleQuelle)) befunde.push("(h) quelle.ts ruft noch 'npm pack'")
+  if (!quelleQuelle.includes('await installiereNpmPaketInOrdner(') || !installationQuelle.includes('await installiereNpmPaketInOrdner(')) befunde.push('(h) Prüflauf und Installation rufen nicht beide installiereNpmPaketInOrdner')
+  if (/NPM_SPERRE|npmInstallationNachPruefung/.test(server + readFileSync('scripts/leitstand/routen-pruefung.mjs', 'utf8'))) befunde.push('(h) Rückfallebene NPM_SPERRE/npmInstallationNachPruefung noch vorhanden')
+  if (befunde.length === vorH) console.log('✓ (h) starteWorkflowSchritt( 6-mal; Neutralisierung rot; kein Tar-Leser/npm pack, gemeinsame npm-Installation, keine npm-Sperre.')
 }
 
 // ─── Fixture: „GitHub“, Installation, Katalog, Sammlung ───────────────────────
@@ -117,13 +129,24 @@ const gitRunner = async (args, optionen) => {
 }
 const VERSION = '1.2.3'
 const INTEGRITY = `sha512-${'A'.repeat(86)}==`
+/** F-2b-2b: Verhalten der Attrappe beim npm install — 'normal', 'verschachtelt' (node_modules/hidden im Paketordner), 'extra' (zusätzliche Datei). */
+let npmVariante = 'normal'
+/** F-2b-2b: Argv jedes npm install (Prüflauf und Installation). */
+const npmInstallAufrufe = []
 const npmRunner = async (args) => {
   if (args[0] === 'view' && args[1].startsWith('@fixture/kaputt')) return { code: 1, stdout: '', stderr: 'npm ERR! network ECONNRESET', zeitueberschritten: false }
   if (args[0] === 'view') return { code: 0, stdout: JSON.stringify({ version: VERSION, 'dist.integrity': INTEGRITY, license: 'MIT', maintainers: ['gate <g@x>'] }), stderr: '', zeitueberschritten: false }
   if (args[0] === 'install') {
+    npmInstallAufrufe.push(args)
     const prefix = args[args.indexOf('--prefix') + 1]
-    mkdirSync(join(prefix, 'node_modules', '@fixture', 'pw'), { recursive: true })
-    writeFileSync(join(prefix, 'node_modules', '@fixture', 'pw', 'cli.js'), '')
+    const paketOrdner = join(prefix, 'node_modules', '@fixture', 'pw')
+    mkdirSync(paketOrdner, { recursive: true })
+    writeFileSync(join(paketOrdner, 'cli.js'), '')
+    if (npmVariante === 'verschachtelt') {
+      mkdirSync(join(paketOrdner, 'node_modules', 'hidden'), { recursive: true })
+      writeFileSync(join(paketOrdner, 'node_modules', 'hidden', 'index.js'), 'versteckt')
+    }
+    if (npmVariante === 'extra') writeFileSync(join(paketOrdner, 'extra.js'), 'nicht geprüft')
     writeFileSync(join(prefix, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@fixture/pw': { version: VERSION, integrity: INTEGRITY } } }))
     return { code: 0, stdout: '', stderr: '', zeitueberschritten: false }
   }
@@ -155,7 +178,7 @@ const KATALOG = {
 }
 
 /** Eine Leitstand-Instanz (Workforce oder Projekt) mit Attrappen; fuehreAufgabeDurchFn schreibt eine Laufakte mit Ergebnis. */
-async function umgebung({ workforce = true, ergebnis = null, npmErlaubt = false } = {}) {
+async function umgebung({ workforce = true, ergebnis = null } = {}) {
   const basisVerzeichnis = `kontrollzustand-test-f45-f2b2-${randomUUID()}`
   aufraeumen.push(basisVerzeichnis)
   // repoWurzel = installWurzel (wie die Workforce selbst): Sammlung, Stack-Liste, Katalog, kein verschachteltes .claude.
@@ -190,18 +213,18 @@ async function umgebung({ workforce = true, ergebnis = null, npmErlaubt = false 
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
   const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
+  const capWurzel = join(ordner('f45-f2b2-cap-'), 'cap')
   const handler = erzeugeRequestHandler({
     basisVerzeichnis,
     fuehreAufgabeDurchFn,
     repoWurzel: install,
     installWurzel: install,
     startvorlagePfad,
-    capWurzel: join(ordner('f45-f2b2-cap-'), 'cap'),
+    capWurzel,
     laufausgabeWurzel: join(ordner('f45-f2b2-lauf-'), 'aus'),
     installationsRunner,
     pruefungRunner: { git: gitRunner, npm: npmRunner },
     istWorkforceInstanz: workforce,
-    npmInstallationNachPruefung: npmErlaubt,
     globalerLaufZustand,
   })
   const server = createServer(handler)
@@ -220,7 +243,7 @@ async function umgebung({ workforce = true, ergebnis = null, npmErlaubt = false 
     }
     return { phase: 'zeitueberschreitung' }
   }
-  return { basisVerzeichnis, install, profilReferenz, gesehen, globalerLaufZustand, anfrage, warteAuf, ende: () => new Promise((r) => server.close(r)) }
+  return { basisVerzeichnis, install, capWurzel, profilReferenz, gesehen, globalerLaufZustand, anfrage, warteAuf, ende: () => new Promise((r) => server.close(r)) }
 }
 
 try {
@@ -346,8 +369,7 @@ try {
   // ─── (f) Freigabe nur mit Bericht ───
   {
     const vorF = befunde.length
-    // Mechanik der npm-Installation (Gate-Schalter; der reale Server sperrt sie, siehe (i)).
-    const u3 = await umgebung({ npmErlaubt: true })
+    const u3 = await umgebung()
     try {
       const installiere = async () => {
         const v = await u3.anfrage('POST', '/api/ressourcen/pw-mcp/installation/vorbereiten')
@@ -375,21 +397,59 @@ try {
     }
     if (befunde.length === vorF) console.log('✓ (f) Freigabe: ohne / veraltet / NICHT_GEEIGNET → 409 (Grund auch im vorbereiten); Inhalt ≠ geprüft → 422 (F-1075); neuester passender MIT_AUFLAGEN → installiert.')
   }
-  // ─── (i) F-1075 Rückfallebene: ohne Schalter (wie der reale Server) ist jede npm-Installation nach Prüfung gesperrt ───
+  // ─── (i) F-1075 Variante C: Prüflauf und Installation über dieselbe npm-Installation, keine Sperre, keine Ausnahme ───
   {
     const vorI = befunde.length
+    const ohneOrdner = (args) => args.map((a, i) => (args[i - 1] === '--prefix' ? '<ordner>' : a))
+    const installiere = async (u) => {
+      const v = await u.anfrage('POST', '/api/ressourcen/pw-mcp/installation/vorbereiten')
+      return u.anfrage('POST', '/api/ressourcen/pw-mcp/installation', { version: v.inhalt.version, integrity: v.inhalt.integrity, eintragHash: v.inhalt.eintragHash })
+    }
+    const pruefe = async (u) => {
+      const vor = await u.anfrage('POST', '/api/sammlung/pruefung/vorbereiten', { katalog_id: 'pw-mcp' })
+      const start = await u.anfrage('POST', '/api/sammlung/pruefung', { katalog_id: 'pw-mcp', quelle: vor.inhalt.quelle })
+      return start.status === 202 ? u.warteAuf(start.inhalt.laufId) : { phase: `start ${start.status} ${start.inhalt.grund}` }
+    }
+    // (i1) + (i3)
     const u4 = await umgebung()
     try {
-      const v = await u4.anfrage('POST', '/api/ressourcen/pw-mcp/installation/vorbereiten')
-      legePassendenBerichtAn(v.inhalt, u4.profilReferenz, u4.basisVerzeichnis, 'GEEIGNET')
-      const v2 = await u4.anfrage('POST', '/api/ressourcen/pw-mcp/installation/vorbereiten')
-      const i = await u4.anfrage('POST', '/api/ressourcen/pw-mcp/installation', { version: v2.inhalt.version, integrity: v2.inhalt.integrity, eintragHash: v2.inhalt.eintragHash })
-      if (i.status !== 409 || !/npm-Installation nach Prüfung noch nicht freigegeben, F-1075/.test(i.inhalt.grund ?? '')) befunde.push(`(i) npm gesperrt: ${i.status} ${i.inhalt.grund}`)
-      if (!/F-1075/.test(v2.inhalt.pruefbericht_sperre ?? '') || v2.inhalt.pruefbericht?.urteil !== 'GEEIGNET') befunde.push(`(i) vorbereiten zeigt Sperre + Bericht nicht: ${JSON.stringify(v2.inhalt.pruefbericht_sperre)}`)
+      npmVariante = 'normal'
+      npmInstallAufrufe.length = 0
+      const z = await pruefe(u4)
+      const berichte = ladePruefberichte(u4.basisVerzeichnis)
+      if (z.phase !== 'fertig' || berichte.length !== 1 || JSON.stringify(berichte[0].daten.inhalt.dateien) !== JSON.stringify([{ pfad: 'cli.js', sha256: LEER_SHA256 }])) befunde.push(`(i1) npm-Prüflauf: ${JSON.stringify(z)} / ${JSON.stringify(berichte.map((b) => b.daten.inhalt))}`)
+      npmVariante = 'extra'
+      const extra = await installiere(u4)
+      if (extra.status !== 422 || !/extra\.js \(nicht geprüft\)/.test(extra.inhalt.grund ?? '') || existsSync(join(u4.capWurzel, 'pw-mcp'))) befunde.push(`(i3) Inhalt ≠ Bericht: ${extra.status} ${extra.inhalt.grund}`)
+      npmVariante = 'normal'
+      npmInstallAufrufe.length = 1
+      const gut = await installiere(u4)
+      if (gut.status !== 200) befunde.push(`(i1) Installation nach npm-Prüflauf: ${gut.status} ${gut.inhalt.grund}`)
+      if (npmInstallAufrufe.length !== 2 || JSON.stringify(ohneOrdner(npmInstallAufrufe[0])) !== JSON.stringify(ohneOrdner(npmInstallAufrufe[1]))) befunde.push(`(i1) npm-Argv Prüflauf ≠ Installation: ${JSON.stringify(npmInstallAufrufe)}`)
     } finally {
+      npmVariante = 'normal'
       await u4.ende()
     }
-    if (befunde.length === vorI) console.log('✓ (i) Rückfallebene F-1075: npm-Installation nach Prüfung gesperrt (409, Grund im vorbereiten, Bericht sichtbar); Skills über git bleiben (WS-5b).')
+    // (i2)
+    const u5 = await umgebung()
+    try {
+      npmVariante = 'verschachtelt'
+      const muster = /verschachtelte Abhängigkeiten oder bundleDependencies im Paketordner nicht unterstützt \(F-1075\)/
+      const z = await pruefe(u5)
+      if (z.phase !== 'fehler' || !muster.test(z.grund ?? '') || ladePruefberichte(u5.basisVerzeichnis).length !== 0) befunde.push(`(i2) Prüflauf mit verschachteltem node_modules: ${JSON.stringify(z)}`)
+      // QA F-2b-2b 11: nach dem Fehlerstand ist die Laufsperre frei — ein neuer Prüflauf startet sofort (202, nicht 409).
+      const nochmal = await pruefe(u5)
+      if (nochmal.phase !== 'fehler' || !muster.test(nochmal.grund ?? '')) befunde.push(`(i2) zweiter Prüflauf nach dem Fehlerstand: ${JSON.stringify(nochmal)}`)
+      const v = await u5.anfrage('POST', '/api/ressourcen/pw-mcp/installation/vorbereiten')
+      legePassendenBerichtAn(v.inhalt, u5.profilReferenz, u5.basisVerzeichnis, 'GEEIGNET')
+      const i = await installiere(u5)
+      const kat = JSON.parse(readFileSync(join(u5.install, 'ressourcen.json'), 'utf8')).ressourcen.find((r) => r.id === 'pw-mcp')
+      if (i.status !== 422 || !muster.test(i.inhalt.grund ?? '') || kat.freigabe !== 'OFFEN' || existsSync(join(u5.capWurzel, 'pw-mcp'))) befunde.push(`(i2) Installation mit verschachteltem node_modules: ${i.status} ${i.inhalt.grund} / freigabe ${kat.freigabe}`)
+    } finally {
+      npmVariante = 'normal'
+      await u5.ende()
+    }
+    if (befunde.length === vorI) console.log('✓ (i) F-1075 Variante C: npm-Prüflauf → Bericht (Paketordner von der Platte) → Installation 200, Argv gleich bis auf den Ordner; verschachteltes node_modules → Prüflauf Fehlerstand + Installation 422; Inhalt ≠ Bericht → 422.')
   }
 } catch (fehler) {
   befunde.push(`unerwarteter Fehler: ${fehler instanceof Error ? fehler.stack : String(fehler)}`)

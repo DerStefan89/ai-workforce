@@ -1,5 +1,10 @@
 # F36 WS-5b — echte Nachweise (29.09.2026)
 
+> **Historisch (F45 F-2b-2b, 13.10.2026).** Seit F45 F-2b-2a verlangt „Freigeben & installieren“ einen Prüfbericht zur
+> angezeigten Version und den Inhalts-Abgleich (`pruefeInhalt`, F-1075). Der Teil `installation` (9a) des Skripts endet
+> deshalb mit „seit F-2b-2a nur mit Prüfbericht; historischer Nachweis“ (Exit 1) statt mit 500; die Lauf-Teile bleiben aufrufbar. Der aktuelle echte
+> Installationsnachweis (npm, Variante C) steht in `features/F45/nachweise/f2b2b/`. Die Werte unten gelten für den Stand vom 29.09.2026.
+
 Erzeugt mit `node features/F36/nachweis-ws5b/erzeuge-nachweis.mjs installation|lauf|rotfall|commands|slash|initgate`
 (einmalig von Hand, nicht Teil von `npm run check`). CLI **2.1.284 (Claude Code)**,
 Modell laut Startvorlage `claude-sonnet-5`, git 2.54.0.windows.1, Anmeldung unverändert.

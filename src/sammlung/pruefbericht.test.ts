@@ -47,12 +47,17 @@ function bericht(teile: { quelle?: PruefQuelle; urteil?: string; erstellt?: stri
 const SHA_A = 'a'.repeat(40)
 const SHA_B = 'b'.repeat(40)
 const git = (sha: string, pfad = ''): PruefQuelle => ({ art: 'git', repo: 'https://github.com/Owner/Repo.git', ref: 'HEAD', sha, pfad })
-const npmQ = (version: string, integrity = 'sha512-x'): PruefQuelle => ({ art: 'npm', paket: '@upstash/context7-mcp', version, integrity })
+/** Volle sha512-SRI (F-1074 (9)) mit erkennbarem Anfang. */
+const sri = (z: string): string => `sha512-${z.repeat(86)}==`
+const npmQ = (version: string, integrity = sri('x')): PruefQuelle => ({ art: 'npm', paket: '@upstash/context7-mcp', version, integrity })
 
 test('Payload: Beispiele grün und rot (Version ≠ Quelle)', () => {
   assert.deepEqual(validierePruefberichtDaten(lese('kontrollzustand-pruefbericht-payload.valid.json')), [])
   assert.match(validierePruefberichtDaten(lese('kontrollzustand-pruefbericht-payload.invalid-version.json')).join(), /gepinnte Version/)
   assert.match(validierePruefberichtDaten({ ...(lese('kontrollzustand-pruefbericht-payload.valid.json') as object), katalog_id: null }).join(), /katalog_id' oder 'sammlung_id/)
+  // F-1074 (9): Integrity in voller Form (SHA512_INTEGRITY), nicht nur mit Präfix „sha512-“.
+  const gueltig = lese('kontrollzustand-pruefbericht-payload.valid.json') as { quelle: object }
+  assert.match(validierePruefberichtDaten({ ...gueltig, quelle: { ...gueltig.quelle, integrity: 'sha512-x' } }).join(), /sha512-SRI/)
 })
 
 test('waehleBericht: ohne / veraltet / NICHT_GEEIGNET sperren, passend gibt frei, neuester gilt', () => {
@@ -73,9 +78,9 @@ test('waehleBericht: ohne / veraltet / NICHT_GEEIGNET sperren, passend gibt frei
   const v2 = bericht({ quelle: git(SHA_A), urteil: 'NICHT_GEEIGNET', erstellt: alt.daten.erstellt_am }, 2, alt.artefakt_id)
   assert.match(String(waehleBericht([alt, v2], angezeigtGit).sperre), /NICHT_GEEIGNET/)
   // npm: Version UND Integrity müssen passen.
-  const angezeigtNpm = { art: 'npm' as const, paket: '@upstash/context7-mcp', version: '4.3.0', integrity: 'sha512-x' }
+  const angezeigtNpm = { art: 'npm' as const, paket: '@upstash/context7-mcp', version: '4.3.0', integrity: sri('x') }
   assert.equal(waehleBericht([bericht({ quelle: npmQ('4.3.0') })], angezeigtNpm).sperre, null)
-  assert.match(String(waehleBericht([bericht({ quelle: npmQ('4.3.0', 'sha512-y') })], angezeigtNpm).sperre), /nur für 4\.3\.0 \(sha512-y…\), angezeigt ist 4\.3\.0 \(sha512-x…\)/)
+  assert.match(String(waehleBericht([bericht({ quelle: npmQ('4.3.0', sri('y')) })], angezeigtNpm).sperre), /nur für 4\.3\.0 \(sha512-y{12}…\), angezeigt ist 4\.3\.0 \(sha512-x{12}…\)/)
   assert.match(String(waehleBericht([bericht({ quelle: npmQ('4.2.0') })], angezeigtNpm).sperre), /nur für 4\.2\.0 [^,]*, angezeigt ist 4\.3\.0/)
 })
 
@@ -96,7 +101,7 @@ test('registrierePruefbericht/ladePruefberichte: Ablage mit Lineage, alle Versio
   }
 })
 
-test('vergleicheInhalt (F-1075): installiert = geprüft (Pfade + sha256), sonst Grund; node_modules ausgenommen; Unterpfad', () => {
+test('vergleicheInhalt (F-1075): installiert = geprüft (Pfade + sha256), sonst Grund; Unterpfad; node_modules zählt (F-2b-2b)', () => {
   const ordner = mkdtempSync(join(tmpdir(), 'aiw-test-vergleich-'))
   try {
     const h = (s: string) => createHash('sha256').update(s).digest('hex')
@@ -113,13 +118,11 @@ test('vergleicheInhalt (F-1075): installiert = geprüft (Pfade + sha256), sonst 
     assert.match(String(vergleicheInhalt(mit([{ pfad: 'SKILL.md', sha256: h('anders') }, geprueft[1]]), ordner, { unterpfad: '' })), /SKILL\.md \(Inhalt anders als geprüft\)/)
     assert.match(String(vergleicheInhalt(mit([geprueft[0]]), ordner, { unterpfad: '' })), /dist\/x\.js \(nicht geprüft\)/)
     assert.match(String(vergleicheInhalt(mit([...geprueft, { pfad: 'fehlt.md', sha256: h('c') }]), ordner, { unterpfad: '' })), /fehlt\.md \(geprüft, aber nicht installiert\)/)
-    // node_modules der obersten Ebene (npm: Abhängigkeiten) gehört nicht zum geprüften Paket.
-    mkdirSync(join(ordner, 'node_modules', 'dep'), { recursive: true })
-    writeFileSync(join(ordner, 'node_modules', 'dep', 'i.js'), 'd')
-    assert.match(String(vergleicheInhalt(mit(geprueft), ordner, { unterpfad: '' })), /node_modules\/dep\/i\.js \(nicht geprüft\)/)
-    assert.equal(vergleicheInhalt(mit(geprueft), ordner, { unterpfad: '', ohne: ['node_modules'] }), null)
-    // F-1075 Runde 3 rot: trägt der Bericht selbst einen node_modules-Pfad, gibt es keine Ausnahme — Abbruch.
-    assert.match(String(vergleicheInhalt(mit([...geprueft, { pfad: 'node_modules/dep/i.js', sha256: h('d') }]), ordner, { unterpfad: '', ohne: ['node_modules'] })), /ausgenommene Ordner/)
+    // F-2b-2b (b) rot: es gibt keine Ausnahme mehr — eine Datei unter node_modules im installierten Ordner, die nicht im
+    // Bericht steht, ist eine Abweichung (früher npm: ohne ['node_modules']).
+    mkdirSync(join(ordner, 'node_modules', 'hidden'), { recursive: true })
+    writeFileSync(join(ordner, 'node_modules', 'hidden', 'index.js'), 'versteckt')
+    assert.match(String(vergleicheInhalt(mit(geprueft), ordner, { unterpfad: '' })), /node_modules\/hidden\/index\.js \(nicht geprüft\)/)
   } finally {
     raeumeVerzeichnis(ordner)
   }

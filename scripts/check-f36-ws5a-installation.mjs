@@ -59,7 +59,8 @@ console.log('\n=== F36-WS-5a-Installations-Check ===\n')
 const STILL = () => {}
 const vorlage = ladeStartvorlage('startvorlagen/ai-workforce.json')
 const VERSION = '1.2.3'
-const INTEGRITY = 'sha512-R0FURS1GSVhUVVJF'
+// F-1074 (9): volle sha512-SRI (der Prüfbericht nimmt nur diese Form an).
+const INTEGRITY = `sha512-${'R'.repeat(86)}==`
 const PAKET = '@fixture/pw'
 const VORSCHAU_URL = 'http://localhost:5173'
 const LEERE_MCP_CONFIG = '{"mcpServers":{}}'
@@ -195,8 +196,6 @@ async function umgebung(o = {}) {
       capWurzel,
       laufausgabeWurzel,
       installationsRunner: runner,
-      // F-1075 Rückfallebene: der reale Server sperrt npm-Installationen nach Prüfung; dieses Gate prüft die Mechanik.
-      npmInstallationNachPruefung: true,
       ...(vorschauUrl !== undefined ? { vorschauUrl } : {}),
     })
   const basisUrl = `http://127.0.0.1:${server.address().port}`

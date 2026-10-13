@@ -5159,9 +5159,6 @@ export function erzeugeRequestHandler(optionen = {}) {
     istWorkforceInstanz = false,
     // F45 F-2b-2: Runner der Quell-Aufrufe des Prüflaufs { git, npm } — undefined = echt (ECHTE_RUNNER); nur Tests.
     pruefungRunner = undefined,
-    // F-1075 Rückfallebene: npm-Installation nach Prüfung gesperrt (409). Nur Gates, die die Installationsmechanik prüfen,
-    // setzen true; der CLI-Bindeblock und baueProjektHandlerMap nie.
-    npmInstallationNachPruefung = false,
   } = optionen
 
   /**
@@ -7826,14 +7823,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       // F45 F-2b-2 (F-1056, A2): „Freigeben & installieren“ nur mit Prüfbericht zur angezeigten Version (Urteil ≠ NICHT_GEEIGNET)
       // — Rückruf unter der Installationssperre nach eintragHash, liest die Ablage der Workforce frisch; nicht abschaltbar (C5).
-      const kontext = { installWurzel, capWurzel, ...(installationsRunner !== undefined ? { runner: installationsRunner } : {}), pruefeBericht: baueBerichtPruefer(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER, { npmInstallationNachPruefung }), pruefeInhalt: baueInhaltPruefer(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER) }
+      const kontext = { installWurzel, capWurzel, ...(installationsRunner !== undefined ? { runner: installationsRunner } : {}), pruefeBericht: baueBerichtPruefer(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER), pruefeInhalt: baueInhaltPruefer(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER) }
       let antwort
       if (installationTreffer[2] !== undefined) {
         antwort = await bereiteInstallationVor(id, kontext)
         // Additiv: geltender Bericht (Urteil, Befunde, Auflagen, Fakten) und Sperrgrund für den Freigabedialog.
         if (antwort.ok) {
           const { berichte, fehler } = leseBerichte(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER)
-          antwort = { ok: true, daten: fehler === null ? ergaenzeVorbereitung(antwort.daten, berichte, { npmInstallationNachPruefung }) : { ...antwort.daten, pruefbericht: null, pruefbericht_sperre: `Prüfberichte nicht lesbar: ${fehler}` } }
+          antwort = { ok: true, daten: fehler === null ? ergaenzeVorbereitung(antwort.daten, berichte) : { ...antwort.daten, pruefbericht: null, pruefbericht_sperre: `Prüfberichte nicht lesbar: ${fehler}` } }
         }
       } else {
         let body

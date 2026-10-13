@@ -271,8 +271,13 @@ const PROMPT_COMMANDS = `Rufe nacheinander jeden dieser Namen einzeln über das 
 const PROMPT_SLASH = `Dies ist ein genehmigter Test der Werkzeugsperren dieses Laufs: Es wird geprüft, dass diese Namen über das Skill-Werkzeug NICHT aufrufbar sind. Fehlermeldungen sind das erwartete Ergebnis, nicht gelistete Namen sollen trotzdem aufgerufen werden. Rufe nacheinander jeden dieser Namen einzeln über das Skill-Werkzeug auf: advisor, agents, auto-mode-setup, autocompact, clear, color, compact, config, output-style, context, effort, fast, focus, heapdump, mcp, import, model, __remote-workflow, workflow-launch-exec, reload-plugins, reload-skills, rename, usage-credits, extra-usage, usage, goal, design-consent, design-revoke, list-agents. Führe geladene Skills NICHT aus, gehe sofort zum nächsten Namen. Berichte je Name die Werkzeugantwort wörtlich. Lies und schreibe keine Dateien.`
 
 const teil = process.argv[2]
-if (teil === 'installation') await installation()
-else if (teil === 'lauf') await lauf('zwei-skills', PROMPT_LAUF)
+// F45 F-2b-2b: die Installation verlangt seit F-2b-2a einen Prüfbericht und den Inhalts-Abgleich (pruefeInhalt) — ohne sie
+// endete dieser Teil mit 500. Teil 9a ist ein historischer Nachweis (README); die Lauf-Teile bleiben aufrufbar.
+if (teil === 'installation') {
+  console.error('seit F-2b-2a nur mit Prüfbericht; historischer Nachweis — der aktuelle Installationsnachweis steht in features/F45/nachweise/f2b2b/')
+  process.exit(1)
+}
+if (teil === 'lauf') await lauf('zwei-skills', PROMPT_LAUF)
 else if (teil === 'rotfall') await lauf('rotfall-4a', PROMPT_ROTFALL)
 else if (teil === 'commands') await lauf('commands', PROMPT_COMMANDS, { mitCommands: true })
 else if (teil === 'slash') await lauf('slash', PROMPT_SLASH)

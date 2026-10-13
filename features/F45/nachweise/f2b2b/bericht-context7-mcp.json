@@ -1,0 +1,238 @@
+{
+  "artefakt_id": "pruefbericht-context7-mcp",
+  "version": 1,
+  "ergebnis": {
+    "urteil": "MIT_AUFLAGEN",
+    "typ": "mcp",
+    "gepinnte_version": "4.3.0",
+    "befunde": [
+      {
+        "bereich": "bedarf_fit",
+        "schwere": "info",
+        "beleg": "package.json:5 'MCP server for Context7'; dist/index.js:150-274 registriert genau zwei Werkzeuge (resolve-library-id, query-docs), die Bibliotheks-Dokumentation anhand von Name/ID und Suchtext liefern — deckt sich mit dem Katalogtext 'liefert versionsgenaue, aktuelle Bibliotheks-Dokumentation in den Kontext'."
+      },
+      {
+        "bereich": "herkunft",
+        "schwere": "gering",
+        "beleg": "package.json:6-9 repository=github.com/upstash/context7, directory packages/mcp, author 'abdush'; Pfleger-Liste der Fakten (mdogan, buggyhunter, cahidarda, fahreddin.ozcan, upstashnpm, joshtc, burak-ups, shannonr) sind Upstash-Namen, geändert 2026-10-09 — aktiv gepflegt. README.md:1737 weist aber darauf hin, dass API-Backend, Parsing- und Crawling-Engine privat und nicht Teil dieses Releases sind — die inhaltliche Qualität der gelieferten Doku ist von außen nicht prüfbar."
+      },
+      {
+        "bereich": "lizenz",
+        "schwere": "info",
+        "beleg": "LICENSE:1-21 MIT, Copyright Upstash Inc.; package.json:21 'license: MIT' — stimmt mit lizenz_registry 'MIT' aus den Fakten überein."
+      },
+      {
+        "bereich": "installationsweg",
+        "schwere": "gering",
+        "beleg": "package.json:63-75 'scripts' enthält nur build/test/typecheck/lint/dev/start/pack-mcpb — kein postinstall/preinstall/prepare (bestätigt durch Fakten paket.lebenszyklus={}). bin.context7-mcp zeigt auf dist/index.js (package.json:23-25), ein reines ESM-Skript ohne native Module oder Downloads beim Start; lädt nur die eigenen dist/-Dateien."
+      },
+      {
+        "bereich": "installationsweg",
+        "schwere": "info",
+        "beleg": "dist/index.js:1-589 startet beim Aufruf (nicht erst bei Nutzung) HTTP(nur mit --transport http)- oder Stdio-Transport; bei der für lokale MCP-Clients üblichen Stdio-Variante öffnet der Prozess laut README.md:1504-1505 keinen zusätzlichen Netzwerk-Port."
+      },
+      {
+        "bereich": "modell_anweisungen",
+        "schwere": "info",
+        "beleg": "dist/index.js:143-145 'instructions' des MCP-Servers weist das aufrufende Modell an, den Dienst bei praktisch jeder Bibliotheks-/Framework-Frage zu nutzen, ihn Websuche vorzuziehen und ihn 'auch dann zu nutzen, wenn du die Antwort schon zu kennen glaubst'. dist/index.js:152-184 und 230-236 enthalten weitere direktive Werkzeugbeschreibungen ('You MUST call this function before...', 'Do not call this tool more than 3 times'). Dies sind reguläre, im MCP-Protokoll vorgesehene Server-Metadaten des zu installierenden Produkts selbst (keine im Prüfordner versteckte Fremdanweisung an den Prüfer) — aber sie zeigen, dass die Fähigkeit nach Aktivierung aktiv das Modellverhalten lenkt, nicht nur passiv Daten liefert."
+      },
+      {
+        "bereich": "modell_anweisungen",
+        "schwere": "gering",
+        "beleg": "dist/index.js:188,243 Tool-Parameterbeschreibungen weisen das Modell an, keine sensiblen/vertraulichen Daten (API-Schlüssel, Passwörter, personenbezogene Daten, proprietärer Code) in die an die Context7-API gesendete 'query' zu packen — Hinweis darauf, dass Freitext aus dem Modellkontext extern an context7.com übertragen wird (dist/lib/api.js:120-143,150-181 ruft https://context7.com/api/v2/libs/search bzw. /v2/context mit query/libraryId als URL-Parametern auf)."
+      },
+      {
+        "bereich": "hooks_hintergrund",
+        "schwere": "info",
+        "beleg": "Keine Hooks, keine Skill-/Agent-Dateien im Paket (Fakten: hooks=[], skill_dateien=[], agent_dateien=[]). dist/index.js:1503-1525 (laut README) öffnet nur im HTTP-Transport-Modus zusätzlich einen Prometheus-Metrik-Listener auf 127.0.0.1:9464, im Stdio-Modus (lokale Standardnutzung) kein zusätzlicher Port/Hintergrunddienst."
+      },
+      {
+        "bereich": "kosten",
+        "schwere": "gering",
+        "beleg": "README.md:56,1438 Nutzung ist ohne Konto/API-Key möglich, aber mit niedrigeren Ratenlimits; ein Context7-API-Key (kostenloses oder bezahltes Konto context7.com/dashboard) hebt das Limit. dist/lib/auth/auth-prompt.js:17-34 blendet bei anonymer Nutzung aktiv eine Anmelde-Aufforderung ein ('To unlock free higher rate limits, run ...'). Keine laufenden Pflichtkosten, aber ein Upsell-Mechanismus ist vorhanden."
+      },
+      {
+        "bereich": "abweichung_sammlung",
+        "schwere": "info",
+        "beleg": "Katalog nennt Lizenz 'nicht angegeben' und Kosten 'nicht angegeben'. Fund: Lizenz ist eindeutig MIT (LICENSE, package.json:21), Kosten sind 'kostenlos mit Ratenlimit, optionaler kostenpflichtiger Account für höhere Limits' (README.md:56). Die Wirkung 'extern_lesend' im Katalog trifft nur näherungsweise zu: neben dem Lesen externer Doku sendet das Werkzeug bei jeder Abfrage auch Freitext (Suchanfrage/Query, optional Sprache) an context7.com (dist/lib/api.js:120-181)."
+      }
+    ],
+    "auflagen": [
+      "Standardmäßig mit --transport stdio (lokaler Prozess je MCP-Client) betreiben; HTTP-Transport nur nach gesonderter Prüfung aktivieren, da dort zusätzlich ein Netzwerk-Port und Metrik-Endpunkt entstehen können.",
+      "Stefan vor Freigabe auf die vom Werkzeug selbst ausgesprochene Warnung hinweisen: keine sensiblen/vertraulichen Daten in Bibliotheks-Suchanfragen aufnehmen, da diese im Klartext an context7.com übertragen werden.",
+      "Da die Server-Instructions das Modell aktiv zur bevorzugten Nutzung anweisen (statt Websuche, auch ohne Rückfrage), nach Installation beobachten, ob das Modell die Fähigkeit öfter als gewünscht automatisch auslöst, und bei Bedarf Opt-in statt automatischer Aktivierung wählen."
+    ],
+    "zusammenfassung": "Der Inhalt entspricht sichtbar dem offiziellen, aktiv von Upstash gepflegten npm-Paket @upstash/context7-mcp@4.3.0 (MIT-Lizenz bestätigt, keine Install-Lifecycle-Skripte, keine Hooks/Skill-/Agent-Dateien). Im Prüfordner wurden keine versteckten Anweisungen an den Prüfer gefunden; die einzigen modellgerichteten Direktiven stammen aus den regulären MCP-Server-/Tool-Metadaten des Produkts selbst und lenken aktiv das Modellverhalten (Vorrang vor Websuche, Aufruf-Pflichten). Freitext aus Anfragen wird zur Doku-Beschaffung an context7.com übertragen, was von der Katalogangabe 'extern_lesend' nur näherungsweise erfasst ist. Freigabe mit Auflagen zu Transport-Modus, Datensensibilität der Suchanfragen und Beobachtung des Modellverhaltens."
+  },
+  "quelle": {
+    "art": "npm",
+    "paket": "@upstash/context7-mcp",
+    "version": "4.3.0",
+    "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA=="
+  },
+  "typ": "mcp",
+  "katalog_id": "context7-mcp",
+  "sammlung_id": null,
+  "urteil_sammlung": null,
+  "ausnahme_begruendung": null,
+  "fakten": {
+    "dateien": 29,
+    "bytes": 202409,
+    "uebersprungen": {
+      "je_grund": {},
+      "liste": []
+    },
+    "umbenannt": [],
+    "skripte": {
+      ".js": 26
+    },
+    "paket": {
+      "lebenszyklus": {},
+      "bin": [
+        "context7-mcp"
+      ],
+      "abhaengigkeiten": 13
+    },
+    "hooks": [],
+    "skill_dateien": [],
+    "agent_dateien": []
+  },
+  "inhalt": {
+    "dateien": [
+      {
+        "pfad": "LICENSE",
+        "sha256": "85cfb556dc2b22b55d2565674fcdaac82f3f2f6b7a928d27003132721bb6736c"
+      },
+      {
+        "pfad": "README.md",
+        "sha256": "a4c6eab49b54f04f5af7e28301e528f0e7352a09da52993d71fac6874a09b991"
+      },
+      {
+        "pfad": "dist/index.js",
+        "sha256": "f81dc7d90245406e4dd1115d78d9f1e0452d7a4a5622ac27d18b50920446bbe4"
+      },
+      {
+        "pfad": "dist/lib/api.js",
+        "sha256": "28546e960ad4b120ad71253487164162792868342ee9e325279796c93c624aef"
+      },
+      {
+        "pfad": "dist/lib/auth-lifecycle-telemetry.js",
+        "sha256": "ee7ee5c418ecfdf9fc1327d859c4eeff889f33b3ca3bbbb676b3e643964e8ff8"
+      },
+      {
+        "pfad": "dist/lib/auth/auth-prompt.js",
+        "sha256": "9d6ef90e4a7cb750b6502dba7eb1ba4bd7236379d724bbd164ef70982e696460"
+      },
+      {
+        "pfad": "dist/lib/constants.js",
+        "sha256": "2374c0cbe6ff711b79b8121d58430b6e5d8407e2ccbdee3085c171c1dd239c25"
+      },
+      {
+        "pfad": "dist/lib/encryption.js",
+        "sha256": "8e949eb881dbcecca19c1cf88fa18ca0d2d991823361f1471d5e9143ac4fcd10"
+      },
+      {
+        "pfad": "dist/lib/jwt.js",
+        "sha256": "6eaf9a9001170f64a4c660e333fac0ba77b26af64bf6939c36b7251ca529cd0e"
+      },
+      {
+        "pfad": "dist/lib/log-throttle.js",
+        "sha256": "0b13ffb116df5f16fcae1d1a09177ace4528272d366086996a728b4a239c5522"
+      },
+      {
+        "pfad": "dist/lib/mcp-body-error-handler.js",
+        "sha256": "c7f9fdea91bbab6c88789de35a34a962b3d4e8bd914f7719e64cbcc1bbbad7d0"
+      },
+      {
+        "pfad": "dist/lib/mcp-http-auth.js",
+        "sha256": "c89bedfff8b0ff72fbe5fad7ce1045f7761232543b15d5843048ed014df4b5d9"
+      },
+      {
+        "pfad": "dist/lib/mcp-operation-scope.js",
+        "sha256": "2e760473829e37d412cdc14ad94474bee1f1b56a66e6e78c59d4afd340899cbc"
+      },
+      {
+        "pfad": "dist/lib/mcp-route.js",
+        "sha256": "7cd0ea2c309601c18a8fac5a2082bb3bafe7181d9db38e30b0dc7205feb3d487"
+      },
+      {
+        "pfad": "dist/lib/mcp-subscription-telemetry.js",
+        "sha256": "ca2e94ee248cec99cde0b77c00ec39d9dfbec9a3714fcfd93cf2ef972c284a51"
+      },
+      {
+        "pfad": "dist/lib/mcp-telemetry.js",
+        "sha256": "5888da0da429e004754b2674fa422214f77ff6c76fed6d51004f1585c8715f6a"
+      },
+      {
+        "pfad": "dist/lib/oauth-audience.js",
+        "sha256": "e00852ac4e1727516564060d2fc758da5fa478e10a98b2fe82b9f7a4862dbbc7"
+      },
+      {
+        "pfad": "dist/lib/oauth-token-validation.js",
+        "sha256": "2e536598497f8ed277c7ab585393863a88f5013eb7a45ce16578db0aced5758d"
+      },
+      {
+        "pfad": "dist/lib/process-shutdown.js",
+        "sha256": "59688a21a4b5b3ba548b01a381dc9ad622c80937079f390c74e84a663d84fb43"
+      },
+      {
+        "pfad": "dist/lib/telemetry-config.js",
+        "sha256": "c1d4f2346fd3e7e911dbbe15c3de531f37dea0b570c3ec4a0f55a86856fa5e87"
+      },
+      {
+        "pfad": "dist/lib/telemetry-contracts.js",
+        "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+      },
+      {
+        "pfad": "dist/lib/telemetry-provider.js",
+        "sha256": "7e5b740b3b266fea10f0cfcb2379bbf8e8b5ba0a161fe9b17fb7b86cd9129df5"
+      },
+      {
+        "pfad": "dist/lib/telemetry-runtime.js",
+        "sha256": "302de7e531a07362344f102d6fdb8a1d12e644ebaaa4351f67e22aa6c0606089"
+      },
+      {
+        "pfad": "dist/lib/telemetry.js",
+        "sha256": "6cce05424fd358dbee5c8f577104375dedadab4e27ab89c6a11c8572da4f908b"
+      },
+      {
+        "pfad": "dist/lib/tool-names.js",
+        "sha256": "57422b59138db769769f92b902c854d131d0a513b4fb0cb8b7fbf5c9fd229b82"
+      },
+      {
+        "pfad": "dist/lib/types.js",
+        "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+      },
+      {
+        "pfad": "dist/lib/utils.js",
+        "sha256": "edeb5a9e74a8e4c81e6072b4830c31d050c5bca2045aa6b84c140778d8c0dd77"
+      },
+      {
+        "pfad": "dist/lib/vercelMarketplaceJwt.js",
+        "sha256": "a26a5e5e88de60ff3ac9b00c7726a4bfdb26417e89386f4968b7236998841063"
+      },
+      {
+        "pfad": "package.json",
+        "sha256": "b834957b86d131317eae38cbc972c6b5bbb7a3cdddc7f0fa377aee1dddba352c"
+      }
+    ]
+  },
+  "herkunft": {
+    "commit_zeit": null,
+    "geaendert": "2026-10-09T15:37:57.202Z",
+    "pfleger": [
+      "mdogan",
+      "buggyhunter",
+      "cahidarda",
+      "fahreddin.ozcan",
+      "upstashnpm",
+      "joshtc",
+      "burak-ups",
+      "shannonr"
+    ],
+    "lizenz_registry": "MIT"
+  },
+  "lauf_id": "eignungspruefung-context7-mcp-5c5fc4e7-3337-42b7-b64e-68cf1a64ec74",
+  "auftrag_id": "pruefung-5c5fc4e7-3337-42b7-b64e-68cf1a64ec74",
+  "erstellt_am": "2026-10-13T06:55:22.412Z"
+}

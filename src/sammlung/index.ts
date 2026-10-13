@@ -29,6 +29,7 @@
  * übersetzt sie (Muster F-1016, vermeidet F-1060 (7)).
  */
 
+import { paketNameAus } from '../ressourcen/index.ts'
 import type {
   KatalogEintragKurz,
   NichtAuswaehlbar,
@@ -417,8 +418,9 @@ export function auswahl(zeile: SammlungZeile, typ: SammlungTyp, quelle: Pruefbar
   if (typ === 'plugin') return nein('plugin')
   if (katalogEintrag !== undefined && katalogEintrag.freigabe !== 'OFFEN') return nein('freigegeben')
   if (typ === 'mcp') {
-    const paket = katalogEintrag !== undefined ? /^npm:.+/.test(katalogEintrag.herkunft?.paket ?? '') : quelle?.art === 'npm'
-    if (!paket) return nein('mcp_ohne_paket')
+    // F-1074 (8): dieselbe Namensprüfung wie die Prüfroute (bestimmeSubjekt) — ein ungültiger Name zeigt kein „Auswählen“.
+    const paket = katalogEintrag !== undefined ? paketNameAus(katalogEintrag.herkunft?.paket) : quelle?.art === 'npm' ? paketNameAus(`npm:${quelle.paket}`) : null
+    if (paket === null) return nein('mcp_ohne_paket')
   }
   if (quelle === null) return nein('keine_quelle')
   return { auswaehlbar: true, grund: null }

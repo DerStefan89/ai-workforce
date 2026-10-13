@@ -19,6 +19,11 @@ import { join } from 'node:path'
 import { bereiteInstallationVor, installiereRessource } from '../../../src/ressourcen/installation.ts'
 import { validiereRessourcenDaten } from '../../../src/ressourcen/index.ts'
 
+// F45 F-2b-2b: die Installation verlangt seit F-2b-2a einen Prüfbericht und den Inhalts-Abgleich (pruefeInhalt) — ohne sie
+// endete dieses Skript mit 500. Historischer Nachweis (README); vor jedem Netzaufruf abbrechen.
+console.error('seit F-2b-2a nur mit Prüfbericht; historischer Nachweis — der aktuelle Installationsnachweis steht in features/F45/nachweise/f2b2b/')
+process.exit(1)
+
 const ECHT = join(process.cwd(), 'ressourcen.json')
 const hash = (pfad) => createHash('sha256').update(readFileSync(pfad)).digest('hex')
 const echtVorher = hash(ECHT)

@@ -37,7 +37,8 @@ import { renderBerichtFuerFreigabe } from './pruefung-anzeige.js'
 import { escapeHtml } from './render.js'
 
 /**
- * F-1075 Rückfallebene: „Installieren“ bei Sperre deaktiviert sichtbar (ohne Aktion), der Grund steht im Sperrblock darüber.
+ * „Installieren“ bei pruefbericht_sperre deaktiviert sichtbar (ohne Aktion), der Grund steht im Sperrblock darüber (F45 F-2b-2a;
+ * die npm-Sperre der F-1075-Rückfallebene ist seit F-2b-2b aufgehoben, der Knopf gilt für jede Sperre des Prüfberichts).
  * @returns HTML
  */
 function gesperrterKnopf() {

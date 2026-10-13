@@ -1,0 +1,43 @@
+{
+  "wurzel": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-f2b2b-nachweis-WzjUaA",
+  "zeit": "2026-10-13T06:52:59.870Z",
+  "id": "context7-mcp",
+  "vorbereiten": {
+    "status": 200,
+    "grund": null,
+    "quelle": {
+      "art": "npm",
+      "paket": "@upstash/context7-mcp",
+      "version": "4.3.0",
+      "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA=="
+    }
+  },
+  "pruefung": {
+    "phase": "fertig",
+    "grund": null,
+    "urteil": "MIT_AUFLAGEN",
+    "artefakt": "pruefbericht-context7-mcp",
+    "dateien": 29,
+    "dauer_holen_s": 17,
+    "dauer_gesamt_s": 143,
+    "kosten_usd": 0.4497048
+  },
+  "installation_vorbereiten": {
+    "status": 200,
+    "grund": null,
+    "version": "4.3.0",
+    "integrity": "sha512-fuDt5nWjE5JkAPLjU0m+m0LlJphxyegAvAmcwHoA5jrzAhKo/rVV0RFA8TOwODGdDVdt/nPxNslkxeDIDp/rPA==",
+    "pruefbericht_sperre": null,
+    "pruefbericht_urteil": "MIT_AUFLAGEN"
+  },
+  "installation": {
+    "status": 200,
+    "grund": null,
+    "dauer_ms": 24784,
+    "paketordner": {
+      "dateien": 29,
+      "bytes": 202409
+    }
+  },
+  "echtes_ressourcen_json_unveraendert": true
+}
