@@ -22,7 +22,7 @@
  * - src/codex-gateway/codex-gateway.test.ts
  */
 
-import type { AufrufTokens, ProjektkarteV0, Starter } from '../claude-code-gateway/types.ts'
+import type { AufrufTokens, ProjektkarteV0, ReviewV0, Starter } from '../claude-code-gateway/types.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 
 export type { AufrufTokens } from '../claude-code-gateway/types.ts'
@@ -86,6 +86,8 @@ export interface CodexGatewayOptionen {
   cwd?: string
   /** F45 B2a-1: Metadaten der Projektkarte im Auftrag — gehen unverändert als projektkarte in die Laufakte (Muster Claude-Gateway). */
   projektkarte?: ProjektkarteV0
+  /** F45 B2a-3a: Review-Metadaten (Policy-Version) — gehen unverändert als review in die Laufakte (Muster projektkarte). */
+  review?: ReviewV0
 }
 
 /** Form des von starteCodexGateway geschriebenen Rohstroms (AK7). tokens ist gegenüber F6as Rohstrom NEU und Pflicht: der Result Evaluator erkennt an ihm, ob der Lauf mit '--output-schema' lief (AK8) — ohne das Feld wäre diese Frage aus dem Artefakt allein nicht beantwortbar. */

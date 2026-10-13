@@ -1,0 +1,66 @@
+{
+  "url": "http://127.0.0.1:4397/#/workflows/wf-b2a3-vertrag-1791903758747",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1500
+  },
+  "zoom": 2,
+  "reduzierteBewegung": true,
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweise zum Review",
+        "selector": ".abnahme-review-hinweise"
+      },
+      {
+        "name": "Befund v2",
+        "selector": ".abnahme-befund-v2"
+      },
+      {
+        "name": "Auf einen Blick",
+        "selector": ".abnahme-blick"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hinweis rot",
+        "selector": ".abnahme-review-hinweise.red"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-review-hinweise.amber"
+      },
+      {
+        "name": "Vertrag verletzt",
+        "selector": "[data-review-hinweis=\"vertragVerletzt\"]"
+      },
+      {
+        "name": "Vertrag unvollständig",
+        "selector": "[data-review-hinweis=\"vertragUnvollstaendig\"]"
+      },
+      {
+        "name": "Kontext unvollständig",
+        "selector": "[data-review-hinweis=\"kontextUnvollstaendig\"]"
+      },
+      {
+        "name": "Fehlgeschlagen",
+        "selector": "[data-review-hinweis=\"fehlgeschlagen\"]"
+      },
+      {
+        "name": "Befund KRITISCH",
+        "selector": ".abnahme-befund .ablauf-status.fehler"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "200 % Zoom, reduzierte Bewegung",
+      "warteAufSelector": {
+        "selector": ".abnahme-review-hinweise",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-zoom200.webp"
+    }
+  ]
+}

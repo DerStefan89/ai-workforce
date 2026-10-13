@@ -132,6 +132,14 @@ export interface LaufakteV0Daten {
   faehigkeiten_im_lauf?: FaehigkeitenImLaufV0
   /** F45 B2a-1 (F-1064): Hash, Abschnitte und Lücken der Projektkarte, die im Auftrag dieses Laufs stand. Optional (append-only) — nur Läufe der Rollen architekt, architecture-advisor, code-reviewer aus einem Workflow. Gilt für beide Worker. */
   projektkarte?: ProjektkarteV0
+  /** F45 B2a-3a (F-1063): Version der Review-Policy im Auftrag. Optional (append-only) — nur Läufe der Rolle code-reviewer aus einem Workflow, beide Worker. */
+  review?: ReviewV0
+}
+
+/** F45 B2a-3a: Laufakten-Feld review (Zwilling des Schemas). B2a-3b ergänzt den geprüften Stand. */
+export interface ReviewV0 {
+  /** Version der Review-Policy (src/review-policy REVIEW_POLICY_VERSION) */
+  policy_version: string
 }
 
 /** F45 B2a-1: Laufakten-Feld projektkarte (Zwilling von ProjektkarteMeta in src/projektkarte/types.ts und des Schemas). */

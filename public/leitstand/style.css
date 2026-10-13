@@ -7627,7 +7627,8 @@ th {
   border-bottom: 1px solid var(--line);
 }
 
-.workflow-seite .wf-reparatur-editor .note ul {
+.workflow-seite .wf-reparatur-editor .note ul,
+.workflow-seite .abnahme-review-hinweise ul {
   margin: 8px 0 0;
   padding-left: 18px;
   overflow-wrap: anywhere;

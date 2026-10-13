@@ -1,0 +1,16 @@
+[
+  {
+    "label": "Werkzeugausfall: „Review-Lauf … endete FEHLGESCHLAGEN“",
+    "Hinweis rot": true,
+    "Hinweis amber": false,
+    "Vertrag verletzt": false,
+    "Vertrag unvollständig": false,
+    "Kontext unvollständig": false,
+    "Fehlgeschlagen": true,
+    "Befund KRITISCH": false,
+    "Hinweise zum Review": "Hinweise zum ReviewReview-Lauf (Fehlgeschlagen): Schritt 'schritt-2-review' endete FEHLGESCHLAGEN (Lauf '8cf578d6-f6d2-4",
+    "Befund v2": "(fehlt)",
+    "Auf einen Blick": "Hinweise zum Review1 — Details beim ReviewDeine AbnahmeNoch offen",
+    "Seite geladen": true
+  }
+]

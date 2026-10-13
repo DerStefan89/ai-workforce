@@ -147,6 +147,15 @@
         },
         "fehlend": { "type": "array", "items": { "type": "string" } }
       }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_version"],
+      "description": "F45 B2a-3a (F-1063, docs/projekt/codex-review-spec.md). Optional (append-only): nur Läufe der Rolle code-reviewer aus einem Workflow, für beide Worker. policy_version = Version der Review-Policy im Auftrag (src/review-policy). Nur ein Lauf mit diesem Feld wird gegen den Ausgabevertrag geprüft (Regel 1k); ältere Laufakten bleiben unverändert lesbar. B2a-3b ergänzt den geprüften Stand. Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts).",
+      "properties": {
+        "policy_version": { "type": "string", "minLength": 1 }
+      }
     }
   }
 }

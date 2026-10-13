@@ -539,6 +539,56 @@ test('Regel 1i greift NICHT ohne output_schema ergebnis-code-reviewer — ein ir
   assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
 })
 
+test('Regel 1: ursache (F45 B2a-3a, nur vom Aufrufer gesetzt) steht im Halt-Grund; ohne ursache bleibt der Text wie bisher', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'FEHLGESCHLAGEN', lauf_id: 'lauf-1' })])
+  const mit = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'FEHLGESCHLAGEN', laufId: 'lauf-1', ursache: 'Zeitgrenze (600 s)' })
+  assert.equal(mit.art === 'haltKlaerung' ? mit.grund : '', "Schritt 'schritt-1' endete FEHLGESCHLAGEN (Lauf 'lauf-1') — Ursache: Zeitgrenze (600 s)")
+  const ohne = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'FEHLGESCHLAGEN', laufId: 'lauf-1' })
+  assert.equal(ohne.art === 'haltKlaerung' ? ohne.grund : '', "Schritt 'schritt-1' endete FEHLGESCHLAGEN (Lauf 'lauf-1')")
+})
+
+// ─── Regel 1k: Review-Vertrag (F45 B2a-3a, Spec §9.8 „leere Findings“) ─────────
+
+test("Regel 1k: reviewVerstoesse hält an, OBWOHL das Gesamturteil BEREIT ist (leere Befunde ohne den Satz)", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    urteil: 'BEREIT',
+    akVerstoesse: [],
+    reviewVerstoesse: ['keine Befunde, aber der Satz fehlt'],
+  })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /Review-Vertrag verletzt.*keine Befunde, aber der Satz fehlt.*lauf-1/)
+})
+
+test('Regel 1k: leere oder fehlende reviewVerstoesse → fertig (Alt-Verhalten)', () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  for (const zusatz of [{}, { reviewVerstoesse: [] }]) {
+    assert.deepStrictEqual(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BEREIT', ...zusatz }), { art: 'fertig', aktiverSchrittId: null })
+  }
+})
+
+test('Regel 1k greift NICHT ohne output_schema ergebnis-code-reviewer (claude-code-Reviewer: Policy nur als Text)', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', reviewVerstoesse: ['x'] })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Reihenfolge 1b > 1i > 1k: AK-Verstöße melden sich vor dem Review-Vertrag', () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BEREIT', akVerstoesse: ['AK1 fehlt'], reviewVerstoesse: ['Satz fehlt'] })
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /Akzeptanzkriterien-Prüfung/)
+})
+
 test('Regel 1b schlägt Regel 1i: ein BLOCKIERT-Urteil hält bereits über Regel 1b an, unabhängig von akVerstoesse', () => {
   const workflow = typisierterWorkflow([
     typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),

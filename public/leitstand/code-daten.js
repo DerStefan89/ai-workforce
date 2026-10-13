@@ -17,6 +17,9 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/code.js, public/leitstand/views/auftrag-umgebung.js
+ * - scripts/leitstand-server.mjs (psArgument: cd-Zeile der Jarvis-Regel, F45 B2a-3a — derselbe Quoting-Weg wie die
+ *   Befehlsblöcke, deshalb importiert der Server hier aus public/; das Modul ist import-sicher, ohne DOM)
+ * - scripts/check-f45-b2a3-codex-review.mjs
  * - public/leitstand/code-daten.test.mjs (node:test)
  *
  * Wichtig: Die Befehle werden nur angezeigt und auf Klick kopiert — der Leitstand führt nichts aus.

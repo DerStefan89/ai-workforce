@@ -1,0 +1,30 @@
+[
+  {
+    "label": "Abnahme entscheidbar, Review-Kachel mit Hinweisen",
+    "Hinweis rot": false,
+    "Hinweis amber": true,
+    "Vertrag verletzt": false,
+    "Vertrag unvollständig": true,
+    "Kontext unvollständig": true,
+    "Fehlgeschlagen": false,
+    "Befund KRITISCH": true,
+    "Hinweise zum Review": "Hinweise zum ReviewReview-Vertrag unvollständig: Befund 2 (B2): 'korrekturrichtung' fehltKontext des Reviews unvollständ",
+    "Befund v2": "B1 · Sicherheit · bestätigtKorrekturrichtung: Segment gegen LAUFID_UNZULAESSIGE_ZEICHEN prüfen, wie in den Nachbarrouten",
+    "Auf einen Blick": "Review-UrteilBereit nach KorrekturHinweise zum Review2 — Details beim ReviewDeine AbnahmeNoch offen",
+    "Seite geladen": true
+  },
+  {
+    "label": "„Alle Nachweise“ → Befunde v2",
+    "Hinweis rot": false,
+    "Hinweis amber": true,
+    "Vertrag verletzt": false,
+    "Vertrag unvollständig": true,
+    "Kontext unvollständig": true,
+    "Fehlgeschlagen": false,
+    "Befund KRITISCH": true,
+    "Hinweise zum Review": "Hinweise zum ReviewReview-Vertrag unvollständig: Befund 2 (B2): 'korrekturrichtung' fehltKontext des Reviews unvollständ",
+    "Befund v2": "B1 · Sicherheit · bestätigtKorrekturrichtung: Segment gegen LAUFID_UNZULAESSIGE_ZEICHEN prüfen, wie in den Nachbarrouten",
+    "Auf einen Blick": "Review-UrteilBereit nach KorrekturHinweise zum Review2 — Details beim ReviewDeine AbnahmeNoch offen",
+    "Seite geladen": true
+  }
+]

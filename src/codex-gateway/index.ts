@@ -408,6 +408,7 @@ export async function starteCodexGateway(eingaben: CodexGatewayEingaben, optione
     modell_deklariert: eingaben.modellDeklariert,
     ...(verbrauch !== null ? { verbrauch } : {}),
     ...(optionen.projektkarte !== undefined ? { projektkarte: optionen.projektkarte } : {}),
+    ...(optionen.review !== undefined ? { review: optionen.review } : {}),
   }
 
   const { pfad, versionSequenz } = registriereKernArtefakt(

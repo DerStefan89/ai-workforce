@@ -601,7 +601,7 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
  * übersetzt, ist WS-2b.
  *
- * Prüfungen (0, 1, 1b, 1c, 1d, 1e, 1f, 1g, 1h, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
+ * Prüfungen (0, 1, 1b, 1i, 1k, 1c, 1d, 1e, 1f, 1g, 1h, 1j, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
  * die Reihenfolge ist die eigentliche Aussage:
  *
  * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
@@ -640,6 +640,10 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    architekturEntscheidungAusstehend auf false — derselbe Lauf hält beim
  *    erneuten Durchlauf (z. B. nach POST /api/workflows/<id>/entscheidung)
  *    nicht kein zweites Mal an.
+ * 1i/1k. Vorschritt trägt output_schema 'ergebnis-code-reviewer': 1i (F35 WS-2) hält bei
+ *    AK-Verstößen, 1k (F45 B2a-3a) bei Verstößen gegen den Review-Vertrag (reviewVerstoesse) — je mit
+ *    eigenem Grund, beide vom Aufrufer vorab berechnet. 1j (F-713, Nachlauf der Ausführung) hält bei
+ *    veränderter Prüfkette.
  * 2. grenzen.max_schritte erreicht → haltGrenze. VOR den vier
  *    Schritt-Eigenschaften unten, weil die Grenze unabhängig davon gilt, was
  *    der nächste Schritt zufällig für einen Zustand, Worker, Freigabebedarf
@@ -787,7 +791,8 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     if (vorschrittErgebnis.ergebnis !== 'ERFOLGREICH') {
       return {
         art: 'haltKlaerung',
-        grund: `Schritt '${vorschritt.schritt_id}' endete ${vorschrittErgebnis.ergebnis} (Lauf '${vorschrittErgebnis.laufId}')`,
+        // F45 B2a-3a (Spec §9.8): die Ursache (Zeitgrenze, Werkzeugausfall) setzt der Aufrufer, heute nur beim Review.
+        grund: `Schritt '${vorschritt.schritt_id}' endete ${vorschrittErgebnis.ergebnis} (Lauf '${vorschrittErgebnis.laufId}')${vorschrittErgebnis.ursache !== undefined ? ` — Ursache: ${vorschrittErgebnis.ursache}` : ''}`,
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
@@ -849,6 +854,18 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
       return {
         art: 'haltKlaerung',
         grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-code-reviewer) verletzt die Akzeptanzkriterien-Prüfung (F35 WS-2), auch wenn das Gesamturteil ggf. 'BEREIT' ist: ${vorschrittErgebnis.akVerstoesse.join('; ')} — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
+    // Regel 1k (F45 B2a-3a, Codex-Review-Spec §9.8 „leere Findings“): dieselbe Kopplung an output_schema wie 1b/1i —
+    // ein claude-code-Reviewer trägt nach Regel 4b kein Ausgabeschema, für ihn wirkt die Policy nur als Text. Nach 1i:
+    // ein BLOCKIERT oder ein AK-Verstoß meldet sich zuerst (und löst ggf. die Anpassungsautomatik aus); ein Vertragsbruch
+    // des Reviewers selbst löst sie nicht aus (sie liest nur Urteil und AK-Verstöße). Ausweg für den Menschen: in der
+    // Abnahme (KLAERUNG_ERFORDERLICH) „Anpassung anfordern“ oder „Ablehnen“.
+    if (vorschritt.output_schema === 'ergebnis-code-reviewer' && vorschrittErgebnis.reviewVerstoesse !== undefined && vorschrittErgebnis.reviewVerstoesse.length > 0) {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-code-reviewer): Review-Vertrag verletzt — ${vorschrittErgebnis.reviewVerstoesse.join('; ')} — kein stilles BEREIT, kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
