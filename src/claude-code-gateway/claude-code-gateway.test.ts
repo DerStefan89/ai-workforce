@@ -345,6 +345,25 @@ test('F45 B2a-3a: optionen.review geht unverändert als review in die Laufakte (
   }
 })
 
+test('F45 B2a-3b: review mit geprüftem Stand geht unverändert in die Laufakte (Claude-Gateway)', async () => {
+  const laufId = neueLaufId('gateway-review-stand')
+  const review = { policy_version: 'review-policy-1', geprueft_stand: { commit: 'c'.repeat(40), inhalt: 'd'.repeat(64) } }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+      review,
+    })
+    assert.ok(ergebnis.ok)
+    assert.deepStrictEqual(ergebnis.laufakte.review, review)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 // F36 WS-4 (AK8): Verdrahtung leseBeobachtung → Laufakte über den echten Gateway-Pfad.
 const BEOBACHTUNG_INIT = JSON.stringify({ type: 'system', subtype: 'init', tools: ['Read', 'Skill'], agents: ['qa'], skills: ['ponytail'], mcp_servers: [{ name: 'playwright-mcp', status: 'connected' }] })
 const BEOBACHTUNG_SKILL = JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill: 'ponytail' } }] }, parent_tool_use_id: null })

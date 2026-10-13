@@ -526,7 +526,8 @@ import {
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { baueReviewPolicyBlock, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION } from '../src/review-policy/index.ts'
-import { psArgument } from '../public/leitstand/code-daten.js'
+import { leseGeprueftenStandAsync, leseGeprueftenStandSync, standIstVeraltet } from '../src/review-stand/index.ts'
+import { cdZeile } from '../public/leitstand/code-daten.js'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregisterMitLokal, projektOriginsAus, vorschauLeitstandSperre } from '../src/projekte/index.ts'
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
@@ -4745,12 +4746,12 @@ function beschreibeLaufUrsache(ergebnis, fehler, zeitgrenzeMs) {
 
 /**
  * F45 B2a-3a (F-959): erste Zeile jedes Befehlsblocks einer Jarvis-Antwort — cd auf den vollen Projektpfad, PowerShell-gequotet
- * über psArgument (dieselbe Regel wie die Befehlsblöcke des Leitstands, public/leitstand/code-daten.js).
+ * über cdZeile (die eine Quelle der Befehlsblöcke des Leitstands, public/leitstand/code-daten.js; F45 B2a-3b).
  * @param wurzel - Projektordner dieser Instanz
  * @returns z. B. „cd 'C:\Projekte\mein projekt'“
  */
 function baueProjektCdZeile(wurzel) {
-  return `cd ${psArgument(resolve(wurzel))}`
+  return cdZeile(resolve(wurzel))
 }
 
 /**
@@ -5209,6 +5210,9 @@ function lesePruefkettenPfadeFrisch(startvorlagePfad) {
 export function erzeugeRequestHandler(optionen = {}) {
   const {
     fuehreAufgabeDurchFn = fuehreAufgabeDurch,
+    // F45 B2a-3b (qa 2): Lebensdauer des aktuellen Stands je Laufort in GET …/abnahme (der Poll fragt alle 2 s, eine Berechnung
+    // kostet im eigenen Repo ≈ 1 s Git). 0 = immer neu (Gates, die eine Änderung sofort sehen wollen).
+    standCacheMs = 10_000,
     basisVerzeichnis = BASISVERZEICHNIS,
     publicVerzeichnis = PUBLIC_VERZEICHNIS,
     startvorlagePfad = STANDARD_STARTVORLAGE_PFAD,
@@ -5721,6 +5725,57 @@ export function erzeugeRequestHandler(optionen = {}) {
       return { ok: false, grund: `Workflow '${workflowId}' braucht einen eigenen Arbeitsordner, der nicht bereit ist (${lage.daten === null ? 'noch nicht angelegt' : lage.daten.status === 'BEREIT' ? 'Ordner fehlt auf der Platte' : lage.daten.status}) — über „Starten“ bzw. die Freigabe wird er vorbereitet` }
     }
     return { ok: true, wurzel: lage.daten.pfad, arbeitsordner: { pfad: lage.daten.pfad, branch: lage.daten.branch } }
+  }
+
+  /** F45 B2a-3b (qa 2): aktueller Stand je Laufort → { zeit, versprechen } — gleichzeitige und kurz aufeinanderfolgende Abfragen teilen eine Berechnung. */
+  const standCache = new Map()
+
+  /**
+   * Aktueller Stand eines Laufordners, höchstens standCacheMs alt (laufende Berechnungen werden geteilt). Ein Ergebnis
+   * „nicht bestimmbar“ wird ebenso kurz gehalten — es entsteht meist aus einer dauerhaften Lage (kein Repo, Kappe).
+   * @param wurzel - Laufort
+   * @returns Promise<StandErgebnis>
+   */
+  function aktuellerStandMitCache(wurzel) {
+    const jetzt = Date.now()
+    const eintrag = standCache.get(wurzel)
+    if (eintrag !== undefined && jetzt - eintrag.zeit < standCacheMs) return eintrag.versprechen
+    const versprechen = leseGeprueftenStandAsync(wurzel)
+    if (standCacheMs > 0) standCache.set(wurzel, { zeit: jetzt, versprechen })
+    return versprechen
+  }
+
+  /**
+   * F45 B2a-3b (Codex-Review-Spec §9.6): geprüfter gegen aktuellen Stand für GET …/abnahme. Der aktuelle Stand wird nur bei
+   * offener Abnahme berechnet (asynchron, Event-Loop frei) und im Laufort nach ermittleLaufort — fail-closed: fehlt der
+   * Arbeitsordner, ist „veraltet“ nicht bestimmbar, statt still den Projektordner zu vergleichen (Advisor N2).
+   * @param workflowId - Kennung
+   * @param workflowDaten - WORKFLOW_V0-Daten
+   * @param review - Laufakten-Feld review des Review-Laufs (oder undefined bei alten Laufakten)
+   * @param offen - Abnahme offen (ermittleAbnahmeStand)
+   * @returns { geprueft_stand, aktueller_stand, veraltet: true | false | null, stand_grund: string | null } — stand_grund nur,
+   *   wenn veraltet null ist und die Abnahme offen
+   */
+  async function vergleicheReviewStand(workflowId, workflowDaten, review, offen) {
+    const s = review?.geprueft_stand
+    const geprueft = s !== null && typeof s === 'object' && typeof s.commit === 'string' && typeof s.inhalt === 'string' ? { commit: s.commit, inhalt: s.inhalt } : null
+    const ergebnis = { geprueft_stand: geprueft, aktueller_stand: null, veraltet: null, stand_grund: null }
+    if (!offen) return ergebnis
+    if (geprueft === null) {
+      ergebnis.stand_grund = typeof review?.stand_grund === 'string' && review.stand_grund !== '' ? review.stand_grund : 'Review aus einem älteren Lauf — geprüfter Stand nicht festgehalten'
+      return ergebnis
+    }
+    const laufort = ermittleLaufort(workflowId, workflowDaten)
+    if (!laufort.ok) {
+      // qa 6: der Grund von ermittleLaufort spricht vom Starten — hier zählt nur, dass der Ordner des Ablaufs fehlt.
+      ergebnis.stand_grund = 'der Arbeitsordner des Ablaufs ist nicht mehr verfügbar — der aktuelle Stand lässt sich nicht lesen'
+      return ergebnis
+    }
+    const aktuell = await aktuellerStandMitCache(laufort.wurzel)
+    ergebnis.aktueller_stand = aktuell.stand
+    ergebnis.veraltet = standIstVeraltet(geprueft, aktuell.stand)
+    if (aktuell.stand === null) ergebnis.stand_grund = aktuell.grund
+    return ergebnis
   }
 
   /**
@@ -6525,10 +6580,16 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Review-Policy — eine Stelle (src/review-policy), hinter Karte und Beobachtungsblock, damit der Auftrag vor der Karte
     // bitgleich bleibt (Gate f45-b2a2 (b)). Die Version geht in die Laufakte (review.policy_version); nur Läufe mit ihr
     // prüft der Nachlauf gegen den Ausgabevertrag (Regel 1k).
+    // F45 B2a-3b (Codex-Review-Spec §9.6): dazu der geprüfte Stand — Inhalts-Fingerabdruck des Laufordners (laufort.wurzel,
+    // dieselbe Regel wie GET …/abnahme über ermittleLaufort), rein lesend und synchron mit Gesamtbudget (src/review-stand).
+    // Nicht bestimmbar → null mit Grund, kein Abbruch des Starts.
     let reviewMeta
     if (schritt.rolle === 'code-reviewer') {
       auftragstext = `${auftragstext}\n\n${baueReviewPolicyBlock()}`
-      reviewMeta = { policy_version: REVIEW_POLICY_VERSION }
+      const stand = leseGeprueftenStandSync(laufWurzel)
+      // qa-Nachpass 3: ein noch frischer Stand aus einer früheren Abnahme-Abfrage darf den neuen Review nicht als veraltet zeigen.
+      standCache.delete(laufWurzel)
+      reviewMeta = { policy_version: REVIEW_POLICY_VERSION, geprueft_stand: stand.stand, ...(stand.stand === null ? { stand_grund: stand.grund } : {}) }
     }
 
     // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
@@ -7656,6 +7717,9 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       // F45 B2a-3a (Codex-Review-Spec §9.8): Fehlerfälle mit sichtbarem Grund statt eines stillen Status. Der Workflow-grund
       // gehört nur dann zum Review, wenn der Halt auf dem Review-Schritt steht.
+      // Die Abnahme-Entscheidung (Erläuterung unten bei entscheidungProjektion) — hier geladen, weil der geprüfte Stand des
+      // Reviews nur bei offener Abnahme neu berechnet wird (F45 B2a-3b).
+      const abnahmeVersion = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen)
       const reviewHaltGrund = reviewSchritt !== null && workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === reviewSchritt.schritt_id ? (workflowDaten.grund ?? null) : null
       let urteilProjektion
       if (reviewSchritt === null) {
@@ -7680,6 +7744,7 @@ export function erzeugeRequestHandler(optionen = {}) {
             const policyVersion = typeof laufakteVersion.daten.review?.policy_version === 'string' ? laufakteVersion.daten.review.policy_version : null
             const vertrag = pruefeReviewErgebnisFuer(policyVersion, geparst) ?? { halt: [], hinweise: [] }
             const fehlend = laufakteVersion.daten.projektkarte?.fehlend
+            const stand = await vergleicheReviewStand(workflowId, workflowDaten, laufakteVersion.daten.review, ermittleAbnahmeStand(workflowDaten, abnahmeVersion).offen)
             urteilProjektion = {
               status: 'ok',
               laufId: reviewSchritt.lauf_id,
@@ -7691,6 +7756,7 @@ export function erzeugeRequestHandler(optionen = {}) {
               vertrag_verstoesse: vertrag.halt,
               vertrag_hinweise: vertrag.hinweise,
               kontext_luecken: Array.isArray(fehlend) ? fehlend.filter((f) => typeof f === 'string') : [],
+              ...stand,
             }
           }
         }
@@ -7723,7 +7789,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Ausführungslauf (neue lauf_id) macht eine bestehende Entscheidung 'veraltet'. Der Inhalt
       // bleibt sichtbar (Audit-Spur), nur die Lesart ändert sich; die View bietet bei 'veraltet'
       // wieder ACCEPT/REJECT an (Muster renderAbnahmeEntscheidung).
-      const abnahmeVersion = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen)
+      // (abnahmeVersion ist seit F45 B2a-3b schon oben geladen — der geprüfte Stand braucht „Abnahme offen“.)
       // F35 WS-3 (features/F35/feature.md): erzeuger/automatische_iteration additiv, aus der
       // Lineage-herkunft der bereits geladenen abnahmeVersion — kein zweiter Regelsatz.
       // automatische_iteration zählt über dieselbe Funktion wie der Auslöser im Automaten-Hook

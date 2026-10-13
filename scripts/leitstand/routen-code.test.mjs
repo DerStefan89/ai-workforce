@@ -342,10 +342,13 @@ test('Sichern ausgeführt (PowerShell): git add der Leseroute staged alles — U
     for (const name of ['leer zeichen.txt', 'ä.txt', "o'k.txt", '-x.txt', 'a[1].txt', 'x’y.txt']) writeFileSync(join(repo, name), 'n\n')
     const p = await baueCodeProjektion({ repoWurzel: repo })
     const befehle = sicherBefehle(p)
-    assert.ok(Array.isArray(befehle.zeilen), JSON.stringify(befehle))
-    const adds = befehle.zeilen.filter((z) => z.startsWith('git add '))
+    assert.ok(Array.isArray(befehle.bloecke), JSON.stringify(befehle))
+    // F45 B2a-3b (F-959): die erste Zeile (cd) bringt PowerShell aus einem fremden Ordner in das Repo — gestartet in tmpdir.
+    const [cd, ...rest0] = befehle.bloecke[0]
+    assert.ok(cd.startsWith('cd '), cd)
+    const adds = rest0.filter((z) => z.startsWith('git add '))
     assert.ok(adds.length >= 1)
-    for (const zeile of adds) execFileSync(ps, ['-NoProfile', '-NonInteractive', '-Command', `${zeile}; exit $LASTEXITCODE`], { cwd: repo, stdio: 'pipe' })
+    for (const zeile of adds) execFileSync(ps, ['-NoProfile', '-NonInteractive', '-Command', `${cd}; ${zeile}; exit $LASTEXITCODE`], { cwd: tmpdir(), stdio: 'pipe' })
     // Danach ist nichts mehr ungestaged oder ungetrackt.
     const rest = porcelain(repo).filter((z) => z[1] !== ' ')
     assert.deepEqual(rest, [], 'nach git add ist alles gestaged')

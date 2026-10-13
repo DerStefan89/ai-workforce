@@ -152,9 +152,24 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["policy_version"],
-      "description": "F45 B2a-3a (F-1063, docs/projekt/codex-review-spec.md). Optional (append-only): nur Läufe der Rolle code-reviewer aus einem Workflow, für beide Worker. policy_version = Version der Review-Policy im Auftrag (src/review-policy). Nur ein Lauf mit diesem Feld wird gegen den Ausgabevertrag geprüft (Regel 1k); ältere Laufakten bleiben unverändert lesbar. B2a-3b ergänzt den geprüften Stand. Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts).",
+      "description": "F45 B2a-3a (F-1063, docs/projekt/codex-review-spec.md). Optional (append-only): nur Läufe der Rolle code-reviewer aus einem Workflow, für beide Worker. policy_version = Version der Review-Policy im Auftrag (src/review-policy). Nur ein Lauf mit diesem Feld wird gegen den Ausgabevertrag geprüft (Regel 1k); ältere Laufakten bleiben unverändert lesbar. B2a-3b: geprueft_stand = Inhalts-Fingerabdruck des Laufordners beim Start des Reviews (src/review-stand; commit = HEAD, inhalt = sha256 über Pfad und Blob, ohne kontrollzustand/), null = nicht bestimmbar (Grund in stand_grund); fehlt bei Läufen vor B2a-3b. Nicht im Modellschema — der Server setzt ihn. Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts).",
       "properties": {
-        "policy_version": { "type": "string", "minLength": 1 }
+        "policy_version": { "type": "string", "minLength": 1 },
+        "geprueft_stand": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["commit", "inhalt"],
+              "properties": {
+                "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+                "inhalt": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ]
+        },
+        "stand_grund": { "type": "string", "minLength": 1 }
       }
     }
   }

@@ -119,17 +119,24 @@ export interface GitErgebnis {
   code: number | null
   stdout: string
   stderr: string
+  /** F45 B2a-3b: Abbruch durch die Zeitgrenze oder die Ausgabegrenze (maxBuffer); fehlt sonst. */
+  abbruch?: 'zeitgrenze' | 'ausgabe_zu_gross'
 }
 
 /**
  * Führt git asynchron aus (F45 B1a-1, Arbeitsordner: worktree add/remove dürfen den Event-Loop nicht
  * blockieren) — absoluter Programmpfad, bereinigte Umgebung, ohne Shell, kein Terminal-Prompt. Wirft nie:
  * jeder Fehler (Exit ≠ 0, Zeitgrenze, kein git) kommt als code ≠ 0 bzw. null mit Text in stderr zurück.
+ * F45 B2a-3b: optional `eingabe` (Text auf stdin, z. B. für `hash-object --stdin-paths`) und `umgebung` (feste
+ * Zusatzwerte wie LC_ALL) — der geprüfte Stand des Reviews braucht beides, ohne einen weiteren Starter.
  * @param argumente - Git-Argumente
- * @param optionen - cwd, Zeitgrenze in ms (Standard 60 s), maxBuffer in Bytes (Standard 8 MB)
+ * @param optionen - cwd, Zeitgrenze in ms (Standard 60 s), maxBuffer in Bytes (Standard 8 MB), eingabe (stdin), umgebung
  * @returns GitErgebnis
  */
-export function fuehreGitAsync(argumente: readonly string[], optionen: { cwd: string; zeitgrenzeMs?: number; maxBuffer?: number }): Promise<GitErgebnis> {
+export function fuehreGitAsync(
+  argumente: readonly string[],
+  optionen: { cwd: string; zeitgrenzeMs?: number; maxBuffer?: number; eingabe?: string; umgebung?: Record<string, string> }
+): Promise<GitErgebnis> {
   return new Promise((aufloesen) => {
     let programm: string
     try {
@@ -138,12 +145,12 @@ export function fuehreGitAsync(argumente: readonly string[], optionen: { cwd: st
       aufloesen({ code: null, stdout: '', stderr: (fehler as Error).message })
       return
     }
-    execFile(
+    const kind = execFile(
       programm,
       argumente,
       {
         cwd: optionen.cwd,
-        env: gitUmgebung(process.env, { GIT_TERMINAL_PROMPT: '0' }),
+        env: gitUmgebung(process.env, { GIT_TERMINAL_PROMPT: '0', ...(optionen.umgebung ?? {}) }),
         timeout: optionen.zeitgrenzeMs ?? 60_000,
         maxBuffer: optionen.maxBuffer ?? 8 * 1024 * 1024,
         windowsHide: true,
@@ -155,8 +162,14 @@ export function fuehreGitAsync(argumente: readonly string[], optionen: { cwd: st
           return
         }
         const code = typeof fehler.code === 'number' ? fehler.code : null
-        aufloesen({ code, stdout: stdout ?? '', stderr: stderr !== undefined && stderr.length > 0 ? stderr : fehler.message })
+        const abbruch = fehler.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' ? 'ausgabe_zu_gross' : fehler.killed === true ? 'zeitgrenze' : undefined
+        aufloesen({ code, stdout: stdout ?? '', stderr: stderr !== undefined && stderr.length > 0 ? stderr : fehler.message, ...(abbruch !== undefined ? { abbruch } : {}) })
       }
     )
+    if (optionen.eingabe !== undefined) {
+      // Ein früh beendetes git schließt stdin — EPIPE ist dann kein eigener Fehler, das Ergebnis kommt über den Rückruf.
+      kind.stdin?.on('error', () => {})
+      kind.stdin?.end(optionen.eingabe)
+    }
   })
 }

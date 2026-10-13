@@ -7,19 +7,23 @@
  * Poll-Werten — kein DOM, kein Netz, in Node testbar.
  *
  * - gruppiereNachOrdner: Dateien nach Ordner (Reihenfolge der Route bleibt).
- * - sicherBefehle: der Befehlsblock „Sichern“ mit echten Dateien, Commit-Vorschlag aus dem
+ * - sicherBefehle: die Befehlsblöcke „Sichern“ mit echten Dateien, Commit-Vorschlag aus dem
  *   Branchnamen und Push — PowerShell-tauglich gequotet, keine Platzhalter (F-958, F-959). Gibt es
- *   nichts Sicheres zu zeigen (keine Änderungen, Liste gekappt, kein Branch), kommt ein Grund statt
- *   eines halben Befehls.
+ *   nichts Sicheres zu zeigen (keine Änderungen, Liste gekappt, kein Branch, kein Pfad), kommt ein
+ *   Grund statt eines halben Befehls.
+ * - Regel „direkt ausführbar“ (F-959, F45 B2a-3b): erste Zeile JEDES Blocks ist cd auf den absoluten
+ *   Projektpfad (cdZeile — die eine Quelle, auch für die Jarvis-Regel des Servers); eine Folge, die nach
+ *   außen wirkt (push), steht in einem eigenen Block (befehlsBloecke).
+ * - pruefstandBefehle: der Prüfbefehl der Startvorlage als Block mit cd.
  * - verlaufArt/filtereVerlauf: Verlauf auf main nach Alle · Feature · Fixes · Doku.
  * - freigabeZustand: Commit-Freigabe aus den Metadaten (Dateizeit, 10 Minuten).
  * - bereitschaft: die Prüfliste „Bereit zum Start?“.
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/code.js, public/leitstand/views/auftrag-umgebung.js
- * - scripts/leitstand-server.mjs (psArgument: cd-Zeile der Jarvis-Regel, F45 B2a-3a — derselbe Quoting-Weg wie die
+ * - public/leitstand/views/code.js, public/leitstand/views/workboard.js, public/leitstand/views/auftrag-umgebung.js
+ * - scripts/leitstand-server.mjs (cdZeile: cd-Zeile der Jarvis-Regel, F45 B2a-3a/B2a-3b — dieselbe Quelle wie die
  *   Befehlsblöcke, deshalb importiert der Server hier aus public/; das Modul ist import-sicher, ohne DOM)
- * - scripts/check-f45-b2a3-codex-review.mjs
+ * - scripts/check-f45-b2a3-codex-review.mjs, scripts/check-f45-b2a3b-review-stand.mjs
  * - public/leitstand/code-daten.test.mjs (node:test)
  *
  * Wichtig: Die Befehle werden nur angezeigt und auf Klick kopiert — der Leitstand führt nichts aus.
@@ -51,6 +55,12 @@ const ADD_ZEICHEN_JE_ZEILE = 8000
 
 /** Zeichen, die Git in einem Pfad als Muster liest (Glob) — solche Pfade bekommen „:(literal)“ (Prüfpass qa 12). */
 const GLOB_ZEICHEN = /[*?[\]]/
+
+/** Platzhalterzeichen von Set-Location -Path ([ ] * ? und das Escape-Zeichen `) — dann -LiteralPath (Code-Review 5). */
+const PS_PLATZHALTER = /[*?[\]`]/
+
+/** Absoluter Pfad: Windows-Laufwerk (C:\ oder C:/), UNC (\\server) oder POSIX (/). */
+const ABSOLUTER_PFAD = /^(?:[A-Za-z]:[\\/]|\\\\|\/)/
 
 /**
  * Setzt ein Argument für PowerShell sicher: unverändert, wenn es nur harmlose Zeichen enthält, sonst
@@ -149,15 +159,39 @@ export function commitVorschlag(branch) {
 }
 
 /**
- * Befehlsblock „Sichern“: git add mit den echten Dateien, git commit mit dem Vorschlag, git push.
+ * Erste Zeile eines Befehlsblocks: cd auf den absoluten Pfad, PowerShell-gequotet (psArgument). Enthält der Pfad ein
+ * Platzhalterzeichen von PowerShell ([ ] * ? `), steht -LiteralPath davor — sonst läse Set-Location ihn als Muster.
+ * Einzige Quelle für Leitstand und Jarvis-Regel (scripts/leitstand-server.mjs baueProjektCdZeile).
+ * @param pfad - absoluter Pfad
+ * @returns z. B. „cd 'C:\Projekte\mein projekt'“
+ */
+export function cdZeile(pfad) {
+  return PS_PLATZHALTER.test(pfad) ? `cd -LiteralPath ${psArgument(pfad)}` : `cd ${psArgument(pfad)}`
+}
+
+/**
+ * Befehlsblöcke nach der Regel „direkt ausführbar“: je Folge ein Block, erste Zeile cd auf den Pfad.
+ * @param pfad - absoluter Projektpfad (sonst kein Befehl)
+ * @param folgen - Befehlsfolgen (je Folge die Zeilen ohne cd)
+ * @returns { bloecke: string[][] } oder { grund: 'keinPfad' }
+ */
+export function befehlsBloecke(pfad, folgen) {
+  if (typeof pfad !== 'string' || !ABSOLUTER_PFAD.test(pfad)) return { grund: 'keinPfad' }
+  const cd = cdZeile(pfad)
+  return { bloecke: folgen.filter((folge) => folge.length > 0).map((folge) => [cd, ...folge]) }
+}
+
+/**
+ * Befehlsblöcke „Sichern“: [cd, git add mit den echten Dateien, git commit mit dem Vorschlag] und — getrennt, weil er nach
+ * außen wirkt — [cd, git push] (F-959, F45 B2a-3b).
  * Welche Pfade in „git add“ gehören (Prüfpass qa 1): jede Datei mit Änderung im Arbeitsbaum oder neu;
  * NICHT eine schon gestagte Löschung (X = D) und nicht der alte Pfad einer gestagten Umbenennung — beide
  * stehen weder im Index noch im Arbeitsbaum, „git add“ bräche sonst mit „pathspec did not match“ ab und
- * stagte gar nichts. Die Zeile wird bei vielen Pfaden aufgeteilt; ohne „origin“ entfällt der Push.
+ * stagte gar nichts. Die Zeile wird bei vielen Pfaden aufgeteilt; ohne „origin“ entfällt der Push-Block.
  * @param daten - Antwort der Route (status ok)
  * @param optionen - { veraltet: true, wenn das letzte Aktualisieren scheiterte (kein Befehl aus altem Stand) }
- * @returns { zeilen: string[], hinweise: string[] } oder { grund: 'veraltet' | 'keineAenderungen' | 'gekappt' |
- *   'keinBranch' | 'aufMain' | 'dateienFehler' | 'branchFehler' | 'keinVorschlag' }
+ * @returns { bloecke: string[][], hinweise: string[] } oder { grund: 'veraltet' | 'keineAenderungen' | 'gekappt' |
+ *   'keinBranch' | 'aufMain' | 'dateienFehler' | 'branchFehler' | 'keinVorschlag' | 'keinPfad' }
  */
 export function sicherBefehle(daten, { veraltet = false } = {}) {
   if (veraltet) return { grund: 'veraltet' }
@@ -192,9 +226,22 @@ export function sicherBefehle(daten, { veraltet = false } = {}) {
   if (teil.length > 0) zeilen.push(`git add ${teil.join(' ')}`)
   zeilen.push(`git commit -m "${nachricht}"`)
   const hinweise = []
+  const folgen = [zeilen]
   if (daten.remoteWebUrl?.status === 'ok' && daten.remoteWebUrl.origin === false) hinweise.push('keinOrigin')
-  else zeilen.push(`git push -u origin ${psArgument(branch.name)}`)
-  return { zeilen, hinweise }
+  else folgen.push([`git push -u origin ${psArgument(branch.name)}`])
+  const bloecke = befehlsBloecke(daten.absoluterPfad, folgen)
+  return bloecke.grund !== undefined ? bloecke : { bloecke: bloecke.bloecke, hinweise }
+}
+
+/**
+ * Befehlsblock „Prüfstand“: [cd, Prüfbefehl der Startvorlage] (F-959, F45 B2a-3b).
+ * @param daten - Antwort der Route oder null
+ * @returns { bloecke: string[][] } oder { grund: 'keinBefehl' | 'keinPfad' }
+ */
+export function pruefstandBefehle(daten) {
+  const befehl = daten?.startvorlage?.status === 'ok' && typeof daten.startvorlage.pruefbefehl === 'string' && daten.startvorlage.pruefbefehl.trim() !== '' ? daten.startvorlage.pruefbefehl : null
+  if (befehl === null) return { grund: 'keinBefehl' }
+  return befehlsBloecke(daten.absoluterPfad, [[befehl]])
 }
 
 /**

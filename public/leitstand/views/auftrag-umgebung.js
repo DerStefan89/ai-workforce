@@ -22,7 +22,7 @@
  */
 
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
-import { bereitschaft, psArgument } from '../code-daten.js'
+import { bereitschaft, cdZeile } from '../code-daten.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
@@ -246,7 +246,7 @@ function woHtml(projekt, daten, mainWarnung) {
     projekt?.vorschau_url ? '' : tHtml('auftrag.wo.vorschauUnter'),
     kommtKnopf(t('auftrag.wo.festlegen'))
   )
-  const cd = basis === null ? '' : renderBefehlsblock({ sprache: 'powershell', zeilen: [`cd ${psArgument(basis)}`] }, { echteWerte: true })
+  const cd = basis === null ? '' : renderBefehlsblock({ sprache: 'powershell', zeilen: [cdZeile(basis)] }, { echteWerte: true })
   return `<section class="umgebung-karte" aria-labelledby="wo-titel">
       <h2 id="wo-titel">${tHtml('auftrag.wo.titel')}</h2>
       ${werkzeuge}

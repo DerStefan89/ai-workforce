@@ -2,14 +2,15 @@
  * Datei: public/leitstand/code-daten.test.mjs
  *
  * Zweck: F46 D4 — reine Regeln von Entwicklung › Code und „Bereit zum Start?“ (code-daten.js):
- * Gruppierung, PowerShell-Quoting, Befehlsblock „Sichern“ ohne Platzhalter (F-958), Commit-Vorschlag,
+ * Gruppierung, PowerShell-Quoting, Befehlsblöcke „Sichern“ ohne Platzhalter (F-958) mit cd und getrenntem push
+ * (F-959, F45 B2a-3b), Prüfstand mit cd, Commit-Vorschlag,
  * Verlaufsfilter, Commit-Freigabe und Prüfliste.
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { hatPlatzhalter } from './befehlsblock.js'
-import { bereitschaft, commitUrl, commitVorschlag, filtereVerlauf, freigabeZustand, gitPfadArgument, gruppiereNachOrdner, psArgument, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from './code-daten.js'
+import { befehlsBloecke, bereitschaft, cdZeile, commitUrl, commitVorschlag, filtereVerlauf, freigabeZustand, gitPfadArgument, gruppiereNachOrdner, pruefstandBefehle, psArgument, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from './code-daten.js'
 
 const DATEIEN = [
   { pfad: 'public/leitstand/views/code.js', art: '??', xy: '??', plus: 10, minus: 0 },
@@ -19,10 +20,21 @@ const DATEIEN = [
   { pfad: 'neu name.txt', art: 'R', xy: 'R ', alterPfad: 'alt.txt', plus: 0, minus: 0 },
 ]
 
+/** Projektpfad der Route (F45 B2a-3b: erste Zeile jedes Blocks). */
+const PFAD = String.raw`C:\Users\stefa\Projekte\mein projekt`
+const CD = String.raw`cd 'C:\Users\stefa\Projekte\mein projekt'`
+
 /** Antwort der Route im Grünfall. */
 function daten(zusatz = {}) {
-  return { status: 'ok', branch: { status: 'ok', name: 'feat/f46-d4-entwicklung-code', losgeloest: false }, remoteWebUrl: { status: 'ok', url: null, origin: true }, dateien: { status: 'ok', eintraege: DATEIEN, anzahl: 5, gekappt: false }, ...zusatz }
+  return { status: 'ok', absoluterPfad: PFAD, branch: { status: 'ok', name: 'feat/f46-d4-entwicklung-code', losgeloest: false }, remoteWebUrl: { status: 'ok', url: null, origin: true }, dateien: { status: 'ok', eintraege: DATEIEN, anzahl: 5, gekappt: false }, ...zusatz }
 }
+
+/**
+ * Zeilen des ersten Blocks ohne cd (für die bestehenden Prüfungen von add/commit).
+ * @param befehle - Ergebnis von sicherBefehle
+ * @returns Zeilen
+ */
+const ersterBlock = (befehle) => befehle.bloecke[0].slice(1)
 
 test('Gruppierung nach Ordner und Summe der Zeilen', () => {
   const gruppen = gruppiereNachOrdner(DATEIEN)
@@ -67,37 +79,59 @@ test('Commit-Vorschlag aus dem Branchnamen, ohne aktive Zeichen', () => {
   assert.equal(commitVorschlag(null), null)
 })
 
-test('Sichern: echte Dateien, Vorschlag, Push — keine Platzhalter (F-958)', () => {
-  const { zeilen, hinweise } = sicherBefehle(daten())
-  assert.equal(zeilen.length, 3)
+test('Sichern: echte Dateien, Vorschlag, Push — keine Platzhalter (F-958); je Block erste Zeile cd, push getrennt (F-959)', () => {
+  const befehle = sicherBefehle(daten())
+  assert.equal(befehle.bloecke.length, 2)
+  assert.ok(befehle.bloecke.every((block) => block[0] === CD), 'erste Zeile jedes Blocks: cd auf den Projektpfad')
+  const zeilen = ersterBlock(befehle)
+  assert.equal(zeilen.length, 2)
   // Umbenennung: nur der neue Pfad (der alte ist im Index schon entfernt, Prüfpass qa 1).
   assert.equal(zeilen[0], "git add public/leitstand/views/code.js public/leitstand/api.js README.md public/leitstand/views/alt.js 'neu name.txt'")
   assert.equal(zeilen[1], 'git commit -m "F46 D4: entwicklung code"')
-  assert.equal(zeilen[2], 'git push -u origin feat/f46-d4-entwicklung-code')
-  assert.deepEqual(hinweise, [])
-  assert.equal(hatPlatzhalter(zeilen), false)
+  assert.deepEqual(befehle.bloecke[1], [CD, 'git push -u origin feat/f46-d4-entwicklung-code'])
+  assert.deepEqual(befehle.hinweise, [])
+  assert.equal(hatPlatzhalter(befehle.bloecke.flat()), false)
   const minus = sicherBefehle(daten({ dateien: { status: 'ok', eintraege: [{ pfad: '-x.txt', art: '??', xy: '??' }], anzahl: 1, gekappt: false } }))
-  assert.equal(minus.zeilen[0], "git add ':(literal)-x.txt'", 'führendes - wird kein Schalter')
+  assert.equal(ersterBlock(minus)[0], "git add ':(literal)-x.txt'", 'führendes - wird kein Schalter')
 })
 
 test('Sichern: gestagte Löschung nicht in git add; nur gestagte Änderungen → kein git add', () => {
   const gestagt = [{ pfad: 'weg.txt', art: 'D', xy: 'D ' }, { pfad: 'b.txt', art: 'M', xy: 'M ' }]
-  assert.deepEqual(sicherBefehle(daten({ dateien: { status: 'ok', eintraege: gestagt, anzahl: 2, gekappt: false } })).zeilen[0], 'git add b.txt')
+  assert.deepEqual(ersterBlock(sicherBefehle(daten({ dateien: { status: 'ok', eintraege: gestagt, anzahl: 2, gekappt: false } })))[0], 'git add b.txt')
   const nurLoeschung = sicherBefehle(daten({ dateien: { status: 'ok', eintraege: [{ pfad: 'weg.txt', art: 'D', xy: 'D ' }], anzahl: 1, gekappt: false } }))
-  assert.equal(nurLoeschung.zeilen[0], 'git commit -m "F46 D4: entwicklung code"')
+  assert.equal(ersterBlock(nurLoeschung)[0], 'git commit -m "F46 D4: entwicklung code"')
 })
 
-test('Sichern: viele Pfade auf mehrere Zeilen, ohne origin kein Push, veraltet kein Befehl', () => {
+test('Sichern: viele Pfade auf mehrere Zeilen, ohne origin nur ein Block, veraltet kein Befehl', () => {
   const viele = Array.from({ length: 120 }, (_, i) => ({ pfad: `kontrollzustand/lineage-${'x'.repeat(80)}/${i}.json`, art: '??', xy: '??' }))
-  const { zeilen } = sicherBefehle(daten({ dateien: { status: 'ok', eintraege: viele, anzahl: viele.length, gekappt: false } }))
+  const zeilen = ersterBlock(sicherBefehle(daten({ dateien: { status: 'ok', eintraege: viele, anzahl: viele.length, gekappt: false } })))
   const adds = zeilen.filter((z) => z.startsWith('git add '))
   assert.ok(adds.length >= 3)
   assert.ok(adds.every((z) => z.length <= 8100 && z.split(' ').length - 2 <= 50))
   assert.equal(adds.reduce((n, z) => n + z.split(' ').length - 2, 0), 120)
   const ohneOrigin = sicherBefehle(daten({ remoteWebUrl: { status: 'ok', url: null, origin: false } }))
-  assert.ok(!ohneOrigin.zeilen.some((z) => z.startsWith('git push')))
+  assert.equal(ohneOrigin.bloecke.length, 1)
+  assert.ok(!ohneOrigin.bloecke.flat().some((z) => z.startsWith('git push')))
   assert.deepEqual(ohneOrigin.hinweise, ['keinOrigin'])
   assert.deepEqual(sicherBefehle(daten(), { veraltet: true }), { grund: 'veraltet' })
+})
+
+test('F45 B2a-3b: cdZeile (Quoting, -LiteralPath bei Platzhalterzeichen), ohne absoluten Pfad Grund statt Befehl, Prüfstand mit cd', () => {
+  assert.equal(cdZeile(String.raw`C:\Projekte\a`), String.raw`cd 'C:\Projekte\a'`)
+  assert.equal(cdZeile('/home/u/a'), "cd '/home/u/a'")
+  assert.equal(cdZeile(String.raw`C:\Projekte\a[1]`), String.raw`cd -LiteralPath 'C:\Projekte\a[1]'`)
+  assert.equal(cdZeile('C:\\x\\a`b'), "cd -LiteralPath 'C:\\x\\a`b'")
+  assert.equal(cdZeile(String.raw`C:\x\it's`), String.raw`cd 'C:\x\it''s'`)
+  for (const pfad of [undefined, null, '', 'relativ/ordner', '.']) assert.deepEqual(sicherBefehle(daten({ absoluterPfad: pfad })), { grund: 'keinPfad' }, String(pfad))
+  assert.deepEqual(befehlsBloecke(String.raw`\\server\freigabe`, [['a'], [], ['b']]).bloecke, [
+    [String.raw`cd '\\server\freigabe'`, 'a'],
+    [String.raw`cd '\\server\freigabe'`, 'b'],
+  ])
+  const vorlage = { status: 'ok', pruefbefehl: 'npm run check' }
+  assert.deepEqual(pruefstandBefehle({ absoluterPfad: PFAD, startvorlage: vorlage }), { bloecke: [[CD, 'npm run check']] })
+  assert.deepEqual(pruefstandBefehle({ absoluterPfad: 'x', startvorlage: vorlage }), { grund: 'keinPfad' })
+  assert.deepEqual(pruefstandBefehle({ absoluterPfad: PFAD, startvorlage: { status: 'ok', pruefbefehl: '  ' } }), { grund: 'keinBefehl' })
+  assert.deepEqual(pruefstandBefehle(null), { grund: 'keinBefehl' })
 })
 
 test('Sichern: Gründe statt halber Befehle', () => {

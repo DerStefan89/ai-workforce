@@ -1,0 +1,12 @@
+[
+  {
+    "label": "ru, 390 px",
+    "zwei Blöcke Sichern": true,
+    "Kopieren je Block": true,
+    "Prüfstand-Block": true,
+    "Sichern Block 1": "cd 'C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-b2a3b-render-BLYsAi\\mein projekt'git add 'src/csv export.ts' src/export.tsgit ",
+    "Sichern Block 2": "cd 'C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-b2a3b-render-BLYsAi\\mein projekt'git push -u origin feat/f45-b2a3b-csv-export",
+    "Prüfstand": "cd 'C:\\Users\\stefa\\AppData\\Local\\Temp\\f45-b2a3b-render-BLYsAi\\mein projekt'npm --version",
+    "Seite geladen": true
+  }
+]

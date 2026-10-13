@@ -131,6 +131,9 @@ const laufakteFixtures = [
   // F32 WS-1: LAUFAKTE_V0.verbrauch (additiv, optional).
   { pfad: 'schemas/examples/kontrollzustand-laufakte-mit-verbrauch.valid.json', sollGueltigSein: true },
   { pfad: 'schemas/examples/kontrollzustand-laufakte.invalid-verbrauch-falscher-typ.json', sollGueltigSein: false },
+  // F45 B2a-3a/B2a-3b (Advisor-Pass B2a-3b N6): review mit policy_version und geprüftem Stand; Stand ohne inhalt ungültig.
+  { pfad: 'schemas/examples/kontrollzustand-laufakte-review.valid.json', sollGueltigSein: true },
+  { pfad: 'schemas/examples/kontrollzustand-laufakte.invalid-review-geprueft-stand.json', sollGueltigSein: false },
 ]
 for (const { pfad, sollGueltigSein } of laufakteFixtures) {
   if (!existsSync(pfad)) {

@@ -660,13 +660,46 @@ test('F45 B2a-3a: optionen.review geht unverändert als review in die Laufakte; 
     const ohne = await starteCodexGateway(gatewayEingaben(ohneId), { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: '', exitCode: 0 }).starter })
     assert.equal(ohne.ok, true)
     if (ohne.ok) assert.equal('review' in ohne.laufakte, false)
-    // Rotfälle des Validators: falscher Typ, leere Version, unbekanntes Feld
-    for (const kaputt of [null, 'review-policy-1', { policy_version: '' }, { policy_version: 'v', geprueft_stand: 'x' }]) {
+    // Rotfälle des Validators: falscher Typ, leere Version, unbekanntes Feld; F45 B2a-3b: geprueft_stand mit falschem Typ
+    // (Text statt Objekt), ohne inhalt, mit Zusatzfeld, leerer stand_grund
+    const S = { commit: 'a'.repeat(40), inhalt: 'b'.repeat(64) }
+    for (const kaputt of [
+      null,
+      'review-policy-1',
+      { policy_version: '' },
+      { policy_version: 'v', unbekannt: 1 },
+      { policy_version: 'v', geprueft_stand: 'x' },
+      { policy_version: 'v', geprueft_stand: { commit: S.commit } },
+      { policy_version: 'v', geprueft_stand: { ...S, mehr: 1 } },
+      { policy_version: 'v', geprueft_stand: null, stand_grund: '' },
+    ]) {
       assert.ok(validiereLaufakteDaten({ ...mit.laufakte, review: kaputt }).some((v) => v.includes("'review")), JSON.stringify(kaputt))
+    }
+    // Gültig: Stand gesetzt, oder null mit Grund
+    for (const gut of [{ policy_version: 'v', geprueft_stand: S }, { policy_version: 'v', geprueft_stand: null, stand_grund: 'kein Commit (HEAD fehlt)' }]) {
+      assert.deepEqual(validiereLaufakteDaten({ ...mit.laufakte, review: gut }), [], JSON.stringify(gut))
     }
   } finally {
     raeumeGatewayLauf(mitId)
     raeumeGatewayLauf(ohneId)
+  }
+})
+
+test('F45 B2a-3b: review mit geprüftem Stand bzw. null mit Grund geht unverändert in die Laufakte (Codex-Gateway)', async () => {
+  for (const review of [
+    { policy_version: 'review-policy-1', geprueft_stand: { commit: 'c'.repeat(40), inhalt: 'd'.repeat(64) } },
+    { policy_version: 'review-policy-1', geprueft_stand: null, stand_grund: 'kein Commit (HEAD fehlt)' },
+  ]) {
+    const id = neueGatewayLaufId('codex-gw-review-stand')
+    try {
+      const lauf = await starteCodexGateway(gatewayEingaben(id), { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: '', exitCode: 0 }).starter, review })
+      assert.equal(lauf.ok, true)
+      if (!lauf.ok) return
+      assert.deepStrictEqual(lauf.laufakte.review, review)
+      assert.deepEqual(validiereLaufakteDaten(lauf.laufakte), [])
+    } finally {
+      raeumeGatewayLauf(id)
+    }
   }
 })
 

@@ -17,7 +17,9 @@
  * Wichtig:
  * - Jede Änderung am Text braucht eine neue REVIEW_POLICY_VERSION — das Gate koppelt den sha256 des Texts an die Version.
  *   Eine neue Version bekommt in pruefeReviewErgebnisFuer ihren eigenen Prüfer; ältere Läufe werden nie nach neuen
- *   Regeln bewertet.
+ *   Regeln bewertet. „Neue Regeln“ heißt: neue Pflichten des Policy-Texts. Holt die Prüfung nur nach, was der Vertrag der
+ *   Version schon verlangte (F45 B2a-3b: fundstelle, zusammenfassung, beleg — seit Schema v1 Pflicht, im Policy-Text
+ *   genannt), bleibt die Version gleich; solche Nachträge erzeugen nur Hinweise, nie einen Halt.
  * - KEINE_BEFUNDE_SATZ ist Vertrag (Spec §7): ohne Befunde steht er in 'empfehlung', nie „fehlerfrei“.
  * - Die Werte von DIMENSIONEN/EVIDENZEN sind die Enums von schemas/ergebnis-code-reviewer.schema.json (v2).
  */
@@ -133,7 +135,8 @@ export function pruefeReviewErgebnis(ergebnis: ReviewErgebnisRoh): ReviewPruefun
     const b = roh !== null && typeof roh === 'object' ? (roh as Record<string, unknown>) : {}
     const id = typeof b.id === 'string' && b.id.trim() !== '' ? b.id : null
     const name = `Befund ${index + 1}${id === null ? '' : ` (${id})`}`
-    for (const feld of ['id', 'dimension', 'evidenz', 'korrekturrichtung']) {
+    // F45 B2a-3b (F-1085 (11)): auch die drei Pflichtfelder aus v1 — leer oder fehlend ist ein Hinweis, kein Halt.
+    for (const feld of ['id', 'dimension', 'evidenz', 'korrekturrichtung', 'fundstelle', 'zusammenfassung', 'beleg']) {
       const wert = b[feld]
       if (typeof wert !== 'string' || wert.trim() === '') hinweise.push(`${name}: '${feld}' fehlt`)
     }

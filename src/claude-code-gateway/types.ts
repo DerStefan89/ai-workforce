@@ -136,10 +136,14 @@ export interface LaufakteV0Daten {
   review?: ReviewV0
 }
 
-/** F45 B2a-3a: Laufakten-Feld review (Zwilling des Schemas). B2a-3b ergänzt den geprüften Stand. */
+/** F45 B2a-3a: Laufakten-Feld review (Zwilling des Schemas). B2a-3b: geprüfter Stand (Codex-Review-Spec §9.6). */
 export interface ReviewV0 {
   /** Version der Review-Policy (src/review-policy REVIEW_POLICY_VERSION) */
   policy_version: string
+  /** F45 B2a-3b: Inhalts-Fingerabdruck des Laufordners beim Start des Reviews (src/review-stand), null = nicht bestimmbar. Fehlt bei Läufen vor B2a-3b. */
+  geprueft_stand?: { commit: string; inhalt: string } | null
+  /** F45 B2a-3b: Grund, wenn geprueft_stand null ist. */
+  stand_grund?: string
 }
 
 /** F45 B2a-1: Laufakten-Feld projektkarte (Zwilling von ProjektkarteMeta in src/projektkarte/types.ts und des Schemas). */

@@ -1,0 +1,87 @@
+{
+  "zeit": "2026-10-13T15:25:59.756Z",
+  "workflow_status": "ABGESCHLOSSEN",
+  "workflow_grund": "der Workflow hat keinen zu startenden Schritt mehr — er ist durchgelaufen",
+  "schritt_status": "ERFOLGREICH",
+  "lauf_id": "0960f9cc-7d6d-4fe9-a37e-843daded8dd8",
+  "dauer_s": 86,
+  "worker": "codex",
+  "modell_deklariert": "gpt-6-astra",
+  "verbrauch": {
+    "cache_read_tokens": 198400,
+    "cache_write_tokens": 0,
+    "dauer_api_ms": null,
+    "dauer_ms": 85134,
+    "input_tokens": 250431,
+    "output_tokens": 1558,
+    "quelle": "codex",
+    "turns": null
+  },
+  "review": {
+    "policy_version": "review-policy-1"
+  },
+  "projektkarte": {
+    "abschnitte": [
+      "vorhaben",
+      "qualitaet",
+      "bestand"
+    ],
+    "fehlend": [
+      "Prüfmaßstab: Stand vor dem Bau unbekannt (Ablauf ohne Basis-Commit) — CLAUDE.md und ARCHITECTURE.md im Stand nach dem Bau"
+    ],
+    "hash": "30ebb3dbf95d2cf08e2fa5502b8b3b83601b35d6c107a05bb9ac6b3fb7480e81"
+  },
+  "output_schema_im_argv": "schemas/ergebnis-code-reviewer.schema.json",
+  "codex_ereignisse": {
+    "turnCompleted": true,
+    "turnFailed": false
+  },
+  "stderr_schema_zeilen": [],
+  "befunde_mit_allen_v2_feldern": true,
+  "vertragspruefung": {
+    "halt": [],
+    "hinweise": []
+  },
+  "abnahme_urteil": {
+    "status": "ok",
+    "laufId": "0960f9cc-7d6d-4fe9-a37e-843daded8dd8",
+    "urteil": "BEREIT_NACH_KORREKTUR",
+    "befunde": [
+      {
+        "id": "B1",
+        "dimension": "funktion",
+        "schwere": "MITTEL",
+        "fundstelle": "src/review-policy/index.ts:136",
+        "zusammenfassung": "Die Vertragsprüfung akzeptiert Befunde ohne Beleg, Fundstelle oder Zusammenfassung ohne Hinweis. Sie prüft nur die vier neuen Pflichtfelder; damit bleiben relevante Vertragsverletzungen unsichtbar.",
+        "beleg": "Gezielt ausgeführt: pruefeReviewErgebnis({befunde:[{id:'B1',dimension:'bugs',evidenz:'confirmed',korrekturrichtung:'Grenze pruefen',schwere:'HOCH',fundstelle:'',zusammenfassung:'',beleg:''}],empfehlung:'Korrektur'}) liefert {halt:[],hinweise:[]}. Diese leeren Strings sind auch durch die Schema-Stringtypen nicht ausgeschlossen. Der direkte Aufrufer leseUrteilAusLaufakte reicht Befunde unverändert durch. Die vorhandenen Tests prüfen fehlende Werte ausschließlich für die neuen Felder.",
+        "korrekturrichtung": "Die Prüfung auf nicht leere Strings um fundstelle, zusammenfassung und beleg erweitern und einen gezielten Regressionstest ergänzen. Vertragsverletzungen weiterhin nur als Hinweise behandeln.",
+        "evidenz": "confirmed"
+      }
+    ],
+    "empfehlung": "Checkliste: 16 geprüft, 0 nicht erfüllt, 9 nicht anwendbar\nB1 als Lücke des Ausgabevertrags korrigieren. Geprüft wurden die beiden Dateien im Stand f912773 und relevante direkte Aufrufstellen. Der Fehler wurde durch einen gezielten Funktionsaufruf bestätigt; vollständige Testsuiten wurden nicht ausgeführt. UI- und Harness-Prozesspunkte sind nicht anwendbar. Der historische Stand der Projektvorgaben vor dem Bau wurde nicht geprüft.",
+    "ak_urteile": [],
+    "policy_version": "review-policy-1",
+    "vertrag_verstoesse": [],
+    "vertrag_hinweise": [],
+    "kontext_luecken": [
+      "Prüfmaßstab: Stand vor dem Bau unbekannt (Ablauf ohne Basis-Commit) — CLAUDE.md und ARCHITECTURE.md im Stand nach dem Bau"
+    ]
+  },
+  "ergebnis": {
+    "urteil": "BEREIT_NACH_KORREKTUR",
+    "befunde": [
+      {
+        "id": "B1",
+        "dimension": "funktion",
+        "schwere": "MITTEL",
+        "fundstelle": "src/review-policy/index.ts:136",
+        "zusammenfassung": "Die Vertragsprüfung akzeptiert Befunde ohne Beleg, Fundstelle oder Zusammenfassung ohne Hinweis. Sie prüft nur die vier neuen Pflichtfelder; damit bleiben relevante Vertragsverletzungen unsichtbar.",
+        "beleg": "Gezielt ausgeführt: pruefeReviewErgebnis({befunde:[{id:'B1',dimension:'bugs',evidenz:'confirmed',korrekturrichtung:'Grenze pruefen',schwere:'HOCH',fundstelle:'',zusammenfassung:'',beleg:''}],empfehlung:'Korrektur'}) liefert {halt:[],hinweise:[]}. Diese leeren Strings sind auch durch die Schema-Stringtypen nicht ausgeschlossen. Der direkte Aufrufer leseUrteilAusLaufakte reicht Befunde unverändert durch. Die vorhandenen Tests prüfen fehlende Werte ausschließlich für die neuen Felder.",
+        "korrekturrichtung": "Die Prüfung auf nicht leere Strings um fundstelle, zusammenfassung und beleg erweitern und einen gezielten Regressionstest ergänzen. Vertragsverletzungen weiterhin nur als Hinweise behandeln.",
+        "evidenz": "confirmed"
+      }
+    ],
+    "empfehlung": "Checkliste: 16 geprüft, 0 nicht erfüllt, 9 nicht anwendbar\nB1 als Lücke des Ausgabevertrags korrigieren. Geprüft wurden die beiden Dateien im Stand f912773 und relevante direkte Aufrufstellen. Der Fehler wurde durch einen gezielten Funktionsaufruf bestätigt; vollständige Testsuiten wurden nicht ausgeführt. UI- und Harness-Prozesspunkte sind nicht anwendbar. Der historische Stand der Projektvorgaben vor dem Bau wurde nicht geprüft.",
+    "ak_urteile": []
+  }
+}

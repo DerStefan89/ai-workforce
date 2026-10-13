@@ -12,6 +12,10 @@
   },
   "erstellt_am": "2026-08-31T09:00:00.000Z",
   "review": {
-    "policy_version": "review-policy-1"
+    "policy_version": "review-policy-1",
+    "geprueft_stand": {
+      "commit": "2fd1ac56228c845e24621b106396e058b95af8fb",
+      "inhalt": "19cfcf2b6da26cdfcefa28e73ff532fd48bf86195187cf160f208340ecf246d7"
+    }
   }
 }
