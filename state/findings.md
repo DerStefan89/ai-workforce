@@ -11082,13 +11082,13 @@ Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): Serverseitig keine Lücke: `POST /
 Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
 
-**F-829** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-829** · `PROCESS_IMPROVEMENT` · P2 · teilweise
 Titel: Das Workforce-Review hat keinen festen Qualitätsmaßstab jenseits der AKs.
 Beschreibung: Das Review urteilt über die Akzeptanzkriterien. Dass die Checkliste `.claude/agents/code-reviewer.md` und die DoD aus der `CLAUDE.md` des Projekts als Review-Eingabe dienen, ist nicht belegt.
 Fundstelle: Review-Schritt der Workflow-Vorlagen (`workflow-vorlagen/*.json`), Rolle review (`src/rollen/index.ts`).
 Auswirkung: Mittel — Wartbarkeit, Fehler- und Leerzustände, Kommentarstandard werden nicht verlässlich geprüft.
 Maßnahme: Checkliste und DoD als verbindliche Eingabe des Reviews mit Urteil je Punkt. Gemeinsam mit dem qa-Schritt (F-820) umsetzen.
-Status: offen.
+Status: teilweise (F45 B2a-1, 13.10.2026): DoD aus CLAUDE.md und Checkliste aus `.claude/agents/code-reviewer.md` gehen als Teil der Projektkarte an jeden Code-Reviewer-Schritt, mit „Urteil je Punkt“: jeder nicht erfüllte Punkt ein eigener Befund (Präfix „DoD:“/„Checkliste:“), `empfehlung` beginnt mit „Checkliste: n geprüft, m nicht erfüllt, k nicht anwendbar“. Rest: strukturiertes Urteil je Punkt im Review-Schema v2 → B2a-3; qa-Schritt → B2b.
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
@@ -11998,13 +11998,13 @@ Maßnahme: In WS-4 oder im Fixpaket „Arbeitsfähigkeit“ ein Modul `views/cli
 Status: offen → Fixpaket Arbeitsfähigkeit B5 (Vermerk F44 WS-4a, 01.10.2026).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (code-reviewer), 01.10.2026.
 
-**F-929** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-929** · `PROCESS_IMPROVEMENT` · P2 · teilweise
 Titel: Unklar, wie Codex-Schritte (Architekt, Review) die Harness-Regeln bekommen.
 Beschreibung: Workflow-Vorlagen setzen für Architekt und Review den Worker codex ein. Codex lädt keine Claude-Skills; ob und wie die Harness-Regeln (CLAUDE.md, ARCHITECTURE.md, Skills) in diese Schritte gelangen, ist nicht belegt.
 Fundstelle: `workflow-vorlagen/hoch.json` (worker codex).
 Auswirkung: Mittel — Planung und Review durch Codex folgen dem Harness womöglich nicht.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1.
-Status: offen.
+Status: teilweise (F45 B2a-1, 13.10.2026): Codex-Schritte (Architekt, Review) bekommen die Harness-Regeln als Text im Auftrag — Projektkarte mit ARCHITECTURE.md, ADRs, DoD aus CLAUDE.md, Ausführungsrahmen, beim Review die Checkliste aus `.claude/agents/code-reviewer.md`; gleich für Claude und Codex. Skills bleiben für Codex nicht ladbar (bewusst, keine zweite Wahrheit wie AGENTS.md). Rest: Codex-Review-Spec → B2a-3 (F-1063).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-930** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12016,13 +12016,13 @@ Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18): Verbrauch je Rolle in F30 messe
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
-**F-931** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-931** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: ARCHITECTURE.md wirkt nur im Plan, nicht nachweislich in Bau und Review.
 Beschreibung: Architekt und Architecture-Advisor lesen ARCHITECTURE.md bzw. prüfen dagegen; für den Bauschritt, das Review und qa ist nicht belegt, dass ARCHITECTURE.md Prüfmaßstab ist oder gelesen wird.
 Fundstelle: `src/architekt/index.ts:766`, `src/architecture-advisor/index.ts:46`, `vorlagen/projekt-skelett/CLAUDE.md`.
 Auswirkung: Mittel — Konventionen greifen im Plan, können im Bau aber unbemerkt verletzt werden.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1 (Prüfmaßstab für Review und qa, Lesen in der Ausführung beobachten).
-Status: offen.
+Status: teilweise (F45 B2a-1, 13.10.2026): Code-Reviewer (Claude und Codex) bekommt ARCHITECTURE.md als Prüfmaßstab in der Projektkarte („ein Verstoß gegen Konventionen oder verbotene Patterns ist ein Befund“), der Advisor den Auszug. Rest: qa-Schritt gibt es erst mit B2b; ob die Ausführung ARCHITECTURE.md liest, ist weiterhin nur über CLAUDE.md-Pflichtlektüre gedeckt (F-1082 (4)).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-932** · `HARNESS_IMPROVEMENT` · P2 · teilweise
@@ -12061,13 +12061,13 @@ Maßnahme: In WS-4b (Abnahme und Reparatur werden ohnehin umgebaut) die Dialogst
 Status: erledigt (F44 WS-4b, 01.10.2026): Die Abnahme rendert `views/workflow-abnahme.js`, Notizen, Dialoginhalte (Freigabe, Stopp, Rückfrage, Sichtung), Reparatureditor sowie baueReparaturEntwurf, ermittleAbgeschwaechteFreigabenAnzeige und ermittleReparaturWarnungen `views/workflow-eingriffe.js` — beide rein (kein schreibender api.js-Import, in Node ohne DOM importierbar, eigene Tests). Bedienlogik, Kennzeichen, Dialogsteuerung und alle POSTs bleiben in `views/workflows.js` (unter 1 000 Zeilen). `tHtml` steht zentral in `i18n.js` und ersetzt die fünf lokalen `tx()` (dashboard, workboard, workboard-detail, workflow-detail, workflows) und `txHtml`; siehe F-940. Gates f15 und f42 lesen die neuen Module (Begründung im Gate-Kopf); f23 liest keinen View-Quelltext und blieb unverändert.
 Feature/Run: Entdeckt: Prüfpass F44 WS-4a (code-reviewer), 01.10.2026.
 
-**F-936** · `PROCESS_IMPROVEMENT` · P1 · offen
+**F-936** · `PROCESS_IMPROVEMENT` · P1 · teilweise
 Titel: Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe.
 Beschreibung: Projektbeschreibung, Arbeitsweise, Roadmap/Vision und Lagebild bekommen nur Router und Jarvis. Der Architekt bekommt Auftragstext, Rolleninstruktion und die entschiedenen ADRs, bei offenem Stack die Stackliste und im Projektmodus einen Capability-Auszug. Dass Codex im Read-only-Sandbox selbst Repo-Dateien liest, ist Zufall und kein Verfahren.
 Fundstelle: `scripts/leitstand-server.mjs`, `baueProjektkontextAnfragen` (ca. Z. 1996); aufgerufen nur für Router und Jarvis (ca. Z. 6949, 7126); Architekt-Kontext ca. Z. 4870 ff.
 Auswirkung: Hoch. Planende und prüfende Rollen urteilen ohne Vision und Ziele.
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 2. Eine Projektkarte (Vision, Ziele, Roadmap, Lagebild) geht an alle planenden und prüfenden Rollen. Architekt, Advisor und Review bekommen zusätzlich ARCHITECTURE.md und die ADRs. Zusammen mit F-929 und F-930.
-Status: offen.
+Status: teilweise (F45 B2a-1, 13.10.2026): Architekt, Architecture-Advisor und Code-Reviewer (Claude und Codex) bekommen beim Schrittstart die Projektkarte als Text im Auftrag — Projektbeschreibung (`docs/projekt/kontext/beschreibung.md`), Auftrag mit Ziel/AK/Nicht-Zielen, Auszug ARCHITECTURE.md, entschiedene ADRs (Architekt/Advisor über den bindenden ADR-Block, Review als Text), Ordnerübersicht (`src/projektkarte`, `starteWorkflowSchritt`); Hash/Abschnitte/Lücken in der Laufakte (`projektkarte`). Rest: Roadmap/Vision und Lagebild stehen nicht in der Karte (Größe; F-1082 (1)).
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
 
 **F-937** · `HARNESS_IMPROVEMENT` · P2 · teilweise
@@ -13218,14 +13218,15 @@ Status: teilweise (F45 F-2a, 12.10.2026): (3) umgesetzt — `bestaetigeLokaleDat
 Feature/Run: Entdeckt: F45 F-2a (Advisor A1/A3, code-reviewer 3, qa 1), 12.10.2026.
 Nachtrag (F45 F-2b-2b, 13.10.2026): (1) ist **F-2b-2c** zugeordnet (Advisor-Pass F-2b-2b „zu groß“). Advisor F12: es gibt keine bestehende Ablage für den Hash — der Weg „Laufakte des letzten Laufs“ trägt nicht (Schreiben über die Routen zwischen zwei Läufen ändert den Hash); naheliegend ist ein Kern-Artefakt in der Ablage der Workforce (`registriereKernArtefakt`, wie die Prüfberichte), keine lose Datei unter `kontrollzustand/` (ARCHITECTURE.md §2) — Änderung an ARCHITECTURE.md mit eigenem Advisor-Pass in F-2b-2c.
 Nachtrag (F45 F-2b-2c, 13.10.2026): (1) erledigt — der letzte bekannte Stand liegt in `faehigkeiten.stand.json` neben der lokalen Datei (`src/faehigkeiten/stand.ts`, atomar, LF, mit Pfad; ARCHITECTURE.md §2 als Ausnahme). Advisor-Pass F-2b-2c: kein Kern-Artefakt (A4: `kontrollzustand/` ist getrackt und je Checkout, Wachstum je Klick, umgelenkter Pfad nicht unterscheidbar; A3: die Hash-Kette schützt ohne Geheimnis nicht gegen Löschen/Anhängen) — nach Auftrag dann die JSON-Datei. Startregel fail-closed (A1/A2): Hash abweichend → Band „Stand vor dem letzten Neustart“, Sperre bis zur Bestätigung; Stand fehlt, ist beschädigt oder gehört zu einem anderen Pfad, Datei vorhanden → „kein gespeicherter Stand“, ebenfalls gesperrt (einmalig beim ersten Start mit F-2b-2c); nur Stand und Datei fehlend gilt als bekannt. Tests in `scripts/leitstand/routen-faehigkeiten.test.mjs`, `src/faehigkeiten/stand.test.ts`. Offen: (2), (4).
+Nachtrag (F45 B2a-1, 13.10.2026): Grenze: faehigkeiten.stand.json liegt neben der lokalen Datei — ein Prozess, der beide ändert, bleibt unentdeckt; Ziel ist sichtbar machen, kein Schutz gegen gezielte Änderung (Challenger 13.10.2026).
 
-**F-1062** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1062** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Der Codex-Reviewer bekommt den Prozess-Audit-Block (Challenger K24).
 Beschreibung: `baueBeobachtungsBlock` hängt dem Review-Auftrag „Beobachtung des Ausführungslaufs … fehlende oder unerwartete Nutzung als Befund“ an — auch für den Worker `codex`. Das widerspricht Stefans Codex-Review-Spec §4 (kein Audit von Harness-Schritten durch den Codex-Reviewer).
 Fundstelle: `src/claude-code-gateway/index.ts` (`baueBeobachtungsBlock`), Aufruf in `scripts/leitstand-server.mjs` beim Schritt `code-reviewer`.
 Auswirkung: Mittel — der Codex-Reviewer prüft Prozessnutzung statt Code; Befunde vermischen sich mit dem Harness-Abgleich.
 Maßnahme: B2a — Block nur für den Worker `claude-code`; „vorgesehen gegen benutzt“ bleibt über den Harness-Abgleich (Beleg 12) in der Abnahme.
-Status: offen.
+Status: erledigt (F45 B2a-1, 13.10.2026): `baueBeobachtungsBlock` hängt nur noch an Review-Schritte mit Worker claude-code; der Codex-Reviewer bekommt keinen Block. „Vorgesehen gegen benutzt“ bleibt im Harness-Abgleich der Abnahme (Beleg 12). Tests `scripts/leitstand/review-beobachtung.test.mjs`, Gate f45-b2a1 (f).
 Feature/Run: Entdeckt: Challenger, 12.10.2026 (Auftrag F45 F-2b).
 Zugeordnet: F45 B2a.
 
@@ -13239,33 +13240,33 @@ Status: offen.
 Feature/Run: Entdeckt: Challenger, 12.10.2026 (Auftrag F45 F-2b).
 Zugeordnet: F45 B2a.
 
-**F-1064** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1064** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Projektkarte mit Zuschnitt je Rolle (Challenger K26).
 Beschreibung: Architekt, Advisor und Reviewer kennen den Ausführungsrahmen nicht; Pläne enthalten deshalb Schritte, die die Ausführung nicht darf (git, Paket mit Installationsskript, `npm run check:<name>` (F-1041), Löschen ohne Löschliste, Hintergrundbefehle) → der Lauf endet VERWEIGERT oder braucht eine Korrekturrunde.
 Fundstelle: `src/architekt/index.ts`, Workflow-Vorlagen, Startvorlage/Werkzeugsatz.
 Auswirkung: Mittel — vermeidbare Verweigerungen und Korrekturrunden.
 Maßnahme: B2a — eine einzige, deterministisch je Ablauf neu erzeugte Projektkarte, je Rolle gefiltert, keine Handpflege. Abschnitte: Vorhaben (Projektbeschreibung, Akte, AK — deckt F-936), Bestand (Auszug ARCHITECTURE.md, ADRs, begrenzte Modul-/Verzeichnisübersicht), Ausführungsrahmen (aus Startvorlage und Werkzeugsatz: erlaubte Befehle, kein git, kein Hintergrund, Schreiben nur im Arbeitsordner, Löschen nur per Löschliste, npm-Skripte aus, Bash-Zeitgrenze), Aktive Fähigkeiten (Agents/Skills/MCPs aus dem F-1-Satz), Qualität (DoD aus CLAUDE.md, Prüfbefehl, AK). Zuschnitt: Architekt und Advisor alle Abschnitte; Ausführung Rahmen, Fähigkeiten, Qualität (plus DoD); Reviewer (Claude und Codex) Vorhaben, Bestand, Qualität und Prüfergebnis, ohne Bash-Details (Codex-Review-Spec). Hash der verwendeten Karte je Lauf in der Laufakte. Rahmen-Konflikte meldet der Architekt über vorhandene Felder (`entscheidungen_mensch` mit Kategorie „ausfuehrungsrahmen“ bzw. `capabilities_bedarf.status = "fehlt"`), kein neuer Mechanismus; der Advisor prüft, dass kein Planschritt außerhalb des Rahmens liegt, ohne so gemeldet zu sein. Nicht bauen: kein AGENTS.md (zweite Wahrheit), keine eigene Datei für Architekturprinzipien (stehen in ARCHITECTURE.md und ADRs).
-Status: offen.
+Status: erledigt (F45 B2a-1, 13.10.2026): `src/projektkarte` (`baueProjektkarte`, rein, deterministisch, je Lauf neu) mit Zuschnitt je Rolle (architekt alle fünf Abschnitte, architecture-advisor ohne Fähigkeiten, code-reviewer Vorhaben/Bestand/Qualität), Größengrenze mit sichtbarer Kürzung, Lücken in `fehlend` (fail-open). Ausführungsrahmen aus Werkzeugsatz des Ausführungsschritts und Startvorlage (Befehle, kein git, kein Hintergrund, Arbeitsordner, Löschliste, npm-Skripte aus, Bash-Zeitgrenze, Prüfbefehl); Rahmen-Konflikte meldet der Architekt über `entscheidungen_mensch` (kategorie 'sonstig', Frage „Ausführungsrahmen: …“) oder `capabilities_bedarf` 'fehlt', der Advisor prüft das. Hash je Lauf in der Laufakte (Schema additiv, beide Gateways). Die Ausführung bekommt bewusst keine Karte (Rahmen steht schon im Auftrag, DoD lädt Claude Code aus CLAUDE.md — Doppelung). Gate `scripts/check-f45-b2a1-projektkarte.mjs`; echter Lauf `features/F45/nachweise/b2a1/`.
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 Zugeordnet: F45 B2a.
 
-**F-1065** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1065** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Der Architekt sieht im Feature-Modus den Bestand nicht (Challenger K27).
 Beschreibung: `baueArchitektAuftragstext` gibt im Modus „feature“ nur Rolleninstruktion, ADR-Block, Stack-Hinweis und Planungsauftrag; es fehlen Capability-Auszug (nur im Modus „projekt“), ARCHITECTURE.md, Modulübersicht und eine Anweisung, den Code zu lesen. Codex läuft `--sandbox read-only` und könnte lesen, wird aber nicht angewiesen.
 Fundstelle: `src/architekt/index.ts` (`baueArchitektAuftragstext`).
 Auswirkung: Mittel — Entwürfe ohne Kenntnis des Bestands.
 Maßnahme: B2a, mit F-1064 — Projektkarte an den Architekten; Anweisung „Relevante Dateien vor dem Entwurf lesen, als [Fakt] mit Pfad belegen“; Capability-Auszug auch im Feature-Modus.
-Status: offen.
+Status: erledigt (F45 B2a-1, 13.10.2026): Projektkarte auch im Modus „feature“; Capability-Auszug in beiden Modi (Feature-Modus fail-open, Projektmodus bricht wie bisher ab); Rolleninstruktion „relevante Dateien vor dem Entwurf lesen, als [Fakt] mit Pfad belegen“ (`ARCHITEKT_LESE_ANWEISUNG`). Echter Lauf: 8 × [Fakt], davon 6 mit Pfad (`features/F45/nachweise/b2a1/nachweis.md`).
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 Zugeordnet: F45 B2a.
 
-**F-1066** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1066** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: ARCHITECTURE.md wird in neuen Projekten von niemandem befüllt (Challenger K28).
 Beschreibung: Das Skelett liefert ARCHITECTURE.md komplett als [FÜLLUNG]; die Schreib-Allowlist des Architekt-Projektmodus (`src/architekt/index.ts`, `PROJEKTMODUS_SCOPE_ALLOWLIST_DATEIEN`, F-712) erlaubt nur `docs/**`, `features/**` und `CLAUDE.md` → der wichtigste Bestandsteil der Karte bleibt leer.
 Fundstelle: `src/architekt/index.ts`, `vorlagen/projekt-skelett/ARCHITECTURE.md`.
 Auswirkung: Mittel — die Projektkarte (F-1064) hätte keinen Bestand.
 Maßnahme: B2a, mit F-1064/F-1065 — ARCHITECTURE.md in die Allowlist des Projektmodus; Abschnitt Ordnerstruktur/Module/Datenzugriff beim Stack-Entscheid zur Pflicht (gleiche Prüfung wie CLAUDE.md und ADR, F-714); die Karte erkennt [FÜLLUNG] und meldet „Architektur noch nicht beschrieben“ statt Vorlagentext. Verwerfen nur, falls ARCHITECTURE.md in Fremdprojekten bewusst Handarbeit bleiben soll.
-Status: offen.
+Status: erledigt (F45 B2a-1, 13.10.2026): ARCHITECTURE.md in `PROJEKTMODUS_SCOPE_ALLOWLIST_DATEIEN` (Wortlaut an allen Stellen nachgezogen); `baueStackEntscheidungsInstruktion` verlangt Ordnerstruktur (mit Modulen/Ordnern) und Datenzugriff; Regel 1h prüft das als dritte Pflicht (`stackArchitekturFehlt`, auch im VERWEIGERT-Pfad) mit derselben Regel wie die Karte (`analysiereArchitektur`: HTML-Kommentare ignoriert, je `## `-Abschnitt, Platzhalter [FÜLLUNG/FUELLUNG]); die Karte meldet „Architektur noch nicht beschrieben“ statt Vorlagentext. Entscheidung O2 (Challenger 13.10.2026): Pflicht sind Ordnerstruktur und Datenzugriff, „Module“ nur als Satz in der Stack-Instruktion, Skelett unverändert.
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 Zugeordnet: F45 B2a.
 
@@ -13423,3 +13424,12 @@ Auswirkung: Gering — jeweils fail-closed (die Ausführung bzw. Installation le
 Maßnahme: (1) Gate (j) mit zweiter Zeile desselben Repos, bei „mehrdeutig“ Hinweis statt Leere; (2) Kollisionshinweis gegen die Katalog-ids, offener Auftrag „Vormerken: <name>“ als Sperre; (3) fest `/api/auftraege` für das Vormerken aus der Sammlung; (4) Pfad-Feld bei katalog_id ausblenden; (5) kleine Tests mit Fetch-Attrappe; (6) Codes statt Text (Muster F-1016); (7) Platz .library-eignung in den Sperrblock; (8) eigener Text für „unbekannt“; (10) gesperrter „Installieren“ ohne primary, „Prüfen & freigeben“ nachrangig, solange der Dialog offen ist; (11) Sperrtexte nur mit dem Sachgrund (mit (6)).
 Status: offen.
 Feature/Run: Entdeckt: F45 F-2b-2c (code-reviewer, qa, design-guardian), 13.10.2026.
+
+**F-1082** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B2a-1 (Projektkarte).
+Beschreibung: (1) Roadmap/Vision und Lagebild (F-936) stehen nicht in der Projektkarte — Größe; jarvis/router bekommen sie weiter. (2) „Feature-Akte“ in der Karte ist immer „kein Feature-Bezug“, weil Auftrag v0 keinen Bezug trägt (→ B2a-2). (3) Urteil je DoD-/Checklisten-Punkt nur im Befund-Format (Präfix, Zählzeile in `empfehlung`), nicht strukturiert (→ B2a-3, Review-Schema v2). (4) Ob die Ausführung ARCHITECTURE.md liest, ist nur über die CLAUDE.md-Pflichtlektüre gedeckt; einen qa-Schritt mit Karte gibt es erst mit B2b (F-931). (5) „Im Projekt eingeschaltete Fähigkeiten“ ist der Stand der Seite Workforce im Projektordner, nicht der beim Bau eingefrorene F-1-Satz (der entsteht erst mit der Empfehlung am Ausführungsstart); die Karte sagt das. (6) Die Größengrenzen je Rolle (24 000 / 20 000 / 20 000 Zeichen nach der Korrekturrunde) sind geschätzt; die Karte dieses Repos für den Architekten hatte im echten Lauf 15 614 Zeichen. (7) Entscheidung Stefan (QA L3): der Code-Reviewer liest seinen Prüfmaßstab (ARCHITECTURE.md, DoD, ADRs, Checkliste) aus dem Arbeitsordner, also nach dem Bau — die Ausführung könnte ihn abschwächen, ohne dass die Karte das zeigt; keine der Dateien steht in `STANDARD_PRUEFKETTEN_MUSTER`. Optionen: Maßstab aus dem Basis-Commit lesen, oder in der Karte „im Lauf geändert“ markieren (Abgleich mit der Änderungsübersicht); im Projektmodus ist eine geänderte ARCHITECTURE.md gewollt. (8) Ungetestet: Karte bei Workflow mit eigenem Arbeitsordner (QA L6; liest aus `laufWurzel`), Weitergabe Controller → Claude-Gateway (QA L10; Codex-Weg durch den echten Lauf belegt). (9) Was die Gesamtkürzung am Ende des Bestands abschneidet (z. B. Teile der Ordnerübersicht), trägt keinen eigenen Quellstand — der Hash kann dort eine Änderung verpassen (Code-Review 4, Rest; Dateien mit Quellstand: Beschreibung, ARCHITECTURE.md, ADRs, Checkliste). (10) Die Pflichtregel (Regel 1h) erkennt nur die Skelett-Titel „Ordnerstruktur“/„Datenzugriff“; eine gefüllte Datei mit anderen Titeln zeigt ihren Auszug, hält aber nach einer Stack-Entscheidung an (O2, bewusst).
+Fundstelle: `src/projektkarte/index.ts`, `scripts/leitstand-server.mjs` (`leseProjektkarteEingaben`).
+Auswirkung: Gering bis mittel — jeweils benannt und in der Karte sichtbar, kein stiller Verlust.
+Maßnahme: (2) mit B2a-2, (3) mit B2a-3, (4) mit B2b; (1)/(6) nach dem Referenzauftrag R messen (Verbrauch je Rolle, F-930); (7) Entscheidung Stefan; (8) Testfälle im Gate f45-b2a1 nachziehen; (9) Quellstand der Ordnerübersicht; (10) bei Bedarf Titelliste je Sprache.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2a-1 (Plan, Advisor-Pass, echter Lauf, code-reviewer, qa), 13.10.2026.

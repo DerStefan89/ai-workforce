@@ -133,6 +133,20 @@
           }
         }
       }
+    },
+    "projektkarte": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "abschnitte", "fehlend"],
+      "description": "F45 B2a-1 (F-1064, Beleg 1). Optional (append-only): nur Läufe der Rollen architekt, architecture-advisor und code-reviewer aus einem Workflow, für beide Worker. hash = sha256 über den Kartentext im Auftrag (src/projektkarte, deterministisch je Lauf erzeugt); abschnitte = Zuschnitt der Rolle; fehlend = benannte Lücken (fehlende/unlesbare Quellen, fail-open). Der Text selbst steht im Auftrag (Rohstrom), nicht hier. Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts).",
+      "properties": {
+        "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "abschnitte": {
+          "type": "array",
+          "items": { "enum": ["vorhaben", "bestand", "ausfuehrungsrahmen", "faehigkeiten", "qualitaet"] }
+        },
+        "fehlend": { "type": "array", "items": { "type": "string" } }
+      }
     }
   }
 }

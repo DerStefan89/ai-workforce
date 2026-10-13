@@ -5,7 +5,8 @@
  * (Muster scripts/check-f35-ws2-urteil-je-ak.mjs):
  * - F-937 (Teil Review): der Auftragstext des code-reviewer-Schritts trägt die Beobachtung des
  *   Ausführungslaufs (geladen gegen aufgerufen, Hintergrund-Aufrufe); ohne beobachtung (Codex-Lauf)
- *   den Satz „keine Beobachtung“.
+ *   den Satz „keine Beobachtung“. Seit F45 B2a-1 (F-1062) nur für den Worker claude-code; der Codex-Reviewer
+ *   bekommt keinen Block (wohl aber die Projektkarte).
  * - F-1026: ein Ausführungslauf, den der Result Evaluator als FEHLGESCHLAGEN/'hintergrund_ausfuehrung'
  *   einordnet, hält den Workflow an (KLAERUNG_ERFORDERLICH) mit klarem Grund; der Review startet nicht.
  *
@@ -82,8 +83,11 @@ function baueAttrappe({ beobachtung, ausfuehrungsKlassifikation = { ergebnis: 'E
   return { fn, texte }
 }
 
-/** Startet Server, legt Auftrag + Zwei-Schritt-Workflow an, startet ihn und wartet auf das Ende. */
-async function fuehreDurch(attrappe) {
+/**
+ * Startet Server, legt Auftrag + Zwei-Schritt-Workflow an, startet ihn und wartet auf das Ende.
+ * F45 B2a-1 (F-1062): reviewWorker wählt den Worker des Review-Schritts — claude-code nur mit output_schema null (Regel 4b).
+ */
+async function fuehreDurch(attrappe, reviewWorker = 'claude-code') {
   const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, repoWurzel, installWurzel: process.cwd(), startvorlagePfad, fuehreAufgabeDurchFn: attrappe.fn }))
   await new Promise((r) => server.listen(0, '127.0.0.1', r))
   const basisUrl = `http://127.0.0.1:${server.address().port}`
@@ -119,7 +123,7 @@ async function fuehreDurch(attrappe) {
         grenzen: { max_schritte: 6, max_replans: 1 },
         schritte: [
           schritt('schritt-1-ausfuehrung', 'ausfuehrung', 'schreibend', 'claude-code', null, 'schritt-2-review', 'ZWINGEND'),
-          schritt('schritt-2-review', 'code-reviewer', 'lesend', 'codex', 'ergebnis-code-reviewer', null, 'AUTOMATISCH'),
+          schritt('schritt-2-review', 'code-reviewer', 'lesend', reviewWorker, reviewWorker === 'codex' ? 'ergebnis-code-reviewer' : null, null, 'AUTOMATISCH'),
         ],
       },
       profilReferenz,
@@ -150,10 +154,18 @@ test('F-937: Review-Auftragstext trägt die Beobachtung des Ausführungslaufs (g
   assert.doesNotMatch(attrappe.texte.get('ausfuehrung') ?? '', /Beobachtung des Ausführungslaufs/)
 })
 
-test('F-937: ohne beobachtung (Codex-Ausführung) trägt der Review-Auftragstext „keine Beobachtung“', async () => {
+test('F-937: ohne beobachtung (Ausführung ohne init-Zeile) trägt der Review-Auftragstext „keine Beobachtung“', async () => {
   const attrappe = baueAttrappe({ beobachtung: undefined })
   await fuehreDurch(attrappe)
   assert.match(attrappe.texte.get('code-reviewer') ?? '', /keine Beobachtung \(Codex-Lauf oder Lauf ohne init-Zeile\)/)
+})
+
+test('F-1062: der Codex-Reviewer bekommt keinen Beobachtungsblock, aber die Projektkarte', async () => {
+  const attrappe = baueAttrappe({ beobachtung: BEOBACHTUNG })
+  await fuehreDurch(attrappe, 'codex')
+  const text = attrappe.texte.get('code-reviewer') ?? ''
+  assert.doesNotMatch(text, /Beobachtung des Ausführungslaufs/)
+  assert.match(text, /# Projektkarte/)
 })
 
 test('F-1026: Ausführung FEHLGESCHLAGEN/hintergrund_ausfuehrung → KLAERUNG_ERFORDERLICH mit klarem Grund, kein Review', async () => {

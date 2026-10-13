@@ -46,7 +46,7 @@
  * Aufrufpfad (POST /api/auftraege mit herkunft.art 'projekt_interview' →
  * echter Workflow-Schrittstart über POST /api/workflows/<id>/starten, echtes
  * Wegwerf-Git-Repo) — ein Projektmodus-'ausfuehrung'-Lauf, der außerhalb der
- * Allowlist (docs/**, features/**, CLAUDE.md) schreibt, hält auf
+ * Allowlist (docs/**, features/**, CLAUDE.md, ARCHITECTURE.md) schreibt, hält auf
  * KLAERUNG_ERFORDERLICH mit dem Dateinamen im Grund; innerhalb der Allowlist
  * läuft er durch; derselbe Verstoß OHNE herkunft.art (Featuremodus) bleibt
  * FOLGENLOS (AK3-Regression).
@@ -777,6 +777,10 @@ try {
     let claudeMdFuellen = false
     /** true = der Lauf legt real ein ADR unter docs/adr/ an, das auf die Entscheidung verweist; false = kein ADR. */
     let adrSchreiben = false
+    /** F45 B2a-1 (F-1066): true = der Lauf füllt ARCHITECTURE.md (Ordnerstruktur, Datenzugriff); false = unverändert (fehlt). */
+    let architekturFuellen = false
+    /** F45 B2a-1 (Code-Review 3): true = der Lauf endet VERWEIGERT ohne Bypass-Verdacht (Regel 1h im VERWEIGERT-Pfad des Servers). */
+    let verweigern = false
     /** Der real gesehene Auftragstext des zuletzt gestarteten 'ausfuehrung'-Laufs (Muster (o)-Block, check-f39-architekt.mjs). */
     let gesehenerAuftragstext = null
     /** Die Entscheidungsartefakt-Id des zuletzt gestarteten Workflows (workflowEntscheidungArtefaktId-Format), für den ADR-Verweis im Stub. */
@@ -790,6 +794,12 @@ try {
         const adrOrdner = join(repoWurzelWegwerf, 'docs', 'adr')
         mkdirSync(adrOrdner, { recursive: true })
         writeFileSync(join(adrOrdner, '0001-stack.md'), `# ADR 0001: Stack\n\nEntscheidung: ${aktuelleEntscheidungArtefaktId}\n`)
+      }
+      if (architekturFuellen) {
+        writeFileSync(join(repoWurzelWegwerf, 'ARCHITECTURE.md'), '# ARCHITECTURE.md\n\n## 1. Ordnerstruktur\n\n- `src/` — Code\n\n## 2. Datenzugriff\n\n- Dateien, nur der Kern schreibt.\n')
+      }
+      if (verweigern) {
+        return { ok: true, klassifikation: { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: 0 }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'VERWEIGERT' } }
       }
       return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
     }
@@ -942,17 +952,41 @@ try {
       }
       commitAlles()
 
-      // (h3) Grün-Fall: Stack entschieden, CLAUDE.md UND ein referenzierendes ADR werden real geschrieben.
+      // (h3) Rot-Fall (F45 B2a-1, F-1066): CLAUDE.md und ADR gepflegt, ARCHITECTURE.md nicht — dritte Pflicht.
+      // Vorher war das der Grün-Fall; bewusst umgedreht, weil baueStackEntscheidungsInstruktion jetzt auch
+      // ARCHITECTURE.md (Ordnerstruktur, Datenzugriff) verlangt.
       claudeMdFuellen = true
       adrSchreiben = true
+      architekturFuellen = false
+      const ohneArchitektur = await starteAusfuehrungMitStackEntscheidungUndLiesWorkflow()
+      if (ohneArchitektur.status !== 'KLAERUNG_ERFORDERLICH' || !String(ohneArchitektur.grund ?? '').includes('ARCHITECTURE.md ohne beschriebene Ordnerstruktur/Datenzugriff (F-1066)')) {
+        befunde.push(`(h3) CLAUDE.md + ADR, aber ARCHITECTURE.md fehlt, sollte KLAERUNG_ERFORDERLICH (F-1066) liefern, erhalten status=${ohneArchitektur.status} grund=${JSON.stringify(ohneArchitektur.grund)}`)
+      }
+      if (!ohneArchitektur.auftragstext.includes("ARCHITECTURE.md die Abschnitte 'Ordnerstruktur'")) {
+        befunde.push('(h3) Die Stack-Instruktion sollte ARCHITECTURE.md (Ordnerstruktur, Datenzugriff) verlangen (F-1066)')
+      }
+      commitAlles()
+
+      // (h5) VERWEIGERT-Pfad (F45 B2a-1, Code-Review 3): derselbe Rot-Fall wie (h3), der Lauf endet aber VERWEIGERT ohne
+      // Bypass-Verdacht — der Server sammelt Regel 1h dort selbst (nachlaufVerstoesseVerweigert) und muss F-1066 nennen.
+      verweigern = true
+      const verweigert = await starteAusfuehrungMitStackEntscheidungUndLiesWorkflow()
+      verweigern = false
+      if (verweigert.status !== 'KLAERUNG_ERFORDERLICH' || !String(verweigert.grund ?? '').includes('ARCHITECTURE.md ohne beschriebene Ordnerstruktur/Datenzugriff (F-1066)')) {
+        befunde.push(`(h5) VERWEIGERT ohne Bypass-Verdacht, ARCHITECTURE.md fehlt: erwartet KLAERUNG_ERFORDERLICH mit F-1066, erhalten status=${verweigert.status} grund=${JSON.stringify(verweigert.grund)}`)
+      }
+      commitAlles()
+
+      // (h4) Grün-Fall: Stack entschieden, CLAUDE.md, referenzierendes ADR UND ARCHITECTURE.md real geschrieben.
+      architekturFuellen = true
       const gruen = await starteAusfuehrungMitStackEntscheidungUndLiesWorkflow()
       if (gruen.status !== 'ABGESCHLOSSEN') {
-        befunde.push(`(h3) Stack entschieden + CLAUDE.md UND ADR real gepflegt sollte ABGESCHLOSSEN liefern, erhalten status=${gruen.status} grund=${JSON.stringify(gruen.grund)}`)
+        befunde.push(`(h4) Stack entschieden + CLAUDE.md, ADR und ARCHITECTURE.md real gepflegt sollte ABGESCHLOSSEN liefern, erhalten status=${gruen.status} grund=${JSON.stringify(gruen.grund)}`)
       }
 
       if (befunde.length === vor) {
         console.log(
-          "✓ (h1)-(h3) F-714 real über den Aufrufpfad: baueStackEntscheidungsInstruktion hängt CLAUDE.md/ADR-Anweisung an; fehlt CLAUDE.md ODER das referenzierende ADR, hält der Workflow (KLAERUNG_ERFORDERLICH); erst wenn beide real gepflegt sind, läuft der Workflow durch."
+          "✓ (h1)-(h5) F-714/F-1066 real über den Aufrufpfad (h5: auch im VERWEIGERT-Pfad): baueStackEntscheidungsInstruktion hängt CLAUDE.md/ADR/ARCHITECTURE.md-Anweisung an; fehlt CLAUDE.md, das referenzierende ADR ODER eine beschriebene ARCHITECTURE.md, hält der Workflow (KLAERUNG_ERFORDERLICH); erst wenn alle drei real gepflegt sind, läuft der Workflow durch."
         )
       }
     } finally {

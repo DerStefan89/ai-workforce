@@ -456,7 +456,7 @@ import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { fuehreGitSync } from '../src/git-starter/index.ts'
 import { homedir } from 'node:os'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { readFile as readFileAsync, readdir as readdirAsync, stat as statAsync } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -508,6 +508,8 @@ import {
   validiereErgebnisArchitektur,
 } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
+import { leseHarnessInventar } from '../src/harness-abgleich/index.ts'
+import { analysiereArchitektur, baueProjektkarte, istKarteRolle } from '../src/projektkarte/index.ts'
 import { istAusnahmePfad, pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
 import {
   baueLoeschlistenSatz,
@@ -2415,6 +2417,31 @@ export function filtereExistierendeAnfragen(anfragen, repoWurzel) {
 }
 
 /**
+ * F45 B2a-1: liest eine Textdatei des Projekts für die Projektkarte — fail-open (Muster filtereExistierendeAnfragen:
+ * fehlend und leer sind gleich, kein Abbruch), Pfadsicherheit wie die Leseschleife von loeseAusfuehrungsEingabenAuf
+ * (loeseEvidenzPfadAuf, nur innerhalb der Wurzel). Für Dateien, die der Server sonst nicht liest (ARCHITECTURE.md,
+ * .claude/agents/code-reviewer.md) und die Projektbeschreibung (jarvis/router lesen sie unverändert über ihre Anfragen).
+ * @param relPfad - repo-relativer Pfad mit '/'
+ * @param wurzel - absoluter Ordner des Laufs
+ * @returns { datei: { pfad, text } | null, fehler: null | 'fehlt' | Grund }
+ */
+export function leseKarteDatei(relPfad, wurzel) {
+  const pfadErgebnis = loeseEvidenzPfadAuf(relPfad, wurzel)
+  if (!pfadErgebnis.ok) return { datei: null, fehler: pfadErgebnis.grund }
+  const ziel = join(wurzel, pfadErgebnis.relativerPfad)
+  try {
+    if (!existsSync(ziel) || !statSync(ziel).isFile()) return { datei: null, fehler: 'fehlt' }
+    // Code-Review 8: eine Verknüpfung nach außerhalb des Ordners wird nicht gelesen (Muster leseInnen, src/harness-abgleich).
+    const relativ = relative(realpathSync(wurzel), realpathSync(ziel))
+    if (relativ.startsWith('..') || isAbsolute(relativ)) return { datei: null, fehler: 'Verknüpfung nach außerhalb des Ordners' }
+    const text = readFileSync(ziel, 'utf8')
+    return text.trim() === '' ? { datei: null, fehler: 'fehlt' } : { datei: { pfad: relPfad, text }, fehler: null }
+  } catch (fehler) {
+    return { datei: null, fehler: `nicht lesbar (${fehler.message})` }
+  }
+}
+
+/**
  * Impure Wiring-Funktion für E-F39-1=B (löst F-643): liest .git/HEAD und führt
  * `git --no-optional-locks status --porcelain` real gegen repoWurzel aus (über den Git-Starter, F-1000),
  * reicht beide Rohtexte
@@ -2808,6 +2835,8 @@ export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leits
  *   pruefOrdner (F45 F-2b-2, Advisor C4): absoluter Prüfordner eines Prüflaufs — nur mit rolle 'eignungspruefung' (und diese
  *   Rolle nur mit ihm); setzt ortB (--add-dir Prüfordner, --settings ohne Skills/Plugins), ortBLauf (Init-Gate skills = ∅) und
  *   CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0
+ *   projektkarte (F45 B2a-1): { hash, abschnitte, fehlend } der Projektkarte im Auftragstext — geht unverändert in die
+ *   Eingaben (Laufakte projektkarte, beide Worker)
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund, konflikt? (F45 F-2a: Anzeige veraltet → 409 im Workflow) }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
@@ -3164,6 +3193,8 @@ ${faehigkeitenInstruktion}` : auftragstext,
       // für jeden schreibenden Lauf, dem der Server ihn mitgibt (Code-Review 2).
       ...(faehigkeitenImLauf !== undefined ? { faehigkeitenImLauf } : {}),
       ...(werkzeugsatz.art === 'schreibend' && typeof (optionen.faehigkeitenLokalPfad ?? fk?.lokalPfad) === 'string' ? { faehigkeitenLokalPfad: optionen.faehigkeitenLokalPfad ?? fk.lokalPfad } : {}),
+      // F45 B2a-1: Metadaten der Projektkarte (nur wenn starteWorkflowSchritt eine Karte angehängt hat) → Laufakte.
+      ...(optionen.projektkarte !== undefined ? { projektkarte: optionen.projektkarte } : {}),
       // worker/ausgabeSchemaPfad erscheinen NUR beim Codex-Zweig im Ergebnis
       // (F-286): ein Claude-Code-Lauf behält damit exakt den Feldsatz, den er
       // vor F16 hatte — byte-identisch, kein bestehender Test muss angepasst
@@ -5163,6 +5194,121 @@ export function erzeugeRequestHandler(optionen = {}) {
   } = optionen
 
   /**
+   * F45 F-2a, herausgezogen in B2a-1: gemeinsame Grundlage der Fähigkeiten-Routen und der Projektkarte — Katalog
+   * (validiert), lokale Datei und Stand der Projekt-Agents/-Skills im Projektordner. Ein Lesepfad für beide (D5);
+   * die Fehlertexte sind die der Routen (HTTP 500).
+   * @returns { ok: true, katalogRoh, lokal, projektStand } oder { ok: false, grund }
+   */
+  function ladeFaehigkeitenGrundlage() {
+    let katalogRoh
+    try {
+      katalogRoh = leseRessourcenRoh(installWurzel)
+    } catch (fehler) {
+      return { ok: false, grund: `ressourcen.json nicht lesbar: ${fehler.message}` }
+    }
+    const katalogVerstoesse = validiereRessourcenDaten(katalogRoh)
+    if (katalogVerstoesse.length > 0) return { ok: false, grund: `ressourcen.json ungültig: ${katalogVerstoesse.join('; ')}` }
+    const eingebaut = leseEingebautReferenz()
+    if (!eingebaut.ok) return { ok: false, grund: eingebaut.grund }
+    const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
+    // Angezeigt und freigegeben wird der Stand des Projektordners; im Lauf zählt der Hash im Arbeitsordner.
+    const projektStand = ermittleProjektFaehigkeiten(repoWurzel, {
+      katalog: katalogFreigaben(katalogRoh.ressourcen, installWurzel),
+      einstellungen: lokal.zustand === 'ungueltig' ? { an: [], aus: [], inhalt_freigaben: {} } : projektEinstellungen(lokal.daten, projektId),
+      werkzeugNamen: [...new Set((vorlage.werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? []).map((regel) => regel.split('(')[0]))],
+      referenz: eingebaut.referenz,
+    })
+    return { ok: true, katalogRoh, lokal, projektStand }
+  }
+
+  /**
+   * F45 B2a-1: im Projekt eingeschaltete Fähigkeiten für die Projektkarte — dieselbe Regel wie die Seite Workforce
+   * (baueFaehigkeitenStatus, Feld aktiv). Fail-open: ein Fehler wird eine Lücke, kein Abbruch.
+   * @returns { faehigkeiten: [{ typ, name, quelle }] | null, fehler: string | null }
+   */
+  function ermittleEingeschalteteFaehigkeiten() {
+    try {
+      const grundlage = ladeFaehigkeitenGrundlage()
+      if (!grundlage.ok) return { faehigkeiten: null, fehler: `Fähigkeiten: ${grundlage.grund}` }
+      const status = baueFaehigkeitenStatus({
+        projektId,
+        lokal: grundlage.lokal,
+        katalog: loeseRessourcenAuf(grundlage.katalogRoh.ressourcen, repoWurzel, startvorlagePfad),
+        projekt: grundlage.projektStand,
+        letzterLauf: null,
+        kennung: empfehlungsKennung,
+      })
+      return { faehigkeiten: status.eintraege.filter((e) => e.aktiv).map((e) => ({ typ: e.typ, name: e.name, quelle: e.quelle })), fehler: null }
+    } catch (fehler) {
+      return { faehigkeiten: null, fehler: `Fähigkeiten: ${fehler.message}` }
+    }
+  }
+
+  /**
+   * F45 B2a-1 (F-1064): liest die Eingaben der Projektkarte für einen Workflow-Schritt aus dem Ordner des Laufs —
+   * über die bestehenden Lesepfade (leseHarnessInventar für die DoD, leseEntschiedeneAdrs, leseVersionierteDateien,
+   * ladeFaehigkeitenGrundlage) bzw. leseKarteDatei für Dateien, die der Server sonst nicht liest. Jede Quelle fail-open:
+   * eine fehlende Datei ist null (die Karte nennt die Lücke), ein Lesefehler steht in lesefehler.
+   * @param rolle - architekt, architecture-advisor oder code-reviewer
+   * @param laufWurzel - Ordner des Laufs (Arbeitsordner oder Projektordner)
+   * @param workflowDaten - geladene Workflow-Daten (ziel, Ausführungsschritt)
+   * @param auftragDaten - geladener Auftrag (titel, akzeptanzkriterien, nicht_ziele)
+   * @param arbeitsordner - true, wenn der Ablauf einen eigenen Arbeitsordner hat
+   * @param zusatzLuecken - Lücken, die der Aufrufer schon kennt (z. B. Capability-Auszug nicht lesbar, QA L8)
+   * @returns ProjektkarteEingaben (src/projektkarte/types.ts)
+   */
+  function leseProjektkarteEingaben(rolle, laufWurzel, workflowDaten, auftragDaten, arbeitsordner, zusatzLuecken = []) {
+    const lesefehler = [...zusatzLuecken]
+    // Code-Review 5: ein Fehler in einer Quelle wird eine Lücke, nicht der Verlust der ganzen Karte.
+    const versuche = (name, fn, ersatz) => {
+      try {
+        return fn()
+      } catch (fehler) {
+        lesefehler.push(`${name}: nicht lesbar (${fehler?.message ?? fehler})`)
+        return ersatz
+      }
+    }
+    const lese = (relPfad) => {
+      const ergebnis = leseKarteDatei(relPfad, laufWurzel)
+      if (ergebnis.fehler !== null && ergebnis.fehler !== 'fehlt') lesefehler.push(`${relPfad}: ${ergebnis.fehler}`)
+      return ergebnis.datei
+    }
+    const claudeMdFehler = []
+    const dod = []
+    for (const eintrag of versuche('CLAUDE.md', () => leseHarnessInventar(laufWurzel), [])) {
+      if (eintrag.art === 'dod' && typeof eintrag.detail === 'string') dod.push(eintrag.detail)
+      if (eintrag.art === 'quelle' && eintrag.name === 'CLAUDE.md') claudeMdFehler.push(`CLAUDE.md: ${eintrag.grund}`)
+    }
+    lesefehler.push(...claudeMdFehler)
+    const satz = versuche('Ausführungsrahmen', () => {
+      const ausfuehrung = findeAusfuehrungsSchritt(workflowDaten)
+      return ausfuehrung === null ? undefined : loeseWerkzeugsatzAuf(vorlage, ausfuehrung.werkzeugsatz)
+    }, undefined)
+    const faehigkeiten = rolle === 'architekt' ? ermittleEingeschalteteFaehigkeiten() : { faehigkeiten: null, fehler: null }
+    if (faehigkeiten.fehler !== null) lesefehler.push(faehigkeiten.fehler)
+    return {
+      projektbeschreibung: lese(`${kontextPfad}/beschreibung.md`),
+      auftrag: {
+        titel: auftragDaten.titel,
+        ziel: typeof workflowDaten.ziel === 'string' ? workflowDaten.ziel : null,
+        akzeptanzkriterien: Array.isArray(auftragDaten.akzeptanzkriterien) ? auftragDaten.akzeptanzkriterien : [],
+        nicht_ziele: Array.isArray(auftragDaten.nicht_ziele) ? auftragDaten.nicht_ziele : [],
+      },
+      architektur: lese('ARCHITECTURE.md'),
+      adrs: versuche('docs/adr', () => leseEntschiedeneAdrs(laufWurzel), ''),
+      dateien: versuche('Ordnerübersicht', () => leseVersionierteDateien(laufWurzel), null),
+      rahmen:
+        satz === undefined
+          ? null
+          : { werkzeuge: [...satz.erlaubte_werkzeuge], bashZeitgrenzeMs: vorlage.bashZeitgrenzeMs ?? null, pruefbefehl: vorlage.pruefbefehl ?? null, arbeitsordner },
+      faehigkeiten: faehigkeiten.faehigkeiten,
+      dod: claudeMdFehler.length > 0 || dod.length === 0 ? null : dod,
+      reviewCheckliste: rolle === 'code-reviewer' ? lese('.claude/agents/code-reviewer.md') : null,
+      lesefehler,
+    }
+  }
+
+  /**
    * F45 F-2a (Advisor A7): zusatz der Empfehlung (aus, faehigkeiten: Einstellungen des Projekts und Werkzeugnamen des
    * Schritts) aus EINER gelesenen lokalen Datei — Anzeige, Vorprüfung und Start übergeben dieselbe Form, damit der
    * Cache-Schlüssel gleich bleibt. Eine ungültige Datei gilt hier als leer (der Start bricht dann ohnehin in
@@ -5964,15 +6110,19 @@ export function erzeugeRequestHandler(optionen = {}) {
     // um baueUmsetzungsInstruktion projektmodus-bewusst aufzurufen (baueStackEntscheidungsInstruktion
     // hängt seit F-753 modusunabhängig an).
     const modus = auftragVersion.daten.herkunft?.art === 'projekt_interview' ? 'projekt' : 'feature'
+    // F45 B2a-1: Lücken, die vor der Projektkarte bekannt werden (QA L8) — sie stehen dann in der Karte und in der Laufakte.
+    const kartenLuecken = []
     if (schritt.rolle === 'architekt') {
+      // F45 B2a-1 (F-1065): der Capability-Auszug geht in beiden Modi an den Architekten. Im Modus 'projekt' bleibt eine
+      // unlesbare ressourcen.json ein Abbruch (wie bisher); im Modus 'feature' fail-open — der Entwurf läuft ohne Auszug.
       let capabilityAuszug = null
-      if (modus === 'projekt') {
-        try {
-          const ressourcenRoh = leseRessourcenRoh(installWurzel)
-          capabilityAuszug = baueCapabilityAuszug(loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad))
-        } catch (fehler) {
-          return { ok: false, art: 'nichtLadbar', grund: `ressourcen.json nicht lesbar: ${fehler.message}` }
-        }
+      try {
+        const ressourcenRoh = leseRessourcenRoh(installWurzel)
+        capabilityAuszug = baueCapabilityAuszug(loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad))
+      } catch (fehler) {
+        if (modus === 'projekt') return { ok: false, art: 'nichtLadbar', grund: `ressourcen.json nicht lesbar: ${fehler.message}` }
+        console.error(`[leitstand] ressourcen.json nicht lesbar — Architekt (Modus feature) ohne Capability-Auszug: ${fehler.message}`)
+        kartenLuecken.push(`Capability-Auszug: ressourcen.json nicht lesbar (${fehler.message})`)
       }
       // F-707 (BUG P1, F42-WS-2-Verifikation): OHNE das vierte Argument bleibt stackOffen beim
       // Default 'false' — STACK_OFFEN_HINWEIS erreichte den Architekten dann nie, obwohl
@@ -6103,12 +6253,30 @@ export function erzeugeRequestHandler(optionen = {}) {
       auftragstext = `${auftragstext}\n\n${baueAkPruefInstruktion(auftragVersion.daten.akzeptanzkriterien, auftragVersion.daten.nicht_ziele ?? [])}`
     }
 
+    // F45 B2a-1 (F-1064, F-936, F-929, F-931, F-829): planende und prüfende Rollen (architekt, architecture-advisor,
+    // code-reviewer) bekommen die Projektkarte als TEXT im Auftrag — so wirkt sie für Claude und Codex gleich (Codex lädt
+    // weder CLAUDE.md noch Skills). Je Lauf neu erzeugt (src/projektkarte, deterministisch), Zuschnitt je Rolle;
+    // Hash/Abschnitte/Lücken gehen in die Laufakte. Fail-open: fehlende Quellen sind Lücken in der Karte; schlägt die
+    // Karte selbst fehl, läuft der Schritt ohne sie (protokolliert). Keine Karte für ausfuehrung, jarvis und router.
+    let projektkarteMeta
+    if (istKarteRolle(schritt.rolle)) {
+      try {
+        const karte = baueProjektkarte(leseProjektkarteEingaben(schritt.rolle, laufWurzel, workflowDaten, auftragVersion.daten, laufort.arbeitsordner !== null, kartenLuecken), schritt.rolle)
+        auftragstext = `${auftragstext}\n\n${karte.text}`
+        projektkarteMeta = { hash: karte.hash, abschnitte: karte.abschnitte, fehlend: karte.fehlend }
+      } catch (fehler) {
+        console.error(`[leitstand] Projektkarte für Schritt '${schritt.schritt_id}' nicht erzeugt — Schritt läuft ohne Karte:`, fehler)
+      }
+    }
+
     // F45 B1b-1 (F-937, Teil Review): der code-reviewer-Schritt (Claude und Codex gleich) bekommt die
     // Beobachtung des Ausführungslaufs (geladen gegen aufgerufen, Hintergrund-Aufrufe) als kurzen Block.
     // Ausführungslauf = findeAusfuehrungsSchritt mit lauf_id (die Korrekturschleife setzt denselben Schritt
     // zurück, die lauf_id ist also immer der neueste Lauf). Ohne gelaufenen Ausführungsschritt kein Block
     // (bitgenau wie bisher); ohne beobachtung (Codex, keine init-Zeile) der Satz „keine Beobachtung“.
-    if (schritt.rolle === 'code-reviewer') {
+    // F45 B2a-1 (F-1062, Codex-Review-Spec §4): nur für den Worker claude-code — der Codex-Reviewer prüft Code, nicht
+    // die Nutzung von Harness-Schritten; „vorgesehen gegen benutzt“ bleibt im Harness-Abgleich der Abnahme (Beleg 12).
+    if (schritt.rolle === 'code-reviewer' && (schritt.worker ?? 'claude-code') === 'claude-code') {
       const ausfuehrungLaufId = findeAusfuehrungsSchritt(workflowDaten)?.lauf_id
       if (typeof ausfuehrungLaufId === 'string') {
         const ausfuehrungLaufakte = ladeArtefaktVersion(`laufakte-${ausfuehrungLaufId}`, undefined, ladeOptionen)
@@ -6165,6 +6333,8 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     // F45 B1a-1: im Arbeitsordner prüft die Vorbedingung eines schreibenden Schritts den Worktree (Branch wf/<id>).
     if (laufort.arbeitsordner !== null) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, arbeitsordner: laufort.arbeitsordner }
+    // F45 B2a-1: Projektkarte für die Laufakte — erst hier, weil der Empfehlungszweig oben ausfuehrungsOptionen ersetzt.
+    if (projektkarteMeta !== undefined) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, projektkarte: projektkarteMeta }
     const eingabenErgebnis = loeseSchrittEingabenAuf(
       schritt,
       workflowDaten,
@@ -6513,6 +6683,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Prüfung unbemerkt bestanden. traegtAdrVerweisAufEntscheidung schließt die zweite Hälfte.
       let stackNichtGefuellt
       let stackPruefkettenPfadeFehlen
+      let stackArchitekturFehlt
       // F-760: dieselbe Erweiterung wie bei scopeVerletzung/pruefketteVeraendert oben — VERWEIGERT
       // ohne Bypass-Verdacht bekommt Regel 1h mitgewertet.
       if (!heilbar && (schrittStatus === 'ERFOLGREICH' || verweigertOhneBypassVerdacht) && schritt.rolle === 'ausfuehrung') {
@@ -6531,6 +6702,10 @@ export function erzeugeRequestHandler(optionen = {}) {
             // typischerweise erst nach der Entscheidung in die Startvorlage einträgt.
             // QA-Befund F-735: eine leere Liste erfüllt die Pflicht nicht — 1j sähe sonst wieder nur die Node-Default-Liste.
             stackPruefkettenPfadeFehlen = (lesePruefkettenPfadeFrisch(startvorlagePfad) ?? []).length === 0
+            // F45 B2a-1 (F-1066): dritte Pflicht — ARCHITECTURE.md mit beschriebener Ordnerstruktur und Datenzugriff,
+            // dieselbe Regel wie die Projektkarte (analysiereArchitektur), gelesen über denselben Leser (leseKarteDatei).
+            const architekturNachlauf = leseKarteDatei('ARCHITECTURE.md', laufWurzel).datei
+            stackArchitekturFehlt = architekturNachlauf === null || analysiereArchitektur(architekturNachlauf.text).pflichtFehlt.length > 0
           }
         }
       }
@@ -6557,7 +6732,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         const nachlaufVerstoesseVerweigert = [`${F760_HALT_ANFANG}${formatiereAbgelehnteBefehle(abgelehnteBefehle)} — ${f760HaltSchluss(schritt.schritt_id, laufId)}`]
         if (scopeVerletzung !== undefined && scopeVerletzung.length > 0) {
           nachlaufVerstoesseVerweigert.push(
-            `Schritt '${schritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md): ${scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712)`
+            `Schritt '${schritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md, ARCHITECTURE.md): ${scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712)`
           )
         }
         if (stackNichtGefuellt === true) {
@@ -6565,6 +6740,9 @@ export function erzeugeRequestHandler(optionen = {}) {
         }
         if (stackPruefkettenPfadeFehlen === true) {
           nachlaufVerstoesseVerweigert.push(`Schritt '${schritt.schritt_id}' (ausfuehrung): Stack entschieden, aber pruefketten_pfade in der Startvorlage fehlt (F-735)`)
+        }
+        if (stackArchitekturFehlt === true) {
+          nachlaufVerstoesseVerweigert.push(`Schritt '${schritt.schritt_id}' (ausfuehrung): Stack entschieden, aber ARCHITECTURE.md ohne beschriebene Ordnerstruktur/Datenzugriff (F-1066)`)
         }
         if (pruefketteVeraendert !== undefined && pruefketteVeraendert.length > 0) {
           nachlaufVerstoesseVerweigert.push(`Prüfkette durch den Lauf verändert: ${pruefketteVeraendert.join(', ')} (F-713)`)
@@ -6621,6 +6799,7 @@ export function erzeugeRequestHandler(optionen = {}) {
               scopeVerletzung,
               stackNichtGefuellt,
               stackPruefkettenPfadeFehlen,
+              stackArchitekturFehlt,
               pruefketteVeraendert,
             })
           return {
@@ -7711,31 +7890,12 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
       if (!istGet && pruefeGlobaleLaufSperre(res)) return
-      let katalogRoh
-      try {
-        katalogRoh = leseRessourcenRoh(installWurzel)
-      } catch (fehler) {
-        sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
+      const grundlage = ladeFaehigkeitenGrundlage()
+      if (!grundlage.ok) {
+        sendeJson(res, 500, { grund: grundlage.grund })
         return
       }
-      const katalogVerstoesse = validiereRessourcenDaten(katalogRoh)
-      if (katalogVerstoesse.length > 0) {
-        sendeJson(res, 500, { grund: `ressourcen.json ungültig: ${katalogVerstoesse.join('; ')}` })
-        return
-      }
-      const eingebaut = leseEingebautReferenz()
-      if (!eingebaut.ok) {
-        sendeJson(res, 500, { grund: eingebaut.grund })
-        return
-      }
-      const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
-      // Angezeigt und freigegeben wird der Stand des Projektordners; im Lauf zählt der Hash im Arbeitsordner.
-      const projektStand = ermittleProjektFaehigkeiten(repoWurzel, {
-        katalog: katalogFreigaben(katalogRoh.ressourcen, installWurzel),
-        einstellungen: lokal.zustand === 'ungueltig' ? { an: [], aus: [], inhalt_freigaben: {} } : projektEinstellungen(lokal.daten, projektId),
-        werkzeugNamen: [...new Set((vorlage.werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? []).map((regel) => regel.split('(')[0]))],
-        referenz: eingebaut.referenz,
-      })
+      const { katalogRoh, lokal, projektStand } = grundlage
       if (istGet) {
         const letzte = findeLetzteRealeBesetzung('ausfuehrung', basisVerzeichnis).treffer
         const laufakte = letzte === null ? null : ladeArtefaktVersion(`laufakte-${letzte.laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })

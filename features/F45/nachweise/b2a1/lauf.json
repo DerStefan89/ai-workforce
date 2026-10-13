@@ -1,0 +1,118 @@
+{
+  "zeit": "2026-10-13T11:02:47.358Z",
+  "workflow_status": "WARTET_FREIGABE",
+  "workflow_grund": "Schritt 'schritt-2-architektur' verlangt eine menschliche Freigabe (freigabe 'ZWINGEND') — er startet erst, wenn für ihn eine Freigabe erteilt ist (POST /api/workflows/<id>/freigabe)",
+  "schritt1_status": "ERFOLGREICH",
+  "lauf_id": "27e17355-3bc4-4f28-8891-353b2a002105",
+  "dauer_s": 80,
+  "worker": "codex",
+  "modell_deklariert": "gpt-6-astra",
+  "verbrauch": {
+    "cache_read_tokens": 104832,
+    "cache_write_tokens": 0,
+    "dauer_api_ms": null,
+    "dauer_ms": 79486,
+    "input_tokens": 160684,
+    "output_tokens": 1949,
+    "quelle": "codex",
+    "turns": null
+  },
+  "projektkarte": {
+    "abschnitte": [
+      "vorhaben",
+      "bestand",
+      "ausfuehrungsrahmen",
+      "faehigkeiten",
+      "qualitaet"
+    ],
+    "fehlend": [],
+    "hash": "55c3208a628795a1418e72422fe285fd74b2d10ca11184624cf7e4f9b564ffb3"
+  },
+  "karte_zeichen": 15614,
+  "ergebnis": {
+    "modus": "feature",
+    "zusammenfassung": "Vorschlag: Ein kleines, eigenständiges Größengate prüft den vollständigen Projektkartentext für jede Kartenrolle gegen GRENZE_ZEICHEN und wird in npm run check eingebunden. Dabei zählt der Kürzungsmarker mit. Die bestehende Kürzung überschreitet diese Grenze derzeit konstruktiv; ihre minimale Korrektur gehört deshalb zum Bauschritt. Kein neues Datenmodell und keine ADR erforderlich. Der Entwurf ist keine Freigabe; die Prüfung bleibt beim architecture-advisor.",
+    "module": [
+      {
+        "name": "projektkarte",
+        "zweck": "Bestehendes Modul src/projektkarte/index.ts gezielt korrigieren: Bei Überschreitung zunächst den vollständigen Kürzungssuffix einschließlich Zeilenumbruch bilden, dessen Länge vom Rollenbudget abziehen und erst danach den Nutztext kürzen. Ungekürzte Texte bleiben unverändert; der Hash wird weiterhin aus dem endgültigen Text gebildet. Die bestehende Testtoleranz von 100 zusätzlichen Zeichen entfällt.",
+        "abhaengigkeiten": []
+      },
+      {
+        "name": "projektkarte-groessen-gate",
+        "zweck": "Neues scripts/check-projektkarte-groesse.mjs importiert baueProjektkarte, KARTE_ROLLEN und GRENZE_ZEICHEN. Für jede Kartenrolle prüft es deterministische Normal-, Leerquellen- und Überlängenfälle mit karte.text.length <= Grenze, einschließlich Kopf, Zeilenumbrüchen und Kürzungsmarker. Fehlende oder nicht positive ganzzahlige Grenzwerte sind Befunde. Überlänge über umfangreiche DoD-Eingaben erzwingt die Gesamtkürzung für alle Rollen; dort wird zusätzlich der sichtbare Marker geprüft. Grenzfälle für exakt Grenze und Grenze plus eins kalibrieren dieselbe lokale Prüffunktion. Befunde nennen Rolle, Fall, Istlänge und Grenze und führen zu Exit 1; ausschließlich erfolgreiche Prüfungen zu Exit 0. Das Gate benötigt weder Server noch Git, Netz oder temporäre Dateien. package.json bindet es unmittelbar vor dem bestehenden B2a-1-Gate in check ein; ein check:projektkarte-groesse-Skript ermöglicht den isolierten Aufruf. Verifikation im Bauschritt über npm run check:projektkarte-groesse und npm run check.",
+        "abhaengigkeiten": [
+          "projektkarte"
+        ]
+      }
+    ],
+    "adr_entwuerfe": [],
+    "schema_entwuerfe": [],
+    "entscheidungen_mensch": [],
+    "capabilities_bedarf": [
+      {
+        "bedarf": "Unabhängige Prüfung dieses Architekturvorschlags vor dem Bau.",
+        "ressource_id": "architecture-advisor",
+        "status": "vorhanden"
+      }
+    ],
+    "evidenz": [
+      {
+        "marker": "[Fakt]",
+        "aussage": "Der konkrete Auftrag verlangt die erlaubte Zeichenzahl je Rolle. Der abweichende Titel nennt Abschnittszahl; Quelle: eingespeister Auftrag auftrag-0eb3a5b8-3e3d-472b-926d-474221964a48."
+      },
+      {
+        "marker": "[Schlussfolgerung]",
+        "aussage": "Maßgeblich ist die ausdrücklich verlangte Zeichengrenze. Eine zusätzliche neue Abschnittszahlprüfung ist dafür nicht erforderlich."
+      },
+      {
+        "marker": "[Fakt]",
+        "aussage": "src/projektkarte/index.ts exportiert ZUSCHNITT, KARTE_ROLLEN und GRENZE_ZEICHEN: architekt 20000, architecture-advisor 16000, code-reviewer 14000. KARTE_ROLLEN wird aus den Schlüsseln von ZUSCHNITT abgeleitet."
+      },
+      {
+        "marker": "[Fakt]",
+        "aussage": "src/projektkarte/index.ts: baueProjektkarte normalisiert den Gesamttext auf LF, verwendet String.length und hängt nach voll.slice(0, grenze).trimEnd() einen zusätzlichen Kürzungssuffix an. Der Hash wird anschließend aus dem endgültigen Text gebildet."
+      },
+      {
+        "marker": "[Schlussfolgerung]",
+        "aussage": "Bei ausreichend langem Inhalt ohne abschließenden Leerraum überschreitet die aktuelle Kürzung die deklarierte Grenze um den Suffix. Für eine strikt begrenzte Gesamtkarte muss dessen Länge innerhalb des Budgets liegen; eine bloße Gate-Ergänzung würde diesen bestehenden Fehler aufdecken."
+      },
+      {
+        "marker": "[Annahme]",
+        "aussage": "Zeichenzahl bleibt entsprechend der bestehenden Implementierung JavaScript-String.length, also UTF-16-Codeeinheiten. Gezählt wird der gesamte zurückgegebene Kartentext einschließlich Kürzungsmarker, nicht der gesamte Rollenprompt."
+      },
+      {
+        "marker": "[Fakt]",
+        "aussage": "src/projektkarte/projektkarte.test.ts prüft die Gesamtkürzung bisher nur für code-reviewer und erlaubt dabei GRENZE_ZEICHEN plus 100. Die umfangreiche DoD-Fixture demonstriert einen vorhandenen Weg, die Gesamtkürzung auszulösen."
+      },
+      {
+        "marker": "[Fakt]",
+        "aussage": "scripts/check-f45-b2a1-projektkarte.mjs prüft bereits den Abschnittszuschnitt aller drei Rollen sowie Hash, Lücken und Serverintegration. Es sammelt Befunde und beendet sich bei Befunden mit Exit 1. package.json enthält dieses Gate bereits in der mit && verketteten check-Prüfkette."
+      },
+      {
+        "marker": "[Schlussfolgerung]",
+        "aussage": "Ein separates, rein lokales Größengate ergänzt die bestehende Integrationsprüfung ohne deren Server- und Git-Fixtures zu duplizieren. Importierte Rollen und Grenzwerte vermeiden eine zweite Konfigurationsquelle. Normal-, Leerquellen-, Überlängen- und kalibrierte Grenzfälle liefern den begrenzten Nachweis für diese Erweiterung."
+      },
+      {
+        "marker": "[Fakt]",
+        "aussage": "src/projektkarte/types.ts definiert Projektkarte als text plus hash, abschnitte und fehlend. Für die Längenprüfung sind alle erforderlichen Daten bereits vorhanden."
+      },
+      {
+        "marker": "[Schlussfolgerung]",
+        "aussage": "Die Erweiterung benötigt keine Schemaänderung, neue Laufzeitkomponente, Abhängigkeit oder ADR. Änderungen beschränken sich auf Kürzung, bestehende Kürzungstests, das neue Prüfskript und package.json."
+      },
+      {
+        "marker": "[Fakt]",
+        "aussage": "ARCHITECTURE.md ordnet Prüfskripte scripts/ zu, nennt node:test als Testwerkzeug und verlangt kalibrierte Rot- und Grün-Fälle vor der Bezeichnung ERZWUNGEN. CLAUDE.md fordert npm run check mit Exit 0."
+      },
+      {
+        "marker": "[Schlussfolgerung]",
+        "aussage": "Die vorgeschlagenen npm-Prüfaufrufe passen in den eingespeisten Ausführungsrahmen. Der Entwurf behauptet noch keinen erfolgreichen Nachweis; die tatsächliche Verifikation erfolgt nach dem Bau."
+      },
+      {
+        "marker": "[Fakt]",
+        "aussage": "Der eingespeiste Capability-Auszug führt architecture-advisor als freigegebene und verfügbare PLAN_REVIEW-Ressource. In diesem Lauf wurden Dateien gelesen, aber kein Code geschrieben und keine Tests ausgeführt."
+      }
+    ]
+  }
+}

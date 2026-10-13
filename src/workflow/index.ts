@@ -948,12 +948,12 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
       // output_schema:null). Der Aufrufer berechnet 'scopeVerletzung' NUR im Projektmodus
       // (herkunft.art === 'projekt_interview', pruefeProjektmodusScope gegen die bereits
       // registrierte Änderungsübersicht) — ein nicht-leeres Array heißt: der Lauf hat außerhalb der
-      // Allowlist (docs/**, features/**, CLAUDE.md) geschrieben, der Auftrags-Scope hat aber
+      // Allowlist (docs/**, features/**, CLAUDE.md, ARCHITECTURE.md) geschrieben, der Auftrags-Scope hat aber
       // Vorrang vor dem Architekturentwurf. Feature-Modus bleibt unberührt (Feld bleibt dort
       // undefined).
       if (vorschrittErgebnis.scopeVerletzung !== undefined && vorschrittErgebnis.scopeVerletzung.length > 0) {
         nachlaufVerstoesse.push(
-          `Schritt '${vorschritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md): ${vorschrittErgebnis.scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712), kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
+          `Schritt '${vorschritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md, ARCHITECTURE.md): ${vorschrittErgebnis.scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712), kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
         )
       }
       // Regel 1h (F42 WS-4, löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
@@ -971,6 +971,13 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
       if (vorschrittErgebnis.stackPruefkettenPfadeFehlen === true) {
         nachlaufVerstoesse.push(
           `Schritt '${vorschritt.schritt_id}' (ausfuehrung): Stack entschieden, aber pruefketten_pfade in der Startvorlage fehlt (F-735) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
+        )
+      }
+      // Regel 1h, dritte Pflicht (F45 B2a-1, F-1066): ARCHITECTURE.md beschreibt Ordnerstruktur und Datenzugriff —
+      // sonst bliebe der Bestand der Projektkarte für jeden künftigen Lauf leer.
+      if (vorschrittErgebnis.stackArchitekturFehlt === true) {
+        nachlaufVerstoesse.push(
+          `Schritt '${vorschritt.schritt_id}' (ausfuehrung): Stack entschieden, aber ARCHITECTURE.md ohne beschriebene Ordnerstruktur/Datenzugriff (F-1066) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
         )
       }
       // Regel 1j (F-713, Fixpaket vor F30): in BEIDEN Modi, im Projektmodus zusätzlich zu 1g. Der

@@ -111,13 +111,27 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { ABSCHNITT_IDS } from '../projektkarte/types.ts'
 import { ermittleIstZustand, pruefeAufrufparameter, pruefeStartbedingung1, pruefeStartfreigabe, vergleicheArbeitsverzeichnisMitNachweis, verweigereStart } from '../invocation-policy/index.ts'
 import type { BaselineReferenz, IstUebrigeFelder, IstZustand, WirksamkeitsnachweisReferenz } from '../invocation-policy/types.ts'
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { pruefeStartziel, starteProzess } from './prozessstart.ts'
-import type { AufrufEingaben, AufrufTokens, BeobachtungV0, FaehigkeitenImLaufV0, FaehigkeitImLauf, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter, VerbrauchV0, Werkzeugaufruf } from './types.ts'
+import type {
+  AufrufEingaben,
+  AufrufTokens,
+  BeobachtungV0,
+  FaehigkeitenImLaufV0,
+  FaehigkeitImLauf,
+  GatewayEingaben,
+  GatewayErgebnis,
+  LaufakteV0Daten,
+  ProjektkarteV0,
+  Starter,
+  VerbrauchV0,
+  Werkzeugaufruf,
+} from './types.ts'
 
 /**
  * Von Stefan bestätigter Pfad zur aktuell gültigen Autorisierungsreferenz
@@ -267,6 +281,8 @@ interface GatewayOptionen {
    * startet kein Prozess (verweigereStart, wie jede andere Ablehnung vor dem Start). Fehlt sie, unverändert.
    */
   vorStartPruefung?: () => string | null
+  /** F45 B2a-1: Metadaten der Projektkarte im Auftrag — geht unverändert als projektkarte in die Laufakte. Fehlt sie, fehlt das Feld. */
+  projektkarte?: ProjektkarteV0
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -1149,6 +1165,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     ...(optionen.faehigkeitenImLauf !== undefined
       ? { faehigkeiten_im_lauf: verbindeFaehigkeitenMitAufrufen(optionen.faehigkeitenImLauf, ermittleFaehigkeitsAufrufe(prozessErgebnis.stdout.split('\n')), beobachtung !== null) }
       : {}),
+    ...(optionen.projektkarte !== undefined ? { projektkarte: optionen.projektkarte } : {}),
   }
 
   const { pfad, versionSequenz } = registriereKernArtefakt(
@@ -1192,6 +1209,8 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     'beobachtung',
     // F45 F-1: additiv erlaubt, bewusst nicht Pflicht (Muster beobachtung).
     'faehigkeiten_im_lauf',
+    // F45 B2a-1: additiv erlaubt, bewusst nicht Pflicht (Muster faehigkeiten_im_lauf).
+    'projektkarte',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -1298,7 +1317,28 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     }
   }
   if ('faehigkeiten_im_lauf' in obj) pruefeFaehigkeitenImLauf(obj.faehigkeiten_im_lauf, verstoesse)
+  if ('projektkarte' in obj) pruefeProjektkarte(obj.projektkarte, verstoesse)
   return verstoesse
+}
+
+/**
+ * F45 B2a-1: prüft das Laufakten-Feld projektkarte gegen schemas/kontrollzustand-laufakte-payload.schema.json (Zwilling).
+ * @param wert - Feldwert
+ * @param verstoesse - Sammelliste, wird ergänzt
+ */
+function pruefeProjektkarte(wert: unknown, verstoesse: string[]): void {
+  if (wert === null || typeof wert !== 'object' || Array.isArray(wert)) {
+    verstoesse.push("'projektkarte' muss, wenn angegeben, ein Objekt sein")
+    return
+  }
+  const karte = wert as Record<string, unknown>
+  for (const feld of Object.keys(karte)) if (!['hash', 'abschnitte', 'fehlend'].includes(feld)) verstoesse.push(`unbekanntes Feld 'projektkarte.${feld}' (additionalProperties: false)`)
+  if (typeof karte.hash !== 'string' || !/^[0-9a-f]{64}$/.test(karte.hash)) verstoesse.push("'projektkarte.hash' muss ein sha256 (64 Hex) sein")
+  const abschnitte: readonly string[] = ABSCHNITT_IDS
+  if (!Array.isArray(karte.abschnitte) || !karte.abschnitte.every((a) => typeof a === 'string' && abschnitte.includes(a))) {
+    verstoesse.push(`'projektkarte.abschnitte' muss ein Array aus ${abschnitte.join('|')} sein`)
+  }
+  if (!Array.isArray(karte.fehlend) || !karte.fehlend.every((f) => typeof f === 'string')) verstoesse.push("'projektkarte.fehlend' muss ein Array aus Strings sein")
 }
 
 /** F45 F-1: Felder eines Eintrags von faehigkeiten_im_lauf (Zwilling des Schemas). */

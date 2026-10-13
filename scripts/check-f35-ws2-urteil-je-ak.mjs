@@ -397,7 +397,8 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewErg
         const reviewAuftragstext = reviewLaufId !== null ? (auftragstexte.get(reviewLaufId) ?? '') : ''
         // F45 B1b-1 (F-937): seit B1b-1 hängt jeder Review-Schritt mit gelaufener Ausführung den
         // Beobachtungs-Block an — geprüft wird, dass davor kein AK-Block steht.
-        if (reviewAuftragstext.split('\n\nBeobachtung des Ausführungslaufs')[0] !== URSPRUNGS_AUFTRAGSTEXT) {
+        // F45 B2a-1 (F-1064): danach folgt die Projektkarte — geprüft wird weiterhin der Teil davor.
+        if (reviewAuftragstext.split('\n\nBeobachtung des Ausführungslaufs')[0].split('\n\n# Projektkarte\n')[0] !== URSPRUNGS_AUFTRAGSTEXT) {
           befunde.push(`(e) ein Auftrag ohne Akzeptanzkriterien sollte den Review-Auftragstext bitgenau unverändert lassen (kein AK-Block), erhalten: ${JSON.stringify(reviewAuftragstext)}`)
         } else {
           console.log('✓ (e) Alt-Verhalten: Auftrag ohne Akzeptanzkriterien schließt normal ab (ABGESCHLOSSEN), der Review-Auftragstext bleibt bitgenau unverändert.')
