@@ -941,7 +941,9 @@ Review-Beispiele (valid + neues invalid) aus (N6). Render-Nachweis `features/F45
 
 **Prüfpass** (frischer Kontext): design-guardian und code-reviewer „freigegeben mit Hinweisen“, qa „nicht freigegeben“ (Kennzeichen
 ohne Stand-Felder). Eine Korrekturrunde (Liste im Plan, Abschnitt „Prüfpass und Korrekturrunde“), qa-Nachpass „freigegeben mit
-Hinweisen“. Grenzen: F-1088.
+Hinweisen“. Grenzen: F-1088. Korrekturrunde nach dem Challenger (CI, Node 24 Linux): `fuehreGitAsync` meldete eine
+Zeitgrenze teils als Erfolg mit leerer Ausgabe (Node-execFile-Wettlauf, vorbestehend) — jetzt eigener Merker, Ablauf immer
+`abbruch: 'zeitgrenze'`, Tests im Git-Starter (F-1089).
 
 **Belege der Bestehensbedingung, B2a abgeschlossen (mit dem Merge von B2a-3b):** 1 Projektkarte → B2a-1 (#329); 2 Arbeitspaket →
 B2a-2 (#330); 10 „Stefan muss keinen Zwischentext lesen“ → B2a-3a (Jarvis „Deine Schritte“, Review-Hinweise statt stiller

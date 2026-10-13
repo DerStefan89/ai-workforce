@@ -628,7 +628,7 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Nachweis des echten Codex-Laufs B2a-3a nachgezogen, F-1085 (6)/(7)/(11));
   damit ist B2a nach dem Merge abgeschlossen.
   Reihenfolge ab F: B2a-3b → F-3 → B2b → B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1088. Nach F46, vor F30
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1089. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
