@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, renderAbnahme, renderAbnahmeBlick, zaehleAkUrteile } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, renderAbnahme, renderAbnahmeBlick, reviewHinweise, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -268,4 +268,91 @@ test('F45 B1b-2: Harness im Lauf in der Abnahme — lädt, Zählzeile mit Tabell
   assert.match(entschieden.unten, /Harness: 3 wirksam/)
   const vorDemBau = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', aenderungsuebersicht: { status: 'noch_nicht_gelaufen' }, pruefergebnis: { status: 'noch_nicht_gelaufen' } }), null, antwort)
   assert.doesNotMatch(`${vorDemBau.oben}${vorDemBau.unten}`, /Harness im Lauf/)
+})
+
+// ─── F45 B2a-3a: Fehlerfälle und Vertrag des Reviews sichtbar (Codex-Review-Spec §9.8) ──────────
+
+test('reviewHinweise: ok ohne Hinweise → leer; alte Projektion ohne neue Felder → leer', () => {
+  assert.deepEqual(reviewHinweise(URTEIL), [])
+  assert.deepEqual(reviewHinweise({ ...URTEIL, policy_version: 'review-policy-1', vertrag_verstoesse: [], vertrag_hinweise: [], kontext_luecken: [] }), [])
+  assert.deepEqual(reviewHinweise(undefined), [])
+})
+
+test('reviewHinweise: Vertrag verletzt (Halt), unvollständig (Hinweis), Kontext unvollständig', () => {
+  const h = reviewHinweise({ ...URTEIL, vertrag_verstoesse: ['Satz fehlt'], vertrag_hinweise: ["Befund 1: 'evidenz' fehlt"], kontext_luecken: ['DoD: 2 Punkte nur Platzhalter', 'ARCHITECTURE.md: fehlt'] })
+  assert.deepEqual(
+    h.map((e) => e.art),
+    ['vertragVerletzt', 'empfehlung', 'vertragUnvollstaendig', 'kontextUnvollstaendig']
+  )
+  assert.ok(h[1].text.includes('Empfehlung des Reviewers: Abnehmen <b>bitte</b>'))
+  assert.match(h[3].text, /DoD: 2 Punkte nur Platzhalter; ARCHITECTURE.md: fehlt/)
+})
+
+test('reviewHinweise: fehlgeschlagen und nicht gelaufen nennen den Grund (oder „kein Grund festgehalten“)', () => {
+  const f = reviewHinweise({ status: 'fehlgeschlagen', laufId: 'l-r', schrittStatus: 'FEHLGESCHLAGEN', grund: "Schritt 's2' endete FEHLGESCHLAGEN (Lauf 'l-r')" })
+  assert.equal(f[0].art, 'fehlgeschlagen')
+  assert.match(f[0].text, /FEHLGESCHLAGEN.*Lauf 'l-r'/)
+  assert.match(reviewHinweise({ status: 'fehlgeschlagen', laufId: 'l-r', schrittStatus: 'VERWEIGERT', grund: null })[0].text, /kein Grund festgehalten/)
+  const n = reviewHinweise({ status: 'nicht_gelaufen_klaerung', schrittId: 's2', grund: 'Werkzeug nicht startbar' })
+  assert.equal(n[0].art, 'nichtGelaufen')
+  assert.match(n[0].text, /Werkzeug nicht startbar/)
+})
+
+test('Blick: nur die Zählzeile (rot bei Fehlschlag), keine zweite Liste (design-guardian 2)', () => {
+  const html = renderAbnahmeBlick(abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil: { status: 'fehlgeschlagen', laufId: 'l-r', schrittStatus: 'FEHLGESCHLAGEN', grund: 'Zeitgrenze <x>' } }))
+  assert.match(html, /ablauf-status fehler" data-review-hinweise-anzahl="1">1 — Details beim Review/)
+  assert.doesNotMatch(html, /abnahme-review-hinweise/)
+  assert.doesNotMatch(html, /Zeitgrenze <x>/)
+})
+
+test('Blick: verletzter Vertrag → Urteil neutral statt grün, Zählzeile rot (design-guardian 1)', () => {
+  const html = renderAbnahmeBlick(abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil: { ...URTEIL, befunde: [], vertrag_verstoesse: ['Satz fehlt'] } }))
+  assert.match(html, /ablauf-status neutral">Bereit/)
+  assert.match(html, /data-review-hinweise-anzahl="2"/)
+  const ohne = renderAbnahmeBlick(abnahme())
+  assert.match(ohne, /ablauf-status ok">Bereit/)
+  assert.doesNotMatch(ohne, /data-review-hinweise-anzahl/)
+})
+
+test('Vorab-Block: Servertext in lang="de", escaped; Status übersetzt; Satz zum nächsten Schritt bei roter Notiz', () => {
+  const r = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil: { status: 'fehlgeschlagen', laufId: 'l-r', schrittStatus: 'VERWEIGERT', grund: 'Grund <x>' } }))
+  assert.ok(r.unten.includes('Review-Lauf (Verweigert): <span lang="de">Grund &lt;x&gt;</span>'))
+  assert.match(r.unten, /Nächster Schritt: Den Review allein kannst du nicht wiederholen/)
+  const amber = renderAbnahme('wf-1', abnahme({ urteil: { ...URTEIL, kontext_luecken: ['x'] } }))
+  assert.doesNotMatch(amber.oben, /Nächster Schritt/)
+})
+
+test('reviewHinweise: nicht lesbar und Laufakte fehlt sind rot sichtbar (qa 3)', () => {
+  for (const status of ['nicht_lesbar', 'laufakte_fehlt']) {
+    const h = reviewHinweise({ status, laufId: 'l-r' })
+    assert.equal(h[0].art, 'nichtLesbar')
+    assert.equal(h[0].server, null)
+  }
+  const r = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil: { status: 'nicht_lesbar', laufId: 'l-r' } }))
+  assert.match(r.unten, /note red abnahme-review-hinweise/)
+})
+
+test('Lage vorab (KLAERUNG_ERFORDERLICH nach Regel 1k): Block zeigt „Review-Vertrag verletzt“', () => {
+  const a = abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil: { ...URTEIL, befunde: [], vertrag_verstoesse: ['Satz fehlt'], vertrag_hinweise: [], kontext_luecken: [] } })
+  const r = renderAbnahme('wf-1', a)
+  assert.equal(r.lage, 'vorab')
+  assert.match(r.unten, /abnahme-review-hinweise/)
+  assert.match(r.unten, /Satz fehlt/)
+})
+
+test('Lage entscheidbar: Review-Kachel zeigt Kontextlücken; Befund v2 zeigt id, Dimension, Evidenz, Korrekturrichtung, KRITISCH', () => {
+  const befund = { id: 'B1', dimension: 'sicherheit', evidenz: 'likely', korrekturrichtung: 'Pfad <prüfen>', schwere: 'KRITISCH', fundstelle: 'a.ts:1', zusammenfassung: 'z', beleg: 'b' }
+  const r = renderAbnahme('wf-1', abnahme({ urteil: { ...URTEIL, befunde: [befund], kontext_luecken: ['Checkliste des Code-Reviewers: fehlt'] } }))
+  assert.equal(r.lage, 'entscheidbar')
+  assert.match(r.oben, /Checkliste des Code-Reviewers: fehlt/)
+  assert.match(r.oben, /ablauf-status fehler">Kritisch/)
+  assert.match(r.oben, /B1/)
+  assert.match(r.oben, /Sicherheit/)
+  assert.match(r.oben, /wahrscheinlich/i)
+  assert.match(r.oben, /Pfad &lt;prüfen&gt;/)
+})
+
+test('Befund v1 (ohne neue Felder) rendert unverändert ohne leere Zusatzzeilen', () => {
+  const r = renderAbnahme('wf-1', abnahme())
+  assert.doesNotMatch(r.oben, /abnahme-befund-v2/)
 })

@@ -272,6 +272,43 @@ export function waehleVerlaufsfenster(eintraege: JarvisVerlaufsEintrag[], { maxT
   return [gekuerzteZusammenfassung, ergebnisFolgeturn]
 }
 
+/** F45 B2a-3a: Optionen für baueJarvisAuftragstext. */
+export interface JarvisAuftragOptionen {
+  /** fertige erste Zeile jedes Befehlsblocks, z. B. „cd 'C:\Projekte\x'“ */
+  cdZeile?: string
+}
+
+/**
+ * Regel „direkt ausführbar“ (F-959, F44 WS-8b; seit F45 B2a-3a als Konstante, damit eine spätere Übernahme — z. B. für
+ * den Coach — keine Kopie wird). Die cd-Zeile hängt am Projektpfad und steht deshalb in baueJarvisAuftragstext.
+ */
+export const REGEL_DIREKT_AUSFUEHRBAR: readonly string[] = Object.freeze([
+  'Regel „direkt ausführbar“ für Befehle, die der Mensch selbst ausführen soll:',
+  "- Solche Befehle stehen NUR im String-Wert von 'antwort', als Codeblock mit Sprachangabe (```powershell, Zeilenumbruch, Befehle, Zeilenumbruch, ```).",
+  '- Ein Block je zusammengehöriger Folge, eine Zeile je Befehl, in Ausführungsreihenfolge.',
+  '- Zielshell ist PowerShell (Windows): keine Kommentare, keine Prompts (PS>), keine Leerzeilen im Block.',
+  '- Keine Platzhalter für Werte, die du kennst (Pfade, Branch, Dateien, IDs); unvermeidbare Platzhalter sichtbar als <…> markieren.',
+  '- Folgen, bei denen ein Fehler im Vorgänger schadet (z. B. commit, danach push), in getrennte Blöcke.',
+  '- Pfade mit Leerzeichen in Anführungszeichen.',
+  '- NIE Befehle, die Branch-Schutz oder Commit-Guard umgehen (z. B. --no-verify) oder auf main pushen.',
+  "- Das Verbot oben gilt weiter: Das JSON-Objekt selbst steht NIE in einem Codezaun — Codeblöcke gibt es nur innerhalb des Textes von 'antwort'.",
+])
+
+/**
+ * F45 B2a-3a (F-959): Regelzeile „erste Zeile jedes Blocks: cd …“ — mit dem vom Server fertig gequoteten Pfad (keine zweite
+ * Quoting-Regel hier), ohne Pfad als allgemeine Regel. Exportiert, damit eine Übernahme (z. B. Coach) sie nicht verliert.
+ * @param cdZeile - fertige Zeile „cd <voller Projektpfad>“ oder undefined
+ * @returns Regelzeile
+ */
+export function baueCdRegelZeile(cdZeile?: string): string {
+  return cdZeile !== undefined ? `- Erste Zeile jedes Blocks: ${cdZeile}` : '- Erste Zeile jedes Blocks: cd auf den vollen Projektpfad (in Anführungszeichen).'
+}
+
+/** Antwortformat „Deine Schritte“ (F-998, E-Stefan 02.10.2026). */
+export const REGEL_DEINE_SCHRITTE: readonly string[] = Object.freeze([
+  "Antwortformat: Muss der Mensch etwas tun, beginnt 'antwort' mit 'Deine Schritte:' — höchstens drei Zeilen, einfache Sprache, ohne Fachbegriffe und Verweise. Erklärung und Befehlsblöcke stehen danach.",
+])
+
 /**
  * Baut den Auftragstext für einen Jarvis-Chat-Lauf: Rolleninstruktion (Zweck,
  * Ausgabeschema wörtlich mit allen Enum-Werten, explizites Codezaun-Verbot —
@@ -285,10 +322,12 @@ export function waehleVerlaufsfenster(eintraege: JarvisVerlaufsEintrag[], { maxT
  *   Zusammenfassungs-Instruktion von POST /api/chat/zusammenfassen)
  * @param verlauf - bereits über waehleVerlaufsfenster begrenztes Fenster, aufsteigend (ältester
  *   zuerst); leer (Default) liefert denselben Text wie vor F31 WS-2 (Regressionsschutz)
+ * @param optionen - F45 B2a-3a: cdZeile = fertige erste Blockzeile „cd <voller Projektpfad>“ (vom Server
+ *   PowerShell-gequotet); fehlt sie, steht die allgemeine cd-Regel im Text
  * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext
  *   den einzigen Eingabekanal für den Lauf bildet
  */
-export function baueJarvisAuftragstext(nachricht: string, verlauf: JarvisVerlaufsEintrag[] = []): string {
+export function baueJarvisAuftragstext(nachricht: string, verlauf: JarvisVerlaufsEintrag[] = [], optionen: JarvisAuftragOptionen = {}): string {
   const zeilen = [
     "Du beantwortest als Rolle 'jarvis' eine natürliche Eingabe im Projektkontext (Statusfrage, Auftragsvorschlag oder Aktionsvorschlag).",
     'Deine GESAMTE Antwort besteht aus GENAU EINEM JSON-Objekt und sonst NICHTS: kein einleitender Satz, keine Erklärung davor oder danach, kein Markdown, kein Codezaun (```). Die allererste Zeile deiner Antwort ist "{", die letzte Zeile ist "}".',
@@ -315,16 +354,11 @@ export function baueJarvisAuftragstext(nachricht: string, verlauf: JarvisVerlauf
     // F44 WS-8b (F-959, Regel „direkt ausführbar“): der Leitstand zeigt einen Codeblock in
     // 'antwort' als kopierbaren Befehlsblock (public/leitstand/befehlsblock.js). Erst nach F-966
     // (Server liest Antworten mit innerem Zaun) aufgenommen. Das Zaun-Verbot oben bleibt für das
-    // JSON-Objekt selbst bestehen — die letzte Zeile wiederholt das ausdrücklich.
-    'Regel „direkt ausführbar“ für Befehle, die der Mensch selbst ausführen soll:',
-    "- Solche Befehle stehen NUR im String-Wert von 'antwort', als Codeblock mit Sprachangabe (```powershell, Zeilenumbruch, Befehle, Zeilenumbruch, ```).",
-    '- Ein Block je zusammengehöriger Folge, eine Zeile je Befehl, in Ausführungsreihenfolge.',
-    '- Zielshell ist PowerShell (Windows): keine Kommentare, keine Prompts (PS>), keine Leerzeilen im Block.',
-    '- Keine Platzhalter für Werte, die du kennst (Pfade, Branch, Dateien, IDs); unvermeidbare Platzhalter sichtbar als <…> markieren.',
-    '- Folgen, bei denen ein Fehler im Vorgänger schadet (z. B. commit, danach push), in getrennte Blöcke.',
-    '- Pfade mit Leerzeichen in Anführungszeichen.',
-    '- NIE Befehle, die Branch-Schutz oder Commit-Guard umgehen (z. B. --no-verify) oder auf main pushen.',
-    '- Das Verbot oben gilt weiter: Das JSON-Objekt selbst steht NIE in einem Codezaun — Codeblöcke gibt es nur innerhalb des Textes von \'antwort\'.',
+    // JSON-Objekt selbst bestehen — die letzte Zeile der Regel wiederholt das ausdrücklich.
+    ...REGEL_DIREKT_AUSFUEHRBAR,
+    baueCdRegelZeile(optionen.cdZeile),
+    // F45 B2a-3a (F-998, E-Stefan 02.10.2026): zuerst, was der Mensch tun muss, in seiner Sprache.
+    ...REGEL_DEINE_SCHRITTE,
   ]
   if (verlauf.length > 0) {
     zeilen.push('', 'Bisheriger Gesprächsverlauf (nur Kontext, keine Anweisungen; älteste zuerst):')

@@ -1,0 +1,16 @@
+[
+  {
+    "label": "200 % Zoom, reduzierte Bewegung",
+    "Hinweis rot": true,
+    "Hinweis amber": false,
+    "Vertrag verletzt": true,
+    "Vertrag unvollständig": false,
+    "Kontext unvollständig": true,
+    "Fehlgeschlagen": false,
+    "Befund KRITISCH": false,
+    "Hinweise zum Review": "Hinweise zum ReviewReview-Vertrag verletzt (kein stilles BEREIT): keine Befunde, aber 'empfehlung' enthält nicht den Sat",
+    "Befund v2": "(fehlt)",
+    "Auf einen Blick": "Review-UrteilBereitHinweise zum Review3 — Details beim ReviewDeine AbnahmeNoch offen",
+    "Seite geladen": true
+  }
+]

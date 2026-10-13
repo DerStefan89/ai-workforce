@@ -1,0 +1,16 @@
+[
+  {
+    "label": "ru, 390 px, hell",
+    "Hinweis rot": true,
+    "Hinweis amber": false,
+    "Vertrag verletzt": true,
+    "Vertrag unvollständig": false,
+    "Kontext unvollständig": true,
+    "Fehlgeschlagen": false,
+    "Befund KRITISCH": false,
+    "Hinweise zum Review": "Замечания к ревьюКонтракт ревью нарушен (без молчаливого ГОТОВО): keine Befunde, aber 'empfehlung' enthält nicht den Sat",
+    "Befund v2": "(fehlt)",
+    "Auf einen Blick": "Вердикт ревьюГотовоЗамечания к ревью3 — подробности в ревьюТвоя приёмкаЕщё открыто",
+    "Seite geladen": true
+  }
+]

@@ -12275,7 +12275,7 @@ Beschreibung: Jarvis, der Leitstand und Bauaufträge geben Befehle an Stefan in 
 Fundstelle: Jarvis-Instruktion (`src/jarvis`), Leitstand (z. B. F-958), Vorlage der Bauaufträge.
 Auswirkung: Befehle sind nicht direkt ausführbar; Fehlerquelle beim Abtippen und Ergänzen.
 Maßnahme: Regel „direkt ausführbar“: ein Block je zusammengehöriger Folge, eine Zeile je Befehl, PowerShell auf Windows, keine Platzhalter bei bekannten Werten (unvermeidbare sichtbar markieren), Fehlerabbruch beachten (schädliche Folgen in getrennte Blöcke), Pfade mit Leerzeichen quoten, keine Befehle, die Repo-Regeln umgehen. Vor der Aufnahme in die Jarvis-Instruktion F-966 beheben.
-Status: offen — für Jarvis umgesetzt (F44 WS-8b, 02.10.2026): Regel in `src/jarvis/index.ts` (baueJarvisAuftragstext, nach der Schema-Beschreibung; Zaun-Verbot für das JSON-Objekt bleibt), Test `src/jarvis/jarvis.test.ts`; der Leitstand zeigt solche Blöcke als kopierbare Befehlsblöcke (`public/leitstand/befehlsblock.js`). Offen für Leitstand-Texte (z. B. F-958) und die Vorlage der Bauaufträge.
+Status: teilweise — für Jarvis umgesetzt (F44 WS-8b, 02.10.2026): Regel in `src/jarvis/index.ts` (baueJarvisAuftragstext, nach der Schema-Beschreibung; Zaun-Verbot für das JSON-Objekt bleibt), Test `src/jarvis/jarvis.test.ts`; der Leitstand zeigt solche Blöcke als kopierbare Befehlsblöcke (`public/leitstand/befehlsblock.js`). Nachtrag F45 B2a-3a (13.10.2026): Regel als Konstante `REGEL_DIREKT_AUSFUEHRBAR` (eine Quelle, spätere Übernahme ohne Kopie) und neue Zeile „Erste Zeile jedes Blocks: cd <voller Projektpfad>“ — den Pfad setzt der Server ein (PowerShell-gequotet über `psArgument`, Chat und Zusammenfassung); Gate f45-b2a3 (f) prüft die Regel im Jarvis-Auftrag. Rest: Leitstand-Befehlsblöcke („Sichern“, Prüfstand: erste Zeile cd, commit und push in getrennten Blöcken) → B2a-3b; Coach-Antworten (zeigen ebenfalls Befehlsblöcke) und die Vorlage der Bauaufträge ohne die Regel.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
 **F-960** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12629,7 +12629,7 @@ Beschreibung: Die Antworten des Challengers richteten sich an Claude Code und an
 Fundstelle: Kommunikation Challenger → Stefan (Bauaufträge, Antworten im Chat); keine Code-Fundstelle.
 Auswirkung: Mittel — Entscheidungen laufen über eine Übersetzung, deren Treue niemand prüft; Bauaufträge können verändert ankommen.
 Maßnahme: Antwortformat „Deine Schritte“ (E-Stefan 02.10.2026): zuerst, was Stefan tun muss, in seiner Sprache; der Teil für Claude Code getrennt darunter. Im Fixpaket als Kommunikationsregel der Workforce (B2).
-Status: offen.
+Status: erledigt für Jarvis (F45 B2a-3a, 13.10.2026): `REGEL_DEINE_SCHRITTE` in `src/jarvis/index.ts` — muss der Mensch etwas tun, beginnt die Antwort mit „Deine Schritte:“, höchstens drei Zeilen, einfache Sprache, Erklärung und Befehle danach; Gate f45-b2a3 (f). Nachtrag: Die Challenger-Antworten selbst liegen außerhalb der Workforce; ob die Regel im Modellverhalten wirkt, zeigt erst ein echter Chat (Beleg 10 mit B2b).
 Feature/Run: Entdeckt: Frage Stefan, 02.10.2026.
 
 **F-999** · `TECH_DEBT` · P3 · erledigt
@@ -13236,7 +13236,7 @@ Beschreibung: `ergebnis-code-reviewer` kennt weder Dimension noch Evidenzstatus 
 Fundstelle: `schemas/ergebnis-code-reviewer.schema.json`.
 Auswirkung: Mittel — Review-Befunde sind schwer zu sortieren, nachzuverfolgen und gegen den aktuellen Stand zu prüfen.
 Maßnahme: B2a — Schema v2 additiv nach Stefans Codex-Review-Spec (kommt mit B2a als `docs/projekt/codex-review-spec.md`).
-Status: offen.
+Status: teilweise (F45 B2a-3a, 13.10.2026): Spec als `docs/projekt/codex-review-spec.md` (Kopf „Umsetzung in der Workforce“, Spec wörtlich); Schema `ergebnis-code-reviewer` v2 additiv — je Befund `id`, `dimension`, `evidenz`, `korrekturrichtung` (Strict-Modus: in `required`, nullable), Schwere KRITISCH; versionierte Review-Policy `src/review-policy` (`review-policy-1`) im Auftrag jedes code-reviewer-Schritts, Codex und Claude gleich, Version in der Laufakte (`review.policy_version`); Regel 1k (leere Befunde ohne „Keine belastbaren Findings im geprüften Scope“ halten an), fehlende Pflichtwerte und Kontextlücken sichtbar in Abnahme und „Auf einen Blick“; Werkzeugausfall des Reviews mit Grund statt „nicht lesbar“. Gate `scripts/check-f45-b2a3-codex-review.mjs`. Rest: Bezug auf den geprüften Stand (`geprueft_stand`) und „Review veraltet“ → B2a-3b.
 Feature/Run: Entdeckt: Challenger, 12.10.2026 (Auftrag F45 F-2b).
 Zugeordnet: F45 B2a.
 
@@ -13442,3 +13442,21 @@ Auswirkung: Gering bis mittel — jeweils benannt, kein stiller Verlust.
 Maßnahme: (1) mit B2b (Kontrolltiefe/Budget je Arbeitspaket) oder B5a; (2) mit B5a (Akte im Leitstand); (3) Feld `einrichtung_quelle` oder Lineage-Eingabe, wenn nötig; (4) mit B2a-3 (Review-Spec); (5) nach dem Referenzauftrag R; (6) mit F-1072 (B2b); (7) beobachten; (8) Challenger bestätigt oder ändert; (9) nach Bedarf, Gate-Fälle mit B2a-3.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2a-2 (Plan, Advisor-Pass und Nachpass, code-reviewer, qa, design-guardian), 13.10.2026.
+
+**F-1084** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: Teile eines Baus entstanden vor dem fertigen Advisor-Pass.
+Beschreibung: In B2a-2 wurden Teile gebaut, bevor der erste Advisor-Pass fertig war (folgenlos, v2 freigegeben).
+Fundstelle: `features/F45/plan-b2a2.md` (Abschnitt „Advisor-Pass“, Hinweis Prozess).
+Auswirkung: Gering — folgenlos; ohne Regel hängt die Reihenfolge am Ermessen der bauenden Sitzung.
+Maßnahme: Bauauftrag nennt „Bau erst nach freigegebenem Plan“ ausdrücklich.
+Status: erledigt (umgesetzt ab B2a-3): Der Auftrag F45 B2a-3 nennt die Regel im Ablauf; gebaut wurde erst nach dem Nachpass „freigegeben mit Hinweisen“ (`features/F45/plan-b2a3.md`).
+Feature/Run: F45 B2a-2.
+
+**F-1085** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B2a-3a (Codex-Review-Spec + Ausgaberegel).
+Beschreibung: (1) Nach einem Halt (Regel 1k, Werkzeugausfall) lässt sich der Review nicht allein wiederholen — Regel 3 startet keinen Schritt mit gesetzter lauf_id; der Weg ist „Anpassung wünschen“ (Neubau) oder „Ablehnen“. (2) Ein Claude-Reviewer im Ablauf hat kein Ausgabeschema (Regel 4b): die Abnahme meldet „keinen Post-Build-Review-Schritt“, seine Kontextlücken und sein Ergebnis erscheinen dort nicht. (3) Automatik und Korrekturschleife geben je Befund nur Schwere, Fundstelle, Zusammenfassung weiter — nicht `korrekturrichtung`, `evidenz`, `id` (Spec §10 „an Claude übergeben“). (4) KRITISCH/HOCH bei Urteil BEREIT löst keinen Hinweis aus (Spec §8). (5) Jarvis wechselt mit `cd` immer in den Projektordner, nie in den Arbeitsordner eines Ablaufs (Advisor L8). (6) Gate f45-b2a3: kein HTTP-Fall für die Projektion nach ANPASSUNG/zweitem Review-Lauf; Rotfälle der HTTP-Prüfungen (e) nur als Gegenprobe (e4). (7) Echter Codex-Lauf mit Schema v2 (nullbare Enums im Strict-Modus, Pflichtsatz, Wirkung der Policy) fehlt. (8) Servertexte der Hinweise (Vertragsverstöße, Kontextlücken) sind deutsch und nennen Feldnamen ('empfehlung', 'korrekturrichtung'). (9) „Kritisch“ und „Hoch“ teilen die Fehlerfarbe. (10) F-1083 (4) (ADRs des Reviews im Stand nach dem Bau) blieb offen.
+Fundstelle: `src/workflow/index.ts` (Regel 3), `scripts/leitstand-server.mjs` (`findeReviewSchritt`, GET …/abnahme, Jarvis-Aufrufe), `scripts/leitstand/f35-ws3-adjust-automatik.mjs`, `src/korrekturschleife`, `scripts/check-f45-b2a3-codex-review.mjs`.
+Auswirkung: Gering bis mittel — jeweils sichtbar benannt, kein stilles BEREIT.
+Maßnahme: (1) Entscheidung Stefan: „Review wiederholen“ als eigener Weg (B2b, Rückweg ≤ 1 je Stufe); (2) mit B2b (Prüfschritte der Kette); (3)/(4) mit B2b (§8 Status strittiger Befunde); (5) mit B2a-3b (Befehlsblöcke) oder B2b; (6)/(7) mit B2a-3b bzw. R; (8)/(9) beim UX-Durchgang nach F30; (10) mit B2a-3b.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2a-3a (Advisor-Pass, code-reviewer, qa, design-guardian), 13.10.2026.

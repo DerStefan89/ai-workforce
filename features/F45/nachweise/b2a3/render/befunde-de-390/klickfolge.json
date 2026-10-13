@@ -1,0 +1,73 @@
+{
+  "url": "http://127.0.0.1:4397/#/workflows/wf-b2a3-befunde-1791903727464",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweise zum Review",
+        "selector": ".abnahme-review-hinweise"
+      },
+      {
+        "name": "Befund v2",
+        "selector": ".abnahme-befund-v2"
+      },
+      {
+        "name": "Auf einen Blick",
+        "selector": ".abnahme-blick"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hinweis rot",
+        "selector": ".abnahme-review-hinweise.red"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-review-hinweise.amber"
+      },
+      {
+        "name": "Vertrag verletzt",
+        "selector": "[data-review-hinweis=\"vertragVerletzt\"]"
+      },
+      {
+        "name": "Vertrag unvollständig",
+        "selector": "[data-review-hinweis=\"vertragUnvollstaendig\"]"
+      },
+      {
+        "name": "Kontext unvollständig",
+        "selector": "[data-review-hinweis=\"kontextUnvollstaendig\"]"
+      },
+      {
+        "name": "Fehlgeschlagen",
+        "selector": "[data-review-hinweis=\"fehlgeschlagen\"]"
+      },
+      {
+        "name": "Befund KRITISCH",
+        "selector": ".abnahme-befund .ablauf-status.fehler"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Abnahme entscheidbar, Review-Kachel mit Hinweisen",
+      "warteAufSelector": {
+        "selector": ".abnahme-review-hinweise",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-kachel.webp"
+    },
+    {
+      "label": "„Alle Nachweise“ → Befunde v2",
+      "klick": ".abnahme-nachweise-zeigen",
+      "warteAufSelector": {
+        "selector": ".abnahme-befund-v2",
+        "timeoutMs": 5000
+      },
+      "screenshot": "02-befunde.webp"
+    }
+  ]
+}

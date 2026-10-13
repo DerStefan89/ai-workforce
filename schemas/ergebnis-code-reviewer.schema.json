@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/ergebnis-code-reviewer.schema.json",
   "title": "Rollen-Ergebnis: code-reviewer",
-  "description": "F16 WS-1 (AK6). Erstes Rollen-Ergebnisschema für --output-schema. Ein WORKFLOW_V0-Schritt referenziert es als output_schema: \"ergebnis-code-reviewer\" — der Name wird zu schemas/<name>.schema.json aufgelöst (kein Pfadtrennzeichen erlaubt, AK10), nie als freier Pfad übergeben. additionalProperties:false auf JEDER Objektebene ist hier keine Stilfrage, sondern Pflicht der Modell-API im Strict-Modus: fehlt das Feld, antwortet sie mit HTTP 400 invalid_json_schema ('additionalProperties' is required to be supplied and to be false) und es kommt gar kein Ergebnis zustande — real gemessen im Spike, state/tp-m3-01-codex.md, Lauf 3. Dies ist ausdrücklich KEIN Rollenvertrag (F-184): das Schema beschreibt allein die Form der Antwort, nicht die Pflichten, Befugnisse oder Abnahmekriterien der Rolle; der Rollenvertrag kommt mit F17. F35 WS-2 (features/F35/feature.md, löst state/findings.md F-732-Umfeld/M5-Bestehensbedingung 2): 'ak_urteile' ist zusätzlich PFLICHT (Strict-Modus verlangt jedes Feld in 'required', s.o.) — trägt der Auftrag keine strukturierten Akzeptanzkriterien (src/auftrag/types.ts' 'akzeptanzkriterien'), liefert der Reviewer ein leeres Array; src/ak-pruefung/index.ts' pruefeAkUrteile prüft das Ergebnis gegen den Auftrag.",
+  "description": "F16 WS-1 (AK6). Erstes Rollen-Ergebnisschema für --output-schema. Ein WORKFLOW_V0-Schritt referenziert es als output_schema: \"ergebnis-code-reviewer\" — der Name wird zu schemas/<name>.schema.json aufgelöst (kein Pfadtrennzeichen erlaubt, AK10), nie als freier Pfad übergeben. additionalProperties:false auf JEDER Objektebene ist hier keine Stilfrage, sondern Pflicht der Modell-API im Strict-Modus: fehlt das Feld, antwortet sie mit HTTP 400 invalid_json_schema ('additionalProperties' is required to be supplied and to be false) und es kommt gar kein Ergebnis zustande — real gemessen im Spike, state/tp-m3-01-codex.md, Lauf 3. Dies ist ausdrücklich KEIN Rollenvertrag (F-184): das Schema beschreibt allein die Form der Antwort, nicht die Pflichten, Befugnisse oder Abnahmekriterien der Rolle; der Rollenvertrag kommt mit F17. F35 WS-2 (features/F35/feature.md, löst state/findings.md F-732-Umfeld/M5-Bestehensbedingung 2): 'ak_urteile' ist zusätzlich PFLICHT (Strict-Modus verlangt jedes Feld in 'required', s.o.) — trägt der Auftrag keine strukturierten Akzeptanzkriterien (src/auftrag/types.ts' 'akzeptanzkriterien'), liefert der Reviewer ein leeres Array; src/ak-pruefung/index.ts' pruefeAkUrteile prüft das Ergebnis gegen den Auftrag. F45 B2a-3a (v2, F-1063, docs/projekt/codex-review-spec.md §7): je Befund zusätzlich 'id', 'dimension', 'evidenz', 'korrekturrichtung' und die Schwere KRITISCH (Spec critical/high/medium/low = KRITISCH/HOCH/MITTEL/NIEDRIG). Die neuen Felder stehen im Strict-Dialekt in 'required' und sind nullable — 'null' gibt es nur für die Abwärtskompatibilität; die Review-Policy (src/review-policy) verlangt Werte, pruefeReviewErgebnis meldet fehlende als Hinweis. Ergebnisse von vor v2 (ohne diese Felder) bleiben lesbar: kein Leser verlangt sie. Den geprüften Stand setzt der Server in der Laufakte (review), nie das Modell — deshalb steht er nicht in diesem Schema.",
   "type": "object",
   "additionalProperties": false,
   "required": ["urteil", "befunde", "empfehlung", "ak_urteile"],
@@ -13,13 +13,23 @@
     },
     "befunde": {
       "type": "array",
-      "description": "Einzelbefunde. Leeres Array ist zulässig und bedeutet: kein Befund (nicht: nicht geprüft).",
+      "description": "Einzelbefunde. Leeres Array ist zulässig und bedeutet: kein Befund (nicht: nicht geprüft). Ohne Befunde enthält 'empfehlung' den Satz „Keine belastbaren Findings im geprüften Scope“ (Spec §7, Regel 1k).",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schwere", "fundstelle", "zusammenfassung", "beleg"],
+        "required": ["id", "dimension", "schwere", "fundstelle", "zusammenfassung", "beleg", "korrekturrichtung", "evidenz"],
         "properties": {
-          "schwere": { "enum": ["NIEDRIG", "MITTEL", "HOCH"] },
+          "id": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "description": "v2: Befund-ID B1, B2, … — eindeutig in diesem Ergebnis, damit ein Befund über Korrektur und Re-Review nachverfolgbar bleibt."
+          },
+          "dimension": {
+            "type": ["string", "null"],
+            "enum": ["bugs", "funktion", "skalierbarkeit", "wartbarkeit", "prinzipien", "sicherheit", null],
+            "description": "v2: Review-Dimension (Spec §3); 'sicherheit' für Sicherheitsdefekte, 'prinzipien' auch für Befunde aus DoD, Checkliste oder Beobachtung."
+          },
+          "schwere": { "enum": ["NIEDRIG", "MITTEL", "HOCH", "KRITISCH"], "description": "KRITISCH seit v2 (Spec critical)." },
           "fundstelle": {
             "type": "string",
             "minLength": 1,
@@ -30,6 +40,16 @@
             "type": "string",
             "minLength": 1,
             "description": "Der konkrete Beleg (zitierte Stelle, beobachtetes Verhalten) — ein Befund ohne Beleg ist eine Meinung."
+          },
+          "korrekturrichtung": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "description": "v2: vorgeschlagene minimal-invasive Korrekturrichtung (Spec §7)."
+          },
+          "evidenz": {
+            "type": ["string", "null"],
+            "enum": ["confirmed", "likely", "needs-validation", null],
+            "description": "v2: Evidenzstatus (Spec §7) — confirmed belegt, likely plausibel, needs-validation offen."
           }
         }
       }

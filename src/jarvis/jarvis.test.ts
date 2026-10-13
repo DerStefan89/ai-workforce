@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from './index.ts'
+import { baueJarvisAuftragstext, REGEL_DIREKT_AUSFUEHRBAR, validiereErgebnisJarvis, waehleVerlaufsfenster } from './index.ts'
 import type { JarvisVerlaufsEintrag } from './types.ts'
 
 function antwortErgebnis(): Record<string, unknown> {
@@ -178,6 +178,25 @@ test('baueJarvisAuftragstext: enthält die Regel „direkt ausführbar“ nach d
   }
   assert.ok(text.includes('Das JSON-Objekt selbst steht NIE in einem Codezaun'))
   assert.ok(text.includes('kein Codezaun (```)'), 'Zaun-Verbot für die Gesamtantwort fehlt')
+})
+
+// ─── F45 B2a-3a (F-959, F-998): cd auf den vollen Projektpfad, „Deine Schritte“ ──
+
+test('baueJarvisAuftragstext: jede Zeile von REGEL_DIREKT_AUSFUEHRBAR steht im Auftrag; cd-Zeile mit eingesetztem Pfad', () => {
+  const cdZeile = "cd 'C:\\Users\\stefa\\Projekte\\mein projekt'"
+  const text = baueJarvisAuftragstext('Wie sichere ich?', [], { cdZeile })
+  for (const zeile of REGEL_DIREKT_AUSFUEHRBAR) assert.ok(text.includes(zeile), `Regelzeile fehlt: ${zeile}`)
+  assert.ok(text.includes(`- Erste Zeile jedes Blocks: ${cdZeile}`), 'cd-Zeile mit Pfad fehlt')
+  assert.ok(!text.includes('<voller Projektpfad>'), 'bei bekanntem Pfad kein Platzhalter')
+})
+
+test('baueJarvisAuftragstext: ohne cdZeile allgemeine cd-Regel; „Deine Schritte“ zuerst, höchstens drei Zeilen, einfache Sprache', () => {
+  const text = baueJarvisAuftragstext('Status?')
+  assert.ok(text.includes('- Erste Zeile jedes Blocks: cd auf den vollen Projektpfad'))
+  const schritte = text.indexOf("beginnt 'antwort' mit 'Deine Schritte:'")
+  assert.ok(schritte !== -1, '„Deine Schritte“ fehlt')
+  assert.ok(text.includes('höchstens drei Zeilen') && text.includes('einfache Sprache'))
+  assert.ok(schritte < text.indexOf('Nachricht des Menschen:'))
 })
 
 // ─── F31 WS-2: baueJarvisAuftragstext mit Verlauf ──────────────────────────

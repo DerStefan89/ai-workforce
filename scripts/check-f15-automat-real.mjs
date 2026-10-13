@@ -76,6 +76,7 @@ import { ermittleIstZustand } from '../src/invocation-policy/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
+import { KEINE_BEFUNDE_SATZ } from '../src/review-policy/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -996,7 +997,9 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 
 /** Baut die stdout-Zeilen eines Codex-'--json'-Laufs mit einer letzten agent_message, deren Text das ergebnis-code-reviewer-JSON mit dem gegebenen urteil trägt (Muster result-evaluator.test.ts' CODEX_STDOUT_*-Fixtures). */
 function codexUrteilSkript(urteil) {
-  const agentMessageJson = JSON.stringify({ urteil, befunde: [], empfehlung: 'F23-WS1b-Realcheck-Fixture: automatische Urteilsauswertung.' })
+  // F45 B2a-3a (Regel 1k): ohne Befunde trägt die Empfehlung den Pflichtsatz der Review-Policy — sonst hielte der
+  // Grünfall (h) als Vertragsbruch an (bewusste Fixture-Anpassung, Plan v2.1 V2).
+  const agentMessageJson = JSON.stringify({ urteil, befunde: [], empfehlung: `F23-WS1b-Realcheck-Fixture: automatische Urteilsauswertung. ${KEINE_BEFUNDE_SATZ}.` })
   const zeilen = [
     JSON.stringify({ type: 'turn.started' }),
     JSON.stringify({ type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: agentMessageJson } }),

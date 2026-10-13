@@ -525,6 +525,8 @@ import {
 } from '../src/arbeitsordner/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
+import { baueReviewPolicyBlock, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION } from '../src/review-policy/index.ts'
+import { psArgument } from '../public/leitstand/code-daten.js'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregisterMitLokal, projektOriginsAus, vorschauLeitstandSperre } from '../src/projekte/index.ts'
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
@@ -2931,6 +2933,8 @@ export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leits
  *   CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0
  *   projektkarte (F45 B2a-1): { hash, abschnitte, fehlend } der Projektkarte im Auftragstext — geht unverändert in die
  *   Eingaben (Laufakte projektkarte, beide Worker)
+ *   review (F45 B2a-3a): { policy_version } der Review-Policy im Auftrag (nur code-reviewer) — geht unverändert in die
+ *   Eingaben (Laufakte review, beide Worker)
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund, konflikt? (F45 F-2a: Anzeige veraltet → 409 im Workflow) }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
@@ -3289,6 +3293,8 @@ ${faehigkeitenInstruktion}` : auftragstext,
       ...(werkzeugsatz.art === 'schreibend' && typeof (optionen.faehigkeitenLokalPfad ?? fk?.lokalPfad) === 'string' ? { faehigkeitenLokalPfad: optionen.faehigkeitenLokalPfad ?? fk.lokalPfad } : {}),
       // F45 B2a-1: Metadaten der Projektkarte (nur wenn starteWorkflowSchritt eine Karte angehängt hat) → Laufakte.
       ...(optionen.projektkarte !== undefined ? { projektkarte: optionen.projektkarte } : {}),
+      // F45 B2a-3a: Version der Review-Policy (nur wenn starteWorkflowSchritt den Policy-Block angehängt hat) → Laufakte.
+      ...(optionen.review !== undefined ? { review: optionen.review } : {}),
       // worker/ausgabeSchemaPfad erscheinen NUR beim Codex-Zweig im Ergebnis
       // (F-286): ein Claude-Code-Lauf behält damit exakt den Feldsatz, den er
       // vor F16 hatte — byte-identisch, kein bestehender Test muss angepasst
@@ -4719,6 +4725,32 @@ export function beschreibeChatMisserfolg(ergebnis, fehler, abbruchAngefordert, z
   }
   if (status?.status === 'ABGESCHLOSSEN') return { art: 'nicht_erfolgreich', grund: klassifikationsGrund ?? status.ergebnis, code: klassifikationsGrund ?? 'fehlgeschlagen' }
   return { art: 'nicht_erfolgreich', grund: `unerwarteter Laufstatus ${status?.status ?? 'unbekannt'}`, code: 'unerwarteter_laufstatus' }
+}
+
+/**
+ * F45 B2a-3a (Codex-Review-Spec §9.8): kurze Ursache eines nicht erfolgreichen Laufs für den Halt-Grund — dieselbe Lesart wie
+ * beschreibeChatMisserfolg (Zeitgrenze, Abbruch, nicht gestartet, verweigert, Ausnahme), keine zweite Regel.
+ * @param ergebnis - Rückgabe von fuehreAufgabeDurch (oder undefined)
+ * @param fehler - geworfener Fehler (oder null)
+ * @param zeitgrenzeMs - Zeitgrenze des Schritts
+ * @returns Ursache als Text oder undefined
+ */
+function beschreibeLaufUrsache(ergebnis, fehler, zeitgrenzeMs) {
+  const misserfolg = beschreibeChatMisserfolg(ergebnis, fehler, false, zeitgrenzeMs)
+  if (misserfolg === null) return undefined
+  if (misserfolg.art === 'zeitgrenze') return `Zeitgrenze (${Math.round((zeitgrenzeMs ?? 0) / 1000)} s)`
+  if (misserfolg.art === 'abgebrochen') return 'abgebrochen'
+  return `${misserfolg.art === 'nicht_gestartet' ? 'Werkzeug nicht gestartet' : misserfolg.art === 'verweigert' ? 'verweigert' : 'Werkzeugausfall'}: ${misserfolg.grund ?? 'kein Grund gemeldet'}`
+}
+
+/**
+ * F45 B2a-3a (F-959): erste Zeile jedes Befehlsblocks einer Jarvis-Antwort — cd auf den vollen Projektpfad, PowerShell-gequotet
+ * über psArgument (dieselbe Regel wie die Befehlsblöcke des Leitstands, public/leitstand/code-daten.js).
+ * @param wurzel - Projektordner dieser Instanz
+ * @returns z. B. „cd 'C:\Projekte\mein projekt'“
+ */
+function baueProjektCdZeile(wurzel) {
+  return `cd ${psArgument(resolve(wurzel))}`
 }
 
 /**
@@ -6489,6 +6521,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
     }
 
+    // F45 B2a-3a (F-1063, Codex-Review-Spec): jeder code-reviewer-Schritt (Claude und Codex gleich) bekommt die versionierte
+    // Review-Policy — eine Stelle (src/review-policy), hinter Karte und Beobachtungsblock, damit der Auftrag vor der Karte
+    // bitgleich bleibt (Gate f45-b2a2 (b)). Die Version geht in die Laufakte (review.policy_version); nur Läufe mit ihr
+    // prüft der Nachlauf gegen den Ausgabevertrag (Regel 1k).
+    let reviewMeta
+    if (schritt.rolle === 'code-reviewer') {
+      auftragstext = `${auftragstext}\n\n${baueReviewPolicyBlock()}`
+      reviewMeta = { policy_version: REVIEW_POLICY_VERSION }
+    }
+
     // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
     // diesen zeigt und der real gelaufen ist. Beim ERSTEN Schritt gibt es keinen — dann bleibt
     // vorgaengerLaufId weg. Kein neuer Mechanismus, nur die bestehende Verweisbildung aus
@@ -6536,6 +6578,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (laufort.arbeitsordner !== null) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, arbeitsordner: laufort.arbeitsordner }
     // F45 B2a-1: Projektkarte für die Laufakte — erst hier, weil der Empfehlungszweig oben ausfuehrungsOptionen ersetzt.
     if (projektkarteMeta !== undefined) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, projektkarte: projektkarteMeta }
+    // F45 B2a-3a: Version der Review-Policy für die Laufakte — aus demselben Grund erst hier.
+    if (reviewMeta !== undefined) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, review: reviewMeta }
     const eingabenErgebnis = loeseSchrittEingabenAuf(
       schritt,
       workflowDaten,
@@ -6700,6 +6744,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       const heilbar = nichtErfolgreich && !existsSync(join(basisVerzeichnis, laufId))
 
       const schrittStatus = fehler !== null ? 'FEHLGESCHLAGEN' : normalisiereSchrittAusgang(ergebnis)
+      // F45 B2a-3a (Spec §9.8): die Ursache eines gescheiterten Reviews (Zeitgrenze, Werkzeugausfall) geht in den Halt-Grund
+      // (Regel 1), damit Abnahme und Blick sie zeigen; andere Rollen bleiben bitgleich.
+      const reviewUrsache = !heilbar && schrittStatus !== 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer' ? beschreibeLaufUrsache(ergebnis, fehler, schritt.zeitgrenze_ms) : undefined
       const schrittFelder = heilbar ? { status: 'OFFEN', lauf_id: null } : { status: schrittStatus, lauf_id: laufId }
       // F-760 (state/findings.md, löst "ein vollständiger Baulauf endete VERWEIGERT, ohne dass die
       // Kette zum Review noch erreichbar war"): dieselbe bypass_verdacht_anzahl wie beim
@@ -6741,11 +6788,15 @@ export function erzeugeRequestHandler(optionen = {}) {
       // dieser Block ohnehin schon läuft.
       let akVerstoesse
       let befunde = []
+      // Regel 1k (F45 B2a-3a): nur Läufe, deren Laufakte die Policy-Version trägt (alte Läufe unverändert); fehlt das
+      // Ergebnis, hält schon Regel 1b.
+      let reviewVerstoesse
       if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer') {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
         const geparstFuerAk = laufakteVersion !== null ? leseUrteilAusLaufakte(laufakteVersion.daten) : null
         akVerstoesse = pruefeAkUrteile(auftragVersion.daten.akzeptanzkriterien, geparstFuerAk?.ak_urteile ?? [])
         befunde = geparstFuerAk?.befunde ?? []
+        if (geparstFuerAk !== null) reviewVerstoesse = pruefeReviewErgebnisFuer(laufakteVersion?.daten?.review?.policy_version, geparstFuerAk)?.halt
       }
       // Regel 1c (F39 WS-2b, löst F-632 Teil b) — dasselbe zweite, eigenständige Lesen wie beim
       // urteil-Block direkt darüber, hier für 'ergebnis-architektur'. architekturEntscheidungAusstehend
@@ -7002,6 +7053,8 @@ export function erzeugeRequestHandler(optionen = {}) {
               laufId,
               urteil,
               akVerstoesse,
+              reviewVerstoesse,
+              ursache: reviewUrsache,
               architekturVerstoesse,
               architekturEntscheidungAusstehend,
               architekturAnzahlFragen,
@@ -7601,21 +7654,45 @@ export function erzeugeRequestHandler(optionen = {}) {
       const ausfuehrungSchritt = findeAusfuehrungsSchritt(workflowDaten)
       const reviewSchritt = findeReviewSchritt(workflowDaten)
 
+      // F45 B2a-3a (Codex-Review-Spec §9.8): Fehlerfälle mit sichtbarem Grund statt eines stillen Status. Der Workflow-grund
+      // gehört nur dann zum Review, wenn der Halt auf dem Review-Schritt steht.
+      const reviewHaltGrund = reviewSchritt !== null && workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === reviewSchritt.schritt_id ? (workflowDaten.grund ?? null) : null
       let urteilProjektion
       if (reviewSchritt === null) {
         urteilProjektion = { status: 'kein_review_schritt' }
       } else if (reviewSchritt.lauf_id === null) {
-        urteilProjektion = { status: 'noch_nicht_gelaufen', schrittId: reviewSchritt.schritt_id }
+        // Geheilter Werkzeugausfall vor dem ersten Checkpoint (lauf_id null) oder nie gestartet (Regel 3/4/4b, Startfehler):
+        // neutral „nicht gelaufen“ mit dem Grund des Halts.
+        urteilProjektion = reviewHaltGrund !== null ? { status: 'nicht_gelaufen_klaerung', schrittId: reviewSchritt.schritt_id, grund: reviewHaltGrund } : { status: 'noch_nicht_gelaufen', schrittId: reviewSchritt.schritt_id }
+      } else if (reviewSchritt.status === 'FEHLGESCHLAGEN' || reviewSchritt.status === 'VERWEIGERT') {
+        urteilProjektion = { status: 'fehlgeschlagen', laufId: reviewSchritt.lauf_id, schrittStatus: reviewSchritt.status, grund: reviewHaltGrund }
       } else {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${reviewSchritt.lauf_id}`, undefined, ladeOptionen)
         if (laufakteVersion === null) {
           urteilProjektion = { status: 'laufakte_fehlt', laufId: reviewSchritt.lauf_id }
         } else {
           const geparst = leseUrteilAusLaufakte(laufakteVersion.daten)
-          urteilProjektion =
-            geparst === null
-              ? { status: 'nicht_lesbar', laufId: reviewSchritt.lauf_id }
-              : { status: 'ok', laufId: reviewSchritt.lauf_id, urteil: geparst.urteil, befunde: geparst.befunde, empfehlung: geparst.empfehlung, ak_urteile: geparst.ak_urteile }
+          if (geparst === null) {
+            urteilProjektion = { status: 'nicht_lesbar', laufId: reviewSchritt.lauf_id }
+          } else {
+            // F45 B2a-3a: Vertrag nur nach den Regeln der Policy-Version des Laufs (alte Laufakten: leer); Kontextlücken aus der Projektkarte
+            // des Review-Laufs (fail-open, kein Halt — sichtbar statt still, Plan v2 O2).
+            const policyVersion = typeof laufakteVersion.daten.review?.policy_version === 'string' ? laufakteVersion.daten.review.policy_version : null
+            const vertrag = pruefeReviewErgebnisFuer(policyVersion, geparst) ?? { halt: [], hinweise: [] }
+            const fehlend = laufakteVersion.daten.projektkarte?.fehlend
+            urteilProjektion = {
+              status: 'ok',
+              laufId: reviewSchritt.lauf_id,
+              urteil: geparst.urteil,
+              befunde: geparst.befunde,
+              empfehlung: geparst.empfehlung,
+              ak_urteile: geparst.ak_urteile,
+              policy_version: policyVersion,
+              vertrag_verstoesse: vertrag.halt,
+              vertrag_hinweise: vertrag.hinweise,
+              kontext_luecken: Array.isArray(fehlend) ? fehlend.filter((f) => typeof f === 'string') : [],
+            }
+          }
         }
       }
 
@@ -9413,7 +9490,7 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_JARVIS, 8, 12000)
       markiereZeit(zeitmessung, 'verlauf_geladen')
-      starteRollenChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster), false, KONFIGURATION_JARVIS, zeitmessung)
+      starteRollenChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster, { cdZeile: baueProjektCdZeile(repoWurzel) }), false, KONFIGURATION_JARVIS, zeitmessung)
       return
     }
 
@@ -9464,7 +9541,7 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const zusammenfassungsNachricht =
         "Fasse den bisherigen Gesprächsverlauf kompakt zusammen (Ziele, getroffene Entscheidungen, offene Punkte, zuletzt Besprochenes), damit das Gespräch allein auf Basis dieser Zusammenfassung sinnvoll fortgesetzt werden kann. Antworte mit art 'antwort'."
-      starteRollenChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster), true, KONFIGURATION_JARVIS, zeitmessung)
+      starteRollenChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster, { cdZeile: baueProjektCdZeile(repoWurzel) }), true, KONFIGURATION_JARVIS, zeitmessung)
       return
     }
 

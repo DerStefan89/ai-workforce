@@ -128,6 +128,7 @@ import type {
   GatewayErgebnis,
   LaufakteV0Daten,
   ProjektkarteV0,
+  ReviewV0,
   Starter,
   VerbrauchV0,
   Werkzeugaufruf,
@@ -283,6 +284,8 @@ interface GatewayOptionen {
   vorStartPruefung?: () => string | null
   /** F45 B2a-1: Metadaten der Projektkarte im Auftrag — geht unverändert als projektkarte in die Laufakte. Fehlt sie, fehlt das Feld. */
   projektkarte?: ProjektkarteV0
+  /** F45 B2a-3a: Review-Metadaten (Policy-Version) — gehen unverändert als review in die Laufakte. Fehlen sie, fehlt das Feld. */
+  review?: ReviewV0
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -1166,6 +1169,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
       ? { faehigkeiten_im_lauf: verbindeFaehigkeitenMitAufrufen(optionen.faehigkeitenImLauf, ermittleFaehigkeitsAufrufe(prozessErgebnis.stdout.split('\n')), beobachtung !== null) }
       : {}),
     ...(optionen.projektkarte !== undefined ? { projektkarte: optionen.projektkarte } : {}),
+    ...(optionen.review !== undefined ? { review: optionen.review } : {}),
   }
 
   const { pfad, versionSequenz } = registriereKernArtefakt(
@@ -1211,6 +1215,8 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     'faehigkeiten_im_lauf',
     // F45 B2a-1: additiv erlaubt, bewusst nicht Pflicht (Muster faehigkeiten_im_lauf).
     'projektkarte',
+    // F45 B2a-3a: additiv erlaubt, bewusst nicht Pflicht (Muster projektkarte).
+    'review',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -1318,7 +1324,23 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
   }
   if ('faehigkeiten_im_lauf' in obj) pruefeFaehigkeitenImLauf(obj.faehigkeiten_im_lauf, verstoesse)
   if ('projektkarte' in obj) pruefeProjektkarte(obj.projektkarte, verstoesse)
+  if ('review' in obj) pruefeReview(obj.review, verstoesse)
   return verstoesse
+}
+
+/**
+ * F45 B2a-3a: prüft das Laufakten-Feld review gegen schemas/kontrollzustand-laufakte-payload.schema.json (Zwilling).
+ * @param wert - Feldwert
+ * @param verstoesse - Sammelliste, wird ergänzt
+ */
+function pruefeReview(wert: unknown, verstoesse: string[]): void {
+  if (wert === null || typeof wert !== 'object' || Array.isArray(wert)) {
+    verstoesse.push("'review' muss, wenn angegeben, ein Objekt sein")
+    return
+  }
+  const review = wert as Record<string, unknown>
+  for (const feld of Object.keys(review)) if (feld !== 'policy_version') verstoesse.push(`unbekanntes Feld 'review.${feld}' (additionalProperties: false)`)
+  if (typeof review.policy_version !== 'string' || review.policy_version === '') verstoesse.push("'review.policy_version' muss ein nicht leerer String sein")
 }
 
 /**

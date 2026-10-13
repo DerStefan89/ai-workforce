@@ -17,6 +17,9 @@
  * - entschieden: eine kompakte Zeile mit Ergebnis, Begründung und Datum, bei erzeuger 'kern' der
  *   F18-Hinweis „Automatisch angelegt · Iteration n/3“.
  * Dazu die Zeilen „Review-Urteil“ und „Deine Abnahme“ für „Auf einen Blick“.
+ * F45 B2a-3a (Codex-Review-Spec §9.8): Fehlerfälle und Vertrag des Reviews sind sichtbar statt still — reviewHinweise
+ * (eine Quelle) erscheint im Blick (jeder Urteilsstatus), im Block der Lage 'vorab' (KLAERUNG_ERFORDERLICH) und in der
+ * Review-Kachel; Befunde v2 zeigen ID, Dimension, Evidenz und Korrekturrichtung.
  *
  * Reine Render-Funktionen: kein fetch, kein DOM, kein Import schreibender api.js-Funktionen; in Node
  * ohne DOM importierbar. Laden, Kennzeichen und alle POSTs bleiben in views/workflows.js.
@@ -53,16 +56,18 @@ export const ABNAHME_AKTIONEN = ['ANGENOMMEN', 'ANPASSUNG_ANGEFORDERT', 'ABGELEH
 /** Feste Wertemengen mit übersetztem Text (schemas/ergebnis-code-reviewer.schema.json, POST …/abnahme). */
 const URTEILE = new Set(['BEREIT', 'BEREIT_NACH_KORREKTUR', 'BLOCKIERT'])
 const AK_URTEILE = new Set(['ERFUELLT', 'NICHT_ERFUELLT', 'NICHT_PRUEFBAR'])
-const SCHWEREN = new Set(['NIEDRIG', 'MITTEL', 'HOCH'])
+const SCHWEREN = new Set(['NIEDRIG', 'MITTEL', 'HOCH', 'KRITISCH'])
+const DIMENSIONEN = new Set(['bugs', 'funktion', 'skalierbarkeit', 'wartbarkeit', 'prinzipien', 'sicherheit'])
+const EVIDENZEN = new Set(['confirmed', 'likely', 'needs-validation'])
 const PRUEF_WERTE = new Set(['GRUEN', 'ROT', 'ZEITGRENZE', 'FEHLER'])
 
 /** Nicht-'ok'-Status der Projektionen mit eigenem Text (Inhalt wie bisher, nur übersetzt). */
-const URTEIL_STATUS = new Set(['kein_review_schritt', 'noch_nicht_gelaufen', 'laufakte_fehlt', 'nicht_lesbar'])
+const URTEIL_STATUS = new Set(['kein_review_schritt', 'noch_nicht_gelaufen', 'laufakte_fehlt', 'nicht_lesbar', 'fehlgeschlagen', 'nicht_gelaufen_klaerung'])
 const PROJEKTION_STATUS = new Set(['kein_ausfuehrungs_schritt', 'noch_nicht_gelaufen', 'nicht_vorhanden'])
 
 /** Statusfarbe (Klasse von .ablauf-status) je Urteil, Schwere und Abnahme-Ergebnis — Anzeige, keine Regel. */
 const FARBE_URTEIL = { BEREIT: 'ok', BEREIT_NACH_KORREKTUR: 'warten', BLOCKIERT: 'fehler' }
-const FARBE_SCHWERE = { HOCH: 'fehler', MITTEL: 'warten', NIEDRIG: 'neutral' }
+const FARBE_SCHWERE = { KRITISCH: 'fehler', HOCH: 'fehler', MITTEL: 'warten', NIEDRIG: 'neutral' }
 const FARBE_ERGEBNIS = { ANGENOMMEN: 'ok', ANPASSUNG_ANGEFORDERT: 'warten', ABGELEHNT: 'fehler' }
 /** Symbol je AK-Urteil (Vorlage ✓); der Text daneben trägt die Bedeutung, das Symbol ist aria-hidden. */
 const SYMBOL_AK = { ERFUELLT: '✓', NICHT_ERFUELLT: '✗', NICHT_PRUEFBAR: '?' }
@@ -172,7 +177,66 @@ function renderFruehereEntscheidung(entscheidung) {
 }
 
 /**
- * Die Befunde des Reviews als Liste: Schwere, Fundstelle, Zusammenfassung, Beleg.
+ * F45 B2a-3a: die Hinweise zum Review, die nicht still bleiben dürfen (Codex-Review-Spec §9.8) — fehlgeschlagener,
+ * nicht gelaufener oder nicht lesbarer Review mit Grund, verletzter (Halt, Regel 1k, dazu die Empfehlung des Reviewers)
+ * oder unvollständiger Review-Vertrag, Kontextlücken der Projektkarte. Eine Quelle für den Vorab-Block, die Review-Kachel
+ * und die Zählzeile in „Auf einen Blick“. Alte Projektionen ohne die Felder → [].
+ * @param urteil - abnahme.urteil
+ * @returns Liste { art, server, parameter?, text }: server = Servertext (deutsch, unescaped) oder null; parameter = übersetzte
+ *   Platzhalter; text = ganzer Satz (unescaped)
+ */
+export function reviewHinweise(urteil) {
+  if (urteil === null || typeof urteil !== 'object') return []
+  const grund = (wert) => (typeof wert === 'string' && wert !== '' ? wert : t('abnahme.review.ohneGrund'))
+  const hinweis = (art, server, parameter = {}) => ({ art, server, parameter, text: t(`abnahme.review.${art}`, { ...parameter, text: server ?? '' }) })
+  if (urteil.status === 'fehlgeschlagen') {
+    const status = ['FEHLGESCHLAGEN', 'VERWEIGERT'].includes(urteil.schrittStatus) ? t(`ablauf.schritt.${urteil.schrittStatus}`) : String(urteil.schrittStatus ?? '')
+    return [hinweis('fehlgeschlagen', grund(urteil.grund), { status })]
+  }
+  if (urteil.status === 'nicht_gelaufen_klaerung') return [hinweis('nichtGelaufen', grund(urteil.grund))]
+  if (urteil.status === 'nicht_lesbar' || urteil.status === 'laufakte_fehlt') return [{ art: 'nichtLesbar', server: null, text: t(`abnahme.urteil.status.${urteil.status}`) }]
+  if (urteil.status !== 'ok') return []
+  const liste = (wert) => (Array.isArray(wert) ? wert.filter((e) => typeof e === 'string' && e !== '') : [])
+  const hinweise = []
+  for (const [art, feld] of [
+    ['vertragVerletzt', 'vertrag_verstoesse'],
+    ['vertragUnvollstaendig', 'vertrag_hinweise'],
+    ['kontextUnvollstaendig', 'kontext_luecken'],
+  ]) {
+    const eintraege = liste(urteil[feld])
+    if (eintraege.length > 0) hinweise.push(hinweis(art, eintraege.join('; ')))
+  }
+  // qa 3: beim verletzten Vertrag sieht Stefan, was der Reviewer tatsächlich geschrieben hat.
+  if (hinweise.some((h) => h.art === 'vertragVerletzt')) hinweise.splice(1, 0, hinweis('empfehlung', typeof urteil.empfehlung === 'string' && urteil.empfehlung !== '' ? urteil.empfehlung : t('abnahme.empfehlung.keine')))
+  return hinweise
+}
+
+/** Arten, die eine rote Notiz und den Satz zum nächsten Schritt auslösen (der Review trägt nicht). */
+const ROTE_HINWEISE = new Set(['fehlgeschlagen', 'nichtGelaufen', 'nichtLesbar', 'vertragVerletzt'])
+
+/**
+ * Rendert reviewHinweise als Notiz — rot (mit dem nächsten Schritt), wenn der Review nicht trägt, sonst amber; ohne
+ * Hinweise nichts. Servertexte stehen in einem lang="de"-Span (design-guardian 4).
+ * @param urteil - abnahme.urteil
+ * @returns HTML oder ''
+ */
+function renderReviewHinweise(urteil) {
+  const hinweise = reviewHinweise(urteil)
+  if (hinweise.length === 0) return ''
+  const rot = hinweise.some((h) => ROTE_HINWEISE.has(h.art))
+  const punkte = hinweise
+    .map((h) => {
+      const inhalt = h.server === null ? escapeHtml(h.text) : tHtml(`abnahme.review.${h.art}`, h.parameter ?? {}, { text: `<span lang="de">${escapeHtml(h.server)}</span>` })
+      return `<li data-review-hinweis="${h.art}">${inhalt}</li>`
+    })
+    .join('')
+  const weiter = rot ? `<p>${tHtml('abnahme.review.weiter')}</p>` : ''
+  return `<div class="note ${rot ? 'red' : 'amber'} abnahme-review-hinweise" role="note"><p><strong>${tHtml('abnahme.review.titel')}</strong></p><ul>${punkte}</ul>${weiter}</div>`
+}
+
+/**
+ * Die Befunde des Reviews als Liste: Schwere, Fundstelle, Zusammenfassung, Beleg; seit Schema v2 (F45 B2a-3a) dazu ID,
+ * Dimension, Evidenz und Korrekturrichtung, soweit vorhanden (renderBefundV2).
  * @param urteil - abnahme.urteil (status 'ok')
  * @returns HTML
  */
@@ -185,11 +249,27 @@ function renderBefunde(urteil) {
       (b) => `<li class="abnahme-befund">
       <p><span class="ablauf-status ${FARBE_SCHWERE[b.schwere] ?? 'neutral'}">${escapeHtml(wertText(SCHWEREN, 'abnahme.schwere', b.schwere))}</span> <code>${escapeHtml(b.fundstelle ?? '')}</code></p>
       <p>${escapeHtml(b.zusammenfassung ?? '')}</p>
-      <p class="subtle">${tHtml('abnahme.befunde.beleg', { beleg: String(b.beleg ?? '') })}</p>
+      <p class="subtle">${tHtml('abnahme.befunde.beleg', { beleg: String(b.beleg ?? '') })}</p>${renderBefundV2(b)}
     </li>`
     )
     .join('')
   return `${kopf}<ul class="abnahme-liste abnahme-befunde">${zeilen}</ul>`
+}
+
+/**
+ * F45 B2a-3a: die Felder eines Befunds v2 (ID, Dimension, Evidenz, Korrekturrichtung) — nur die vorhandenen; ein Befund
+ * v1 bekommt keine Zeile.
+ * @param b - Befund
+ * @returns HTML oder ''
+ */
+function renderBefundV2(b) {
+  const teile = []
+  if (typeof b.id === 'string' && b.id !== '') teile.push(`<code>${escapeHtml(b.id)}</code>`)
+  if (typeof b.dimension === 'string' && b.dimension !== '') teile.push(escapeHtml(wertText(DIMENSIONEN, 'abnahme.befunde.dimension', b.dimension)))
+  if (typeof b.evidenz === 'string' && b.evidenz !== '') teile.push(escapeHtml(wertText(EVIDENZEN, 'abnahme.befunde.evidenz', b.evidenz)))
+  const korrektur = typeof b.korrekturrichtung === 'string' && b.korrekturrichtung !== '' ? `<p class="subtle">${tHtml('abnahme.befunde.korrektur', { text: b.korrekturrichtung })}</p>` : ''
+  if (teile.length === 0 && korrektur === '') return ''
+  return `<div class="abnahme-befund-v2">${teile.length > 0 ? `<p class="subtle">${teile.join(' · ')}</p>` : ''}${korrektur}</div>`
 }
 
 /**
@@ -333,7 +413,7 @@ function renderReviewKachel(urteil) {
         <p class="entscheiden-review-text">${urteil.empfehlung ? escapeHtml(urteil.empfehlung) : tHtml('abnahme.empfehlung.keine')}</p>
         <p class="subtle">${tHtml('abnahme.empfehlung.lauf', {}, { lauf: `<code>${escapeHtml(urteil.laufId ?? '')}</code>` })}</p>`
       : `<p class="subtle">${escapeHtml(wertText(URTEIL_STATUS, 'abnahme.urteil.status', urteil.status))}</p>`
-  return `<div class="entscheiden-kachel"><span class="eyebrow">${tHtml('entscheiden.abnahme.review')}</span>${inhalt}
+  return `<div class="entscheiden-kachel"><span class="eyebrow">${tHtml('entscheiden.abnahme.review')}</span>${inhalt}${renderReviewHinweise(urteil)}
     <p class="subtle entscheiden-kommt" aria-disabled="true">${tHtml('entscheiden.abnahme.claudePruefer')} ${kommtBadge()}</p></div>`
 }
 
@@ -477,6 +557,7 @@ function renderVorab(workflowId, abnahme, harnessAbgleich) {
   return `<section class="abnahme-stand abnahme-vorab" aria-labelledby="abnahme-vorab-titel">
     <h3 id="abnahme-vorab-titel">${gelaufen ? tHtml('abnahme.vorab.titelErgebnis') : tHtml('abnahme.vorab.titel')}</h3>
     <p class="subtle">${gelaufen ? tHtml('abnahme.vorab.textErgebnis') : tHtml('abnahme.vorab.text')}</p>
+    ${renderReviewHinweise(abnahme.urteil)}
     ${renderFruehereEntscheidung(abnahme.entscheidung)}
     ${ergebnis}
     <label class="field" for="wf-abnahme-begruendung">${tHtml('abnahme.entscheidung.begruendung')}</label>
@@ -518,12 +599,20 @@ export function renderAbnahme(workflowId, abnahme, vorschau = null, harnessAbgle
 export function renderAbnahmeBlick(abnahme) {
   if (abnahme === null || abnahme === undefined) return ''
   const urteil = abnahme.urteil
+  const hinweise = reviewHinweise(urteil)
+  // design-guardian 1: ein Urteil, dessen Vertrag verletzt ist, steht nicht in der Erfolgsfarbe.
+  const farbe = hinweise.some((h) => h.art === 'vertragVerletzt') ? 'neutral' : (FARBE_URTEIL[urteil?.urteil] ?? 'neutral')
   const urteilZeile =
     urteil?.status === 'ok'
-      ? `<dt>${tHtml('abnahme.blick.urteil')}</dt><dd><span class="ablauf-status ${FARBE_URTEIL[urteil.urteil] ?? 'neutral'}">${escapeHtml(wertText(URTEILE, 'abnahme.urteil.kurz', urteil.urteil))}</span></dd>`
+      ? `<dt>${tHtml('abnahme.blick.urteil')}</dt><dd><span class="ablauf-status ${farbe}">${escapeHtml(wertText(URTEILE, 'abnahme.urteil.kurz', urteil.urteil))}</span></dd>`
+      : ''
+  // design-guardian 2: im Blick nur die Zahl — die Liste steht einmal, im Vorab-Block bzw. in der Review-Kachel.
+  const hinweisZeile =
+    hinweise.length > 0
+      ? `<dt>${tHtml('abnahme.review.titel')}</dt><dd><span class="ablauf-status ${hinweise.some((h) => ROTE_HINWEISE.has(h.art)) ? 'fehler' : 'warten'}" data-review-hinweise-anzahl="${hinweise.length}">${tHtml('abnahme.blick.hinweise', { anzahl: hinweise.length })}</span></dd>`
       : ''
   const entscheidung = abnahme.entscheidung
   const abnahmeText = entscheidung?.status === 'ok' ? escapeHtml(ergebnisText(entscheidung.ergebnis)) : tHtml('abnahme.blick.offen')
-  return `<dl class="abnahme-blick">${urteilZeile}<dt>${tHtml('abnahme.blick.abnahme')}</dt><dd>${abnahmeText}</dd></dl>
+  return `<dl class="abnahme-blick">${urteilZeile}${hinweisZeile}<dt>${tHtml('abnahme.blick.abnahme')}</dt><dd>${abnahmeText}</dd></dl>
     <div class="note abnahme-blick-hinweis"><p>${tHtml('abnahme.blick.hinweis')}</p></div>`
 }

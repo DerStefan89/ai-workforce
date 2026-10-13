@@ -1,0 +1,3 @@
+| Aktion | Hinweis rot | Hinweis amber | Vertrag verletzt | Vertrag unvollständig | Kontext unvollständig | Fehlgeschlagen | Befund KRITISCH | Hinweise zum Review | Befund v2 | Auf einen Blick | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Werkzeugausfall: „Review-Lauf … endete FEHLGESCHLAGEN“ | true | false | false | false | false | true | false | Hinweise zum ReviewReview-Lauf (Fehlgeschlagen): Schritt 'schritt-2-review' endete FEHLGESCHLAGEN (Lauf '8cf578d6-f6d2-4 | (fehlt) | Hinweise zum Review1 — Details beim ReviewDeine AbnahmeNoch offen | true |

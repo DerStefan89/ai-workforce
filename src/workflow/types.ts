@@ -300,6 +300,19 @@ export interface SchrittErgebnis {
    * fehlendes 'urteil' für Regel 1b.
    */
   akVerstoesse?: string[]
+  /**
+   * F45 B2a-3a (Regel 1k, Codex-Review-Spec §9.8): Verstöße eines 'ergebnis-code-reviewer'-Laufs gegen den
+   * Ausgabevertrag der Review-Policy, die anhalten (heute nur: keine Befunde und der Satz „Keine belastbaren Findings im
+   * geprüften Scope“ fehlt). Der Aufrufer berechnet sie über pruefeReviewErgebnis (src/review-policy) und nur für Läufe,
+   * deren Laufakte review.policy_version trägt; dieses Modul importiert src/review-policy nicht. Fehlend oder leer =
+   * folgenlos (alte Läufe, Schritte ohne dieses output_schema).
+   */
+  reviewVerstoesse?: string[]
+  /**
+   * F45 B2a-3a (Codex-Review-Spec §9.8): Ursache eines nicht erfolgreichen Laufs (z. B. „Zeitgrenze (600 s)“,
+   * Werkzeugausfall) — vom Aufrufer gesetzt, heute nur für den code-reviewer-Schritt; Regel 1 hängt sie an den Grund.
+   */
+  ursache?: string
 }
 
 /**

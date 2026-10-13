@@ -643,6 +643,33 @@ test('AK7 grün: starteCodexGateway registriert eine Laufakte mit worker/modell_
   }
 })
 
+test('F45 B2a-3a: optionen.review geht unverändert als review in die Laufakte; ohne Option fehlt das Feld', async () => {
+  const mitId = neueGatewayLaufId('codex-gw-review')
+  const ohneId = neueGatewayLaufId('codex-gw-ohne-review')
+  try {
+    const mit = await starteCodexGateway(gatewayEingaben(mitId), {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: ROH_BASIS,
+      starter: protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: '', exitCode: 0 }).starter,
+      review: { policy_version: 'review-policy-1' },
+    })
+    assert.equal(mit.ok, true)
+    if (!mit.ok) return
+    assert.deepStrictEqual(mit.laufakte.review, { policy_version: 'review-policy-1' })
+    assert.equal(validiereLaufakteDaten(mit.laufakte).length, 0)
+    const ohne = await starteCodexGateway(gatewayEingaben(ohneId), { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: '', exitCode: 0 }).starter })
+    assert.equal(ohne.ok, true)
+    if (ohne.ok) assert.equal('review' in ohne.laufakte, false)
+    // Rotfälle des Validators: falscher Typ, leere Version, unbekanntes Feld
+    for (const kaputt of [null, 'review-policy-1', { policy_version: '' }, { policy_version: 'v', geprueft_stand: 'x' }]) {
+      assert.ok(validiereLaufakteDaten({ ...mit.laufakte, review: kaputt }).some((v) => v.includes("'review")), JSON.stringify(kaputt))
+    }
+  } finally {
+    raeumeGatewayLauf(mitId)
+    raeumeGatewayLauf(ohneId)
+  }
+})
+
 test('AK7 grün: der Rohstrom trägt tokens (neu gegenüber F6a) und der Laufakte-Hash passt zu seinem Inhalt', async () => {
   const laufId = neueGatewayLaufId('codex-gw-rohstrom')
   try {

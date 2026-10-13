@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). B2a-2 gemergt #330 (`a6d3411`). B2a-3 nach dem Advisor-Pass geteilt (Stefan, 13.10.2026) in B2a-3a/B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut (Branch `f45/b2a3-codex-review`, Basis `a6d3411`, nicht committet; Abschnitt „Stand B2a-3a“). B2a gilt als abgeschlossen, wenn auch B2a-3b gemergt ist. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -33,6 +33,7 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **Sammlung als Basis** (Stefan, 12.10.2026) — `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl; sie kommt in F-2b in den Leitstand (Kurzbeschreibung, Urteil, Lizenz, Kosten, Stand) mit „Auswählen“ → Prüflauf → Katalog. Reihenfolge ab F (Challenger, 12.10.2026): F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2 — B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht. (Vorher, Stefan 12.10.2026: F-1 → F-2a → F-2b → F-3 → B2a → …)
 - **F-2b geteilt** (Stefan, 12.10.2026, nach dem Advisor-Pass, Befund A1 „Zuschnitt zu groß“) — F-2b-1: Sammlung lesen und zeigen, Zuordnung zum Katalog, Scout liest die Sammlung, F-1060 (6); F-2b-2: Auswählen → Eignungsprüfung (Prüfbericht) → Katalog, Sperre der Freigabe, F-1061 (1). Sammlung: alle 176 Zeilen der Bewertungsmatrix sichtbar (172 mit Link, die 4 ohne Link nicht auswählbar; O1). extern_lesend-MCPs von F-2b nach F-3.
 - **Reihenfolge ab F** (Challenger, 12.10.2026) — F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2; B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht.
+- **B2a-3 geteilt** (Stefan, 13.10.2026, Advisor-Pass B2a-3) — B2a-3a Spec, Policy, Schema v2, Regel 1k, Fehlerfälle, Jarvis-Regel; B2a-3b geprüfter Stand/„Review veraltet“ und Befehlsblöcke im Leitstand. Vorrang Policy vor Karte (Prozesspunkte der DoD „nicht anwendbar (Harness-Abgleich)“, Beobachtungsblock beim Claude-Reviewer als Ausnahme); Regel 1k hält nur bei leeren Befunden ohne den Pflichtsatz.
 - **B2a geteilt** (Challenger, 13.10.2026) — B2a-1 Projektkarte (≈ 0,6–0,7 AT), B2a-2 Arbeitspaket (≈ 0,5–0,6 AT), B2a-3 Codex-Review-Spec + Ausgaberegel (≈ 0,4 AT); F-1072 (API-Schlüssel) nach B2b. Grundlage Abschnitt 5.
 - **O2 B2a-1 — Pflichtabschnitte von ARCHITECTURE.md** (Challenger, 13.10.2026, Vorschlag Advisor) — Pflicht beim Stack-Entscheid sind „Ordnerstruktur“ und „Datenzugriff“; „Module“ steht nur als Satz in der Stack-Instruktion; das Skelett bleibt unverändert.
 - **F-1061 (3) — Bestätigung nach Fremdänderung** (Stefan, 12.10.2026, Empfehlung Challenger) — Nach einer Änderung von außen an `~/.ai-workforce/faehigkeiten.lokal.json` gilt der Stand erst nach ausdrücklicher Bestätigung im Leitstand („Datei geprüft – Stand übernehmen“); bis dahin startet kein Lauf mit Katalog-Fähigkeiten (Muster E-F45-7). Umsetzung F-2a, ARCHITECTURE.md §2.
@@ -54,7 +55,8 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 | F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge | Schätzung fehlt | |
 | B2a-1 | Projektkarte (geteilt am 13.10.2026): `src/projektkarte`, Zuschnitt je Rolle an Architekt, Advisor, Code-Reviewer (Claude und Codex gleich, als Text), Hash in der Laufakte; Architekt im Feature-Modus mit Karte, Capability-Auszug, Lese-Anweisung; ARCHITECTURE.md Pflicht beim Stack-Entscheid; DoD/Checkliste mit Urteil je Punkt; Beobachtungsblock nur claude-code | F-936, F-1064 (K26), F-1065 (K27), F-1066 (K28), F-929, F-931, F-829, F-1062 (K24) | B1b | Advisor-Pass, vor Merge | ≈ 0,6–0,7 | |
 | B2a-2 | Arbeitspaket: Auftrag v0 additiv (DoD-Verweis, betroffene Bereiche, Risiko/Kontrolltiefe, „Einrichtung durch Stefan“, Feature-Bezug), AK-Entwurf aus der Finding-Maßnahme, Server rendert den Prompt, Gate Pflichtfelder, Einrichtungsliste vor dem Bau | F-938, F-989, F-1071 (K31) | B2a-1 | Advisor-Pass, vor Merge | ≈ 0,5–0,6 | |
-| B2a-3 | Codex-Review-Spec (`docs/projekt/codex-review-spec.md`), Review-Schema v2 additiv, Regel „direkt ausführbar“ | F-1063 (K25), F-959, F-998 | B2a-1 | vor Merge | ≈ 0,4 | |
+| B2a-3a | Codex-Review-Spec (`docs/projekt/codex-review-spec.md`), Review-Policy (`src/review-policy`), Review-Schema v2 additiv, Regel 1k und Fehlerfälle sichtbar, Jarvis „direkt ausführbar“ mit cd-Pfad und „Deine Schritte“ (geteilt am 13.10.2026) | F-1063 (K25) teilweise, F-959 (Jarvis), F-998 | B2a-1 | Advisor-Pass, design-guardian, vor Merge | ≈ 0,4 (Ist ≈ 0,5) | |
+| B2a-3b | Geprüfter Stand und „Review veraltet“, Befehlsblöcke im Leitstand mit cd und getrennten Blöcken | F-1063 (Rest), F-959 (Rest) | B2a-3a | Advisor-Pass, design-guardian, vor Merge | Schätzung fehlt | |
 | B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011, F-1072 (K32, aus B2a am 13.10.2026) | B2a | Advisor-Pass, vor Merge | 1,25–1,5 (ohne F-1072) | |
 | B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 | |
 | B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 | |
@@ -849,3 +851,48 @@ beim ersten Start und serverseitig, Abhaken mit Textabgleich und Statusprüfung,
 Architekt-Validator, git-Fehler ≠ „fehlt“, Live-Region entfernt (Fokus), Label und Knopfnamen über i18n, Hierarchie und
 Zurücknahme in der Karte, Render-Nachweis mit Zoom 200 %, reduzierter Bewegung, hell und aufgeklappter Timeline
 (`features/F45/nachweise/b2a2/`). Rest: F-1083.
+
+## Stand B2a-3a
+
+Branch `f45/b2a3-codex-review`, Basis `a6d3411` (main mit B2a-2, #330). Plan `features/F45/plan-b2a3.md` (Plan v1 → Advisor-Pass
+„nicht freigegeben“ (B1–B5) → Entscheidungen Stefan (Teilung, Vorrang) → Plan v2 → Advisor-Nachpass „freigegeben mit
+Hinweisen“ (V1–V3) → Entscheidung Stefan zu V3 → Plan v2.1). Gebaut erst nach dem Nachpass (F-1084).
+
+**Spec und Policy (F-1063):** `docs/projekt/codex-review-spec.md` mit Kopf „Umsetzung in der Workforce“ und Stefans Spec wörtlich
+(Gate: sha256 des Spec-Teils). `src/review-policy` ist die einzige Quelle der Policy (`review-policy-1`): fünf Dimensionen plus
+Sicherheitsdefekte, „Explizit nicht beauftragt“, Kritik an früheren Architekturannahmen, „Grüne Tests sind kein
+Korrektheitsbeweis“, Lücken der Karte als nicht geprüft, Vorrang vor der Karte, Ausgabevertrag je Befund und der Satz „Keine
+belastbaren Findings im geprüften Scope“. Der Server hängt sie an jeden code-reviewer-Auftrag (Codex und Claude) hinter Karte und
+Beobachtungsblock; die Version geht über Execution-Controller und beide Gateways in die Laufakte (`review.policy_version`).
+
+**Schema v2:** `ergebnis-code-reviewer` je Befund `id`, `dimension`, `evidenz`, `korrekturrichtung` (in `required`, nullable),
+Schwere KRITISCH; Ergebnisse v1 bleiben lesbar. Der geprüfte Stand ist kein Modellfeld (B2a-3b, Laufakte).
+
+**Fehlerfälle (Spec §9.8):** Regel 1k in `ermittleNaechstenSchritt` (nach 1b und 1i, an `output_schema` gekoppelt, nur Läufe mit
+Policy-Version): leere Befunde ohne den Satz → KLAERUNG_ERFORDERLICH mit Grund, keine automatische Anpassung; Ausweg in der
+Abnahme „Anpassung wünschen“ oder „Ablehnen“. Fehlende Pflichtwerte je Befund und Kontextlücken der Karte → sichtbare Hinweise
+ohne Halt. GET …/abnahme kennt `fehlgeschlagen` (mit Grund und Lauf) und `nicht_gelaufen_klaerung`; `reviewHinweise` zeigt alles im
+Blick, im Vorab-Block (KLAERUNG) und in der Review-Kachel; Befunde v2 mit ID, Dimension, Evidenz, Korrekturrichtung.
+
+**Ausgaberegel (F-959 Jarvis, F-998):** `REGEL_DIREKT_AUSFUEHRBAR` und `REGEL_DEINE_SCHRITTE` in `src/jarvis`; erste Zeile jedes
+Blocks `cd` auf den vollen Projektpfad, vom Server eingesetzt.
+
+**Tests/Gates:** Gate `scripts/check-f45-b2a3-codex-review.mjs` (neu, in der Kette; 14 Rotfälle kalibriert); Unit-Tests
+`src/review-policy`, `src/workflow` (Regel 1k), `src/jarvis`, beide Gateways (`review` in der Laufakte), `workflow-abnahme.test.mjs`;
+Beispiel `schemas/examples/kontrollzustand-laufakte-review.valid.json`; begründet angepasst: `check-f15-automat-real.mjs` (Fixture
+mit Pflichtsatz, sonst hielte der Grünfall nach Regel 1k). Render-Nachweis `features/F45/nachweise/b2a3/`.
+
+**Prüfpass** (frischer Kontext): code-reviewer, qa und design-guardian je „freigegeben mit Hinweisen“. **Eine Korrekturrunde:**
+Satzvergleich ohne Groß-/Kleinschreibung und mit NFC (Code-Review 1), Vertragsprüfung nur nach den Regeln der Policy-Version des
+Laufs (`pruefeReviewErgebnisFuer`, Code-Review 3), Gate-Erwartung aus `DIMENSIONEN`/`EVIDENZEN` und Rotfälle für Policy-Kopplung,
+Server-Quelltext und cd-Zeile (14 statt 10; Code-Review 4/5), Satz zum Ausgabeformat ohne Schema in der Policy (Code-Review 7; der
+Policy-Text war noch nicht ausgeliefert, deshalb gleiche Version, neuer Hash im Gate), `baueProjektCdZeile` und `baueCdRegelZeile`
+(Code-Review 6/8), Ursache eines gescheiterten Reviews (Zeitgrenze, Werkzeugausfall, verweigert) im Halt-Grund über
+`SchrittErgebnis.ursache` (qa 1, Code-Review 2), Review VERWEIGERT als HTTP-Fall (qa TC-13), Empfehlung des Reviewers und Satz zum
+nächsten Schritt in der Notiz, „nicht lesbar“/„Laufakte fehlt“ sichtbar (qa 2/3), Notiz nur einmal mit Zählzeile im Blick, Urteil
+bei verletztem Vertrag neutral, Servertexte in `lang="de"`, übersetzter Status, Listenumbruch über die bestehende Notizregel
+(design-guardian 1–5). Render-Nachweis neu erzeugt. Rest: F-1085.
+
+**Belege der Bestehensbedingung:** 1 Projektkarte → B2a-1 (#329); 2 Arbeitspaket → B2a-2 (#330); 10 „Stefan muss keinen
+Zwischentext lesen“ → B2a-3a (Jarvis „Deine Schritte“, Review-Hinweise statt stiller Status) und B2b („Bereit zum Sichern“).
+Offen als Beleg: echter Codex-Lauf mit Schema v2 (nullbare Enums im Strict-Modus, Pflichtsatz) — mit B2a-3b oder R.
