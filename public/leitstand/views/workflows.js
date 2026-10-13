@@ -41,6 +41,7 @@ import {
   raeumeArbeitsordnerAuf,
   reicheWorkflowFassungEin,
   sendeAbnahme,
+  sendeEinrichtung,
   sendeWorkflowArchitekturEntscheidung,
   sendeWorkflowFreigabe,
   starteWorkflowSchritt,
@@ -1044,7 +1045,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     // F-768: die Sichtung ist nur beim reinen F-760-Halt fällig (bei ungültiger Fassung allein die Reparatur).
     const sichtung = ungueltig ? null : istSichtungsHaltAnzeige(daten)
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
-    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null }
+    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null }
     aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null)
     pruefeAusstehendeVorbereitung(workflowId, detail)
     // F46 D2: Kopf, Freigabe-Teil und Lage der Bereiche je Modus (Freigabe, Abnahme oder heutige Ablaufseite).
@@ -1063,7 +1064,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const geordnet = ordneSchritteNachPlan(daten.schritte)
     const aktiveLaufIds = await ermittleAktiveLaufIds(geordnet)
     if (istUeberholt()) return
-    inhalt.innerHTML = ungueltigBlock + renderTimeline(geordnet, { naechster, cursorId: daten.aktiver_schritt_id ?? null, aktiveLaufIds })
+    inhalt.innerHTML = ungueltigBlock + renderTimeline(geordnet, { naechster, cursorId: daten.aktiver_schritt_id ?? null, aktiveLaufIds, einrichtung: detail.einrichtung ?? null, workflowId })
     letzterBlick = { daten, naechster, geordnet, projektName }
     zeichneBlick()
     document.getElementById('workflow-technik-inhalt').innerHTML = renderTechnik({ daten, versionSequenz: detail.versionSequenz, naechster, geordnet, aktiveLaufIds })
@@ -1160,6 +1161,13 @@ async function fuehreWorkflowAktionAus(button) {
 
   if (aktion === 'starten') {
     await sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), button, t('ablauf.meldung.gestartet'))
+    return
+  }
+
+  // F45 B2a-2 (F-1071): einen Einrichtungsschritt abhaken bzw. wieder öffnen — danach lädt der Poll das Detail neu.
+  if (aktion === 'einrichtung') {
+    const status = button.dataset.status === 'offen' ? 'offen' : 'erledigt'
+    await sendeWorkflowBedienung(() => sendeEinrichtung(workflowId, { id: button.dataset.id, schritt: button.dataset.schritt ?? '', status }), button, t(status === 'erledigt' ? 'ablauf.meldung.einrichtungErledigt' : 'ablauf.meldung.einrichtungOffen'))
     return
   }
 
@@ -1282,7 +1290,9 @@ function initWorkflowBedienung() {
   // Notizen, Aktionen und Dialog (außerhalb der Poll-Container): .wf-aktion; „Abbrechen“ und ✕ im Dialog
   // schließen ohne Wirkung (nicht während einer laufenden Anfrage), Escape nativ (close).
   // F46 D2: dazu die Spalte „Deine Entscheidung“ (Freigabe: „<Option> bestätigen“ öffnet den Dialog).
-  for (const id of ['workflow-bedienung', 'workflow-aktionen', 'workflow-dialog', 'workflow-entscheidung']) {
+  // F45 B2a-2: die Einrichtung steht in der Timeline (workflow-detail-inhalt) und in der Karte „Arbeitspaket“ der
+  // Freigabe-Seite (workflow-entscheiden) und trägt eigene .wf-aktion-Knöpfe.
+  for (const id of ['workflow-bedienung', 'workflow-aktionen', 'workflow-dialog', 'workflow-entscheidung', 'workflow-detail-inhalt', 'workflow-entscheiden']) {
     document.getElementById(id).addEventListener('click', (ereignis) => {
       if (ereignis.target.closest('.wf-dialog-abbrechen')) {
         if (laufendeDialogBedienung === null) schliesseDialog()

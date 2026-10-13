@@ -11,17 +11,34 @@
  * src/lineage-registry/. Ein Auftrag ist der Wurzelknoten eines
  * Vorhabensstrangs — er zitiert keine vorherigen Artefakte, `eingaben`
  * bleibt bewusst ein leeres Array (D2).
+ *
+ * F45 B2a-2 (Arbeitspaket): additive Felder (bereiche, risiko, feature_ref, einrichtung), Pflicht-AK je Herkunft
+ * (validiereAuftragPflichtfelder), Prüfung vor dem Schreiben, baueArbeitspaketBlock als einzige Textquelle des
+ * Arbeitspaket-Blocks für Architekt und Ausführung, gleicheEinrichtungslisteAb für die Übernahme der Einrichtung aus dem
+ * Architekt-Ergebnis. Aufgerufen außerdem von scripts/leitstand-server.mjs, scripts/leitstand/routen-f35.mjs und
+ * scripts/check-f45-b2a2-arbeitspaket.mjs.
  */
 
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
-import type { AuftragV0Daten, Ereignis, Optionen } from './types.ts'
+import type { AuftragV0Daten, Einrichtungsschritt, Ereignis, Optionen } from './types.ts'
 
 /** Zwilling des 'herkunft.art'-Enums in schemas/kontrollzustand-auftrag-payload.schema.json und src/auftrag/types.ts' AuftragHerkunftArt. */
-const HERKUNFT_ARTEN = new Set(['projekt_interview', 'sparring', 'jarvis', 'manuell', 'feature_akte'])
+const HERKUNFT_ARTEN = new Set(['projekt_interview', 'sparring', 'jarvis', 'manuell', 'feature_akte', 'finding'])
 
 /** Zwilling von schemas/kontrollzustand-auftrag-payload.schema.json' akzeptanzkriterien[].id-Pattern (F35 WS-1) — Muster der von baueAuftragAusFeatureAkte (src/feature-auftrag/index.ts) vergebenen IDs. */
 const AK_ID_MUSTER = /^AK[0-9]+$/
+
+/** F45 B2a-2: Herkünfte, deren Auftrag mindestens ein AK tragen muss (F-938) — Feature-Akte und Finding. */
+export const HERKUNFT_MIT_AK_PFLICHT: ReadonlySet<string> = new Set(['feature_akte', 'finding'])
+
+/** Zwillinge der Arbeitspaket-Felder in schemas/kontrollzustand-auftrag-payload.schema.json (F45 B2a-2). */
+const RISIKEN = new Set(['niedrig', 'mittel', 'hoch'])
+/** Feature-ID wie in docs/projekt/roadmap.json (schemas/roadmap.schema.json, FEATURE_ID_MUSTER in src/projektkontext). */
+const FEATURE_REF_MUSTER = /^F[0-9]+[A-Za-z]?$/
+const EINRICHTUNG_ID_MUSTER = /^E[0-9]+$/
+const EINRICHTUNG_WANN = new Set(['vor_dem_bau', 'waehrend_des_baus'])
+const EINRICHTUNG_STATUS = new Set(['offen', 'erledigt'])
 
 function jetzt(): string {
   return new Date().toISOString()
@@ -44,11 +61,14 @@ function auftragArtefaktId(auftragId: string): string {
  * Registriert einen Auftrag als AUFTRAG_V0-Kernartefakt über F2s
  * registriereKernArtefakt (AK1). eingaben bleibt [] — ein Auftrag ist der
  * Wurzelknoten eines Vorhabensstrangs, kein Zitat eines Vorgängerartefakts.
+ * F45 B2a-2: prüft die Daten vor dem Schreiben gegen validiereAuftragDaten (u. a. AK-Pflicht je Herkunft) und wirft
+ * mit der Verstoßliste — alle Aufrufer fangen den Wurf schon (Disk-I/O). Dieselbe Funktion schreibt auch neue
+ * Versionen eines bestehenden Auftrags (Einrichtung, F-1071): dann erstelltAm und optionenAusAuftrag übergeben.
  * @param auftragId - eindeutige Kennung, bildet die Artefakt-ID auftrag-<auftragId>
  * @param profilReferenz - Profilbezug, unverändert an F2 gereicht
  * @param titel - kurzer, menschenlesbarer Titel des Auftrags
  * @param auftragstext - der eigentliche Auftragstext (AK2 liest ihn über AusfuehrungsEingaben)
- * @param optionen - basisVerzeichnis/schreiber, Muster F5/F2
+ * @param optionen - basisVerzeichnis/schreiber, Muster F5/F2; optionale Felder des Auftrags
  * @returns pfad, versionSequenz und inhaltsHash der geschriebenen Version
  */
 export function registriereAuftrag(
@@ -66,7 +86,7 @@ export function registriereAuftrag(
     auftrag_id: auftragId,
     titel,
     auftragstext,
-    erstellt_am: jetzt(),
+    erstellt_am: optionen.erstelltAm ?? jetzt(),
     // F39 WS-2a: nur gesetzt, wenn der Aufrufer eine Herkunft übergibt — ein Alt-Auftrag ohne
     // dieses Feld bleibt strukturell unverändert (kein 'herkunft: undefined' im geschriebenen JSON).
     ...(optionen.herkunft !== undefined ? { herkunft: optionen.herkunft } : {}),
@@ -74,7 +94,14 @@ export function registriereAuftrag(
     // mitgibt, ein Alt-Auftrag bzw. ein Auftrag ohne Feature-Akte-Herkunft bleibt unverändert.
     ...(optionen.akzeptanzkriterien !== undefined ? { akzeptanzkriterien: optionen.akzeptanzkriterien } : {}),
     ...(optionen.nicht_ziele !== undefined ? { nicht_ziele: optionen.nicht_ziele } : {}),
+    // F45 B2a-2: dasselbe additive Muster für die Arbeitspaket-Felder.
+    ...(optionen.bereiche !== undefined ? { bereiche: optionen.bereiche } : {}),
+    ...(optionen.risiko !== undefined ? { risiko: optionen.risiko } : {}),
+    ...(optionen.feature_ref !== undefined ? { feature_ref: optionen.feature_ref } : {}),
+    ...(optionen.einrichtung !== undefined ? { einrichtung: optionen.einrichtung } : {}),
   }
+  const verstoesse = validiereAuftragDaten(daten)
+  if (verstoesse.length > 0) throw new Error(`Auftrag '${auftragId}' verstößt gegen schemas/kontrollzustand-auftrag-payload.schema.json: ${verstoesse.join('; ')}`)
 
   const { pfad, versionSequenz, inhaltsHash } = registriereKernArtefakt(
     auftragArtefaktId(auftragId),
@@ -174,6 +201,110 @@ export function validiereAuftragNichtZiele(wert: unknown): string[] {
   return verstoesse
 }
 
+/**
+ * Reine Funktion: prüft ein optionales bereiche-Array (F45 B2a-2) — mindestens ein Eintrag, je ein nicht-leerer,
+ * eindeutiger String (betroffene Ordner/Module).
+ * @param wert - der zu prüfende Wert
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+export function validiereAuftragBereiche(wert: unknown): string[] {
+  if (!Array.isArray(wert)) return ["'bereiche' muss ein Array sein"]
+  if (wert.length === 0) return ["'bereiche' darf, wenn vorhanden, nicht leer sein (minItems: 1)"]
+  const verstoesse: string[] = []
+  const gesehen = new Set<string>()
+  wert.forEach((eintrag, index) => {
+    if (typeof eintrag !== 'string' || eintrag.trim().length === 0) verstoesse.push(`'bereiche[${index}]' muss ein nicht-leerer String sein`)
+    else if (gesehen.has(eintrag)) verstoesse.push(`'bereiche[${index}]' ('${eintrag}') ist doppelt`)
+    else gesehen.add(eintrag)
+  })
+  return verstoesse
+}
+
+/**
+ * Reine Funktion: prüft ein optionales einrichtung-Array (F-1071) — leer erlaubt; je Eintrag id (^E[0-9]+$, eindeutig),
+ * schritt (nicht leer), wann und status aus den geschlossenen Mengen.
+ * @param wert - der zu prüfende Wert
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+export function validiereAuftragEinrichtung(wert: unknown): string[] {
+  if (!Array.isArray(wert)) return ["'einrichtung' muss ein Array sein"]
+  const verstoesse: string[] = []
+  const ids = new Set<string>()
+  wert.forEach((eintrag, index) => {
+    if (typeof eintrag !== 'object' || eintrag === null || Array.isArray(eintrag)) {
+      verstoesse.push(`'einrichtung[${index}]' muss ein Objekt sein`)
+      return
+    }
+    const obj = eintrag as Record<string, unknown>
+    for (const feld of Object.keys(obj)) {
+      if (!['id', 'schritt', 'wann', 'status'].includes(feld)) verstoesse.push(`unbekanntes Feld 'einrichtung[${index}].${feld}' (additionalProperties: false)`)
+    }
+    if (typeof obj.id !== 'string' || !EINRICHTUNG_ID_MUSTER.test(obj.id)) verstoesse.push(`'einrichtung[${index}].id' muss dem Muster ^E[0-9]+$ entsprechen`)
+    else if (ids.has(obj.id)) verstoesse.push(`'einrichtung[${index}].id' ('${obj.id}') ist nicht eindeutig`)
+    else ids.add(obj.id)
+    if (typeof obj.schritt !== 'string' || obj.schritt.trim().length === 0) verstoesse.push(`'einrichtung[${index}].schritt' muss ein nicht-leerer String sein`)
+    if (typeof obj.wann !== 'string' || !EINRICHTUNG_WANN.has(obj.wann)) verstoesse.push(`'einrichtung[${index}].wann' muss 'vor_dem_bau' oder 'waehrend_des_baus' sein`)
+    if (typeof obj.status !== 'string' || !EINRICHTUNG_STATUS.has(obj.status)) verstoesse.push(`'einrichtung[${index}].status' muss 'offen' oder 'erledigt' sein`)
+  })
+  return verstoesse
+}
+
+/**
+ * Reine Funktion: Pflichtfelder je Herkunft (F45 B2a-2, F-938) — ein Auftrag aus einer Feature-Akte oder einem Finding
+ * trägt mindestens ein Akzeptanzkriterium. Eine Quelle für validiereAuftragDaten und das POST-Formular des Servers.
+ * @param herkunftArt - herkunft.art oder undefined
+ * @param akzeptanzkriterien - akzeptanzkriterien oder undefined
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+export function validiereAuftragPflichtfelder(herkunftArt: unknown, akzeptanzkriterien: unknown): string[] {
+  if (typeof herkunftArt !== 'string' || !HERKUNFT_MIT_AK_PFLICHT.has(herkunftArt)) return []
+  return Array.isArray(akzeptanzkriterien) && akzeptanzkriterien.length > 0 ? [] : [`ein Auftrag mit herkunft.art '${herkunftArt}' braucht mindestens ein Akzeptanzkriterium`]
+}
+
+/**
+ * Reine Funktion: prüft die Arbeitspaket-Felder (bereiche, risiko, feature_ref, einrichtung), soweit vorhanden — für
+ * validiereAuftragDaten und das POST-Formular (eine Regel).
+ * @param obj - Objekt mit den optionalen Feldern
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+export function validiereArbeitspaketFelder(obj: Record<string, unknown>): string[] {
+  const verstoesse: string[] = []
+  if ('bereiche' in obj) verstoesse.push(...validiereAuftragBereiche(obj.bereiche))
+  if ('risiko' in obj && (typeof obj.risiko !== 'string' || !RISIKEN.has(obj.risiko))) verstoesse.push("'risiko' muss 'niedrig', 'mittel' oder 'hoch' sein")
+  if ('feature_ref' in obj && (typeof obj.feature_ref !== 'string' || !FEATURE_REF_MUSTER.test(obj.feature_ref))) verstoesse.push("'feature_ref' muss dem Muster ^F[0-9]+[A-Za-z]?$ entsprechen")
+  if ('einrichtung' in obj) verstoesse.push(...validiereAuftragEinrichtung(obj.einrichtung))
+  return verstoesse
+}
+
+/**
+ * Die optionalen Felder einer bestehenden Auftragsversion als Optionen für registriereAuftrag — eine neue Version
+ * (z. B. Einrichtung übernommen oder abgehakt) verliert so kein Feld.
+ * @param daten - bestehende AUFTRAG_V0-Daten
+ * @returns Optionen ohne basisVerzeichnis/schreiber, mit erstelltAm
+ */
+export function optionenAusAuftrag(daten: AuftragV0Daten): Optionen {
+  const { herkunft, akzeptanzkriterien, nicht_ziele, bereiche, risiko, feature_ref, einrichtung } = daten
+  return {
+    erstelltAm: daten.erstellt_am,
+    ...(herkunft !== undefined ? { herkunft } : {}),
+    ...(akzeptanzkriterien !== undefined ? { akzeptanzkriterien } : {}),
+    ...(nicht_ziele !== undefined ? { nicht_ziele } : {}),
+    ...(bereiche !== undefined ? { bereiche } : {}),
+    ...(risiko !== undefined ? { risiko } : {}),
+    ...(feature_ref !== undefined ? { feature_ref } : {}),
+    ...(einrichtung !== undefined ? { einrichtung } : {}),
+  }
+}
+
+/**
+ * Offene Einrichtungsschritte, die vor dem Bau erledigt sein müssen (F-1071) — die Startsperre der Ausführung.
+ * @param daten - AUFTRAG_V0-Daten (oder undefined)
+ * @returns offene Schritte mit wann 'vor_dem_bau'
+ */
+export function offeneEinrichtungVorDemBau(daten: Pick<AuftragV0Daten, 'einrichtung'> | undefined): Einrichtungsschritt[] {
+  return (daten?.einrichtung ?? []).filter((e) => e.wann === 'vor_dem_bau' && e.status === 'offen')
+}
+
 /** Reine Funktion: prüft ein geparstes Objekt gegen schemas/kontrollzustand-auftrag-payload.schema.json. */
 export function validiereAuftragDaten(daten: unknown): string[] {
   if (typeof daten !== 'object' || daten === null || Array.isArray(daten)) {
@@ -181,7 +312,7 @@ export function validiereAuftragDaten(daten: unknown): string[] {
   }
   const obj = daten as Record<string, unknown>
   const verstoesse: string[] = []
-  const erlaubt = new Set(['auftrag_schema', 'auftrag_id', 'titel', 'auftragstext', 'erstellt_am', 'herkunft', 'akzeptanzkriterien', 'nicht_ziele'])
+  const erlaubt = new Set(['auftrag_schema', 'auftrag_id', 'titel', 'auftragstext', 'erstellt_am', 'herkunft', 'akzeptanzkriterien', 'nicht_ziele', 'bereiche', 'risiko', 'feature_ref', 'einrichtung'])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
@@ -195,5 +326,82 @@ export function validiereAuftragDaten(daten: unknown): string[] {
   if ('herkunft' in obj) verstoesse.push(...validiereAuftragHerkunft(obj.herkunft))
   if ('akzeptanzkriterien' in obj) verstoesse.push(...validiereAuftragAkzeptanzkriterien(obj.akzeptanzkriterien))
   if ('nicht_ziele' in obj) verstoesse.push(...validiereAuftragNichtZiele(obj.nicht_ziele))
+  // F45 B2a-2: Arbeitspaket-Felder additiv/optional; Pflicht-AK je Herkunft.
+  verstoesse.push(...validiereArbeitspaketFelder(obj))
+  const herkunftArt = typeof obj.herkunft === 'object' && obj.herkunft !== null ? (obj.herkunft as Record<string, unknown>).art : undefined
+  verstoesse.push(...validiereAuftragPflichtfelder(herkunftArt, obj.akzeptanzkriterien))
   return verstoesse
+}
+
+// ─── Arbeitspaket-Block (F45 B2a-2) ────────────────────────────────────────
+
+/** Lesbare Form von wann im Block (status steht als Wort). */
+const WANN_TEXT: Readonly<Record<Einrichtungsschritt['wann'], string>> = { vor_dem_bau: 'vor dem Bau', waehrend_des_baus: 'während des Baus' }
+
+/**
+ * true, wenn der Auftrag ein Arbeitspaket-Feld trägt, das einen Block auslöst: bereiche, risiko, einrichtung oder die
+ * Herkunft 'finding' (deren AK stehen sonst nirgends im Auftragstext). feature_ref allein löst keinen Block aus (er wirkt
+ * in Projektkarte und Verknüpfung). Ein Auftrag ohne diese Felder bleibt bitgenau wie vor B2a-2.
+ * @param daten - AUFTRAG_V0-Daten
+ * @returns true mit Block
+ */
+export function traegtArbeitspaket(daten: AuftragV0Daten): boolean {
+  return daten.bereiche !== undefined || daten.risiko !== undefined || daten.einrichtung !== undefined || daten.herkunft?.art === 'finding'
+}
+
+/**
+ * Baut den Arbeitspaket-Block für die Rollen architekt und ausfuehrung (F45 B2a-2) — die einzige Stelle, an der der
+ * Server aus den Auftragsdaten Text für diese Rollen baut. Rein und deterministisch. Bei Herkunft 'feature_akte' stehen
+ * Ziel, AK und Nicht-Ziele schon wörtlich im Auftragstext (baueAuftragAusFeatureAkte) → nur die AK-IDs mit Verweis.
+ * @param daten - AUFTRAG_V0-Daten
+ * @param ziel - Ziel des Workflows (oder null → Titel)
+ * @returns Block oder null, wenn der Auftrag kein Arbeitspaket-Feld trägt (traegtArbeitspaket)
+ */
+export function baueArbeitspaketBlock(daten: AuftragV0Daten, ziel: string | null): string | null {
+  if (!traegtArbeitspaket(daten)) return null
+  const aks = daten.akzeptanzkriterien ?? []
+  const nichtZiele = daten.nicht_ziele ?? []
+  const imText = daten.herkunft?.art === 'feature_akte'
+  const z = ['## Arbeitspaket', `Ziel: ${ziel !== null && ziel.trim() !== '' ? ziel.trim() : daten.titel}`]
+  if (aks.length === 0) z.push('Akzeptanzkriterien: keine.')
+  else if (imText) z.push(`Akzeptanzkriterien: ${aks.map((ak) => ak.id).join(', ')} — Wortlaut oben im Auftrag (Feature-Akte).`)
+  else z.push('Akzeptanzkriterien:', ...aks.map((ak) => `- ${ak.id}: ${ak.text}`))
+  if (nichtZiele.length === 0) z.push('Nicht-Ziele: keine benannt.')
+  else if (imText) z.push('Nicht-Ziele: siehe oben im Auftrag (Feature-Akte).')
+  else z.push('Nicht-Ziele:', ...nichtZiele.map((n) => `- ${n}`))
+  z.push(`Betroffene Bereiche: ${daten.bereiche !== undefined ? daten.bereiche.join(', ') : 'nicht benannt'}`)
+  z.push(`Risiko: ${daten.risiko ?? 'nicht eingestuft'}`)
+  const einrichtung = daten.einrichtung ?? []
+  if (einrichtung.length === 0) z.push('Einrichtung durch Stefan: keine.')
+  else z.push('Einrichtung durch Stefan:', ...einrichtung.map((e) => `- ${e.id} (${WANN_TEXT[e.wann]}, ${e.status}): ${e.schritt}`))
+  if (einrichtung.some((e) => e.wann === 'waehrend_des_baus' && e.status === 'offen')) {
+    z.push("Ein offener Schritt 'während des Baus' ist noch nicht eingerichtet — brauchst du ihn, melde ihn als Blockade, statt ihn zu umgehen.")
+  }
+  if (daten.feature_ref !== undefined) z.push(`Feature-Akte: features/${daten.feature_ref}/feature.md`)
+  z.push('Definition of Done: CLAUDE.md (Abschnitt „Definition of Done“).')
+  return z.join('\n')
+}
+
+/**
+ * Abgleich der Einrichtungsliste (F-1071, Advisor H1/H2): aus der Liste des Architekten ({ schritt, wann }) und der
+ * Liste des Auftrags entsteht die neue Liste — oder null, wenn sich nichts ändert. Gleich heißt: gleiche Folge der Paare
+ * (schritt, wann); der Status zählt nicht, Abhaken übersteht also jeden weiteren Abgleich. Bei einer Abweichung behält
+ * ein Schritt mit gleichem Paar seinen Status 'erledigt'; IDs E1…En nach der Reihenfolge des Architekten. Eine leere
+ * Architekten-Liste leert eine bestehende Liste (Replan ohne Einrichtung); ohne bestehende Liste bleibt der Auftrag
+ * unverändert (bitgenau).
+ * @param bisher - einrichtung des Auftrags (undefined = Feld fehlt)
+ * @param entwurf - einrichtung des Architekt-Ergebnisses
+ * @returns neue Liste oder null (keine neue Auftragsversion)
+ */
+export function gleicheEinrichtungslisteAb(bisher: Einrichtungsschritt[] | undefined, entwurf: { schritt: string; wann: Einrichtungsschritt['wann'] }[]): Einrichtungsschritt[] | null {
+  if (bisher === undefined && entwurf.length === 0) return null
+  const gleich = bisher !== undefined && bisher.length === entwurf.length && bisher.every((e, i) => e.schritt === entwurf[i].schritt && e.wann === entwurf[i].wann)
+  if (gleich) return null
+  const frei = [...(bisher ?? [])]
+  return entwurf.map((e, index) => {
+    const treffer = frei.findIndex((alt) => alt.schritt === e.schritt && alt.wann === e.wann)
+    const status = treffer !== -1 && frei[treffer].status === 'erledigt' ? 'erledigt' : 'offen'
+    if (treffer !== -1) frei.splice(treffer, 1)
+    return { id: `E${index + 1}`, schritt: e.schritt, wann: e.wann, status }
+  })
 }

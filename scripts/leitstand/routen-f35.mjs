@@ -106,6 +106,8 @@ export function baueUndRegistriereAuftragAusFeatureAkte(featureId, repoWurzel, p
       herkunft: ergebnis.herkunft,
       akzeptanzkriterien: ergebnis.akzeptanzkriterien,
       nicht_ziele: ergebnis.nicht_ziele,
+      // F45 B2a-2 (F-989): Feature-Bezug als Datum — die Verknüpfung Feature ↔ Ablauf hängt nicht mehr am Auftragstext.
+      feature_ref: featureId,
     })
   } catch (fehler) {
     return { ok: false, status: 500, grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` }

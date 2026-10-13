@@ -6423,6 +6423,55 @@ th {
   margin: 6px 0;
 }
 
+/* F45 B2a-2 (F-938): AK-Entwurf vor dem Anlegen — Felder wie die Textfelder der Ablaufseite, nur bestehende Farben. */
+#view-workboard .wb-ak-liste {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+
+#view-workboard .wb-ak-zeile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 10px;
+}
+
+#view-workboard .wb-ak-zeile label {
+  padding-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .wb-ak-text {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+  resize: vertical;
+}
+
+@media (max-width: 600px) {
+  #view-workboard .wb-ak-zeile {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #view-workboard .wb-ak-zeile label {
+    padding-top: 0;
+  }
+
+  #view-workboard .wb-ak-entfernen {
+    justify-self: start;
+  }
+}
+
 #view-workboard .workboard-kette span {
   margin-left: 10px;
   color: var(--muted);
@@ -7253,6 +7302,48 @@ th {
 .workflow-seite .timeline small {
   font-size: 10px;
   color: var(--muted);
+}
+
+/* F45 B2a-2 (F-1071): „Einrichtung durch dich“ (Timeline vor dem Ausführungsschritt, Karte „Arbeitspaket“). Die Liste
+   erbt nicht die Timeline-Form (kein Strich, kein Punkt); nur bestehende Farben. */
+.workflow-seite .einrichtung-liste {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-seite .einrichtung-liste li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 0;
+  border-left: 0;
+}
+
+.workflow-seite .einrichtung-liste li::before {
+  content: none;
+}
+
+.workflow-seite .einrichtung-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .einrichtung-liste li[data-status='erledigt'] .einrichtung-text,
+.workflow-seite .einrichtung-text small {
+  color: var(--muted);
+}
+
+/* Design-Prüfung B2a-2 (2): in der Karte „Arbeitspaket“ steht die Einrichtung eine Stufe unter dem Kartentitel. */
+.workflow-seite .entscheiden-einrichtung h3 {
+  margin: 4px 0 8px;
+  font: 17px/1.3 var(--serif);
 }
 
 .ablauf-marke {

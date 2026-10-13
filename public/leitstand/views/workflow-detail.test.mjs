@@ -189,3 +189,28 @@ test('Timeline: der vom Server genannte Schritt ist „current“ mit Marke je A
   // Der Cursor allein macht einen abgeschlossenen Schritt nicht „current“.
   assert.match(renderTimeline(geordnet, { naechster: { art: 'fertig', schrittId: null }, cursorId: 's1' }), /<li class="done">\s*<h3>Architekt<\/h3>/)
 })
+
+test('F45 B2a-2 (F-1071): Einrichtung steht in der Timeline vor dem Ausführungsschritt, je Schritt Knopf mit Zielstatus', () => {
+  const geordnet = ordneSchritteNachPlan([
+    { schritt_id: 'a', rolle: 'architekt', worker: 'codex', status: 'ERFOLGREICH', nachfolger: 'b', lauf_id: 'l1' },
+    { schritt_id: 'b', rolle: 'ausfuehrung', worker: 'claude-code', status: 'OFFEN', nachfolger: null, lauf_id: null },
+  ])
+  const einrichtung = [
+    { id: 'E1', schritt: 'Konto <anlegen>', wann: 'vor_dem_bau', status: 'offen' },
+    { id: 'E2', schritt: 'Schlüssel setzen', wann: 'waehrend_des_baus', status: 'erledigt' },
+  ]
+  const html = renderTimeline(geordnet, { einrichtung, workflowId: 'w<1>' })
+  const einrichtungPos = html.indexOf('Einrichtung durch dich')
+  assert.ok(einrichtungPos > html.indexOf('Architekt') && einrichtungPos < html.indexOf('<code>b</code>'), 'Einrichtung zwischen Architekt und Ausführung')
+  assert.match(html, /class="ablauf-einrichtung"/)
+  assert.match(html, /aria-label="E1 als erledigt abhaken"/)
+  assert.match(html, /Konto &lt;anlegen&gt;/)
+  assert.match(html, /data-aktion="einrichtung" data-workflow-id="w&lt;1&gt;" data-id="E1" data-status="erledigt" aria-label="[^"]+" data-schritt="Konto &lt;anlegen&gt;">Erledigt</)
+  assert.match(html, /data-id="E2" data-status="offen" aria-label="E2 wieder öffnen" data-schritt="Schlüssel setzen">Wieder öffnen</)
+  assert.match(html, /Noch offen vor dem Bau: 1/)
+  const fertig = renderTimeline(geordnet, { einrichtung: einrichtung.map((e) => ({ ...e, status: 'erledigt' })), workflowId: 'w1' })
+  assert.match(fertig, /class="ablauf-einrichtung done"/)
+  assert.match(fertig, /Alles vor dem Bau erledigt\./)
+  assert.doesNotMatch(renderTimeline(geordnet, { einrichtung: null }), /Einrichtung durch dich/)
+  assert.doesNotMatch(renderTimeline(geordnet, { einrichtung: [] }), /Einrichtung durch dich/)
+})

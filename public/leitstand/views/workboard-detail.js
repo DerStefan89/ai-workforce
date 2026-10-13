@@ -27,7 +27,8 @@
  *     roadmap: undefined (lädt, nur Features) | Projektion von GET …/roadmap | { status: 'fehler' },
  *     workitems: alle Workitems (für Befunde je Feature und die Zahl offener Befunde) | null | undefined,
  *     ctw: Click-to-Work-Stand — 'frei' | 'gesperrt' | 'laedt' (Einstieg sichtbar), 'vorschlag'
- *          (Vorschlag wartet auf Freigeben/Ablehnen), 'stoerung' (Fehler oder Konflikt mit
+ *          (Vorschlag wartet auf Freigeben/Ablehnen), 'entwurf' (AK-Entwurf wartet auf Bestätigen, F45 B2a-2),
+ *          'stoerung' (Fehler oder Konflikt mit
  *          „Wiederholen“), 'aktiv' (anderer Zwischenstand), 'keiner',
  *     repoPfad: absoluter Projektordner oder null (VS-Code-Links),
  *     remoteWebUrl: geprüfte GitHub-Adresse des Repos oder null (F46 D4, „Pull Requests“),
@@ -458,6 +459,7 @@ export function detailJetzt(sicht) {
   const { workitem, workflow } = sicht
   const href = workflow !== null ? `#/workflows/${encodeURIComponent(workflow.workflowId)}` : null
   if (sicht.ctw === 'vorschlag') return { zustand: 'dran-verbunden', html: jetztBandHtml({ zustand: 'dran', titel: t('eintrag.jetzt.vorschlag.titel'), text: t('eintrag.jetzt.vorschlag.text'), knopf: null }) }
+  if (sicht.ctw === 'entwurf') return { zustand: 'dran-verbunden', html: jetztBandHtml({ zustand: 'dran', titel: t('eintrag.jetzt.entwurf.titel'), text: t('eintrag.jetzt.entwurf.text'), knopf: null }) }
   if (sicht.ctw === 'stoerung') return { zustand: 'dran-verbunden', html: jetztBandHtml({ zustand: 'dran', titel: t('eintrag.jetzt.stoerung.titel'), text: t('eintrag.jetzt.stoerung.text'), knopf: null }) }
   if (sicht.verknuepfung !== 'ok') return { zustand: 'ruhig', html: jetztBandHtml({ zustand: 'ruhig', ohneSatz: true, text: t(sicht.verknuepfung === 'laedt' ? 'entwicklung.laedt' : 'entwicklung.spalte.leer.unvollstaendig') }) }
   if (workflow !== null && abnahmeOffen(sicht)) {

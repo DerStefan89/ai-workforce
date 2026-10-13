@@ -316,3 +316,17 @@ test('F46 D1: waehleFeatureInArbeit — Feature mit laufendem Workflow vor IN_AR
   assert.equal(waehleFeatureInArbeit([{ quelle: 'feature', id: 'F5', status: 'ENTWURF' }], fertig, null), null)
   assert.equal(waehleFeatureInArbeit(null, baueVerknuepfung(undefined, undefined), null), null)
 })
+
+test('F45 B2a-2 (F-989): baueVerknuepfung nutzt feature_ref vor der Referenzzeile, sonst wie bisher', () => {
+  const workflows = [
+    { workflowId: 'w1', auftragId: 'a1' },
+    { workflowId: 'w2', auftragId: 'a2' },
+  ]
+  const auftraege = [
+    { auftragId: 'a1', workitem_referenz: null, feature_ref: 'F7' },
+    { auftragId: 'a2', workitem_referenz: 'workitem:finding:F-9' },
+  ]
+  const { jeReferenz } = baueVerknuepfung(workflows, auftraege)
+  assert.deepEqual(jeReferenz.get('workitem:feature:F7')?.map((w) => w.workflowId), ['w1'])
+  assert.deepEqual(jeReferenz.get('workitem:finding:F-9')?.map((w) => w.workflowId), ['w2'])
+})

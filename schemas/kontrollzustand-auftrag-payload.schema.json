@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/kontrollzustand-auftrag-payload.schema.json",
   "title": "Auftrag-Payload (AUFTRAG_V0)",
-  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn auftrag_schema === \"v0\" (F11 WS-1). Die äußere Lineage-/Checkpoint-Hülle validiert weiterhin ausschließlich validiereLineageEintrag/validiereCheckpointEintrag aus F2/F1 (kein zweiter Regelsatz dafür). 'herkunft' ist additiv und optional (F39 WS-2a, löst state/findings.md F-633 Teil a) — ein Alt-Auftrag ohne das Feld bleibt gültig, kein Migrationsschritt. 'herkunft.art: \"projekt_interview\"' löst über src/router/index.ts' bestimmeEffektiveKontrolltiefe eine deterministische Kontrolltiefe-Untergrenze 'hoch' aus, 'herkunft.art: \"feature_akte\"' (F35 WS-1) eine Untergrenze 'standard'; die übrigen Werte sind rein dokumentarisch. 'akzeptanzkriterien'/'nicht_ziele' sind additiv und optional (F35 WS-1) — von scripts/leitstand/routen-f35.mjs gesetzt, wenn der Auftrag deterministisch aus einer Feature-Akte abgeleitet wurde; ein Alt-Auftrag ohne diese Felder bleibt gültig.",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn auftrag_schema === \"v0\" (F11 WS-1). Die äußere Lineage-/Checkpoint-Hülle validiert weiterhin ausschließlich validiereLineageEintrag/validiereCheckpointEintrag aus F2/F1 (kein zweiter Regelsatz dafür). 'herkunft' ist additiv und optional (F39 WS-2a, löst state/findings.md F-633 Teil a) — ein Alt-Auftrag ohne das Feld bleibt gültig, kein Migrationsschritt. 'herkunft.art: \"projekt_interview\"' löst über src/router/index.ts' bestimmeEffektiveKontrolltiefe eine deterministische Kontrolltiefe-Untergrenze 'hoch' aus, 'herkunft.art: \"feature_akte\"' (F35 WS-1) eine Untergrenze 'standard'; die übrigen Werte sind rein dokumentarisch. 'akzeptanzkriterien'/'nicht_ziele' sind additiv und optional (F35 WS-1) — von scripts/leitstand/routen-f35.mjs gesetzt, wenn der Auftrag deterministisch aus einer Feature-Akte abgeleitet wurde; ein Alt-Auftrag ohne diese Felder bleibt gültig. F45 B2a-2 (Arbeitspaket; F-938, F-989, F-1071): 'bereiche', 'risiko', 'feature_ref' und 'einrichtung' sind additiv und optional — das Arbeitspaket ist der Auftrag v0, kein eigener Artefakttyp; die DoD kommt über die Projektkarte (CLAUDE.md). 'herkunft.art: \"finding\"' (Click-to-Work aus einem Finding) ist dokumentarisch. Pflicht je Herkunft (nicht als if/then abgebildet; durchgesetzt von validiereAuftragPflichtfelder in src/auftrag/index.ts, also von validiereAuftragDaten und registriereAuftrag): 'feature_akte' und 'finding' verlangen mindestens ein Akzeptanzkriterium. Eine neue Version desselben Auftrags (Einrichtung übernommen oder abgehakt) behält erstellt_am.",
   "type": "object",
   "additionalProperties": false,
   "required": ["auftrag_schema", "auftrag_id", "titel", "auftragstext", "erstellt_am"],
@@ -17,7 +17,7 @@
       "additionalProperties": false,
       "required": ["art"],
       "properties": {
-        "art": { "enum": ["projekt_interview", "sparring", "jarvis", "manuell", "feature_akte"] }
+        "art": { "enum": ["projekt_interview", "sparring", "jarvis", "manuell", "feature_akte", "finding"] }
       }
     },
     "akzeptanzkriterien": {
@@ -36,6 +36,34 @@
     "nicht_ziele": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
+    },
+    "bereiche": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "F45 B2a-2: betroffene Ordner/Module des Arbeitspakets, je eindeutig.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "risiko": { "enum": ["niedrig", "mittel", "hoch"], "description": "F45 B2a-2: Risiko des Arbeitspakets." },
+    "feature_ref": {
+      "type": "string",
+      "pattern": "^F[0-9]+[A-Za-z]?$",
+      "description": "F-989: Feature-Bezug, Feature-ID wie in docs/projekt/roadmap.json; gesetzt beim Bau aus einer Feature-Akte."
+    },
+    "einrichtung": {
+      "type": "array",
+      "description": "F-1071 (K31): Einrichtung durch Stefan — vom Architekten gemeldete Schritte (Konto, Schlüssel, Dienst, Berechtigung), vom Server als neue Auftragsversion übernommen, im Leitstand abgehakt. Solange ein Schritt mit wann 'vor_dem_bau' offen ist, startet die Ausführung nicht.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "schritt", "wann", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^E[0-9]+$" },
+          "schritt": { "type": "string", "minLength": 1 },
+          "wann": { "enum": ["vor_dem_bau", "waehrend_des_baus"] },
+          "status": { "enum": ["offen", "erledigt"] }
+        }
+      }
     }
   }
 }

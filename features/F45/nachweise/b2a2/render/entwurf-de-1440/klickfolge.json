@@ -1,0 +1,85 @@
+{
+  "url": "http://127.0.0.1:4396/#/workboard/F-1083",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1400
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Entwurf",
+        "selector": ".workboard-entwurf"
+      },
+      {
+        "name": "Jetzt-Band",
+        "selector": ".jetzt-band"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Feld AK1",
+        "selector": "#wb-ak-0"
+      },
+      {
+        "name": "Feld AK2",
+        "selector": "#wb-ak-1"
+      },
+      {
+        "name": "Hinweis kein AK",
+        "selector": ".workboard-entwurf .note.red"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Detail F-1083",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeiten:not([disabled])",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-detail.webp"
+    },
+    {
+      "label": "Auftrag vorbereiten → AK-Entwurf aus der Maßnahme",
+      "klick": "#workboard-bearbeiten",
+      "warteAufSelector": {
+        "selector": ".workboard-entwurf",
+        "timeoutMs": 5000
+      },
+      "screenshot": "02-entwurf.webp"
+    },
+    {
+      "label": "Kriterium hinzufügen",
+      "klick": "[data-entwurf=\"hinzu\"]",
+      "warteAufSelector": {
+        "selector": "#wb-ak-1",
+        "timeoutMs": 5000
+      },
+      "screenshot": "03-hinzugefuegt.webp"
+    },
+    {
+      "label": "Beide Felder leeren",
+      "tippen": {
+        "selector": "#wb-ak-0",
+        "text": ""
+      }
+    },
+    {
+      "label": "Zweites Feld leer",
+      "tippen": {
+        "selector": "#wb-ak-1",
+        "text": "   "
+      }
+    },
+    {
+      "label": "Auftrag anlegen ohne Text → Hinweis, nichts angelegt",
+      "klick": "[data-entwurf=\"anlegen\"]",
+      "warteAufSelector": {
+        "selector": ".workboard-entwurf .note.red",
+        "timeoutMs": 5000
+      },
+      "screenshot": "04-kein-ak.webp"
+    }
+  ]
+}

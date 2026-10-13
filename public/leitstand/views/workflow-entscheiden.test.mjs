@@ -110,3 +110,16 @@ test('bedienZustand: gesperrt ohne Option, ohne Begründung oder mit gesperrter 
   assert.deepEqual(bedienZustand({ wert: 'freigeben', bestaetigen: 'Freigeben bestätigen', erlaubt: true }, 'weil'), { gesperrt: false, text: 'Freigeben bestätigen', aktion: 'freigeben' })
   assert.equal(bedienZustand({ wert: 'installieren', bestaetigen: 'x', erlaubt: false }, 'weil').gesperrt, true)
 })
+
+test('F45 B2a-2 (F-1071): Karte „Arbeitspaket“ zeigt die Einrichtung mit Abhaken; ohne Liste bleibt sie „kommt“', async () => {
+  const { renderFreigabeSeite } = await import('./workflow-entscheiden.js')
+  const daten = { schritte: [{ schritt_id: 'b', rolle: 'ausfuehrung', worker: 'claude-code', status: 'OFFEN', nachfolger: null, lauf_id: null, freigabe: 'ZWINGEND' }] }
+  const naechster = { art: 'haltFreigabe', schrittId: 'b' }
+  const mit = renderFreigabeSeite({ workflowId: 'w1', daten, naechster, empfehlung: null, arbeitsordner: null, einrichtung: [{ id: 'E1', schritt: 'Konto', wann: 'vor_dem_bau', status: 'offen' }] })
+  assert.match(mit, /entscheiden-einrichtung/)
+  assert.match(mit, /Einrichtung durch dich/)
+  assert.match(mit, /data-aktion="einrichtung" data-workflow-id="w1" data-id="E1" data-status="erledigt" aria-label="E1 als erledigt abhaken"/)
+  const ohne = renderFreigabeSeite({ workflowId: 'w1', daten, naechster, empfehlung: null, arbeitsordner: null, einrichtung: null })
+  assert.match(ohne, /aria-labelledby="freigabe-arbeitspaket" aria-disabled="true"/)
+  assert.doesNotMatch(ohne, /Einrichtung durch dich/)
+})

@@ -1,0 +1,80 @@
+{
+  "url": "http://127.0.0.1:4396/#/workflows/wf-b2a2-render-1791896680862",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1300
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Einrichtung",
+        "selector": ".ablauf-einrichtung"
+      },
+      {
+        "name": "Meldung am Ablauf",
+        "selector": "#workflow-bedienung-meldung"
+      },
+      {
+        "name": "Dialogmeldung",
+        "selector": "#workflow-dialog-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Einrichtung offen",
+        "selector": ".ablauf-einrichtung.current"
+      },
+      {
+        "name": "Einrichtung erledigt",
+        "selector": ".ablauf-einrichtung.done"
+      },
+      {
+        "name": "Knopf E1 Erledigt",
+        "selector": "[data-aktion=\"einrichtung\"][data-id=\"E1\"][data-status=\"erledigt\"]"
+      },
+      {
+        "name": "Knopf E1 Wieder öffnen",
+        "selector": "[data-aktion=\"einrichtung\"][data-id=\"E1\"][data-status=\"offen\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Ablauf mit offener Einrichtung",
+      "warteAufSelector": {
+        "selector": "input[name=\"wf-freigabe-option\"][value=\"freigeben\"]",
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "label": "Option Freigeben",
+      "klick": "input[name=\"wf-freigabe-option\"][value=\"freigeben\"]"
+    },
+    {
+      "label": "Begründung",
+      "tippen": {
+        "selector": "#wf-entscheidung-begruendung",
+        "text": "Render-Nachweis B2a-2: Bau freigeben."
+      }
+    },
+    {
+      "label": "Bestätigen öffnet den Dialog",
+      "klick": "[data-aktion=\"freigabe-bestaetigen\"]",
+      "warteAufSelector": {
+        "selector": "#workflow-dialog [data-aktion=\"freigeben\"]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Freigeben → 409, Grund sichtbar",
+      "klick": "#workflow-dialog [data-aktion=\"freigeben\"]",
+      "warteAufSelector": {
+        "selector": "#workflow-dialog-meldung:not([hidden])",
+        "timeoutMs": 8000
+      },
+      "ohneAusschnitt": true,
+      "screenshot": "01-abgelehnt.webp"
+    }
+  ]
+}

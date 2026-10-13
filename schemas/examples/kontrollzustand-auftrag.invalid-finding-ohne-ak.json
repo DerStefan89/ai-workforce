@@ -1,0 +1,8 @@
+{
+  "auftrag_schema": "v0",
+  "auftrag_id": "beispiel-auftrag-finding-ohne-ak",
+  "titel": "Finding beheben",
+  "auftragstext": "Titel des Findings\n\nworkitem:finding:F-938",
+  "erstellt_am": "2026-10-13T09:00:00.000Z",
+  "herkunft": { "art": "finding" }
+}

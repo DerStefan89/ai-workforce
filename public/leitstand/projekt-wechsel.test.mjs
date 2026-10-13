@@ -203,11 +203,14 @@ function koerperFuer(url) {
 const sonderAntworten = new Map()
 /** Aufgezeichnete schreibende Anfragen (`<METHODE> <url>`). */
 const schreibend = []
+/** F45 B2a-2: zuletzt gesendeter Body je schreibender Anfrage. */
+const koerperJeAnfrage = new Map()
 
 globalThis.fetch = (url, optionen = {}) => {
   aufrufe.push(String(url))
   const methode = optionen.method ?? 'GET'
   if (methode !== 'GET') schreibend.push(`${methode} ${url}`)
+  if (methode !== 'GET') koerperJeAnfrage.set(`${methode} ${url}`, optionen.body ?? null)
   const sonder = sonderAntworten.get(`${methode} ${url}`)
   if (sonder !== undefined) {
     const { status, json } = sonder.length > 1 ? sonder.shift() : sonder[0]
@@ -737,6 +740,15 @@ test('F44 WS-3b (E12): Konflikt 409 → „Wiederholen“ routet erneut, ohne ei
   aufrufe.length = 0
   klickeBearbeitung('#workboard-bearbeiten', 'F-8')
   await warte()
+  // F45 B2a-2 (F-938): zuerst der AK-Entwurf — noch kein POST; „Auftrag anlegen“ sendet herkunft finding und die AK.
+  assert.match(bereich.innerHTML, /Entwurf der Akzeptanzkriterien/)
+  assert.deepEqual(schreibend, [], 'der Entwurf legt nichts an')
+  bereich.querySelectorAll = (s) => (s === '.wb-ak-text' ? [{ value: ' Fehler tritt nicht mehr auf. ' }, { value: '' }] : [])
+  bereich.handler.click({ target: { closest: (s) => (s === '[data-entwurf]' ? { dataset: { id: 'F-8', entwurf: 'anlegen' } } : null) } })
+  await warte()
+  const koerper = JSON.parse(koerperJeAnfrage.get(`POST ${neu}/auftraege`) ?? '{}')
+  assert.deepEqual(koerper.herkunft, { art: 'finding' })
+  assert.deepEqual(koerper.akzeptanzkriterien, [{ id: 'AK1', text: 'Fehler tritt nicht mehr auf.' }])
   assert.match(bereich.innerHTML, /Es läuft bereits eine Ausführung\./)
   assert.match(bereich.innerHTML, /Ein anderer Lauf ist aktiv &lt;D13&gt;/, 'Servergrund escaped')
   // F46 D3 (Prüfpass qa 2): Konflikt mit „Wiederholen“ braucht Stefan — das Jetzt-Band schließt an den Bereich an.
@@ -749,6 +761,30 @@ test('F44 WS-3b (E12): Konflikt 409 → „Wiederholen“ routet erneut, ohne ei
   assert.match(bereich.innerHTML, /Der Ablauf wird vorgeschlagen …[\s\S]*<code>l-k<\/code>/)
   assert.deepEqual(schreibend, [`POST ${neu}/auftraege`, `POST ${neu}/auftraege/a-k/routen`, `POST ${neu}/auftraege/a-k/routen`])
   sonderAntworten.clear()
+  location.hash = '#/workboard'
+  dispatch()
+})
+
+test('F45 B2a-2 (F-938): AK-Entwurf — „Abbrechen“ legt nichts an und zeigt wieder den Einstieg; leerer Entwurf zeigt den Hinweis', async () => {
+  const { dispatch } = await import('./router.js')
+  setzeAktivesProjekt({ id: 'projekt-ctw', name: 'Projekt CTW' })
+  location.hash = '#/workboard/F-8'
+  dispatch()
+  await warte()
+  const bereich = document.getElementById('workboard-bearbeitung')
+  schreibend.length = 0
+  klickeBearbeitung('#workboard-bearbeiten', 'F-8')
+  await warte()
+  const klickeEntwurf = (entwurf) => bereich.handler.click({ target: { closest: (s) => (s === '[data-entwurf]' ? { dataset: { id: 'F-8', entwurf } } : null) } })
+  bereich.querySelectorAll = (s) => (s === '.wb-ak-text' ? [{ value: '  ' }] : [])
+  klickeEntwurf('anlegen')
+  await warte()
+  assert.match(bereich.innerHTML, /Mindestens ein Kriterium braucht einen Text\./)
+  assert.doesNotMatch(bereich.innerHTML, /role="alert"/, 'keine zweite Live-Region (Fokus statt aria-live)')
+  klickeEntwurf('abbrechen')
+  await warte()
+  assert.match(bereich.innerHTML, /id="workboard-bearbeiten"/)
+  assert.deepEqual(schreibend, [], 'weder Anlegen noch Abbrechen schreibt')
   location.hash = '#/workboard'
   dispatch()
 })

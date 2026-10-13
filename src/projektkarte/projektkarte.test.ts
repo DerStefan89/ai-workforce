@@ -11,7 +11,7 @@
 
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { describe, it } from 'node:test'
+import { describe, it, test } from 'node:test'
 import { analysiereArchitektur, baueProjektkarte, beschreibePruefbefehl, GRENZE_ZEICHEN, KARTE_ROLLEN, leseCheckliste, ZUSCHNITT } from './index.ts'
 import type { ProjektkarteEingaben } from './types.ts'
 
@@ -204,4 +204,27 @@ describe('Hilfsfunktionen', () => {
     assert.equal(beschreibePruefbefehl(['C:\\n\\node.exe', 'C:\\n\\npm-cli.js', 'run', 'check']), 'npm run check')
     assert.equal(beschreibePruefbefehl(['/usr/bin/pytest', '-q']), 'pytest -q')
   })
+})
+
+test('F45 B2a-2: Architekt mit Arbeitspaket-Block — Vorhaben verweist darauf statt AK zu wiederholen; Feature-Bezug als Pfad', () => {
+  const e = eingaben({ auftrag: { titel: 'Export', ziel: 'Ziel', akzeptanzkriterien: [{ id: 'AK1', text: 'Export enthält alle Buchungen' }], nicht_ziele: [], arbeitspaket: true, feature_ref: 'F12' } })
+  const architekt = baueProjektkarte(e, 'architekt').text
+  assert.match(architekt, /siehe Arbeitspaket in diesem Auftrag/)
+  assert.doesNotMatch(architekt, /- AK1: Export enthält alle Buchungen/)
+  assert.doesNotMatch(architekt, /Feature-Akte: features/, 'steht im Arbeitspaket-Block (keine zweite Zeile)')
+  // Der Advisor bekommt keinen Arbeitspaket-Block — dort bleiben AK und Feature-Akte in der Karte.
+  const advisor = baueProjektkarte(e, 'architecture-advisor').text
+  assert.match(advisor, /- AK1: Export enthält alle Buchungen/)
+  assert.match(advisor, /Feature-Akte: features\/F12\/feature\.md/)
+  assert.match(baueProjektkarte(eingaben(), 'architekt').text, /Feature-Akte: kein Feature-Bezug im Auftrag\./)
+})
+
+test('F45 B2a-2 (QA L3): Review-Karte nennt den Stand vor dem Bau und jede im Bau geänderte Maßstabsdatei', () => {
+  const geaendert = baueProjektkarte(eingaben({ pruefmassstab: { basis: 'a'.repeat(40), geaendert: ['CLAUDE.md'] } }), 'code-reviewer').text
+  assert.match(geaendert, /im Stand vor dem Bau \(Commit aaaaaaaaaaaa\)/)
+  assert.match(geaendert, /Prüfmaßstab im Bau geändert: CLAUDE\.md — die Änderung ist Teil des Reviews/)
+  const unveraendert = baueProjektkarte(eingaben({ pruefmassstab: { basis: 'a'.repeat(40), geaendert: [] } }), 'code-reviewer').text
+  assert.doesNotMatch(unveraendert, /im Bau geändert/)
+  // Nur das Review: Architekt und Advisor bleiben ohne die Zeile.
+  assert.doesNotMatch(baueProjektkarte(eingaben({ pruefmassstab: { basis: 'a'.repeat(40), geaendert: ['CLAUDE.md'] } }), 'architekt').text, /Prüfmaßstab/)
 })

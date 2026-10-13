@@ -146,6 +146,8 @@ export interface WorkflowV0Daten {
    * Serverneustart weg.
    */
   grund?: string | null
+  /** F45 B2a-2 (QA L3): HEAD des Projekts beim ersten Schrittstart ohne eigenen Arbeitsordner (Stand vor dem Bau). */
+  basis_commit?: string
   grenzen: WorkflowV0Grenzen
   schritte: WorkflowV0Schritt[]
 }

@@ -75,4 +75,12 @@ export interface ErgebnisArchitektur {
   entscheidungen_mensch: EntscheidungMensch[]
   capabilities_bedarf: CapabilityBedarf[]
   evidenz: EvidenzEintrag[]
+  /** F45 B2a-2 (F-1071): Einrichtung durch Stefan; fehlt in Ausgaben von vor B2a-2 (gilt dann als leer). */
+  einrichtung?: EinrichtungEntwurf[]
+}
+
+/** Ein vom Architekten gemeldeter Einrichtungsschritt (F-1071) — id und status vergibt der Server bei der Übernahme. */
+export interface EinrichtungEntwurf {
+  schritt: string
+  wann: 'vor_dem_bau' | 'waehrend_des_baus'
 }

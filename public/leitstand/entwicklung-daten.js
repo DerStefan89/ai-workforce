@@ -102,7 +102,8 @@ export function workitemReferenz(workitem) {
 }
 
 /**
- * Ordnet jeder Workitem-Referenz ihre Workflows zu (über den Auftrag).
+ * Ordnet jeder Workitem-Referenz ihre Workflows zu (über den Auftrag). F45 B2a-2 (F-989): trägt der Auftrag einen
+ * Feature-Bezug (feature_ref), gilt `workitem:feature:<feature_ref>` vor der Referenzzeile aus dem Auftragstext.
  * @param workflows - zustand.workflows (null bei defekter Quelle, undefined vor dem ersten Tick)
  * @param auftraege - GET …/auftraege (null bei Fehler, undefined solange er lädt)
  * @returns { jeReferenz: Map<Referenz, Workflow[]>, fehlend: nicht verfügbare Quellen (null), laedt: noch ladende Quellen (undefined) — je 'workflows' bzw. 'auftraege' }
@@ -121,7 +122,9 @@ export function baueVerknuepfung(workflows, auftraege) {
   if (fehlend.length > 0 || laedt.length > 0) return { jeReferenz, fehlend, laedt }
   const referenzJeAuftrag = new Map()
   for (const auftrag of auftraege) {
-    if (typeof auftrag?.auftragId === 'string' && typeof auftrag.workitem_referenz === 'string') referenzJeAuftrag.set(auftrag.auftragId, auftrag.workitem_referenz)
+    if (typeof auftrag?.auftragId !== 'string') continue
+    const referenz = typeof auftrag.feature_ref === 'string' ? workitemReferenz({ quelle: 'feature', id: auftrag.feature_ref }) : auftrag.workitem_referenz
+    if (typeof referenz === 'string') referenzJeAuftrag.set(auftrag.auftragId, referenz)
   }
   for (const workflow of workflows) {
     const referenz = referenzJeAuftrag.get(workflow?.auftragId)

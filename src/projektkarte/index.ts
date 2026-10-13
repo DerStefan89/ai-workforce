@@ -305,6 +305,13 @@ function vorhaben(e: ProjektkarteEingaben, rolle: KarteRolle, fehlend: string[])
     z.push(`Projektbeschreibung (${stempel(e.projektbeschreibung)}):`, kuerze(einbetten(e.projektbeschreibung.text), GRENZE_BESCHREIBUNG, e.projektbeschreibung.pfad))
   }
   z.push('', `Auftrag: ${e.auftrag.titel}`)
+  const featureAkte = typeof e.auftrag.feature_ref === 'string' ? `Feature-Akte: features/${e.auftrag.feature_ref}/feature.md` : 'Feature-Akte: kein Feature-Bezug im Auftrag.'
+  // F45 B2a-2: trägt der Auftrag des Architekten den Arbeitspaket-Block, steht Ziel/AK/Nicht-Ziele dort — keine Doppelung.
+  if (rolle === 'architekt' && e.auftrag.arbeitspaket === true) {
+    // Der Block nennt auch die Feature-Akte (Code-Review 8: keine zweite Zeile).
+    z.push('Ziel, Akzeptanzkriterien, Nicht-Ziele, Bereiche, Risiko, Einrichtung und Feature-Akte: siehe Arbeitspaket in diesem Auftrag.')
+    return z
+  }
   if (e.auftrag.ziel !== null && e.auftrag.ziel.trim() !== '') z.push(`Ziel: ${e.auftrag.ziel.trim()}`)
   const aks = e.auftrag.akzeptanzkriterien
   if (aks.length === 0) {
@@ -317,7 +324,7 @@ function vorhaben(e: ProjektkarteEingaben, rolle: KarteRolle, fehlend: string[])
   if (rolle !== 'code-reviewer' || aks.length === 0) {
     z.push(e.auftrag.nicht_ziele.length === 0 ? 'Nicht-Ziele: keine benannt.' : 'Nicht-Ziele:', ...e.auftrag.nicht_ziele.map((n) => `- ${n}`))
   }
-  z.push('Feature-Akte: kein Feature-Bezug im Auftrag (folgt mit B2a-2).')
+  z.push(featureAkte)
   return z
 }
 
@@ -437,6 +444,12 @@ function faehigkeitenAbschnitt(faehigkeiten: ProjektkarteEingaben['faehigkeiten'
  */
 function qualitaet(e: ProjektkarteEingaben, rolle: KarteRolle, fehlend: string[]): string[] {
   const z: string[] = []
+  // F45 B2a-2 (QA L3): der Prüfmaßstab des Reviews stammt aus dem Stand vor dem Bau; was der Bau daran geändert hat,
+  // steht hier oben (Qualität wird nie gekürzt).
+  if (rolle === 'code-reviewer' && e.pruefmassstab != null) {
+    z.push(`Prüfmaßstab (CLAUDE.md, ARCHITECTURE.md) im Stand vor dem Bau (Commit ${e.pruefmassstab.basis.slice(0, 12)}).`)
+    for (const datei of e.pruefmassstab.geaendert) z.push(`Prüfmaßstab im Bau geändert: ${datei} — die Änderung ist Teil des Reviews.`)
+  }
   if (e.dod === null || e.dod.length === 0) {
     z.push('Definition of Done: nicht gefunden.')
     // Ein Lesefehler zu CLAUDE.md (z. B. „Datei fehlt“) steht schon in fehlend — keine zweite, irreführende Lücke (QA L9).
