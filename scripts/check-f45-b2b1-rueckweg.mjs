@@ -2,8 +2,9 @@
 /**
  * Datei: scripts/check-f45-b2b1-rueckweg.mjs
  *
- * Zweck: Gate für F45 B2b-1a „Rückweg, Bau-Stufe“ (features/F45/plan-b2b1.md, Plan v2 + Nachträge) und B2b-1b-1
- * „Advisor-Schema“ (features/F45/plan-b2b1b.md, Plan v2 + Entscheidungen Stefan). Nachweis am
+ * Zweck: Gate für F45 B2b-1a „Rückweg, Bau-Stufe“ (features/F45/plan-b2b1.md, Plan v2 + Nachträge), B2b-1b-1
+ * „Advisor-Schema“ (features/F45/plan-b2b1b.md, Plan v2 + Entscheidungen Stefan) und B2b-1b-2a „Plan v2“
+ * (features/F45/plan-b2b1b2.md). Nachweis am
  * REALEN Aufrufpfad (Muster scripts/check-f35-ws3-adjust-automatik.mjs): echter HTTP-Testserver, echte
  * Workflow-Artefakte, gestubbter Worker (fuehreAufgabeDurchFn) mit REAL registrierten Laufakten — Automat,
  * Rückweg-Automatik und „Prüfer wiederholen“ lesen Urteil und Befunde am tatsächlichen Lesepfad.
@@ -43,7 +44,23 @@
  * (c6) zweite Sicherung loeseAusfuehrungsEingabenAuf: nur das belegte Schema geht als jsonSchema an claude-code,
  *      'ergebnis-code-reviewer' an claude-code und ein unlesbares Schema werden abgelehnt.
  * (e8) POST /api/laeufe mit aufrufEingaben.jsonSchema → 400.
- * Plan v2 (Rückweg der Plan-Stufe, Fälle c/c2/c3/d) folgt mit B2b-1b-2.
+ * B2b-1b-2a „Plan v2“ (features/F45/plan-b2b1b2.md; Architekt → Advisor → Ausführung, Stack offen, Architekt-Laufakten
+ * aus der Attrappe):
+ * (c)   UEBERARBEITEN → im selben Schreibvorgang Rückweg (Architekt OFFEN mit rueckweg, WARTET_FREIGABE, Grund „Plan v2“),
+ *       Ausführung verliert das Advisor-Ergebnis (B13); Architekt-v2-Auftrag mit Plan v1, Befunden, Antwort, Stack-Regel;
+ *       danach Freigabe der Ausführung („Plan v2 liegt vor“), die Ausführung bekommt Plan v2.
+ * (c2)  nach Plan v2 kein zweiter Advisor-Lauf; pure Gegenprobe ermittlePlanRueckweg ⇒ gesperrt.
+ * (c3)  FREIGEGEBEN_MIT_AUFLAGEN ⇒ derselbe Rückweg; max_replans 0 ⇒ Freigabe der Ausführung, Grund „Kein Plan v2: …“.
+ * (c7)  Plan v2 wiederholt die Stack-Frage und stellt eine neue ⇒ Halt nur für die neue (GET-Detail), Antwort nur auf sie ⇒
+ *       Freigabe der Ausführung, entscheidung-@ mit beiden Antworten; D1: ohne offene Frage ⇒ 409.
+ * (c9)  POST /api/workflows: gespeicherter rueckweg bleibt, Body-Wert verworfen, neuer Ablauf ohne.
+ * (c10) Plan v1 fehlt beim v2-Start ⇒ 409, Ausweg im Grund, kein Lauf.
+ * (c11) Plan v2 mit wortgleicher Stack-Frage ⇒ kein Halt.
+ * (c12) Advisor seit dem Rückweg zurückgesetzt ⇒ kein Sprung; zweites UEBERARBEITEN ⇒ Grenze der Plan-Stufe.
+ * (d)   FREIGEGEBEN ⇒ kein zweiter Architekt-Lauf, die Ausführung bekommt Plan v1.
+ * (c13) Plan v2 mit anderer Einrichtungsliste ⇒ offen ist der Eintrag aus Plan v2 (Freigabe der Ausführung 409).
+ * (c14) Plan v2 scheitert ⇒ Reparaturfassung ohne rueckweg im Body behält ihn ⇒ v2 erneut mit Plan v1, kein 2. Advisor.
+ * (c10b) Advisor-Ergebnis beim v2-Start nicht lesbar ⇒ 409, Grund ohne Lauf-Kennung (die Hülle der Freigabe-Route: F-1110 (4)), kein Lauf.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -62,6 +79,7 @@ import { validiereErgebnisAdvisor } from '../src/architecture-advisor/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { ermittlePlanRueckweg } from './leitstand/f35-ws3-adjust-automatik.mjs'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 
 const befunde = []
@@ -137,15 +155,28 @@ const profilReferenz = leiteProfilReferenzAb(vorlage)
 
 // Je Workflow eine Warteschlange von Prüfer-Ausgängen; die Attrappe nimmt je Prüfer-Lauf den nächsten.
 const prueferAusgaenge = new Map()
-const laeufe = [] // { workflowId?, laufId, rolle, aufrufEingaben }
+// B2b-1b-2a: je Workflow eine Warteschlange von Architekt-Ergebnissen (ergebnis-architektur), je Architekt-Lauf das nächste.
+const architektAusgaenge = new Map()
+const laeufe = [] // { workflowId?, laufId, rolle, aufrufEingaben, auftragstext, anfragen }
 // F-1104 (8): solange gesetzt, hält die Attrappe einen Ausführungs-Lauf offen (aktiver Lauf für die Sperrprüfung).
 const blockade = { warten: null }
 
 /** Attrappe des Workers: jede Rolle wird gezählt; Prüfer-Läufe bekommen eine echte Laufakte mit Rohstrom. */
 async function attrappe(laufId, _profil, eingaben) {
   const workflowId = aktiv.workflowId
-  laeufe.push({ laufId, rolle: eingaben.rolle, workflowId, aufrufEingaben: eingaben.aufrufEingaben })
+  laeufe.push({ laufId, rolle: eingaben.rolle, workflowId, aufrufEingaben: eingaben.aufrufEingaben, auftragstext: eingaben.auftragstext, anfragen: eingaben.anfragen ?? [] })
   if (eingaben.rolle === 'ausfuehrung' && blockade.warten !== null) await blockade.warten
+  if (eingaben.rolle === 'architekt') {
+    // Echte Laufakte mit Rohstrom (Laufakte im claude-code-Format; gelesen wird nach laufakte.worker).
+    const plan = architektAusgaenge.get(workflowId)?.shift() ?? { zusammenfassung: 'kein Plan hinterlegt' }
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(plan) }) }), 'utf8')
+    registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f45-b2b1-fake' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, ladeOptionen)
+    // { fehlschlag: true }: der Lauf hat stattgefunden, das Werkzeug ist ausgefallen (Fall c14).
+    if (plan.fehlschlag === true) return { ok: true, klassifikation: { ergebnis: 'FEHLGESCHLAGEN', grund: 'werkzeugausfall' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'FEHLGESCHLAGEN' } }
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
   if (eingaben.rolle !== 'code-reviewer' && eingaben.rolle !== 'architecture-advisor') {
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
@@ -569,6 +600,278 @@ try {
         laeuft && gesperrt.status === 409 && frei.status === 200,
         '(e7) POST …/pruefer-wiederholen → 409, solange ein anderer Lauf aktiv ist; danach 200.',
         `(e7) erwartet 409 bei aktivem Lauf, danach 200 — aktiv ${laeuft}, ${gesperrt.status}, ${frei.status}`
+      )
+    }
+  }
+
+  // ══ B2b-1b-2a „Plan v2“ (features/F45/plan-b2b1b2.md): Architekt → Advisor → Ausführung, Stack offen ══════════
+  const ID_ARCH = 'schritt-0-architekt'
+  const ID_ADV = 'schritt-1-advisor'
+  const ID_AUSF = 'schritt-1-ausfuehrung'
+  const SCHRITT_ARCHITEKT = { ...SCHRITT_ADVISOR, schritt_id: ID_ARCH, rolle: 'architekt', worker: 'codex', modell: 'gpt-6-astra', output_schema: 'ergebnis-architektur', nachfolger: ID_ADV }
+  const PLAN_SCHRITTE = [
+    SCHRITT_ARCHITEKT,
+    { ...SCHRITT_ADVISOR_SCHEMA, eingaben: [`artefakt:ergebnis-@${ID_ARCH}`] },
+    // Bestands-hoch trägt noch das Advisor-Ergebnis als Eingabe — der Rückweg entfernt es (B13).
+    { ...SCHRITT_AUSFUEHRUNG, nachfolger: null, eingaben: [`artefakt:ergebnis-@${ID_ARCH}`, `artefakt:entscheidung-@${ID_ARCH}`, `artefakt:ergebnis-@${ID_ADV}`] },
+  ]
+  // Das Gate-Fremdprojekt hat keine CLAUDE.md ⇒ Stack offen ⇒ jeder Plan trägt die Stack-Frage (Advisor H1).
+  const STACK_FRAGE = { frage: 'Welcher Stack?', optionen: [{ titel: 'TypeScript auf Node', vorteile: ['x'], nachteile: [] }, { titel: 'Python', vorteile: [], nachteile: ['x'] }], auswirkung_bestand: 'keine', empfehlung: 'TypeScript auf Node', begruendung: 'Gate.', kategorie: 'stack' }
+  const NEUE_FRAGE = { frage: 'Welche Ablage?', optionen: [{ titel: 'Dateien', vorteile: ['x'], nachteile: [] }, { titel: 'SQLite', vorteile: [], nachteile: ['x'] }], auswirkung_bestand: 'keine', empfehlung: 'Dateien', begruendung: 'Gate.', kategorie: 'fachlich' }
+  const plan = (marke, fragen = [STACK_FRAGE]) => ({ modus: 'feature', zusammenfassung: marke, module: [{ name: 'gate', zweck: 'Gate.', abhaengigkeiten: [] }], adr_entwuerfe: [], schema_entwuerfe: [], entscheidungen_mensch: fragen, capabilities_bedarf: [], evidenz: [{ marker: '[Fakt]', aussage: 'Gate.' }], einrichtung: [] })
+  const schrittVon = (daten, id) => daten?.schritte?.find((s) => s.schritt_id === id)
+  const laeufeVon = (id, rolle) => laeufe.filter((l) => l.workflowId === id && l.rolle === rolle)
+  const entscheide = (id, antworten) => post(`/api/workflows/${encodeURIComponent(id)}/entscheidung`, { schrittId: ID_ARCH, antworten })
+  const STACK_ANTWORT = { frage: STACK_FRAGE.frage, gewaehlt: 'TypeScript auf Node' }
+
+  /** Bis zum Halt nach dem Advisor: Plan v1 (Stack-Frage) → Entscheidung → Freigabe Advisor. @returns { id, nachAdvisor, v1LaufId } oder null */
+  async function bisNachAdvisor(kennung, maxReplans, plaene, advisorAusgaenge) {
+    const id = await legeAn(kennung, maxReplans, advisorAusgaenge, PLAN_SCHRITTE)
+    if (id === null) return null
+    architektAusgaenge.set(id, [...plaene])
+    const v1 = await gibFreiUndWarte(kennung, id, ID_ARCH)
+    if (v1?.status !== 'KLAERUNG_ERFORDERLICH') {
+      befunde.push(`(${kennung}) Vorbedingung: Plan v1 mit Stack-Frage hält an (Regel 1c) — ${v1?.status}, ${JSON.stringify(v1?.grund)}`)
+      return null
+    }
+    const antwort = await entscheide(id, [STACK_ANTWORT])
+    if (antwort.status !== 202) {
+      befunde.push(`(${kennung}) Vorbedingung POST …/entscheidung: ${antwort.status} ${await antwort.text()}`)
+      return null
+    }
+    const nachAdvisor = await gibFreiUndWarte(kennung, id, ID_ADV)
+    return nachAdvisor === null ? null : { id, nachAdvisor, v1LaufId: schrittVon(v1, ID_ARCH).lauf_id }
+  }
+
+  // ── (c)(c2) UEBERARBEITEN → Plan v2 → Freigabe der Ausführung mit Plan v2, kein zweiter Advisor ──────────────
+  let workflowC7 = null
+  {
+    const lage = await bisNachAdvisor('c', 2, [plan('PLAN-V1-C'), plan('PLAN-V2-C')], [advisor('UEBERARBEITEN', [advisorBefund('A1'), advisorBefund('A2')])])
+    if (lage) {
+      const { id, nachAdvisor: d, v1LaufId } = lage
+      const arch = schrittVon(d, ID_ARCH)
+      const adv = schrittVon(d, ID_ADV)
+      pruefe(
+        d.status === 'WARTET_FREIGABE' && d.aktiver_schritt_id === ID_ARCH && arch.lauf_id === null && arch.freigabe_erteilt === undefined && arch.rueckweg?.anlass_schritt_id === ID_ADV && arch.rueckweg.anlass_lauf_id === adv.lauf_id && arch.rueckweg.vorheriger_lauf_id === v1LaufId && (d.grund ?? '').includes('Plan v2: Der Architekt überarbeitet den Plan mit 2 Befund(en) des Advisors'),
+        '(c) UEBERARBEITEN: im selben Schreibvorgang Rückweg der Plan-Stufe — Architekt OFFEN mit rueckweg, WARTET_FREIGABE am Architekten, Grund nennt Plan v2.',
+        `(c) Rückweg erwartet — ${d.status}, ${d.aktiver_schritt_id}, ${JSON.stringify(arch)}, grund ${JSON.stringify(d.grund)}`
+      )
+      pruefe(!schrittVon(d, ID_AUSF).eingaben.includes(`artefakt:ergebnis-@${ID_ADV}`), '(c) B13: die Ausführung verliert die Eingabe des Advisor-Ergebnisses.', `(c) Ausführung trägt noch das Advisor-Ergebnis: ${JSON.stringify(schrittVon(d, ID_AUSF).eingaben)}`)
+      const v2 = await gibFreiUndWarte('c', id, ID_ARCH)
+      const v2Lauf = laeufeVon(id, 'architekt').at(-1)
+      pruefe(
+        laeufeVon(id, 'architekt').length === 2 && v2Lauf.auftragstext.includes('PLAN-V1-C') && v2Lauf.auftragstext.includes('A1 [HOCH, FAKT]') && v2Lauf.auftragstext.includes('A2 [HOCH, FAKT]') && v2Lauf.auftragstext.includes('Welcher Stack? → TypeScript auf Node') && v2Lauf.auftragstext.includes('wortgleich'),
+        '(c) der Architekt läuft genau einmal erneut — Auftragstext mit Plan v1, allen Befunden, Stefans Antwort und der Stack-Regel.',
+        `(c) Plan-v2-Auftrag unvollständig (Läufe ${laeufeVon(id, 'architekt').length}): ${String(v2Lauf?.auftragstext).slice(-600)}`
+      )
+      if (v2) {
+        pruefe(
+          v2.status === 'WARTET_FREIGABE' && v2.aktiver_schritt_id === ID_AUSF && (v2.grund ?? '').includes('Plan v2 liegt vor; der Advisor prüft ihn nicht erneut'),
+          '(c) nach Plan v2 (Stack-Frage wortgleich wiederholt, schon beantwortet): weiter zur Freigabe der Ausführung, Grund sagt es.',
+          `(c) erwartet WARTET_FREIGABE an der Ausführung — ${v2.status}, ${v2.aktiver_schritt_id}, ${JSON.stringify(v2.grund)}`
+        )
+        pruefe(laeufeVon(id, 'architecture-advisor').length === 1 && schrittVon(v2, ID_ADV).lauf_id === adv.lauf_id, '(c2) nach Plan v2 kein zweiter Advisor-Lauf, Advisor-lauf_id unverändert.', `(c2) Advisor erneut gelaufen: ${laeufeVon(id, 'architecture-advisor').length}`)
+        const v2LaufId = schrittVon(v2, ID_ARCH).lauf_id
+        await gibFreiUndWarte('c', id, ID_AUSF)
+        const pfade = laeufeVon(id, 'ausfuehrung').at(-1)?.anfragen.map((a) => a.pfad) ?? []
+        pruefe(
+          pfade.includes(`artefakt:ergebnis-${v2LaufId}`) && !pfade.includes(`artefakt:ergebnis-${v1LaufId}`) && !pfade.includes(`artefakt:ergebnis-${adv.lauf_id}`),
+          '(c) die Ausführung bekommt Plan v2 — nicht Plan v1, nicht das Advisor-Ergebnis.',
+          `(c) Eingaben der Ausführung: ${JSON.stringify(pfade)}`
+        )
+      }
+      const zweiterVersuch = ermittlePlanRueckweg({ schritte: ladeWorkflow(id).schritte, maxReplans: 2, advisorSchrittId: ID_ADV, urteil: 'UEBERARBEITEN', befundAnzahl: 1, kernVersionen: 0 })
+      pruefe(!zweiterVersuch.ausloesen && zweiterVersuch.art === 'grenze', '(c2) pure Gegenprobe: mit Plan v2 am Architekten ist der Rückweg der Plan-Stufe gesperrt.', `(c2) Gegenprobe: ${JSON.stringify(zweiterVersuch)}`)
+    }
+  }
+
+  // ── (c3) MIT_AUFLAGEN löst denselben Rückweg aus; max_replans 0 sperrt ihn mit Grund ───────────────────────
+  {
+    const auflagen = await bisNachAdvisor('c3', 2, [plan('PLAN-V1-C3')], [advisor('FREIGEGEBEN_MIT_AUFLAGEN', [advisorBefund('A1')])])
+    if (auflagen) {
+      const d = auflagen.nachAdvisor
+      pruefe(d.status === 'WARTET_FREIGABE' && d.aktiver_schritt_id === ID_ARCH && schrittVon(d, ID_ARCH).rueckweg !== undefined, '(c3) FREIGEGEBEN_MIT_AUFLAGEN: derselbe Rückweg (Freigabe des Architekten für Plan v2).', `(c3) erwartet Rückweg — ${d.status}, ${d.aktiver_schritt_id}`)
+    }
+    const gesperrt = await bisNachAdvisor('c3b', 0, [plan('PLAN-V1-C3B')], [advisor('UEBERARBEITEN', [advisorBefund('A1')])])
+    if (gesperrt) {
+      const d = gesperrt.nachAdvisor
+      pruefe(
+        d.status === 'WARTET_FREIGABE' && d.aktiver_schritt_id === ID_AUSF && schrittVon(d, ID_ARCH).rueckweg === undefined && (d.grund ?? '').includes('Advisor: Urteil „überarbeiten“ mit 1 Befund(en). Kein Plan v2: Die Vorlage dieses Ablaufs erlaubt keine automatische Korrekturrunde.'),
+        '(c3) max_replans 0: kein Plan v2, weiter zur Freigabe der Ausführung, Grund nennt Urteil, Befunde und Grenze (Entscheidung Stefan A2).',
+        `(c3) erwartet Freigabe der Ausführung mit Grund — ${d.status}, ${d.aktiver_schritt_id}, ${JSON.stringify(d.grund)}`
+      )
+    }
+  }
+
+  // ── (c7) Plan v2 wiederholt die Stack-Frage und stellt eine neue → nur die neue ist offen ─────────────────
+  {
+    const lage = await bisNachAdvisor('c7', 2, [plan('PLAN-V1-C7'), plan('PLAN-V2-C7', [STACK_FRAGE, NEUE_FRAGE])], [advisor('UEBERARBEITEN', [advisorBefund('A1')])])
+    if (lage) {
+      const { id } = lage
+      workflowC7 = id
+      const v2 = await gibFreiUndWarte('c7', id, ID_ARCH)
+      const detail = await (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(id)}`)).json().catch(() => ({}))
+      const fragen = detail.architekturEntscheidung?.fragen?.map((f) => f.frage) ?? []
+      pruefe(
+        v2?.status === 'KLAERUNG_ERFORDERLICH' && v2.aktiver_schritt_id === ID_ARCH && (v2.grund ?? '').includes('1 offene Frage') && JSON.stringify(fragen) === JSON.stringify([NEUE_FRAGE.frage]),
+        '(c7) Plan v2 mit neuer Frage: Halt (Regel 1c) nur für die neue Frage, GET-Detail nennt nur sie.',
+        `(c7) erwartet Halt mit 1 offener Frage — ${v2?.status}, ${JSON.stringify(v2?.grund)}, fragen ${JSON.stringify(fragen)}`
+      )
+      const antwort = await entscheide(id, [{ frage: NEUE_FRAGE.frage, gewaehlt: 'SQLite' }])
+      const nach = ladeWorkflow(id)
+      pruefe(
+        antwort.status === 202 && nach.status === 'WARTET_FREIGABE' && nach.aktiver_schritt_id === ID_AUSF && laeufeVon(id, 'architecture-advisor').length === 1 && (nach.grund ?? '').includes('Plan v2 liegt vor'),
+        '(c7) POST …/entscheidung nur mit der neuen Antwort → Freigabe der Ausführung, kein zweiter Advisor, Grund sagt es.',
+        `(c7) erwartet 202 + WARTET_FREIGABE an der Ausführung — ${antwort.status}, ${nach.status}, ${nach.aktiver_schritt_id}, ${JSON.stringify(nach.grund)}`
+      )
+      await gibFreiUndWarte('c7', id, ID_AUSF)
+      const inhalt = laeufeVon(id, 'ausfuehrung').at(-1)?.anfragen.find((a) => a.pfad.startsWith('artefakt:entscheidung-'))?.inhalt ?? ''
+      pruefe(inhalt.includes('Welcher Stack? → TypeScript auf Node') && inhalt.includes('Welche Ablage? → SQLite'), '(c7) entscheidung-@ der Ausführung enthält die Antwort zu Plan v1 und die zu Plan v2.', `(c7) Entscheidung der Ausführung: ${JSON.stringify(inhalt)}`)
+      // D1: ein Halt am Architekten ohne offene Frage ist keine Entscheidung — 409, keine leere Entscheidung.
+      const fassung = ladeWorkflow(id)
+      registriereWorkflow({ ...fassung, status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: ID_ARCH, grund: 'Gate (D1).' }, profilReferenz, ladeOptionen)
+      const leer = await entscheide(id, [])
+      const leerGrund = (await leer.json().catch(() => ({}))).grund ?? ''
+      pruefe(leer.status === 409 && leerGrund === 'Am Architekten ist keine Frage offen — es gibt nichts zu entscheiden.', '(c7/D1) POST …/entscheidung ohne offene Frage → 409 mit lesbarem Grund (ohne Feldnamen).', `(c7/D1) erwartet 409 mit lesbarem Grund, erhalten ${leer.status} ${JSON.stringify(leerGrund)}`)
+    }
+  }
+
+  // ── (c11) Plan v2 wiederholt nur die Stack-Frage → kein Halt ─────────────────────────────────────────────
+  {
+    const lage = await bisNachAdvisor('c11', 2, [plan('PLAN-V1-C11'), plan('PLAN-V2-C11')], [advisor('UEBERARBEITEN', [advisorBefund('A1')])])
+    const v2 = lage && (await gibFreiUndWarte('c11', lage.id, ID_ARCH))
+    if (v2) {
+      pruefe(v2.status === 'WARTET_FREIGABE' && v2.aktiver_schritt_id === ID_AUSF, '(c11) Plan v2 mit wortgleicher Stack-Frage: kein erneuter Halt, weiter zur Freigabe der Ausführung.', `(c11) erwartet WARTET_FREIGABE an der Ausführung — ${v2.status}, ${JSON.stringify(v2.grund)}`)
+    }
+  }
+
+  // ── (d) FREIGEGEBEN → kein zweiter Architekt-Lauf, Ausführung bekommt Plan v1 ──────────────────────────────
+  {
+    const lage = await bisNachAdvisor('d', 2, [plan('PLAN-V1-D')], [advisor('FREIGEGEBEN', [])])
+    if (lage) {
+      const { id, nachAdvisor: d, v1LaufId } = lage
+      pruefe(
+        d.status === 'WARTET_FREIGABE' && d.aktiver_schritt_id === ID_AUSF && schrittVon(d, ID_ARCH).rueckweg === undefined && !(d.grund ?? '').includes('Plan v2'),
+        '(d) FREIGEGEBEN: direkt zur Freigabe der Ausführung, kein Rückweg, kein Plan-v2-Satz.',
+        `(d) erwartet Freigabe der Ausführung — ${d.status}, ${d.aktiver_schritt_id}, ${JSON.stringify(d.grund)}`
+      )
+      await gibFreiUndWarte('d', id, ID_AUSF)
+      const pfade = laeufeVon(id, 'ausfuehrung').at(-1)?.anfragen.map((a) => a.pfad) ?? []
+      pruefe(laeufeVon(id, 'architekt').length === 1 && pfade.includes(`artefakt:ergebnis-${v1LaufId}`), '(d) kein zweiter Architekt-Lauf; die Ausführung bekommt Plan v1.', `(d) Architekt-Läufe ${laeufeVon(id, 'architekt').length}, Eingaben ${JSON.stringify(pfade)}`)
+    }
+  }
+
+  // ── (c9) rueckweg gehört dem Server: Body-Wert verworfen, gespeicherter übernommen ───────────────────────────
+  if (workflowC7 !== null) {
+    const fassung = ladeWorkflow(workflowC7)
+    const echt = schrittVon(fassung, ID_ARCH).rueckweg
+    const gefaelscht = { ...echt, anlass_lauf_id: 'gefaelscht' }
+    const koerper = { ...fassung, schritte: fassung.schritte.map((s) => (s.schritt_id === ID_ARCH ? { ...s, rueckweg: gefaelscht } : s)) }
+    const neueFassung = await post('/api/workflows', koerper)
+    const neueId = `f45-b2b1-c9-${randomUUID()}`
+    const neu = await post('/api/workflows', { ...koerper, workflow_id: neueId })
+    pruefe(
+      (neueFassung.status === 200 || neueFassung.status === 201) && JSON.stringify(schrittVon(ladeWorkflow(workflowC7), ID_ARCH).rueckweg) === JSON.stringify(echt) && (neu.status === 200 || neu.status === 201) && schrittVon(ladeWorkflow(neueId), ID_ARCH)?.rueckweg === undefined,
+      '(c9) POST /api/workflows: neue Fassung behält den gespeicherten Rückweg (Body-Wert verworfen); ein neuer Ablauf bekommt keinen.',
+      `(c9) erwartet Übernahme/Verwerfen — ${neueFassung.status} ${await neueFassung.text()}, ${JSON.stringify(schrittVon(ladeWorkflow(workflowC7), ID_ARCH).rueckweg)}, neu ${neu.status} ${await neu.text()}`
+    )
+  }
+
+  // ── (c10) Plan v1 fehlt beim Start des Architekten v2 → Start abgelehnt, Ausweg im Grund ──────────────────
+  {
+    const id = await legeAn('c10', 2, [], [
+      { ...SCHRITT_ARCHITEKT, rueckweg: { anlass_schritt_id: ID_ADV, anlass_lauf_id: 'gibt-es-nicht-adv', vorheriger_lauf_id: 'gibt-es-nicht-v1' } },
+      { ...PLAN_SCHRITTE[1], status: 'ERFOLGREICH', lauf_id: 'gibt-es-nicht-adv' },
+      PLAN_SCHRITTE[2],
+    ])
+    if (id) {
+      aktiv.workflowId = id
+      const antwort = await post(`/api/workflows/${encodeURIComponent(id)}/freigabe`, { schrittId: ID_ARCH, entscheidung: 'FREIGEGEBEN', begruendung: 'Gate (c10).' })
+      const koerper = await antwort.json().catch(() => ({}))
+      pruefe(
+        antwort.status === 409 && (koerper.grund ?? '').includes('Plan v1 des Architekten ist nicht lesbar.') && /neu an/.test(koerper.grund ?? '') && laeufeVon(id, 'architekt').length === 0,
+        '(c10) Plan v1 nicht lesbar: der v2-Start wird abgelehnt (409), der Grund nennt den Ausweg, kein Lauf.',
+        `(c10) erwartet 409 ohne Lauf — ${antwort.status} ${JSON.stringify(koerper)}, Läufe ${laeufeVon(id, 'architekt').length}`
+      )
+    }
+  }
+
+  // ── (c12) Advisor seit dem Rückweg zurückgesetzt → kein Sprung, er prüft Plan v2; danach Grenze der Plan-Stufe ─
+  {
+    const lage = await bisNachAdvisor('c12', 2, [plan('PLAN-V1-C12'), plan('PLAN-V2-C12')], [advisor('UEBERARBEITEN', [advisorBefund('A1')]), advisor('UEBERARBEITEN', [advisorBefund('A9')])])
+    if (lage) {
+      const { id } = lage
+      const fassung = ladeWorkflow(id)
+      // Wie eine Reparatur, die den Advisor zurücksetzt (der Rückweg am Architekten bleibt serverseitig).
+      registriereWorkflow({ ...fassung, schritte: fassung.schritte.map((s) => (s.schritt_id === ID_ADV ? (({ freigabe_erteilt: _f, ...rest }) => ({ ...rest, status: 'OFFEN', lauf_id: null }))(s) : s)) }, profilReferenz, ladeOptionen)
+      const v2 = await gibFreiUndWarte('c12', id, ID_ARCH)
+      pruefe(v2?.status === 'WARTET_FREIGABE' && v2.aktiver_schritt_id === ID_ADV, '(c12) Advisor zurückgesetzt: nach Plan v2 wartet der Advisor (kein Sprung).', `(c12) erwartet Freigabe des Advisors — ${v2?.status}, ${v2?.aktiver_schritt_id}`)
+      const zweit = v2 && (await gibFreiUndWarte('c12', id, ID_ADV))
+      if (zweit) {
+        pruefe(
+          zweit.status === 'WARTET_FREIGABE' && zweit.aktiver_schritt_id === ID_AUSF && laeufeVon(id, 'architekt').length === 2 && (zweit.grund ?? '').includes('Kein Plan v2: Die Plan-Stufe hatte ihre eine automatische Korrekturrunde schon.'),
+          '(c12) zweites UEBERARBEITEN: kein dritter Architekt-Lauf, Freigabe der Ausführung, Grund nennt die Grenze der Plan-Stufe.',
+          `(c12) erwartet Grenze — ${zweit.status}, ${zweit.aktiver_schritt_id}, Architekt-Läufe ${laeufeVon(id, 'architekt').length}, ${JSON.stringify(zweit.grund)}`
+        )
+      }
+    }
+  }
+
+  // ── (c13) Plan v2 bringt eine andere Einrichtungsliste → die Ausführung folgt der von Plan v2 (qa 1, Advisor N5) ──
+  {
+    const einrichtungPlan = (marke, schritt) => ({ ...plan(marke), einrichtung: [{ schritt, wann: 'vor_dem_bau' }] })
+    const lage = await bisNachAdvisor('c13', 2, [einrichtungPlan('PLAN-V1-C13', 'Zugang A einrichten'), einrichtungPlan('PLAN-V2-C13', 'Zugang B einrichten')], [advisor('UEBERARBEITEN', [advisorBefund('A1')])])
+    const v2 = lage && (await gibFreiUndWarte('c13', lage.id, ID_ARCH))
+    if (v2) {
+      aktiv.workflowId = lage.id
+      const antwort = await post(`/api/workflows/${encodeURIComponent(lage.id)}/freigabe`, { schrittId: ID_AUSF, entscheidung: 'FREIGEGEBEN', begruendung: 'Gate (c13).' })
+      const grund = (await antwort.json().catch(() => ({}))).grund ?? ''
+      pruefe(
+        antwort.status === 409 && grund.includes('Zugang B einrichten') && !grund.includes('Zugang A einrichten') && laeufeVon(lage.id, 'ausfuehrung').length === 0,
+        '(c13) die Einrichtung vor dem Bau folgt Plan v2: offen ist der Eintrag aus Plan v2, nicht der aus Plan v1; der Bau startet nicht.',
+        `(c13) erwartet 409 mit dem Eintrag aus Plan v2 — ${antwort.status}, ${JSON.stringify(grund)}`
+      )
+    }
+  }
+
+  // ── (c14) Plan v2 scheitert → Reparaturfassung (ohne rueckweg im Body) → v2 startet erneut mit Plan v1 (qa 2) ──
+  {
+    const lage = await bisNachAdvisor('c14', 2, [plan('PLAN-V1-C14'), { fehlschlag: true }, plan('PLAN-V2-C14')], [advisor('UEBERARBEITEN', [advisorBefund('A1')])])
+    const gescheitert = lage && (await gibFreiUndWarte('c14', lage.id, ID_ARCH))
+    if (gescheitert) {
+      const echt = schrittVon(gescheitert, ID_ARCH).rueckweg
+      const reparatur = {
+        ...gescheitert,
+        status: 'OFFEN',
+        grund: null,
+        aktiver_schritt_id: ID_ARCH,
+        schritte: gescheitert.schritte.map((s) => (s.schritt_id === ID_ARCH ? (({ rueckweg: _r, ...rest }) => ({ ...rest, status: 'OFFEN', lauf_id: null }))(s) : s)),
+      }
+      const antwort = await post('/api/workflows', reparatur)
+      const nachReparatur = ladeWorkflow(lage.id)
+      const v2 = await gibFreiUndWarte('c14', lage.id, ID_ARCH)
+      const auftrag = laeufeVon(lage.id, 'architekt').at(-1)?.auftragstext ?? ''
+      pruefe(
+        gescheitert.status === 'KLAERUNG_ERFORDERLICH' && (antwort.status === 200 || antwort.status === 201) && JSON.stringify(schrittVon(nachReparatur, ID_ARCH).rueckweg) === JSON.stringify(echt) && auftrag.includes('PLAN-V1-C14') && v2?.status === 'WARTET_FREIGABE' && v2.aktiver_schritt_id === ID_AUSF && laeufeVon(lage.id, 'architecture-advisor').length === 1,
+        '(c14) Plan v2 gescheitert → Reparaturfassung behält den Rückweg → Plan v2 erneut mit Plan v1, danach Freigabe der Ausführung ohne zweiten Advisor.',
+        `(c14) erwartet Reparatur mit Rückweg — Halt ${gescheitert.status}, POST ${antwort.status}, rueckweg ${JSON.stringify(schrittVon(nachReparatur, ID_ARCH)?.rueckweg)}, danach ${v2?.status} ${v2?.aktiver_schritt_id}`
+      )
+    }
+  }
+
+  // ── (c10b) Advisor-Ergebnis nicht lesbar beim Start des Architekten v2 → Start abgelehnt, lesbarer Grund (qa 8) ──
+  {
+    const lage = await bisNachAdvisor('c10b', 2, [plan('PLAN-V1-C10B')], [advisor('UEBERARBEITEN', [advisorBefund('A1')])])
+    if (lage) {
+      const fassung = ladeWorkflow(lage.id)
+      const arch = schrittVon(fassung, ID_ARCH)
+      registriereWorkflow({ ...fassung, schritte: fassung.schritte.map((s) => (s.schritt_id === ID_ARCH ? { ...arch, rueckweg: { ...arch.rueckweg, anlass_lauf_id: 'gibt-es-nicht-adv' } } : s)) }, profilReferenz, ladeOptionen)
+      const antwort = await post(`/api/workflows/${encodeURIComponent(lage.id)}/freigabe`, { schrittId: ID_ARCH, entscheidung: 'FREIGEGEBEN', begruendung: 'Gate (c10b).' })
+      const grund = (await antwort.json().catch(() => ({}))).grund ?? ''
+      pruefe(
+        antwort.status === 409 && grund.includes('Das Ergebnis des Advisors ist nicht lesbar.') && !grund.includes('gibt-es-nicht-adv') && laeufeVon(lage.id, 'architekt').length === 1,
+        '(c10b) Advisor-Ergebnis nicht lesbar: der v2-Start wird abgelehnt, der Grund ohne Lauf-Kennung, kein Lauf.',
+        `(c10b) erwartet 409 ohne Kennung — ${antwort.status}, ${JSON.stringify(grund)}`
       )
     }
   }

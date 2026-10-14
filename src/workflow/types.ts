@@ -114,6 +114,20 @@ export interface WorkflowV0Schritt {
    * der sichere Vorgabewert, denn nur die Anwesenheit von `true` startet.
    */
   freigabe_erteilt?: boolean
+  /**
+   * OPTIONAL (F45 B2b-1b-2a, features/F45/plan-b2b1b2.md): nur am Architekt-Schritt nach dem Rückweg der Plan-Stufe —
+   * dieser Lauf schreibt Plan v2. anlass_schritt_id/anlass_lauf_id nennen den Advisor-Lauf, dessen Befunde eingearbeitet
+   * werden, vorheriger_lauf_id den Lauf von Plan v1. Gehört dem Server (nie aus einem Body übernommen); Regel 3a in
+   * ermittleNaechstenSchritt springt nach Plan v2 nur über genau diesen Advisor-Lauf. Optional wie freigabe_erteilt.
+   */
+  rueckweg?: WorkflowV0Rueckweg
+}
+
+/** Rückweg der Plan-Stufe am Architekt-Schritt (F45 B2b-1b-2a). */
+export interface WorkflowV0Rueckweg {
+  anlass_schritt_id: string
+  anlass_lauf_id: string
+  vorheriger_lauf_id: string
 }
 
 export interface WorkflowV0Daten {

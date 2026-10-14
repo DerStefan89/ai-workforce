@@ -106,6 +106,17 @@
           "freigabe_erteilt": {
             "description": "OPTIONAL (F15 WS-2c (b1), löst F-207): true, sobald ein Mensch für genau diesen Schritt eine Freigabe erteilt hat (POST /api/workflows/<id>/freigabe). Nur dieses Feld löst einen ZWINGEND-Halt auf; 'freigabe' selbst bleibt unverändertes Plandatum (AK7 Satz 2, F-195). Bewusst NICHT in 'required': jede vor (b1) geschriebene Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld nicht — ein Pflichtfeld machte den gesamten Bestand ungültig (Muster: 'grund' auf Workflow-Ebene). Ein fehlendes Feld heißt 'keine Freigabe erteilt'; nur exakt true startet.",
             "type": "boolean"
+          },
+          "rueckweg": {
+            "description": "OPTIONAL (F45 B2b-1b-2a, features/F45/plan-b2b1b2.md): nur am Architekt-Schritt nach dem Rückweg der Plan-Stufe — dieser Lauf schreibt Plan v2 mit den Befunden des Advisor-Laufs anlass_lauf_id (Schritt anlass_schritt_id, eine bekannte schritt_id); vorheriger_lauf_id ist der Lauf von Plan v1. Gehört dem Server: POST /api/workflows übernimmt ihn nie aus dem Body, eine neue Fassung behält den gespeicherten Wert. Bewusst nicht in 'required' (append-only Bestand, Muster freigabe_erteilt).",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["anlass_schritt_id", "anlass_lauf_id", "vorheriger_lauf_id"],
+            "properties": {
+              "anlass_schritt_id": { "type": "string", "minLength": 1 },
+              "anlass_lauf_id": { "type": "string", "minLength": 1 },
+              "vorheriger_lauf_id": { "type": "string", "minLength": 1 }
+            }
           }
         }
       }

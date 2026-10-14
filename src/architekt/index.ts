@@ -833,6 +833,59 @@ export function baueStackEntscheidungsInstruktion(entscheidungArtefaktId: string
   ]
 }
 
+/** Ein Advisor-Befund, wie ihn die Plan-v2-Instruktion braucht (schemas/ergebnis-architecture-advisor.schema.json). */
+export interface PlanV2Befund {
+  id: string
+  schwere: string
+  evidenz: string
+  fundstelle: string
+  zusammenfassung: string
+  korrekturrichtung: string
+}
+
+/** Eingaben der Plan-v2-Instruktion (F45 B2b-1b-2a) — der Server liest sie aus den Laufakten und der Entscheidungskette. */
+export interface PlanV2Eingaben {
+  /** Plan v1 als (formatierter) Ergebnistext des vorherigen Architekt-Laufs. */
+  planV1: string
+  advisor: { urteil: string; begruendung: string; befunde: PlanV2Befund[] }
+  /** Stefans Antworten zu Plan v1 (zusammengeführt, findeWorkflowEntscheidungFuerSchritt). */
+  entscheidungen: { frage: string; gewaehlt: string; begruendung?: string }[]
+  /** istStackOffen des Laufordners: dann muss die Stack-Frage erneut, wortgleich vorgelegt werden (Entscheidung Stefan H1). */
+  stackOffen: boolean
+}
+
+/**
+ * F45 B2b-1b-2a (features/F45/plan-b2b1b2.md, löst F-909): Zusatz zum Architekt-Auftragstext beim Rückweg der
+ * Plan-Stufe — Plan v1, das Advisor-Urteil mit jedem Befund samt Korrekturrichtung und Stefans bereits getroffene
+ * Antworten als bindender Block (Advisor B2). Plan v2 ist vollständig im selben Schema, kein Diff. Bei offenem Stack
+ * verlangt validiereErgebnisArchitektur erneut eine Stack-Frage — sie wird mit Frage und Optionen wortgleich wiederholt,
+ * damit die bestehende Antwort weiter gilt (offeneArchitekturFragen, scripts/leitstand/routen-f39.mjs); andere bereits
+ * beantwortete Fragen werden nicht erneut gestellt. Reine Funktion, kein I/O.
+ * @param eingaben - PlanV2Eingaben
+ * @returns Instruktionsblock als Text
+ */
+export function baueArchitektPlanV2Instruktion(eingaben: PlanV2Eingaben): string {
+  const zeilen = [
+    '## Plan v2 (Rückweg der Plan-Stufe)',
+    `Der Advisor hat deinen Plan v1 mit dem Urteil ${eingaben.advisor.urteil} bewertet. Schreibe jetzt Plan v2: vollständig im selben Ausgabeschema wie Plan v1 (kein Diff, keine Verweise auf "wie oben"). Arbeite jeden Befund ein oder begründe in 'zusammenfassung', warum nicht. Der Advisor prüft Plan v2 nicht erneut — Stefan prüft ihn vor dem Bau.`,
+    '',
+    `Begründung des Advisors: ${eingaben.advisor.begruendung}`,
+  ]
+  if (eingaben.advisor.befunde.length > 0) {
+    zeilen.push('', 'Befunde des Advisors:')
+    for (const b of eingaben.advisor.befunde) zeilen.push(`- ${b.id} [${b.schwere}, ${b.evidenz}] ${b.fundstelle} — ${b.zusammenfassung} Korrektur: ${b.korrekturrichtung}`)
+  }
+  if (eingaben.entscheidungen.length > 0) {
+    zeilen.push('', `Bereits entschieden (Stefan, bindend — nicht erneut zur Entscheidung stellen${eingaben.stackOffen ? ', außer der Stack-Frage unten' : ''}):`)
+    for (const e of eingaben.entscheidungen) zeilen.push(`- ${e.frage} → ${e.gewaehlt}${e.begruendung ? ` (${e.begruendung})` : ''}`)
+  }
+  if (eingaben.stackOffen) {
+    zeilen.push('', "Der Stack des Projekts ist noch offen: lege die Entscheidung mit kategorie 'stack' aus Plan v1 in 'entscheidungen_mensch' erneut vor — Frage und Optionen wortgleich wie in Plan v1, damit Stefans Antwort weiter gilt.")
+  }
+  zeilen.push('', 'Neue Fragen an Stefan stellst du nur, wenn ein Befund eine Entscheidung verlangt, die noch nicht getroffen ist.', '', 'Plan v1:', eingaben.planV1)
+  return zeilen.join('\n')
+}
+
 /**
  * F42 WS-4 (löst F-712, state/findings.md F-712): Allowlist der Pfad-Präfixe, in denen ein
  * Projektmodus-'ausfuehrung'-Schritt (herkunft.art === 'projekt_interview') schreiben darf — der

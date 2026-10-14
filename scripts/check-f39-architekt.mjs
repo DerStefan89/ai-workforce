@@ -458,9 +458,14 @@ console.log('\n=== F39-Architekt-Check ===\n')
   const ausfuehrungSchritt = hoch.schritte.find((s) => s.rolle === 'ausfuehrung')
   const advisorSchrittId = advisorSchritt?.schritt_id
   if (ausfuehrungSchritt && architektSchrittId && advisorSchrittId) {
-    const fehlend = [`artefakt:ergebnis-@${architektSchrittId}`, `artefakt:ergebnis-@${advisorSchrittId}`].filter((e) => !ausfuehrungSchritt.eingaben.includes(e))
+    // F45 B2b-1b-2a (F-909): die Ausführung bekommt nur den letzten Plan (nach dem Rückweg Plan v2) und Stefans
+    // Entscheidungen — das Advisor-Ergebnis nicht mehr (dessen Befunde arbeitet der Architekt in Plan v2 ein).
+    const fehlend = [`artefakt:ergebnis-@${architektSchrittId}`, `artefakt:entscheidung-@${architektSchrittId}`].filter((e) => !ausfuehrungSchritt.eingaben.includes(e))
     if (fehlend.length > 0) {
-      befunde.push(`(f): ausfuehrung-Schritt sollte die Ergebnisse BEIDER Vorschritte als Eingabe tragen, es fehlen: ${JSON.stringify(fehlend)} (vorhanden: ${JSON.stringify(ausfuehrungSchritt.eingaben)})`)
+      befunde.push(`(f): ausfuehrung-Schritt sollte Plan und Entscheidung des Architekten als Eingabe tragen, es fehlen: ${JSON.stringify(fehlend)} (vorhanden: ${JSON.stringify(ausfuehrungSchritt.eingaben)})`)
+    }
+    if (ausfuehrungSchritt.eingaben.includes(`artefakt:ergebnis-@${advisorSchrittId}`)) {
+      befunde.push(`(f): ausfuehrung-Schritt sollte das Advisor-Ergebnis nicht mehr als Eingabe tragen (F45 B2b-1b-2a, nur der letzte Plan), erhalten ${JSON.stringify(ausfuehrungSchritt.eingaben)}`)
     }
   }
   if (hoch.aktiver_schritt_id !== architektSchrittId) {
@@ -470,7 +475,7 @@ console.log('\n=== F39-Architekt-Check ===\n')
     befunde.push(`(f): grenzen.max_schritte (${hoch.grenzen?.max_schritte}) sollte mindestens die reale Schrittzahl (${hoch.schritte.length}) decken`)
   }
   if (befunde.length === befundeVor) {
-    console.log(`✓ (f): workflow-vorlagen/hoch.json — 'architekt' (Schritt '${architektSchrittId}') steht vor 'architecture-advisor', beide Folgeschritte referenzieren die vorherigen Ergebnisse korrekt, max_schritte deckt alle ${hoch.schritte.length} Schritte.`)
+    console.log(`✓ (f): workflow-vorlagen/hoch.json — 'architekt' (Schritt '${architektSchrittId}') steht vor 'architecture-advisor', Advisor prüft den Plan, die Ausführung bekommt nur Plan und Entscheidung des Architekten, max_schritte deckt alle ${hoch.schritte.length} Schritte.`)
   }
 }
 

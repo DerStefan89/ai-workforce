@@ -18,7 +18,9 @@
  * F45 B2b-1a (features/F45/plan-b2b1.md, löst F-203 für die Bau-Stufe und den
  * Halt-Teil von F-981): die Grenze kommt aus grenzen.max_replans des Workflows
  * (Summe über die Stufen), je Stufe höchstens GRENZE_JE_STUFE Rückweg —
- * pruefeRueckweg ist die eine Regel für Bau- und (mit B2b-1b-2) Plan-Stufe.
+ * pruefeRueckweg ist die eine Regel für Bau- und Plan-Stufe (F45 B2b-1b-2a:
+ * ermittlePlanRueckweg, baueSchritteFuerPlanRueckweg, uebernimmRueckwege,
+ * planStufenSatz — Plan v2 nach FREIGEGEBEN_MIT_AUFLAGEN/UEBERARBEITEN).
  * Meldet der Review nach einer Korrektur dieselben Befunde
  * (sindDieselbenBefunde), gibt es keinen weiteren Rückweg.
  * pruefschrittWiederholbar ist die Vorbedingung von „Prüfer wiederholen“
@@ -46,6 +48,7 @@
  */
 
 import { listeVersionen } from '../../src/lineage-registry/index.ts'
+import { planV2Sprungziel } from '../../src/workflow/index.ts'
 
 /** Höchstens ein automatischer Rückweg je Stufe (Stefan, B2b-1: wie der manuelle Ablauf, eine Korrekturrunde). */
 const GRENZE_JE_STUFE = 1
@@ -53,8 +56,17 @@ const GRENZE_JE_STUFE = 1
 /** Anzeigename je Stufe für die lesbaren Halt-Gründe. */
 const STUFEN_NAMEN = { bau: 'Bau-Stufe', plan: 'Plan-Stufe' }
 
-/** Satz, mit dem jeder Rückweg-Halt endet: der Weg des Menschen. */
-const AUSWEG = 'Entscheide selbst: „Anpassung wünschen“ oder „Ablehnen“.'
+/** Satz, mit dem jeder Rückweg-Halt endet: der Weg des Menschen — je Stufe (F45 B2b-1b-2a: in der Plan-Stufe entscheidet Stefan bei der Freigabe der Ausführung). */
+const AUSWEG = { bau: 'Entscheide selbst: „Anpassung wünschen“ oder „Ablehnen“.', plan: 'Entscheide bei der Freigabe der Ausführung: Freigeben oder Ablehnen.' }
+
+/** Vorsatz der Grenz-Gründe je Stufe (erste / weitere Korrekturrunde). Die Plan-Stufe trägt keinen: ihr Satz steht hinter „Kein Plan v2:“ (Delta-Advisor D8). */
+const GRENZ_VORSATZ = { bau: { erste: 'Keine automatische Anpassung: ', weitere: 'Keine weitere automatische Anpassung: ' }, plan: { erste: '', weitere: '' } }
+
+/** Lesbare Advisor-Urteile für die Halt-Gründe (keine internen Kennungen im sichtbaren Text). */
+const ADVISOR_URTEIL_TEXT = { FREIGEGEBEN: 'freigegeben', FREIGEGEBEN_MIT_AUFLAGEN: 'freigegeben mit Auflagen', UEBERARBEITEN: 'überarbeiten' }
+
+/** Advisor-Urteile, die Plan v2 verlangen (schemas/ergebnis-architecture-advisor.schema.json). */
+const PLAN_V2_URTEILE = new Set(['FREIGEGEBEN_MIT_AUFLAGEN', 'UEBERARBEITEN'])
 
 /** So viele Befunde nennt der Wiederholungs-Grund höchstens, der Rest als „+n weitere“ (der Grund steht in Listen ohne Kürzung). */
 const MAX_GENANNTE_BEFUNDE = 3
@@ -124,10 +136,11 @@ export function baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoe
  * Anpassung), dann die Grenze (pruefeRueckweg, max_replans). Nur diese beiden Ablehnungen tragen `art` — genau dann
  * hängt der Aufrufer den Grund an den Halt (Advisor B10: ein 1k- oder Urteil-Halt bekommt keinen Grenzsatz).
  * @param eingabe - { outputSchema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen,
- *   maxReplans (grenzen.max_replans), befunde (dieses Reviews), vorherigeBefunde (Review vor der letzten Anpassung, sonst null) }
+ *   maxReplans (grenzen.max_replans), befunde (dieses Reviews), vorherigeBefunde (Review vor der letzten Anpassung, sonst null),
+ *   planRueckwege (zaehlePlanRueckwege, F45 B2b-1b-2a; Vorgabe 0) }
  * @returns { ausloesen: true } oder { ausloesen: false, grund, art? } — art 'wiederholung' | 'grenze' nur bei diesen Ablehnungen
  */
-export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen, maxReplans, befunde = [], vorherigeBefunde = null }) {
+export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen, maxReplans, befunde = [], vorherigeBefunde = null, planRueckwege = 0 }) {
   if (outputSchema !== 'ergebnis-code-reviewer') {
     return { ausloesen: false, grund: "output_schema ist nicht 'ergebnis-code-reviewer'" }
   }
@@ -152,10 +165,11 @@ export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, hei
     return {
       ausloesen: false,
       art: 'wiederholung',
-      grund: `Keine weitere automatische Anpassung: Der Review meldet nach der Korrektur dieselben Befunde wie zuvor (${nenneBefunde(befunde)}). ${AUSWEG}`,
+      grund: `Keine weitere automatische Anpassung: Der Review meldet nach der Korrektur dieselben Befunde wie zuvor (${nenneBefunde(befunde)}). ${AUSWEG.bau}`,
     }
   }
-  const rueckweg = pruefeRueckweg({ stufe: 'bau', rueckwegeStufe: anzahlBisherigerKernVersionen, rueckwegeGesamt: anzahlBisherigerKernVersionen, maxReplans })
+  // F45 B2b-1b-2a: max_replans ist die Summe über beide Stufen — ein Plan v2 verbraucht eine Runde mit.
+  const rueckweg = pruefeRueckweg({ stufe: 'bau', rueckwegeStufe: anzahlBisherigerKernVersionen, rueckwegeGesamt: anzahlBisherigerKernVersionen + planRueckwege, maxReplans })
   if (!rueckweg.erlaubt) return { ausloesen: false, art: rueckweg.art, grund: rueckweg.grund }
   return { ausloesen: true }
 }
@@ -163,28 +177,127 @@ export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, hei
 /**
  * Die eine Rückweg-Regel (F45 B2b-1a, Umfang 1): je Stufe höchstens GRENZE_JE_STUFE automatischer Rückweg, über alle
  * Stufen zusammen höchstens grenzen.max_replans. Ein fehlendes oder ungültiges max_replans sperrt (fail closed — der
- * Validator verlangt das Feld, ein solcher Datensatz käme nur über einen Fehler hier an). Reine Funktion. In B2b-1a ruft
- * nur die Bau-Stufe sie auf (rueckwegeGesamt = Bau-Rückwege); die Plan-Stufe folgt mit B2b-1b-2.
+ * Validator verlangt das Feld, ein solcher Datensatz käme nur über einen Fehler hier an); ebenso nicht ganzzahlige
+ * Zählungen. Reine Funktion. Bau-Stufe:
+ * ermittleAutomatischeAnpassung; Plan-Stufe (F45 B2b-1b-2a): ermittlePlanRueckweg — beide mit rueckwegeGesamt = Bau + Plan.
  * Die Gründe sind für Stefan geschrieben (Prüfpass B2b-1a): „Korrekturrunde“ statt interner Feldnamen, keine Zählung
- * „n von 1“ (Bestandsabläufe aus der Zeit der Grenze 3 trügen sonst „3 von 1“).
+ * „n von 1“ (Bestandsabläufe aus der Zeit der Grenze 3 trügen sonst „3 von 1“). Die Bau-Texte sind seit B2b-1a bitgleich;
+ * die Plan-Stufe trägt keinen Vorsatz und ihren eigenen Ausweg.
  * @param eingabe - { stufe ('bau' | 'plan'), rueckwegeStufe, rueckwegeGesamt, maxReplans }
  * @returns { erlaubt: true } oder { erlaubt: false, art: 'grenze', grund } mit lesbarem Grund
  */
 export function pruefeRueckweg({ stufe, rueckwegeStufe, rueckwegeGesamt, maxReplans }) {
   const name = STUFEN_NAMEN[stufe] ?? stufe
-  if (!Number.isInteger(maxReplans) || maxReplans < 0) {
-    return { erlaubt: false, art: 'grenze', grund: `Keine automatische Anpassung: Die Grenze der Korrekturrunden dieses Ablaufs ist nicht lesbar. ${AUSWEG}` }
-  }
-  if (maxReplans === 0) {
-    return { erlaubt: false, art: 'grenze', grund: `Keine automatische Anpassung: Die Vorlage dieses Ablaufs erlaubt keine automatische Korrekturrunde. ${AUSWEG}` }
-  }
-  if (rueckwegeStufe >= GRENZE_JE_STUFE) {
-    return { erlaubt: false, art: 'grenze', grund: `Keine weitere automatische Anpassung: Die ${name} hatte ihre eine automatische Korrekturrunde schon. ${AUSWEG}` }
-  }
-  if (rueckwegeGesamt >= maxReplans) {
-    return { erlaubt: false, art: 'grenze', grund: `Keine weitere automatische Anpassung: Die automatischen Korrekturrunden dieses Ablaufs (höchstens ${maxReplans}) sind verbraucht. ${AUSWEG}` }
-  }
+  const vorsatz = GRENZ_VORSATZ[stufe] ?? GRENZ_VORSATZ.bau
+  const ausweg = AUSWEG[stufe] ?? AUSWEG.bau
+  const gesperrt = (art, satz) => ({ erlaubt: false, art: 'grenze', grund: `${vorsatz[art]}${satz} ${ausweg}` })
+  if (!Number.isInteger(maxReplans) || maxReplans < 0) return gesperrt('erste', 'Die Grenze der Korrekturrunden dieses Ablaufs ist nicht lesbar.')
+  // Fail closed auch bei den Zählungen (Code-Review B2b-1b-2a 2): NaN/undefined bestünde jeden Vergleich unten.
+  if (!Number.isInteger(rueckwegeStufe) || !Number.isInteger(rueckwegeGesamt)) return gesperrt('erste', 'Die bisherigen Korrekturrunden dieses Ablaufs sind nicht zählbar.')
+  if (maxReplans === 0) return gesperrt('erste', 'Die Vorlage dieses Ablaufs erlaubt keine automatische Korrekturrunde.')
+  if (rueckwegeStufe >= GRENZE_JE_STUFE) return gesperrt('weitere', `Die ${name} hatte ihre eine automatische Korrekturrunde schon.`)
+  if (rueckwegeGesamt >= maxReplans) return gesperrt('weitere', `Die automatischen Korrekturrunden dieses Ablaufs (höchstens ${maxReplans}) sind verbraucht.`)
   return { erlaubt: true }
+}
+
+// ─── F45 B2b-1b-2a: Rückweg der Plan-Stufe (features/F45/plan-b2b1b2.md) ───────────────────────────────────────────
+// Reine Funktionen. Geschrieben wird im Server (Nachlauf des Advisors, im SELBEN Schreibvorgang wie dessen Ausgang —
+// F-228-Begründung im Dateikopf); gestartet wird nichts Neues (in hoch hält der Architekt an seiner ZWINGEND-Freigabe).
+
+/**
+ * Rückwege der Plan-Stufe (Advisor B7): 1, sobald ein Architekt-Schritt den Rückweg trägt (er schreibt Plan v2), sonst 0.
+ * @param schritte - Schrittliste des Workflows (beliebiger Wert; kein Array = 0)
+ * @returns 0 oder 1
+ */
+export function zaehlePlanRueckwege(schritte) {
+  return Array.isArray(schritte) && schritte.some((s) => s?.rolle === 'architekt' && s.rueckweg !== undefined) ? 1 : 0
+}
+
+/**
+ * Soll nach einem gültigen Advisor-Urteil Plan v2 entstehen? Nur bei FREIGEGEBEN_MIT_AUFLAGEN/UEBERARBEITEN, nur mit einem
+ * gelaufenen Architekten direkt vor dem Advisor, und nur innerhalb der Rückweg-Regel (pruefeRueckweg, Plan-Stufe; „Plan v2
+ * lief schon“ ist deren Stufengrenze, Delta-Advisor D4). Urteil und Befundzahl reist mit (Halt-Gründe, planStufenSatz).
+ * @param eingabe - { schritte (aktuelle Fassung, datenMitSchritt), maxReplans, advisorSchrittId, urteil, befundAnzahl, kernVersionen (zaehleKernVersionen) }
+ * @returns { ausloesen: true, architektSchrittId, urteil, befundAnzahl } oder { ausloesen: false, art?, grund, urteil, befundAnzahl } — art 'grenze' nur aus pruefeRueckweg
+ */
+export function ermittlePlanRueckweg({ schritte, maxReplans, advisorSchrittId, urteil, befundAnzahl, kernVersionen }) {
+  const basis = { urteil, befundAnzahl }
+  if (!PLAN_V2_URTEILE.has(urteil)) return { ...basis, ausloesen: false, grund: 'Der Advisor hat den Plan freigegeben.' }
+  const architekt = (Array.isArray(schritte) ? schritte : []).find((s) => s?.nachfolger === advisorSchrittId)
+  if (architekt === undefined || architekt.rolle !== 'architekt' || architekt.status !== 'ERFOLGREICH' || typeof architekt.lauf_id !== 'string') {
+    return { ...basis, ausloesen: false, grund: `Vor dem Advisor steht kein gelaufener Architekt, der den Plan überarbeiten könnte. ${AUSWEG.plan}` }
+  }
+  const planRueckwege = zaehlePlanRueckwege(schritte)
+  const regel = pruefeRueckweg({ stufe: 'plan', rueckwegeStufe: planRueckwege, rueckwegeGesamt: planRueckwege + kernVersionen, maxReplans })
+  if (!regel.erlaubt) return { ...basis, ausloesen: false, art: regel.art, grund: regel.grund }
+  return { ...basis, ausloesen: true, architektSchrittId: architekt.schritt_id }
+}
+
+/**
+ * Schrittliste der neuen Fassung beim Rückweg der Plan-Stufe: der Architekt steht wieder OFFEN (lauf_id null, ohne
+ * freigabe_erteilt — ein neuer Lauf braucht eine neue Freigabe) und trägt den Rückweg; der Advisor bleibt ERFOLGREICH mit
+ * seinem Lauf (Regel 3a springt nach Plan v2 über genau ihn). B13: der Nachfolger des Advisors verliert die Eingabe
+ * 'artefakt:ergebnis-@<advisor>' (Bestands-hoch) — die Ausführung bekommt nur den letzten Plan.
+ * @param schritte - Schrittliste (datenMitSchritt.schritte, Advisor bereits mit seinem Ausgang)
+ * @param ids - { architektSchrittId, advisorSchrittId }
+ * @returns neue Schrittliste (Eingabe unverändert)
+ */
+export function baueSchritteFuerPlanRueckweg(schritte, { architektSchrittId, advisorSchrittId }) {
+  const architekt = schritte.find((s) => s.schritt_id === architektSchrittId)
+  const advisor = schritte.find((s) => s.schritt_id === advisorSchrittId)
+  return schritte.map((s) => {
+    if (s.schritt_id === architektSchrittId) {
+      const { freigabe_erteilt: _verworfen, ...rest } = s
+      return { ...rest, status: 'OFFEN', lauf_id: null, rueckweg: { anlass_schritt_id: advisorSchrittId, anlass_lauf_id: advisor.lauf_id, vorheriger_lauf_id: architekt.lauf_id } }
+    }
+    if (s.schritt_id === advisor.nachfolger) return { ...s, eingaben: s.eingaben.filter((e) => e !== `artefakt:ergebnis-@${advisorSchrittId}`) }
+    return s
+  })
+}
+
+/**
+ * Der Rückweg gehört dem Server (Advisor B11, Delta-Advisor M1/D7): eine eingereichte Fassung (POST /api/workflows) bringt
+ * ihn nie mit; je Architekt-Schritt wird der Wert der gespeicherten Fassung übernommen — nur, wenn der Schritt dort und im
+ * Body die Rolle architekt trägt und der Anlass-Schritt im Body existiert. Danach validiert der Aufrufer den Datensatz.
+ * @param bodySchritte - Schrittliste aus dem Body (bereits formgeprüft)
+ * @param gespeicherteSchritte - Schrittliste der gespeicherten Fassung, oder null (keine)
+ * @returns Schrittliste ohne Body-rueckweg, ggf. mit übernommenem
+ */
+export function uebernimmRueckwege(bodySchritte, gespeicherteSchritte) {
+  const ids = new Set(bodySchritte.map((s) => s.schritt_id))
+  return bodySchritte.map((s) => {
+    const { rueckweg: _ausBody, ...rest } = s
+    const gespeichert = Array.isArray(gespeicherteSchritte) ? gespeicherteSchritte.find((g) => g?.schritt_id === s.schritt_id) : undefined
+    const rueckweg = gespeichert?.rolle === 'architekt' && s.rolle === 'architekt' ? gespeichert.rueckweg : undefined
+    // Nur ein formgültiger gespeicherter Wert wird übernommen (Nachpass Code-Review): ein beschädigter Bestand bliebe sonst
+    // dauerhaft bei 400 bzw. würfe hier — er soll ersetzbar bleiben wie jeder ungültige Bestand.
+    const formgueltig = typeof rueckweg === 'object' && rueckweg !== null && ['anlass_schritt_id', 'anlass_lauf_id', 'vorheriger_lauf_id'].every((feld) => typeof rueckweg[feld] === 'string' && rueckweg[feld].length > 0)
+    return formgueltig && ids.has(rueckweg.anlass_schritt_id) ? { ...rest, rueckweg } : rest
+  })
+}
+
+/**
+ * Der Satz der Plan-Stufe am Grund eines Freigabe-Halts (Delta-Advisor D2/M2) — bis B2b-1b-2b die einzige Stelle, an
+ * der Stefan sieht, warum die Freigabe ansteht: Plan v2 folgt (Freigabe des Architekten), Plan v2 entfällt mit Grund
+ * (Freigabe der Ausführung), oder Plan v2 liegt vor und der Advisor prüft ihn nicht erneut (Regel 3a hat gegriffen).
+ * @param eingabe - { naechster (Ausgang von ermittleNaechstenSchritt), schritte (Fassung, auf der er berechnet wurde),
+ *   vorschrittId (gerade gemeldeter Schritt), planEntscheid (ermittlePlanRueckweg nach einem Advisor-Lauf, sonst null) }
+ * @returns Satz oder null
+ */
+export function planStufenSatz({ naechster, schritte, vorschrittId, planEntscheid }) {
+  if (naechster?.art !== 'haltFreigabe') return null
+  if (planEntscheid !== null && planEntscheid !== undefined) {
+    const urteil = `Urteil „${ADVISOR_URTEIL_TEXT[planEntscheid.urteil] ?? planEntscheid.urteil}“`
+    if (planEntscheid.ausloesen) return `Plan v2: Der Architekt überarbeitet den Plan mit ${planEntscheid.befundAnzahl} Befund(en) des Advisors (${urteil}).`
+    if (PLAN_V2_URTEILE.has(planEntscheid.urteil)) return `Advisor: ${urteil} mit ${planEntscheid.befundAnzahl} Befund(en). Kein Plan v2: ${planEntscheid.grund}`
+    return null
+  }
+  const liste = Array.isArray(schritte) ? schritte : []
+  const vorschritt = liste.find((s) => s?.schritt_id === vorschrittId)
+  // Dieselbe Sprung-Regel wie ermittleNaechstenSchritt (Regel 3a) — der Satz erscheint nur, wenn der Sprung wirklich griff.
+  const anlass = vorschritt === undefined ? undefined : planV2Sprungziel(liste, vorschritt)
+  if (anlass === undefined || naechster.schrittId !== anlass.nachfolger) return null
+  return 'Plan v2 liegt vor; der Advisor prüft ihn nicht erneut. Plan v2 und die Befunde des Advisors stehen in den Läufen des Architekten und des Advisors.'
 }
 
 /**
