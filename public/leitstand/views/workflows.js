@@ -46,6 +46,7 @@ import {
   sendeWorkflowFreigabe,
   starteWorkflowSchritt,
   stoppeWorkflow,
+  wiederholePruefer,
   wiederholeWorkflowPruefung,
 } from '../api.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
@@ -146,7 +147,7 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   const e = abnahme.entscheidung ?? {}
   // F45 B2a-3b (qa 1): die Review-Hinweise (u. a. „Review veraltet“, das der Poll ohne Statuswechsel liefert) gehören ins
   // Kennzeichen — sonst zeigte „Auf einen Blick“ den Hinweis, die Review-Kachel aber nicht.
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}`
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}`
   if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) {
     zeichneEntscheiden()
     return
@@ -482,7 +483,10 @@ async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext) {
     if (gewaehlteWorkflowId !== workflowId) return
     laufendeAbnahme = null
     if (antwort.ok) {
-      zeigeAbnahmeMeldung(erfolgstext(inhalt), 'erfolg')
+      // F45 B2b-1a: erfolgstext darf { text, art } liefern — ein Teilerfolg erscheint dann nicht im Erfolgsstil.
+      const meldung = erfolgstext(inhalt)
+      if (typeof meldung === 'string') zeigeAbnahmeMeldung(meldung, 'erfolg')
+      else zeigeAbnahmeMeldung(meldung.text, meldung.art)
       abnahmeKennzeichen = null
       const abnahme = await holeAbnahme(workflowId).catch((fehler) => {
         console.error(`[workflows] Abnahme von '${workflowId}' nach der Bedienung nicht ladbar: ${fehler.message}`)
@@ -1274,6 +1278,30 @@ async function fuehrePruefungWiederholenAus(button) {
   )
 }
 
+/**
+ * „Review wiederholen“ (F45 B2b-1a, F-1085 (1)): setzt nur den Review-Schritt zurück (POST …/pruefer-wiederholen) und
+ * startet ihn danach über den gewöhnlichen Start (POST …/starten) — der Server startet beim Zurücksetzen nichts. Scheitert
+ * der Start (z. B. ein anderer Lauf ist aktiv) oder wartet der Schritt auf eine Freigabe, bleibt der Review zurückgesetzt;
+ * die Meldung erscheint dann im Fehlerstil mit dem Grund des Servers (ohne HTTP-Code) bzw. dem übersetzten Status.
+ * @param button - der geklickte .wf-pruefer-wiederholen-Knopf
+ */
+async function fuehrePrueferWiederholenAus(button) {
+  const workflowId = button.dataset.workflowId
+  const anfrage = async () => {
+    const zurueck = await wiederholePruefer(workflowId)
+    if (!zurueck.ok) return zurueck
+    const inhalt = await zurueck.json().catch(() => ({}))
+    if (inhalt.status !== 'LAEUFT') return new Response(JSON.stringify({ ohneStart: inhalt.status === 'WARTET_FREIGABE' ? t('ablauf.schritt.WARTET_FREIGABE') : (inhalt.grund ?? t('ablauf.fehler.unbekannt')) }), { status: 200 })
+    const start = await starteWorkflowSchritt(workflowId)
+    if (start.ok) return start
+    const fehler = await start.json().catch(() => ({}))
+    return new Response(JSON.stringify({ ohneStart: fehler.grund ?? t('ablauf.fehler.unbekannt') }), { status: 200 })
+  }
+  await sendeAbnahmeBedienung(workflowId, anfrage, button, (inhalt) =>
+    typeof inhalt.ohneStart === 'string' ? { text: t('abnahme.pruefer.ohneStart', { grund: inhalt.ohneStart }), art: 'fehler' } : t('abnahme.pruefer.erfolg')
+  )
+}
+
 /** Klick-/Eingabe-Delegation der Workflow-Ansicht — jeder Container wird als Ganzes neu gerendert, die Zuhörer hängen deshalb am Container. */
 function initWorkflowBedienung() {
   // Die ganze Zeile ist ein Link; navigiere, damit ein Klick auf den offenen Hash das Detail neu lädt.
@@ -1323,8 +1351,10 @@ function initWorkflowBedienung() {
     document.getElementById(id).addEventListener('click', (ereignis) => {
       const abnahmeButton = ereignis.target.closest('.wf-abnahme-aktion')
       const pruefungButton = ereignis.target.closest('.wf-pruefung-wiederholen')
+      const prueferButton = ereignis.target.closest('.wf-pruefer-wiederholen')
       if (abnahmeButton) void fuehreAbnahmeAktionAus(abnahmeButton)
       else if (pruefungButton) void fuehrePruefungWiederholenAus(pruefungButton)
+      else if (prueferButton) void fuehrePrueferWiederholenAus(prueferButton)
       else if (ereignis.target.closest('.abnahme-nachweise-zeigen')) {
         const ziel = document.getElementById('abnahme-nachweise-titel')
         ziel?.scrollIntoView?.({ block: 'start' })

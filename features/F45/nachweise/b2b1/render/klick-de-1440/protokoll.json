@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Halt mit Knopf",
+    "Hinweis rot": true,
+    "Fehlgeschlagen": true,
+    "Knopf Review wiederholen": true,
+    "Knopf Prüfung wiederholen (F-656)": false,
+    "Abnehmen": false,
+    "Hinweise zum Review": "Hinweise zum ReviewReview-Lauf (Fehlgeschlagen): Schritt 'schritt-2-review' endete FEHLGESCHLAGEN (Lauf '8600b464-92b1-4",
+    "Meldung": "",
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick „Review wiederholen“ → Review läuft erneut → Abnahme",
+    "Hinweis rot": false,
+    "Fehlgeschlagen": false,
+    "Knopf Review wiederholen": false,
+    "Knopf Prüfung wiederholen (F-656)": false,
+    "Abnehmen": true,
+    "Hinweise zum Review": "(fehlt)",
+    "Meldung": "Review neu gestartet — nur der Review-Schritt läuft erneut, die Umsetzung bleibt.",
+    "Seite geladen": true
+  }
+]

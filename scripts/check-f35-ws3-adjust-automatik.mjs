@@ -27,10 +27,10 @@
  * (b) Erst NACH einer echten POST .../freigabe wird die nächste ausfuehrung
  *     gestartet; ihr Auftragstext trägt die automatische Begründung UND
  *     den Befund (F-648, unverändert).
- * (c) Zweite Iteration: urteil BEREIT, aber ein ak_urteil NICHT_ERFUELLT →
- *     ebenfalls automatische Anpassung, die Begründung nennt die AK-ID.
- * (d) Grenze: nach 3 automatischen Anpassungen führt ein 4. BLOCKIERT zu
- *     KLAERUNG_ERFORDERLICH OHNE ein 4. Abnahme-Artefakt.
+ * (c)/(d) Grenze (F45 B2b-1a, vorher bis zu 3 Anpassungen): zweite Iteration
+ *     mit urteil BEREIT, aber ein ak_urteil NICHT_ERFUELLT (ein Auslöser) →
+ *     KLAERUNG_ERFORDERLICH OHNE zweites kern-Artefakt, der Grund nennt die
+ *     Grenze (je Stufe ein Rückweg).
  * (e) Reviewer-Stub liefert ein Urteil außerhalb der drei bekannten Werte
  *     (aber vollständige ERFUELLT-ak_urteile, damit NUR Regel 1b geprüft
  *     wird) → KLAERUNG_ERFORDERLICH, KEINE automatische Anpassung.
@@ -343,7 +343,7 @@ const EIN_BEFUND = { schwere: 'HOCH', fundstelle: 'src/beispiel.ts:9', zusammenf
           befunde.push('(b) nach der Freigabe sollte eine NEUE ausfuehrung-laufId entstehen, aber keine wurde gefunden')
         } else {
           const zweiterAuftragstext = auftragstexte.get(neueAusfuehrungLaufId) ?? ''
-          const traegtBegruendung = zweiterAuftragstext.includes('Automatische Anpassung (Iteration 1 von max. 3)')
+          const traegtBegruendung = zweiterAuftragstext.includes('Automatische Anpassung (Korrekturrunde 1 von 1, Bau-Stufe)')
           const traegtBefund = zweiterAuftragstext.includes(EIN_BEFUND.zusammenfassung)
           if (!traegtBegruendung || !traegtBefund) {
             befunde.push(`(b) der Auftragstext der neuen ausfuehrung sollte die automatische Begründung UND den Befund tragen — Begründung: ${traegtBegruendung}, Befund: ${traegtBefund}. Auftragstext: ${JSON.stringify(zweiterAuftragstext)}`)
@@ -354,47 +354,16 @@ const EIN_BEFUND = { schwere: 'HOCH', fundstelle: 'src/beispiel.ts:9', zusammenf
         if (zweiterZyklus === null) {
           befunde.push('(b)/(c)/(d) Vorbedingung: der zweite Zyklus (nach Freigabe) hat keinen Endzustand erreicht — nachfolgende Prüfungen übersprungen')
         } else {
-          {
-            const abnahmeVersionenC = listeAbnahmeVersionen(workflowId, basisVerzeichnis)
-            const letzteAbnahmeC = abnahmeVersionenC.at(-1) ?? null
-            if (
-              zweiterZyklus.daten.status !== 'WARTET_FREIGABE' ||
-              letzteAbnahmeC === null ||
-              letzteAbnahmeC.herkunft?.erzeuger !== 'kern' ||
-              !letzteAbnahmeC.daten.begruendung?.includes('AK2')
-            ) {
-              befunde.push(`(c) AK2 NICHT_ERFUELLT bei Gesamturteil BEREIT sollte ebenfalls automatisch anpassen, Begründung sollte 'AK2' nennen — erhalten status ${JSON.stringify(zweiterZyklus.daten.status)}, letzteAbnahme ${JSON.stringify(letzteAbnahmeC)}`)
-            } else {
-              console.log("✓ (c) Urteil BEREIT, aber AK2 NICHT_ERFUELLT: ebenfalls automatische Anpassung (erzeuger 'kern'), die Begründung nennt 'AK2'.")
-            }
-          }
-
-          // ── (d) Grenze: die 3. automatische Anpassung ist noch erlaubt, die 4. NICHT mehr ────
-          // Bisherige kern-Versionen an dieser Stelle: 2 (kern#1 aus (a), kern#2 aus (c)) —
-          // dieser Zyklus ist die 3., noch erlaubte automatische Anpassung.
-          reviewErgebnisRef.aktuell = JSON.stringify({ urteil: 'BLOCKIERT', befunde: [], empfehlung: 'Weiterhin blockiert.', ak_urteile: AK_BEIDE_ERFUELLT })
-          const viertZyklus = await fuehreZyklusDurch('(d)-3', workflowId, 'Gate: dritte Freigabe (3. automatische Anpassung erwartet).')
-          if (viertZyklus === null) {
-            befunde.push('(d) Vorbedingung: der dritte Zyklus (3. automatische Anpassung) hat keinen Endzustand erreicht')
+          // F45 B2b-1a: je Stufe höchstens EIN automatischer Rückweg (vorher bis zu 3). Der zweite Zyklus (Urteil BEREIT,
+          // AK2 NICHT_ERFUELLT — ein Auslöser) bekommt deshalb KEINE zweite Anpassung: KLAERUNG_ERFORDERLICH, weiterhin
+          // genau 1 kern-Version, der Grund nennt die Grenze. Dass AK-Verstöße bei BEREIT überhaupt auslösen, prüfen die
+          // Unit-Tests (f35-ws3-adjust-automatik.test.mjs) und Gate f45-b2b1 (a2) am ersten Rückweg.
+          const kernNachC = listeAbnahmeVersionen(workflowId, basisVerzeichnis).filter((v) => v.herkunft?.erzeuger === 'kern').length
+          const grundC = zweiterZyklus.daten.grund ?? ''
+          if (zweiterZyklus.daten.status !== 'KLAERUNG_ERFORDERLICH' || kernNachC !== 1 || !grundC.includes('Bau-Stufe hatte ihre eine automatische Korrekturrunde schon')) {
+            befunde.push(`(c)/(d) nach einem automatischen Rückweg sollte ein weiterer Auslöser (AK2 NICHT_ERFUELLT) KLAERUNG_ERFORDERLICH ergeben, OHNE zweites kern-Artefakt, Grund mit der Grenze — erhalten status ${JSON.stringify(zweiterZyklus.daten.status)}, kernAnzahl ${kernNachC}, grund ${JSON.stringify(grundC)}`)
           } else {
-            const nach3 = listeAbnahmeVersionen(workflowId, basisVerzeichnis)
-            const kernAnzahlNach3 = nach3.filter((v) => v.herkunft?.erzeuger === 'kern').length
-            if (viertZyklus.daten.status !== 'WARTET_FREIGABE' || kernAnzahlNach3 !== 3) {
-              befunde.push(`(d) die 3. automatische Anpassung sollte noch entstehen (WARTET_FREIGABE, 3 kern-Versionen) — erhalten status ${JSON.stringify(viertZyklus.daten.status)}, kernAnzahl ${kernAnzahlNach3}`)
-            } else {
-              const fuenfterZyklus = await fuehreZyklusDurch('(d)-4', workflowId, 'Gate: fünfte Freigabe (Grenze erreicht, 4. BLOCKIERT erwartet KLAERUNG_ERFORDERLICH).')
-              if (fuenfterZyklus === null) {
-                befunde.push('(d) Vorbedingung: der fünfte Zyklus (4. BLOCKIERT, Grenze) hat keinen Endzustand erreicht')
-              } else {
-                const nach4 = listeAbnahmeVersionen(workflowId, basisVerzeichnis)
-                const kernAnzahlNach4 = nach4.filter((v) => v.herkunft?.erzeuger === 'kern').length
-                if (fuenfterZyklus.daten.status !== 'KLAERUNG_ERFORDERLICH' || kernAnzahlNach4 !== 3) {
-                  befunde.push(`(d) ein 4. BLOCKIERT nach 3 automatischen Anpassungen sollte KLAERUNG_ERFORDERLICH ergeben, OHNE ein 4. Abnahme-Artefakt (weiterhin 3 kern-Versionen) — erhalten status ${JSON.stringify(fuenfterZyklus.daten.status)}, kernAnzahl ${kernAnzahlNach4}`)
-                } else {
-                  console.log('✓ (d) Grenze: nach 3 automatischen Anpassungen führt ein 4. BLOCKIERT zu KLAERUNG_ERFORDERLICH, ohne ein 4. Abnahme-Artefakt.')
-                }
-              }
-            }
+            console.log('✓ (c)/(d) Grenze (F45 B2b-1a): nach einem automatischen Rückweg der Bau-Stufe hält der nächste Auslöser an (KLAERUNG_ERFORDERLICH, kein zweites kern-Artefakt, Grund nennt die Grenze).')
           }
         }
       }

@@ -2229,7 +2229,7 @@ Halt ohne HTTP-Aufruf erzeugt: der Grund stand danach nur noch in der
 flüchtigen startfehlerListe und war nach einem Serverneustart weg.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
-**F-203** · `TECH_DEBT` · P3 · offen
+**F-203** · `TECH_DEBT` · P3 · erledigt
 Titel: grenzen.max_replans wird validiert, aber nirgends gelesen oder
 durchgesetzt.
 Beschreibung: Das Schema definiert grenzen.max_replans als Pflichtfeld,
@@ -2247,11 +2247,11 @@ max_replans ist dort Pflichtfeld (:281). Eine Entfernung würde jede bereits
 geschriebene Workflow-Version ungültig machen; Kernartefakte sind append-only
 (ARCHITECTURE.md §7), die Bestandsdaten lassen sich nicht nachziehen. Das Feld
 bleibt und wird im Schema als reserviert dokumentiert. Priorität auf P3.
-Status: offen.
+Status: erledigt (F45 B2b-1a, 14.10.2026): `grenzen.max_replans` ist die Gesamtgrenze der automatischen Rückwege über alle Stufen, je Stufe höchstens einer (`pruefeRueckweg`, `scripts/leitstand/f35-ws3-adjust-automatik.mjs`); erster Leser ist die Anpassungsautomatik der Bau-Stufe (vorher feste Grenze 3), die Plan-Stufe nutzt dieselbe Funktion mit B2b-1b. Gate `scripts/check-f45-b2b1-rueckweg.mjs` (a)/(a0).
 Feature/Run: F15 WS-2b, 10.09.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
-**F-204** · `TECH_DEBT` · P3 · offen
+**F-204** · `TECH_DEBT` · P3 · erledigt
 Titel: max_schritte zählt anhand der aktuellen schritte[]-Liste, nicht
 geprüft gegen künftige Replan-Fälle.
 Beschreibung: Die Zählung der gelaufenen Schritte in
@@ -2266,7 +2266,7 @@ Empfohlene Maßnahme: bei Umsetzung von F-203 gemeinsam erneut prüfen.
 Nachtrag 10.09.2026 (Challenger): Da grenzen.max_replans laut F-203 im
 Schema bleibt, aber weiterhin nichts durchsetzt, existieren keine Replans —
 dieser Befund bleibt bis dahin gegenstandslos und ist kein Blocker für WS-2c.
-Status: offen.
+Status: erledigt (F45 B2b-1a, 14.10.2026, Advisor-Pass E5): mit F-203 erneut geprüft — ein Rückweg setzt den Schritt auf `lauf_id` null zurück, `max_schritte` zählt damit weiterhin verschiedene gelaufene Schritte, nicht Läufe; die Zahl der Wiederholungen begrenzt `max_replans` (je Stufe 1). Keine Änderung nötig.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
 **F-205** · `TECH_DEBT` · P3 · offen
@@ -11823,7 +11823,7 @@ Beschreibung: In `workflow-vorlagen/hoch.json` bekommt die Ausführung Plan v1 u
 Fundstelle: `workflow-vorlagen/hoch.json`, `src/workflow/index.ts`, `.claude/skills/advisor-pass/SKILL.md`.
 Auswirkung: Der Bauende prüft das Urteil faktisch selbst.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B2.
-Status: offen.
+Status: offen — B2b-1 wurde nach dem Advisor-Pass geteilt (Stefan, 14.10.2026): die Rückweg-Regel (`pruefeRueckweg`, max_replans) steht mit B2b-1a; Advisor-Schema, Plan v2 und Ausführung nur mit dem letzten Plan folgen mit B2b-1b (`features/F45/plan-b2b1.md`).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-910** · `TECH_DEBT` · P2 · teilweise
@@ -12470,13 +12470,13 @@ Maßnahme: Fixpaket-Challenge.
 Status: offen.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
-**F-981** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-981** · `HARNESS_IMPROVEMENT` · P2 · teilweise
 Titel: Verbrauch je Lauf ist nicht begrenzt.
 Beschreibung: Ein Lauf hat weder ein Token- oder Kostenbudget noch eine Rundengrenze. Das `budget` des Startauftrags ist das Kontextpaket-Budget (`standardBudget`: maxElemente, maxBytes) und begrenzt nur den mitgegebenen Kontext; `{}` steht nur in Gate-Attrappen (`check-f10`, `check-f11`). Das Gateway misst den Verbrauch (`usage`), setzt aber keine Grenze. Präzisiert gegenüber dem Auftragswortlaut „budget wird als {} gesendet“.
 Fundstelle: `src/claude-code-gateway/index.ts` (Verbrauch nur gemessen); `startvorlagen/ai-workforce.json` (standardBudget).
 Auswirkung: Mittel — mit dem automatischen Rückweg aus dem Fixpaket kann Verbrauch ohne Halt entstehen.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2: Budget je Arbeitspaket, höchstens ein Rückweg je Stufe, Halt bei zweimal denselben Befunden.
-Status: offen.
+Status: teilweise (F45 B2b-1a, 14.10.2026): Halt-Regeln erledigt — höchstens ein automatischer Rückweg je Stufe, Gesamtgrenze `grenzen.max_replans`, sofortiger Halt, wenn der Review nach der Korrektur dieselben Befunde meldet (Schwere + Datei), Gate `scripts/check-f45-b2b1-rueckweg.mjs` (a)/(a0)/(b). Offen: Budget je Arbeitspaket und Verbrauchsgrenze je Lauf → B2b-3.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-982** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -13466,7 +13466,7 @@ Beschreibung: (1) Nach einem Halt (Regel 1k, Werkzeugausfall) lässt sich der Re
 Fundstelle: `src/workflow/index.ts` (Regel 3), `scripts/leitstand-server.mjs` (`findeReviewSchritt`, GET …/abnahme, Jarvis-Aufrufe), `scripts/leitstand/f35-ws3-adjust-automatik.mjs`, `src/korrekturschleife`, `scripts/check-f45-b2a3-codex-review.mjs`.
 Auswirkung: Gering bis mittel — jeweils sichtbar benannt, kein stilles BEREIT.
 Maßnahme: (1) Entscheidung Stefan: „Review wiederholen“ als eigener Weg (B2b, Rückweg ≤ 1 je Stufe); (2) mit B2b (Prüfschritte der Kette); (3)/(4) mit B2b (§8 Status strittiger Befunde); (5) mit B2a-3b (Befehlsblöcke) oder B2b; (6)/(7) mit B2a-3b bzw. R; (8)/(9) beim UX-Durchgang nach F30; (10) mit B2a-3b; (11) mit B2a-3b (Hinweis wie bei den neuen Feldern, Regressionstest).
-Status: teilweise (F45 B2a-3b, 13.10.2026): (6) erledigt — Gate `scripts/check-f45-b2a3b-review-stand.mjs` (e6): nach ANPASSUNG_ANGEFORDERT und zweitem Bau folgt die Projektion dem neuesten Review-Lauf (laufId, Befund, `geprueft_stand`); (7) erledigt — Nachweis `features/F45/nachweise/b2a3/codex-review-lauf.md`; (11) erledigt — `pruefeReviewErgebnis` meldet leere/fehlende `fundstelle`, `zusammenfassung`, `beleg` als Hinweis ohne Halt (gleiche Policy-Version: der Vertrag verlangte die Felder schon), Regressionstest in `src/review-policy`. Offen: (1)(2)(3)(4)(5)(10) → B2b (Vorgabe Stefan im Auftrag B2a-3b, auch (5) und (10)); (8)(9) → UX-Durchgang nach F30.
+Status: teilweise (F45 B2a-3b, 13.10.2026): (6) erledigt — Gate `scripts/check-f45-b2a3b-review-stand.mjs` (e6): nach ANPASSUNG_ANGEFORDERT und zweitem Bau folgt die Projektion dem neuesten Review-Lauf (laufId, Befund, `geprueft_stand`); (7) erledigt — Nachweis `features/F45/nachweise/b2a3/codex-review-lauf.md`; (11) erledigt — `pruefeReviewErgebnis` meldet leere/fehlende `fundstelle`, `zusammenfassung`, `beleg` als Hinweis ohne Halt (gleiche Policy-Version: der Vertrag verlangte die Felder schon), Regressionstest in `src/review-policy`. Nachtrag F45 B2b-1a (14.10.2026): (1) erledigt — „Prüfer wiederholen“ (POST `/api/workflows/<id>/pruefer-wiederholen`, Vorbedingung `pruefschrittWiederholbar`): nach Werkzeugausfall, unlesbarem Ergebnis oder Regel 1k bei tragendem Urteil setzt eine neue Workflow-Version nur den Prüfschritt zurück (zählt nicht als Rückweg, startet nichts); der Leitstand bietet „Review wiederholen“ in der roten Review-Notiz an und startet danach über POST …/starten; für den Advisor gilt dieselbe Route (Entscheidung Stefan B4), Weiter über die Freigabe; Gate `scripts/check-f45-b2b1-rueckweg.mjs` (e)/(e2)/(e3), Render-Nachweis `features/F45/nachweise/b2b1/`. Offen: (2)(3)(4) → B2b-2; (5)(10) → B2b-4; (8)(9) → UX-Durchgang nach F30.
 Feature/Run: Entdeckt: F45 B2a-3a (Advisor-Pass, code-reviewer, qa, design-guardian), 13.10.2026.
 
 **F-1086** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -13639,3 +13639,39 @@ Auswirkung: Gering — eine scheinbare Abweichung kann die Startfreigabe-Erneuer
 Maßnahme: Das Skript meldet „0 Werkzeugaufrufe“ als eigenen Ausgang „nicht ausgeübt“, nicht als Abweichung.
 Status: offen.
 Feature/Run: Startfreigabe-Erneuerung CLI 2.1.299, Schritt 2 (Branch `f45/startfreigabe-cli-2-1-299`), 14.10.2026.
+
+**F-1104** · `TECH_DEBT` · P3 · offen
+Titel: Grenzen von Rückweg-Regel und „Prüfer wiederholen“ (F45 B2b-1a).
+Beschreibung: (1) Wiederholungsschlüssel Schwere + Datei: zwei verschiedene Befunde gleicher Schwere in derselben Datei gelten als einer; eine Teilmenge gilt nicht als Wiederholung. (2) Die Wiederholungsregel wirkt praktisch nur nach einer menschlichen Anpassung (nach einer automatischen greift schon die Grenze); ein reiner AK-Fall ohne Befunde ist nie eine Wiederholung. (3) Bestandsabläufe mit 2–3 automatischen Anpassungen aus der Zeit vor B2b-1a zeigen „Rückweg 2“ bzw. „3“ (Zähler `zaehleKernVersionen`, Text bewusst ohne Nenner). (4) Für den Advisor gibt es in 1a nur die Route, keinen eigenen Knopf (weiter über die Freigabe); seine Vorbedingung liest die heutige Regel 1d (Urteilszeile). (5) Der Leitstand braucht zwei Anfragen (zurücksetzen, starten); scheitert der Start (z. B. ein anderer Lauf ist aktiv), steht der Review zurückgesetzt auf LAEUFT, die Meldung (Fehlerstil) nennt den Grund. (6) Ein VERWEIGERT-Review ist nicht wiederholbar. (7) „Prüfer wiederholen“ hat keine Obergrenze — nach einer Zeitgrenze kann Stefan beliebig oft auslösen, jedes Mal ein voller Lauf (menschlich ausgelöst, deshalb bewusst ohne Zählung; qa). Nachpass (code-reviewer, qa; nach der einen Korrekturrunde, nicht mehr behoben): (8) kein Gate-Fall für 409 auf POST …/pruefer-wiederholen bei aktivem Lauf (lokal oder global) — die Sperre ist nur durch Lesen belegt; (9) die Route liefert keinen `grund` — steht der Status nach dem Zurücksetzen weder auf LAEUFT noch auf WARTET_FREIGABE (heute praktisch unerreichbar), zeigt der Leitstand „unbekannt“; (10) der Satz `abnahme.review.weiterWiederholbar` nennt nur Werkzeugausfall/unlesbares Ergebnis, nicht den Fall Regel 1k; (11) `dateipfadAusFundstelle` lässt bei kombinierten Formen wie `src/a.ts:12 (Zeile 12)` die `:12` stehen (sichere Richtung: keine Wiederholung erkannt, die Grenze greift); (12) Kopfkommentar und ein Testtitel in `scripts/leitstand/f35-ws3-adjust-automatik.test.mjs` nennen B2b-1a bzw. „Korrekturrunde“ noch nicht; (13) die Meldung „Review neu gestartet — nur der Review-Schritt läuft erneut …“ bleibt stehen, wenn der Review schon fertig ist.
+Fundstelle: `scripts/leitstand/f35-ws3-adjust-automatik.mjs` (`sindDieselbenBefunde`, `pruefschrittWiederholbar`), `scripts/leitstand-server.mjs` (`setzePrueferZurueck`), `public/leitstand/views/workflows.js` (`fuehrePrueferWiederholenAus`).
+Auswirkung: Gering — jeweils sichtbar, nie ein stiller Weiterlauf.
+Maßnahme: (4) mit B2b-1b (Advisor-Anzeige, Schema statt Urteilszeile); (8)–(13) als kleine Nacharbeit mit B2b-1b (Gate-Fall 409, `grund` in der Antwort, Satz für 1k, Ersetzung in einer Schleife, Kommentare, Meldung „lief erneut“); (1)(2)(3)(5)(6)(7) bei realem Bedarf.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-1a (Advisor-Pass, Delta-Advisor-Pass, qa, Nachpass code-reviewer/qa), 14.10.2026.
+
+**F-1105** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Advisor-Ausgabeschema ohne Durchsetzung im Claude-Code-Aufruf.
+Beschreibung: Das Gateway gibt claude-code kein Ausgabeschema mit (Regel 4b hält jeden claude-code-Schritt mit `output_schema` an). Die Hilfe der Claude-Code-CLI (2.1.299) nennt `--json-schema`; geprüft ist die Option nicht. Plan B2b-1b prüft das Advisor-Ergebnis deshalb beim Lesen im Kern (JSON im Text, Validator), nicht im Aufruf.
+Fundstelle: `src/claude-code-gateway/`, `src/workflow/index.ts` (Regel 4b), `features/F45/plan-b2b1.md` (O1).
+Auswirkung: Mittel — ein Advisor, der den JSON-Vertrag bricht, hält den Ablauf an (Ausweg „Prüfer wiederholen“), statt am Aufruf abgewiesen zu werden.
+Maßnahme: Spike `--json-schema` mit echtem Lauf (F-638/F-1086: ein Schema erst nach echtem Lauf mergen); bei Erfolg Regel 4b für claude-code öffnen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-1 (Plan, Advisor-Pass O1), 14.10.2026.
+
+**F-1106** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Freigabedialog vor der Ausführung zeigt Plan und Advisor-Befunde nicht.
+Beschreibung: Die ZWINGEND-Freigabe vor der Ausführung soll in hoch Plan v2 prüfen; der Freigabedialog zeigt aber nur Empfehlung und Architektur-Entscheidung, keinen Plan und keine Advisor-Befunde.
+Fundstelle: `public/leitstand/views/workflows.js` (Freigabedialog), Advisor-Pass B2b-1 B14.
+Auswirkung: Mittel — Stefan gibt Plan v2 frei, ohne ihn im Dialog zu sehen.
+Maßnahme: Mit B2b-1b: Plan (letzte Fassung) und Advisor-Befunde im Freigabedialog der Ausführung zeigen, oder bewusst annehmen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-1 (Advisor-Pass B14), 14.10.2026.
+
+**F-1107** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Abnahme-Seite bei einem Halt am Review: Grund und richtiger Ausweg nicht dort, wo Stefan entscheidet.
+Beschreibung: (1) Bei einem Werkzeugausfall des Reviews empfiehlt die gelbe Notiz oben „Der Weg heraus ist eine neue Fassung … [Ablauf reparieren]“, der günstigere Weg „Review wiederholen“ steht rund 650 px tiefer in der roten Review-Notiz (design-guardian 3). (2) Auf der Seite stehen fünf gleich gewichtete Knöpfe (Ablauf reparieren, Ausführung stoppen, Review wiederholen, Anpassung wünschen, Ablehnen), keiner ist als Hauptknopf hervorgehoben (design-guardian 4, schon vorher so). (3) Hält der Ablauf an der Grenze der Korrekturrunden oder wegen derselben Befunde, steht der Grund („Keine weitere automatische Anpassung …“) nur in der Auftragsliste und der Technik-Tabelle, nicht im Block „Ergebnis ablehnen oder Anpassung wünschen“ (qa 4); einen Render-Nachweis dieses Halts gibt es nicht. (4) Ungeprüft: nach einem geheilten Review-Ausfall (lauf_id null, Hinweis „nicht gelaufen“) sagt die rote Notiz „Den Review allein kannst du nicht wiederholen“, während der Ablauf vermutlich „Starten“ anbietet (qa 10). (5) Render-Nachweis B2b-1a ohne Messung des horizontalen Überlaufs (scrollWidth) bei 390 px (design-guardian 7).
+Fundstelle: `public/leitstand/views/workflow-abnahme.js` (renderVorab, renderReviewHinweise), `public/leitstand/views/workflow-detail.js` (Halt-Notiz), `features/F45/nachweise/b2b1/`.
+Auswirkung: Mittel — Stefan findet den Grund des Halts und den günstigsten Ausweg nicht auf den ersten Blick; nichts läuft still weiter.
+Maßnahme: Mit dem UX-Durchgang nach F30 oder B2b-1b (Advisor-Anzeige): Halt-Grund des Reviews im Vorab-Block, oberer Hinweis verweist bei wiederholbarem Review auf „Review wiederholen“, Hauptknopf je Lage festlegen; (4) im Render prüfen; (5) Überlaufmessung in `scripts/render-nachweis.mjs`.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-1a (design-guardian, qa), 14.10.2026.

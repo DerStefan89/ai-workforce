@@ -286,8 +286,9 @@
  * geschrieben ist, der Schritt nicht geheilt wurde und der Ausgang von
  * ermittleNaechstenSchritt 'starte' lautet; jeder andere Ausgang beendet den
  * Automaten still im bereits geschriebenen Zustand. grenzen.max_schritte
- * (über haltGrenze) ist die einzige Abbruchbedingung — kein zweiter Zähler,
- * grenzen.max_replans bleibt unangetastet (F-203).
+ * (über haltGrenze) ist die einzige Abbruchbedingung — kein zweiter Zähler;
+ * grenzen.max_replans begrenzt seit F45 B2b-1a nur die automatischen Rückwege
+ * (pruefeRueckweg), nicht diese Schleife.
  *
  * Die Invariante dahinter (AK6b): zwischen dem Reset von
  * laufAktiv/laufAktivLaufId/laufAktivAbortController im .then des
@@ -561,7 +562,7 @@ import {
   registriereWorkflowEntscheidung,
   workflowEntscheidungArtefaktId,
 } from './leitstand/routen-f39.mjs'
-import { baueAutomatischeAnpassungsBegruendung, ermittleAutomatischeAnpassung, zaehleKernVersionen } from './leitstand/f35-ws3-adjust-automatik.mjs'
+import { baueAutomatischeAnpassungsBegruendung, ermittleAutomatischeAnpassung, pruefschrittWiederholbar, zaehleKernVersionen } from './leitstand/f35-ws3-adjust-automatik.mjs'
 
 /**
  * F34 WS-1: Rollenkonfiguration für starteRollenChatLauf/leseRollenChatErgebnisAusLaufakte —
@@ -5212,6 +5213,136 @@ function wendeAutomatischeAnpassungAn(workflowId, begruendung, erzeuger, profilR
 }
 
 /**
+ * F45 B2b-1a (Umfang 2): Befunde des Reviews vor der letzten Anpassung — für den Halt bei Wiederholung. Derselbe
+ * Lesepfad wie F-648 (Korrekturblock in starteWorkflowSchritt, D5): die NEUESTE Abnahme-Version, nur wenn deren
+ * Ergebnis ANPASSUNG_ANGEFORDERT ist, und nur ein Review-Lauf, der nicht der gerade gemeldete ist.
+ * @param workflowId - Kennung des Workflows
+ * @param laufId - lauf_id des gerade beendeten Reviews
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns Befundliste des vorherigen Reviews, oder null (kein vergleichbarer Review)
+ */
+function leseVorherigeReviewBefunde(workflowId, laufId, ladeOptionen) {
+  // Läuft VOR dem Nachlauf-Schreiben: ein Wurf hier ließe den Ablauf ohne Fortschreibung auf LAEUFT stehen. Ein
+  // Lesefehler heißt deshalb nur „keine Wiederholung erkennbar“ — die Grenze greift weiterhin.
+  try {
+    const abnahmeVersion = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen)
+    if (abnahmeVersion === null || abnahmeVersion.daten.ergebnis !== 'ANPASSUNG_ANGEFORDERT') return null
+    const reviewLaufId = abnahmeVersion.daten.bezug?.review_lauf_id
+    if (typeof reviewLaufId !== 'string' || reviewLaufId === laufId) return null
+    const laufakte = ladeArtefaktVersion(`laufakte-${reviewLaufId}`, undefined, ladeOptionen)
+    return laufakte !== null ? (leseUrteilAusLaufakte(laufakte.daten)?.befunde ?? null) : null
+  } catch (fehler) {
+    console.error(`[leitstand] Befunde des vorherigen Reviews von Workflow '${workflowId}' nicht lesbar: ${fehler.message}`)
+    return null
+  }
+}
+
+/**
+ * F45 B2b-1a (Umfang 1/2, Advisor B10): hängt an einen Halt-Grund den Satz der Rückweg-Automatik — nur bei einem
+ * Klärungshalt und nur, wenn die Automatik wegen Grenze oder Wiederholung NICHT auslöst. Jede andere Ablehnung
+ * (kein BLOCKIERT, Urteil unbekannt, Regel 1k) lässt den Grund unverändert.
+ * @param grund - Grund aus beschreibeAutomatAusgang
+ * @param ausgang - Ausgang von ermittleNaechstenSchritt
+ * @param rueckwegEntscheid - Ergebnis von ermittleAutomatischeAnpassung oder null
+ * @returns der Grund, ggf. ergänzt
+ */
+function mitRueckwegGrund(grund, ausgang, rueckwegEntscheid) {
+  if (ausgang.art !== 'haltKlaerung' || rueckwegEntscheid === null || rueckwegEntscheid.ausloesen) return grund
+  if (rueckwegEntscheid.art !== 'grenze' && rueckwegEntscheid.art !== 'wiederholung') return grund
+  return `${grund} — ${rueckwegEntscheid.grund}`
+}
+
+/**
+ * F45 B2b-1a (Umfang 5, Delta-Advisor D5): liest aus der Laufakte eines Prüfschritts, was pruefschrittWiederholbar
+ * braucht — mit denselben Lesern wie der Nachlauf (leseUrteilAusLaufakte, pruefeAkUrteile, pruefeReviewErgebnisFuer,
+ * leseUrteilAusAdvisorText). EINE Stelle für GET …/abnahme und POST …/pruefer-wiederholen. Synchron, wirft nicht
+ * (ein Lesefehler gilt als unlesbares Ergebnis). Auftrag und Policy werden nur bei einem tragenden Urteil gelesen —
+ * nur dann entscheiden AK- und Vertragsverstöße (pruefschrittWiederholbar); GET …/abnahme reicht die bereits gelesene
+ * Laufakte durch (Poll alle 2 s, Prüfpass B2b-1a).
+ * @param schritt - der Prüfschritt (Cursor) oder null
+ * @param auftragId - auftrag_id des Workflows (Akzeptanzkriterien)
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @param vorgelesen - optional { laufakte, geparst } aus GET …/abnahme (dieselbe Laufakte, kein zweites Lesen)
+ * @returns { urteil, akVerstoesse, reviewVerstoesse, advisorUrteilFehlt } (Felder ggf. undefined)
+ */
+function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = null) {
+  if (schritt === null || schritt === undefined || schritt.lauf_id === null || schritt.status !== 'ERFOLGREICH') return {}
+  try {
+    const laufakte = vorgelesen?.laufakte ?? ladeArtefaktVersion(`laufakte-${schritt.lauf_id}`, undefined, ladeOptionen)
+    if (schritt.output_schema === 'ergebnis-code-reviewer') {
+      const geparst = vorgelesen !== null ? vorgelesen.geparst : laufakte !== null ? leseUrteilAusLaufakte(laufakte.daten) : null
+      if (geparst === null) return { urteil: null }
+      if (geparst.urteil !== 'BEREIT' && geparst.urteil !== 'BEREIT_NACH_KORREKTUR') return { urteil: geparst.urteil }
+      const auftrag = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, ladeOptionen)
+      return {
+        urteil: geparst.urteil,
+        akVerstoesse: pruefeAkUrteile(auftrag?.daten?.akzeptanzkriterien, geparst.ak_urteile),
+        reviewVerstoesse: pruefeReviewErgebnisFuer(laufakte?.daten?.review?.policy_version, geparst)?.halt,
+      }
+    }
+    if (schritt.rolle === 'architecture-advisor') {
+      const text = laufakte !== null ? leseErgebnistextAusRohstrom(laufakte.daten) : { ok: false }
+      return { advisorUrteilFehlt: (text.ok ? leseUrteilAusAdvisorText(text.text) : null) === null }
+    }
+  } catch (fehler) {
+    console.error(`[leitstand] Ergebnis des Prüfschritts '${schritt.schritt_id}' nicht lesbar: ${fehler.message}`)
+    return schritt.output_schema === 'ergebnis-code-reviewer' ? { urteil: null } : { advisorUrteilFehlt: true }
+  }
+  return {}
+}
+
+/**
+ * F45 B2b-1a „Prüfer wiederholen“ (Umfang 5, Entscheidung Stefan B4, löst F-1085 (1)): setzt den Prüfschritt, an
+ * dem der Workflow nach Werkzeugausfall oder unlesbarem Ergebnis hält, in einer NEUEN Workflow-Version (append-only,
+ * ARCHITECTURE.md §7) auf OFFEN/lauf_id null zurück. Keine Abnahme-Entscheidung, keine Rückweg-Zählung, kein Start:
+ * Status und Grund kommen aus ermittleNaechstenSchritt — der Review (AUTOMATISCH) steht danach startbar auf LAEUFT und
+ * wird über POST …/starten gestartet, der Advisor (ZWINGEND in hoch) wartet auf die Freigabe. `freigabe_erteilt` wird
+ * entfernt (Muster wendeAutomatischeAnpassungAn): ein neuer Lauf braucht eine neue Freigabe.
+ * Steht im Server neben wendeAutomatischeAnpassungAn, nicht im Automatik-Modul — dieselbe F-228-Begründung (der
+ * Workflow-Schreiber wird nur in dieser Datei gezählt).
+ * Abgrenzung: „Prüfung wiederholen“ (F-656, POST …/pruefung-wiederholen) führt den deterministischen Prüfbefehl nach
+ * einer Ausführung erneut aus — das hier startet einen Prüfer-Lauf neu.
+ * @param workflowId - Kennung des Workflows
+ * @param profilReferenz - Profilreferenz dieser Serverinstanz
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns { ok: true, schrittId, status } oder { ok: false, http, grund }
+ */
+function setzePrueferZurueck(workflowId, profilReferenz, ladeOptionen) {
+  const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+  if (version === null) return { ok: false, http: 404, grund: `Workflow '${workflowId}' nicht gefunden` }
+  const daten = version.daten
+  const schritt = daten.schritte?.find((s) => s.schritt_id === daten.aktiver_schritt_id) ?? null
+  const vorbedingung = pruefschrittWiederholbar({ workflowStatus: daten.status, schritt, befund: ermittlePrueferBefund(schritt, daten.auftrag_id, ladeOptionen) })
+  if (!vorbedingung.wiederholbar) return { ok: false, http: 409, grund: vorbedingung.grund }
+
+  let naechster = null
+  const zurueckgesetzt = schreibeWorkflowFortschritt(
+    workflowId,
+    null,
+    {},
+    (datenMitSchritt) => {
+      const neueSchritte = datenMitSchritt.schritte.map((s) => {
+        if (s.schritt_id !== schritt.schritt_id) return s
+        const { freigabe_erteilt: _verworfen, ...rest } = s
+        return { ...rest, status: 'OFFEN', lauf_id: null }
+      })
+      naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, schritte: neueSchritte, aktiver_schritt_id: schritt.schritt_id })
+      return {
+        schritte: neueSchritte,
+        status: workflowStatusZuAusgang(naechster),
+        aktiver_schritt_id: naechster.aktiverSchrittId,
+        grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
+      }
+    },
+    profilReferenz,
+    ladeOptionen
+  )
+  if (!zurueckgesetzt.ok) return { ok: false, http: 500, grund: zurueckgesetzt.grund }
+  if (zurueckgesetzt.eingefroren) return { ok: false, http: 409, grund: `Workflow '${workflowId}' ist GESTOPPT — der Prüfer wurde nicht zurückgesetzt` }
+  return { ok: true, schrittId: schritt.schritt_id, status: workflowStatusZuAusgang(naechster) }
+}
+
+/**
  * HTTP-Status je Fehlerart von starteWorkflowSchritt (F15 WS-2c (a1)). Die
  * Funktion kennt kein res; diese Tabelle ist die einzige Stelle, an der ihre
  * Rückgabe in einen Statuscode übersetzt wird — die automatische Fortsetzung
@@ -7048,6 +7179,26 @@ export function erzeugeRequestHandler(optionen = {}) {
         befunde = geparstFuerAk?.befunde ?? []
         if (geparstFuerAk !== null) reviewVerstoesse = pruefeReviewErgebnisFuer(laufakteVersion?.daten?.review?.policy_version, geparstFuerAk)?.halt
       }
+      // F45 B2b-1a (features/F45/plan-b2b1.md): die Rückweg-Entscheidung fällt VOR dem Nachlauf-Schreiben — alle Eingaben
+      // stehen fest (zaehleKernVersionen liest nur, bis zur Automatik unten wird keine Abnahme geschrieben). So kann der
+      // Halt-Grund im selben Schreibvorgang sagen, WARUM kein Rückweg folgt (Grenze aus max_replans oder dieselben
+      // Befunde), statt eines zweiten Schreibvorgangs. Ausgelöst wird weiterhin erst unten, nach dem Schreiben.
+      let rueckwegEntscheid = null
+      let anzahlBisherigerKernVersionen = 0
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer') {
+        anzahlBisherigerKernVersionen = zaehleKernVersionen(workflowId, ladeOptionen)
+        rueckwegEntscheid = ermittleAutomatischeAnpassung({
+          outputSchema: schritt.output_schema,
+          schrittStatus,
+          heilbar,
+          urteil,
+          akVerstoesse,
+          anzahlBisherigerKernVersionen,
+          maxReplans: workflowDaten.grenzen?.max_replans,
+          befunde,
+          vorherigeBefunde: leseVorherigeReviewBefunde(workflowId, laufId, ladeOptionen),
+        })
+      }
       // Regel 1c (F39 WS-2b, löst F-632 Teil b) — dasselbe zweite, eigenständige Lesen wie beim
       // urteil-Block direkt darüber, hier für 'ergebnis-architektur'. architekturEntscheidungAusstehend
       // fragt die Kernartefakt-Kette 'workflow-entscheidung-<workflowId>' NUR ab, wenn das Ergebnis
@@ -7330,7 +7481,10 @@ export function erzeugeRequestHandler(optionen = {}) {
             // überschreiben: auf einem GESTOPPT ruft schreibeWorkflowFortschritt
             // leiteWorkflowFelderAb gar nicht erst auf (b1, GESTOPPT-Schutz dort). Eine zweite
             // Bedingung hier wäre eine zweite Fassung derselben Regel.
-            grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
+            //
+            // F45 B2b-1a: hält der Review an und folgt KEIN Rückweg, weil die Grenze erreicht ist oder dieselben
+            // Befunde wiederkehren, sagt der Grund das dazu (nur bei diesen beiden Ablehnungen, Advisor B10).
+            grund: naechster.art === 'starte' ? null : mitRueckwegGrund(beschreibeAutomatAusgang(naechster), naechster, rueckwegEntscheid),
           }
         },
         profilReferenz,
@@ -7371,7 +7525,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       //
       // grenzen.max_schritte ist über haltGrenze die einzige ZÄHLgrenze dieser Schleife (a4) —
       // kein zweiter Zähler daneben, der mit dem ersten auseinanderlaufen könnte, und
-      // grenzen.max_replans bleibt unangetastet (F-203). Die TERMINIERUNG hängt nicht an ihr
+      // grenzen.max_replans begrenzt seit F45 B2b-1a nur die automatischen Rückwege (pruefeRueckweg). Die TERMINIERUNG hängt nicht an ihr
       // allein (Reviewer-Pass 10.09.2026): max_schritte zählt verschiedene gelaufene Schritte,
       // nicht Werkzeugaufrufe (src/workflow/index.ts, „GRENZE DIESER GRENZE"). Was einen Zyklus
       // wirklich fängt, ist Regel 3 — ein Schritt mit gesetzter lauf_id ist nie startbereit —
@@ -7416,10 +7570,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // eigener Reset, kein Kontrollflusswechsel dazwischen) — die Prüfung ist HEUTE UNERREICHBAR
       // (immer wahr), bleibt aber als Tiefenverteidigung stehen (kein eigener Rot-Fall im Gate,
       // ARCHITECTURE.md §8), falls sich die Aufrufreihenfolge einmal ändert.
-      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer' && !laufAktiv && !globalerLaufZustand.aktiv) {
-        const anzahlBisherigerKernVersionen = zaehleKernVersionen(workflowId, ladeOptionen)
-        const entscheid = ermittleAutomatischeAnpassung({ outputSchema: schritt.output_schema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen })
-        if (entscheid.ausloesen) {
+      // F45 B2b-1a: die Entscheidung (Grenze aus max_replans, Wiederholung) ist oben vor dem Schreiben gefallen.
+      if (rueckwegEntscheid !== null && !laufAktiv && !globalerLaufZustand.aktiv) {
+        if (rueckwegEntscheid.ausloesen) {
           const begruendung = baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoesse ?? [], anzahlBisherigerKernVersionen + 1)
           const angewendet = wendeAutomatischeAnpassungAn(workflowId, begruendung, 'kern', profilReferenz, ladeOptionen)
           if (!angewendet.ok) {
@@ -7911,6 +8064,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       const abnahmeVersion = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen)
       const reviewHaltGrund = reviewSchritt !== null && workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === reviewSchritt.schritt_id ? (workflowDaten.grund ?? null) : null
       let urteilProjektion
+      // F45 B2b-1a: die hier gelesene Review-Laufakte geht an ermittlePrueferBefund (reviewWiederholbar unten), kein zweites Lesen je Poll.
+      let reviewVorgelesen = null
       if (reviewSchritt === null) {
         urteilProjektion = { status: 'kein_review_schritt' }
       } else if (reviewSchritt.lauf_id === null) {
@@ -7925,6 +8080,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           urteilProjektion = { status: 'laufakte_fehlt', laufId: reviewSchritt.lauf_id }
         } else {
           const geparst = leseUrteilAusLaufakte(laufakteVersion.daten)
+          reviewVorgelesen = { laufakte: laufakteVersion, geparst }
           if (geparst === null) {
             urteilProjektion = { status: 'nicht_lesbar', laufId: reviewSchritt.lauf_id }
           } else {
@@ -8032,6 +8188,18 @@ export function erzeugeRequestHandler(optionen = {}) {
               { status: 'ok', laufId: ausfuehrungSchritt.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code, versionSequenz: pruefergebnisVersion.versionSequenz }
       }
 
+      // F45 B2b-1a: „Review wiederholen“ — dieselbe Vorbedingung wie POST …/pruefer-wiederholen. Gelesen wird nur, wenn
+      // der Ablauf am Review auf Klärung wartet (die Abnahme wird alle 2 s gepollt).
+      const cursorSchritt = workflowDaten.schritte?.find((s) => s.schritt_id === workflowDaten.aktiver_schritt_id) ?? null
+      const reviewWiederholbar =
+        workflowDaten.status === 'KLAERUNG_ERFORDERLICH' &&
+        cursorSchritt?.output_schema === 'ergebnis-code-reviewer' &&
+        pruefschrittWiederholbar({
+          workflowStatus: workflowDaten.status,
+          schritt: cursorSchritt,
+          befund: ermittlePrueferBefund(cursorSchritt, workflowDaten.auftrag_id, ladeOptionen, cursorSchritt.schritt_id === reviewSchritt?.schritt_id ? reviewVorgelesen : null),
+        }).wiederholbar
+
       sendeJson(res, 200, {
         workflowId,
         workflowStatus: workflowDaten.status,
@@ -8041,6 +8209,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         pruefergebnis: pruefergebnisProjektion,
         entscheidung: entscheidungProjektion,
         freigabeHalt,
+        reviewWiederholbar,
       })
       return
     }
@@ -10926,6 +11095,36 @@ export function erzeugeRequestHandler(optionen = {}) {
         artefaktId: `entscheidung-workflow-${workflowId}-${schrittId}`,
         versionSequenz: entscheidungsArtefakt.versionSequenz,
       })
+      return
+    }
+
+    // ─── POST /api/workflows/<id>/pruefer-wiederholen (F45 B2b-1a, löst F-1085 (1)) ──────────────────
+    //
+    // Hält der Ablauf an einem Prüfschritt (code-reviewer, architecture-advisor), weil das Werkzeug ausfiel oder das
+    // Ergebnis nicht lesbar war, setzt diese Route NUR diesen Schritt in einer neuen Workflow-Version zurück
+    // (setzePrueferZurueck, Vorbedingung pruefschrittWiederholbar). Sie startet nichts: der Leitstand startet den Review
+    // danach über POST …/starten, der Advisor wartet auf die Freigabe. Zählt nicht als Rückweg. Nicht zu verwechseln
+    // mit POST …/pruefung-wiederholen (F-656, darunter), das den Prüfbefehl einer Ausführung wiederholt.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/pruefer-wiederholen')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/pruefer-wiederholen'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+      if (laufAktiv) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — erst danach wiederholen` })
+        return
+      }
+      // Wie jede andere schreibende Workflow-Route: auch ein Lauf eines anderen Projekts oder ein Projekt-Aufruf sperrt
+      // (sonst stünde der Review zurückgesetzt da, und der anschließende Start scheiterte sicher).
+      if (pruefeGlobaleLaufSperre(res)) return
+      const zurueck = setzePrueferZurueck(workflowId, profilReferenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (!zurueck.ok) {
+        sendeJson(res, zurueck.http, { grund: zurueck.grund })
+        return
+      }
+      sendeJson(res, 200, { workflowId, schrittId: zurueck.schrittId, status: zurueck.status })
       return
     }
 
