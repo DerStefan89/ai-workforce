@@ -1,0 +1,16 @@
+{
+  "urteil": "FREIGEGEBEN",
+  "begruendung": "Freigegeben, ein Hinweis läuft mit.",
+  "befunde": [
+    {
+      "id": "A1",
+      "schwere": "NIEDRIG",
+      "evidenz": "SCHLUSSFOLGERUNG",
+      "fundstelle": "Plan v1, Abschnitt 2",
+      "zusammenfassung": "Ein Kommentar fehlt.",
+      "korrekturrichtung": "Kommentar ergänzen."
+    }
+  ],
+  "entlastend": [],
+  "grenzen_der_pruefung": "Nur lesende Werkzeuge."
+}

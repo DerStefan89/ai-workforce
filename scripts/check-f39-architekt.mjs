@@ -447,8 +447,9 @@ console.log('\n=== F39-Architekt-Check ===\n')
   const architektSchrittId = architektSchritt?.schritt_id
   if (advisorSchritt) {
     if (advisorSchritt.worker !== 'claude-code') befunde.push(`(f): architecture-advisor-Schritt sollte worker 'claude-code' tragen, erhalten '${advisorSchritt.worker}'`)
-    if (advisorSchritt.output_schema !== null) {
-      befunde.push(`(f): architecture-advisor-Schritt sollte output_schema:null tragen (Rollenvertrag architecture-advisor.erlaubtes_output_schema: null), erhalten ${JSON.stringify(advisorSchritt.output_schema)}`)
+    // F45 B2b-1b (F-909/F-1105): der Advisor trägt das Advisor-Schema; claude-code löst es per '--json-schema' ein.
+    if (advisorSchritt.output_schema !== 'ergebnis-architecture-advisor') {
+      befunde.push(`(f): architecture-advisor-Schritt sollte output_schema 'ergebnis-architecture-advisor' tragen (Rollenvertrag architecture-advisor.erlaubtes_output_schema), erhalten ${JSON.stringify(advisorSchritt.output_schema)}`)
     }
   }
   if (advisorSchritt && architektSchrittId && !advisorSchritt.eingaben.includes(`artefakt:ergebnis-@${architektSchrittId}`)) {

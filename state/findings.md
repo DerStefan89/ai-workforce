@@ -11823,7 +11823,7 @@ Beschreibung: In `workflow-vorlagen/hoch.json` bekommt die Ausführung Plan v1 u
 Fundstelle: `workflow-vorlagen/hoch.json`, `src/workflow/index.ts`, `.claude/skills/advisor-pass/SKILL.md`.
 Auswirkung: Der Bauende prüft das Urteil faktisch selbst.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B2.
-Status: offen — B2b-1 wurde nach dem Advisor-Pass geteilt (Stefan, 14.10.2026): die Rückweg-Regel (`pruefeRueckweg`, max_replans) steht mit B2b-1a; Advisor-Schema, Plan v2 und Ausführung nur mit dem letzten Plan folgen mit B2b-1b (`features/F45/plan-b2b1.md`).
+Status: offen — B2b-1 wurde nach dem Advisor-Pass geteilt (Stefan, 14.10.2026): die Rückweg-Regel (`pruefeRueckweg`, max_replans) steht mit B2b-1a; Advisor-Schema, Plan v2 und Ausführung nur mit dem letzten Plan folgen mit B2b-1b (`features/F45/plan-b2b1.md`). Nachtrag 14.10.2026: B2b-1b erneut geteilt (Stefan nach dem Advisor-Pass, `features/F45/plan-b2b1b.md`). B2b-1b-1 erledigt: der Advisor hat ein Ausgabeschema (`schemas/ergebnis-architecture-advisor.schema.json`, an claude-code per `--json-schema` durchgesetzt, F-1105), Regel 1d hält bei Schemaverstoß. Offen mit B2b-1b-2: Plan v2 (Rückweg der Plan-Stufe), Ausführung nur mit dem letzten Plan — bis dahin bekommt die Ausführung weiterhin Plan v1 und das (jetzt strukturierte) Advisor-Ergebnis, und jedes gültige Urteil geht zur ZWINGEND-Freigabe der Ausführung.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-910** · `TECH_DEBT` · P2 · teilweise
@@ -13646,16 +13646,16 @@ Beschreibung: (1) Wiederholungsschlüssel Schwere + Datei: zwei verschiedene Bef
 Fundstelle: `scripts/leitstand/f35-ws3-adjust-automatik.mjs` (`sindDieselbenBefunde`, `pruefschrittWiederholbar`), `scripts/leitstand-server.mjs` (`setzePrueferZurueck`), `public/leitstand/views/workflows.js` (`fuehrePrueferWiederholenAus`).
 Auswirkung: Gering — jeweils sichtbar, nie ein stiller Weiterlauf.
 Maßnahme: (4) mit B2b-1b (Advisor-Anzeige, Schema statt Urteilszeile); (8)–(13) als kleine Nacharbeit mit B2b-1b (Gate-Fall 409, `grund` in der Antwort, Satz für 1k, Ersetzung in einer Schleife, Kommentare, Meldung „lief erneut“); (1)(2)(3)(5)(6)(7) bei realem Bedarf.
-Status: offen.
+Status: offen. Nachtrag F45 B2b-1b-1 (14.10.2026): erledigt (4) Schema-Teil — die Vorbedingung des Advisors liest Verstöße gegen das Advisor-Schema (`advisorVerstoesse`) statt der Urteilszeile; ein eigener Advisor-Knopf im Leitstand bleibt offen (mit der Advisor-Anzeige in B2b-1b-2 bzw. F-1107); (8) Gate-Fall (e7): 409 bei aktivem Lauf, danach 200; (11) `dateipfadAusFundstelle` schneidet bis zum Festpunkt ab (Test mit kombinierten Formen); (12) Kopfkommentar und Testtitel nennen B2b-1a/„Korrekturrunde“. Prüfpass 1b-1 (code-reviewer 8, qa 1): ein Codex-Advisor mit `ergebnis-architecture-advisor` (Rollenvertrag erlaubt codex, Regel 4b lässt codex mit jedem Schema zu) ist nicht real erprobt — `hoch` nutzt claude-code; vor einem Wechsel echter Codex-Lauf (F-638/F-1086). Der Advisor-Halt nennt „Prüfer wiederholen“, im Leitstand gibt es dafür bis B2b-1b-2 keinen eigenen Knopf (Grund sagt es, Reparatur als Weg). Bewusst offen: (9) `grund` in der Antwort, (10) Satz für Regel 1k, (13) Meldung „lief erneut“ — Texte der Review-Notiz, keine Plan-Stufe/kein Rückweg; gehören zum UX-Durchgang (F-1107); (1)(2)(3)(5)(6)(7) bei realem Bedarf.
 Feature/Run: Entdeckt: F45 B2b-1a (Advisor-Pass, Delta-Advisor-Pass, qa, Nachpass code-reviewer/qa), 14.10.2026.
 
-**F-1105** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1105** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Advisor-Ausgabeschema ohne Durchsetzung im Claude-Code-Aufruf.
 Beschreibung: Das Gateway gibt claude-code kein Ausgabeschema mit (Regel 4b hält jeden claude-code-Schritt mit `output_schema` an). Die Hilfe der Claude-Code-CLI (2.1.299) nennt `--json-schema`; geprüft ist die Option nicht. Plan B2b-1b prüft das Advisor-Ergebnis deshalb beim Lesen im Kern (JSON im Text, Validator), nicht im Aufruf.
 Fundstelle: `src/claude-code-gateway/`, `src/workflow/index.ts` (Regel 4b), `features/F45/plan-b2b1.md` (O1).
 Auswirkung: Mittel — ein Advisor, der den JSON-Vertrag bricht, hält den Ablauf an (Ausweg „Prüfer wiederholen“), statt am Aufruf abgewiesen zu werden.
 Maßnahme: Spike `--json-schema` mit echtem Lauf (F-638/F-1086: ein Schema erst nach echtem Lauf mergen); bei Erfolg Regel 4b für claude-code öffnen.
-Status: offen.
+Status: erledigt (F45 B2b-1b-1, 14.10.2026). Spike mit echten Advisor-Läufen (CLI 2.1.299, `claude-sonnet-5`, Nachweis `features/F45/nachweise/b2b1b/spike-f1105.md` mit Rohströmen): das Schema mit `$schema` (Draft 2020-12) lehnt die CLI sofort ab („no schema with key or ref …“); ohne `$schema`/`$id` liefert sie `structured_output` schemagerecht, `result` trägt dasselbe JSON — auch mit dem Prompt über stdin wie im Produkt (Advisor-Pass A3); die CLI fügt dafür das Werkzeug `StructuredOutput` hinzu (Init-Gate unberührt). Umgesetzt: `baueClaudeJsonSchema` + `AufrufEingaben.jsonSchema` → `--json-schema` vor `-p` (src/claude-code-gateway), gesetzt in `loeseAusfuehrungsEingabenAuf` aus dem output_schema des Schritts (Body-Feld abgelehnt); Regel 4b als Allowlist `CLAUDE_CODE_AUSGABESCHEMAS` = nur `ergebnis-architecture-advisor` (andere Schemata an claude-code brauchen je einen eigenen echten Lauf, z. B. der Claude-Reviewer F-910 (2)); der Kern prüft beim Lesen weiter (`validiereErgebnisAdvisor`), weil das Verhalten der CLI bei einem Schemaverfehlen nicht belegt ist. Gate `check-f45-b2b1-rueckweg` (c0b) Schemafassung = Spike-Fassung (SHA-256), (c1) Argv mit `--json-schema`, (c6) zweite Sicherung der Allowlist.
 Feature/Run: Entdeckt: F45 B2b-1 (Plan, Advisor-Pass O1), 14.10.2026.
 
 **F-1106** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -13664,7 +13664,7 @@ Beschreibung: Die ZWINGEND-Freigabe vor der Ausführung soll in hoch Plan v2 pr�
 Fundstelle: `public/leitstand/views/workflows.js` (Freigabedialog), Advisor-Pass B2b-1 B14.
 Auswirkung: Mittel — Stefan gibt Plan v2 frei, ohne ihn im Dialog zu sehen.
 Maßnahme: Mit B2b-1b: Plan (letzte Fassung) und Advisor-Befunde im Freigabedialog der Ausführung zeigen, oder bewusst annehmen.
-Status: offen.
+Status: offen — mit B2b-1b-2 (Teilung 14.10.2026, `features/F45/plan-b2b1b.md`): Freigabe-Seite zeigt Plan (v1/v2) und Advisor-Befunde, auch vor dem Architekten v2 (Advisor-Pass A9) und mit „Kein Plan v2: <Grund>“ bei gesperrtem Rückweg (Entscheidung Stefan A2).
 Feature/Run: Entdeckt: F45 B2b-1 (Advisor-Pass B14), 14.10.2026.
 
 **F-1107** · `PROCESS_IMPROVEMENT` · P2 · offen

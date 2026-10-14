@@ -57,6 +57,13 @@ export interface AufrufEingaben {
    * dieser Art im Body ab). Fehlt es oder ist es leer, bleibt das Argv bitgleich.
    */
   pluginDirs?: string[]
+  /**
+   * F45 B2b-1b (F-1105): Ausgabeschema als kompakter JSON-Text (baueClaudeJsonSchema) — `--json-schema <text>` unmittelbar
+   * vor `-p` (Spike features/F45/nachweise/b2b1b/spike-f1105.md). Nur serverseitig von loeseAusfuehrungsEingabenAuf gesetzt,
+   * wenn der Schritt ein von Regel 4b für claude-code zugelassenes output_schema trägt (pruefeStartauftrag lehnt das Feld im
+   * Body ab). Fehlt es, bleibt das Argv bitgleich.
+   */
+  jsonSchema?: string
 }
 
 /** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. beendigungsart unterscheidet additiv (F14 WS-1, AK3) einen durch zeitgrenzeMs oder abbruchSignal beendeten Prozess von einem regulären Ende oder einem Startfehler — null in beiden letzteren Fällen, bestehende Felder ändern ihre Bedeutung nicht. */

@@ -18,7 +18,7 @@
  * F45 B2b-1a (features/F45/plan-b2b1.md, löst F-203 für die Bau-Stufe und den
  * Halt-Teil von F-981): die Grenze kommt aus grenzen.max_replans des Workflows
  * (Summe über die Stufen), je Stufe höchstens GRENZE_JE_STUFE Rückweg —
- * pruefeRueckweg ist die eine Regel für Bau- und (mit B2b-1b) Plan-Stufe.
+ * pruefeRueckweg ist die eine Regel für Bau- und (mit B2b-1b-2) Plan-Stufe.
  * Meldet der Review nach einer Korrektur dieselben Befunde
  * (sindDieselbenBefunde), gibt es keinen weiteren Rückweg.
  * pruefschrittWiederholbar ist die Vorbedingung von „Prüfer wiederholen“
@@ -164,7 +164,7 @@ export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, hei
  * Die eine Rückweg-Regel (F45 B2b-1a, Umfang 1): je Stufe höchstens GRENZE_JE_STUFE automatischer Rückweg, über alle
  * Stufen zusammen höchstens grenzen.max_replans. Ein fehlendes oder ungültiges max_replans sperrt (fail closed — der
  * Validator verlangt das Feld, ein solcher Datensatz käme nur über einen Fehler hier an). Reine Funktion. In B2b-1a ruft
- * nur die Bau-Stufe sie auf (rueckwegeGesamt = Bau-Rückwege); die Plan-Stufe folgt mit B2b-1b.
+ * nur die Bau-Stufe sie auf (rueckwegeGesamt = Bau-Rückwege); die Plan-Stufe folgt mit B2b-1b-2.
  * Die Gründe sind für Stefan geschrieben (Prüfpass B2b-1a): „Korrekturrunde“ statt interner Feldnamen, keine Zählung
  * „n von 1“ (Bestandsabläufe aus der Zeit der Grenze 3 trügen sonst „3 von 1“).
  * @param eingabe - { stufe ('bau' | 'plan'), rueckwegeStufe, rueckwegeGesamt, maxReplans }
@@ -197,10 +197,15 @@ export function pruefeRueckweg({ stufe, rueckwegeStufe, rueckwegeGesamt, maxRepl
 function dateipfadAusFundstelle(fundstelle) {
   if (typeof fundstelle !== 'string') return ''
   const roh = fundstelle.trim()
-  const ohneZeile = roh
-    .replace(/(?::\d+(?:[-–—]\d+)?(?::\d+)?|#L\d+(?:-L?\d+)?)$/u, '')
-    .replace(/,?\s*\(?\s*(?:Z\.|Zeilen?|line|lines)\s*\d[\d\s,–—-]*\)?$/iu, '')
-    .trim()
+  // F-1104 (11): kombinierte Formen ('src/a.ts:12 (Zeile 12)') — abschneiden, bis sich nichts mehr ändert.
+  let ohneZeile = roh
+  for (let vorher = ''; vorher !== ohneZeile; ) {
+    vorher = ohneZeile
+    ohneZeile = ohneZeile
+      .replace(/(?::\d+(?:[-–—]\d+)?(?::\d+)?|#L\d+(?:-L?\d+)?)$/u, '')
+      .replace(/,?\s*\(?\s*(?:Z\.|Zeilen?|line|lines)\s*\d[\d\s,–—-]*\)?$/iu, '')
+      .trim()
+  }
   return ohneZeile.length > 0 ? ohneZeile : roh
 }
 
@@ -261,9 +266,10 @@ const TRAGENDE_REVIEW_URTEILE = new Set(['BEREIT', 'BEREIT_NACH_KORREKTUR'])
  * unlesbares Ergebnis macht auch die AK-Prüfung gegenstandslos) · ERFOLGREICH mit tragendem Urteil, ohne AK-Verstoß und
  * mit Vertragsverstoß (Regel 1k). BLOCKIERT und AK-Verstöße sind Beanstandungen — dafür gibt es die Anpassung, nicht
  * das Würfeln bis grün (Advisor B9).
- * Advisor (Rolle architecture-advisor) — FEHLGESCHLAGEN · ERFOLGREICH ohne erkennbares Urteil (Regel 1d).
+ * Advisor (Rolle architecture-advisor) — FEHLGESCHLAGEN · ERFOLGREICH mit Verstößen gegen das Advisor-Schema (Regel 1d; F45
+ * B2b-1b, vorher: ohne Urteilszeile). Ein gültiges Urteil mit Befunden ist eine Beanstandung, kein Ausfall — nicht wiederholbar.
  * VERWEIGERT nie: ein lesender Prüfer liefe erneut in dieselbe Ablehnung.
- * @param eingabe - { workflowStatus, schritt (Cursor-Schritt oder null), befund: { urteil, akVerstoesse, reviewVerstoesse, advisorUrteilFehlt } }
+ * @param eingabe - { workflowStatus, schritt (Cursor-Schritt oder null), befund: { urteil, akVerstoesse, reviewVerstoesse, advisorVerstoesse } }
  * @returns { wiederholbar: true } oder { wiederholbar: false, grund }
  */
 export function pruefschrittWiederholbar({ workflowStatus, schritt, befund }) {
@@ -284,8 +290,9 @@ export function pruefschrittWiederholbar({ workflowStatus, schritt, befund }) {
   }
   if (schritt.rolle === 'architecture-advisor') {
     if (schritt.status === 'FEHLGESCHLAGEN') return { wiederholbar: true }
-    if (schritt.status === 'ERFOLGREICH' && b.advisorUrteilFehlt === true) return { wiederholbar: true }
-    return { wiederholbar: false, grund: `Der Advisor endete ${schritt.status} mit erkennbarem Urteil — nichts zu wiederholen` }
+    if (schritt.status === 'ERFOLGREICH' && Array.isArray(b.advisorVerstoesse) && b.advisorVerstoesse.length > 0) return { wiederholbar: true }
+    if (schritt.status === 'VERWEIGERT') return { wiederholbar: false, grund: 'Der Advisor endete VERWEIGERT — ein lesender Prüfer liefe erneut in dieselbe Ablehnung' }
+    return { wiederholbar: false, grund: `Der Advisor endete ${schritt.status} mit gültigem Ergebnis — nichts zu wiederholen` }
   }
   return { wiederholbar: false, grund: `Schritt '${schritt.schritt_id}' (${schritt.rolle}) ist kein Prüfschritt — wiederholbar sind nur Review und Advisor` }
 }

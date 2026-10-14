@@ -28,7 +28,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ermittleNaechstenSchritt, validiereWorkflowDaten } from './index.ts'
+import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, validiereWorkflowDaten } from './index.ts'
 import type { WorkflowV0Daten, WorkflowV0Schritt } from './types.ts'
 
 /** Baut einen frischen, gültigen Zweischritt-Workflow als Mutationsbasis. */
@@ -695,32 +695,41 @@ test("Ausgang 'haltKlaerung': ein Architektur-Verstoß hält AUCH an, wenn der S
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
 })
 
-// ─── Regel 1d: Advisor-Urteil (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH") ──
+// ─── Regel 1d: Advisor-Ergebnis (F-641; F45 B2b-1b: Schema statt Urteilszeile) ──
 
-test("Ausgang 'haltKlaerung': ein fehlendes Advisor-Urteil hält an, statt fortzusetzen (real beobachtet, Lauf 4b3ebc42)", () => {
+test("Ausgang 'haltKlaerung': ein Advisor-Ergebnis mit Verstößen gegen das Schema hält an (F-641 real: Prosa ohne Urteil, Lauf 4b3ebc42)", () => {
   const workflow = typisierterWorkflow([
     typisierterSchritt('schritt-2', 'schritt-3', { rolle: 'architecture-advisor', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
     typisierterSchritt('schritt-3', null),
   ])
-  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: true })
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorVerstoesse: ['Ergebnis ist kein JSON-Objekt'] })
   assert.equal(ergebnis.art, 'haltKlaerung')
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
-  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /architecture-advisor.*kein erkennbares Urteil/)
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /architecture-advisor.*Ergebnis ist kein JSON-Objekt.*Prüfer wiederholen/)
 })
 
-test("Ausgang 'starte': ein vorhandenes Advisor-Urteil (advisorUrteilFehlt false) setzt fort", () => {
+test('Regel 1d nennt höchstens drei Verstöße und die Zahl der übrigen', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-2', null, { rolle: 'architecture-advisor', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorVerstoesse: ['v1', 'v2', 'v3', 'v4', 'v5'] })
+  const grund = ergebnis.art === 'haltKlaerung' ? ergebnis.grund : ''
+  assert.match(grund, /v1; v2; v3/)
+  assert.doesNotMatch(grund, /v4/)
+  assert.match(grund, /2 weitere/)
+})
+
+test("Ausgang 'starte': ein gültiges Advisor-Ergebnis (keine Verstöße) setzt fort — Übergang B2b-1b-1: jedes gültige Urteil geht zur Freigabe der Ausführung", () => {
   const workflow = typisierterWorkflow([
-    typisierterSchritt('schritt-2', 'schritt-3', { rolle: 'architecture-advisor', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', 'schritt-3', { rolle: 'architecture-advisor', worker: 'claude-code', output_schema: 'ergebnis-architecture-advisor', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
     typisierterSchritt('schritt-3', null),
   ])
-  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: false })
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorVerstoesse: [] })
   assert.equal(ergebnis.art, 'starte')
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-3')
 })
 
-test('Regel 1d greift NICHT bei einer anderen Rolle — ein irrtümlich mitgesendetes advisorUrteilFehlt bleibt folgenlos', () => {
+test('Regel 1d greift NICHT bei einer anderen Rolle — irrtümlich mitgesendete advisorVerstoesse bleiben folgenlos', () => {
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'ausfuehrung', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
-  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: true })
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorVerstoesse: ['x'] })
   assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
 })
 
@@ -731,9 +740,9 @@ test('Regel 1 schlägt Regel 1d: ein VERWEIGERTER Advisor-Lauf hält über seine
   assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
 })
 
-test("Ausgang 'haltKlaerung': ein fehlendes Advisor-Urteil hält AUCH an, wenn der Schritt der letzte ist", () => {
+test("Ausgang 'haltKlaerung': ein ungültiges Advisor-Ergebnis hält AUCH an, wenn der Schritt der letzte ist", () => {
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-2', null, { rolle: 'architecture-advisor', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
-  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: true })
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorVerstoesse: ["'urteil' fehlt"] })
   assert.equal(ergebnis.art, 'haltKlaerung')
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
 })
@@ -1100,6 +1109,20 @@ test("Regel 4b greift NICHT bei worker 'codex' — dort ist output_schema die vo
   // „output_schema hält immer an" erfüllbar.
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer' })])
   assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
+})
+
+test("Regel 4b lässt claude-code mit 'ergebnis-architecture-advisor' starten (F45 B2b-1b, '--json-schema' real belegt, Spike F-1105)", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'claude-code', output_schema: 'ergebnis-architecture-advisor' })])
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
+  assert.deepEqual([...CLAUDE_CODE_AUSGABESCHEMAS], ['ergebnis-architecture-advisor'])
+})
+
+test('Regel 4b: jedes andere Schema an claude-code hält weiter an, der Grund nennt die belegten Schemata', () => {
+  for (const schema of ['ergebnis-code-reviewer', 'ergebnis-architektur']) {
+    const ergebnis = ermittleNaechstenSchritt(typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'claude-code', output_schema: schema })]))
+    assert.equal(ergebnis.art, 'haltKlaerung', schema)
+    assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /ergebnis-architecture-advisor/)
+  }
 })
 
 test("Ausgang 'haltGrenze': grenzen.max_schritte hält den Automaten an, bevor Worker oder Freigabe zählen", () => {

@@ -831,9 +831,29 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     ...(eingaben.ortB !== undefined ? [...eingaben.ortB.addDirs.flatMap((dir) => ['--add-dir', dir]), '--settings', eingaben.ortB.settings] : []),
     // F45 F-3b-2: je Plugin-Lauf-Kopie ein --plugin-dir, unmittelbar vor -p (Spike f3b2); ohne Feld bitgleich.
     ...(eingaben.pluginDirs ?? []).flatMap((dir) => ['--plugin-dir', dir]),
+    // F45 B2b-1b (F-1105): Ausgabeschema, unmittelbar vor -p; der Prompt geht trotzdem über stdin (Spike Versuch 3).
+    ...(eingaben.jsonSchema !== undefined ? ['--json-schema', eingaben.jsonSchema] : []),
     '-p',
     eingaben.prompt,
   ]
+}
+
+/**
+ * F45 B2b-1b (F-1105): macht aus einem Rollen-Ergebnisschema (schemas/<name>.schema.json, Draft 2020-12) den Text für
+ * `--json-schema`. Die CLI lehnt `$schema` mit der Draft-2020-12-URI ab („no schema with key or ref …“, Spike Versuch 1)
+ * — deshalb fallen `$schema` und `$id` weg; alles andere bleibt unverändert (die Beschreibungen leiten das Modell).
+ * Kompakt (eine Zeile), weil der Text ein Argv-Element ist. Reine Funktion.
+ * @param schemaText - Inhalt der Schemadatei (vorher von loeseAusgabeSchemaAuf geprüft: lesbar, gültiges JSON)
+ * @returns kompakter JSON-Text ohne `$schema`/`$id`
+ * @throws wenn der Text kein JSON-Objekt ist (Aufrufer-Vertragsverletzung, Muster baueAufruf)
+ */
+export function baueClaudeJsonSchema(schemaText: string): string {
+  const geparst: unknown = JSON.parse(schemaText)
+  if (typeof geparst !== 'object' || geparst === null || Array.isArray(geparst)) {
+    throw new Error('baueClaudeJsonSchema: das Schema muss ein JSON-Objekt sein')
+  }
+  const { $schema: _schema, $id: _id, ...rest } = geparst as Record<string, unknown>
+  return JSON.stringify(rest)
 }
 
 /** F-831: Referenzmenge der gemessenen, per Skill-Werkzeug nicht aufrufbaren Slash-Commands (Pfad relativ zu dieser Datei). */

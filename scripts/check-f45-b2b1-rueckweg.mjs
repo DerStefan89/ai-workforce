@@ -2,7 +2,8 @@
 /**
  * Datei: scripts/check-f45-b2b1-rueckweg.mjs
  *
- * Zweck: Gate für F45 B2b-1a „Rückweg, Bau-Stufe“ (features/F45/plan-b2b1.md, Plan v2 + Nachträge). Nachweis am
+ * Zweck: Gate für F45 B2b-1a „Rückweg, Bau-Stufe“ (features/F45/plan-b2b1.md, Plan v2 + Nachträge) und B2b-1b-1
+ * „Advisor-Schema“ (features/F45/plan-b2b1b.md, Plan v2 + Entscheidungen Stefan). Nachweis am
  * REALEN Aufrufpfad (Muster scripts/check-f35-ws3-adjust-automatik.mjs): echter HTTP-Testserver, echte
  * Workflow-Artefakte, gestubbter Worker (fuehreAufgabeDurchFn) mit REAL registrierten Laufakten — Automat,
  * Rückweg-Automatik und „Prüfer wiederholen“ lesen Urteil und Befunde am tatsächlichen Lesepfad.
@@ -24,7 +25,25 @@
  * (e4) Review BEREIT ohne Befunde und ohne Pflichtsatz (Regel 1k, Policy-Version in der Laufakte) → wiederholbar → 200.
  * (e5) Review ERFOLGREICH mit unlesbarem Ergebnis (kein JSON, Regel 1b) → wiederholbar → 200.
  * (e6) 400 bei unzulässiger Kennung, 404 bei unbekanntem Workflow.
- * Die Plan-Stufe (Fälle c/d: Advisor-Schema, Plan v2) folgt mit B2b-1b.
+ * (e7) F-1104 (8): POST …/pruefer-wiederholen → 409, solange ein anderer Lauf aktiv ist (globale Laufsperre).
+ * B2b-1b-1 (Advisor-Schema):
+ * (c0) schemas/ergebnis-architecture-advisor.schema.json im Strict-Dialekt (additionalProperties:false und jedes Feld
+ *      in required, auf jeder Objektebene); die Beispiele unter schemas/examples/ gegen validiereErgebnisAdvisor.
+ * (c1) Übergang (Entscheidung Stefan A5): Advisor mit Schema am Schritt liefert ein gültiges UEBERARBEITEN bzw.
+ *      FREIGEGEBEN → der Ablauf geht zur ZWINGEND-Freigabe der Ausführung (WARTET_FREIGABE), Prüfer nicht wiederholbar
+ *      (409). Argv: der Advisor-Lauf trägt aufrufEingaben.jsonSchema ohne $schema/$id; ein Advisor ohne Schema am
+ *      Schritt (Bestand) und die Ausführung tragen keins.
+ * (c4) Advisor-Ergebnis verstößt gegen das Schema (FREIGEGEBEN mit Befund) → KLAERUNG_ERFORDERLICH, Grund nennt den
+ *      Verstoß und „Prüfer wiederholen“; POST …/pruefer-wiederholen → 200 WARTET_FREIGABE.
+ * (c0b) die Schemadatei entspricht der im Spike F-1105 real belegten Fassung (SHA-256 im Nachweis).
+ * (c1b) Bestands-Advisor (output_schema null) mit gültigem JSON → Freigabe der Ausführung.
+ * (c4b) JSON im Codezaun mit Text drumherum → gelesen, weiter; (c4e) rohes JSON mit Status-Block danach → gelesen
+ *      (nur über jsonObjektFallback), weiter; (c4c) leeres Ergebnis → Halt; (c4d) MIT_AUFLAGEN ohne
+ *      Befund → Halt mit lesbarem Grund; (c5) Werkzeugausfall des Advisors → Grund nennt die Ursache.
+ * (c6) zweite Sicherung loeseAusfuehrungsEingabenAuf: nur das belegte Schema geht als jsonSchema an claude-code,
+ *      'ergebnis-code-reviewer' an claude-code und ein unlesbares Schema werden abgelehnt.
+ * (e8) POST /api/laeufe mit aufrufEingaben.jsonSchema → 400.
+ * Plan v2 (Rückweg der Plan-Stufe, Fälle c/c2/c3/d) folgt mit B2b-1b-2.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -33,16 +52,17 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { createHash, randomUUID } from 'node:crypto'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ladeArtefaktVersion, listeVersionen, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
+import { validiereErgebnisAdvisor } from '../src/architecture-advisor/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
-import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 
 const befunde = []
 console.log('\n=== F45-B2b-1a-Rückweg-Check ===\n')
@@ -117,12 +137,15 @@ const profilReferenz = leiteProfilReferenzAb(vorlage)
 
 // Je Workflow eine Warteschlange von Prüfer-Ausgängen; die Attrappe nimmt je Prüfer-Lauf den nächsten.
 const prueferAusgaenge = new Map()
-const laeufe = [] // { workflowId?, laufId, rolle }
+const laeufe = [] // { workflowId?, laufId, rolle, aufrufEingaben }
+// F-1104 (8): solange gesetzt, hält die Attrappe einen Ausführungs-Lauf offen (aktiver Lauf für die Sperrprüfung).
+const blockade = { warten: null }
 
 /** Attrappe des Workers: jede Rolle wird gezählt; Prüfer-Läufe bekommen eine echte Laufakte mit Rohstrom. */
 async function attrappe(laufId, _profil, eingaben) {
   const workflowId = aktiv.workflowId
-  laeufe.push({ laufId, rolle: eingaben.rolle, workflowId })
+  laeufe.push({ laufId, rolle: eingaben.rolle, workflowId, aufrufEingaben: eingaben.aufrufEingaben })
+  if (eingaben.rolle === 'ausfuehrung' && blockade.warten !== null) await blockade.warten
   if (eingaben.rolle !== 'code-reviewer' && eingaben.rolle !== 'architecture-advisor') {
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
@@ -191,6 +214,11 @@ const SCHRITT_ADVISOR = {
   status: 'OFFEN',
   lauf_id: null,
 }
+
+// B2b-1b-1: Advisor mit Schema (wie workflow-vorlagen/hoch.json), danach die Ausführung (ZWINGEND).
+const SCHRITT_ADVISOR_SCHEMA = { ...SCHRITT_ADVISOR, output_schema: 'ergebnis-architecture-advisor', nachfolger: 'schritt-1-ausfuehrung' }
+const advisorBefund = (id) => ({ id, schwere: 'HOCH', evidenz: 'FAKT', fundstelle: 'Plan v1, Abschnitt 3', zusammenfassung: `Gate-Befund ${id}.`, korrekturrichtung: 'Im Plan v2 beheben.' })
+const advisor = (urteil, liste) => ({ ausgang: 'ERFOLGREICH', text: JSON.stringify({ urteil, begruendung: 'Gate.', befunde: liste, entlastend: [], grenzen_der_pruefung: 'Gate-Attrappe.' }) })
 
 /** Legt Auftrag und Workflow an und hinterlegt die Prüfer-Ausgänge. @returns workflowId oder null */
 async function legeAn(kennung, maxReplans, ausgaenge, schritte = [SCHRITT_AUSFUEHRUNG, SCHRITT_REVIEW]) {
@@ -379,6 +407,168 @@ try {
         daten.status === 'KLAERUNG_ERFORDERLICH' && zurueck.status === 200 && koerper.status === 'WARTET_FREIGABE' && nach.schritte[0].lauf_id === null && nach.schritte[0].freigabe_erteilt === undefined,
         '(e3) Advisor ohne Urteil: POST …/pruefer-wiederholen → WARTET_FREIGABE, Schritt zurückgesetzt, Freigabe nicht übernommen.',
         `(e3) erwartet Reset auf WARTET_FREIGABE — Halt ${daten.status}, ${zurueck.status} ${JSON.stringify(koerper)}, Schritt ${JSON.stringify(nach?.schritte?.[0])}`
+      )
+    }
+  }
+
+  // ── (c0) Advisor-Schema im Strict-Dialekt, Beispiele ────────────────────────────────────
+  {
+    const schema = JSON.parse(readFileSync('schemas/ergebnis-architecture-advisor.schema.json', 'utf-8'))
+    const ebenen = []
+    const sammle = (knoten, ort) => {
+      if (knoten?.type === 'object' || knoten?.properties !== undefined) ebenen.push({ knoten, ort })
+      for (const [name, kind] of Object.entries(knoten?.properties ?? {})) sammle(kind, `${ort}.${name}`)
+      if (knoten?.items !== undefined) sammle(knoten.items, `${ort}[]`)
+    }
+    sammle(schema, '$')
+    const strictVerstoesse = ebenen
+      .filter(({ knoten }) => knoten.additionalProperties !== false || JSON.stringify([...(knoten.required ?? [])].sort()) !== JSON.stringify(Object.keys(knoten.properties ?? {}).sort()))
+      .map(({ ort }) => ort)
+    pruefe(ebenen.length >= 3 && strictVerstoesse.length === 0, `(c0) Advisor-Schema: ${ebenen.length} Objektebenen im Strict-Dialekt.`, `(c0) Strict-Dialekt verletzt an: ${strictVerstoesse.join(', ')} (Ebenen: ${ebenen.length})`)
+    for (const [name, gueltig] of [
+      ['valid-freigegeben', true],
+      ['valid-ueberarbeiten', true],
+      ['invalid-freigegeben-mit-befund', false],
+      ['invalid-fehlendes-urteil', false],
+    ]) {
+      const verstoesse = validiereErgebnisAdvisor(JSON.parse(readFileSync(`schemas/examples/ergebnis-architecture-advisor.${name}.json`, 'utf-8')))
+      pruefe((verstoesse.length === 0) === gueltig, `(c0) Beispiel ${name}: ${gueltig ? 'gültig' : 'abgelehnt'}.`, `(c0) Beispiel ${name}: erwartet ${gueltig ? 'gültig' : 'Verstoß'}, erhalten ${JSON.stringify(verstoesse)}`)
+    }
+  }
+
+  // ── (c1) Übergang B2b-1b-1: gültiges Urteil → Freigabe der Ausführung; Argv mit --json-schema ─
+  for (const fall of [
+    { kennung: 'c1', urteil: 'UEBERARBEITEN', ausgang: advisor('UEBERARBEITEN', [advisorBefund('A1')]) },
+    { kennung: 'c1f', urteil: 'FREIGEGEBEN', ausgang: advisor('FREIGEGEBEN', []) },
+  ]) {
+    const id = await legeAn(fall.kennung, 2, [fall.ausgang], [SCHRITT_ADVISOR_SCHEMA, { ...SCHRITT_AUSFUEHRUNG, nachfolger: null }])
+    const daten = id && (await gibFreiUndWarte(fall.kennung, id, 'schritt-1-advisor'))
+    if (daten) {
+      const zurueck = await post(`/api/workflows/${encodeURIComponent(id)}/pruefer-wiederholen`)
+      const lauf = laeufe.find((l) => l.workflowId === id && l.rolle === 'architecture-advisor')
+      const schemaText = lauf?.aufrufEingaben?.jsonSchema
+      let schemaArgv = null
+      try {
+        schemaArgv = JSON.parse(schemaText)
+      } catch {
+        schemaArgv = null
+      }
+      pruefe(
+        daten.status === 'WARTET_FREIGABE' && daten.aktiver_schritt_id === 'schritt-1-ausfuehrung' && laeufe.filter((l) => l.workflowId === id && l.rolle === 'ausfuehrung').length === 0 && zurueck.status === 409,
+        `(${fall.kennung}) gültiges ${fall.urteil}: weiter zur ZWINGEND-Freigabe der Ausführung, nichts gestartet, Prüfer nicht wiederholbar (409).`,
+        `(${fall.kennung}) erwartet WARTET_FREIGABE an der Ausführung + 409 — ${daten.status}, ${daten.aktiver_schritt_id}, ${zurueck.status}, grund ${JSON.stringify(daten.grund)}`
+      )
+      pruefe(
+        schemaArgv !== null && !('$schema' in schemaArgv) && !('$id' in schemaArgv) && JSON.stringify(schemaArgv.properties?.urteil?.enum) === JSON.stringify(['FREIGEGEBEN', 'FREIGEGEBEN_MIT_AUFLAGEN', 'UEBERARBEITEN']),
+        `(${fall.kennung}) Advisor-Lauf trägt aufrufEingaben.jsonSchema (Advisor-Schema ohne $schema/$id).`,
+        `(${fall.kennung}) jsonSchema am Advisor-Lauf fehlt oder falsch: ${String(schemaText).slice(0, 120)}`
+      )
+    }
+  }
+
+  // ── (c4) Advisor-Ergebnis verstößt gegen das Schema → Halt, Prüfer wiederholen ──────────
+  {
+    const id = await legeAn('c4', 2, [advisor('FREIGEGEBEN', [advisorBefund('A1')])], [SCHRITT_ADVISOR_SCHEMA, { ...SCHRITT_AUSFUEHRUNG, nachfolger: null }])
+    const daten = id && (await gibFreiUndWarte('c4', id, 'schritt-1-advisor'))
+    if (daten) {
+      const zurueck = await post(`/api/workflows/${encodeURIComponent(id)}/pruefer-wiederholen`)
+      const koerper = await zurueck.json().catch(() => ({}))
+      pruefe(
+        daten.status === 'KLAERUNG_ERFORDERLICH' && (daten.grund ?? '').includes('FREIGEGEBEN mit 1 Befund') && (daten.grund ?? '').includes('Prüfer wiederholen') && zurueck.status === 200 && koerper.status === 'WARTET_FREIGABE',
+        '(c4) FREIGEGEBEN mit Befund: KLAERUNG_ERFORDERLICH, Grund nennt Verstoß und Ausweg; POST …/pruefer-wiederholen → WARTET_FREIGABE.',
+        `(c4) erwartet KLAERUNG + Reset — ${daten.status}, ${JSON.stringify(daten.grund)}, ${zurueck.status} ${JSON.stringify(koerper)}`
+      )
+    }
+  }
+
+
+  // ── (c0b) Schemafassung = die im Spike real belegte (F-638/F-1086) ──────────────────────
+  {
+    const nachweis = readFileSync('features/F45/nachweise/b2b1b/spike-f1105.md', 'utf-8')
+    const belegt = /SHA-256\s*`([0-9a-f]{64})`/.exec(nachweis)?.[1] ?? null
+    // Zeilenenden normalisiert: ein Checkout mit CRLF ändert das Schema nicht.
+    const aktuell = createHash('sha256').update(readFileSync('schemas/ergebnis-architecture-advisor.schema.json', 'utf-8').replace(/\r\n/g, '\n')).digest('hex')
+    pruefe(belegt === aktuell, '(c0b) Advisor-Schema entspricht der im Spike F-1105 real belegten Fassung (SHA-256).', `(c0b) Advisor-Schema geändert (${aktuell}) gegenüber dem Spike (${belegt}) — neuer echter Lauf und neuer Wert in features/F45/nachweise/b2b1b/spike-f1105.md nötig`)
+  }
+
+  // ── (c1b)(c4b)(c4c)(c4d)(c5) weitere Advisor-Ausgänge ───────────────────────────────────
+  const gueltigerText = JSON.parse(advisor('FREIGEGEBEN', []).text)
+  for (const fall of [
+    { kennung: 'c1b', schritte: [{ ...SCHRITT_ADVISOR, nachfolger: 'schritt-1-ausfuehrung' }], ausgang: advisor('FREIGEGEBEN', []), halt: false, text: 'Bestands-Advisor (output_schema null) mit gültigem JSON geht zur Freigabe' },
+    { kennung: 'c4b', ausgang: { ausgang: 'ERFOLGREICH', text: `Hier mein Ergebnis:\n\`\`\`json\n${JSON.stringify(gueltigerText)}\n\`\`\`\n- [ ] Blockiert` }, halt: false, text: 'JSON im Codezaun mit Text drumherum wird gelesen und geht zur Freigabe' },
+    { kennung: 'c4e', ausgang: { ausgang: 'ERFOLGREICH', text: `${JSON.stringify(gueltigerText)}\n\n## Status\n- [x] Freigegeben` }, halt: false, text: 'rohes JSON ohne Codezaun mit Status-Block danach wird gelesen (jsonObjektFallback) und geht zur Freigabe' },
+    { kennung: 'c4c', ausgang: { ausgang: 'ERFOLGREICH', text: '' }, halt: true, muster: 'nicht lesbar', text: 'leeres Ergebnis hält an' },
+    { kennung: 'c4d', ausgang: advisor('FREIGEGEBEN_MIT_AUFLAGEN', []), halt: true, muster: 'ohne Befund', text: 'MIT_AUFLAGEN ohne Befund hält mit lesbarem Grund' },
+    { kennung: 'c5', ausgang: { ausgang: 'FEHLGESCHLAGEN', text: '' }, halt: true, muster: 'Ursache:', text: 'Werkzeugausfall des Advisors: der Grund nennt die Ursache' },
+  ]) {
+    const schritte = fall.schritte ?? [SCHRITT_ADVISOR_SCHEMA]
+    const id = await legeAn(fall.kennung, 2, [fall.ausgang], [...schritte, { ...SCHRITT_AUSFUEHRUNG, nachfolger: null }])
+    const daten = id && (await gibFreiUndWarte(fall.kennung, id, 'schritt-1-advisor'))
+    if (daten) {
+      const ok = fall.halt
+        ? daten.status === 'KLAERUNG_ERFORDERLICH' && daten.aktiver_schritt_id === 'schritt-1-advisor' && (daten.grund ?? '').includes(fall.muster)
+        : daten.status === 'WARTET_FREIGABE' && daten.aktiver_schritt_id === 'schritt-1-ausfuehrung'
+      pruefe(ok, `(${fall.kennung}) ${fall.text}.`, `(${fall.kennung}) ${fall.text} — erhalten ${daten.status}, ${daten.aktiver_schritt_id}, grund ${JSON.stringify(daten.grund)}`)
+    }
+  }
+
+  // ── (c6) zweite Sicherung in loeseAusfuehrungsEingabenAuf (an Regel 4b vorbei) ──────────
+  {
+    const basis = { rolle: 'architecture-advisor', worker: 'claude-code', anfragen: [{ pfad: `features/${FEATURE_ID}/feature.md`, zweck: 'Gate' }], budget: { maxElemente: 5 }, aufrufEingaben: { modell: 'gate-modell' }, auftragId: 'gate-auftrag' }
+    const advisorPfad = join(INSTALL_WURZEL, 'schemas', 'ergebnis-architecture-advisor.schema.json')
+    const gut = loeseAusfuehrungsEingabenAuf({ ...basis, ausgabeSchemaPfad: advisorPfad }, 'lesend', 'Gate', vorlage, fremdprojekt)
+    const fremdesSchema = loeseAusfuehrungsEingabenAuf({ ...basis, rolle: 'code-reviewer', ausgabeSchemaPfad: join(INSTALL_WURZEL, 'schemas', 'ergebnis-code-reviewer.schema.json') }, 'lesend', 'Gate', vorlage, fremdprojekt)
+    const kaputtOrdner = join(verzeichnis, 'schemas-kaputt')
+    mkdirSync(kaputtOrdner, { recursive: true })
+    writeFileSync(join(kaputtOrdner, 'ergebnis-architecture-advisor.schema.json'), '[]', 'utf8')
+    const kaputt = loeseAusfuehrungsEingabenAuf({ ...basis, ausgabeSchemaPfad: join(kaputtOrdner, 'ergebnis-architecture-advisor.schema.json') }, 'lesend', 'Gate', vorlage, fremdprojekt)
+    pruefe(
+      gut.ok && typeof gut.eingaben.aufrufEingaben.jsonSchema === 'string' && !fremdesSchema.ok && /löst nur 'ergebnis-architecture-advisor'/.test(fremdesSchema.grund) && !kaputt.ok && /--json-schema/.test(kaputt.grund),
+      "(c6) loeseAusfuehrungsEingabenAuf: Advisor-Schema → jsonSchema; 'ergebnis-code-reviewer' an claude-code → abgelehnt (zweite Sicherung); unlesbares Schema → abgelehnt mit Grund.",
+      `(c6) erwartet ok/abgelehnt/abgelehnt — ${gut.ok}, ${JSON.stringify(fremdesSchema)}, ${JSON.stringify(kaputt)}`
+    )
+  }
+
+  // ── (e8) aufrufEingaben.jsonSchema im Body von POST /api/laeufe → 400 ───────────────────
+  {
+    const antwort = await post('/api/laeufe', { laufId: randomUUID(), auftragId: 'gate-auftrag', werkzeugsatz: 'lesend', rolle: 'ausfuehrung', anfragen: [{ pfad: `features/${FEATURE_ID}/feature.md` }], budget: { maxElemente: 5 }, aufrufEingaben: { modell: 'gate-modell', jsonSchema: '{"type":"object"}' } })
+    const koerper = await antwort.json().catch(() => ({}))
+    pruefe(antwort.status === 400 && /jsonSchema/.test(koerper.grund ?? ''), '(e8) POST /api/laeufe mit aufrufEingaben.jsonSchema → 400 (nur serverseitig gesetzt).', `(e8) erwartet 400 mit Grund — ${antwort.status} ${JSON.stringify(koerper)}`)
+  }
+
+  // ── (c1) Läufe ohne Schema am Schritt tragen kein jsonSchema (Bestands-Advisor aus (e3), Ausführungen) ─
+  {
+    const ohneSchema = laeufe.filter((l) => l.rolle === 'ausfuehrung' || (l.rolle === 'architecture-advisor' && ladeWorkflow(l.workflowId)?.schritte?.[0]?.output_schema === null))
+    const mitAdvisorOhneSchema = ohneSchema.some((l) => l.rolle === 'architecture-advisor')
+    pruefe(
+      mitAdvisorOhneSchema && ohneSchema.every((l) => l.aufrufEingaben?.jsonSchema === undefined),
+      `(c1) ${ohneSchema.length} Läufe ohne Schema am Schritt (Bestands-Advisor, Ausführungen) tragen kein jsonSchema — Argv bitgleich.`,
+      `(c1) Lauf ohne Schema am Schritt trägt jsonSchema, oder kein Bestands-Advisor gelaufen (${mitAdvisorOhneSchema})`
+    )
+  }
+
+  // ── (e7) F-1104 (8): 409 bei aktivem Lauf ───────────────────────────────────────────────
+  {
+    const wartend = await legeAn('e7', 1, [{ ausgang: 'FEHLGESCHLAGEN', text: '' }])
+    const erst = wartend && (await gibFreiUndWarte('e7', wartend))
+    const laufend = await legeAn('e7b', 1, [])
+    if (erst && laufend) {
+      let loesen = () => {}
+      blockade.warten = new Promise((resolve) => {
+        loesen = resolve
+      })
+      aktiv.workflowId = laufend
+      await post(`/api/workflows/${encodeURIComponent(laufend)}/freigabe`, { schrittId: 'schritt-1-ausfuehrung', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate (e7b).' })
+      const laeuft = await warteBis(() => laeufe.some((l) => l.workflowId === laufend && l.rolle === 'ausfuehrung'), 4000)
+      const gesperrt = await post(`/api/workflows/${encodeURIComponent(wartend)}/pruefer-wiederholen`)
+      blockade.warten = null
+      loesen()
+      await warteAufHalt(laufend)
+      const frei = await post(`/api/workflows/${encodeURIComponent(wartend)}/pruefer-wiederholen`)
+      pruefe(
+        laeuft && gesperrt.status === 409 && frei.status === 200,
+        '(e7) POST …/pruefer-wiederholen → 409, solange ein anderer Lauf aktiv ist; danach 200.',
+        `(e7) erwartet 409 bei aktivem Lauf, danach 200 — aktiv ${laeuft}, ${gesperrt.status}, ${frei.status}`
       )
     }
   }

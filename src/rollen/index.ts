@@ -53,7 +53,8 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     zweck: 'Prüft einen Plan vor dem Bau, ohne selbst Code zu lesen oder zu schreiben.',
     erlaubte_werkzeugsatz_arten: ['lesend'],
     erlaubte_worker: ['claude-code', 'codex'],
-    erlaubtes_output_schema: null,
+    // F45 B2b-1b (F-909/F-1105): Urteil und Befunde als JSON statt Prosa; an claude-code per --json-schema durchgesetzt.
+    erlaubtes_output_schema: 'ergebnis-architecture-advisor',
     ausschlussmuster: ['src/**'],
     benoetigte_capabilities: ['PLAN_REVIEW', 'REPO_READ'],
   },

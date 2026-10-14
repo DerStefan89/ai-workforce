@@ -120,11 +120,11 @@ test('waehleWorkflowVorlage: hoch liefert Architekt (ZWINGEND) → Architektur-P
   // F39 WS-2a-Korrektur: 'architekt' läuft auf worker 'codex' mit output_schema
   // 'ergebnis-architektur' (löst das Schema real über '--output-schema' ein) — Regel 4b
   // (src/workflow/index.ts) hält nur 'claude-code' + gesetztes output_schema an, nicht 'codex'.
-  // 'architecture-advisor' rückt auf 'claude-code' mit output_schema:null (Rollenvertrag).
+  // 'architecture-advisor' rückt auf 'claude-code'; seit F45 B2b-1b mit 'ergebnis-architecture-advisor' (per '--json-schema').
   assert.strictEqual(workflow.schritte[0].worker, 'codex')
   assert.strictEqual(workflow.schritte[0].output_schema, 'ergebnis-architektur')
   assert.strictEqual(workflow.schritte[1].worker, 'claude-code')
-  assert.strictEqual(workflow.schritte[1].output_schema, null)
+  assert.strictEqual(workflow.schritte[1].output_schema, 'ergebnis-architecture-advisor')
   assert.strictEqual(workflow.schritte[3].output_schema, 'ergebnis-code-reviewer')
   assert.strictEqual(workflow.schritte[3].freigabe, 'AUTOMATISCH')
   assert.strictEqual(workflow.schritte[3].nachfolger, null)

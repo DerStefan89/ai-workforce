@@ -48,7 +48,7 @@ test('ROLLENVERTRAEGE: ausschlussmuster byte-gleich zu den Werten vor der Migrat
   assert.deepStrictEqual(ROLLENVERTRAEGE.ausfuehrung.ausschlussmuster, [])
 })
 
-test('ROLLENVERTRAEGE: nur code-reviewer, router, scout, jarvis, product-coach, architekt und eignungspruefung tragen ein erlaubtes_output_schema', () => {
+test('ROLLENVERTRAEGE: nur code-reviewer, router, scout, jarvis, product-coach, architekt, architecture-advisor und eignungspruefung tragen ein erlaubtes_output_schema', () => {
   assert.strictEqual(ROLLENVERTRAEGE.eignungspruefung.erlaubtes_output_schema, 'ergebnis-eignungspruefung')
   assert.strictEqual(ROLLENVERTRAEGE['code-reviewer'].erlaubtes_output_schema, 'ergebnis-code-reviewer')
   assert.strictEqual(ROLLENVERTRAEGE.router.erlaubtes_output_schema, 'ergebnis-router')
@@ -56,7 +56,9 @@ test('ROLLENVERTRAEGE: nur code-reviewer, router, scout, jarvis, product-coach, 
   assert.strictEqual(ROLLENVERTRAEGE.jarvis.erlaubtes_output_schema, 'ergebnis-jarvis')
   assert.strictEqual(ROLLENVERTRAEGE['product-coach'].erlaubtes_output_schema, 'ergebnis-product-coach')
   assert.strictEqual(ROLLENVERTRAEGE.architekt.erlaubtes_output_schema, 'ergebnis-architektur')
-  for (const rolle of ['architecture-advisor', 'qa', 'ausfuehrung']) {
+  // F45 B2b-1b (F-909/F-1105): Urteil und Befunde als JSON statt Prosa.
+  assert.strictEqual(ROLLENVERTRAEGE['architecture-advisor'].erlaubtes_output_schema, 'ergebnis-architecture-advisor')
+  for (const rolle of ['qa', 'ausfuehrung']) {
     assert.strictEqual(ROLLENVERTRAEGE[rolle].erlaubtes_output_schema, null, `${rolle}.erlaubtes_output_schema sollte null sein`)
   }
 })

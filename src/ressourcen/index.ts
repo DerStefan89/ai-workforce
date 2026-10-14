@@ -38,7 +38,9 @@
  * geprüft und verworfen (Gründe im Kopfkommentar von src/rollen/index.ts).
  * 'claude-code' bietet die von beiden Rollen benötigte Capability
  * STRUCTURED_OUTPUT trotzdem nicht an (kein --output-schema-Mechanismus,
- * F-337). Regel 6 in scripts/check-f19-ressourcen.mjs deckt diesen
+ * F-337; seit F45 B2b-1b löst claude-code per '--json-schema' nur real belegte
+ * Schemata ein, heute allein 'ergebnis-architecture-advisor' — der Advisor führt
+ * deshalb bewusst kein STRUCTURED_OUTPUT in benoetigte_capabilities). Regel 6 in scripts/check-f19-ressourcen.mjs deckt diesen
  * Widerspruch mechanisch auf und trägt dafür zwei eng benannte Ausnahmen
  * (F346_AUSNAHMEN) statt der Verengung.
  *

@@ -1,0 +1,16 @@
+{
+  "urteil": "UEBERARBEITEN",
+  "begruendung": "A1 (HOCH) ist vor dem Bau zu klären: ohne Test ist die Iteration nicht prüfbar.",
+  "befunde": [
+    {
+      "id": "A1",
+      "schwere": "HOCH",
+      "evidenz": "FAKT",
+      "fundstelle": "Plan v1, Abschnitt 3; CLAUDE.md Iterationsprinzip",
+      "zusammenfassung": "Die neue Funktion hat weder Aufrufer noch Test.",
+      "korrekturrichtung": "Aufrufer und Test in derselben Iteration liefern oder die Funktion streichen."
+    }
+  ],
+  "entlastend": [],
+  "grenzen_der_pruefung": "Nur lesende Werkzeuge: Gates und Tests nicht ausgeführt."
+}
