@@ -1,12 +1,12 @@
 {
     "baselineReferenz":  {
-                             "pfad":  "C:\\Users\\stefa\\ai-workforce-autorisierung\\invocation-policy-baseline\\4d184b02-343b-47d4-9e00-add295c9257e.json",
-                             "commit_hash":  "1f1a2d044e6cc37ebd216bd54e67e2dc4eca9002",
-                             "datei_hash":  "e82107a3436a5202bb1bd4c2d5723f54cdf06f693e52dece7a301c97973935cd"
+                             "pfad":  "C:\\Users\\stefa\\ai-workforce-autorisierung\\invocation-policy-baseline\\d94e2551-7a53-4dad-822a-38144a35057f.json",
+                             "commit_hash":  "25ff71cf029afc3311a12a5dc0a05f0fb4d1f604",
+                             "datei_hash":  "f6030d7d839933fae28c6da1d4c9e5642fd9b30a58c89987c6cdc5ed620a5528"
                          },
     "wirksamkeitsnachweisReferenz":  {
-                                         "pfad":  "C:\\Users\\stefa\\ai-workforce-autorisierung\\invocation-policy-wirksamkeitsnachweis\\584ac16b-1213-4a80-80ea-797e33a4b32d.json",
-                                         "commit_hash":  "1f1a2d044e6cc37ebd216bd54e67e2dc4eca9002",
-                                         "datei_hash":  "9846f6c6ef02b8a45fcb89b6863b89960fa9c789e1447c6892eb6e690456ea59"
+                                         "pfad":  "C:\\Users\\stefa\\ai-workforce-autorisierung\\invocation-policy-wirksamkeitsnachweis\\f7fab878-d948-48b4-9dea-6933670f97fb.json",
+                                         "commit_hash":  "25ff71cf029afc3311a12a5dc0a05f0fb4d1f604",
+                                         "datei_hash":  "a0998fd19aa010cea57b09ba97c3d5c80ff8c0215bc30c66cea6e775a2e31bf6"
                                      }
 }

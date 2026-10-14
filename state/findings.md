@@ -13612,3 +13612,30 @@ Auswirkung: Gering — alles fail-closed oder sichtbar.
 Maßnahme: (1) bei Bedarf Drift-Stand aus dem letzten GET …/plugins in die Anzeige; (2)(3) mit dem nächsten echten Lauf messen; (4) mit F-1054 (3); (5) bei Fehlalarmen F-1099 (Variante B) entscheiden; (6) eigener Eingriff in die Beobachtungszeile bzw. F-1093 (5); (7) bei Bedarf.
 Status: offen.
 Feature/Run: Entdeckt: F45 F-3b-2 (code-reviewer, qa, design-guardian), 14.10.2026.
+
+**F-1101** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: Claude-Code-Selbstupdate sperrt jeden Lauf bis zur erneuerten Startfreigabe.
+Beschreibung: Ein Selbstupdate von Claude Code verschiebt die installierte Version weg von `werkzeugVersionDeklariert` in `startvorlagen/ai-workforce.json`. Danach verweigert jeder Lauf mit „Drift im Gültigkeitsschlüssel“ (E-188), bis die Startfreigabe erneuert ist. Beobachtet am 14.10.2026 beim Update von 2.1.296 auf 2.1.299.
+Fundstelle: `docs/harness/startfreigabe-erneuern.md`; Update auf 2.1.299 am 14.10.2026.
+Auswirkung: Hoch — die Workforce steht ohne Vorwarnung still, bis Stefan die Schritte 1–7 der Anleitung abgeschlossen hat.
+Maßnahme: Autoupdate abschalten oder die Version pinnen. Der Leitstand soll die Abweichung vor dem Laufstart verständlich anzeigen.
+Status: offen.
+Feature/Run: Startfreigabe-Erneuerung CLI 2.1.299 (Branch `f45/startfreigabe-cli-2-1-299`), 14.10.2026.
+
+**F-1102** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: `git add` mit falschem Pfad bricht in PowerShell-Blöcken nicht ab.
+Beschreibung: In PowerShell-Terminal-Blöcken bricht ein `git add` mit falschem Pfad den Block nicht ab. Ohne Prüfung von `$LASTEXITCODE` und der gestagten Menge läuft der anschließende Commit mit unvollständigem oder leerem Index weiter.
+Fundstelle: `docs/harness/startfreigabe-erneuern.md` Schritt 5 (Z. ~95, `git add` auf zwei Ordner).
+Auswirkung: Mittel — ein Commit kann unbemerkt unvollständig oder leer sein (im Autorisierungs-Repo: Startfreigabe verweist auf nicht committete Dateien).
+Maßnahme: Terminal-Blöcke stagen explizite Pfade, prüfen `$LASTEXITCODE` und die Anzahl in `git diff --cached --name-only`. Offen als Teil dieses Befunds: `docs/harness/startfreigabe-erneuern.md` Schritt 5 entsprechend nachziehen (noch nicht geändert).
+Status: offen.
+Feature/Run: Startfreigabe-Erneuerung CLI 2.1.299 (Branch `f45/startfreigabe-cli-2-1-299`), 14.10.2026.
+
+**F-1103** · `TECH_DEBT` · P3 · offen
+Titel: Nachweis powershell-eingabe hängt von der Kooperation des Modells ab.
+Beschreibung: `features/F45/nachweise/b1b1/powershell-eingabe.mjs` belegt den commit-guard nur, wenn das Modell die Werkzeugaufrufe tatsächlich versucht. Am 14.10.2026 (CLI 2.1.299) lehnte Haiku im ersten Lauf den Auftrag selbst ab (0 Werkzeugaufrufe, `hook_eingaben: []`) — der Hook wurde gar nicht ausgeübt. Das ist ein Scheinbefund ohne Aussage über den Hook; die Wiederholung lief erwartungsgemäß.
+Fundstelle: `features/F45/nachweise/b1b1/powershell-eingabe.mjs`, `features/F45/nachweise/b1b1/zaehlung-powershell.json`.
+Auswirkung: Gering — eine scheinbare Abweichung kann die Startfreigabe-Erneuerung grundlos anhalten oder eine echte Abweichung verdecken.
+Maßnahme: Das Skript meldet „0 Werkzeugaufrufe“ als eigenen Ausgang „nicht ausgeübt“, nicht als Abweichung.
+Status: offen.
+Feature/Run: Startfreigabe-Erneuerung CLI 2.1.299, Schritt 2 (Branch `f45/startfreigabe-cli-2-1-299`), 14.10.2026.
