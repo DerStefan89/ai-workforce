@@ -626,9 +626,14 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Laufordners lesend in der Laufakte, „Review veraltet“/„nicht bestimmbar“
   in der Abnahme, Befehlsblöcke im Leitstand mit cd und getrenntem push,
   Nachweis des echten Codex-Laufs B2a-3a nachgezogen, F-1085 (6)/(7)/(11));
-  damit ist B2a nach dem Merge abgeschlossen.
-  Reihenfolge ab F: B2a-3b → F-3 → B2b → B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1089. Nach F46, vor F30
+  gemergt #332 (`bcffea7`), damit ist B2a abgeschlossen. F-3 geteilt
+  (Stefan 14.10.2026) in F-3a-1, F-3a-2, F-3b; F-3a-1 „Plugins aus Stefans
+  Claude Code lesen“ gebaut, nicht committet (Branch
+  `f45/f3a-plugins-bestand`: `src/claude-plugins`, GET /api/plugins, Gate
+  f45-f3a, Spike mit echtem `claude -p` + `--plugin-dir`; kein Lauf
+  geändert).
+  Reihenfolge ab F: F-3a-1 → F-3a-2 → F-3b → B2b → B5a/B5b → B3 → R → R2.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1092. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

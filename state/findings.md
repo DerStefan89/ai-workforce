@@ -11833,6 +11833,7 @@ Fundstelle: `ressourcen.json` (Typen worker, skill, agent, extern mcp|skill), `p
 Auswirkung: Das Ziel „Claude arbeitet mit Plugins“ hat keinen Weg.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B4.
 Status: teilweise (F45 F-1, 12.10.2026, Teil Init-Gate): `pruefeInitZeile` verlangt `init.plugins` leer (fehlend = Verstoß); jeder Lauf mit Init-Gate schaltet die eingebauten Plugins per `--settings enabledPlugins` ab (Spike F-1 S3: `cc-plugin-telemetry@builtin`, `cc-plugin-plugin-authoring@builtin` auch mit `--setting-sources project`). Offen (F-2): Plugins im Fähigkeitenmodell/Katalog.
+Nachtrag (F45 F-3a-1, 14.10.2026): Entscheidung Stefan 13.10.2026 — Quelle sind Stefans in Claude Code installierte Plugins, nicht die Sammlung. Bestand gelesen (nur lesend, `claude plugin list --json` + Plugin-Ordner, `src/claude-plugins/`, Route GET `/api/plugins`, Gate `check-f45-f3a-plugins.mjs`): superpowers (inaktiv), gitkraken, design, cowork-plugin-management (aktiv, synced). Spike `features/F45/nachweise/f3a/spike.md`: (a) Plugin-Bestandteile erscheinen mit Präfix `<plugin>:` in init.skills/agents/slash_commands, `init.plugins` = `<name>@inline`; (b) Plugin-Hooks laufen; (c) allowed-tools eines Commands erweitert den Werkzeugsatz; (d) `enabledPlugins:false` wirkt auf `--plugin-dir`. Unter CLI 2.1.299 ist `init.plugins` mit den heutigen Settings weiter `[]`. Offen: Anzeige im Leitstand (F45 F-3a-2), Plugins im Lauf (F-1090, F45 F-3b).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-911** · `TECH_DEBT` · P2 · offen
@@ -13113,6 +13114,7 @@ Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Nachtrag (Challenger, Auftrag F45 F-2b-2, 12.10.2026): Priorität P3 → P2. Maßnahme neu: F-3 — fremde Agents installierbar über denselben Weg wie Plugins (Pin, Inhalts-Hash, Prüfbericht, Freigabe, Opt-in je Projekt). Der Auftrag nennt dafür F-1052; inhaltlich (P3, fremde Agents) ist es dieser Eintrag — F-1052 (API-Schlüssel, schon P2) bleibt unverändert.
 Zugeordnet: F45 F-3.
+Nachtrag (F45 F-3a-1, 14.10.2026): F-3 ist geteilt; fremde Agents gehen mit F-3b (F-1090) über den Plugin-Weg — Spike `features/F45/nachweise/f3a/spike.md`: ein Agent aus einem Plugin erscheint als `<plugin>:<agent>` in `init.agents`.
 
 **F-1052** · `TECH_DEBT` · P2 · offen
 Titel: extern_lesend-MCPs mit API-Schlüssel sind nicht nutzbar (Challenger K18).
@@ -13123,6 +13125,7 @@ Maßnahme: Vor F30 prüfen (Scanner-Recherche); Geheimnis-Weitergabe ohne Klarte
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Zugeordnet: vor F30.
+Nachtrag (Auftrag F45 F-3a, 14.10.2026): Zuordnung → F45 B2b, gemeinsam mit F-1072 (K32) — die Geheimnis-Weitergabe an einen MCP-Server folgt derselben Regel wie API-Schlüssel im Lauf (nur Umgebungsvariable, nie in Datei/Laufakte/Rohstrom, echter Aufruf nur nach Rückfrage). Nicht mehr Teil von F-3.
 
 **F-1053** · `BUG` · P1 · erledigt
 Titel: Mit CLI 2.1.296 bräche das Ort-B-Init-Gate jeden Ort-B-Lauf ab (eingebaute Plugins).
@@ -13496,3 +13499,31 @@ Auswirkung: Mittel — ein Abbruch sah aus wie ein Erfolg (stille Fehlinformatio
 Maßnahme: Eigener Merker statt `execFile`-`timeout`: ein Zeitgeber setzt `zeitAbgelaufen`, baut stdout/stderr ab (sonst hielte ein Enkelprozess mit geerbten Pipes, z. B. ein Hook, `'close'` auf — Code-Review-Nachpass) und beendet das Kind; ist der Merker gesetzt, ist das Ergebnis immer `{ code: null, stdout: '', abbruch: 'zeitgrenze' }`, gleich wie der Rückruf aussieht. Tests in `src/git-starter/git-starter.test.ts`: hängendes git (`hash-object --stdin`, stdin offen, 50 ms) → `zeitgrenze` (war schon vorher grün); Wettlauf 50 Aufrufe mit 1 ms → nie code 0 mit leerer Ausgabe (vorher rot, 49/50); `post-checkout`-Hook mit `sleep 5`, Zeitgrenze 1 s → Ergebnis unter 3 s (vor dem Pipe-Abbau rot, ≈ 5,8 s). Offen (vorbestehend): synchroner Wurf von `execFile` lehnt das Promise ab („wirft nie“ gilt dann nicht); keine SIGKILL-Nachfrist.
 Status: erledigt (F45 B2a-3b, Korrekturrunde Challenger, 13.10.2026).
 Feature/Run: Entdeckt: F45 B2a-3b (CI/Cloud), 13.10.2026.
+
+**F-1090** · `TECH_DEBT` · P2 · offen
+Titel: Plugins aus Stefans Claude Code laufen in der Workforce nicht (F45 F-3b).
+Beschreibung: Entscheidung Stefan 13.10.2026: dieselben Plugins wie in Claude Code. F-3a-1 liest und zeigt den Bestand nur (`src/claude-plugins/`, GET `/api/plugins`); kein Lauf lädt ein Plugin (`init.plugins` bleibt `[]`). Spike `features/F45/nachweise/f3a/spike.md` (CLI 2.1.299): ein per `--plugin-dir` geladenes Plugin bringt alle Bestandteile auf einmal (Skills/Agents/Commands mit Präfix `<plugin>:`, `init.plugins` = `<name>@inline`); seine Hooks laufen ohne Abfrage (SessionStart, UserPromptSubmit, PreToolUse — auch vor einem verweigerten Aufruf); `allowed-tools` eines Commands erweitert den Werkzeugsatz (S1: `gh pr comment` lief über den Command, ohne Command verweigert); `enabledPlugins:false` schaltet auch ein `--plugin-dir`-Plugin ab; der erste Lauf legt `~/.claude/plugins/data/<name>-inline` an (leerer Ordner `spike-plugin-inline` vom Spike liegt noch dort).
+Fundstelle: `src/claude-code-gateway/index.ts` (`baueAufruf`, `pruefeInitZeile`), `src/faehigkeiten/start.ts`, `src/claude-plugins/`.
+Auswirkung: Mittel — Stefans Plugins (z. B. design-Skills) stehen dem Lauf nicht zur Verfügung.
+Maßnahme: F45 F-3b: gepinnte Kopie je Plugin mit Inhalts-Hash (nie Stefans Ordner laden), Freigabe je Plugin; Hook nur nach Freigabe je Hook-Hash; Plugin-MCP nur gepinnt (entfernte/ungepinnte nach E-F36-4 gesperrt); Commands und Skills mit erweiterten Rechten oder externer Wirkung gesperrt (aus der Kopie entfernt oder `allowed-tools` gestrichen, Prüfbericht nennt es); `init.plugins` = Soll und Präfixnamen in den Init-Gate-Mengen; nur Worker claude-code; Datenordner `plugins/data/<name>-inline` im Vorher/Nachher. Schätzung ≈ 1,0–1,25 AT, Advisor-Pass vorab.
+Status: offen.
+Feature/Run: F45 F-3a-1 (Spike), 14.10.2026.
+Zugeordnet: F45 F-3b.
+
+**F-1091** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte F45 F-3a-1 (Plugin-Bestand lesen).
+Beschreibung: (1) Eingebaute Plugins kommen nur aus der Referenzliste (`src/faehigkeiten/eingebaut-referenz.json`, CLI 2.1.296: telemetry, plugin-authoring); `~/.claude.json` zeigt zusätzlich `cc-plugin-diff@builtin`, das im `-p`-Lauf (CLI 2.1.299, Spike S0) nicht geladen wird — die Anzeige nennt 2 statt 3, ohne Hinweis auf die Messversion. (2) Ob `enabled` der CLI-Liste bei `scope local` vom Arbeitsordner des Aufrufs abhängt, ist nicht gemessen (superpowers ist in beiden Projekten aus); die Antwort trägt `instanz_pfad` (cwd des Aufrufs) getrennt von `plugins[].projekt_pfad` (Installationsprojekt laut CLI). (3) `.md`-Dateien wie `README.md` in `commands/`/`agents/` zählen als Bestandteil; Hooks im Frontmatter von Skills/Agents liest der Leser nicht. (4) Dieselbe id in mehreren Scopes erscheint als zwei Einträge mit gleicher id. (5) Schreibt ein Plugin zur Laufzeit in den eigenen Ordner (`__pycache__`, `node_modules`), ändert sich der Inhalts-Hash ohne Inhaltsänderung (Driftprüfung in F-3b). (6) Die Skill-Suche hat keine eigene Dateigrenze (nur der Hash und die `.md`-Suche). QA-Nachpass: (7) kein Unit-Test für `maskiereArgs` mit harmlosen Argumenten (`--stdio`, `-y paket@latest`, `--token --verbose`, `--x=wert`); (8) YAML-Kommentare und Blockwerte in `allowed-tools` (`# …`, `>-`) werden als Regeln gelesen; (9) Text vor dem JSON auf stdout macht die ganze Liste zu „kein JSON“ (sichtbar, nicht still); (10) Maskierung nur bekannter Muster (`--key abc` bleibt sichtbar, wie in `geheimnisse-maskieren.mjs` dokumentiert); (11) Leerbestand-Messung (CLI 2.1.299, leerer `CLAUDE_CONFIG_DIR`, `[]`, Exit 0) ohne eigene Rohdatei. Code-Review-Nachpass: (12) `pinVon` nimmt den Wert eines unbekannten Flags als Paket (`npx --api-key X pkg` → `paket = X`), `paket` und der Risiko-Text werden nur einzeln maskiert; (13) fehlende oder verlinkte `skills`-Pfade aus plugin.json werden nicht gemeldet (Agents/Commands schon); (14) ein Link/eine Datei als installPath ergibt den Hash-Grund „Plugin-Ordner fehlt“; (15) offene Klammer in `allowed-tools` verschluckt den Rest; (16) Gate (d) erkennt keine dynamischen Importe; (17) `mdDateien` erkennt Links über Dirent statt lstat; (18) die Antwortform mit `instanz_pfad` ist nur in der Route dokumentiert, nicht in `types.ts`.
+Fundstelle: `src/claude-plugins/index.ts`, `scripts/leitstand/routen-plugins.mjs`, `features/F45/nachweise/f3a/spike.md`.
+Auswirkung: Gering — Anzeige, kein Lauf betroffen.
+Maßnahme: (1)(2) mit F45 F-3a-2 (Anzeige mit Messversion der Referenzliste; Messung `enabled` aus zwei Ordnern — vorher zeigt die Oberfläche `aktiv` bei scope local nicht als Stand dieses Projekts); (3)(4)(6)(7)(8)(9)(11)(13)–(17) bei Bedarf; (12) vor F-3b; (18) mit F-3a-2; (5) mit F-3b (F-1090); (10) bleibt.
+Status: offen.
+Feature/Run: Entdeckt: F45 F-3a-1 (qa, code-reviewer), 14.10.2026.
+
+**F-1092** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: F-3a-1: Unit-Tests des Lesers nach dem Modul geschrieben, nicht rot→grün.
+Beschreibung: In F45 F-3a-1 entstand `src/claude-plugins/index.ts` vor `src/claude-plugins/plugins.test.ts`; die Tests liefen beim ersten Lauf grün, ein Rot-Beleg vor dem Modul fehlt. Rot ist nur über die kalibrierten Rotfälle des Gates `check-f45-f3a-plugins.mjs` belegt (wie F-1084: Reihenfolge hing am Ermessen der bauenden Sitzung).
+Fundstelle: `src/claude-plugins/plugins.test.ts`, `features/F45/plan-f3a.md`, Bericht F-3a-1.
+Auswirkung: Gering — Tests und Gate-Rotfälle vorhanden; ohne Regel kann ein Test entstehen, der nie rot war.
+Maßnahme: Testentwurf (Fälle mit erwartetem Ergebnis) vor dem Modul im Plan festhalten; der Bauauftrag verlangt den roten Lauf vor dem Modul als Beleg.
+Status: offen.
+Feature/Run: F45 F-3a-1 (Challenger vor dem Commit), 14.10.2026.
