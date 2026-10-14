@@ -289,3 +289,23 @@ test('T9 loesePluginAuf und bestimmeFreigabeZustand: Vorrang unbestimmbar > mehr
   assert.equal(z({ aufloesung: 'unbestimmbar', berichtGefunden: false }), 'unbestimmbar')
 })
 
+
+test('T10 F-3b-2 (Variante A): CLAUDE_PLUGIN_DATA in Skill-, Agent- oder Command-Dateien → nicht übernommen (plugin_daten), auch in Hilfsdateien', async () => {
+  const { wurzel, plugin } = neuesFixture()
+  try {
+    const ohne = await projiziere(plugin)
+    schreibeFixtureDatei(plugin, 'skills/daten/SKILL.md', '---\nname: daten\ndescription: x\n---\n\nOrdner: ${CLAUDE_PLUGIN_DATA}/cache\n')
+    schreibeFixtureDatei(plugin, 'skills/hilfe/SKILL.md', '---\nname: hilfe\ndescription: x\n---\n\nText\n')
+    schreibeFixtureDatei(plugin, 'skills/hilfe/skript.sh', 'echo "$CLAUDE_PLUGIN_DATA"\n')
+    schreibeFixtureDatei(plugin, 'agents/datenagent.md', '---\nname: datenagent\ndescription: x\ntools: Read\n---\n\nSchreibe nach ${CLAUDE_PLUGIN_DATA}.\n')
+    schreibeFixtureDatei(plugin, 'commands/datencmd.md', 'Nutze ${CLAUDE_PLUGIN_DATA}.\n')
+    const p = await projiziere(plugin)
+    const n = nicht(p)
+    for (const e of ['skill:daten:plugin_daten', 'skill:hilfe:plugin_daten', 'agent:datenagent:plugin_daten', 'command:datencmd:plugin_daten']) assert.ok(n.includes(e), e)
+    // Die übrigen Teile und der Hash bleiben wie ohne die neuen Dateien (nicht übernommene Teile zählen nicht).
+    assert.deepEqual(uebernommen(p), [...KRAFT_UEBERNOMMEN])
+    assert.equal(p.ok && ohne.ok ? p.kopie_hash : 'x', ohne.ok ? ohne.kopie_hash : 'y')
+  } finally {
+    raeumeVerzeichnis(wurzel)
+  }
+})

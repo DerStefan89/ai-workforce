@@ -1,0 +1,26 @@
+[
+  {
+    "label": "Freigabe-Seite",
+    "Plugin-Block": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Option „Freigeben“",
+    "Plugin-Block": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Begründung",
+    "Plugin-Block": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Bestätigen → Freigabedialog",
+    "Plugin-Block": "axe-mcp axe Accessibility — freigabe OFFEN Approve & install",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

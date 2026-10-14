@@ -97,7 +97,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["eintraege", "fremde_aufrufe"],
-      "description": "F45 F-1 (F-815/F-816, Beleg 13). Optional (append-only): nur Läufe mit Katalog-Kontext. eintraege = beim Start eingefrorene Fähigkeiten (katalog: MCP/Ort-B-Skill; projekt: Agent/Skill im Arbeitsordner, hash nach Inhalt), am Ende mit den Aufrufen des Rohstroms verbunden (aufrufe/fehlgeschlagen; ohne init-Zeile null). fremde_aufrufe = Agent-/Skill-Aufrufe ohne passenden Eintrag (z. B. gesperrter eingebauter Agent). Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts).",
+      "description": "F45 F-1 (F-815/F-816, Beleg 13). Optional (append-only): nur Läufe mit Katalog-Kontext. eintraege = beim Start eingefrorene Fähigkeiten (katalog: MCP/Ort-B-Skill; projekt: Agent/Skill im Arbeitsordner, hash nach Inhalt), am Ende mit den Aufrufen des Rohstroms verbunden (aufrufe/fehlgeschlagen; ohne init-Zeile null). fremde_aufrufe = Agent-/Skill-Aufrufe ohne passenden Eintrag (z. B. gesperrter eingebauter Agent). F45 F-3b-2: quelle plugin = Skill/Agent einer Plugin-Lauf-Kopie (id = Zuordnungseintrag, name = <name>:<teil>, hash = kopie_hash). Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts).",
       "properties": {
         "eintraege": {
           "type": "array",
@@ -109,7 +109,7 @@
               "id": { "type": "string", "minLength": 1 },
               "name": { "type": "string", "minLength": 1 },
               "typ": { "enum": ["mcp", "skill", "agent"] },
-              "quelle": { "enum": ["katalog", "projekt"] },
+              "quelle": { "enum": ["katalog", "projekt", "plugin"] },
               "hash": { "type": "string" },
               "pfad": { "type": "string" },
               "aktiv": { "type": "boolean" },
@@ -129,6 +129,36 @@
               "art": { "enum": ["agent", "skill"] },
               "name": { "type": "string" },
               "fehler": { "type": "boolean" }
+            }
+          }
+        },
+        "plugins": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lauf_kopien", "datenordner"],
+          "description": "F45 F-3b-2: nur Läufe mit Plugin-Zuordnung. lauf_kopien = geladene Lauf-Kopien (Hash der gepinnten Kopie und der Lauf-Kopie, Prüfbericht der Freigabe, Vergleich nach dem Lauf; null = unverändert). datenordner = Vergleich von <claude>/plugins/data vor/nach dem Lauf (Variante A): abweichungen relativ, leer = unverändert, oder grund = nicht prüfbar. Befund, kein Abbruch.",
+          "properties": {
+            "lauf_kopien": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["plugin_id", "name", "kopie_hash", "lauf_kopie_hash", "pruefbericht", "abweichung_nachher"],
+                "properties": {
+                  "plugin_id": { "type": "string", "minLength": 1 },
+                  "name": { "type": "string", "minLength": 1 },
+                  "kopie_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                  "lauf_kopie_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                  "pruefbericht": { "type": "string", "minLength": 1 },
+                  "abweichung_nachher": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+                }
+              }
+            },
+            "datenordner": {
+              "oneOf": [
+                { "type": "object", "additionalProperties": false, "required": ["abweichungen"], "properties": { "abweichungen": { "type": "array", "items": { "type": "string" } } } },
+                { "type": "object", "additionalProperties": false, "required": ["grund"], "properties": { "grund": { "type": "string" } } }
+              ]
             }
           }
         }

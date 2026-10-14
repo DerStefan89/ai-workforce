@@ -106,7 +106,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -1612,5 +1612,53 @@ test('F-832 erfasseClaudeOrdner/vergleicheClaudeOrdner: gitignorierte neue Datei
     assert.deepEqual(vergleicheClaudeOrdner(null, repo), [], 'Grenze: ohne Momentaufnahme nur der git-Weg')
   } finally {
     raeumeVerzeichnis(repo)
+  }
+})
+
+// ─── F45 F-3b-2: Plugins im Lauf (Init-Gate-Soll durchgereicht, Datenordner und Lauf-Kopie nach dem Lauf) ─────────────
+
+test('F45 F-3b-2: ortBLauf.plugins erreicht das Init-Gate (kraft@inline läuft durch), Datenordner-Abweichung und veränderte Lauf-Kopie werden Befund in der Laufakte, kein Abbruch', async () => {
+  const laufId = neueLaufId('f3b2-plugins')
+  const wurzel = mkdtempSync(join(tmpdir(), 'aiw-f3b2-controller-'))
+  const projekt = neuesExternesRepo()
+  try {
+    const datenordner = join(wurzel, 'claude', 'plugins', 'data')
+    mkdirSync(datenordner, { recursive: true })
+    const laufKopie = join(wurzel, '_lauf', 'b'.repeat(64))
+    mkdirSync(laufKopie, { recursive: true })
+    writeFileSync(join(laufKopie, 'x.md'), 'x')
+    const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['kraft:debuggen'], agents: ['claude'], slash_commands: ['kraft:debuggen', 'clear'], mcp_servers: [], plugins: [{ name: 'kraft', path: laufKopie, source: 'kraft@inline' }] }
+    const starter: Starter = async (_startziel, _tokens, optionen) => {
+      optionen?.beiStreamZeile?.(init)
+      if (optionen?.abbruchSignal?.aborted === true) return { stdout: `${JSON.stringify(init)}\n`, stderr: '', exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' }
+      // Im Lauf: die CLI legt den Datenordner an, und etwas verändert die Lauf-Kopie.
+      mkdirSync(join(datenordner, 'kraft-inline'))
+      writeFileSync(join(laufKopie, 'neu.md'), 'y')
+      const ende = { type: 'result', subtype: 'success', is_error: false, permission_denials: [], result: 'OK' }
+      return { stdout: `${JSON.stringify(init)}\n${JSON.stringify(ende)}\n`, stderr: '', exitCode: 0, startfehler: null, beendigungsart: null }
+    }
+    const eingaben: AusfuehrungsEingaben = {
+      ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE),
+      ortBLauf: { skillNamen: ['kraft:debuggen'], gesperrteNamen: [], mcpServer: [], projektWurzel: projekt, pflichtSkills: ['kraft:debuggen'], plugins: ['kraft@inline'] },
+      faehigkeitenImLauf: [{ id: 'skill:kraft@markt:debuggen', name: 'kraft:debuggen', typ: 'skill', quelle: 'plugin', hash: 'a'.repeat(64), aktiv: true }],
+      pluginsImLauf: {
+        lauf_kopien: [{ plugin_id: 'kraft@markt', name: 'kraft', kopie_hash: 'a'.repeat(64), lauf_kopie_hash: 'b'.repeat(64), pruefbericht: 'pruefbericht-p-kraft-markt-00000000@1', ordner: laufKopie, dateien: [{ pfad: 'x.md', sha256: sha256Hex('x') }] }],
+        datenordner,
+      },
+    }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {} })
+    assert.ok(ergebnis.ok, JSON.stringify(ergebnis).slice(0, 300))
+    const laufakte = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })?.daten as Record<string, unknown> | undefined
+    const roh = JSON.parse(readFileSync((laufakte?.rohstrom_referenz as { pfad: string }).pfad, 'utf8'))
+    assert.equal(roh.init_gate_verstoss, undefined, 'Soll durchgereicht — sonst bräche der Lauf am Standard [] ab')
+    const plugins = (laufakte?.faehigkeiten_im_lauf as { plugins?: { lauf_kopien: { abweichung_nachher: string | null }[]; datenordner: { abweichungen?: string[] } } }).plugins
+    assert.deepEqual(plugins?.datenordner, { abweichungen: ['+ kraft-inline'] })
+    assert.match(plugins?.lauf_kopien[0].abweichung_nachher ?? '', /neu\.md/)
+    const eintrag = (laufakte?.faehigkeiten_im_lauf as { eintraege: { quelle: string; aufrufe: number | null }[] }).eintraege[0]
+    assert.equal(eintrag.quelle, 'plugin')
+  } finally {
+    raeumeKette(laufId)
+    raeumeVerzeichnis(wurzel)
+    raeumeVerzeichnis(projekt)
   }
 })

@@ -1539,3 +1539,33 @@ test('F45 F-1 starteGateway: vorStartPruefung mit Grund → kein Spawn, Verweige
     for (const id of ids) raeumeKette(id)
   }
 })
+
+// ─── F45 F-3b-2: Plugins als Lauf-Kopie (--plugin-dir, Init-Gate-Soll) ───────────────────────
+
+test('F45 F-3b-2 baueAufruf: ohne pluginDirs bitgleich; mit pluginDirs je Ordner --plugin-dir nach --settings, unmittelbar vor -p', () => {
+  const basis = gueltigeEingaben()
+  const ohne = baueAufruf(basis)
+  assert.deepEqual(baueAufruf({ ...basis, pluginDirs: undefined }), ohne)
+  assert.deepEqual(baueAufruf({ ...basis, pluginDirs: [] }), ohne, 'leere Liste = kein Flag')
+  const mit = baueAufruf({ ...basis, ortB: { addDirs: [], settings: '{"x":1}' }, pluginDirs: ['C:/lauf/aaa', 'C:/lauf/bbb'] })
+  const p = mit.indexOf('-p')
+  assert.deepEqual(mit.slice(p - 6, p), ['--settings', '{"x":1}', '--plugin-dir', 'C:/lauf/aaa', '--plugin-dir', 'C:/lauf/bbb'])
+  assert.equal(mit.at(-1), basis.prompt)
+})
+
+test('F45 F-3b-2 pruefeInitZeile: init.plugins = Soll (mehr/fehlend = Verstoß); Plugin-Skills in skills und slash_commands erlaubt; fremder Präfix = Verstoß', () => {
+  const quelle = (s: string): Record<string, string> => ({ name: s.split('@')[0], path: 'x', source: s })
+  const erwartet = { skills: ['superpowers:systematic-debugging'], pflichtSkills: ['superpowers:systematic-debugging'], mcpServer: [], plugins: ['superpowers@inline'] }
+  const init = { type: 'system', subtype: 'init', tools: ['Bash', 'Read', 'Skill'], skills: ['superpowers:systematic-debugging'], agents: ['claude', 'Explore'], slash_commands: ['superpowers:systematic-debugging', 'clear'], mcp_servers: [], plugins: [quelle('superpowers@inline')] }
+  assert.equal(pruefeInitZeile(init, erwartet), null)
+  assert.match(pruefeInitZeile({ ...init, plugins: [quelle('superpowers@inline'), quelle('fremd@inline')] }, erwartet) ?? '', /init\.plugins.*fremd@inline/)
+  assert.match(pruefeInitZeile({ ...init, plugins: [] }, erwartet) ?? '', /init\.plugins.*superpowers@inline/)
+  assert.match(pruefeInitZeile({ ...init, skills: [...init.skills, 'superpowers:brainstorming'] }, erwartet) ?? '', /superpowers:brainstorming/)
+  assert.match(pruefeInitZeile({ ...init, slash_commands: [...init.slash_commands, 'superpowers:brainstorming'] }, erwartet) ?? '', /superpowers:brainstorming/)
+  assert.match(pruefeInitZeile({ ...init, agents: [...init.agents, 'superpowers:code-reviewer'] }, erwartet) ?? '', /superpowers:code-reviewer/, 'Präfix-Agent auch ohne agents-Erwartung')
+  // Plugin-Agent im Soll: Agent/Task zulässig über agents.erlaubt.
+  const mitAgent = { ...erwartet, agents: { erlaubt: ['superpowers:pruefer'], gesperrt: ['claude', 'Explore'] } }
+  assert.equal(pruefeInitZeile({ ...init, tools: [...init.tools, 'Task'], agents: ['claude', 'Explore', 'superpowers:pruefer'] }, mitAgent), null)
+  // Ohne Soll wie bisher: jedes Plugin ist ein Verstoß.
+  assert.match(pruefeInitZeile(init, { skills: ['superpowers:systematic-debugging'], mcpServer: [] }) ?? '', /init\.plugins nicht leer: superpowers@inline/)
+})

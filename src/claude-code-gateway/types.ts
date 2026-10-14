@@ -51,6 +51,12 @@ export interface AufrufEingaben {
    * ab (Muster settingSources/mcpConfig). Fehlt es, bleibt das Argv bitgenau wie vor WS-5b.
    */
   ortB?: { addDirs: string[]; settings: string }
+  /**
+   * F45 F-3b-2: Ordner der Plugin-Lauf-Kopien (src/plugin-lauf) — je Eintrag `--plugin-dir`, nach `--settings`, unmittelbar vor
+   * `-p` (Spike f3b2 S4). Nur serverseitig von loeseAusfuehrungsEingabenAuf gesetzt (pruefeStartauftrag lehnt aufrufEingaben-Felder
+   * dieser Art im Body ab). Fehlt es oder ist es leer, bleibt das Argv bitgleich.
+   */
+  pluginDirs?: string[]
 }
 
 /** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. beendigungsart unterscheidet additiv (F14 WS-1, AK3) einen durch zeitgrenzeMs oder abbruchSignal beendeten Prozess von einem regulären Ende oder einem Startfehler — null in beiden letzteren Fällen, bestehende Felder ändern ihre Bedeutung nicht. */
@@ -168,7 +174,8 @@ export interface FaehigkeitImLauf {
   id: string
   name: string
   typ: FaehigkeitTyp
-  quelle: 'katalog' | 'projekt'
+  /** F45 F-3b-2: plugin = Skill/Agent aus einer Plugin-Lauf-Kopie (id = Zuordnungseintrag, name = '<name>:<teil>', hash = kopie_hash) */
+  quelle: 'katalog' | 'projekt' | 'plugin'
   hash?: string
   pfad?: string
   aktiv: boolean
@@ -185,6 +192,28 @@ export interface FaehigkeitImLaufMitNutzung extends FaehigkeitImLauf {
 export interface FaehigkeitenImLaufV0 {
   eintraege: FaehigkeitImLaufMitNutzung[]
   fremde_aufrufe: { art: 'agent' | 'skill'; name: string; fehler: boolean }[]
+  /** F45 F-3b-2: Plugin-Lauf-Kopien und Datenordner — nur in Läufen mit Plugin-Zuordnung */
+  plugins?: PluginsImLaufV0
+}
+
+/** F45 F-3b-2: eine Lauf-Kopie in der Laufakte. abweichung_nachher = Vergleich nach dem Lauf (null = unverändert). */
+export interface LaufKopieV0 {
+  plugin_id: string
+  /** Manifest-name = Präfix im Lauf */
+  name: string
+  kopie_hash: string
+  lauf_kopie_hash: string
+  pruefbericht: string
+  abweichung_nachher: string | null
+}
+
+/**
+ * F45 F-3b-2 (Variante A): Plugins eines Laufs. datenordner = Vergleich von <claude>/plugins/data vor/nach dem Lauf (nur lesend):
+ * abweichungen relativ ('+ x-inline'), leer = unverändert; grund = nicht prüfbar. Befund, kein Abbruch.
+ */
+export interface PluginsImLaufV0 {
+  lauf_kopien: LaufKopieV0[]
+  datenordner: { abweichungen: string[] } | { grund: string }
 }
 
 /** F36 WS-4: was ein Lauf geladen (init-Zeile) und tatsächlich aufgerufen hat. Aufruflisten in Reihenfolge des Auftretens, Duplikate bleiben erhalten, Zeilen aus Subagenten (parent_tool_use_id gesetzt) zählen mit. init_mcp_server trägt nur die Servernamen, mcp_aufrufe den vollen Werkzeugnamen (mcp__<server>__<werkzeug>). */

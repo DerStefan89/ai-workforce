@@ -133,3 +133,23 @@ test('F45 F-2a (F-1054 (1)/(2), F-1055 (1)): Freigabeblock zeigt Projekt-Fähigk
   const ohne = renderEmpfehlung(EMPFEHLUNG)
   assert.doesNotMatch(ohne, /Projekt-Fähigkeiten im Lauf|Im Projekt ausgeschaltet|empfehlung-fremd/)
 })
+
+test('F45 F-3b-2: Plugin-Kennungen gehen nur mit Freigabe mit; Block „Plugin-Fähigkeiten im Lauf“ angekreuzt bzw. „wirkt nicht“, escaped', () => {
+  const kennung = `plugin:skill:superpowers@claude-plugins-official:systematic-debugging@${'a'.repeat(64)}`
+  const mit = {
+    ...EMPFEHLUNG,
+    wirdGenutzt: [],
+    projektFaehigkeiten: [],
+    pluginFaehigkeiten: [
+      { id: 'skill:superpowers@claude-plugins-official:systematic-debugging', typ: 'skill', plugin_id: 'superpowers@claude-plugins-official', name: 'systematic-debugging', kennung },
+      { id: 'agent:x@y:<b>z</b>', typ: 'agent', plugin_id: 'x@y', name: '<b>z</b>', grund: 'keine_freigabe' },
+    ],
+  }
+  assert.deepEqual(empfehlungIdsFuerFreigabe(mit), [kennung])
+  assert.deepEqual(empfehlungIdsFuerFreigabe({ ...mit, pluginFaehigkeiten: undefined }), [], 'älterer Server ohne Feld: keine Plugin-Kennung')
+  const html = renderEmpfehlung(mit)
+  assert.match(html, /<input type="checkbox" disabled checked \/><span><code>systematic-debugging<\/code>/)
+  assert.match(html, /<input type="checkbox" disabled \/><span><code>&lt;b&gt;z&lt;\/b&gt;<\/code>/)
+  assert.ok(!html.includes('<b>z</b>'))
+  assert.ok(!renderEmpfehlung({ ...mit, pluginFaehigkeiten: [] }).includes('Plugin-Fähigkeiten im Lauf'), 'leer → kein Block')
+})

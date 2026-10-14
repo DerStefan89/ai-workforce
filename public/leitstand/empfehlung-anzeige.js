@@ -14,6 +14,7 @@
  * Seit F45 F-2a (F-1054, F-1055 (1)): Liste „Projekt-Fähigkeiten im Lauf“ (empfehlung.projektFaehigkeiten, deren
  * Kennungen mit der Freigabe zurückgehen), Liste „Im Projekt ausgeschaltet“ (Feld deaktiviert) und ein Hinweis, wenn
  * faehigkeiten.lokal.json außerhalb des Leitstands geändert wurde (empfehlung.lokaleDateiFremd).
+ * Seit F45 F-3b-2: Liste „Plugin-Fähigkeiten im Lauf“ (empfehlung.pluginFaehigkeiten, Kennungen gehen mit der Freigabe zurück).
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/workflows.js (Freigabedialog im haltFreigabe, F44 WS-4a)
@@ -146,6 +147,26 @@ function renderProjektFaehigkeiten(empfehlung) {
 }
 
 /**
+ * F45 F-3b-2: der Ausführung zugeordnete Plugin-Skills/-Agents aus Stefans Claude Code (empfehlung.pluginFaehigkeiten, aus der
+ * lokalen Datei) — mit Freigabe gehen sie mit ihrer Kennung in den Lauf (angekreuzt; geprüft wird beim Start gegen Bestand und
+ * Prüfbericht), ohne Freigabe „wirkt nicht“. Nur, wenn der Server das Feld liefert und mindestens ein Eintrag zugeordnet ist.
+ * @param empfehlung - detail.empfehlung
+ * @returns HTML oder ''
+ */
+function renderPluginFaehigkeiten(empfehlung) {
+  const liste = Array.isArray(empfehlung.pluginFaehigkeiten) ? empfehlung.pluginFaehigkeiten.filter((e) => e !== null && typeof e === 'object') : []
+  if (liste.length === 0) return ''
+  const zeilen = liste.map((e) => {
+    const art = t(e.typ === 'agent' ? 'empfehlung.projekt.agent' : 'empfehlung.projekt.skill')
+    const mit = typeof e.kennung === 'string'
+    // design-guardian 7: „wirkt nicht“ ist genau das, was Stefan wissen muss — Warn-Chip statt gedämpftem Hinweis.
+    const zusatz = mit ? escapeHtml(t('empfehlung.plugin.laeuftMit')) : `<span class="ablauf-status warten">${escapeHtml(t('empfehlung.plugin.wirktNicht'))}</span>`
+    return `<li><label class="check"><input type="checkbox" disabled${mit ? ' checked' : ''} /><span><code>${escapeHtml(String(e.name ?? ''))}</code> ${escapeHtml(t('empfehlung.plugin.aus', { art, plugin: String(e.plugin_id ?? '') }))} — ${zusatz}</span></label></li>`
+  })
+  return `<p><strong>${escapeHtml(t('empfehlung.plugin.titel'))}</strong></p><ul class="empfehlung-liste">${zeilen.join('')}</ul><p class="hinweis">${escapeHtml(t('empfehlung.plugin.hinweis'))}</p>`
+}
+
+/**
  * F45 F-2a (F-1054 (2)): im Projekt ausgeschaltete Katalog-Einträge (Feld deaktiviert, ohne Obergrenze) — nur, wenn
  * der Server welche liefert.
  * @param empfehlung - detail.empfehlung
@@ -193,6 +214,7 @@ export function renderEmpfehlung(empfehlung) {
     ${hinweise}
     ${renderListe(t('empfehlung.wirdGenutzt'), empfehlung.wirdGenutzt, genutztWeitere > 0 ? t('empfehlung.weitereGenutzt', { anzahl: String(genutztWeitere) }) : null, true)}
     ${renderProjektFaehigkeiten(empfehlung)}
+    ${renderPluginFaehigkeiten(empfehlung)}
     ${renderListe(t('empfehlung.passtNicht'), empfehlung.passtNichtImLauf, passtWeitere > 0 ? t('empfehlung.weitere', { anzahl: String(passtWeitere) }) : null)}
     ${renderDeaktiviert(empfehlung)}
     ${nichtFreigebbar}
@@ -236,5 +258,7 @@ export function empfehlungIdsFuerFreigabe(empfehlung) {
   // Ohne empfehlungId (älterer Server) geht die nackte id mit — der Start lehnt sie dann ab (fail-closed).
   const katalog = empfehlung.wirdGenutzt.map((e) => e.empfehlungId ?? e.id)
   const projekt = Array.isArray(empfehlung.projektFaehigkeiten) ? empfehlung.projektFaehigkeiten.filter((e) => e?.aktiv === true && typeof e.kennung === 'string').map((e) => e.kennung) : []
-  return [...katalog, ...projekt]
+  // F45 F-3b-2: Plugin-Kennungen ('plugin:<typ>:<plugin-id>:<name>@<kopie_hash>') der angezeigten Zuordnung mit Freigabe.
+  const plugin = Array.isArray(empfehlung.pluginFaehigkeiten) ? empfehlung.pluginFaehigkeiten.filter((e) => typeof e?.kennung === 'string').map((e) => e.kennung) : []
+  return [...katalog, ...projekt, ...plugin]
 }

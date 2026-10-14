@@ -123,10 +123,14 @@ import { kanonischesJson, sha256Hex, stelleLaufstatusFest } from '../checkpoint-
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { fuehreGitSync } from '../git-starter/index.ts'
 import { hashLokaleDatei, pruefeGegenMomentaufnahme } from '../faehigkeiten/index.ts'
+import { erfassePluginDatenordner, vergleicheLaufKopie, vergleichePluginDatenordner } from '../plugin-lauf/index.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import type { AusfuehrungsEingaben, AusfuehrungsErgebnis, AusfuehrungsOptionen } from './types.ts'
+
+/** F45 F-3b-2: höchstens so viele Abweichungen des Plugin-Datenordners in der Laufakte (Rest als „… und n weitere“). */
+const DATENORDNER_ANZEIGE = 50
 
 /** Eigene, vom auslösenden Lauf syntaktisch verschiedene laufId für eine E-186-Eskalation (plan-v1 Abschnitt 2.2, D3). Der randomUUID-Suffix verhindert eine ID-Kollision bei einer etwaigen zweiten Eskalation desselben Laufs. */
 function eskalationsLaufId(ausloesenderLaufId: string): string {
@@ -400,6 +404,9 @@ export async function fuehreAufgabeDurch(
   // F45 F-1 (Delta B1): Stand der lokalen Fähigkeiten-Datei vor dem Lauf — ein Lauf darf sich nichts selbst freigeben.
   // Code-Review 2: für jeden Lauf, dem der Server den Pfad mitgibt (jeder schreibende Lauf), nicht nur mit Katalog-Kontext.
   const lokaleDateiVorher = typeof eingaben.faehigkeitenLokalPfad === 'string' ? hashLokaleDatei(eingaben.faehigkeitenLokalPfad) : undefined
+  // F45 F-3b-2 (Variante A): Plugin-Datenordner vor dem Lauf, nur lesend; nach dem Lauf Vergleich als Befund (kein Abbruch).
+  const pluginsImLauf = eingaben.pluginsImLauf
+  const datenordnerVorher = pluginsImLauf !== undefined ? erfassePluginDatenordner(pluginsImLauf.datenordner, process.env) : undefined
   const gatewayErgebnis =
     workerGewaehlt === 'codex'
       ? await starteCodexGateway(
@@ -474,11 +481,40 @@ export async function fuehreAufgabeDurch(
             // F36 WS-5b: Init-Gate nur für Läufe mit Ort-B-Skills (eingaben.ortBLauf).
             // F45 F-1: dasselbe Gate auch für Läufe mit aktiven Projekt-Agents/-Skills; agents nur mit aktivem Agent.
             ...(eingaben.ortBLauf !== undefined
-              ? { initGate: { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer, gesperrt: eingaben.ortBLauf.gesperrteNamen, ...(eingaben.ortBLauf.agents !== undefined ? { agents: eingaben.ortBLauf.agents } : {}), ...(eingaben.ortBLauf.pflichtSkills !== undefined ? { pflichtSkills: eingaben.ortBLauf.pflichtSkills } : {}) } }
+              ? {
+                  initGate: {
+                    skills: eingaben.ortBLauf.skillNamen,
+                    mcpServer: eingaben.ortBLauf.mcpServer,
+                    gesperrt: eingaben.ortBLauf.gesperrteNamen,
+                    ...(eingaben.ortBLauf.agents !== undefined ? { agents: eingaben.ortBLauf.agents } : {}),
+                    ...(eingaben.ortBLauf.pflichtSkills !== undefined ? { pflichtSkills: eingaben.ortBLauf.pflichtSkills } : {}),
+                    // F45 F-3b-2 (Advisor A12): Soll der Lauf-Kopien — fehlte es, bräche jeder Plugin-Lauf am Standard [] ab.
+                    ...(eingaben.ortBLauf.plugins !== undefined ? { plugins: eingaben.ortBLauf.plugins } : {}),
+                  },
+                }
               : {}),
             // F45 F-1: eingefrorene Fähigkeiten (Laufakte) und Abgleich ihrer Hashes mit der Momentaufnahme vor dem Spawn (Advisor A6).
             ...(eingaben.faehigkeitenImLauf !== undefined
               ? { faehigkeitenImLauf: eingaben.faehigkeitenImLauf, vorStartPruefung: () => pruefeGegenMomentaufnahme(eingaben.faehigkeitenImLauf ?? [], claudeOrdnerVorher ?? null) }
+              : {}),
+            ...(pluginsImLauf !== undefined && datenordnerVorher !== undefined
+              ? {
+                  pluginsImLauf: {
+                    // Beide Bausteine werfen nie (src/plugin-lauf) — jede Lauf-Kopie behält ihren Hash in der Laufakte (Code-Review 5).
+                    nachLauf: () => {
+                      const nachher = erfassePluginDatenordner(pluginsImLauf.datenordner, process.env)
+                      const alle = datenordnerVorher.ok && nachher.ok ? vergleichePluginDatenordner(datenordnerVorher.stand, nachher.stand) : null
+                      // Code-Review 6 / QA N3: höchstens DATENORDNER_ANZEIGE Einträge in Laufakte, Log und Anzeige, Rest als Zähler.
+                      const abweichungen = alle === null ? null : alle.length > DATENORDNER_ANZEIGE ? [...alle.slice(0, DATENORDNER_ANZEIGE), `… und ${alle.length - DATENORDNER_ANZEIGE} weitere`] : alle
+                      const datenordner = !datenordnerVorher.ok ? { grund: datenordnerVorher.grund } : !nachher.ok ? { grund: nachher.grund } : { abweichungen: abweichungen ?? [] }
+                      if (abweichungen !== null && abweichungen.length > 0) console.error(`[execution-controller] Lauf '${laufId}': Plugin-Datenordner im Lauf verändert: ${abweichungen.join('; ')}`)
+                      return {
+                        lauf_kopien: pluginsImLauf.lauf_kopien.map(({ ordner, dateien, ...k }) => ({ ...k, abweichung_nachher: vergleicheLaufKopie({ ordner, dateien }) })),
+                        datenordner,
+                      }
+                    },
+                  },
+                }
               : {}),
             ...(eingaben.projektkarte !== undefined ? { projektkarte: eingaben.projektkarte } : {}),
             ...(eingaben.review !== undefined ? { review: eingaben.review } : {}),

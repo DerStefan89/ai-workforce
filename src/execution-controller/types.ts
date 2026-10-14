@@ -82,6 +82,17 @@ export interface AusfuehrungsOptionen {
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */
+/** F45 F-3b-2: eine Lauf-Kopie aus dem Start (Ordner und Dateiliste für den Vergleich nach dem Lauf). */
+export interface PluginLaufKopieEingabe {
+  plugin_id: string
+  name: string
+  kopie_hash: string
+  lauf_kopie_hash: string
+  pruefbericht: string
+  ordner: string
+  dateien: Array<{ pfad: string; sha256: string }>
+}
+
 export interface AusfuehrungsEingaben {
   rolle: string
   anfragen: Anfrage[]
@@ -124,7 +135,7 @@ export interface AusfuehrungsEingaben {
    * projektWurzel ist das Repo, dessen Laufdiff nach dem Lauf auf Änderungen unter .claude/ geprüft wird
    * (→ klassifiziereLauf, 'claude_ordner_veraendert'). Fehlt das Feld, läuft alles wie vor WS-5b.
    */
-  ortBLauf?: { skillNamen: string[]; gesperrteNamen: string[]; mcpServer: string[]; projektWurzel: string; agents?: { erlaubt: string[]; gesperrt: string[] }; pflichtSkills?: string[] }
+  ortBLauf?: { skillNamen: string[]; gesperrteNamen: string[]; mcpServer: string[]; projektWurzel: string; agents?: { erlaubt: string[]; gesperrt: string[] }; pflichtSkills?: string[]; plugins?: string[] }
   /**
    * F45 F-1: nur mit Katalog-Kontext gesetzt (loeseAusfuehrungsEingabenAuf) — beim Start eingefrorene Fähigkeiten. Der
    * Controller vergleicht die Hashes der aktiven Projekt-Einträge vor dem Spawn mit der Momentaufnahme von .claude/
@@ -132,6 +143,12 @@ export interface AusfuehrungsEingaben {
    * (nur mit aktivem Projekt-Agent) geht ins Init-Gate.
    */
   faehigkeitenImLauf?: FaehigkeitImLauf[]
+  /**
+   * F45 F-3b-2: Plugin-Lauf-Kopien des Laufs (src/plugin-lauf, nur mit Zuordnung). Der Controller erfasst datenordner
+   * (<claude>/plugins/data) vor dem Spawn, vergleicht ihn und jede Lauf-Kopie danach und reicht beides als
+   * faehigkeiten_im_lauf.plugins an starteGateway (Befund, kein Abbruch). ortBLauf.plugins ist das Init-Gate-Soll.
+   */
+  pluginsImLauf?: { lauf_kopien: PluginLaufKopieEingabe[]; datenordner: string }
   /** F45 F-1 (Delta B1): Pfad von faehigkeiten.lokal.json — vorher/nachher gehasht; eine Änderung im Lauf färbt ihn rot. */
   faehigkeitenLokalPfad?: string | null
   /** F45 B2a-1: Metadaten der Projektkarte im Auftragstext (nur architekt, architecture-advisor, code-reviewer im Workflow) — der Controller reicht sie an beide Gateways (Laufakte projektkarte). */

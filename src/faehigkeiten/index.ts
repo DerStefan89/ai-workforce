@@ -376,13 +376,15 @@ const PROJEKT_KENNUNG_MUSTER = /^(agent|skill):[A-Za-z0-9][A-Za-z0-9._-]*@[0-9a-
 /**
  * F45 F-2a (Advisor A6): trennt die angezeigten ids des Start-Bodys in Katalog-Kennungen ('<id>@<sha>', ohne ':') und
  * Projekt-Kennungen ('agent:'/'skill:' am Anfang). Eine id mit Präfix, aber falscher Form bleibt bei projekt und fällt
- * im Vergleich als Abweichung auf (fail-closed).
+ * im Vergleich als Abweichung auf (fail-closed). Seit F45 F-3b-2 zusätzlich Plugin-Kennungen ('plugin:' am Anfang).
  * @param ids - angezeigte ids (Form bereits geprüft: nicht-leere Strings)
- * @returns { katalog, projekt }
+ * @returns { katalog, projekt, plugin }
  */
-export function trenneAngezeigteIds(ids: readonly string[]): { katalog: string[]; projekt: string[] } {
+export function trenneAngezeigteIds(ids: readonly string[]): { katalog: string[]; projekt: string[]; plugin: string[] } {
   const istProjekt = (id: string): boolean => id.startsWith('agent:') || id.startsWith('skill:')
-  return { katalog: ids.filter((id) => !istProjekt(id)), projekt: ids.filter(istProjekt) }
+  // F45 F-3b-2: Plugin-Kennungen 'plugin:<typ>:<plugin-id>:<name>@<kopie_hash>' (src/plugin-lauf, pluginKennungen).
+  const istPlugin = (id: string): boolean => id.startsWith('plugin:')
+  return { katalog: ids.filter((id) => !istProjekt(id) && !istPlugin(id)), projekt: ids.filter(istProjekt), plugin: ids.filter(istPlugin) }
 }
 
 /**

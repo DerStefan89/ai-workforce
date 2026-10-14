@@ -127,6 +127,7 @@ import type {
   GatewayEingaben,
   GatewayErgebnis,
   LaufakteV0Daten,
+  PluginsImLaufV0,
   ProjektkarteV0,
   ReviewV0,
   Starter,
@@ -282,6 +283,12 @@ interface GatewayOptionen {
    * startet kein Prozess (verweigereStart, wie jede andere Ablehnung vor dem Start). Fehlt sie, unverändert.
    */
   vorStartPruefung?: () => string | null
+  /**
+   * F45 F-3b-2: Plugins des Laufs — nachLauf() ruft starteGateway nach dem Prozessende (vor der Laufakte); der Controller liefert
+   * darin die Lauf-Kopien (mit Vergleich nach dem Lauf) und den Vergleich des Plugin-Datenordners. Ergebnis als
+   * faehigkeiten_im_lauf.plugins (nur mit faehigkeitenImLauf). Befund, kein Abbruch. Fehlt die Option, fehlt das Feld.
+   */
+  pluginsImLauf?: { nachLauf: () => PluginsImLaufV0 }
   /** F45 B2a-1: Metadaten der Projektkarte im Auftrag — geht unverändert als projektkarte in die Laufakte. Fehlt sie, fehlt das Feld. */
   projektkarte?: ProjektkarteV0
   /** F45 B2a-3a: Review-Metadaten (Policy-Version) — gehen unverändert als review in die Laufakte. Fehlen sie, fehlt das Feld. */
@@ -822,6 +829,8 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     // F36 WS-5b (V4a): nur mit Ort-B-Skills — je Skill ein --add-dir, dann --settings; beides wie im
     // Spike S7 gemessen unmittelbar vor -p. Ohne eingaben.ortB bleibt das Argv bitgenau gleich.
     ...(eingaben.ortB !== undefined ? [...eingaben.ortB.addDirs.flatMap((dir) => ['--add-dir', dir]), '--settings', eingaben.ortB.settings] : []),
+    // F45 F-3b-2: je Plugin-Lauf-Kopie ein --plugin-dir, unmittelbar vor -p (Spike f3b2); ohne Feld bitgleich.
+    ...(eingaben.pluginDirs ?? []).flatMap((dir) => ['--plugin-dir', dir]),
     '-p',
     eingaben.prompt,
   ]
@@ -847,6 +856,12 @@ export interface InitGateErwartung {
   agents?: { erlaubt: readonly string[]; gesperrt: readonly string[] }
   /** F45 F-1 (QA 4): aktive Projekt-Skills — müssen in init.skills stehen, sonst lief der Lauf ohne den eingeschalteten Skill. */
   pflichtSkills?: readonly string[]
+  /**
+   * F45 F-3b-2: Soll der Plugin-Lauf-Kopien ('<name>@inline'). Gesetzt: Menge init.plugins[].source = Soll (mehr oder fehlend =
+   * Verstoß), und jeder Name mit ':' in init.skills/agents/slash_commands außerhalb Soll ∪ gesperrt ∪ Referenzmenge ist ein Verstoß
+   * (Advisor A1: nur mit Soll — Projekt-Commands in Unterordnern heißen 'sub:tief'). Fehlt es, muss init.plugins leer sein.
+   */
+  plugins?: readonly string[]
   /** Quelle der Referenzmenge; Standard SLASH_COMMANDS_REFERENZ_URL (anderer Wert nur für Tests). */
   slashCommandsReferenz?: URL | string
 }
@@ -925,9 +940,27 @@ export function pruefeInitZeile(init: Record<string, unknown>, erwartet: InitGat
   const fehlendeSkills = (erwartet.pflichtSkills ?? []).filter((name) => !stringListe(init.skills).includes(name))
   if (fehlendeSkills.length > 0) verstoesse.push(`init.skills ohne eingeschaltete Skills: ${fehlendeSkills.join(', ')}`)
   if (!Array.isArray(init.plugins)) verstoesse.push('init.plugins fehlt')
-  else if (init.plugins.length > 0) {
+  else {
     const namen = init.plugins.map((p) => (typeof p === 'object' && p !== null && typeof (p as Record<string, unknown>).source === 'string' ? ((p as Record<string, unknown>).source as string) : typeof p === 'string' ? p : '(ohne Namen)'))
-    verstoesse.push(`init.plugins nicht leer: ${namen.join(', ')} (Referenzliste der eingebauten Plugins nachmessen)`)
+    if (erwartet.plugins === undefined) {
+      if (namen.length > 0) verstoesse.push(`init.plugins nicht leer: ${namen.join(', ')} (Referenzliste der eingebauten Plugins nachmessen)`)
+    } else {
+      // F45 F-3b-2: genau die Lauf-Kopien — ein weiteres Plugin (oder ein fehlendes) beendet den Lauf.
+      const soll = erwartet.plugins
+      const fremd = namen.filter((n) => !soll.includes(n))
+      const fehlend = soll.filter((n) => !namen.includes(n))
+      if (fremd.length > 0 || fehlend.length > 0) verstoesse.push(`init.plugins ≠ Lauf-Kopien (fremd: ${fremd.join(', ') || '—'}; fehlend: ${fehlend.join(', ') || '—'})`)
+    }
+  }
+  if (erwartet.plugins !== undefined) {
+    // F45 F-3b-2 (Auftrag: „alles andere mit Präfix = Abbruch“, Advisor A1): Namen mit ':' nur aus dem Soll, den gesperrten Namen
+    // (Projekt-Commands in Unterordnern) oder der Referenzmenge — auch in init.agents ohne agents-Erwartung.
+    const referenz = leseSlashCommandsReferenz(erwartet.slashCommandsReferenz)
+    const erlaubt = new Set([...erwartet.skills, ...(erwartet.gesperrt ?? []), ...(erwartet.agents?.erlaubt ?? []), ...(erwartet.agents?.gesperrt ?? []), ...(referenz.ok ? referenz.namen : [])])
+    for (const feld of ['skills', 'agents', 'slash_commands'] as const) {
+      const fremd = stringListe(init[feld]).filter((name) => name.includes(':') && !erlaubt.has(name))
+      if (fremd.length > 0) verstoesse.push(`init.${feld} enthält nicht zugeordnete Plugin-Namen: ${fremd.join(', ')}`)
+    }
   }
   if (!Array.isArray(init.mcp_servers)) verstoesse.push('init.mcp_servers fehlt')
   else {
@@ -1128,6 +1161,18 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   const modellBeobachtet = leseModellBeobachtet(ergebnisObjekt)
   const verbrauch = leseVerbrauch(ergebnisObjekt)
   const beobachtung = leseBeobachtung(prozessErgebnis.stdout.split('\n'))
+  // F45 F-3b-2: Vergleich nach dem Lauf (Datenordner, Lauf-Kopien) — vor der Laufakte; ein Wurf wird Befund, kein Abbruch.
+  let plugins: PluginsImLaufV0 | undefined
+  if (optionen.pluginsImLauf !== undefined) {
+    try {
+      plugins = optionen.pluginsImLauf.nachLauf()
+    } catch (fehler) {
+      console.error(`[claude-code-gateway] Lauf '${eingaben.laufId}': Plugin-Vergleich nach dem Lauf gescheitert:`, fehler)
+      // Code-Review Nachpass: sichtbar nur der Fehlercode (kein Pfad); heute unerreichbar, nachLauf wirft nicht (src/plugin-lauf).
+      const code = (fehler as NodeJS.ErrnoException)?.code ?? (fehler as Error)?.name ?? 'Fehler'
+      plugins = { lauf_kopien: [], datenordner: { grund: `Vergleich nach dem Lauf gescheitert (${code})` } }
+    }
+  }
 
   const rohBasisVerzeichnis = optionen.rohBasisVerzeichnis ?? STANDARD_ROH_BASISVERZEICHNIS
   const rohVerzeichnis = join(rohBasisVerzeichnis, eingaben.laufId)
@@ -1166,7 +1211,12 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     ...(verbrauch !== null ? { verbrauch } : {}),
     ...(beobachtung !== null ? { beobachtung } : {}),
     ...(optionen.faehigkeitenImLauf !== undefined
-      ? { faehigkeiten_im_lauf: verbindeFaehigkeitenMitAufrufen(optionen.faehigkeitenImLauf, ermittleFaehigkeitsAufrufe(prozessErgebnis.stdout.split('\n')), beobachtung !== null) }
+      ? {
+          faehigkeiten_im_lauf: {
+            ...verbindeFaehigkeitenMitAufrufen(optionen.faehigkeitenImLauf, ermittleFaehigkeitsAufrufe(prozessErgebnis.stdout.split('\n')), beobachtung !== null),
+            ...(plugins !== undefined ? { plugins } : {}),
+          },
+        }
       : {}),
     ...(optionen.projektkarte !== undefined ? { projektkarte: optionen.projektkarte } : {}),
     ...(optionen.review !== undefined ? { review: optionen.review } : {}),
@@ -1381,6 +1431,38 @@ function pruefeProjektkarte(wert: unknown, verstoesse: string[]): void {
 
 /** F45 F-1: Felder eines Eintrags von faehigkeiten_im_lauf (Zwilling des Schemas). */
 const FAEHIGKEIT_FELDER = new Set(['id', 'name', 'typ', 'quelle', 'hash', 'pfad', 'aktiv', 'grund', 'aufrufe', 'fehlgeschlagen'])
+/** F45 F-3b-2: Felder einer Lauf-Kopie in faehigkeiten_im_lauf.plugins (Zwilling des Schemas). */
+const LAUF_KOPIE_FELDER = ['plugin_id', 'name', 'kopie_hash', 'lauf_kopie_hash', 'pruefbericht', 'abweichung_nachher']
+
+/**
+ * F45 F-3b-2: prüft faehigkeiten_im_lauf.plugins gegen das Schema (lauf_kopien, datenordner { abweichungen } | { grund }).
+ * @param wert - Feldwert
+ * @param verstoesse - Sammelliste
+ */
+function pruefePluginsImLauf(wert: unknown, verstoesse: string[]): void {
+  const istObj = (w: unknown): w is Record<string, unknown> => typeof w === 'object' && w !== null && !Array.isArray(w)
+  if (!istObj(wert)) {
+    verstoesse.push("'faehigkeiten_im_lauf.plugins' muss ein Objekt sein")
+    return
+  }
+  for (const feld of Object.keys(wert)) if (feld !== 'lauf_kopien' && feld !== 'datenordner') verstoesse.push(`unbekanntes Feld 'faehigkeiten_im_lauf.plugins.${feld}' (additionalProperties: false)`)
+  if (!Array.isArray(wert.lauf_kopien)) verstoesse.push("'faehigkeiten_im_lauf.plugins.lauf_kopien' muss ein Array sein")
+  else
+    wert.lauf_kopien.forEach((k, i) => {
+      const pfad = `faehigkeiten_im_lauf.plugins.lauf_kopien[${i}]`
+      if (!istObj(k) || Object.keys(k).some((f) => !LAUF_KOPIE_FELDER.includes(f))) {
+        verstoesse.push(`'${pfad}' muss ein Objekt mit ${LAUF_KOPIE_FELDER.join(', ')} sein`)
+        return
+      }
+      for (const f of ['plugin_id', 'name', 'pruefbericht']) if (typeof k[f] !== 'string' || (k[f] as string) === '') verstoesse.push(`'${pfad}.${f}' muss ein nicht-leerer String sein`)
+      for (const f of ['kopie_hash', 'lauf_kopie_hash']) if (typeof k[f] !== 'string' || !/^[0-9a-f]{64}$/.test(k[f] as string)) verstoesse.push(`'${pfad}.${f}' muss ein sha256 sein`)
+      if (k.abweichung_nachher !== null && typeof k.abweichung_nachher !== 'string') verstoesse.push(`'${pfad}.abweichung_nachher' muss null oder ein String sein`)
+    })
+  const d = wert.datenordner
+  const abweichungenOk = istObj(d) && Object.keys(d).length === 1 && Array.isArray(d.abweichungen) && d.abweichungen.every((x) => typeof x === 'string')
+  const grundOk = istObj(d) && Object.keys(d).length === 1 && typeof d.grund === 'string'
+  if (!abweichungenOk && !grundOk) verstoesse.push("'faehigkeiten_im_lauf.plugins.datenordner' muss { abweichungen: string[] } oder { grund: string } sein")
+}
 
 /**
  * F45 F-1: prüft das Laufakten-Feld faehigkeiten_im_lauf gegen schemas/kontrollzustand-laufakte-payload.schema.json.
@@ -1393,7 +1475,8 @@ function pruefeFaehigkeitenImLauf(wert: unknown, verstoesse: string[]): void {
     verstoesse.push("'faehigkeiten_im_lauf' muss, wenn angegeben, ein Objekt sein")
     return
   }
-  for (const feld of Object.keys(wert)) if (feld !== 'eintraege' && feld !== 'fremde_aufrufe') verstoesse.push(`unbekanntes Feld 'faehigkeiten_im_lauf.${feld}' (additionalProperties: false)`)
+  for (const feld of Object.keys(wert)) if (feld !== 'eintraege' && feld !== 'fremde_aufrufe' && feld !== 'plugins') verstoesse.push(`unbekanntes Feld 'faehigkeiten_im_lauf.${feld}' (additionalProperties: false)`)
+  if ('plugins' in wert) pruefePluginsImLauf(wert.plugins, verstoesse)
   if (!Array.isArray(wert.eintraege)) verstoesse.push("'faehigkeiten_im_lauf.eintraege' muss ein Array sein")
   else
     wert.eintraege.forEach((e, i) => {
@@ -1405,7 +1488,7 @@ function pruefeFaehigkeitenImLauf(wert: unknown, verstoesse: string[]): void {
       for (const feld of Object.keys(e)) if (!FAEHIGKEIT_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld '${pfad}.${feld}' (additionalProperties: false)`)
       for (const feld of ['id', 'name']) if (typeof e[feld] !== 'string' || (e[feld] as string).length === 0) verstoesse.push(`'${pfad}.${feld}' muss ein nicht-leerer String sein`)
       if (e.typ !== 'mcp' && e.typ !== 'skill' && e.typ !== 'agent') verstoesse.push(`'${pfad}.typ' muss mcp, skill oder agent sein`)
-      if (e.quelle !== 'katalog' && e.quelle !== 'projekt') verstoesse.push(`'${pfad}.quelle' muss katalog oder projekt sein`)
+      if (e.quelle !== 'katalog' && e.quelle !== 'projekt' && e.quelle !== 'plugin') verstoesse.push(`'${pfad}.quelle' muss katalog, projekt oder plugin sein`)
       if (typeof e.aktiv !== 'boolean') verstoesse.push(`'${pfad}.aktiv' muss ein Boolean sein`)
       for (const feld of ['hash', 'pfad', 'grund']) if (feld in e && typeof e[feld] !== 'string') verstoesse.push(`'${pfad}.${feld}' muss, wenn angegeben, ein String sein`)
       for (const feld of ['aufrufe', 'fehlgeschlagen']) {

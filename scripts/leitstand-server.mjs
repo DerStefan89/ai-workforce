@@ -478,6 +478,8 @@ import { bereiteInstallationVor, ECHTE_RUNNER, installiereRessource, npmReal } f
 import { baueOrtBSkillStart } from '../src/ressourcen/ort-b-start.ts'
 import { ermittleProjektFaehigkeiten, hashLokaleDatei, katalogFreigaben, ladeFaehigkeitenLokal, leseEingebautReferenz, projektEinstellungen, projektFaehigkeitenFuerAnzeige, projektKennung, projektStatusFuerEmpfehlung, STANDARD_FAEHIGKEITEN_LOKAL_PFAD, trenneAngezeigteIds, vergleicheProjektKennungen } from '../src/faehigkeiten/index.ts'
 import { baueFaehigkeitenStart } from '../src/faehigkeiten/start.ts'
+import { bestimmeClaudeOrdner } from '../src/claude-plugins/index.ts'
+import { baueLaufKopie, bereitePluginStartVor, pluginKennungen, pluginOhneFreigabe, pluginZuordnungDerRolle, werkzeugeAusserhalb } from '../src/plugin-lauf/index.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
@@ -2569,6 +2571,9 @@ function leseAusfuehrungsVorbedingungRealGit(repoWurzel) {
   return pruefeAusfuehrungsVorbedingung(headInhalt, statusRoh)
 }
 
+/** F45 F-3b-2: sichtbarer Grund eines zugeordneten, aber nicht geladenen Plugin-Teils (Laufakte, Lauf-Detail). */
+const NICHT_GELADEN_TEXT = { keine_freigabe: 'keine Freigabe — wirkt nicht', nur_claude_code: 'nicht geladen (nur Claude Code)', nur_schreibend: 'nicht geladen (nur schreibend)' }
+
 /**
  * F36 WS-2: einzige Regel, welcher Lauf Katalog-Fähigkeiten bekommt — 'ausfuehrung' mit
  * schreibendem Werkzeugsatz; freigegebene lokale MCPs (loeseAusfuehrungsEingabenAuf,
@@ -2671,10 +2676,23 @@ export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWur
       { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] },
       { projektUrlVorhanden: projektUrl !== null, ...(sperre !== null ? { projektUrlGrund: sperre } : {}), ...aus, ...(projekt !== null ? { projektStatus: projekt.status } : {}) }
     )
-    const empfehlung = projekt === null ? empfehlungRoh : { ...empfehlungRoh, projektFaehigkeiten: projektFaehigkeitenFuerAnzeige(projekt.ermittelt.eintraege) }
+    // F45 F-3b-2: Plugin-Zuordnung der Ausführung aus der lokalen Datei (zusatz.faehigkeiten.plugins, ohne CLI-Aufruf im Poll) —
+    // die Kennungen gehen mit der Freigabe zurück („Anzeige = Start“); die Prüfung gegen Bestand und Bericht macht der Start.
+    const plugins = zusatz.faehigkeiten?.plugins
+    const empfehlung = projekt === null ? empfehlungRoh : { ...empfehlungRoh, projektFaehigkeiten: projektFaehigkeitenFuerAnzeige(projekt.ermittelt.eintraege), ...(plugins !== undefined ? { pluginFaehigkeiten: plugins.eintraege } : {}) }
     const genutzteEintraege = empfehlung.wirdGenutzt.map((eintrag) => aufgeloest.find((r) => r.id === eintrag.id))
     const projektKennungen = projekt === null ? undefined : empfehlung.projektFaehigkeiten.flatMap((e) => (e.kennung !== undefined ? [e.kennung] : []))
-    return { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl, katalog: ressourcenRoh.ressourcen, ...(sperre !== null ? { projektUrlGrund: sperre } : {}), ...(projektKennungen !== undefined ? { projektKennungen } : {}) }
+    return {
+      ok: true,
+      empfehlung,
+      hinweise,
+      genutzteEintraege,
+      projektUrl,
+      katalog: ressourcenRoh.ressourcen,
+      ...(sperre !== null ? { projektUrlGrund: sperre } : {}),
+      ...(projektKennungen !== undefined ? { projektKennungen } : {}),
+      ...(plugins !== undefined ? { pluginKennungen: plugins.kennungen } : {}),
+    }
   } catch (fehler) {
     return { ok: false, grund: fehler.message }
   }
@@ -2697,7 +2715,8 @@ function empfehlungCacheSchluessel(auftragId, repoWurzel, installWurzel, startvo
     // F45 F-1 (Advisor A10, Delta B5): aus als Wert im Schlüssel — eine Aktivierung über POST wirkt sofort in der Anzeige.
     // F45 F-2a (Advisor A7): ebenso an, inhalt_freigaben und Werkzeugnamen, und ob Projekt-Fähigkeiten mitgerechnet wurden.
     const f = zusatz.faehigkeiten
-    const faehigkeiten = f === undefined ? null : [f.einstellungen.an, Object.entries(f.einstellungen.inhalt_freigaben).sort(), f.werkzeugNamen]
+    // F45 F-3b-2 (Advisor A8): Plugin-Zuordnung und Hashes der Freigaben (Einträge mit Kennung) gehören in den Schlüssel.
+    const faehigkeiten = f === undefined ? null : [f.einstellungen.an, Object.entries(f.einstellungen.inhalt_freigaben).sort(), f.werkzeugNamen, f.plugins?.eintraege ?? null]
     return JSON.stringify([auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz.vorschauUrl ?? null, zusatz.leitstandPort ?? null, katalog.mtimeMs, katalog.size, head, zusatz.aus ?? [], faehigkeiten])
   } catch {
     return null
@@ -2814,6 +2833,14 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
       grund: `Anzeige veraltet: Projekt-Fähigkeiten haben sich seit der Anzeige geändert (angezeigt: ${projektAbweichung.angezeigt}; beim Start: ${projektAbweichung.beimStart}) — Start abgebrochen, Anzeige neu laden und erneut freigeben`,
     }
   }
+  // F45 F-3b-2 („Anzeige = Start“): angezeigte Plugin-Kennungen = Zuordnung mit Freigabe-Hash aus der lokalen Datei beim Start.
+  const pluginBeimStart = ermittelt.pluginKennungen ?? []
+  if (JSON.stringify([...new Set(angezeigt.plugin)].sort()) !== JSON.stringify([...new Set(pluginBeimStart)].sort())) {
+    return {
+      ok: false,
+      grund: `Anzeige veraltet: Plugin-Zuordnung hat sich seit der Anzeige geändert (angezeigt: ${liste(angezeigt.plugin)}; beim Start: ${liste(pluginBeimStart)}) — Start abgebrochen, Anzeige neu laden und erneut freigeben`,
+    }
+  }
   // F36 WS-5b: „Wird genutzt“ trägt MCPs UND Ort-B-Skills — getrennt übergeben (MCP-Weg unverändert).
   return {
     ok: true,
@@ -2824,6 +2851,8 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
     katalog: ermittelt.katalog,
     // F45 F-2a: angezeigte (= beim Start im Projektordner berechnete) Projekt-Kennungen — zweiter Vergleich im Ordner des Laufs.
     projektKennungen: angezeigt.projekt,
+    // F45 F-3b-2: angezeigte (= beim Start aus der lokalen Datei berechnete) Plugin-Kennungen — Vergleich mit der Prüfung vor dem Lauf.
+    pluginKennungen: angezeigt.plugin,
     // F-827: projektUrl ist nur gesetzt, wenn vorschau_url gültige Origins liefert (ermittleAusfuehrungsEmpfehlung).
     zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt, ermittelt.projektUrl, ermittelt.genutzteEintraege),
   }
@@ -3200,9 +3229,45 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   }
   const aktiveProjekt = projektFaehigkeiten.eintraege.filter((e) => e.aktiv)
   if (aktiveProjekt.length > 0 && projektFaehigkeiten.hindernis !== null) return { ok: false, grund: `Fähigkeiten-Start abgelehnt: ${projektFaehigkeiten.hindernis} — Lauf startet nicht` }
+  // F45 F-3b-2 (Plan v3.1): Plugin-Lauf-Kopien — nur mit Katalog-Kontext (Ausführung, schreibend, angezeigt) und nur aus der
+  // Prüfung vor dem Lauf (fk.pluginStart, asynchron vor dem D13-Bereich). Angezeigt = geprüft, sonst kein Start. Synchron hier: Agent-
+  // tools gegen den Werkzeugsatz dieses Schritts, Lauf-Kopie aus den gegen den Bericht geprüften Bytes (baueLaufKopie).
+  let pluginLauf = null
+  if (fk !== undefined) {
+    const angezeigtePlugins = Array.isArray(fk.angezeigtePluginKennungen) ? fk.angezeigtePluginKennungen : []
+    const ps = fk.pluginStart
+    if (ps?.art === 'fehler') return { ok: false, grund: ps.grund }
+    const geprueft = ps?.art === 'start' ? ps.kennungen : []
+    if (JSON.stringify([...new Set(angezeigtePlugins)].sort()) !== JSON.stringify([...new Set(geprueft)].sort())) {
+      return { ok: false, konflikt: true, grund: `Plugin-Start abgelehnt: angezeigte Plugin-Zuordnung (${angezeigtePlugins.length}) weicht von der geprüften (${geprueft.length}) ab — Anzeige neu laden und erneut freigeben` }
+    }
+    if (ps?.art === 'start') {
+      if (ps.plugins.length > 0 && !eingebaut?.ok) return { ok: false, grund: `Plugin-Start abgelehnt: ${eingebaut?.grund ?? 'Referenzliste der eingebauten Einträge fehlt'}` }
+      const namen = [...new Set(werkzeugsatz.erlaubte_werkzeuge.map((regel) => regel.split('(')[0]))]
+      const laufKopien = []
+      for (const p of ps.plugins) {
+        for (const a of p.agents) {
+          const grund = werkzeugeAusserhalb(p.agentWerkzeuge[a] ?? [], namen)
+          if (grund !== null) return { ok: false, grund: `Plugin-Start abgelehnt: Agent '${a}' aus Plugin '${p.pluginId}': ${grund} — Lauf startet nicht` }
+        }
+        if (typeof fk.pluginLaufWurzel !== 'string') return { ok: false, grund: 'Plugin-Start abgelehnt: Ablage der Lauf-Kopien in dieser Instanz nicht gesetzt — Lauf startet nicht' }
+        const kopie = baueLaufKopie(p, fk.pluginLaufWurzel)
+        if (!kopie.ok) return { ok: false, grund: kopie.grund }
+        laufKopien.push({ plugin_id: p.pluginId, name: p.name, kopie_hash: p.kopieHash, lauf_kopie_hash: kopie.laufKopieHash, pruefbericht: p.pruefbericht, ordner: kopie.ordner, dateien: kopie.dateien })
+      }
+      pluginLauf = { plugins: ps.plugins, laufKopien, nichtGeladen: ps.nichtGeladen }
+    } else if (fk.lokal.zustand === 'gueltig') {
+      // Code-Review K2 / QA M1 (Plan v3.1 Punkt 2): ohne Prüfung vor dem Lauf (keine plugin:-Kennung) steht eine Zuordnung ohne
+      // Freigabe trotzdem sichtbar in der Laufakte — synchron, ohne CLI-Aufruf, Argv unverändert. Die Regel liegt in src/plugin-lauf
+      // (Gate f45-f3b1 (f): diese Funktion liest keine Plugin-Felder selbst).
+      const ohne = pluginOhneFreigabe(fk.lokal.daten, fk.projektId, eingabenRoh.rolle)
+      if (ohne.length > 0) pluginLauf = { plugins: [], laufKopien: [], nichtGeladen: ohne }
+    }
+  }
+  const pluginsFuerStart = (pluginLauf?.plugins ?? []).map((p) => ({ name: p.name, skills: p.skills, agents: p.agents }))
   let faehigkeitenInstruktion = null
-  // Ohne aktiven Projekt-Eintrag und ohne Ort-B-Skill: kein Aufruf, Argv bitgleich.
-  if (aktiveProjekt.length > 0 || ortBStart !== undefined) {
+  // Ohne aktiven Projekt-Eintrag, ohne Ort-B-Skill und ohne Plugin-Lauf-Kopie: kein Aufruf, Argv bitgleich.
+  if (aktiveProjekt.length > 0 || ortBStart !== undefined || pluginsFuerStart.length > 0) {
     const start = baueFaehigkeitenStart({
       projekt: projektFaehigkeiten.eintraege,
       agentNamen: projektFaehigkeiten.agentNamen,
@@ -3210,12 +3275,18 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       referenz,
       ...(ortBStart !== undefined ? { ortB: ortBStart } : {}),
       installation: { projektOrdner: optionen.projektOrdner ?? repoWurzel, installWurzel: optionen.installWurzel },
+      ...(pluginsFuerStart.length > 0 ? { plugins: pluginsFuerStart } : {}),
     })
     if (!start.ok) return { ok: false, grund: start.grund }
     erlaubteWerkzeuge = [...new Set([...erlaubteWerkzeuge, ...start.start.werkzeugZusatz])]
     // Zusammenführen statt ersetzen: ein künftig gesetztes disallowedTools bliebe erhalten (heute setzt es keine Ausführung).
     const bisher = typeof eingabenRoh.aufrufEingaben?.disallowedTools === 'string' && eingabenRoh.aufrufEingaben.disallowedTools.length > 0 ? [eingabenRoh.aufrufEingaben.disallowedTools] : []
-    skillZusatz = { ortB: { addDirs: start.start.addDirs, settings: start.start.settings }, disallowedTools: [...bisher, ...start.start.disallowedTools].join(',') }
+    skillZusatz = {
+      ortB: { addDirs: start.start.addDirs, settings: start.start.settings },
+      disallowedTools: [...bisher, ...start.start.disallowedTools].join(','),
+      // F45 F-3b-2: je Lauf-Kopie ein --plugin-dir (baueAufruf); ohne Plugins fehlt das Feld.
+      ...(pluginLauf !== null && pluginLauf.laufKopien.length > 0 ? { pluginDirs: pluginLauf.laufKopien.map((k) => k.ordner) } : {}),
+    }
     ortBLauf = {
       skillNamen: start.start.initGate.skills,
       gesperrteNamen: start.start.initGate.gesperrt,
@@ -3223,6 +3294,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       projektWurzel: repoWurzel,
       ...(start.start.initGate.agents !== undefined ? { agents: start.start.initGate.agents } : {}),
       ...(start.start.initGate.pflichtSkills !== undefined ? { pflichtSkills: start.start.initGate.pflichtSkills } : {}),
+      ...(start.start.initGate.plugins !== undefined ? { plugins: start.start.initGate.plugins } : {}),
     }
     faehigkeitenInstruktion = start.start.instruktion
   }
@@ -3253,6 +3325,13 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
           ...skillEintraege.map((e) => ({ id: e.id, name: basename(String(e.installation?.pfad ?? e.id).replace(/[\\/]+$/, '')), typ: 'skill', quelle: 'katalog', ...(typeof e.installation?.inhalt_hash === 'string' ? { hash: e.installation.inhalt_hash } : {}), aktiv: true })),
           ...(fk.deaktiviert ?? []).map((e) => ({ id: e.id, name: e.name, typ: e.unterart === 'mcp' ? 'mcp' : 'skill', quelle: 'katalog', aktiv: false, grund: e.grund })),
           ...projektFaehigkeiten.eintraege.map((e) => ({ id: e.schluessel, name: e.name, typ: e.typ, quelle: 'projekt', ...(e.hash !== null ? { hash: e.hash } : {}), pfad: e.pfad, aktiv: e.aktiv, ...(e.grund !== null ? { grund: e.grund } : {}) })),
+          // F45 F-3b-2: Plugin-Teile mit Präfix (Aufrufe zählt das Gateway über den Namen) und zugeordnete, aber nicht geladene.
+          ...(pluginLauf?.plugins ?? []).flatMap((p) => [
+            ...p.skills.map((s) => ({ id: `skill:${p.pluginId}:${s}`, name: `${p.name}:${s}`, typ: 'skill', quelle: 'plugin', hash: p.kopieHash, aktiv: true })),
+            ...p.agents.map((a) => ({ id: `agent:${p.pluginId}:${a}`, name: `${p.name}:${a}`, typ: 'agent', quelle: 'plugin', hash: p.kopieHash, aktiv: true })),
+          ]),
+          // QA N2: ohne geladene Kopie ist der Manifest-Name (Präfix) unbekannt — Name des Teils mit Plugin-id statt eines geratenen Präfixes.
+          ...(pluginLauf?.nichtGeladen ?? []).map((n) => ({ id: n.eintrag, name: `${n.name} (${n.pluginId})`, typ: n.typ, quelle: 'plugin', aktiv: false, grund: NICHT_GELADEN_TEXT[n.grund] ?? n.grund })),
         ]
 
   const anfragenMitInhalt = []
@@ -3293,6 +3372,8 @@ ${faehigkeitenInstruktion}` : auftragstext,
       // F45 F-1: eingefrorene Fähigkeiten nur mit Katalog-Kontext; der Pfad der lokalen Datei (Vorher/Nachher-Hash, Delta B1)
       // für jeden schreibenden Lauf, dem der Server ihn mitgibt (Code-Review 2).
       ...(faehigkeitenImLauf !== undefined ? { faehigkeitenImLauf } : {}),
+      // F45 F-3b-2: Lauf-Kopien (Ordner, Dateiliste) und Plugin-Datenordner für Vorher/Nachher im Controller (Variante A).
+      ...(pluginLauf !== null && pluginLauf.laufKopien.length > 0 ? { pluginsImLauf: { lauf_kopien: pluginLauf.laufKopien, datenordner: fk.pluginDatenordner } } : {}),
       ...(werkzeugsatz.art === 'schreibend' && typeof (optionen.faehigkeitenLokalPfad ?? fk?.lokalPfad) === 'string' ? { faehigkeitenLokalPfad: optionen.faehigkeitenLokalPfad ?? fk.lokalPfad } : {}),
       // F45 B2a-1: Metadaten der Projektkarte (nur wenn starteWorkflowSchritt eine Karte angehängt hat) → Laufakte.
       ...(optionen.projektkarte !== undefined ? { projektkarte: optionen.projektkarte } : {}),
@@ -5552,7 +5633,60 @@ export function erzeugeRequestHandler(optionen = {}) {
   function empfehlungsZusatz(lokal, werkzeugsatzName) {
     const einstellungen = lokal.zustand === 'ungueltig' ? { an: [], aus: [], inhalt_freigaben: {} } : projektEinstellungen(lokal.daten, projektId)
     const werkzeugNamen = [...new Set((loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)?.erlaubte_werkzeuge ?? []).map((regel) => regel.split('(')[0]))]
-    return { aus: einstellungen.aus, faehigkeiten: { einstellungen, werkzeugNamen } }
+    return { aus: einstellungen.aus, faehigkeiten: { einstellungen, werkzeugNamen, plugins: pluginAnzeige(lokal) } }
+  }
+
+  /**
+   * F45 F-3b-2: Plugin-Zuordnung der Ausführung für die Freigabe-Anzeige (rein aus der lokalen Datei, kein CLI-Aufruf): je
+   * Eintrag Typ, Plugin, Name und — mit Freigabe — die Kennung, die mit der Freigabe zurückgeht; ohne Freigabe „wirkt nicht“
+   * (Plan v3.1 Punkt 2). Ungültige Datei → leer (der Start bricht dann ohnehin ab, E-F45-7).
+   * @param lokal - Ergebnis von ladeFaehigkeitenLokal
+   * @returns { eintraege, kennungen }
+   */
+  function pluginAnzeige(lokal) {
+    if (lokal.zustand === 'ungueltig') return { eintraege: [], kennungen: [] }
+    const freigaben = lokal.daten.plugin_freigaben ?? {}
+    const eintraege = pluginZuordnungDerRolle(lokal.daten, projektId, 'ausfuehrung').map((z) => ({
+      id: z.eintrag,
+      typ: z.typ,
+      plugin_id: z.pluginId,
+      name: z.name,
+      ...(Object.hasOwn(freigaben, z.pluginId) ? { kennung: `plugin:${z.eintrag}@${freigaben[z.pluginId].kopie_hash}` } : { grund: 'keine_freigabe' }),
+    }))
+    return { eintraege, kennungen: pluginKennungen(lokal.daten, projektId, 'ausfuehrung') }
+  }
+
+  /**
+   * F45 F-3b-2: Prüfung vor dem Lauf mit Plugins (src/plugin-lauf) für diese Instanz — Bestand frisch über die CLI-Liste, Berichte
+   * dieses Checkouts, Kopie-Wurzel der Instanz, Projektion gegen den Werkzeugsatz der Kopie (kopieWerkzeugsatz). Nur aufgerufen,
+   * wenn die angezeigten ids eine 'plugin:'-Kennung tragen — und immer VOR einem D13-Bereich (Advisor A3/A4).
+   * @param o - { rolle, worker, art, werkzeugsatzName }
+   * @returns PluginStart
+   */
+  async function bereitePluginStartFuerInstanz(o) {
+    const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
+    if (lokal.zustand === 'ungueltig') return { art: 'fehler', grund: `Plugin-Start abgelehnt: ${lokal.grund} — reparieren oder löschen (E-F45-7)` }
+    return bereitePluginStartVor({
+      lokal: lokal.daten,
+      projektId,
+      rolle: o.rolle,
+      worker: o.worker,
+      art: o.art,
+      leseBestand: pluginAbruf.roh,
+      berichte: leseBerichte(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER).berichte,
+      kopienWurzel: pluginKopienWurzel,
+      kopieWerkzeugsatz: kopieWerkzeugsatz,
+      schrittWerkzeugNamen: [...new Set((loeseWerkzeugsatzAuf(vorlage, o.werkzeugsatzName)?.erlaubte_werkzeuge ?? []).map((regel) => regel.split('(')[0]))],
+    })
+  }
+
+  /**
+   * F45 F-3b-2: true, wenn die angezeigten ids eine Plugin-Kennung tragen (nur dann wird vor dem Start geprüft).
+   * @param ids - empfehlungIds aus dem Body
+   * @returns bool
+   */
+  function hatPluginKennung(ids) {
+    return Array.isArray(ids) && ids.some((id) => typeof id === 'string' && id.startsWith('plugin:'))
   }
 
   /**
@@ -5561,10 +5695,24 @@ export function erzeugeRequestHandler(optionen = {}) {
    * seit F45 F-2a die angezeigten Projekt-Kennungen (Vergleich im Ordner des Laufs).
    * @param vorbereitet - Ergebnis von bereiteEmpfehlungFuerStartVor (ok)
    * @param lokal - dieselbe gelesene lokale Datei wie für aus (Code-Review 7)
+   * @param pluginStart - F45 F-3b-2: Ergebnis von bereitePluginStartFuerInstanz (nur mit plugin:-Kennung im Body), sonst undefined
    * @returns faehigkeitenKontext
    */
-  function baueFaehigkeitenKontext(vorbereitet, lokal) {
-    return { lokal, lokalPfad: faehigkeitenLokalPfad, projektId, katalog: katalogFreigaben(vorbereitet.katalog, installWurzel), deaktiviert: vorbereitet.deaktiviert, angezeigteProjektKennungen: vorbereitet.projektKennungen, fremd: fremdUnbestaetigt(lokal) }
+  function baueFaehigkeitenKontext(vorbereitet, lokal, pluginStart = undefined) {
+    return {
+      lokal,
+      lokalPfad: faehigkeitenLokalPfad,
+      projektId,
+      katalog: katalogFreigaben(vorbereitet.katalog, installWurzel),
+      deaktiviert: vorbereitet.deaktiviert,
+      angezeigteProjektKennungen: vorbereitet.projektKennungen,
+      fremd: fremdUnbestaetigt(lokal),
+      // F45 F-3b-2: angezeigte Plugin-Kennungen, Ergebnis der Prüfung vor dem Lauf (nur mit Kennung im Body) und Ablagen.
+      angezeigtePluginKennungen: vorbereitet.pluginKennungen ?? [],
+      ...(pluginStart !== undefined ? { pluginStart } : {}),
+      pluginLaufWurzel: pluginKopienWurzel === null ? null : join(pluginKopienWurzel, '_lauf'),
+      pluginDatenordner: join(pluginClaudeOrdner ?? bestimmeClaudeOrdner(process.env, homedir()), 'plugins', 'data'),
+    }
   }
 
   /**
@@ -6342,9 +6490,11 @@ export function erzeugeRequestHandler(optionen = {}) {
    *   keine Katalog-Fähigkeiten und der Auftragstext bleibt bitgenau (E-F36-4)
    * @param leitstandPort - F-849: gebundener Port des Leitstands (req.socket.localPort der Freigabe);
    *   nur mit angezeigten ids gebraucht, undefined = unbekannt (fail-closed für {projekt_origins})
+   * @param pluginStart - F45 F-3b-2: Ergebnis von bereitePluginStartFuerInstanz (asynchron VOR dem D13-Bereich der Freigabe), nur
+   *   mit 'plugin:'-Kennung in den angezeigten ids; wirkt nur für Schritte mit Katalog-Fähigkeiten und Worker claude-code
    * @returns { ok: true, schrittId, laufId } oder { ok: false, art, grund }
    */
-  function starteWorkflowSchritt(workflowId, ausgang, angezeigteEmpfehlungIds = undefined, leitstandPort = undefined) {
+  function starteWorkflowSchritt(workflowId, ausgang, angezeigteEmpfehlungIds = undefined, leitstandPort = undefined, pluginStart = undefined) {
     // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b)
     const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
 
@@ -6666,7 +6816,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort, ...empfehlungsZusatz(lokaleDatei, schritt.werkzeugsatz) })
       if (!vorbereitet.ok) return { ok: false, art: 'konflikt', grund: vorbereitet.grund }
       // F45 B1b-1 (F-818): projektOrdner/installWurzel für die Skelett-Ausnahme des Vorstart-Scans (realpath-Vergleich).
-      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leitstandPort), projektOrdner: repoWurzel, installWurzel, faehigkeitenKontext: baueFaehigkeitenKontext(vorbereitet, lokaleDatei) }
+      // F45 F-3b-2 (Advisor A4): das Ergebnis der Plugin-Prüfung vor dem D13-Bereich wirkt nur für einen Schritt des Workers claude-code.
+      const pluginStartSchritt = (schritt.worker ?? 'claude-code') === 'claude-code' ? pluginStart : undefined
+      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leitstandPort), projektOrdner: repoWurzel, installWurzel, faehigkeitenKontext: baueFaehigkeitenKontext(vorbereitet, lokaleDatei, pluginStartSchritt) }
       if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
     }
     // F45 F-1 (Code-Review 2): Pfad der lokalen Fähigkeiten-Datei für den Vorher/Nachher-Hash jedes schreibenden Laufs.
@@ -8206,7 +8358,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       // Genau der geschriebene Stand gilt als bekannt (Muster F-2a, Advisor A3).
       faehigkeitenLokalWaechter?.nachRoute(ergebnis.ergebnis.hash)
-      sendeJson(res, 200, { projekt_id: projektId, plugin_id: koerper.pluginId, ...(ergebnis.freigabe !== undefined ? { freigabe: ergebnis.freigabe } : {}), wirkt_ab: 'Plugins im Lauf (nächster Schritt)' })
+      sendeJson(res, 200, { projekt_id: projektId, plugin_id: koerper.pluginId, ...(ergebnis.freigabe !== undefined ? { freigabe: ergebnis.freigabe } : {}), wirkt_ab: 'nächster freigegebener Ausführungsschritt' })
       return
     }
 
@@ -8961,6 +9113,14 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
+      // F45 F-3b-2 (Advisor A3): Plugin-Prüfung vor dem Lauf (CLI-Liste) nur hier, VOR der D13-Prüfung und der Reservierung — zwischen
+      // `if (laufAktiv)` und dem Start bleibt der Ablauf synchron (Gate f45-f3b2 (m)). Ohne 'plugin:'-Kennung kein Aufruf, bitgleich.
+      // Code-Review 1: nur für Rollen/Werkzeugsätze mit Katalog-Fähigkeiten — sonst kein CLI-Abruf (das Ergebnis würde verworfen).
+      const pluginStartLauf =
+        hatPluginKennung(startauftrag.empfehlungIds) && erhaeltKatalogFaehigkeiten(startauftrag.eingaben.rolle, loeseWerkzeugsatzAuf(vorlage, startauftrag.werkzeugsatzName)?.art)
+        ? await bereitePluginStartFuerInstanz({ rolle: startauftrag.eingaben.rolle, worker: startauftrag.eingaben.worker ?? 'claude-code', art: loeseWerkzeugsatzAuf(vorlage, startauftrag.werkzeugsatzName)?.art, werkzeugsatzName: startauftrag.werkzeugsatzName })
+        : undefined
+
       // F11 WS-2, AK7 (D13): genau ein aktiver Arbeitsstrang je Serverinstanz — geprüft VOR der
       // laufId-spezifischen 409-Prüfung unten, weil D13 unabhängig von der konkreten laufId gilt.
       if (laufAktiv) {
@@ -9010,7 +9170,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           sendeJson(res, 400, { grund: vorbereitet.grund })
           return
         }
-        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, req.socket?.localPort), projektOrdner: repoWurzel, installWurzel, faehigkeitenKontext: baueFaehigkeitenKontext(vorbereitet, lokaleDatei) }
+        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, req.socket?.localPort), projektOrdner: repoWurzel, installWurzel, faehigkeitenKontext: baueFaehigkeitenKontext(vorbereitet, lokaleDatei, pluginStartLauf) }
         if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
       }
       // F45 F-1 (Code-Review 2): Pfad der lokalen Fähigkeiten-Datei für den Vorher/Nachher-Hash jedes schreibenden Laufs.
@@ -10394,6 +10554,13 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
+      // F45 F-3b-2 (Advisor A3/A4): Plugin-Prüfung vor dem Lauf — sie liest den Bestand über die CLI und steht deshalb VOR dem
+      // D13-Bereich; nur bei FREIGEGEBEN und einer 'plugin:'-Kennung in den angezeigten ids, fest für Ausführung/schreibend/
+      // claude-code (der Schritt ist hier noch nicht geladen; im Bereich wirkt das Ergebnis nur für einen passenden Schritt).
+      // Ohne Kennung (und bei ABGELEHNT) kein CLI-Aufruf, alles bitgleich.
+      const pluginStart =
+        body?.entscheidung === 'FREIGEGEBEN' && hatPluginKennung(body?.empfehlungIds) ? await bereitePluginStartFuerInstanz({ rolle: 'ausfuehrung', worker: 'claude-code', art: 'schreibend', werkzeugsatzName: 'schreibend' }) : undefined
+
       // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, (b1))
       //
       // Der Bereich beginnt hier, direkt hinter dem Einlesen des Bodys, und nicht erst bei der
@@ -10545,6 +10712,16 @@ export function erzeugeRequestHandler(optionen = {}) {
         // F-1061 (3): unbestätigte Änderung von außen → vor dem Festhalten abbrechen (der Start lehnte ohnehin ab).
         if (fremdUnbestaetigt(ladeFaehigkeitenLokal(faehigkeitenLokalPfad)) !== null) {
           sendeJson(res, 409, { grund: `Fähigkeiten-Start abgelehnt: ${FREMD_UNBESTAETIGT}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
+          return
+        }
+        // F45 F-3b-2: Plugin-Prüfung gescheitert oder angezeigt ≠ geprüft → nichts festhalten (der Start lehnte ohnehin ab).
+        if (pluginStart?.art === 'fehler') {
+          sendeJson(res, 409, { grund: `${pluginStart.grund}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
+          return
+        }
+        const geprueftePlugins = pluginStart?.art === 'start' ? pluginStart.kennungen : []
+        if (JSON.stringify([...vorpruefung.pluginKennungen].sort()) !== JSON.stringify([...geprueftePlugins].sort())) {
+          sendeJson(res, 409, { grund: `Anzeige veraltet: Plugin-Zuordnung hat sich während der Prüfung geändert — Anzeige neu laden und erneut freigeben${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
           return
         }
       }
@@ -10712,7 +10889,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
-      const gestartet = starteWorkflowSchritt(workflowId, startAusgang, body.empfehlungIds, req.socket?.localPort)
+      const gestartet = starteWorkflowSchritt(workflowId, startAusgang, body.empfehlungIds, req.socket?.localPort, pluginStart)
       // D13-UEBERGABE-OHNE-FENSTER: ENDE
       if (!gestartet.ok) {
         // Derselbe Behandlungspfad wie bei der gescheiterten Auto-Fortsetzung aus (a), über

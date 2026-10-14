@@ -15,7 +15,8 @@
  *     (d3) nur 'ausfuehrung' zuordenbar, Commands nicht;
  * (e) nichts unter dem simulierten ~/.claude geschrieben und das echte ~/.ai-workforce unverändert (lstat vorher/nachher);
  *     (e2) Kopie-Wurzel überlebt den Prüflauf, Prüfordner neutralisiert (`_.claude-plugin`), --add-dir ≠ Kopie-Wurzel;
- * (f) Lauf unverändert: baueAufruf ohne --plugin-dir; pruefeInitZeile weist init.plugins ≠ [] ab; loeseAusfuehrungsEingabenAuf
+ * (f) Lauf unverändert (seit F-3b-2: ohne Plugin-Zuordnung; der Lauf mit Plugins hat Gate f45-f3b2): baueAufruf ohne pluginDirs
+ *     ohne --plugin-dir; pruefeInitZeile ohne Plugin-Soll weist init.plugins ≠ [] ab; der Server baut kein '--plugin-dir'-Literal; loeseAusfuehrungsEingabenAuf
  *     mit und ohne Plugin-Felder in der lokalen Datei bitgleich; kein Import von src/plugin-kopie bzw. src/claude-plugins in
  *     Gateway, Fähigkeiten-Start, Execution-Controller, Ort-B-Start; plugin_zuordnung/plugin_freigaben nur in erlaubten Dateien;
  *     setzePluginFreigabe nur aus routen-faehigkeiten.mjs aufgerufen;
@@ -171,6 +172,8 @@ const FELD_ERLAUBT = [
   'public/leitstand/plugins-anzeige.js',
   'public/leitstand/views/plugins.js',
   'public/leitstand/api.js',
+  // F45 F-3b-2: der Weg in den Lauf (Zuordnung der Rolle, Kennungen), Gate f45-f3b2.
+  'src/plugin-lauf/index.ts',
 ]
 /** Ergebnisse (l), (m), (n) für den Rot-Selbsttest. */
 let L = null
@@ -959,7 +962,8 @@ function pruefeLaufUnveraendert(q) {
   for (const p of ['src/claude-code-gateway/index.ts', 'src/faehigkeiten/start.ts', 'src/execution-controller/index.ts', 'src/ressourcen/ort-b-start.ts']) {
     if (/from ['"][^'"]*(plugin-kopie|claude-plugins)[^'"]*['"]/.test(q[p])) b.push(`(f) ${p} importiert plugin-kopie/claude-plugins`)
   }
-  if (/--plugin-dir/.test(q['scripts/leitstand-server.mjs'])) b.push('(f) Server nennt --plugin-dir')
+  // F45 F-3b-2: der Server reicht nur pluginDirs weiter; ein eigenes '--plugin-dir'-Literal wäre ein zweiter Argv-Bau.
+  if (/['"`]--plugin-dir['"`]/.test(q['scripts/leitstand-server.mjs'])) b.push('(f) Server baut --plugin-dir selbst')
   for (const [p, text] of Object.entries(q.__alle)) {
     if (/plugin_zuordnung|plugin_freigaben/.test(text) && !FELD_ERLAUBT.includes(p)) b.push(`(f) ${p} nennt plugin_zuordnung/plugin_freigaben`)
     if (/setzePluginFreigabe\(/.test(text) && p !== 'scripts/leitstand/routen-faehigkeiten.mjs' && p !== 'src/faehigkeiten/index.ts') b.push(`(f) setzePluginFreigabe( in ${p}`)
@@ -1274,7 +1278,7 @@ function pruefeXss(html) {
     kurz(
       pruefeLaufUnveraendert({
         ...q,
-        'scripts/leitstand-server.mjs': `${q['scripts/leitstand-server.mjs']}\n// --plugin-dir`,
+        'scripts/leitstand-server.mjs': `${q['scripts/leitstand-server.mjs']}\nargs.push('--plugin-dir', x)`,
       })
     ),
   ])

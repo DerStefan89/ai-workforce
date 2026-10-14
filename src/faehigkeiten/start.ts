@@ -8,6 +8,8 @@
  *   Agent(<aktiv>) in erlaubte_werkzeuge (→ --tools …,Agent; --allowedTools …,Agent(<aktiv>) als Absichtserklärung),
  *   --disallowedTools Agent(<n>) für jeden eingebauten (Referenzliste) und jeden nicht aktiven Projekt-Agent;
  * - Skills: Skill(<aktiv>) in erlaubte_werkzeuge, aktive nicht in skillOverrides off / Skill(…)-Sperre (Spike S4);
+ * - F45 F-3b-2: Plugin-Lauf-Kopien (plugins, aus src/plugin-lauf): Skill(<name>:<s>)/Agent(<name>:<a>) erlaubt, eingebaute
+ *   Agents gesperrt wie bei Projekt-Agents, enabledPlugins["<name>@inline"] = true, Init-Gate mit Präfixnamen und plugins-Soll;
  * - immer: --settings mit disableBundledSkills, enabledPlugins der eingebauten Plugins auf false (Spike S3) und
  *   skillOverrides off für design/doctor und jeden nicht aktiven Projekt-Skill/-Command; Write/Edit(**\/.claude/**);
  *   Vorstart-Scan (ohne Ort-B hier, mit Ort-B in baueOrtBSkillStart).
@@ -16,7 +18,8 @@
  * - scripts/leitstand-server.mjs (loeseAusfuehrungsEingabenAuf)
  * - src/faehigkeiten/faehigkeiten.test.ts, scripts/check-f45-f1-faehigkeiten.mjs
  *
- * Wichtig: Ohne aktiven Projekt-Eintrag und ohne Ort-B-Skill ruft niemand diese Funktion — das Argv bleibt bitgleich.
+ * Wichtig: Ohne aktiven Projekt-Eintrag, ohne Ort-B-Skill und ohne Plugin-Lauf-Kopie ruft niemand diese Funktion — das Argv
+ * bleibt bitgleich.
  * Sperrliste und Gate-Erwartung kommen aus derselben Liste (Delta B3); eine Abweichung zwischen beiden wäre eine Lücke.
  */
 
@@ -40,6 +43,15 @@ export interface FaehigkeitenStartEingabe {
   ortB?: OrtBSkillStart
   /** Projektordner und Installation — nur bei gleichem realpath gilt die Skelett-Ausnahme (F-818) */
   installation?: { projektOrdner?: string; installWurzel?: string }
+  /** F45 F-3b-2: Plugin-Lauf-Kopien des Laufs (Manifest-name = Präfix, zugeordnete Skills/Agents); fehlt bzw. leer = wie vorher */
+  plugins?: readonly PluginImLaufStart[]
+}
+
+/** F45 F-3b-2: eine Lauf-Kopie aus Sicht des Starts (nur Namen; Ordner und Hashes hält der Server). */
+export interface PluginImLaufStart {
+  name: string
+  skills: readonly string[]
+  agents: readonly string[]
 }
 
 /** Ergebnis von baueFaehigkeitenStart. */
@@ -53,7 +65,7 @@ export interface FaehigkeitenStart {
   /** --add-dir (nur Ort-B) */
   addDirs: string[]
   /** Erwartung des Init-Gates */
-  initGate: { skills: string[]; gesperrt: string[]; agents?: { erlaubt: string[]; gesperrt: string[] }; pflichtSkills?: string[] }
+  initGate: { skills: string[]; gesperrt: string[]; agents?: { erlaubt: string[]; gesperrt: string[] }; pflichtSkills?: string[]; plugins?: string[] }
   /** Zeile für den Auftragstext, null ohne aktive Projekt-Einträge */
   instruktion: string | null
 }
@@ -146,11 +158,18 @@ export function baueFaehigkeitenStart(e: FaehigkeitenStartEingabe): { ok: true; 
   } catch (fehler) {
     return nein(`Projekt-Skills nicht prüfbar (${(fehler as Error).message})`)
   }
-  settings = { ...settings, enabledPlugins: Object.fromEntries(e.referenz.plugins.map((p) => [p, false])) }
+  // F45 F-3b-2: Lauf-Kopien laden per enabledPlugins["<name>@inline"] = true (Spike f3b2 S5), die eingebauten bleiben false.
+  const plugins = e.plugins ?? []
+  const pluginSkills = plugins.flatMap((p) => p.skills.map((s) => `${p.name}:${s}`))
+  const pluginAgents = plugins.flatMap((p) => p.agents.map((a) => `${p.name}:${a}`))
+  // Advisor A13: ein gesperrter Projekt-Name im Namensraum eines Plugins (Command 'kraft:x') schaltete dessen Skill per skillOverrides ab.
+  const kollision = gesperrt.filter((n) => plugins.some((p) => n.startsWith(`${p.name}:`)))
+  if (kollision.length > 0) return nein(`Projekt-Name(n) ${kollision.join(', ')} im Namensraum eines zugeordneten Plugins — mehrdeutig`)
+  settings = { ...settings, enabledPlugins: { ...Object.fromEntries(e.referenz.plugins.map((p) => [p, false])), ...Object.fromEntries(plugins.map((p) => [`${p.name}@inline`, true])) } }
 
-  const werkzeugZusatz = aktiveSkills.map((n) => `Skill(${n})`)
+  const werkzeugZusatz = [...aktiveSkills, ...pluginSkills].map((n) => `Skill(${n})`)
   let agents: FaehigkeitenStart['initGate']['agents']
-  if (aktiveAgents.length > 0) {
+  if (aktiveAgents.length > 0 || pluginAgents.length > 0) {
     let skelettAgents = new Map<string, string>()
     try {
       if (installationSelbst) skelettAgents = leseSkelettAgents(e.projektWurzel)
@@ -163,15 +182,21 @@ export function baueFaehigkeitenStart(e: FaehigkeitenStartEingabe): { ok: true; 
       if (skelettHash !== undefined && skelettHash !== eigenerHash) return nein(`Agent '${n}' im Skelett der Installation mit anderem Inhalt — mehrdeutig`)
     }
     const agentGesperrt = [...new Set([...e.referenz.agents, ...e.agentNamen, ...skelettAgents.keys()])].filter((n) => !aktiveAgents.includes(n)).sort()
-    werkzeugZusatz.unshift(...aktiveAgents.map((n) => `Agent(${n})`))
+    werkzeugZusatz.unshift(...[...aktiveAgents, ...pluginAgents].map((n) => `Agent(${n})`))
     disallowed = [...disallowed, ...agentGesperrt.map((n) => `Agent(${n})`)]
-    agents = { erlaubt: [...aktiveAgents], gesperrt: agentGesperrt }
+    agents = { erlaubt: [...aktiveAgents, ...pluginAgents], gesperrt: agentGesperrt }
   }
 
   const teile: string[] = []
   if (aktiveAgents.length > 0) teile.push(`Subagenten ${aktiveAgents.join(', ')} — nur im Vordergrund aufrufen (Agent-Werkzeug mit run_in_background: false), keine anderen Subagenten`)
   if (aktiveSkills.length > 0) teile.push(`Skills ${aktiveSkills.join(', ')} (Skill-Werkzeug)`)
-  const instruktion = teile.length > 0 ? `Projekt-Fähigkeiten in diesem Lauf (von Stefan je Projekt eingeschaltet): ${teile.join('; ')}.` : null
+  const zeilen = teile.length > 0 ? [`Projekt-Fähigkeiten in diesem Lauf (von Stefan je Projekt eingeschaltet): ${teile.join('; ')}.`] : []
+  // F45 F-3b-2 (E-F3b-1 = A): die Instruktion nennt die zugeordneten Plugin-Teile mit Präfix — statt eines SessionStart-Hooks.
+  const pluginTeile: string[] = []
+  if (pluginSkills.length > 0) pluginTeile.push(`Skills ${pluginSkills.join(', ')} (Skill-Werkzeug)`)
+  if (pluginAgents.length > 0) pluginTeile.push(`Subagenten ${pluginAgents.join(', ')} — nur im Vordergrund aufrufen (Agent-Werkzeug mit run_in_background: false)`)
+  if (pluginTeile.length > 0) zeilen.push(`Plugin-Fähigkeiten in diesem Lauf (von Stefan der Ausführung zugeordnet): ${pluginTeile.join('; ')}.`)
+  const instruktion = zeilen.length > 0 ? zeilen.join('\n') : null
 
   return {
     ok: true,
@@ -181,7 +206,14 @@ export function baueFaehigkeitenStart(e: FaehigkeitenStartEingabe): { ok: true; 
       settings: JSON.stringify(settings),
       addDirs,
       // QA 4: aktive Projekt-Skills müssen im init geladen sein (pflichtSkills), aktive Agents über agents.erlaubt.
-      initGate: { skills: gateSkills, gesperrt, ...(agents !== undefined ? { agents } : {}), ...(aktiveSkills.length > 0 ? { pflichtSkills: [...aktiveSkills] } : {}) },
+      // F45 F-3b-2: Plugin-Skills mit Präfix gehören zum Soll (init.skills und init.slash_commands) und müssen geladen sein.
+      initGate: {
+        skills: [...gateSkills, ...pluginSkills],
+        gesperrt,
+        ...(agents !== undefined ? { agents } : {}),
+        ...(aktiveSkills.length + pluginSkills.length > 0 ? { pflichtSkills: [...aktiveSkills, ...pluginSkills] } : {}),
+        ...(plugins.length > 0 ? { plugins: plugins.map((p) => `${p.name}@inline`) } : {}),
+      },
       instruktion,
     },
   }

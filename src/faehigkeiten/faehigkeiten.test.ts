@@ -382,3 +382,46 @@ describe('baueEmpfehlung mit aus (E-F45-6)', () => {
     assert.deepEqual(mit.deaktiviert?.map((e) => [e.id, e.grund]), [['pw', 'im Projekt deaktiviert']])
   })
 })
+
+describe('F45 F-3b-2: Start-Bausteine mit Plugin-Lauf-Kopien (baueFaehigkeitenStart, plugins)', () => {
+  it('nur Plugins (kein Projekt-Eintrag): Skill(<name>:<s>) erlaubt, enabledPlugins <name>@inline true + eingebaute false, Gate mit Präfix und Soll, Instruktion', () => {
+    const w = baueProjekt()
+    const e = ermittle(w, einst())
+    const s = baueFaehigkeitenStart({ projekt: e.eintraege, agentNamen: e.agentNamen, projektWurzel: w, referenz: REFERENZ, plugins: [{ name: 'superpowers', skills: ['systematic-debugging'], agents: [] }] })
+    assert.ok(s.ok, s.ok ? '' : s.grund)
+    if (!s.ok) return
+    assert.deepEqual(s.start.werkzeugZusatz, ['Skill(superpowers:systematic-debugging)'])
+    assert.deepEqual(JSON.parse(s.start.settings).enabledPlugins, { ...Object.fromEntries(REFERENZ.plugins.map((p) => [p, false])), 'superpowers@inline': true })
+    assert.deepEqual(s.start.initGate.plugins, ['superpowers@inline'])
+    assert.ok(s.start.initGate.skills.includes('superpowers:systematic-debugging'))
+    assert.ok((s.start.initGate.pflichtSkills ?? []).includes('superpowers:systematic-debugging'))
+    assert.equal(s.start.initGate.agents, undefined, 'ohne Plugin-Agent kein Agent-Werkzeug')
+    assert.match(s.start.instruktion ?? '', /Plugin-Fähigkeiten in diesem Lauf \(von Stefan der Ausführung zugeordnet\): Skills superpowers:systematic-debugging \(Skill-Werkzeug\)/)
+  })
+
+  it('Plugin-Agent: Agent(<name>:<a>) erlaubt, eingebaute Agents gesperrt, agents.erlaubt mit Präfix; Ort-B-Zweig behält Plugins', () => {
+    const w = baueProjekt()
+    const e = ermittle(w, einst())
+    const s = baueFaehigkeitenStart({ projekt: e.eintraege, agentNamen: e.agentNamen, projektWurzel: w, referenz: REFERENZ, plugins: [{ name: 'kraft', skills: [], agents: ['pruefer'] }] })
+    assert.ok(s.ok, s.ok ? '' : s.grund)
+    if (!s.ok) return
+    assert.ok(s.start.werkzeugZusatz.includes('Agent(kraft:pruefer)'))
+    for (const n of REFERENZ.agents) assert.ok(s.start.disallowedTools.includes(`Agent(${n})`), n)
+    assert.deepEqual(s.start.initGate.agents?.erlaubt, ['kraft:pruefer'])
+    const ortB = { addDirs: ['C:/cap/x'], disallowedTools: ['Skill(design)'], settings: JSON.stringify({ disableBundledSkills: true, skillOverrides: { design: 'off' } }), skillNamen: ['x'], projektSkillNamen: [], gesperrteNamen: ['design'] }
+    const mit = baueFaehigkeitenStart({ projekt: e.eintraege, agentNamen: e.agentNamen, projektWurzel: w, referenz: REFERENZ, ortB, plugins: [{ name: 'superpowers', skills: ['systematic-debugging'], agents: [] }] })
+    assert.ok(mit.ok)
+    if (!mit.ok) return
+    assert.equal(JSON.parse(mit.start.settings).enabledPlugins['superpowers@inline'], true)
+    assert.deepEqual(mit.start.initGate.skills, ['x', 'superpowers:systematic-debugging'])
+  })
+
+  it('ohne plugins bzw. mit leerer Liste: Ergebnis gleich wie bisher (kein plugins-Feld im Gate)', () => {
+    const w = baueProjekt()
+    const e = ermittle(w, einst(['skill:ponytail']))
+    const ohne = baueFaehigkeitenStart({ projekt: e.eintraege, agentNamen: e.agentNamen, projektWurzel: w, referenz: REFERENZ })
+    const leer = baueFaehigkeitenStart({ projekt: e.eintraege, agentNamen: e.agentNamen, projektWurzel: w, referenz: REFERENZ, plugins: [] })
+    assert.deepEqual(leer, ohne)
+    assert.ok(ohne.ok && ohne.start.initGate.plugins === undefined)
+  })
+})
