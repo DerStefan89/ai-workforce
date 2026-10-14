@@ -7,18 +7,19 @@
  * - projiziereKopie (rein): Positivliste je Bestandteil — Skills (Frontmatter name/description/license/argument-hint, Name =
  *   Ordner), Agents (name/description/tools/model/color; tools Pflicht, ohne Agent/Task/Skill, jeder Name im Werkzeugsatz
  *   'schreibend'; model nur inherit), Commands (ohne Frontmatter oder description/argument-hint/disable-model-invocation; nie
- *   allowed-tools); Hooks, MCP, LSP und plugin.json-Pfade außerhalb der Standardordner nie. Frontmatter fail-closed (BOM,
+ *   allowed-tools); Hooks, MCP, LSP und plugin.json-Pfade außerhalb der Standardordner nie; seit F-3b-2 kein Bestandteil, dessen
+ *   Dateien CLAUDE_PLUGIN_DATA enthalten (Grund plugin_daten, Variante A). Frontmatter fail-closed (BOM,
  *   '--- ', Leerzeile davor → nicht eindeutig). Grenzen und Pfadregeln des Prüflaufs (src/sammlung/inhalt.ts). Manifest neu
  *   (name, version, description, license; LF). kopie_hash in der Form von berechneInhaltHash;
  * - schreibeKopie (I/O): <wurzel>/<plugin-id>/<kopie_hash>/ inhaltsadressiert, nie überschrieben (Temp-Geschwister + rename);
  * - loesePluginAuf, bestimmeFreigabeZustand (rein): eine Auflösung der id für alle Wege, Vorrang der Zustände (Advisor N6);
  * - ermittlePluginStand (I/O): Projektion, Freigabe-Zustand und Prüfbericht eines Plugins für GET /api/plugins.
  *
- * Wird aufgerufen von: scripts/leitstand/routen-plugin-freigabe.mjs, src/plugin-kopie/kopie.test.ts, scripts/check-f45-f3b1-freigabe.mjs,
+ * Wird aufgerufen von: scripts/leitstand/routen-plugin-freigabe.mjs, src/plugin-lauf/index.ts, src/plugin-kopie/kopie.test.ts, scripts/check-f45-f3b1-freigabe.mjs,
  * public/leitstand/plugins-workforce-anzeige.test.mjs (über ergaenzePluginBestand).
  *
  * Wichtig:
- * - Kein Lauf importiert dieses Modul bis F-3b-2 (Gate f45-f3b1 (f)). Unter ~/.claude wird nie geschrieben (nur gelesen).
+ * - Auf dem Startweg importiert nur src/plugin-lauf dieses Modul (Gate f45-f3b2). Unter ~/.claude wird nie geschrieben (nur gelesen).
  * - Bytes übernommener Dateien bleiben unverändert (Hash je Datei = Quelle); nur das Manifest entsteht neu.
  * - Die Regeln sind absichtlich strenger als die CLI: was nicht schlicht ist, wird nicht übernommen (sichtbar mit Grund).
  */
@@ -48,6 +49,8 @@ const COMMAND_FELDER: ReadonlySet<string> = new Set(['description', 'argument-hi
 const VERBOTENE_AGENT_WERKZEUGE = new Set(['Agent', 'Task', 'Skill'])
 /** Lizenzdatei in der Plugin-Wurzel (wie src/claude-plugins). */
 const LIZENZ_MUSTER = /^(licen[cs]e|copying)(\..*)?$/i
+/** F45 F-3b-2 (Variante A): Text, der einen Bestandteil sperrt — die CLI legt sonst den Datenordner des Plugins unter ~/.claude an. */
+export const PLUGIN_DATEN_MARKE = 'CLAUDE_PLUGIN_DATA'
 /** Dateinamen in Normalform, die irgendwo in einem Bestandteil die Übernahme sperren (Advisor F2c). */
 const SPERR_DATEIEN = new Set(['claude.md', 'claude.local.md', 'hooks.json', '.mcp.json', '.lsp.json', 'plugin.json', 'marketplace.json'])
 
@@ -225,6 +228,9 @@ function pruefeTeilDateien(dateien: readonly QuellDatei[], andere: readonly { pf
     if (d.bytes === null) return { grund: 'zu_gross', detail: d.pfad }
     if (istBinaer(d.bytes)) return { grund: 'binaer', detail: d.pfad }
   }
+  // F45 F-3b-2 (Variante A, Spike f3b2 S6): CLAUDE_PLUGIN_DATA im Text legt im Lauf ~/.claude/plugins/data/<name>-inline an —
+  // mit oder ohne ${…}, auch in Hilfsdateien (fail-closed).
+  for (const d of dateien) if (d.bytes?.includes(PLUGIN_DATEN_MARKE) === true) return { grund: 'plugin_daten', detail: d.pfad }
   return null
 }
 

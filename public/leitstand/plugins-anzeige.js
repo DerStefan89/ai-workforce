@@ -36,7 +36,7 @@ const RISIKEN = new Set(['hook_befehl', 'hook_andere', 'mcp_ungepinnt', 'mcp_ent
 /** F45 F-3b-1: Codes des Workforce-Stands (src/plugin-kopie) — die Oberfläche übersetzt sie, unbekannte bleiben roh. */
 const ZUSTAENDE = new Set(['keine', 'freigegeben', 'veraltet', 'kopie_veraendert', 'quelle_fehlt', 'unbestimmbar', 'bericht_fehlt', 'bericht_ueberholt', 'mehrdeutig'])
 const SCHWEREN = new Set(['hoch', 'mittel', 'gering', 'info'])
-const GRUENDE = new Set(['hook_nie', 'mcp_spaeter', 'lsp_nicht', 'nur_standardordner', 'frontmatter_unklar', 'frontmatter_fehlt', 'frontmatter_feld', 'allowed_tools', 'name_abweichend', 'name_unzulaessig', 'agent_tools_fehlt', 'agent_tools_verboten', 'agent_tools_ausserhalb', 'agent_model', 'werkzeugsatz_unbestimmt', 'unterordner', 'sperrname', 'weitere_skill_md', 'link', 'binaer', 'zu_gross', 'pfad_abgelehnt'])
+const GRUENDE = new Set(['hook_nie', 'mcp_spaeter', 'lsp_nicht', 'nur_standardordner', 'frontmatter_unklar', 'frontmatter_fehlt', 'frontmatter_feld', 'allowed_tools', 'name_abweichend', 'name_unzulaessig', 'agent_tools_fehlt', 'agent_tools_verboten', 'agent_tools_ausserhalb', 'agent_model', 'werkzeugsatz_unbestimmt', 'unterordner', 'sperrname', 'weitere_skill_md', 'link', 'binaer', 'zu_gross', 'pfad_abgelehnt', 'plugin_daten'])
 const KOPIE_TYPEN = new Set(['skill', 'agent', 'command', 'hook', 'mcp', 'lsp', 'pfad'])
 const URTEILE = new Set(['GEEIGNET', 'MIT_AUFLAGEN', 'NICHT_GEEIGNET'])
 const ROLLEN = new Set(['ausfuehrung'])

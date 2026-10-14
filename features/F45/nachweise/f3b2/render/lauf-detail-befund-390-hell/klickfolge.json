@@ -1,0 +1,200 @@
+{
+  "url": "http://127.0.0.1:4392/#/runs/f45-f3b2-L1-<ID>",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#lauf-faehigkeiten"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Zusammenfassung",
+        "selector": ".faehigkeiten-im-lauf-zeile"
+      },
+      {
+        "name": "Lauf-Kopie",
+        "selector": ".plugins-lauf-kopien"
+      },
+      {
+        "name": "Datenordner",
+        "selector": ".plugins-datenordner"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Lauf-Detail geladen",
+      "warteAufSelector": {
+        "selector": "#lauf-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Fähigkeiten aufgeklappt",
+      "klick": "#lauf-faehigkeiten summary",
+      "warteAufSelector": {
+        "selector": ".faehigkeiten-im-lauf",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-faehigkeiten-im-lauf.png"
+    }
+  ],
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/laeufe/f45-f3b2-L1-<ID>",
+      "status": 200,
+      "json": {
+        "laufId": "f45-f3b2-L1-<ID>",
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-14T14:01:10.922Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          },
+          {
+            "sequenz": 2,
+            "zeitstempel": "2026-10-14T14:01:26.006Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "terminal",
+              "ergebnis": "ERFOLGREICH"
+            }
+          }
+        ],
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "ERFOLGREICH",
+          "terminalSequenz": 2,
+          "runPreparedSequenz": 1,
+          "terminaleOhneRunPrepared": []
+        },
+        "aktiv": false,
+        "fortschritt": null,
+        "aktivitaet": null,
+        "verweigertDaten": null,
+        "nichtGestartet": null,
+        "startvorlageZeitgrenzeMs": 1800000,
+        "laufZeitgrenzeMs": 1800000,
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "ausfuehrung",
+          "elemente": [
+            {
+              "inhalts_hash": "c2dc7f6f14e5f6eb4f5a6c6108e34571a971d9f422b080abdcb1380f5a1e9178",
+              "pfad": "artefakt:auftrag-f45-f3b2-L1-<ID>",
+              "zitierter_bereich": null
+            }
+          ],
+          "ausgeschlossen": []
+        },
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "f45-f3b2-L1-<ID>",
+          "titel": "F45 F-3b-2 L1",
+          "auftragstext": "Testlauf ohne Codeänderung. Führe diese Schritte nacheinander aus, ohne Rückfrage; wird ein Schritt abgelehnt oder fehlt ein Werkzeug, notiere es wörtlich und mache weiter. Ändere keine Datei.\n1. Lade den Skill \"superpowers:systematic-debugging\" über das Skill-Werkzeug; wende ihn nicht an.\n2. Lies mit dem Read-Werkzeug die Datei root-cause-tracing.md aus dem Ordner dieses Skills (Basisordner aus der Ausgabe des Skill-Werkzeugs) und nenne ihre erste Überschrift wörtlich.\n3. Antworte mit einer Zeile je Schritt: Ergebnis oder Fehlermeldung wörtlich."
+        },
+        "laufakte": {
+          "status": "ok",
+          "modellBeobachtet": "claude-sonnet-5",
+          "beobachtungsbasisVollstaendig": true,
+          "arbeitsverzeichnisPfad": "<HOME>\\Projekte\\ai-workforce",
+          "worker": "claude-code",
+          "modellDeklariert": null,
+          "beobachtung": {
+            "hintergrund_aufrufe": [],
+            "init_agents": [
+              "claude",
+              "Explore",
+              "general-purpose",
+              "Plan",
+              "statusline-setup"
+            ],
+            "init_mcp_server": [],
+            "init_skills": [
+              "superpowers:systematic-debugging"
+            ],
+            "init_tools": [
+              "Bash",
+              "Edit",
+              "Glob",
+              "Grep",
+              "Read",
+              "Skill",
+              "Write"
+            ],
+            "mcp_aufrufe": [],
+            "navigate_adressen": [],
+            "skill_aufrufe": [
+              "superpowers:systematic-debugging"
+            ],
+            "subagent_aufrufe": []
+          },
+          "faehigkeitenImLauf": {
+            "eintraege": [
+              {
+                "aktiv": true,
+                "aufrufe": 1,
+                "fehlgeschlagen": 0,
+                "hash": "86c9177753ffd63033696cd446d21bc5f5d07c26ab3bd76b3bc9849a69af8fde",
+                "id": "skill:superpowers@claude-plugins-official:systematic-debugging",
+                "name": "superpowers:systematic-debugging",
+                "quelle": "plugin",
+                "typ": "skill"
+              },
+              {
+                "id": "agent:anders@markt:pruefer",
+                "name": "pruefer (anders@markt)",
+                "typ": "agent",
+                "quelle": "plugin",
+                "aktiv": false,
+                "grund": "keine Freigabe — wirkt nicht",
+                "aufrufe": 0,
+                "fehlgeschlagen": 0
+              }
+            ],
+            "fremde_aufrufe": [],
+            "plugins": {
+              "datenordner": {
+                "abweichungen": [
+                  "+ superpowers-inline",
+                  "~ gitkraken-synced/cache.json"
+                ]
+              },
+              "lauf_kopien": [
+                {
+                  "abweichung_nachher": "skills/systematic-debugging/neu.md (zusätzlich)",
+                  "kopie_hash": "86c9177753ffd63033696cd446d21bc5f5d07c26ab3bd76b3bc9849a69af8fde",
+                  "lauf_kopie_hash": "a9d7028474eba33bfcf010cf022ffb1563c781dc3c1b16890e6422b018c46aa8",
+                  "name": "superpowers",
+                  "plugin_id": "superpowers@claude-plugins-official",
+                  "pruefbericht": "pruefbericht-p-superpowers-claude-plugins-official-447a3772@1"
+                }
+              ]
+            }
+          }
+        },
+        "rohstrom": {
+          "status": "nicht_verfuegbar"
+        },
+        "scoutErgebnis": {
+          "status": "nicht_lesbar",
+          "grund": "Ergebnistext ist kein gültiges JSON"
+        },
+        "scoutSammlung": null
+      }
+    }
+  ],
+  "farbschema": "light"
+}

@@ -1,0 +1,192 @@
+{
+  "lauf": "L1",
+  "mit_zuordnung": true,
+  "gemessen_am": "2026-10-14T14:01:26.018Z",
+  "cli": "2.1.299",
+  "modell": "claude-sonnet-5",
+  "vorbereitung_ms": 3222,
+  "dauer_ms_wand": 15332,
+  "plugin_start": {
+    "kennungen": [
+      "plugin:skill:superpowers@claude-plugins-official:systematic-debugging@86c9177753ffd63033696cd446d21bc5f5d07c26ab3bd76b3bc9849a69af8fde"
+    ],
+    "plugins": [
+      {
+        "plugin_id": "superpowers@claude-plugins-official",
+        "name": "superpowers",
+        "kopie_hash": "86c9177753ffd63033696cd446d21bc5f5d07c26ab3bd76b3bc9849a69af8fde",
+        "pruefbericht": "pruefbericht-p-superpowers-claude-plugins-official-447a3772@1",
+        "skills": [
+          "systematic-debugging"
+        ],
+        "agents": []
+      }
+    ],
+    "nicht_geladen": []
+  },
+  "argv_plugin_dirs": [
+    "<HOME>\\.ai-workforce\\plugin-kopien\\_lauf\\a9d7028474eba33bfcf010cf022ffb1563c781dc3c1b16890e6422b018c46aa8"
+  ],
+  "argv_allowed": [
+    "Read",
+    "Grep",
+    "Glob",
+    "Write",
+    "Edit",
+    "Bash(npm install)",
+    "Bash(npm ci)",
+    "Bash(npm run check:*)",
+    "Bash(npm run lint:*)",
+    "Bash(npm run typecheck:*)",
+    "Bash(npm run test:*)",
+    "Bash(npm run build:*)",
+    "Skill(superpowers:systematic-debugging)"
+  ],
+  "argv_settings": "{\"disableBundledSkills\":true,\"skillOverrides\":{\"design\":\"off\",\"doctor\":\"off\"},\"enabledPlugins\":{\"cc-plugin-telemetry@builtin\":false,\"cc-plugin-plugin-authoring@builtin\":false,\"superpowers@inline\":true}}",
+  "init_gate_erwartung": {
+    "skillNamen": [
+      "superpowers:systematic-debugging"
+    ],
+    "gesperrteNamen": [
+      "design",
+      "doctor"
+    ],
+    "mcpServer": [],
+    "projektWurzel": "<WURZEL>\\testprojekt",
+    "pflichtSkills": [
+      "superpowers:systematic-debugging"
+    ],
+    "plugins": [
+      "superpowers@inline"
+    ]
+  },
+  "instruktion_im_auftrag": [
+    "Plugin-Fähigkeiten in diesem Lauf (von Stefan der Ausführung zugeordnet): Skills superpowers:systematic-debugging (Skill-Werkzeug)."
+  ],
+  "ergebnis": {
+    "klassifikation": "ERFOLGREICH",
+    "grund": null
+  },
+  "init_gate_verstoss": null,
+  "init": {
+    "tools": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Skill",
+      "Write"
+    ],
+    "agents": [
+      "claude",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "statusline-setup"
+    ],
+    "skills": [
+      "superpowers:systematic-debugging"
+    ],
+    "plugins": [
+      {
+        "name": "superpowers",
+        "path": "<HOME>\\.ai-workforce\\plugin-kopien\\_lauf\\a9d7028474eba33bfcf010cf022ffb1563c781dc3c1b16890e6422b018c46aa8",
+        "source": "superpowers@inline",
+        "version": "6.2.0"
+      }
+    ],
+    "mcp_servers": [],
+    "slash_commands_mit_praefix": [
+      "superpowers:systematic-debugging"
+    ]
+  },
+  "werkzeugaufrufe": [
+    {
+      "name": "Skill",
+      "input": {
+        "skill": "superpowers:systematic-debugging"
+      },
+      "im_subagent": false
+    },
+    {
+      "name": "Read",
+      "input": {
+        "file_path": "<HOME>\\.ai-workforce\\plugin-kopien\\_lauf\\a9d7028474eba33bfcf010cf022ffb1563c781dc3c1b16890e6422b018c46aa8\\skills\\systematic-debugging\\root-cause-tracing.md"
+      },
+      "im_subagent": false
+    }
+  ],
+  "werkzeugergebnisse": [
+    {
+      "is_error": false,
+      "text": "Launching skill: superpowers:systematic-debugging"
+    },
+    {
+      "is_error": false,
+      "text": "1\t# Root Cause Tracing\n2\t\n3\t## Overview\n4\t\n5\tBugs often manifest deep in the call stack (git init in wrong directory, file created in wrong location, database opened with wrong path). Your instinct is"
+    }
+  ],
+  "faehigkeiten_im_lauf": {
+    "eintraege": [
+      {
+        "aktiv": true,
+        "aufrufe": 1,
+        "fehlgeschlagen": 0,
+        "hash": "86c9177753ffd63033696cd446d21bc5f5d07c26ab3bd76b3bc9849a69af8fde",
+        "id": "skill:superpowers@claude-plugins-official:systematic-debugging",
+        "name": "superpowers:systematic-debugging",
+        "quelle": "plugin",
+        "typ": "skill"
+      }
+    ],
+    "fremde_aufrufe": [],
+    "plugins": {
+      "datenordner": {
+        "abweichungen": []
+      },
+      "lauf_kopien": [
+        {
+          "abweichung_nachher": null,
+          "kopie_hash": "86c9177753ffd63033696cd446d21bc5f5d07c26ab3bd76b3bc9849a69af8fde",
+          "lauf_kopie_hash": "a9d7028474eba33bfcf010cf022ffb1563c781dc3c1b16890e6422b018c46aa8",
+          "name": "superpowers",
+          "plugin_id": "superpowers@claude-plugins-official",
+          "pruefbericht": "pruefbericht-p-superpowers-claude-plugins-official-447a3772@1"
+        }
+      ]
+    }
+  },
+  "beobachtung": {
+    "hintergrund_aufrufe": [],
+    "init_agents": [
+      "claude",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "statusline-setup"
+    ],
+    "init_mcp_server": [],
+    "init_skills": [
+      "superpowers:systematic-debugging"
+    ],
+    "init_tools": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Skill",
+      "Write"
+    ],
+    "mcp_aufrufe": [],
+    "navigate_adressen": [],
+    "skill_aufrufe": [
+      "superpowers:systematic-debugging"
+    ],
+    "subagent_aufrufe": []
+  },
+  "beobachtungsblock": "Beobachtung des Ausführungslaufs (geladen gegen aufgerufen, aus der Laufakte):\n- Skills geladen: superpowers:systematic-debugging · aufgerufen: superpowers:systematic-debugging\n- Subagenten geladen: claude, Explore, general-purpose, Plan, statusline-setup · aufgerufen: —\n- MCP-Server geladen: — · aufgerufen (Server): —\n- Hintergrund-Aufrufe: 0\nPrüfe, ob die für den Auftrag nötigen Fähigkeiten benutzt wurden; eine fehlende oder unerwartete Nutzung nennst du als Befund.",
+  "permission_denials": [],
+  "ergebnistext": "1. Skill geladen: superpowers:systematic-debugging, Basisordner: <HOME>\\.ai-workforce\\plugin-kopien\\_lauf\\a9d7028474eba33bfcf010cf022ffb1563c781dc3c1b16890e6422b018c46aa8\\skills\\systematic-debugging\n2. Erste Überschrift von root-cause-tracing.md: \"# Root Cause Tracing\"\n3. Alle Schritte erfolgreich ausgeführt, keine Datei geändert."
+}

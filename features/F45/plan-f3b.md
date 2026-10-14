@@ -387,3 +387,177 @@ code-reviewer „mit Hinweisen“, qa und design-guardian „nicht freigegeben�
 - Gate: (k)/(b2) echt kalibriert, (d2) auch Inhaltsfreigabe, neu (l) Bericht überholt, (m) verwaist, (n) Fremdänderung; f3a2 (f)
   Neuladen nur in derselben Generation (Rotfall).
 Rest: F-1094.
+
+## Plan v3 — F-3b-2 (Delta nach Spike `features/F45/nachweise/f3b2/spike.md`; ersetzt „Plan — F-3b-2“ und „F-3b-2-Plan (15)“, wo widersprechend)
+Branch `f45/f3b2-plugins-im-lauf`, Basis `340d823`. Freigabe Schritt 2 durch den Challenger (14.10.2026), Datenordner
+**Variante A**. Spike-Folgen übernommen: S3 Skill-`allowed-tools` erweitert den Werkzeugsatz → die Regel „Skill mit
+`allowed-tools` nicht übernommen“ bleibt die zentrale Sperre; S3 Agent-`tools` schränkt nur ein → E-F3b-6 bleibt; git:
+`Bash(git:*)` hält gegen Plugin-Skills → keine Zusatzsperre (Gegenprobe im Gate); S4/S5 Format und `enabledPlugins` wie
+gemessen; S6 Datenordner entsteht ohne Hooks/MCP nur über `CLAUDE_PLUGIN_DATA` im Text.
+
+**A Kopie (src/plugin-kopie, additiv):** neuer Grund `plugin_daten` — ein Skill, Agent oder Command, in dessen Dateien
+(Text, nicht binär) `CLAUDE_PLUGIN_DATA` vorkommt (mit oder ohne `${…}`), wird nicht übernommen (fail-closed, auch
+Hilfsdateien im Skill-Ordner). Sichtbar wie jeder Grund: Prüfbericht-Auftrag (nur Grund-Code), Leitstand („nicht
+übernommen“, i18n de/en/tr/ru). Ändert `kopie_hash` nur bei betroffenen Plugins (die gepinnte superpowers-Kopie enthält es
+nicht).
+
+**B Neues Modul `src/plugin-lauf/`** (rein + dünne I/O-Hülle; einziger Weg vom Plugin in den Lauf):
+1. `pluginZuordnungDerRolle(lokal, projektId, rolle)` → Einträge `{ typ, pluginId, name, eintrag }` (rein).
+2. `pluginKennungen(lokal, projektId, rolle)` → `plugin:<typ>:<plugin-id>:<name>@<kopie_hash der Freigabe>` (ohne Freigabe
+   `@keine`) für „Anzeige = Start“ (rein; Präfix `plugin:` — `skill:`/`agent:` sind Projekt-Kennungen).
+3. `async bereitePluginStartVor({ lokal, projektId, rolle, worker, art, leseBestand, berichte, kopienWurzel, werkzeugsatz })`:
+   ohne Zuordnung `{ art: 'keine' }`; Worker ≠ `claude-code` oder Art ≠ `schreibend` → `{ art: 'nicht_geladen', eintraege }` mit
+   Grund `nur_claude_code` bzw. `nur_schreibend` (heute nicht erreichbar: `ausfuehrung` erlaubt nur `claude-code`, Fähigkeiten
+   gibt es nur `schreibend` — Funktion + Test als Netz); sonst je Plugin: Bestand frisch (`leseBestand`) → `loesePluginAuf`
+   eindeutig → `ermittlePluginStand` (Quelle-Projektion = `kopie_hash`, gepinnte Kopie = Bericht über `vergleicheInhalt`,
+   Bericht gilt und ist nicht überholt) → Zustand muss `freigegeben` sein, sonst Abbruch mit sichtbarem Grund
+   (`Plugin <id>: <Zustand>`); jeder zugeordnete Teil steht in `uebernommen`; Manifest-`name` aus der gepinnten Kopie,
+   `NAME_MUSTER`, über alle Plugins eindeutig. Ergebnis `{ art: 'plugins', kennungen, plugins: [{ pluginId, name, kopieHash,
+   pruefbericht, bericht, gepinntOrdner, skills, agents }] }` oder `{ art: 'fehler', grund }`. Wirft nie.
+4. `baueLaufKopie(plugin, laufWurzel)` (synchron, I/O): erneut `vergleicheInhalt(bericht, gepinntOrdner)`; Teilmenge der
+   gepinnten Kopie = Manifest + Lizenzdateien der Wurzel + `skills/<s>/**` der zugeordneten Skills + `agents/<a>.md`;
+   `lauf_kopie_hash` = `hashAusDateien` dieser Dateien; Ziel `<laufWurzel>/<lauf_kopie_hash>/` (Ordnername = Hash),
+   inhaltsadressiert wie `schreibeKopie` (vorhanden mit gleichem Inhalt → wiederverwendet, anders → Abbruch „Lauf-Kopie
+   verändert“, Verknüpfung → Abbruch; neu: Temp-Geschwister + `rename`). `laufWurzel` = `<pluginKopienWurzel>/_lauf` (`_` ist
+   kein gültiger Anfang einer Plugin-id → keine Kollision; außerhalb jedes Arbeitsordners). Nie gelöscht (Stefan).
+5. Datenordner (Variante A): `erfassePluginDatenordner(ordner)` (lstat-Liste + mtime/Größe, nur lesend, Grenze 20 000
+   Einträge → „nicht prüfbar“) und `vergleichePluginDatenordner(vorher, nachher)` → relative Abweichungen (`+ data/x-inline`,
+   `~ …`, `- …`), keine absoluten Pfade. Ordner = `bestimmeClaudeOrdner(env, homedir)/plugins`.
+
+**C Start (Server; nur `ausfuehrung` mit `schreibend` und nur mit angezeigter Freigabe, wie alle Katalog-/Projekt-Fähigkeiten):**
+- Anzeige: `ermittleAusfuehrungsEmpfehlung` setzt mit `zusatz.faehigkeiten` zusätzlich `empfehlung.pluginFaehigkeiten`
+  (Eintrag, Anzeige `<name> (<plugin-id>)`, Typ, `kennung`, ohne Freigabe Grund) aus der lokalen Datei (synchron, kein
+  CLI-Aufruf im Poll); `zusatz.faehigkeiten.pluginFreigaben` (Hashes) geht in den Cache-Schlüssel. Die Oberfläche zeigt den
+  Block „Plugin-Fähigkeiten im Lauf“ in der Empfehlung und schickt die Kennungen mit `empfehlungIds` zurück
+  (`empfehlungIdsFuerFreigabe`).
+- Asynchrone Vorbereitung **vor** dem D13-Bereich: POST `…/workflows/<id>/freigabe` und POST `/api/laeufe` rufen
+  `bereitePluginStartVor` nur, wenn `empfehlungIds` eine `plugin:`-Kennung trägt (sonst kein Aufruf, bitgleich). Das Ergebnis geht
+  als 5. Argument an den bestehenden Aufruf `starteWorkflowSchritt(…, body.empfehlungIds, port, pluginStart)` bzw. in die
+  Optionen von `/api/laeufe` — keine neue Aufrufstelle (Gate: genau 6×). Fehler → 409 vor dem Festhalten bzw. 400, nichts
+  reserviert.
+- `bereiteEmpfehlungFuerStartVor`: `trenneAngezeigteIds` liefert zusätzlich `plugin`; angezeigt = `pluginKennungen` frisch aus
+  der lokalen Datei = `pluginStart.kennungen`, sonst Abbruch „Anzeige veraltet“.
+- `loeseAusfuehrungsEingabenAuf` (synchron): mit `fk.plugins` → `baueLaufKopie` je Plugin; `baueFaehigkeitenStart` bekommt
+  `plugins: [{ name, skills, agents }]` und wird auch nur mit Plugins gerufen: `Skill(<name>:<s>)`/`Agent(<name>:<a>)` in
+  `erlaubte_werkzeuge` (bei Plugin-Agents Sperre der eingebauten Agents wie F-1), `enabledPlugins["<name>@inline"] = true`
+  zusätzlich zu den eingebauten `false` (auch im Ort-B-Zweig), Init-Gate `skills`/`pflichtSkills` mit Präfixnamen,
+  `agents.erlaubt` mit Präfixnamen, neu `plugins: ['<name>@inline', …]`; Instruktion zusätzlich „Plugin-Fähigkeiten in diesem
+  Lauf (von Stefan der Ausführung zugeordnet): Skills `<name>:<s>` (Skill-Werkzeug); Subagenten …“ (E-F3b-1).
+  `aufrufEingaben.pluginDirs` = Lauf-Kopie-Ordner. `faehigkeitenImLauf` + Einträge `quelle: 'plugin'` (`id` = Zuordnungseintrag,
+  `name` = `<name>:<teil>`, `hash` = `kopie_hash`). Neues Eingabefeld `pluginsImLauf: { lauf_kopien: [{ plugin_id, name,
+  kopie_hash, lauf_kopie_hash, pruefbericht }], datenordner }`.
+- `baueAufruf`: `--plugin-dir <ordner>` je Eintrag von `pluginDirs` unmittelbar vor `-p` (nach `--settings`); ohne Feld bitgleich.
+
+**D Init-Gate (`pruefeInitZeile`):** `erwartet.plugins` (Standard `[]`): Menge `init.plugins[].source` = Soll (mehr oder fehlend =
+Abbruch; ohne Soll wie heute „nicht leer“); Plugin-Skills über `skills` (deckt `init.skills` und `init.slash_commands`, ~Z. 905);
+neu: jeder Name mit `:` in `init.skills`, `init.agents`, `init.slash_commands`, der nicht im Soll steht, ist ein Verstoß — auch
+ohne `agents`-Erwartung.
+
+**E Laufakte und Lauf-Detail:** `faehigkeiten_im_lauf` additiv `plugins: { lauf_kopien: […], datenordner: { abweichungen } |
+{ grund } }` (Schema + Zwilling im Gateway); `quelle` erlaubt zusätzlich `plugin`. Der Controller erfasst den Datenordner vor
+`starteGateway`, das Gateway ruft nach Prozessende `nachLauf()` und schreibt das Ergebnis (kein Abbruch, Befund). Lauf-Detail:
+Quelle „Plugin“ in der Tabelle, darunter Lauf-Kopien (Plugin, Kopie-/Lauf-Kopie-Hash gekürzt) und Datenordner („unverändert“ /
+Abweichung als Warnung / „nicht prüfbar“), i18n vierfach, escaped. Beobachtungsblock unverändert (zählt `superpowers:<skill>`
+über `skill_aufrufe`).
+
+**F Gate `scripts/check-f45-f3b2-lauf.mjs`** (in `npm run check` nach f45-f3b1), je Prüfung kalibrierter Rotfall: (a) Skill mit
+`allowed-tools` nicht übernommen (zentrale Sperre, S3); (b) `CLAUDE_PLUGIN_DATA` in Skill/Agent/Command → `plugin_daten`; (c) ohne
+Zuordnung bzw. ohne `plugin:`-Kennung Argv bitgleich (auch mit Zuordnung in der lokalen Datei); (d) mit Zuordnung: `--plugin-dir`
+genau je Lauf-Kopie, `enabledPlugins` nur `<name>@inline` true + eingebaute false, `Bash(git:*)` weiter in `--disallowedTools`
+(Gegenprobe git, Spike P4a/P4b); (e) Init-Gate Soll/mehr/fehlend/fremder Präfix in skills/agents/slash_commands; (f) Drift:
+Quelle geändert, gepinnte Kopie verändert, Bericht überholt, Lauf-Kopie verändert, doppelter Manifest-Name, zugeordneter Teil
+nicht übernommen → Start abgelehnt mit Grund; (g) Anzeige = Start (Kennung abweichend → abgelehnt); (h) Lauf-Kopie nur
+zugeordnete Teile, Ordnername = Hash, außerhalb des Arbeitsordners, Hash in der Laufakte; (i) Datenordner-Abweichung → Befund in
+der Laufakte, Lauf nicht abgebrochen, nur lesend; (j) Instruktion nennt `<plugin>:<skill>`; (k) `nicht_geladen` für Worker ≠
+claude-code; (l) XSS Lauf-Detail-Block; (m) `starteWorkflowSchritt(` genau 6×, kein `await` in den D13-Bereichen (f15 bleibt grün);
+(n) Rot-Selbsttest. Gate f45-f3b1 (f) wird angepasst (der Lauf ändert sich jetzt: Import von `src/plugin-kopie` nur aus
+`src/plugin-lauf`, `pruefeInitZeile` mit Soll).
+
+**G Tests zuerst (F-1092):** `src/plugin-lauf/plugin-lauf.test.ts`, Ergänzungen `kopie.test.ts` (`plugin_daten`),
+`claude-code-gateway.test.ts` (`pluginDirs`, Init-Gate Soll), `faehigkeiten.test.ts` (`baueFaehigkeitenStart` mit Plugins) — roter
+Lauf vor den Modulen als Beleg im Nachweis.
+
+**H Echter Beleg (`features/F45/nachweise/f3b2/beleg.mjs`):** echter Startweg (Muster F-1 `realer-lauf.mjs`):
+`bereitePluginStartVor` mit Stefans echter lokaler Datei (nur gelesen; Zuordnung `superpowers:systematic-debugging` → `ausfuehrung`
+liegt vor), echtem Bestand und echten Berichten dieses Checkouts → `loeseAusfuehrungsEingabenAuf` → `fuehreAufgabeDurch` → echte
+CLI im Wegwerf-Repo (Kontrollzustand in tmp). L1 mit Zuordnung: `init.plugins` = Lauf-Kopie, Skill aufgerufen,
+`faehigkeiten_im_lauf` zählt ihn, Beobachtungsblock nennt ihn. L2 ohne `plugin:`-Kennung: `init.plugins` = `[]`. Render-Nachweis
+Lauf-Detail und Freigabe-Block (`npm run render-nachweis`).
+
+**I Register/Doku:** ARCHITECTURE §2 (Lauf-Kopien `_lauf/<hash>`), Schema-Doku; F-1090 Spike-Ergebnisse + Stand; neues TECH_DEBT
+P2 „Prüflauf (Plugins/Sammlung) ohne Abbrechen und ohne Laufzeitanzeige“; Finding Variante B (`CLAUDE_CODE_PLUGIN_CACHE_DIR` je
+Lauf, Auslöser „Vorher/Nachher meldet Abweichung“); Fixpaket-Zeile F-3b-2, STATUS.
+
+**Nicht in F-3b-2:** Hooks, MCP, Commands im Lauf; lesende Rollen; Coach; Codex; Löschen alter Lauf-Kopien; Start ohne angezeigte
+Freigabe (wie alle Katalog-/Projekt-Fähigkeiten: ohne Anzeige keine Plugins).
+
+**Risiken:** R1 Zeit zwischen asynchroner Prüfung und synchronem Start — die gepinnte Kopie wird synchron erneut gegen den Bericht
+geprüft; nur eine Quellen-Drift in diesem Fenster bliebe bis zum nächsten Lauf unbemerkt (dokumentiert). R2 CLI-Abruf (~1,5 s) bei
+jedem Start mit Plugins. R3 die `.in_use`-Marken der CLI-Liste fallen vor die Vorher-Aufnahme (Liste läuft vor dem Controller).
+Schätzung ≈ 0,6 AT (unverändert).
+
+## Delta-Advisor-Pass v3 (architecture-advisor, frischer Kontext, 14.10.2026) — FREIGEGEBEN MIT AUFLAGEN
+Hoch: A1 die `:`-Regel des Init-Gates bräche heutige Läufe (Projekt-Commands in Unterordnern heißen `sub:tief`, stehen als
+gesperrte Namen in `init.slash_commands`). Mittel: A2 Zuordnung ohne gültige Freigabe; A3 D13-Fenster in POST `/api/laeufe`
+ungeprüft; A4 Vorbereitung vor dem D13-Bereich der Freigabe ohne geladenen Schritt; A5 zwei Werkzeugsätze (Projektion vs.
+Schritt); A6 Hilfsdateien eines Plugin-Skills außerhalb des Arbeitsordners ungemessen; A7 Zuschnitt ≈ 0,9–1,0 AT statt 0,6.
+Niedrig: A8 Cache-Schlüssel ohne `plugin_zuordnung`; A9 Vorher/Nachher der Lauf-Kopie fehlt, Lauf-Kopie aus den geprüften
+Bytes; A10 Datenordner nur `plugins/data`, `CLAUDE_CODE_PLUGIN_CACHE_DIR` gesetzt → nicht prüfbar; A11 ARCHITECTURE zuerst;
+A12 Controller reicht `initGate.plugins` durch; A13 Projekt-Command-Namensraum = Manifest-Name; A14 Beleg schreibt in das echte
+`_lauf`, `rename` auf vorhandenes Ziel unter Windows; A15 Gate (c) genau formulieren.
+
+## Plan v3.1 (verbindlich für den Bau; ersetzt widersprechende Stellen aus v3)
+1. **Init-Gate (A1):** die `:`-Regel gilt nur mit Plugin-Soll (`erwartet.plugins` gesetzt) und nur für Namen außerhalb Soll ∪
+   `gesperrt` ∪ Referenzmenge. Rotfall im Gate (e): Projekt mit `commands/sub/x.md`, ohne Plugin → kein Verstoß; mit Plugin-Soll
+   und fremdem `kraft:anders` → Verstoß.
+2. **Zuordnung ohne gültige Freigabe (A2) — abgeleitet aus den bestehenden Festlegungen, kein neuer Entscheid:** fehlt der
+   Freigabe-Eintrag (Rücknahme, F-3b-1 „ohne gültige Freigabe — wirkt nicht“), wirkt die Zuordnung nicht: keine `plugin:`-Kennung,
+   Anzeige „wirkt nicht (keine Freigabe)“, der Lauf startet ohne das Plugin, Laufakte-Eintrag `aktiv: false` mit Grund. Ist eine
+   Freigabe da, aber nicht gültig (Drift: `veraltet`, `kopie_veraendert`, `bericht_*`, `quelle_fehlt`, `mehrdeutig`, `unbestimmbar`),
+   startet der Lauf nicht, Grund sichtbar (Auftrag F-3b-2 „Hash-/Drift-Prüfung vor jedem Lauf mit sichtbarem Grund“, v2-Plan Punkt
+   4). Kennungen tragen damit immer einen Hash (`@keine` entfällt). Stefan kann das umstellen.
+3. **POST `/api/laeufe` (A3):** `await bereitePluginStartVor` nur zwischen `pruefeStartauftrag` und `if (laufAktiv)`; Gate (m) prüft
+   den Quelltext dieses Fensters (kein `await` zwischen `if (laufAktiv)` und `reserviereLaufId`/Start) mit Rotfall.
+4. **POST `…/freigabe` (A4):** Vorbereitung vor dem D13-Bereich nur bei `entscheidung === 'FREIGEGEBEN'` und einer `plugin:`-Kennung
+   in `empfehlungIds`, fest mit Rolle `ausfuehrung`, Art `schreibend`, Worker `claude-code`; im Bereich wirkt `pluginStart` nur, wenn
+   `erhaeltKatalogFaehigkeiten` für den Schritt gilt und sein Worker `claude-code` ist; die Vorprüfung (vor dem Festhalten) prüft
+   `pluginStart` (Fehler → 409) und die Kennungen. Bei ABGELEHNT nie ein CLI-Aufruf.
+5. **Werkzeugsätze (A5):** `bereitePluginStartVor` bekommt `kopieWerkzeugsatz` (Projektion/Zustand, = `pluginWerkzeugsatz` der
+   Instanz) und `schrittWerkzeugNamen` (Namen des Werkzeugsatzes des Schritts); zugeordnete Agents mit `tools` außerhalb der
+   Schritt-Namen → Abbruch mit Grund (löst die Zusage aus der Korrekturrunde F-3b-1).
+6. **Beleg (A6, A14):** L1 liest zusätzlich eine Hilfsdatei des Skills (`root-cause-tracing.md`) aus der Lauf-Kopie und belegt das
+   Ergebnis; der Beleg schreibt die Lauf-Kopie in Stefans echtes `~/.ai-workforce/plugin-kopien/_lauf/` (wie jeder echte Lauf, im
+   Nachweis genannt). Vorhandenes Ziel mit gleichem Inhalt wird wiederverwendet, ein `rename`-Fehler mit inzwischen gleichem
+   Ziel ebenso.
+7. **Zuschnitt (A7):** auf diesem Branch zwei getrennt stagebare Teile (Muster F-3b-1 v2.1 Punkt 4): **F-3b-2a** Server/Gateway/
+   Controller/Schema/Gate/Beleg inkl. `empfehlungIdsFuerFreigabe` (sonst bräche Stefans bestehende Zuordnung jede Ausführung
+   mit „Anzeige veraltet“ ab); **F-3b-2b** Anzeigeblock in der Empfehlung, Lauf-Detail, i18n, Render-Nachweis. Ein Prüferpass,
+   eine Korrekturrunde, ein `npm run check` über beide (Auftrag). Schätzung ≈ 0,9–1,0 AT (Fixpaket).
+8. **Cache (A8):** Schlüssel zusätzlich mit `plugin_zuordnung` des Projekts und den Hashes der `plugin_freigaben`.
+9. **Lauf-Kopie (A9):** die gepinnte Kopie wird einmal gelesen, mit der Dateiliste des Berichts verglichen (Menge + sha256) und
+   die Teilmenge aus genau diesen Bytes geschrieben; `nachLauf()` vergleicht die Lauf-Kopie nach dem Lauf erneut
+   (`vergleicheOrdner`) — Abweichung = Befund in der Laufakte.
+10. **Datenordner (A10):** erfasst wird nur `<claude>/plugins/data` (eine Ebene tief genügt nicht — rekursiv, aber nur dort);
+    ist `CLAUDE_CODE_PLUGIN_CACHE_DIR` in der Umgebung des Servers gesetzt → „nicht prüfbar“ (Grund in der Laufakte).
+11. **ARCHITECTURE (A11)** vor dem Code: §1 (Import-Grenze `src/plugin-kopie`), §2 (`_lauf/<hash>` schreibt der Startweg;
+    Datenordner als gemessene CLI-Nebenwirkung).
+12. **Controller (A12):** `initGate.plugins` wird durchgereicht; Test über den Controller-Pfad.
+13. **Namensraum (A13):** trägt ein gesperrter Projekt-Name das Präfix `<manifest-name>:` → Abbruch (sonst schaltete
+    `skillOverrides off` den Plugin-Skill ab).
+14. **Gate (c) (A15):** „ohne `empfehlungIds` bzw. ohne `plugin:`-Kennung darin bitgleich, auch mit Zuordnung in der lokalen Datei“.
+
+## Prüfpass und Korrekturrunde F-3b-2 (14.10.2026)
+code-reviewer, qa und design-guardian je „freigegeben mit Hinweisen“. Eine Korrekturrunde:
+- Server/Lauf: Zuordnung ohne Freigabe steht auch ohne `plugin:`-Kennung als „keine Freigabe — wirkt nicht“ in der Laufakte (CR K2, QA M1;
+  Gate (o)); sichtbare Gründe ohne absolute Pfade (Fehlercode, volle Meldung nur im Log, `ohnePfade`; CR K1); Lauf-Kopie verändert nennt
+  Ablage und gekürzten Hash (QA N1); eigener Grund ohne Kopie-Wurzel (CR 8); ein Vergleich für gepinnte Kopie und Lauf-Kopie (CR 2);
+  POST `/api/laeufe` ruft die CLI nur mit Katalog-Fähigkeiten (CR 1); Abweichungen des Datenordners höchstens 50 + Zähler (CR 6, QA N3);
+  nicht geladene Teile heißen `<teil> (<plugin-id>)` (QA N2).
+- Gate: (c) über `bereiteEmpfehlungFuerStartVor` — Zuordnung mit Freigabe ohne angezeigte Kennung bricht ab, ohne Freigabe nicht (CR K3);
+  (f) doppelter Manifest-Name, (m) `\bawait\b` und Rotfall „Abruf im D13-Bereich“ (CR 3); 26 Rotfälle. ARCHITECTURE §1 nennt Gate f45-f3b1
+  (f) für die Import-Grenze (CR 4).
+- Oberfläche: Hinweistexte des Plugins-Reiters „noch nicht wirksam“ ersetzt (vier Sprachen, Gate f45-f3a2 (b) nachgezogen; QA M2);
+  Lauf-Kopien mit aufklappbarem vollen Hash, Datenordner als Liste mit Art-Wort und Hinweis auf parallele Sitzungen, `h5`, einheitliche
+  Chips, Name ohne Doppelung, „wirkt nicht“ als Warn-Chip, Satzbau tr über einen Schlüssel, ru „Замечание“, de „würde … anlegen“
+  (design-guardian 1–7); Render-Fixtures stimmig (QA N5).
+Rest: F-1100.

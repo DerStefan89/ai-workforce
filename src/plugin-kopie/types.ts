@@ -56,6 +56,7 @@ export type NichtGrund =
   | 'binaer'
   | 'zu_gross'
   | 'pfad_abgelehnt'
+  | 'plugin_daten'
 
 /** Ein übernommener Bestandteil. */
 export interface KopieTeil {

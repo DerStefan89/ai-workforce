@@ -604,7 +604,70 @@ export function renderFaehigkeiten(laufakte) {
 
 /** F45 F-2a: Arten und Quellen eines Eintrags von faehigkeiten_im_lauf mit übersetztem Text; ein anderer Wert erscheint roh. */
 const IM_LAUF_ARTEN = new Set(['mcp', 'skill', 'agent'])
-const IM_LAUF_QUELLEN = new Set(['katalog', 'projekt'])
+const IM_LAUF_QUELLEN = new Set(['katalog', 'projekt', 'plugin'])
+
+/**
+ * F45 F-3b-2: Plugin-Lauf-Kopien (Plugin, Hash der gepinnten Kopie und der Lauf-Kopie, Vergleich nach dem Lauf) und Vergleich des
+ * Plugin-Datenordners vor/nach dem Lauf (Variante A: Befund, kein Abbruch) aus faehigkeiten_im_lauf.plugins. Ohne Feld ''.
+ * @param plugins - faehigkeiten_im_lauf.plugins oder undefined
+ * @returns HTML oder ''
+ */
+export function renderPluginsImLauf(plugins) {
+  if (plugins === null || typeof plugins !== 'object') return ''
+  const kopien = (Array.isArray(plugins.lauf_kopien) ? plugins.lauf_kopien : [])
+    .filter((k) => k !== null && typeof k === 'object')
+    .map((k) => {
+      const nachher =
+        k.abweichung_nachher === null
+          ? `<span class="ablauf-status">${tHtml('lauf.faehigkeitenImLauf.plugins.nachherGleich')}</span>`
+          : `<span class="ablauf-status warten">${tHtml('lauf.faehigkeitenImLauf.datenordner.befund')}</span> ${tHtml('lauf.faehigkeitenImLauf.plugins.nachherAnders')} <code>${escapeHtml(String(k.abweichung_nachher ?? ''))}</code>`
+      // design-guardian 5: die Plugin-id nur, wenn der Manifest-Name (Präfix im Lauf) von ihr abweicht.
+      const name = String(k.name ?? '')
+      const id = String(k.plugin_id ?? '')
+      const herkunft = id.split('@')[0] === name ? '' : ` (${escapeHtml(id)})`
+      // design-guardian 1: gekürzte Hashes in der Zeile, beide vollen Werte in EINEM aufklappbaren Block (Muster fp-hash-voll).
+      const kurz = (h) => (typeof h === 'string' && h !== '' ? `<code title="${escapeHtml(h)}">${escapeHtml(h.slice(0, 12))}…</code>` : '—')
+      const voll = [
+        [t('lauf.faehigkeitenImLauf.plugins.kopie'), k.kopie_hash],
+        [t('lauf.faehigkeitenImLauf.plugins.laufKopie'), k.lauf_kopie_hash],
+      ]
+        .filter(([, h]) => typeof h === 'string' && h !== '')
+        .map(([art, h]) => `${escapeHtml(art)}: <code>${escapeHtml(h)}</code>`)
+        .join('<br>')
+      const aufklapp = voll === '' ? '' : `<details class="fp-hash-voll"><summary>${tHtml('faehigkeitenProjekt.freigabe.hashVoll')}</summary>${voll}</details>`
+      return `<li><code>${escapeHtml(name)}</code>${herkunft} · ${tHtml('lauf.faehigkeitenImLauf.plugins.kopie')} ${kurz(k.kopie_hash)} · ${tHtml('lauf.faehigkeitenImLauf.plugins.laufKopie')} ${kurz(k.lauf_kopie_hash)}${aufklapp}${nachher}</li>`
+    })
+  const d = plugins.datenordner
+  let datenordner = ''
+  if (d !== null && typeof d === 'object' && Array.isArray(d.abweichungen)) {
+    // design-guardian 2: Art als Wort statt + ~ - (Screenreader, keine Verwechslung mit ~/); QA N3: Hinweis auf parallele Sitzungen.
+    const ART = { '+': 'neu', '~': 'geaendert', '-': 'entfernt' }
+    const zeile = (a) => {
+      const s = String(a)
+      const art = ART[s[0]]
+      return art !== undefined && s[1] === ' ' ? `<li>${tHtml(`lauf.faehigkeitenImLauf.datenordner.art.${art}`)}: <code>${escapeHtml(s.slice(2))}</code></li>` : `<li>${escapeHtml(s)}</li>`
+    }
+    datenordner =
+      d.abweichungen.length === 0
+        ? `<p class="plugins-datenordner" data-datenordner="gleich">${tHtml('lauf.faehigkeitenImLauf.datenordner.gleich')} <span class="ablauf-status">${tHtml('lauf.faehigkeitenImLauf.datenordner.gleichStatus')}</span></p>`
+        : `<div class="hinweis plugins-datenordner" data-datenordner="anders"><p><span class="ablauf-status warten">${tHtml('lauf.faehigkeitenImLauf.datenordner.befund')}</span> ${tHtml('lauf.faehigkeitenImLauf.datenordner.anders')}</p><ul class="empfehlung-liste">${d.abweichungen.map(zeile).join('')}</ul><p class="subtle">${tHtml('lauf.faehigkeitenImLauf.datenordner.hinweis')}</p></div>`
+  } else if (d !== null && typeof d === 'object' && typeof d.grund === 'string') {
+    datenordner = `<p class="hinweis plugins-datenordner" data-datenordner="nicht-pruefbar">${escapeHtml(t('lauf.faehigkeitenImLauf.datenordner.nichtPruefbar', { grund: d.grund }))}</p>`
+  }
+  // design-guardian 3: eigene Überschrift unter dem h4 (Abstand zur Tabelle über die Standardränder).
+  return `<div class="plugins-im-lauf"><h5>${tHtml('lauf.faehigkeitenImLauf.plugins.titel')}</h5>${kopien.length > 0 ? `<ul class="plugins-lauf-kopien">${kopien.join('')}</ul>` : ''}${datenordner}</div>`
+}
+
+/**
+ * Hash gekürzt mit aufklappbarem vollen Wert (F-1060 (6): per Tastatur, Screenreader und Touch, nicht nur im title) für die Tabelle
+ * „Fähigkeiten im Lauf“; die Lauf-Kopien bündeln ihre zwei Hashes in einem Block desselben Musters (fp-hash-voll, design-guardian 1).
+ * @param hash - Hash oder etwas anderes
+ * @returns HTML ('—' ohne Hash)
+ */
+function hashZelle(hash) {
+  if (typeof hash !== 'string' || hash === '') return '—'
+  return `<code title="${escapeHtml(hash)}">${escapeHtml(hash.slice(0, 12))}…</code><details class="fp-hash-voll"><summary>${tHtml('faehigkeitenProjekt.freigabe.hashVoll')}</summary><code>${escapeHtml(hash)}</code> <button type="button" class="button hash-kopieren" data-hash-kopieren="${escapeHtml(hash)}">${tHtml('befehl.kopieren')}</button><span class="subtle hash-kopieren-hinweis" hidden>${tHtml('lauf.hashKopierenHinweis')}</span></details>`
+}
 
 /**
  * Zelle „Aufrufe“ eines Eintrags: null (ohne Beobachtung) → „nicht beobachtet“, sonst Anzahl und Fehler.
@@ -641,10 +704,7 @@ export function renderFaehigkeitenImLauf(feld) {
         : `<span class="ablauf-status neutral">${tHtml('lauf.faehigkeitenImLauf.aus')}</span>${typeof e.grund === 'string' && e.grund !== '' ? `<br><span class="subtle">${escapeHtml(e.grund)}</span>` : ''}`
     // F45 F-2b-1 (F-1060 (6)): voller Hash aufklappbar wie in der Freigabe — per Tastatur, Screenreader und Touch erreichbar,
     // nicht nur im title.
-    const hash =
-      typeof e.hash === 'string' && e.hash !== ''
-        ? `<code title="${escapeHtml(e.hash)}">${escapeHtml(e.hash.slice(0, 12))}…</code><details class="fp-hash-voll"><summary>${tHtml('faehigkeitenProjekt.freigabe.hashVoll')}</summary><code>${escapeHtml(e.hash)}</code> <button type="button" class="button hash-kopieren" data-hash-kopieren="${escapeHtml(e.hash)}">${tHtml('befehl.kopieren')}</button><span class="subtle hash-kopieren-hinweis" hidden>${tHtml('lauf.hashKopierenHinweis')}</span></details>`
-        : '—'
+    const hash = hashZelle(e.hash)
     return `<tr data-aktiv="${e.aktiv === true}"><td data-spalte="${spalte('name')}"><strong>${escapeHtml(String(e.name ?? e.id ?? ''))}</strong></td><td data-spalte="${spalte('art')}">${escapeHtml(art)}</td><td data-spalte="${spalte('quelle')}">${escapeHtml(quelle)}</td><td data-spalte="${spalte('status')}">${status}</td><td data-spalte="${spalte('hash')}">${hash}</td><td data-spalte="${spalte('aufrufe')}">${aufrufZelle(e.aufrufe, e.fehlgeschlagen)}</td></tr>`
   })
   // Fremde Aufrufe je Art und Name zusammengefasst (Anzahl, davon mit Fehler = verweigert).
@@ -669,7 +729,7 @@ export function renderFaehigkeitenImLauf(feld) {
     zeilen.length === 0
       ? `<p class="leer">${tHtml('lauf.faehigkeitenImLauf.leer')}</p>`
       : `<div class="ablauf-tabelle" role="region" tabindex="0" aria-label="${tHtml('lauf.faehigkeitenImLauf.titel')}"><table class="lauf-kopfdaten faehigkeiten-im-lauf-tabelle"><caption class="sr-only">${tHtml('lauf.faehigkeitenImLauf.titel')}</caption><thead><tr>${['name', 'art', 'quelle', 'status', 'hash', 'aufrufe'].map((s) => `<th scope="col">${spalte(s)}</th>`).join('')}</tr></thead><tbody>${zeilen.join('')}</tbody></table></div>`
-  return `<section class="faehigkeiten-im-lauf">${titel}<p class="faehigkeiten-im-lauf-zeile">${zusammenfassung}</p>${tabelle}</section>`
+  return `<section class="faehigkeiten-im-lauf">${titel}<p class="faehigkeiten-im-lauf-zeile">${zusammenfassung}</p>${tabelle}${renderPluginsImLauf(feld.plugins)}</section>`
 }
 
 /**

@@ -1,0 +1,49 @@
+{
+  "url": "http://127.0.0.1:4392/#/runs/f45-f3b2-L2-<ID>",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#lauf-faehigkeiten"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Zusammenfassung",
+        "selector": ".faehigkeiten-im-lauf-zeile"
+      },
+      {
+        "name": "Lauf-Kopie",
+        "selector": ".plugins-lauf-kopien"
+      },
+      {
+        "name": "Datenordner",
+        "selector": ".plugins-datenordner"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Lauf-Detail geladen",
+      "warteAufSelector": {
+        "selector": "#lauf-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Fähigkeiten aufgeklappt",
+      "klick": "#lauf-faehigkeiten summary",
+      "warteAufSelector": {
+        "selector": ".faehigkeiten-im-lauf",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-faehigkeiten-im-lauf.png"
+    }
+  ]
+}

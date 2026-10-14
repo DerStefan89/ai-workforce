@@ -1,0 +1,20 @@
+{
+  "gemessen_am": "2026-10-14T13:08:24.170Z",
+  "laeufe": [
+    "P0",
+    "P2k",
+    "P2",
+    "P3a",
+    "P3b",
+    "P4a",
+    "P4b",
+    "P6a",
+    "P6b"
+  ],
+  "gepinnte_kopie_hash": "86c9177753ffd63033696cd446d21bc5f5d07c26ab3bd76b3bc9849a69af8fde",
+  "claude_ordner_neu": [
+    "projects/<Sitzungsordner des Arbeitsordners>/",
+    "session-env/<SITZUNGS-ID>/"
+  ],
+  "claude_ordner_weg": []
+}

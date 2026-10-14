@@ -6,8 +6,8 @@
  * (a) Fixture-Bestand (scripts/_plugin-fixture.ts) über den echten Handler GET /api/plugins → renderPlugins: Liste mit den drei
  *     Plugins (Name, Marketplace, Version, Status), Detail „voll“ mit Hooks (Ereignis, Befehl), MCP gepinnt ja/nein, Hook- und
  *     MCP-Risiko; scope local mit Ordnerbezug statt „an/aus“ (F-1091 (2)).
- * (b) Fester Hinweis (seit F45 F-3b-1 „Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon
- *     festlegen.“, vorher „Noch nicht im Workforce-Lauf nutzbar …“) im Panel des Reiters (index.html), in
+ * (b) Fester Hinweis (seit F45 F-3b-2 „Im Workforce-Lauf wirksam: …“, vorher F-3b-1 „Im Workforce-Lauf noch nicht wirksam …“
+ *     und „Noch nicht im Workforce-Lauf nutzbar …“) im Panel des Reiters (index.html), in
  *     allen vier Wörterbüchern vorhanden; kein sichtbarer Text des Reiters (Wörterbuch plugins.*, Reitername, Panel-Text ohne
  *     Kommentare/Attribute, gerenderte Zustände) enthält eine interne Kennung /\bF-\d/ (Challenger 14.10.2026).
  * (c) Eingebaute getrennt: nicht in der Liste, eigener Block mit Messversion der Referenzliste (F-1091 (1)).
@@ -44,7 +44,7 @@ console.log('\n=== F45-F-3a-2-Anzeige-Check ===\n')
 const BOESE = '" data-boese="1"><img src=x onerror=alert(1)><script>alert(2)</script>'
 /** Vereinbarter Hinweis (de) im Panel des Reiters — ohne interne Kennung (Challenger 14.10.2026). */
 // F45 F-3b-1: Text angepasst (Freigabe und Zuordnung sind jetzt möglich; der Lauf folgt im nächsten Schritt) — die Prüfung bleibt gleich streng.
-const HINWEIS_DE = 'Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon festlegen.'
+const HINWEIS_DE = 'Im Workforce-Lauf wirksam: zugeordnete Skills und Agents laufen in Ausführungsschritten (Claude Code, schreibend) mit, solange die Freigabe gilt.'
 const REFERENZ_VERSION = JSON.parse(readFileSync('src/faehigkeiten/eingebaut-referenz.json', 'utf8')).cli_version
 
 // ─── Reine Prüffunktionen ─────────────────────────────────────────────────────

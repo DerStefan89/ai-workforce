@@ -647,10 +647,21 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   F-3b-1 hält die Datei mit Plugin-Feldern für ungültig und sperrt dort
   Starts mit Katalog-Fähigkeiten. Eine Freigabe gilt nur im Checkout mit dem
   Prüfbericht; die Zuordnung wirkt erst mit F-3b-2 und nur in schreibenden
-  Ausführungsschritten.
+  Ausführungsschritten. Gemergt #335 (`340d823`). F-3b-2 „Plugins im Lauf“
+  gebaut, nicht committet (Branch `f45/f3b2-plugins-im-lauf`: Spike S3–S6,
+  `src/plugin-lauf` — Prüfung vor jedem Lauf gegen Bestand, Kopie und
+  Bericht, Lauf-Kopie mit nur den zugeordneten Teilen unter
+  `~/.ai-workforce/plugin-kopien/_lauf/<hash>`, `--plugin-dir` +
+  `enabledPlugins`, Init-Gate mit Plugin-Soll, Instruktion nennt
+  `<plugin>:<skill>`, Datenordner vorher/nachher als Befund (Variante A),
+  Anzeige im Freigabedialog und im Lauf-Detail, Gate f45-f3b2, echter Beleg
+  mit superpowers:systematic-debugging). Plugins wirken nur in
+  Ausführungsschritten mit Werkzeugsatz `schreibend`, Worker Claude Code
+  und angezeigter Freigabe; eine Zuordnung ohne Freigabe wirkt nicht, eine
+  ungültige Freigabe (Drift) sperrt den Start mit Grund.
   Reihenfolge ab F (Stefan, 14.10.2026, E-F45-11/12): F-3b-1 → F-3b-2 → B2b → Fähigkeit bauen → B5a/B5b → B3 → R → R2 → F30
   (R2 = Motion im Leitstand, neuer Baustein „Fähigkeit bauen“).
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1097. Nach F46, vor F30
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1100. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

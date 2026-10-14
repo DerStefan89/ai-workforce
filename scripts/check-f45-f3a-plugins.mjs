@@ -14,7 +14,8 @@
  *     kein JSON / Zeitgrenze (über listenErgebnisAusProzess mit halbem stdout) → 200 status 'fehler' mit Grund; POST → 405; geteilter Abruf: zwei gleichzeitige GETs = ein
  *     Läufer-Aufruf, der nächste GET danach ein neuer, ein Fehler wird nicht gemerkt; der echte Läufer startet mit cwd =
  *     Projektordner und lehnt ein Startziel ab, das nicht die Claude-CLI ist.
- * (d) Lauf unverändert (F-3a ändert keinen Lauf; F-3b ändert diese Invarianten bewusst): kein '--plugin-dir' in
+ * (d) Lauf unverändert (F-3a ändert keinen Lauf; seit F-3b-2 nennt nur src/claude-code-gateway '--plugin-dir', gesetzt aus
+ *     pluginDirs; ohne pluginDirs bleibt das Argv ohne): kein '--plugin-dir' außerhalb des Gateways in
  *     src/**\/*.ts; baueAufruf() ohne '--plugin-dir'; pruefeInitZeile weist init.plugins ≠ [] weiter ab; kein Import von
  *     src/claude-plugins in Gateway, Fähigkeiten-Start, Execution-Controller und src/ressourcen (Ort-B-Start).
  * (e) starteWorkflowSchritt( genau 6-mal im Server.
@@ -233,7 +234,8 @@ function pruefeGeteilt(gleichzeitig, danach, nachFehler) {
  */
 function pruefeLaufUnveraendert(quellen, argv, initGrund) {
   const b = []
-  const mitPluginDir = quellen.filter((q) => q.text.includes('--plugin-dir')).map((q) => q.pfad)
+  // F45 F-3b-2: baueAufruf setzt --plugin-dir aus pluginDirs (Gateway, Typen, Test) — überall sonst bleibt es ein Befund.
+  const mitPluginDir = quellen.filter((q) => q.text.includes('--plugin-dir') && !/src[\\/]claude-code-gateway[\\/]/.test(q.pfad)).map((q) => q.pfad)
   if (mitPluginDir.length > 0) b.push(`(d) '--plugin-dir' in ${mitPluginDir.join(', ')}`)
   if (argv.includes('--plugin-dir')) b.push('(d) baueAufruf() setzt --plugin-dir')
   if (initGrund === null || !/init\.plugins nicht leer/.test(initGrund)) b.push('(d) pruefeInitZeile lässt init.plugins ≠ [] zu')
