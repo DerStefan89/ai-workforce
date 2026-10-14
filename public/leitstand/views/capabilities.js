@@ -7,7 +7,8 @@
  * views/harness-aufbau.js über GET /api/harness), Capability Library (Unterbereiche Katalog —
  * views/capability-library.js über GET /api/ressourcen —, seit F45 F-2a „Dieses Projekt“ — views/faehigkeiten-projekt.js
  * über GET …/faehigkeiten: installiert · aktiv · benutzt, Schalter, Freigeben nach Inhalt —, Rollen & Besetzung mit
- * Scout, Empfehlungen) und
+ * Scout, Empfehlungen; seit F45 F-3a-2 „Plugins aus deinem Claude Code“ — views/plugins.js über GET …/plugins, gelesen nur bei
+ * der Wahl des Reiters und per „Neu laden“) und
  * Phasen & Rollen (Baustein „kommt“ aus F44 WS-7a). Titel und Beschreibung des Kopfes folgen dem Register.
  * Diese Datei hält die Register, Rollen & Besetzung (GET /api/ressourcen/abdeckung, Details lazy über
  * GET /api/ressourcen/rollen/<rolle>), den Scout und das Laden; die Regeln für Zählung, Filter und
@@ -50,6 +51,7 @@ import {
   zeigeCapabilityLibraryLaedt,
 } from './capability-library.js'
 import { initFaehigkeitenProjekt, ladeFaehigkeitenProjekt, setzeFaehigkeitenProjektZurueck } from './faehigkeiten-projekt.js'
+import { initPlugins, ladePluginsBeiReiterwahl, ladePluginsNeu, pluginsNichtGeladen, setzePluginsZurueck } from './plugins.js'
 import { initSammlung, ladeSammlung, setzeSammlungZurueck } from './sammlung.js'
 import { initHarnessAufbau, oeffneHarnessOrt, renderHarness, setzeHarnessZurueck, zeigeHarnessFehler, zeigeHarnessLaedt } from './harness-aufbau.js'
 
@@ -766,6 +768,15 @@ async function ladeCapabilities() {
   )
 }
 
+/** ID des Reiters „Plugins aus deinem Claude Code“ (index.html). */
+const PLUGINS_REITER = 'faehigkeiten-reiter-plugins'
+
+/** @returns true, wenn der Reiter „Plugins aus deinem Claude Code“ gewählt und sichtbar ist (Register Capability Library gewählt, QA 6). */
+function pluginsReiterGewaehlt() {
+  const gewaehlt = (id) => document.getElementById(id)?.getAttribute('aria-selected') === 'true'
+  return gewaehlt('werkstatt-reiter-faehigkeiten') && gewaehlt(PLUGINS_REITER)
+}
+
 /**
  * „Im Harness-Aufbau zeigen“ (Library) und „Zur Capability Library“ (Harness): Register wechseln.
  * @param reiterId - ID des Reiters im Register werkstatt-register
@@ -784,7 +795,15 @@ function wechsleZuReiter(reiterId) {
  */
 export function initCapabilitiesView() {
   initRegister('werkstatt-register', setzeKopf)
-  initRegister('faehigkeiten-register')
+  // F45 F-3a-2: der Reiter „Plugins aus deinem Claude Code“ liest seinen Bestand nur, wenn er neu gewählt wird (nicht in
+  // ladeCapabilities, nicht beim erneuten Klick auf den schon gewählten Reiter — Code-Review 5; außer der Bestand ist nach einem
+  // Projektwechsel noch nicht geladen, dann lädt der Klick wie angekündigt — Nachpass N1).
+  let letzterUnterreiter = document.querySelector('#faehigkeiten-register [aria-selected="true"]')?.id ?? null
+  initRegister('faehigkeiten-register', (reiter) => {
+    const neuGewaehlt = reiter?.id !== letzterUnterreiter
+    letzterUnterreiter = reiter?.id ?? null
+    if ((neuGewaehlt || pluginsNichtGeladen()) && reiter?.id === PLUGINS_REITER) ladePluginsBeiReiterwahl()
+  })
   setzeKopf(document.querySelector('#werkstatt-register [aria-selected="true"]'))
   initHarnessAufbau()
   initCapabilityLibrary({
@@ -798,6 +817,7 @@ export function initCapabilitiesView() {
   initScoutBedienung()
   initFaehigkeitenProjekt()
   initSammlung()
+  initPlugins()
   document.getElementById('harness-zur-library').addEventListener('click', () => wechsleZuReiter('werkstatt-reiter-faehigkeiten'))
   abonniereDetailAuffrischer(() => {
     void aktualisiereScoutZustand()
@@ -809,10 +829,13 @@ export function initCapabilitiesView() {
     setzeCapabilityLibraryZurueck()
     setzeFaehigkeitenProjektZurueck()
     setzeSammlungZurueck()
+    setzePluginsZurueck()
     void ladeCapabilities()
   })
   document.getElementById('capabilities-neu-laden').addEventListener('click', () => {
     void ladeCapabilities()
+    // F45 F-3a-2: Plugins nur, wenn ihr Reiter gewählt ist (sonst bei seiner nächsten Wahl).
+    if (pluginsReiterGewaehlt()) ladePluginsNeu()
   })
 
   registriere(/^#\/capabilities$/, 'capabilities', () => {

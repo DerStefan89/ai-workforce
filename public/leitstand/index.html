@@ -702,6 +702,7 @@
               <button type="button" role="tab" id="faehigkeiten-reiter-werkzeuge" class="active" aria-controls="faehigkeiten-bereich-werkzeuge" aria-selected="true" tabindex="0" data-i18n="werkstatt.reiter.werkzeuge">Katalog</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-projekt" aria-controls="faehigkeiten-bereich-projekt" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.projekt">Dieses Projekt</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-sammlung" aria-controls="faehigkeiten-bereich-sammlung" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.sammlung">Sammlung</button>
+              <button type="button" role="tab" id="faehigkeiten-reiter-plugins" aria-controls="faehigkeiten-bereich-plugins" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.plugins">Plugins aus deinem Claude Code</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-rollen" aria-controls="faehigkeiten-bereich-rollen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.rollen">Rollen &amp; Besetzung</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-empfehlungen" aria-controls="faehigkeiten-bereich-empfehlungen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.empfehlungen">Empfehlungen</button>
             </div>
@@ -747,6 +748,18 @@
             <div id="faehigkeiten-bereich-sammlung" role="tabpanel" aria-labelledby="faehigkeiten-reiter-sammlung" hidden>
               <h2 class="sr-only" data-i18n="werkstatt.reiter.sammlung">Sammlung</h2>
               <div id="sammlung"></div>
+            </div>
+
+            <!-- F45 F-3a-2 (F-910 Anzeige): Plugins aus Stefans Claude Code (views/plugins.js, plugins-anzeige.js, GET …/plugins aus
+                 F-3a-1). Nur lesen: gelesen wird erst bei der Wahl dieses Reiters und per „Neu laden“, nie im Poll; kein Knopf mit
+                 Wirkung. Der Hinweis „noch nicht im Lauf nutzbar“ (Lauf folgt mit F-3b) steht fest über jedem Zustand. -->
+            <div id="faehigkeiten-bereich-plugins" role="tabpanel" aria-labelledby="faehigkeiten-reiter-plugins" hidden>
+              <h2 class="sr-only" data-i18n="werkstatt.reiter.plugins">Plugins aus deinem Claude Code</h2>
+              <div class="note pl-hinweis-f3b" data-pl-hinweis="f3b">
+                <strong data-i18n="plugins.hinweisF3b">Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.</strong>
+                <span data-i18n="plugins.erklaerung">Gelesen aus deinem Claude Code. Hier wird nichts aktiviert, installiert oder freigegeben.</span>
+              </div>
+              <div id="plugins" class="pl-bereich"></div>
             </div>
 
             <!-- J7/J8: Liste je Rolle mit Coverage und Gap-Zeilen je Worker; Details lädt die Ebenen 1–4 lazy. -->

@@ -11834,6 +11834,7 @@ Auswirkung: Das Ziel „Claude arbeitet mit Plugins“ hat keinen Weg.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B4.
 Status: teilweise (F45 F-1, 12.10.2026, Teil Init-Gate): `pruefeInitZeile` verlangt `init.plugins` leer (fehlend = Verstoß); jeder Lauf mit Init-Gate schaltet die eingebauten Plugins per `--settings enabledPlugins` ab (Spike F-1 S3: `cc-plugin-telemetry@builtin`, `cc-plugin-plugin-authoring@builtin` auch mit `--setting-sources project`). Offen (F-2): Plugins im Fähigkeitenmodell/Katalog.
 Nachtrag (F45 F-3a-1, 14.10.2026): Entscheidung Stefan 13.10.2026 — Quelle sind Stefans in Claude Code installierte Plugins, nicht die Sammlung. Bestand gelesen (nur lesend, `claude plugin list --json` + Plugin-Ordner, `src/claude-plugins/`, Route GET `/api/plugins`, Gate `check-f45-f3a-plugins.mjs`): superpowers (inaktiv), gitkraken, design, cowork-plugin-management (aktiv, synced). Spike `features/F45/nachweise/f3a/spike.md`: (a) Plugin-Bestandteile erscheinen mit Präfix `<plugin>:` in init.skills/agents/slash_commands, `init.plugins` = `<name>@inline`; (b) Plugin-Hooks laufen; (c) allowed-tools eines Commands erweitert den Werkzeugsatz; (d) `enabledPlugins:false` wirkt auf `--plugin-dir`. Unter CLI 2.1.299 ist `init.plugins` mit den heutigen Settings weiter `[]`. Offen: Anzeige im Leitstand (F45 F-3a-2), Plugins im Lauf (F-1090, F45 F-3b).
+Nachtrag (F45 F-3a-2, 14.10.2026): Anzeige erledigt — Reiter „Plugins aus deinem Claude Code“ in der Capability Library (Liste, Detail mit Bestandteilen und Risiken, eingebaute getrennt mit Messversion, leer/unlesbar mit Grund, fester Hinweis „Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.“; gelesen nur bei Reiterwahl und „Neu laden“; Gate `check-f45-f3a2-anzeige.mjs`). Offen bleibt nur Plugins im Lauf (F-1090, F45 F-3b).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-911** · `TECH_DEBT` · P2 · offen
@@ -13516,7 +13517,8 @@ Beschreibung: (1) Eingebaute Plugins kommen nur aus der Referenzliste (`src/faeh
 Fundstelle: `src/claude-plugins/index.ts`, `scripts/leitstand/routen-plugins.mjs`, `features/F45/nachweise/f3a/spike.md`.
 Auswirkung: Gering — Anzeige, kein Lauf betroffen.
 Maßnahme: (1)(2) mit F45 F-3a-2 (Anzeige mit Messversion der Referenzliste; Messung `enabled` aus zwei Ordnern — vorher zeigt die Oberfläche `aktiv` bei scope local nicht als Stand dieses Projekts); (3)(4)(6)(7)(8)(9)(11)(13)–(17) bei Bedarf; (12) vor F-3b; (18) mit F-3a-2; (5) mit F-3b (F-1090); (10) bleibt.
-Status: offen.
+Stand F45 F-3a-2 (14.10.2026): (1) erledigt — eingebaute getrennt, Kopf „Referenzliste, gemessen mit <cli_version>“, Hinweis auf weitere eingebaute Plugins neuerer Versionen, Quelle je Eintrag, Lesefehler der Liste mit Grund. (2) erledigt — gemessen (`features/F45/nachweise/f3a2/messung-scope-local.mjs`/`.json`, isolierter `CLAUDE_CONFIG_DIR`, CLI der Messung): `enabled` hängt vom Arbeitsordner ab (aus dem Installationsprojekt `true`, aus anderen Ordnern `false`; `projectEnabled` immer `false`); die Oberfläche zeigt bei scope ≠ user „Je nach Ordner“ und im Detail den Wert „laut Abruf aus <instanz_pfad>“ mit Installationsprojekt und Messhinweis (scope project/unbekannt „nicht gemessen“). (4) in der Anzeige entschärft (Scope und Installationsprojekt unter dem Namen, Auswahl über id+scope+projekt_pfad). (18) erledigt — Typ `PluginAntwort` in `src/claude-plugins/types.ts`. Übrige Punkte unverändert.
+Status: offen (Rest).
 Feature/Run: Entdeckt: F45 F-3a-1 (qa, code-reviewer), 14.10.2026.
 
 **F-1092** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -13527,3 +13529,12 @@ Auswirkung: Gering — Tests und Gate-Rotfälle vorhanden; ohne Regel kann ein T
 Maßnahme: Testentwurf (Fälle mit erwartetem Ergebnis) vor dem Modul im Plan festhalten; der Bauauftrag verlangt den roten Lauf vor dem Modul als Beleg.
 Status: offen.
 Feature/Run: F45 F-3a-1 (Challenger vor dem Commit), 14.10.2026.
+
+**F-1093** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte F45 F-3a-2 (Reiter „Plugins aus deinem Claude Code“).
+Beschreibung: Aus den Nachpässen (code-reviewer, qa, design-guardian, alle „freigegeben mit Hinweisen“): (1) Das Zeitlimit des Abrufs steht doppelt (`api.js` `PLUGINS_ZEITLIMIT_MS`, `plugins-anzeige.js` `ZEITLIMIT_SEKUNDEN`), ohne Prüfung auf Gleichheit; der Text nennt Claude Code als Ursache, obwohl die Route die CLI schon nach 10 s abbricht (ein Abbruch nach 20 s kommt eher vom Lesen/Hashen oder vom Server). (2) Ob `enabled` bei scope user vom Arbeitsordner abhängt (etwa über `enabledPlugins` in Projekt-Settings), ist nicht gemessen; die Anzeige zeigt „An/Aus“ ohne Ordnerbezug. (3) Bei Teilfehlern zeigt das Detail „Risiken (0) — Keine Treffer der Regeln“ und „Ohne Einträge: …“, als wäre das Plugin sauber (nur das rote Band oben warnt). (4) Der XSS-Test deckt Agents, Hook `typ`/`quelle`, MCP `pin` und `cli_version` nicht mit Nutzlast ab (im Code escaped). (5) Der Render-Nachweis belegt „erneuter Klick lädt nicht“ und „Neu laden bei anderem Register“ nicht im Browser (nur Steuerungstest + Quelltext-Gate); die schwebende Persona-Schaltfläche verdeckt in einigen Ausschnitten Zeilen des Details. (6) Anrede in ru/tr im Plugin-Block gesiezt, Nachbarreiter duzen (Mischung bestand vorher). (7) „F-3b“ stand als interne Kennung im Produkttext (`plugins.hinweisF3b`) — erledigt (Challenger 14.10.2026): Text „Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.“, Gate (b) prüft /\bF-\d/ im sichtbaren Text.
+Fundstelle: `public/leitstand/plugins-anzeige.js`, `public/leitstand/api.js`, `public/leitstand/plugins-anzeige.test.mjs`, `public/leitstand/i18n/{tr,ru}.js`, `features/F45/nachweise/f3a2/render/erzeuge-nachweis.mjs`.
+Auswirkung: Gering — reine Anzeige, kein Lauf betroffen.
+Maßnahme: (1)(3)(4)(6) bei Bedarf bzw. mit dem nächsten Eingriff am Reiter; (2) mit F45 F-3b (Spike/Plan; Challenger 14.10.2026): Messung wie `features/F45/nachweise/f3a2/messung-scope-local.mjs` mit scope user + Projekt-Settings; (5) beim nächsten Render-Nachweis (Persona ausblenden, Abrufe zählen); (7) erledigt.
+Status: offen.
+Feature/Run: Entdeckt: F45 F-3a-2 (Nachpässe code-reviewer, qa, design-guardian), 14.10.2026.

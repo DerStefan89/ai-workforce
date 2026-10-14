@@ -262,6 +262,13 @@ export const holeFaehigkeiten = () => holeJsonOderWirf(mitPraefix('/faehigkeiten
 // F45 F-2b-1: Stefans Sammlung mit Zuordnung zum Katalog und Stand des aktiven Projekts — nur beim Betreten der Seite Workforce,
 // per „Neu laden“ und beim Projektwechsel, nie aus dem Poll. 200 trägt { status: 'ok' | 'fehler' }.
 export const holeSammlung = () => holeJsonOderWirf(mitPraefix('/sammlung'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+// F45 F-3a-2: Plugins aus Stefans Claude Code (GET …/plugins, F-3a-1) — nur bei der Wahl des Reiters und per „Neu laden“, nie
+// aus dem Poll (views/plugins.js). Präfigiert: die Instanz des aktiven Projekts fragt die CLI aus dessen Ordner ab (instanz_pfad;
+// `enabled` bei scope local hängt davon ab). Zeitlimit über der Zeitgrenze der CLI in der Route (10 s). 200 trägt { status }.
+/** Zeitlimit für GET …/plugins: Zeitgrenze der CLI in der Route (10 s) plus Spielraum für Ordner lesen und hashen (gleich
+ * ZEITLIMIT_SEKUNDEN in plugins-anzeige.js, dort nur für den Text). */
+const PLUGINS_ZEITLIMIT_MS = 20_000
+export const holePlugins = () => holeJsonOderWirf(mitPraefix('/plugins'), { signal: AbortSignal.timeout(PLUGINS_ZEITLIMIT_MS) })
 // F45 F-2b-2a (F-1056): Auswählen → Eignungsprüfung. Bewusst UNPRÄFIGIERT (Muster holeProjekte): Prüfläufe laufen immer in
 // der Workforce-Instanz (Advisor A3), gleich welches Projekt aktiv ist. vorbereiten pinnt nur (git ls-remote / npm view, ohne
 // Zeitlimit des Polls — ein Pin darf länger dauern); der Start antwortet 202 { laufId }; der Zustand wird nur gefragt, solange

@@ -631,9 +631,14 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Claude Code lesen“ gebaut, nicht committet (Branch
   `f45/f3a-plugins-bestand`: `src/claude-plugins`, GET /api/plugins, Gate
   f45-f3a, Spike mit echtem `claude -p` + `--plugin-dir`; kein Lauf
-  geändert).
+  geändert); gemergt #333 (`a427f0b`). F-3a-2 „Reiter Plugins aus deinem Claude
+  Code“ gebaut, nicht committet (Branch `f45/f3a2-plugins-anzeige`: Liste,
+  Detail mit Bestandteilen und Risiken, eingebaute mit Messversion, `aktiv`
+  bei scope local nur mit Ordnerbezug — gemessen: hängt vom Arbeitsordner
+  ab —, Laden nur bei Reiterwahl/„Neu laden“, Gate f45-f3a2; Route und
+  Lauf unverändert).
   Reihenfolge ab F: F-3a-1 → F-3a-2 → F-3b → B2b → B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1092. Nach F46, vor F30
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1093. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

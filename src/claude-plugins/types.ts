@@ -107,7 +107,7 @@ export interface PluginEintrag {
   scope: string | null
   /** enabled laut CLI-Liste */
   aktiv: boolean | null
-  /** bei scope local: Projekt, auf das sich aktiv bezieht */
+  /** bei scope local: Projekt, für das die CLI das Plugin installiert hat (aktiv gilt für den Ordner des Aufrufs, siehe PluginAntwort) */
   projekt_pfad: string | null
   projekt_aktiv: boolean | null
   pfad: string
@@ -139,6 +139,15 @@ export type PluginBestand =
       eingebaut_fehler: string | null
     }
   | { status: 'fehler'; grund: string }
+
+/**
+ * Antwort von GET /api/plugins (scripts/leitstand/routen-plugins.mjs erzeugePluginAbruf, F-1091 (18)): der Bestand, maskiert;
+ * bei status 'ok' zusätzlich `instanz_pfad` = Projektordner der Instanz = Arbeitsordner des Listenaufrufs. Nicht zu verwechseln
+ * mit `plugins[].projekt_pfad` (Projekt, für das die CLI ein Plugin mit scope local installiert hat). Gemessen (CLI-Version in
+ * features/F45/nachweise/f3a2/messung-scope-local.json): `enabled` eines Plugins mit scope local hängt vom Arbeitsordner des
+ * Aufrufs ab (true nur aus dem Installationsprojekt) — `aktiv` gilt also für `instanz_pfad`, nicht allgemein (F-1091 (2)).
+ */
+export type PluginAntwort = (Extract<PluginBestand, { status: 'ok' }> & { instanz_pfad: string }) | Extract<PluginBestand, { status: 'fehler' }>
 
 /** Grenzen beim Hashen (gezählt nach Ausschluss von .git/ und .in_use/). */
 export interface HashGrenzen {

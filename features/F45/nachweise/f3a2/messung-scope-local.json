@@ -1,0 +1,151 @@
+{
+  "gemessen_am": "2026-10-14T07:50:05.894Z",
+  "echter_plugins_ordner": {
+    "eintraege": 1165,
+    "abweichungen": []
+  },
+  "schritte": [
+    {
+      "schritt": "marketplace add",
+      "cwd": "<TMP>\\projekt-A",
+      "args": [
+        "plugin",
+        "marketplace",
+        "add",
+        "<TMP>\\markt"
+      ],
+      "exit": 0,
+      "ausgabe": "Adding marketplace…✔ Successfully added marketplace: mess-markt (declared in user settings)"
+    },
+    {
+      "schritt": "install local in A",
+      "cwd": "<TMP>\\projekt-A",
+      "args": [
+        "plugin",
+        "install",
+        "mess-plugin@mess-markt",
+        "--scope",
+        "local"
+      ],
+      "exit": 0,
+      "ausgabe": "Installing plugin \"mess-plugin@mess-markt\"...✔ Successfully installed plugin: mess-plugin@mess-markt (scope: local)"
+    },
+    {
+      "schritt": "list aus A (installiert, an)",
+      "cwd": "<TMP>\\projekt-A",
+      "args": [
+        "plugin",
+        "list",
+        "--json"
+      ],
+      "exit": 0,
+      "liste": [
+        {
+          "id": "mess-plugin@mess-markt",
+          "scope": "local",
+          "enabled": true,
+          "projectPath": "<TMP>\\projekt-A",
+          "projectEnabled": false
+        }
+      ]
+    },
+    {
+      "schritt": "list aus B (installiert, an)",
+      "cwd": "<TMP>\\projekt-B",
+      "args": [
+        "plugin",
+        "list",
+        "--json"
+      ],
+      "exit": 0,
+      "liste": [
+        {
+          "id": "mess-plugin@mess-markt",
+          "scope": "local",
+          "enabled": false,
+          "projectPath": "<TMP>\\projekt-A",
+          "projectEnabled": false
+        }
+      ]
+    },
+    {
+      "schritt": "list aus C (installiert, an)",
+      "cwd": "<TMP>\\projekt-C",
+      "args": [
+        "plugin",
+        "list",
+        "--json"
+      ],
+      "exit": 0,
+      "liste": [
+        {
+          "id": "mess-plugin@mess-markt",
+          "scope": "local",
+          "enabled": false,
+          "projectPath": "<TMP>\\projekt-A",
+          "projectEnabled": false
+        }
+      ]
+    },
+    {
+      "schritt": "disable local in A",
+      "cwd": "<TMP>\\projekt-A",
+      "args": [
+        "plugin",
+        "disable",
+        "mess-plugin@mess-markt",
+        "--scope",
+        "local"
+      ],
+      "exit": 0,
+      "ausgabe": "✔ Successfully disabled plugin: mess-plugin (scope: local)"
+    },
+    {
+      "schritt": "list aus A (aus)",
+      "cwd": "<TMP>\\projekt-A",
+      "args": [
+        "plugin",
+        "list",
+        "--json"
+      ],
+      "exit": 0,
+      "liste": [
+        {
+          "id": "mess-plugin@mess-markt",
+          "scope": "local",
+          "enabled": false,
+          "projectPath": "<TMP>\\projekt-A",
+          "projectEnabled": false
+        }
+      ]
+    },
+    {
+      "schritt": "list aus B (aus)",
+      "cwd": "<TMP>\\projekt-B",
+      "args": [
+        "plugin",
+        "list",
+        "--json"
+      ],
+      "exit": 0,
+      "liste": [
+        {
+          "id": "mess-plugin@mess-markt",
+          "scope": "local",
+          "enabled": false,
+          "projectPath": "<TMP>\\projekt-A",
+          "projectEnabled": false
+        }
+      ]
+    },
+    {
+      "schritt": "version",
+      "cwd": "<TMP>\\projekt-C",
+      "args": [
+        "--version"
+      ],
+      "exit": 0,
+      "ausgabe": "2.1.299 (Claude Code)"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "label": "Workforce geladen",
+    "Tabelle": false,
+    "Hook-Risiko": false,
+    "MCP-Risiko": false,
+    "Teilfehler": false,
+    "Eingebaut": false,
+    "lang": "de",
+    "Zustand": "nicht_geladen",
+    "Hinweis Lauf": "Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.",
+    "Aktiv (Detail)": "(fehlt)",
+    "Fokus": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Capability Library",
+    "Tabelle": false,
+    "Hook-Risiko": false,
+    "MCP-Risiko": false,
+    "Teilfehler": false,
+    "Eingebaut": false,
+    "lang": "de",
+    "Zustand": "nicht_geladen",
+    "Hinweis Lauf": "Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.",
+    "Aktiv (Detail)": "(fehlt)",
+    "Fokus": "null",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Reiter „Plugins“ gewählt",
+    "Tabelle": false,
+    "Hook-Risiko": false,
+    "MCP-Risiko": false,
+    "Teilfehler": false,
+    "Eingebaut": false,
+    "lang": "de",
+    "Zustand": "fehler",
+    "Hinweis Lauf": "Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.",
+    "Aktiv (Detail)": "(fehlt)",
+    "Fokus": "null",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]
