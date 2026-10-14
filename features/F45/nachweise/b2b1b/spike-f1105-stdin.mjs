@@ -1,6 +1,7 @@
 // Spike F-1105, Versuch 3 (Advisor-Pass A3): wie spike-f1105.mjs, aber der Prompt geht ueber stdin wie im Produkt (starteGateway, F-642).
 import { spawn } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
+import { schwaerze } from './schwaerze.mjs'
 const [repo, aus, modell] = process.argv.slice(2)
 const roh = JSON.parse(readFileSync(`${repo}/schemas/ergebnis-architecture-advisor.schema.json`, "utf8")); delete roh.$schema; delete roh.$id; const schema = JSON.stringify(roh)
 const plan = [
@@ -22,7 +23,7 @@ let out = '', err = ''
 kind.stdout.on('data', (d) => { out += d })
 kind.stderr.on('data', (d) => { err += d })
 kind.on('close', (code) => {
-  writeFileSync(aus, out)
+  writeFileSync(aus, schwaerze(out))  // Schwärzung beim Schreiben (HOME, PIPE)
   console.log('exit', code, 'dauer_ms', Date.now() - start, 'stderr', err.slice(0, 500))
   const zeilen = out.split('\n').filter(Boolean).map((z) => { try { return JSON.parse(z) } catch { return null } }).filter(Boolean)
   const res = zeilen.reverse().find((z) => z.type === 'result')

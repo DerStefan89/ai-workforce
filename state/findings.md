@@ -12487,6 +12487,7 @@ Auswirkung: Gering — Kosten und Nutzen des zweiten Workers sind nicht belegt.
 Maßnahme: Fixpaket: Befunde je Review (bestätigt/verworfen) gegen die Claude-Prüfer auswerten.
 Status: offen.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+Zugeordnet: F45 R — die Messung braucht echte Läufe (E-B2b-1 = A, 14.10.2026).
 
 **F-983** · `PROCESS_IMPROVEMENT` · P3 · erledigt
 Titel: E-F45-1 verweist auf ein Feature F45 ohne Akte.
@@ -13105,7 +13106,7 @@ Maßnahme: Die Laufakte zählt je Review bestätigte Befunde „nur Codex“ / �
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Nachtrag (Stefan, 14.10.2026): Codex prüft heute schon im Review-Schritt (Vorlagen standard/hoch). Der Nutzen wird in B2b gemessen (Codex-Review-Spec §11): nur Codex / nur Claude / beide, Fehlalarme, Kosten.
-Zugeordnet: Fixpaket Arbeitsfähigkeit, B2b.
+Zugeordnet: F45 R statt B2b — die Messung braucht echte Läufe (E-B2b-1 = A, 14.10.2026).
 
 **F-1051** · `TECH_DEBT` · P2 · offen
 Titel: Externe Agents sind nicht installierbar (Challenger K17).
@@ -13128,7 +13129,7 @@ Auswirkung: Mittel — Scanner-Recherche (F30) mit Such-/Daten-MCPs nicht mögli
 Maßnahme: Vor F30 prüfen (Scanner-Recherche); Geheimnis-Weitergabe ohne Klartext in Laufakte und Rohstrom.
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
-Zugeordnet: vor F30.
+Zugeordnet: F45 B3 statt B2b, gemeinsam mit F-1072 — Auslöser ist das erste Projekt mit echtem externen API-Aufruf, spätestens B3 (E-B2b-1 = A, 14.10.2026).
 Nachtrag (Auftrag F45 F-3a, 14.10.2026): Zuordnung → F45 B2b, gemeinsam mit F-1072 (K32) — die Geheimnis-Weitergabe an einen MCP-Server folgt derselben Regel wie API-Schlüssel im Lauf (nur Umgebungsvariable, nie in Datei/Laufakte/Rohstrom, echter Aufruf nur nach Rückfrage). Nicht mehr Teil von F-3.
 
 **F-1053** · `BUG` · P1 · erledigt
@@ -13332,10 +13333,10 @@ Titel: API-Schlüssel im Lauf ungeregelt (Challenger K32).
 Beschreibung: Integrationstests mit echten Diensten, ihre Kosten und die Maskierung von Schlüsseln (F-1005) sind im Lauf nicht geregelt.
 Fundstelle: Ausführungslauf, `scripts/leitstand/geheimnisse-maskieren.mjs`.
 Auswirkung: Mittel — Kosten und Schlüssel-Leck möglich.
-Maßnahme: B2a/B2b mit F-1071 — Standard Attrappe, echter Aufruf nur nach Rückfrage, Schlüssel nur als Umgebungsvariable, nie in Datei oder Laufakte.
+Maßnahme: B3 (zuvor B2a/B2b) mit F-1071 — Standard Attrappe, echter Aufruf nur nach Rückfrage, Schlüssel nur als Umgebungsvariable, nie in Datei oder Laufakte.
 Status: offen.
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
-Zugeordnet: F45 B2a/B2b.
+Zugeordnet: F45 B3 statt B2a/B2b — Auslöser ist das erste Projekt mit echtem externen API-Aufruf, spätestens B3 (K32; E-B2b-1 = A, 14.10.2026).
 
 **F-1073** · `TECH_DEBT` · P3 · offen
 Titel: Restpunkte F45 F-2b-2a (Eignungsprüfung) — Bedienung und Anzeige.
@@ -13447,7 +13448,7 @@ Titel: Restpunkte von F45 B2a-2 (Arbeitspaket).
 Beschreibung: (1) `bereiche` und `risiko` stehen im Auftrag und im Arbeitspaket-Block, aber niemand setzt sie (kein Formularfeld, kein Architekt-Feld, keine Kopplung an die Kontrolltiefe des Routers). (2) F-989: ein freier Auftrag oder Chat ohne bekannten Feature-Bezug bleibt „Ablauf ohne Feature“. (3) Woher eine Einrichtungsliste stammt (lauf_id des Architekten), ist im Auftrag nicht nachvollziehbar — die Auftragsversion zitiert den Lauf nicht (`eingaben: []`). (4) Das Review liest ADRs und die Checkliste weiter im Stand nach dem Bau; die Checkliste ist über den Schreibschutz für `.claude/**` gedeckt, die ADRs nicht. (5) Der AK-Entwurf entsteht nur aus der Maßnahme (ein Kriterium); Nicht-Ziele lassen sich im Click-to-Work nicht angeben. (6) Was Stefan im Projektordner einrichtet (z. B. eine ungetrackte `.env`), fehlt im Arbeitsordner des Baus; der Leitstand sagt nur, es müsse für den Bau erreichbar sein (Regel mit F-1072/B2b). (7) Ist das Ergebnis des Architekten beim Ausführungsstart nicht mehr lesbar (Rohstrom fehlt), wird der Bau bis zu einem Replan abgelehnt (bewusst: nie ohne Liste, Advisor H1). (8) Entscheidungen im Bau zur Bestätigung (Plan v2 E1–E4): Formblock der Architekt-Instruktion um `einrichtung` ergänzt; „bitgenau“ gilt für Ausführungs- und Review-Auftrag ohne Projektkarte; AK im POST-Formular nur mit Herkunft `finding`; `feature_ref` nur bei bekanntem Feature-Bezug. (9) Prüfpass-Reste: „während des Baus“-Schritte lassen sich während eines laufenden Baus nicht abhaken (Laufsperre); Gate ohne Fälle für Arbeitsordner, Altbestand ohne `basis_commit` über HTTP, Replan mit geänderter Liste, Laufsperre beim Abhaken und claude-code-Review bitgenau; die Einrichtungs-Prüfung kann vor späteren Ablehnungsgründen eine (idempotente) Auftragsversion schreiben; bis zu fünf synchrone git-Aufrufe beim Review-Start; ein Sprachwechsel im Entwurf verwirft getippten Text; die Meldung nach dem Abhaken steht weit vom Knopf (Bestand); ohne eigenen Test (QA-Nachpass): 409 von …/einrichtung nach ABGESCHLOSSEN/GESTOPPT, 400 bei unbekannten Feldern, Trim im Architekt-Validator, Entwurf bleibt nach Anlegefehler, Rotfall „kein basis_commit bei spätem Start/Altbestand“.
 Fundstelle: `src/auftrag/index.ts`, `scripts/leitstand-server.mjs` (`gleicheEinrichtungAb`, `pruefeEinrichtungVorBau`, `leseVorherStand`), `public/leitstand/views/workboard.js`.
 Auswirkung: Gering bis mittel — jeweils benannt, kein stiller Verlust.
-Maßnahme: (1) mit B2b (Kontrolltiefe/Budget je Arbeitspaket) oder B5a; (2) mit B5a (Akte im Leitstand); (3) Feld `einrichtung_quelle` oder Lineage-Eingabe, wenn nötig; (4) mit B2a-3 (Review-Spec); (5) nach dem Referenzauftrag R; (6) mit F-1072 (B2b); (7) beobachten; (8) Challenger bestätigt oder ändert; (9) nach Bedarf, Gate-Fälle mit B2a-3.
+Maßnahme: (1) mit B2b (Kontrolltiefe/Budget je Arbeitspaket) oder B5a; (2) mit B5a (Akte im Leitstand); (3) Feld `einrichtung_quelle` oder Lineage-Eingabe, wenn nötig; (4) mit B2a-3 (Review-Spec); (5) nach dem Referenzauftrag R; (6) mit F-1072 (B3; E-B2b-1 = A, 14.10.2026); (7) beobachten; (8) Challenger bestätigt oder ändert; (9) nach Bedarf, Gate-Fälle mit B2a-3.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2a-2 (Plan, Advisor-Pass und Nachpass, code-reviewer, qa, design-guardian), 13.10.2026.
 
