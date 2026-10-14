@@ -28,12 +28,26 @@ export type ListenErgebnis = { ok: true; stdout: string } | { ok: false; grund: 
 /** Pin-Stand eines MCP-Servers — Fakt aus command/args bzw. url. */
 export type PinArt = 'gepinnt' | 'ungepinnt' | 'anderer_befehl' | 'entfernt' | 'unbestimmt'
 
+/** F45 F-3b-1: Art eines Treffers im Text eines Bestandteils (Fakt, keine Sperrliste). */
+export type TextTrefferArt = 'text_veroeffentlichen' | 'text_worktree' | 'text_subagenten' | 'text_shell_inline'
+
+/** F45 F-3b-1: Treffer einer Art in einer Datei — erste Zeile (1-basiert, ganze Datei) und Zahl der Zeilen mit Treffer. */
+export interface TextTreffer {
+  art: TextTrefferArt
+  /** Pfad relativ zum Plugin-Ordner */
+  datei: string
+  zeile: number
+  anzahl: number
+}
+
 export interface SkillTeil {
   name: string
   /** Pfad relativ zum Plugin-Ordner ('/' als Trenner) */
   pfad: string
   /** Regeln aus allowed-tools ([] ohne Feld) */
   allowed_tools: string[]
+  /** F45 F-3b-1: Treffer in SKILL.md und weiteren .md des Skill-Ordners (fehlt in älteren Ständen) */
+  text_treffer?: TextTreffer[]
 }
 
 export interface AgentTeil {
@@ -41,12 +55,14 @@ export interface AgentTeil {
   pfad: string
   /** Werkzeuge aus tools ([] ohne Feld) */
   tools: string[]
+  text_treffer?: TextTreffer[]
 }
 
 export interface CommandTeil {
   name: string
   pfad: string
   allowed_tools: string[]
+  text_treffer?: TextTreffer[]
 }
 
 export interface HookTeil {
@@ -88,7 +104,7 @@ export interface Bestandteile {
 }
 
 /** Risiko-Arten (Fakten aus der Deklaration). */
-export type RisikoArt = 'hook_befehl' | 'hook_andere' | 'mcp_ungepinnt' | 'mcp_entfernt' | 'rechte_ausserhalb' | 'rechte_nicht_bestimmbar' | 'externe_wirkung'
+export type RisikoArt = 'hook_befehl' | 'hook_andere' | 'mcp_ungepinnt' | 'mcp_entfernt' | 'rechte_ausserhalb' | 'rechte_nicht_bestimmbar' | 'externe_wirkung' | 'agent_werkzeuge' | TextTrefferArt
 
 export interface Risiko {
   art: RisikoArt

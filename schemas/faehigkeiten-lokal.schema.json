@@ -2,12 +2,27 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/faehigkeiten-lokal.schema.json",
   "title": "Fähigkeiten je Projekt (FAEHIGKEITEN_LOKAL_V0)",
-  "description": "F45 F-1 (E-F45-6/7/8). Liegt unter ~/.ai-workforce/faehigkeiten.lokal.json, außerhalb jedes Repos und Arbeitsordners; geschrieben nur vom Leitstand auf direkte Eingabe Stefans (POST /api/projekte/<id>/faehigkeiten/aktivierung bzw. …/freigabe), nie ressourcen.json, projekte.json oder .claude/settings.json (E-F46-2). Ungültig (kein JSON, Schema verletzt, nicht lesbar) sperrt jeden Start mit Katalog-Fähigkeiten (E-F45-7). Geprüft von validiereFaehigkeitenLokal (src/faehigkeiten/index.ts), nicht durch dieses Schema allein (D5, kein ajv im Repo).",
+  "description": "F45 F-1 (E-F45-6/7/8). Liegt unter ~/.ai-workforce/faehigkeiten.lokal.json, außerhalb jedes Repos und Arbeitsordners; geschrieben nur vom Leitstand auf direkte Eingabe Stefans (POST /api/projekte/<id>/faehigkeiten/aktivierung bzw. …/freigabe und seit F45 F-3b-1 POST …/plugins/freigabe, …/plugins/freigabe/ruecknahme, …/plugins/zuordnung), nie ressourcen.json, projekte.json oder .claude/settings.json (E-F46-2). Ungültig (kein JSON, Schema verletzt, nicht lesbar) sperrt jeden Start mit Katalog-Fähigkeiten (E-F45-7). Seit F45 F-3b-1 additiv: plugin_freigaben (global, je Plugin-id an den Hash der gefilterten Kopie und an einen Prüfbericht gebunden) und je Projekt plugin_zuordnung (Standard leer, zuordenbar nur 'ausfuehrung', E-F3b-3) — ein Checkout ohne F-3b-1 hält eine Datei mit diesen Feldern für ungültig. Geprüft von validiereFaehigkeitenLokal (src/faehigkeiten/index.ts), nicht durch dieses Schema allein (D5, kein ajv im Repo).",
   "type": "object",
   "additionalProperties": false,
   "required": ["faehigkeiten_lokal_schema", "projekte"],
   "properties": {
     "faehigkeiten_lokal_schema": { "const": "v0" },
+    "plugin_freigaben": {
+      "type": "object",
+      "description": "F45 F-3b-1: Freigabe je Plugin-id (<name>@<marketplace>) aus Stefans Claude Code — gilt für den Inhalt der gefilterten Kopie (kopie_hash), nicht je Projekt; nur mit geltendem Prüfbericht (pruefbericht = '<artefakt_id>@<version>').",
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9._-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kopie_hash", "pruefbericht", "freigegeben_am"],
+        "properties": {
+          "kopie_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "pruefbericht": { "type": "string", "pattern": "^pruefbericht-[a-z0-9][a-z0-9-]*@[1-9][0-9]*$" },
+          "freigegeben_am": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "projekte": {
       "type": "object",
       "description": "Je Projekt-id (Registereintrag) die Einstellungen.",
@@ -33,6 +48,16 @@
             "description": "Freigabe nach Inhalt (F-816): Schlüssel agent:/skill:<name>, Wert sha256 der Agent-Datei bzw. inhalt_hash des Skill-Ordners.",
             "propertyNames": { "pattern": "^(agent|skill):[A-Za-z0-9][A-Za-z0-9._-]*$" },
             "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "plugin_zuordnung": {
+            "type": "object",
+            "description": "F45 F-3b-1: Plugin-Skills/-Agents je Rolle (E-F3b-3: nur 'ausfuehrung'). Eintrag '<skill|agent>:<plugin-id>:<name>'. Standard leer; wirkt im Lauf erst mit F-3b-2 und nur mit gültiger Freigabe.",
+            "propertyNames": { "enum": ["ausfuehrung"] },
+            "additionalProperties": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^(agent|skill):[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9._-]*:[A-Za-z0-9][A-Za-z0-9._-]*$" }
+            }
           }
         }
       }

@@ -1,0 +1,575 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#werkstatt-bereich-faehigkeiten",
+    "hoehe": 5200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Freigabe",
+        "selector": "#plugins-detail [data-pl-freigabe]",
+        "attribut": "data-pl-freigabe"
+      },
+      {
+        "name": "Bericht",
+        "selector": "#plugins-detail [data-pl-bericht]",
+        "attribut": "data-pl-bericht"
+      },
+      {
+        "name": "Aktion",
+        "selector": "#plugins-detail [data-pl-aktion-status]",
+        "attribut": "data-pl-aktion-status"
+      },
+      {
+        "name": "Hinweis Lauf",
+        "selector": "[data-pl-hinweis=\"f3b\"] strong"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Übernommen",
+        "selector": "#plugins-detail [data-pl-uebernommen]"
+      },
+      {
+        "name": "Nicht übernommen (Hook)",
+        "selector": "#plugins-detail [data-pl-grund=\"hook_nie\"]"
+      },
+      {
+        "name": "Prüfen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"pruefen\"]:not([disabled])"
+      },
+      {
+        "name": "Freigeben bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"freigeben\"]:not([disabled])"
+      },
+      {
+        "name": "Zurücknehmen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"zuruecknehmen\"]:not([disabled])"
+      },
+      {
+        "name": "debuggen zugeordnet",
+        "selector": "#plugins-detail input[data-pl-name=\"debuggen\"]:checked"
+      },
+      {
+        "name": "Kästchen bedienbar",
+        "selector": "#plugins-detail input[data-pl-zuordnung]:not([disabled])"
+      },
+      {
+        "name": "Sperre",
+        "selector": "#plugins-detail [data-pl-sperre]"
+      },
+      {
+        "name": "Verwaist",
+        "selector": "#plugins [data-pl-verwaist]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/plugins",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "quelle": {
+          "befehl": "claude plugin list --json",
+          "claude_ordner": "C:\\fixture\\d3\\claude"
+        },
+        "plugins": [
+          {
+            "id": "kraft@markt",
+            "name": "kraft",
+            "marketplace": "markt",
+            "version": "2.0.0",
+            "scope": "user",
+            "aktiv": false,
+            "projekt_pfad": null,
+            "projekt_aktiv": null,
+            "pfad": "C:\\fixture\\d3\\claude\\plugins\\cache\\markt\\kraft\\2.0.0",
+            "commit": null,
+            "inhalt_hash": "2b5990e4207aecc796c8262c89cad925633e1795423c11ee3732c1ca735abc3b",
+            "hash_grund": null,
+            "lizenz_datei": true,
+            "lizenz_feld": "MIT",
+            "bestandteile": {
+              "skills": [
+                {
+                  "name": "abschluss",
+                  "pfad": "skills/abschluss/SKILL.md",
+                  "allowed_tools": [],
+                  "text_treffer": [
+                    {
+                      "art": "text_veroeffentlichen",
+                      "datei": "skills/abschluss/SKILL.md",
+                      "zeile": 7,
+                      "anzahl": 1
+                    },
+                    {
+                      "art": "text_shell_inline",
+                      "datei": "skills/abschluss/SKILL.md",
+                      "zeile": 8,
+                      "anzahl": 1
+                    }
+                  ]
+                },
+                {
+                  "name": "baeume",
+                  "pfad": "skills/baeume/SKILL.md",
+                  "allowed_tools": [],
+                  "text_treffer": [
+                    {
+                      "art": "text_worktree",
+                      "datei": "skills/baeume/SKILL.md",
+                      "zeile": 6,
+                      "anzahl": 1
+                    }
+                  ]
+                },
+                {
+                  "name": "debuggen",
+                  "pfad": "skills/debuggen/SKILL.md",
+                  "allowed_tools": [],
+                  "text_treffer": [
+                    {
+                      "art": "text_veroeffentlichen",
+                      "datei": "skills/debuggen/vorlage.md",
+                      "zeile": 2,
+                      "anzahl": 1
+                    },
+                    {
+                      "art": "text_subagenten",
+                      "datei": "skills/debuggen/vorlage.md",
+                      "zeile": 1,
+                      "anzahl": 1
+                    }
+                  ]
+                },
+                {
+                  "name": "mit-hooks",
+                  "pfad": "skills/mit-hooks/SKILL.md",
+                  "allowed_tools": []
+                },
+                {
+                  "name": "mit-rechten",
+                  "pfad": "skills/mit-rechten/SKILL.md",
+                  "allowed_tools": [
+                    "Bash(gh pr comment:*)"
+                  ]
+                }
+              ],
+              "agents": [
+                {
+                  "name": "ohne-tools",
+                  "pfad": "agents/ohne-tools.md",
+                  "tools": []
+                },
+                {
+                  "name": "pruefer",
+                  "pfad": "agents/pruefer.md",
+                  "tools": [
+                    "Read",
+                    "Grep"
+                  ]
+                }
+              ],
+              "commands": [
+                {
+                  "name": "bom",
+                  "pfad": "commands/bom.md",
+                  "allowed_tools": [
+                    "Bash(gh:*)"
+                  ]
+                },
+                {
+                  "name": "plan",
+                  "pfad": "commands/plan.md",
+                  "allowed_tools": []
+                },
+                {
+                  "name": "review",
+                  "pfad": "commands/review.md",
+                  "allowed_tools": [
+                    "Bash(gh pr comment:*)"
+                  ]
+                }
+              ],
+              "hooks": [
+                {
+                  "ereignis": "SessionStart",
+                  "matcher": "startup",
+                  "typ": "command",
+                  "befehl": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run\" start",
+                  "quelle": "hooks/hooks.json"
+                },
+                {
+                  "ereignis": "PostToolUse",
+                  "matcher": "Write",
+                  "typ": "command",
+                  "befehl": "node nach.js",
+                  "quelle": "plugin.json"
+                }
+              ],
+              "mcp": [
+                {
+                  "name": "fern",
+                  "art": "http",
+                  "befehl": null,
+                  "args": [],
+                  "url": "https://mcp.example.invalid/mcp",
+                  "pin": "entfernt",
+                  "paket": null,
+                  "quelle": "plugin.json"
+                }
+              ],
+              "lsp": [
+                {
+                  "name": "ts",
+                  "befehl": "typescript-language-server",
+                  "args": [
+                    "--stdio"
+                  ],
+                  "quelle": ".lsp.json"
+                }
+              ]
+            },
+            "risiken": [
+              {
+                "art": "hook_befehl",
+                "bestandteil": "hook:SessionStart",
+                "text": "Shell-Befehl bei jedem Ereignis SessionStart (matcher startup): \"${CLAUDE_PLUGIN_ROOT}/hooks/run\" start"
+              },
+              {
+                "art": "hook_befehl",
+                "bestandteil": "hook:PostToolUse",
+                "text": "Shell-Befehl bei jedem Ereignis PostToolUse (matcher Write): node nach.js"
+              },
+              {
+                "art": "mcp_entfernt",
+                "bestandteil": "mcp:fern",
+                "text": "Entfernter MCP-Server: https://mcp.example.invalid/mcp"
+              },
+              {
+                "art": "rechte_ausserhalb",
+                "bestandteil": "skill:mit-rechten",
+                "text": "allowed-tools Bash(gh pr comment:*) nicht wörtlich im Werkzeugsatz 'schreibend'"
+              },
+              {
+                "art": "externe_wirkung",
+                "bestandteil": "skill:mit-rechten",
+                "text": "allowed-tools Bash(gh pr comment:*) mit Wirkung nach außen"
+              },
+              {
+                "art": "rechte_ausserhalb",
+                "bestandteil": "command:bom",
+                "text": "allowed-tools Bash(gh:*) nicht wörtlich im Werkzeugsatz 'schreibend'"
+              },
+              {
+                "art": "externe_wirkung",
+                "bestandteil": "command:bom",
+                "text": "allowed-tools Bash(gh:*) mit Wirkung nach außen"
+              },
+              {
+                "art": "rechte_ausserhalb",
+                "bestandteil": "command:review",
+                "text": "allowed-tools Bash(gh pr comment:*) nicht wörtlich im Werkzeugsatz 'schreibend'"
+              },
+              {
+                "art": "externe_wirkung",
+                "bestandteil": "command:review",
+                "text": "allowed-tools Bash(gh pr comment:*) mit Wirkung nach außen"
+              },
+              {
+                "art": "agent_werkzeuge",
+                "bestandteil": "agent:ohne-tools",
+                "text": "Agent ohne tools — erbt alle Werkzeuge des Laufs"
+              },
+              {
+                "art": "text_veroeffentlichen",
+                "bestandteil": "skill:abschluss",
+                "text": "nennt git push/merge oder gh pr (skills/abschluss/SKILL.md:7, 1×)"
+              },
+              {
+                "art": "text_shell_inline",
+                "bestandteil": "skill:abschluss",
+                "text": "enthält Inline-Shell (!`…`) (skills/abschluss/SKILL.md:8, 1×)"
+              },
+              {
+                "art": "text_worktree",
+                "bestandteil": "skill:baeume",
+                "text": "nennt git worktree add (skills/baeume/SKILL.md:6, 1×)"
+              },
+              {
+                "art": "text_veroeffentlichen",
+                "bestandteil": "skill:debuggen",
+                "text": "nennt git push/merge oder gh pr (skills/debuggen/vorlage.md:2, 1×)"
+              },
+              {
+                "art": "text_subagenten",
+                "bestandteil": "skill:debuggen",
+                "text": "nennt Subagenten bzw. das Task-/Agent-Werkzeug (skills/debuggen/vorlage.md:1, 1×)"
+              }
+            ],
+            "fehler": [],
+            "workforce": {
+              "kopie": {
+                "ok": true,
+                "kopie_hash": "282cb2d7f3540292578e9c2f2fed70e0b1a04c16227a27d7276efe9159803ab0",
+                "grund": null,
+                "uebernommen": [
+                  {
+                    "typ": "skill",
+                    "name": "abschluss",
+                    "pfad": "skills/abschluss/SKILL.md"
+                  },
+                  {
+                    "typ": "skill",
+                    "name": "baeume",
+                    "pfad": "skills/baeume/SKILL.md"
+                  },
+                  {
+                    "typ": "skill",
+                    "name": "debuggen",
+                    "pfad": "skills/debuggen/SKILL.md"
+                  },
+                  {
+                    "typ": "agent",
+                    "name": "pruefer",
+                    "pfad": "agents/pruefer.md"
+                  },
+                  {
+                    "typ": "command",
+                    "name": "plan",
+                    "pfad": "commands/plan.md"
+                  }
+                ],
+                "nicht_uebernommen": [
+                  {
+                    "typ": "hook",
+                    "name": "SessionStart",
+                    "grund": "hook_nie",
+                    "detail": null
+                  },
+                  {
+                    "typ": "hook",
+                    "name": "PostToolUse",
+                    "grund": "hook_nie",
+                    "detail": null
+                  },
+                  {
+                    "typ": "mcp",
+                    "name": "fern",
+                    "grund": "mcp_spaeter",
+                    "detail": null
+                  },
+                  {
+                    "typ": "lsp",
+                    "name": "ts",
+                    "grund": "lsp_nicht",
+                    "detail": null
+                  },
+                  {
+                    "typ": "skill",
+                    "name": "mit-hooks",
+                    "grund": "frontmatter_feld",
+                    "detail": "Frontmatter-Feld 'hooks' nicht erlaubt (erlaubt: name, description, license, argument-hint)"
+                  },
+                  {
+                    "typ": "skill",
+                    "name": "mit-rechten",
+                    "grund": "allowed_tools",
+                    "detail": "allowed-tools"
+                  },
+                  {
+                    "typ": "agent",
+                    "name": "ohne-tools",
+                    "grund": "agent_tools_fehlt",
+                    "detail": null
+                  },
+                  {
+                    "typ": "command",
+                    "name": "bom",
+                    "grund": "frontmatter_unklar",
+                    "detail": null
+                  },
+                  {
+                    "typ": "command",
+                    "name": "review",
+                    "grund": "allowed_tools",
+                    "detail": "allowed-tools"
+                  }
+                ]
+              },
+              "freigabe": {
+                "zustand": "freigegeben",
+                "kopie_hash": "282cb2d7f3540292578e9c2f2fed70e0b1a04c16227a27d7276efe9159803ab0",
+                "pruefbericht": "pruefbericht-p-kraft-markt-705c9057@1",
+                "freigegeben_am": "2026-10-14T11:13:53.979Z",
+                "abweichung": null
+              },
+              "pruefbericht": {
+                "kennung": "pruefbericht-p-kraft-markt-705c9057@1",
+                "kopie_hash": "282cb2d7f3540292578e9c2f2fed70e0b1a04c16227a27d7276efe9159803ab0",
+                "urteil": "MIT_AUFLAGEN",
+                "befunde": [
+                  {
+                    "beleg": "skills/abschluss/SKILL.md, Zeile 6: „git merge … gh pr create“ — die Workforce führt Git selbst.",
+                    "bereich": "modell_anweisungen",
+                    "schwere": "mittel"
+                  }
+                ],
+                "auflagen": [
+                  "Nur der Ausführung zuordnen; abschluss nicht zuordnen."
+                ],
+                "zusammenfassung": "Drei Skills und ein Agent sind schlicht und ohne Hooks; abschluss nennt Veröffentlichen.",
+                "erstellt_am": "2026-10-14T11:13:53.264Z",
+                "passt": true
+              },
+              "freigabe_sperre": null,
+              "zuordnung": [
+                {
+                  "rolle": "ausfuehrung",
+                  "typ": "skill",
+                  "name": "debuggen"
+                }
+              ]
+            }
+          },
+          {
+            "id": "nur-skill@markt",
+            "name": "nur-skill",
+            "marketplace": "markt",
+            "version": "0.1.0",
+            "scope": "user",
+            "aktiv": true,
+            "projekt_pfad": null,
+            "projekt_aktiv": null,
+            "pfad": "C:\\fixture\\d3\\fixture\\claude\\plugins\\cache\\markt\\nur-skill\\0.1.0",
+            "commit": null,
+            "inhalt_hash": "f8316f108eb78b410e8e42488557b7d97a34c23c447e41ef5b8a5064416b9a3c",
+            "hash_grund": null,
+            "lizenz_datei": false,
+            "lizenz_feld": null,
+            "bestandteile": {
+              "skills": [
+                {
+                  "name": "nur",
+                  "pfad": "skills/nur/SKILL.md",
+                  "allowed_tools": []
+                }
+              ],
+              "agents": [],
+              "commands": [],
+              "hooks": [],
+              "mcp": [],
+              "lsp": []
+            },
+            "risiken": [],
+            "fehler": [],
+            "workforce": {
+              "kopie": {
+                "ok": true,
+                "kopie_hash": "76279b7a3ed69609eebbe6da8dd5eb16e898fd1238604b45d941b6a27bce12c6",
+                "grund": null,
+                "uebernommen": [
+                  {
+                    "typ": "skill",
+                    "name": "nur",
+                    "pfad": "skills/nur/SKILL.md"
+                  }
+                ],
+                "nicht_uebernommen": []
+              },
+              "freigabe": {
+                "zustand": "keine",
+                "kopie_hash": null,
+                "pruefbericht": null,
+                "freigegeben_am": null,
+                "abweichung": null
+              },
+              "pruefbericht": null,
+              "freigabe_sperre": "ohne Prüfbericht zur angezeigten Version — erst die Eignung prüfen",
+              "zuordnung": []
+            }
+          }
+        ],
+        "eingebaut": [
+          {
+            "id": "cc-plugin-telemetry@builtin",
+            "quelle": "referenzliste",
+            "cli_version": "2.1.296 (Claude Code)"
+          },
+          {
+            "id": "cc-plugin-plugin-authoring@builtin",
+            "quelle": "referenzliste",
+            "cli_version": "2.1.296 (Claude Code)"
+          }
+        ],
+        "eingebaut_fehler": null,
+        "workforce": {
+          "rollen": [
+            "ausfuehrung"
+          ],
+          "lokale_datei": {
+            "zustand": "gueltig",
+            "grund": null,
+            "stand": "39e32508d632e50efe5eb425bed8ea71996e7e7b5b67b6f58032b15e84783064",
+            "fremd": false
+          },
+          "lauf_sperre": {
+            "aktiv": true,
+            "grund": "ein Lauf ist aktiv"
+          },
+          "kopien_wurzel_gesetzt": true,
+          "pruefen_hier": true,
+          "verwaist": []
+        },
+        "instanz_pfad": "C:\\fixture\\ai-workforce"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Reiter „Plugins“ gewählt → Liste",
+      "klick": "#faehigkeiten-reiter-plugins",
+      "warteAufSelector": {
+        "selector": "#plugins table.pl-tabelle",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail: Lauf aktiv, Zuordnung angekreuzt und gesperrt (hell)",
+      "klick": "#plugins .library-name[data-plugin-index=\"0\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-sperre]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-gesperrt.png"
+    }
+  ],
+  "farbschema": "light"
+}

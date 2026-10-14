@@ -545,6 +545,7 @@ import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, eins
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
 import { baueHarnessAbgleichAntwort, baueHarnessAbgleichOhneLauf, schreibeHarnessAbgleichAmKettenende } from './leitstand/routen-harness-abgleich.mjs'
+import { bereitePluginPruefungVor, ergaenzePluginBestand, fuehrePluginFreigabeDurch, fuehrePluginRuecknahmeDurch, fuehrePluginZuordnungDurch, pruefePluginKoerper } from './leitstand/routen-plugin-freigabe.mjs'
 import { echterPluginListenLaeufer, erzeugePluginAbruf } from './leitstand/routen-plugins.mjs'
 import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } from './leitstand/routen-sammlung.mjs'
 import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
@@ -5328,6 +5329,14 @@ export function erzeugeRequestHandler(optionen = {}) {
     // CLAUDE_CONFIG_DIR bzw. ~/.claude); nur Gates/Tests setzen eine Attrappe und einen Wegwerf-Ordner.
     pluginListe = undefined,
     pluginClaudeOrdner = undefined,
+    // F45 F-3b-1 (E-F3b-4, Advisor N2): Ablage der gefilterten Plugin-Kopien — null = keine (Freigabe dann 500). Nur der CLI-Bindeblock
+    // und baueProjektHandlerMap setzen ~/.ai-workforce/plugin-kopien, damit kein Gate/Test in Stefans Home schreibt.
+    pluginKopienWurzel = null,
+    // F45 F-3b-1 (Korrekturrunde, Code-Review 1/QA 1): Werkzeugsatz 'schreibend', gegen den die Kopie Agent-tools prüft — für alle
+    // Instanzen derselbe (der der Workforce-Startvorlage), damit kopie_hash und Freigabe nicht je Projekt verschieden ausfallen.
+    // undefined = der eigene der Startvorlage dieser Instanz (Gates/Tests); null = „Werkzeugsatz unbekannt“ (F-1094 (9): kein Rückfall,
+    // Agents nicht übernommen, Fakt sichtbar). Die Prüfung gegen den Werkzeugsatz des Laufs folgt mit F-3b-2.
+    pluginWerkzeugsatz = undefined,
   } = optionen
 
   /**
@@ -5590,12 +5599,28 @@ export function erzeugeRequestHandler(optionen = {}) {
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const profilReferenz = leiteProfilReferenzAb(vorlage)
+  // F-1094 (9): nur undefined (Option nicht gesetzt: Gates/Tests) nimmt die eigene Startvorlage. Ein gesetztes null heißt „Werkzeugsatz
+  // unbekannt“ — kein Rückfall auf die Vorlage dieser Instanz (sonst liefen kopie_hash und Freigabe je Projekt auseinander).
+  const kopieWerkzeugsatz = pluginWerkzeugsatz !== undefined ? pluginWerkzeugsatz : (vorlage.werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? null)
   // F45 F-3a-1: Plugin-Bestand aus Stefans Claude Code (GET /api/plugins) — ein geteilter Abruf je Instanz, cwd = Projektordner.
   const pluginAbruf = erzeugePluginAbruf({
     liste: pluginListe ?? echterPluginListenLaeufer(vorlage.werkzeugStartziel, repoWurzel),
     claudeOrdner: pluginClaudeOrdner,
-    werkzeugsatz: vorlage.werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? null,
+    werkzeugsatz: kopieWerkzeugsatz,
     projektPfad: repoWurzel,
+    // F45 F-3b-1: Workforce-Stand je Plugin (Kopie, Freigabe, Bericht, Zuordnung) — frisch je Abruf, ungeschwärzt vor dem Maskieren.
+    ergaenze: (bestand) =>
+      ergaenzePluginBestand(bestand, {
+        lokal: ladeFaehigkeitenLokal(faehigkeitenLokalPfad),
+        berichte: leseBerichte(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER).berichte,
+        kopienWurzel: pluginKopienWurzel,
+        werkzeugsatz: kopieWerkzeugsatz,
+        projektId,
+        standHash: faehigkeitenLokalPfad === null ? null : hashLokaleDatei(faehigkeitenLokalPfad),
+        laufSperre: laufSperreAnzeige(),
+        fremd: fremdGeaendert(faehigkeitenLokalWaechter, faehigkeitenLokalPfad),
+        pruefenHier: istWorkforceInstanz,
+      }),
   })
 
   /**
@@ -7653,7 +7678,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // sind dieselben, per Referenz geteilten Objekte, die GET /api/projekte bzw. der Dispatcher
         // lesen (kein zweiter, divergierender Zustand).
         projekte.push(neuerEintrag)
-        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad, faehigkeitenLokalWaechter, pruefberichtBasisVerzeichnis })
+        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad, faehigkeitenLokalWaechter, pruefberichtBasisVerzeichnis, pluginKopienWurzel, pluginWerkzeugsatz: kopieWerkzeugsatz })
         for (const [id, handler] of neueTeilkarte) projektHandlerMap.set(id, handler)
 
         // F42 WS-1 (E-PH-1 = B): read-only-Erkennung, KEIN Schreibzugriff auf ~/.claude.json — der
@@ -8109,6 +8134,82 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    // F45 F-3b-1: Plugins aus Stefans Claude Code prüfen, freigeben, zurücknehmen, je Rolle zuordnen. Abläufe in
+    // scripts/leitstand/routen-plugin-freigabe.mjs, Regeln in src/plugin-kopie; hier nur Registrierung. Laufsperre wie die
+    // Fähigkeiten-Routen (vorab und — Advisor F6 — erneut unmittelbar vor dem synchronen Schreiben), CSRF/Host zentral. Kein Lauf
+    // ändert sich: die Zuordnung wirkt erst mit F-3b-2.
+    if (pfad === '/api/plugins/pruefung' || pfad === '/api/plugins/freigabe' || pfad === '/api/plugins/freigabe/ruecknahme' || pfad === '/api/plugins/zuordnung') {
+      if (req.method !== 'POST') {
+        sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+        return
+      }
+      if (pfad === '/api/plugins/pruefung' && !istWorkforceInstanz) {
+        sendeJson(res, 409, { grund: 'Prüfläufe laufen in der Workforce-Instanz (unpräfigiert /api/plugins/pruefung), nicht je Projekt' })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+      let body
+      try {
+        body = JSON.parse(await leseBody(req))
+      } catch {
+        sendeJson(res, 400, { grund: 'Body ist kein gültiges JSON' })
+        return
+      }
+      const art = pfad === '/api/plugins/pruefung' ? 'pruefung' : pfad === '/api/plugins/freigabe' ? 'freigabe' : pfad === '/api/plugins/zuordnung' ? 'zuordnung' : 'ruecknahme'
+      const koerper = pruefePluginKoerper(body, art)
+      if (!koerper.ok) {
+        sendeJson(res, koerper.status, { grund: koerper.grund })
+        return
+      }
+      const kontext = {
+        leseBestand: pluginAbruf.roh,
+        werkzeugsatz: kopieWerkzeugsatz,
+        berichte: () => leseBerichte(pruefberichtBasisVerzeichnis, STILLER_SCHREIBER).berichte,
+        kopienWurzel: pluginKopienWurzel,
+        freigaben: () => {
+          const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
+          return lokal.zustand === 'ungueltig' ? {} : (lokal.daten.plugin_freigaben ?? {})
+        },
+        zuordnung: () => {
+          const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
+          return lokal.zustand === 'ungueltig' ? {} : (projektEinstellungen(lokal.daten, projektId).plugin_zuordnung ?? {})
+        },
+        laufGesperrt: () => {
+          const sperre = laufSperreAnzeige()
+          if (sperre.aktiv) return sperre.grund
+          return laufAktiv !== false ? 'ein Lauf ist aktiv — nach seinem Ende erneut versuchen' : null
+        },
+        aendere: (aenderung, stand) => aendereLokaleDatei(faehigkeitenLokalPfad, projektId, aenderung, stand, faehigkeitenLokalWaechter),
+      }
+      let ergebnis
+      try {
+        if (art === 'pruefung') {
+          const vorbereitet = await bereitePluginPruefungVor(koerper, kontext)
+          if (!vorbereitet.ok) {
+            sendeJson(res, vorbereitet.status, { grund: vorbereitet.grund })
+            return
+          }
+          // D13 und Reservierung prüft starteEignungspruefung selbst im selben Takt wie die 202-Antwort.
+          starteEignungspruefung(res, vorbereitet.subjekt, vorbereitet.quelle, vorbereitet.herkunft, null, vorbereitet.holen)
+          return
+        }
+        ergebnis = art === 'freigabe' ? await fuehrePluginFreigabeDurch(koerper, kontext) : art === 'zuordnung' ? await fuehrePluginZuordnungDurch(koerper, kontext) : fuehrePluginRuecknahmeDurch(koerper, kontext)
+      } catch (fehler) {
+        console.error(`[leitstand] ${pfad} unerwartet abgebrochen:`, fehler)
+        sendeJson(res, 500, { grund: `unerwartet abgebrochen: ${fehler.message}` })
+        return
+      }
+      if (!ergebnis.ok) {
+        console.error(`[leitstand] ${pfad} für '${koerper.pluginId}' abgelehnt (${ergebnis.status}):`, ergebnis.grund)
+        sendeJson(res, ergebnis.status, { grund: ergebnis.grund })
+        return
+      }
+      // Genau der geschriebene Stand gilt als bekannt (Muster F-2a, Advisor A3).
+      faehigkeitenLokalWaechter?.nachRoute(ergebnis.ergebnis.hash)
+      sendeJson(res, 200, { projekt_id: projektId, plugin_id: koerper.pluginId, ...(ergebnis.freigabe !== undefined ? { freigabe: ergebnis.freigabe } : {}), wirkt_ab: 'Plugins im Lauf (nächster Schritt)' })
+      return
+    }
+
     // F45 F-2b-1: Stefans Sammlung (docs/harness/kandidaten-2026-09-15.md der Installation, nur die Bewertungsmatrix) mit
     // Zuordnung zum Katalog und Stand dieses Projekts. Rein lesend, nicht im Poll; Logik in scripts/leitstand/routen-sammlung.mjs
     // und src/sammlung. Ein Lesefehler der Sammlung ist ein Fehlerstand (200), ein ungültiger Katalog 500.
@@ -8221,7 +8322,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `Quelle hat sich seit der Anzeige geändert (jetzt ${pin.quelle.art === 'git' ? pin.quelle.sha : pin.quelle.version}) — erneut „Auswählen“`, quelle: pin.quelle })
         return
       }
-      starteEignungspruefung(res, subjekt, pin.quelle, pin.herkunft, koerper.ausnahme, runner)
+      starteEignungspruefung(res, subjekt, pin.quelle, pin.herkunft, koerper.ausnahme, () => holeSubjekt(pin.quelle, runner))
       return
     }
 
@@ -9365,9 +9466,10 @@ export function erzeugeRequestHandler(optionen = {}) {
      * @param quelle - gepinnte Quelle (= angezeigte)
      * @param herkunft - Herkunftsdaten aus dem Pin
      * @param ausnahme - Ausnahme-Begründung oder null
-     * @param runner - { git, npm }
+     * @param holen - () => Promise<{ wurzel, ergebnis }>: Inhalt in eine eigene Temp-Wurzel (git/npm: holeSubjekt; seit F45 F-3b-1 auch
+     *   die neutralisierte Temp-Kopie eines Plugins, bereitePluginPruefungVor) — die Wurzel wird nach dem Lauf gelöscht, nie die Kopie-Wurzel
      */
-    function starteEignungspruefung(res, subjekt, quelle, herkunft, ausnahme, runner) {
+    function starteEignungspruefung(res, subjekt, quelle, herkunft, ausnahme, holen) {
       const kennung = randomUUID()
       const auftragId = `pruefung-${kennung}`
       const laufId = `eignungspruefung-${subjekt.schluessel}-${kennung}`
@@ -9411,7 +9513,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       void (async () => {
         let gestartet = false
         try {
-          const geholt = await holeSubjekt(quelle, runner)
+          const geholt = await holen()
           wurzel = geholt.wurzel
           if (abbruch.aborted) return gibFrei('abgebrochen beim Holen der Quelle')
           if (!geholt.ergebnis.ok) return gibFrei(geholt.ergebnis.grund)
@@ -11739,11 +11841,13 @@ export function belegeInstanzLock(basisVerzeichnis, port) {
  * @param repoWurzelBasis - Referenzpunkt für ein relatives repo_pfad
  * @param globalerLaufZustand - projektübergreifend geteiltes D13-Zustandsobjekt
  * @param optionen - { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad (F45 F-1), faehigkeitenLokalWaechter (F45 F-2a:
- *   ein Wächter für alle Instanzen) } — optional, Muster oben
+ *   ein Wächter für alle Instanzen), pruefberichtBasisVerzeichnis (F45 F-2b-2: Ablage der Workforce), pluginKopienWurzel und
+ *   pluginWerkzeugsatz (F45 F-3b-1: Ablage der Plugin-Kopien bzw. Werkzeugsatz der Projektion; null = „unbekannt“) } — optional,
+ *   Muster oben
  * @returns Map von Projekt-id auf Request-Handler
  */
 export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZustand, optionen = {}) {
-  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null, faehigkeitenLokalWaechter = undefined, pruefberichtBasisVerzeichnis = undefined } = optionen
+  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null, faehigkeitenLokalWaechter = undefined, pruefberichtBasisVerzeichnis = undefined, pluginKopienWurzel = undefined, pluginWerkzeugsatz = undefined } = optionen
   const map = new Map()
   const gesehenePfade = new Map()
   for (const projekt of projekte) {
@@ -11793,6 +11897,9 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           faehigkeitenLokalWaechter,
           // F45 F-2b-2 (Advisor C7): Prüfberichte liegen im Kontrollzustand der Workforce; undefined → eigene Ablage (Gates).
           ...(pruefberichtBasisVerzeichnis !== undefined ? { pruefberichtBasisVerzeichnis } : {}),
+          // F45 F-3b-1: dieselbe Ablage der Plugin-Kopien für alle Instanzen; undefined → keine (Gates).
+          ...(pluginKopienWurzel !== undefined ? { pluginKopienWurzel } : {}),
+          ...(pluginWerkzeugsatz !== undefined ? { pluginWerkzeugsatz } : {}),
         })
       )
     } catch (fehler) {
@@ -12006,13 +12113,18 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   const verwaist = raeumeVerwaistePruefordner()
   if (verwaist > 0) console.log(`[leitstand] ${verwaist} verwaiste(r) Prüfordner entfernt.`)
   // F45 F-2b-2 (A3): nur der defaultHandler ist die Workforce-Instanz (Prüfläufe), seine Ablage gilt für alle Projekte.
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, istWorkforceInstanz: true, arbeitsordner: true })
+  // F45 F-3b-1 (E-F3b-4, Advisor N2): nur hier zeigt die Ablage der Plugin-Kopien auf Stefans echtes ~/.ai-workforce.
+  const pluginKopienWurzel = process.env.LEITSTAND_PLUGIN_KOPIEN_WURZEL ?? join(homedir(), '.ai-workforce', 'plugin-kopien')
+  const pluginWerkzeugsatz = ladeStartvorlage(startvorlagePfad).werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? null
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, istWorkforceInstanz: true, pluginKopienWurzel, pluginWerkzeugsatz, arbeitsordner: true })
   const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,
     faehigkeitenLokalPfad,
     faehigkeitenLokalWaechter,
     pruefberichtBasisVerzeichnis: BASISVERZEICHNIS,
+    pluginKopienWurzel,
+    pluginWerkzeugsatz,
   })
   for (const [id, handler] of anfangsHandlerKarte) projektHandlerMap.set(id, handler)
   const dispatcher = erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler)

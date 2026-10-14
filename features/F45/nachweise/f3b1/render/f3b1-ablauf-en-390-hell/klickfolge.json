@@ -1,0 +1,140 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "en"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#werkstatt-bereich-faehigkeiten",
+    "hoehe": 5200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Freigabe",
+        "selector": "#plugins-detail [data-pl-freigabe]",
+        "attribut": "data-pl-freigabe"
+      },
+      {
+        "name": "Bericht",
+        "selector": "#plugins-detail [data-pl-bericht]",
+        "attribut": "data-pl-bericht"
+      },
+      {
+        "name": "Aktion",
+        "selector": "#plugins-detail [data-pl-aktion-status]",
+        "attribut": "data-pl-aktion-status"
+      },
+      {
+        "name": "Hinweis Lauf",
+        "selector": "[data-pl-hinweis=\"f3b\"] strong"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Übernommen",
+        "selector": "#plugins-detail [data-pl-uebernommen]"
+      },
+      {
+        "name": "Nicht übernommen (Hook)",
+        "selector": "#plugins-detail [data-pl-grund=\"hook_nie\"]"
+      },
+      {
+        "name": "Prüfen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"pruefen\"]:not([disabled])"
+      },
+      {
+        "name": "Freigeben bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"freigeben\"]:not([disabled])"
+      },
+      {
+        "name": "Zurücknehmen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"zuruecknehmen\"]:not([disabled])"
+      },
+      {
+        "name": "debuggen zugeordnet",
+        "selector": "#plugins-detail input[data-pl-name=\"debuggen\"]:checked"
+      },
+      {
+        "name": "Kästchen bedienbar",
+        "selector": "#plugins-detail input[data-pl-zuordnung]:not([disabled])"
+      },
+      {
+        "name": "Sperre",
+        "selector": "#plugins-detail [data-pl-sperre]"
+      },
+      {
+        "name": "Verwaist",
+        "selector": "#plugins [data-pl-verwaist]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Reiter „Plugins“ gewählt → Liste",
+      "klick": "#faehigkeiten-reiter-plugins",
+      "warteAufSelector": {
+        "selector": "#plugins table.pl-tabelle",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail „kraft“: übernommen / nicht übernommen",
+      "klick": "#plugins .library-name[data-plugin-index=\"0\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-wf=\"uebernahme\"]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-detail-uebernahme.png"
+    },
+    {
+      "label": "„Kopie prüfen“ → Prüfbericht",
+      "klick": "#plugins-detail [data-pl-aktion=\"pruefen\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-bericht=\"passt\"]",
+        "timeoutMs": 30000
+      },
+      "screenshot": "02-pruefbericht.png"
+    },
+    {
+      "label": "„Freigeben“ → freigegeben",
+      "klick": "#plugins-detail [data-pl-aktion=\"freigeben\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-freigabe=\"freigegeben\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "03-freigegeben.png"
+    },
+    {
+      "label": "Kästchen „debuggen · Ausführung“ → zugeordnet",
+      "klick": "#plugins-detail input[data-pl-name=\"debuggen\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail input[data-pl-name=\"debuggen\"]:checked",
+        "timeoutMs": 15000
+      },
+      "screenshot": "04-zugeordnet.png"
+    }
+  ],
+  "farbschema": "light"
+}

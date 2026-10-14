@@ -751,14 +751,18 @@
             </div>
 
             <!-- F45 F-3a-2 (F-910 Anzeige): Plugins aus Stefans Claude Code (views/plugins.js, plugins-anzeige.js, GET …/plugins aus
-                 F-3a-1). Nur lesen: gelesen wird erst bei der Wahl dieses Reiters und per „Neu laden“, nie im Poll; kein Knopf mit
-                 Wirkung. Der Hinweis „noch nicht im Lauf nutzbar“ (Lauf folgt mit F-3b) steht fest über jedem Zustand. -->
+                 F-3a-1). Gelesen wird erst bei der Wahl dieses Reiters, per „Neu laden“ und nach einer Aktion, nie im Poll. Seit
+                 F45 F-3b-1 Prüfen, Freigeben, Zurücknehmen und Zuordnen im Detail (Wirkung nur auf die lokale Fähigkeiten-Datei und
+                 die Plugin-Kopien); der Hinweis „im Lauf noch nicht wirksam“ (Lauf folgt mit F-3b-2) steht fest über jedem Zustand. -->
             <div id="faehigkeiten-bereich-plugins" role="tabpanel" aria-labelledby="faehigkeiten-reiter-plugins" hidden>
               <h2 class="sr-only" data-i18n="werkstatt.reiter.plugins">Plugins aus deinem Claude Code</h2>
               <div class="note pl-hinweis-f3b" data-pl-hinweis="f3b">
-                <strong data-i18n="plugins.hinweisF3b">Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.</strong>
-                <span data-i18n="plugins.erklaerung">Gelesen aus deinem Claude Code. Hier wird nichts aktiviert, installiert oder freigegeben.</span>
+                <strong data-i18n="plugins.hinweisF3b">Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon festlegen.</strong>
+                <span data-i18n="plugins.erklaerung">Gelesen aus deinem Claude Code. Prüfen, Freigeben und Zuordnen wirken nur in der Workforce — in Claude Code wird nichts geändert.</span>
               </div>
+              <!-- F45 F-3b-1 (F-1094 (8), Entscheidung Challenger 14.10.2026): Statusmeldungen der Plugin-Aktionen (Prüfung läuft, Ergebnis,
+                   Fehler) über diese eine Live-Region — außerhalb des neu gezeichneten #plugins, damit sie erhalten bleibt. -->
+              <p id="plugins-status" class="sr-only" aria-live="polite"></p>
               <div id="plugins" class="pl-bereich"></div>
             </div>
 

@@ -40,7 +40,7 @@ export const PRUEF_URTEILE = Object.freeze(['GEEIGNET', 'MIT_AUFLAGEN', 'NICHT_G
 export type PruefUrteil = (typeof PRUEF_URTEILE)[number]
 
 /** Typen, die der Prüflauf prüft. */
-export const PRUEF_TYPEN = Object.freeze(['skill', 'mcp', 'agent'] as const)
+export const PRUEF_TYPEN = Object.freeze(['skill', 'mcp', 'agent', 'plugin'] as const)
 export type PruefTyp = (typeof PRUEF_TYPEN)[number]
 
 /** Prüfbereiche (werkzeug-auswahl + Abweichung von der Sammlung). */
@@ -114,8 +114,15 @@ export function validiereErgebnisEignungspruefung(ergebnis: unknown, pin?: { typ
 
 // ─── Kernartefakt pruefbericht-<schluessel> ─────────────────────────────────────
 
-/** Gepinnte Quelle: git (Skill/Agent) oder npm (MCP). */
-export type PruefQuelle = { art: 'git'; repo: string; ref: string; sha: string; pfad: string } | { art: 'npm'; paket: string; version: string; integrity: string }
+/**
+ * Gepinnte Quelle: git (Skill/Agent), npm (MCP) oder seit F45 F-3b-1 plugin (gefilterte Kopie eines Plugins aus Stefans Claude
+ * Code, src/plugin-kopie; gepinnte Version = kopie_hash). Bewusst plugin_version statt version (Advisor F4c): Stellen, die nur
+ * „git, sonst npm“ unterscheiden, läsen sonst die Plugin-Version still als npm-Version.
+ */
+export type PruefQuelle =
+  | { art: 'git'; repo: string; ref: string; sha: string; pfad: string }
+  | { art: 'npm'; paket: string; version: string; integrity: string }
+  | { art: 'plugin'; plugin_id: string; kopie_hash: string; plugin_version: string | null; commit: string | null }
 
 /** Herkunftsdaten zur Quelle (mechanisch, nicht vom Modell): Commit-Zeit bzw. npm-Änderungszeit, Pfleger, Lizenz laut Registry. */
 export interface PruefHerkunft {
@@ -146,6 +153,8 @@ export interface PruefberichtDaten {
 const DATEN_FELDER = new Set(['ergebnis', 'quelle', 'typ', 'katalog_id', 'sammlung_id', 'urteil_sammlung', 'ausnahme_begruendung', 'fakten', 'inhalt', 'herkunft', 'lauf_id', 'auftrag_id', 'erstellt_am'])
 const SHA256 = /^[0-9a-f]{64}$/
 const SHA = /^[0-9a-f]{40}$/
+/** Plugin-id wie PLUGIN_ID_MUSTER in src/faehigkeiten (hier ohne Import, das Modul bleibt unabhängig). */
+const PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9._-]*$/
 
 /**
  * String (nicht leer) oder null.
@@ -180,7 +189,15 @@ function validiereQuelle(q: unknown): string[] {
     if (typeof o.integrity === 'string' && !SHA512_INTEGRITY.test(o.integrity)) v.push("'quelle.integrity' muss eine sha512-SRI sein")
     return v
   }
-  return ["'quelle.art' muss 'git' oder 'npm' sein"]
+  if (o.art === 'plugin') {
+    for (const k of Object.keys(o)) if (!['art', 'plugin_id', 'kopie_hash', 'plugin_version', 'commit'].includes(k)) v.push(`'quelle' trägt unbekanntes Feld '${k}'`)
+    if (typeof o.plugin_id !== 'string' || !PLUGIN_ID.test(o.plugin_id)) v.push("'quelle.plugin_id' muss '<name>@<marketplace>' sein")
+    if (typeof o.kopie_hash !== 'string' || !SHA256.test(o.kopie_hash)) v.push("'quelle.kopie_hash' muss ein sha256 sein")
+    if (!('plugin_version' in o) || !textOderNull(o.plugin_version)) v.push("'quelle.plugin_version' muss ein String oder null sein")
+    if (!('commit' in o) || (o.commit !== null && (typeof o.commit !== 'string' || !SHA.test(o.commit)))) v.push("'quelle.commit' muss eine 40-stellige SHA oder null sein")
+    return v
+  }
+  return ["'quelle.art' muss 'git', 'npm' oder 'plugin' sein"]
 }
 
 /**
@@ -198,7 +215,10 @@ export function validierePruefberichtDaten(daten: unknown): string[] {
   v.push(...validiereQuelle(d.quelle))
   if (!(PRUEF_TYPEN as readonly unknown[]).includes(d.typ)) v.push(`'typ' muss ${PRUEF_TYPEN.join('|')} sein`)
   for (const k of ['katalog_id', 'sammlung_id', 'urteil_sammlung', 'ausnahme_begruendung']) if (!textOderNull(d[k])) v.push(`'${k}' muss ein String oder null sein`)
-  if (d.katalog_id === null && d.sammlung_id === null) v.push("'katalog_id' oder 'sammlung_id' muss gesetzt sein")
+  // F45 F-3b-1: ein Plugin-Bericht hat weder Katalog- noch Sammlungsbezug (die Quelle trägt die Plugin-id).
+  const istPlugin = typeof d.quelle === 'object' && d.quelle !== null && (d.quelle as { art?: unknown }).art === 'plugin'
+  if (!istPlugin && d.katalog_id === null && d.sammlung_id === null) v.push("'katalog_id' oder 'sammlung_id' muss gesetzt sein")
+  if (istPlugin && d.typ !== 'plugin') v.push("'typ' muss bei quelle.art 'plugin' gleich 'plugin' sein")
   if (typeof d.fakten !== 'object' || d.fakten === null) v.push("'fakten' muss ein Objekt sein")
   if (typeof d.herkunft !== 'object' || d.herkunft === null) v.push("'herkunft' muss ein Objekt sein")
   const inhalt = d.inhalt as { dateien?: unknown } | null | undefined
@@ -347,8 +367,8 @@ export function normalisiereRepo(url: string): string {
     .replace(/\.git$/, '')
 }
 
-/** Was vor „Installieren“ angezeigt wird — die Kennzeichen, an die ein Bericht passen muss. */
-export type AngezeigteQuelle = { art: 'git'; repo: string; sha: string; quellPfad: string } | { art: 'npm'; paket: string; version: string; integrity: string }
+/** Was vor „Installieren“ bzw. (F45 F-3b-1) vor „Freigeben“ eines Plugins angezeigt wird — die Kennzeichen, an die ein Bericht passen muss. */
+export type AngezeigteQuelle = { art: 'git'; repo: string; sha: string; quellPfad: string } | { art: 'npm'; paket: string; version: string; integrity: string } | { art: 'plugin'; plugin_id: string; kopie_hash: string }
 
 /**
  * Gleiche Quelle (unabhängig von der Version)? git: gleiches Repo und Berichtspfad '' oder Präfix des angezeigten Pfads an einer
@@ -360,6 +380,7 @@ export type AngezeigteQuelle = { art: 'git'; repo: string; sha: string; quellPfa
 function gleicheQuelle(q: PruefQuelle, a: AngezeigteQuelle): boolean {
   if (q.art === 'git' && a.art === 'git') return normalisiereRepo(q.repo) === normalisiereRepo(a.repo) && (q.pfad === '' || a.quellPfad === q.pfad || a.quellPfad.startsWith(`${q.pfad}/`))
   if (q.art === 'npm' && a.art === 'npm') return q.paket === a.paket
+  if (q.art === 'plugin' && a.art === 'plugin') return q.plugin_id === a.plugin_id
   return false
 }
 
@@ -369,7 +390,24 @@ function gleicheQuelle(q: PruefQuelle, a: AngezeigteQuelle): boolean {
  * @returns SHA bzw. Version
  */
 export function versionVon(q: PruefQuelle | AngezeigteQuelle): string {
-  return q.art === 'git' ? q.sha : q.version
+  if (q.art === 'git') return q.sha
+  if (q.art === 'npm') return q.version
+  return q.kopie_hash
+}
+
+/**
+ * F45 F-3b-1 (Advisor N13): Artefakt-id des Prüfberichts eines Plugins — 'pruefbericht-p-<slug>-<sha256(id)[0..8]>'. Der Slug
+ * allein wäre nicht eindeutig umkehrbar (z. B. 'a.b@c' und 'a@b.c'); die Auswahl läuft ohnehin über die Quelle.
+ * @param pluginId - '<name>@<marketplace>'
+ * @returns Artefakt-id
+ */
+export function pluginBerichtSchluessel(pluginId: string): string {
+  const slug = pluginId
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+  return `${PRUEFBERICHT_PRAEFIX}p-${slug}-${createHash('sha256').update(pluginId, 'utf8').digest('hex').slice(0, 8)}`
 }
 
 /**
@@ -445,14 +483,18 @@ export interface BerichtWahl {
  */
 export function waehleBericht(berichte: readonly GespeicherterBericht[], angezeigt: AngezeigteQuelle): BerichtWahl {
   const gleiche = berichte.filter((b) => gleicheQuelle(b.daten.quelle, angezeigt)).sort(neuesterZuerst)
-  const passt = (q: PruefQuelle): boolean => (q.art === 'git' ? q.sha === versionVon(angezeigt) : angezeigt.art === 'npm' && q.version === angezeigt.version && q.integrity === angezeigt.integrity)
+  const passt = (q: PruefQuelle): boolean => {
+    if (q.art === 'git') return angezeigt.art === 'git' && q.sha === angezeigt.sha
+    if (q.art === 'npm') return angezeigt.art === 'npm' && q.version === angezeigt.version && q.integrity === angezeigt.integrity
+    return angezeigt.art === 'plugin' && q.kopie_hash === angezeigt.kopie_hash
+  }
   const neuester = gleiche.find((b) => passt(b.daten.quelle))
   if (neuester !== undefined) {
     if (neuester.daten.ergebnis.urteil === 'NICHT_GEEIGNET') return { bericht: neuester, sperre: `Prüfbericht zu ${versionVon(angezeigt)} lautet NICHT_GEEIGNET — keine Freigabe dieser Version` }
     return { bericht: neuester, sperre: uebersprungenSperre(neuester, angezeigt) }
   }
   const anderer = gleiche[0]
-  const kennung = (q: PruefQuelle | AngezeigteQuelle): string => (q.art === 'npm' ? `${q.version} (${q.integrity.slice(0, 19)}…)` : q.sha)
+  const kennung = (q: PruefQuelle | AngezeigteQuelle): string => (q.art === 'npm' ? `${q.version} (${q.integrity.slice(0, 19)}…)` : q.art === 'git' ? q.sha : `Kopie ${q.kopie_hash.slice(0, 12)}…`)
   if (anderer !== undefined) return { bericht: null, sperre: `Prüfbericht nur für ${kennung(anderer.daten.quelle)}, angezeigt ist ${kennung(angezeigt)} — erneut die Eignung prüfen` }
   return { bericht: null, sperre: 'ohne Prüfbericht zur angezeigten Version — erst die Eignung prüfen' }
 }

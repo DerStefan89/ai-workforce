@@ -77,20 +77,24 @@ export function maskiereTief(wert) {
  * Baut den Abruf einer Projektinstanz: ein geteilter Lauf je Zeitpunkt, maskierte Antwort, wirft nie.
  * Antwort bei status 'ok' zusätzlich `instanz_pfad` = Projektordner dieser Instanz (cwd des Listenaufrufs). Nicht zu verwechseln
  * mit `plugins[].projekt_pfad` (Projekt, für das die CLI ein Plugin mit scope local installiert hat; QA 4).
- * @param o - { liste: () => Promise<ListenErgebnis>, claudeOrdner?: string, werkzeugsatz: string[] | null, projektPfad: string }
- * @returns () => Promise<Antwort>
+ * Seit F45 F-3b-1: o.ergaenze (optional) ergänzt den ungeschwärzten Bestand vor dem Maskieren um den Workforce-Stand je Plugin
+ * (ergaenzePluginBestand); abruf.roh() liest den Bestand ungeteilt und ungeschwärzt für Prüfstart, Freigabe und Zuordnung.
+ * @param o - { liste: () => Promise<ListenErgebnis>, claudeOrdner?: string, werkzeugsatz: string[] | null, projektPfad: string, ergaenze?: (bestand) => Promise<bestand> }
+ * @returns () => Promise<Antwort>, mit .roh(): Promise<PluginBestand>
  */
 export function erzeugePluginAbruf(o) {
   let laufend = null
   const claudeOrdner = o.claudeOrdner ?? bestimmeClaudeOrdner(process.env, homedir())
-  return () => {
+  const roh = () => lesePluginBestand({ liste: o.liste, claudeOrdner, werkzeugsatz: o.werkzeugsatz, eingebaut: leseEingebautReferenz() })
+  const abruf = () => {
     if (laufend !== null) return laufend
     laufend = (async () => {
       // Code-Review 4: erst nach der Zuweisung von laufend weiterarbeiten — ein synchroner Wurf darunter würde sonst das
       // Fehlerergebnis dauerhaft als laufenden Abruf merken.
       await null
       try {
-        const bestand = await lesePluginBestand({ liste: o.liste, claudeOrdner, werkzeugsatz: o.werkzeugsatz, eingebaut: leseEingebautReferenz() })
+        const gelesen = await roh()
+        const bestand = gelesen.status === 'ok' && o.ergaenze !== undefined ? await o.ergaenze(gelesen) : gelesen
         return maskiereTief(bestand.status === 'ok' ? { ...bestand, instanz_pfad: o.projektPfad } : bestand)
       } catch (fehler) {
         const grund = maskiereGeheimnisse(`Plugin-Bestand nicht lesbar: ${fehler.message}`)
@@ -102,4 +106,6 @@ export function erzeugePluginAbruf(o) {
     })()
     return laufend
   }
+  abruf.roh = roh
+  return abruf
 }

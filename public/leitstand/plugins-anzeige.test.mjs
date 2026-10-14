@@ -128,7 +128,7 @@ test('Randwerte: scope project/null ohne „gemessen“, aktiv null, Antwort ohn
   assert.match(renderPluginDetail(mit({ ...basis, scope: null }), 0), /data-pl-aktiv="ordner"[\s\S]*data-pl-hinweis="ungemessen"/)
   assert.match(renderPluginDetail(mit({ ...ANTWORT.plugins[0], aktiv: null }), 0), /data-pl-aktiv="unbekannt"/)
   const ohneInstanz = renderPlugins({ art: 'ok', antwort: { ...ANTWORT, instanz_pfad: undefined }, auswahl: 1 })
-  assert.match(ohneInstanz, /<p class="pl-kopf">[^]*?<span class="unbekannt">—<\/span>[^]*?<\/p>/)
+  assert.match(ohneInstanz, /<p class="pl-kopf" id="plugins-kopf" tabindex="-1">[^]*?<span class="unbekannt">—<\/span>[^]*?<\/p>/)
   assert.ok(!ohneInstanz.includes('undefined'), 'undefined im HTML')
   assert.ok(renderPluginListe(ANTWORT, null).includes(`data-pl-risiken="${ANTWORT.plugins[0].risiken.length}"`), 'Risiko-Anzahl fehlt')
   assert.ok(renderPluginDetail(mit({ ...basis, name: '' }), 0).includes(`>${basis.id}</h3>`), 'leerer Name: Überschrift ohne id')

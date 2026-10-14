@@ -1,0 +1,230 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#werkstatt-bereich-faehigkeiten",
+    "hoehe": 5200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Freigabe",
+        "selector": "#plugins-detail [data-pl-freigabe]",
+        "attribut": "data-pl-freigabe"
+      },
+      {
+        "name": "Bericht",
+        "selector": "#plugins-detail [data-pl-bericht]",
+        "attribut": "data-pl-bericht"
+      },
+      {
+        "name": "Aktion",
+        "selector": "#plugins-detail [data-pl-aktion-status]",
+        "attribut": "data-pl-aktion-status"
+      },
+      {
+        "name": "Hinweis Lauf",
+        "selector": "[data-pl-hinweis=\"f3b\"] strong"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Übernommen",
+        "selector": "#plugins-detail [data-pl-uebernommen]"
+      },
+      {
+        "name": "Nicht übernommen (Hook)",
+        "selector": "#plugins-detail [data-pl-grund=\"hook_nie\"]"
+      },
+      {
+        "name": "Prüfen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"pruefen\"]:not([disabled])"
+      },
+      {
+        "name": "Freigeben bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"freigeben\"]:not([disabled])"
+      },
+      {
+        "name": "Zurücknehmen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"zuruecknehmen\"]:not([disabled])"
+      },
+      {
+        "name": "debuggen zugeordnet",
+        "selector": "#plugins-detail input[data-pl-name=\"debuggen\"]:checked"
+      },
+      {
+        "name": "Kästchen bedienbar",
+        "selector": "#plugins-detail input[data-pl-zuordnung]:not([disabled])"
+      },
+      {
+        "name": "Sperre",
+        "selector": "#plugins-detail [data-pl-sperre]"
+      },
+      {
+        "name": "Verwaist",
+        "selector": "#plugins [data-pl-verwaist]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/plugins",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "quelle": {
+          "befehl": "claude plugin list --json",
+          "claude_ordner": "C:\\fixture\\d3\\claude"
+        },
+        "plugins": [
+          {
+            "id": "nur-skill@markt",
+            "name": "nur-skill",
+            "marketplace": "markt",
+            "version": "0.1.0",
+            "scope": "user",
+            "aktiv": true,
+            "projekt_pfad": null,
+            "projekt_aktiv": null,
+            "pfad": "C:\\fixture\\d3\\fixture\\claude\\plugins\\cache\\markt\\nur-skill\\0.1.0",
+            "commit": null,
+            "inhalt_hash": "f8316f108eb78b410e8e42488557b7d97a34c23c447e41ef5b8a5064416b9a3c",
+            "hash_grund": null,
+            "lizenz_datei": false,
+            "lizenz_feld": null,
+            "bestandteile": {
+              "skills": [
+                {
+                  "name": "nur",
+                  "pfad": "skills/nur/SKILL.md",
+                  "allowed_tools": []
+                }
+              ],
+              "agents": [],
+              "commands": [],
+              "hooks": [],
+              "mcp": [],
+              "lsp": []
+            },
+            "risiken": [],
+            "fehler": [],
+            "workforce": {
+              "kopie": {
+                "ok": true,
+                "kopie_hash": "76279b7a3ed69609eebbe6da8dd5eb16e898fd1238604b45d941b6a27bce12c6",
+                "grund": null,
+                "uebernommen": [
+                  {
+                    "typ": "skill",
+                    "name": "nur",
+                    "pfad": "skills/nur/SKILL.md"
+                  }
+                ],
+                "nicht_uebernommen": []
+              },
+              "freigabe": {
+                "zustand": "keine",
+                "kopie_hash": null,
+                "pruefbericht": null,
+                "freigegeben_am": null,
+                "abweichung": null
+              },
+              "pruefbericht": null,
+              "freigabe_sperre": "ohne Prüfbericht zur angezeigten Version — erst die Eignung prüfen",
+              "zuordnung": []
+            }
+          }
+        ],
+        "eingebaut": [
+          {
+            "id": "cc-plugin-telemetry@builtin",
+            "quelle": "referenzliste",
+            "cli_version": "2.1.296 (Claude Code)"
+          },
+          {
+            "id": "cc-plugin-plugin-authoring@builtin",
+            "quelle": "referenzliste",
+            "cli_version": "2.1.296 (Claude Code)"
+          }
+        ],
+        "eingebaut_fehler": null,
+        "workforce": {
+          "rollen": [
+            "ausfuehrung"
+          ],
+          "lokale_datei": {
+            "zustand": "gueltig",
+            "grund": null,
+            "stand": "39e32508d632e50efe5eb425bed8ea71996e7e7b5b67b6f58032b15e84783064",
+            "fremd": false
+          },
+          "lauf_sperre": {
+            "aktiv": false
+          },
+          "kopien_wurzel_gesetzt": true,
+          "pruefen_hier": true,
+          "verwaist": [
+            {
+              "plugin_id": "kraft@markt",
+              "freigabe": {
+                "kopie_hash": "282cb2d7f3540292578e9c2f2fed70e0b1a04c16227a27d7276efe9159803ab0",
+                "freigegeben_am": "2026-10-14T11:13:53.979Z"
+              },
+              "zuordnung": [
+                {
+                  "rolle": "ausfuehrung",
+                  "typ": "skill",
+                  "name": "debuggen"
+                }
+              ]
+            }
+          ]
+        },
+        "instanz_pfad": "C:\\fixture\\ai-workforce"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Reiter „Plugins“ gewählt → Liste",
+      "klick": "#faehigkeiten-reiter-plugins",
+      "warteAufSelector": {
+        "selector": "#plugins table.pl-tabelle",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Nicht mehr installiert: Freigabe und Zuordnung entfernbar",
+      "warteAufSelector": {
+        "selector": "#plugins [data-pl-verwaist]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-verwaist.png"
+    }
+  ],
+  "farbschema": "dark"
+}

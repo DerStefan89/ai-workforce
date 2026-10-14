@@ -30,7 +30,7 @@ import { EINGEBAUT_REST_SKILLS, leseProjektCommandNamen } from '../ressourcen/or
 import { berechneInhaltHash, EINGEBAUTE_SKILLS_S7 } from '../ressourcen/skill-dateien.ts'
 import { ID_MUSTER as KATALOG_ID_MUSTER } from '../projekte/index.ts'
 import type { Ressource } from '../ressourcen/types.ts'
-import type { EingebautReferenz, FaehigkeitenLokal, KatalogFreigabe, LokaleDatei, ProjektEinstellungen, ProjektFaehigkeit, ProjektFaehigkeitenErgebnis, ProjektFaehigkeitenKontext, ProjektTyp } from './types.ts'
+import type { EingebautReferenz, FaehigkeitenLokal, KatalogFreigabe, LokaleDatei, PluginFreigabe, ProjektEinstellungen, ProjektFaehigkeit, ProjektFaehigkeitenErgebnis, ProjektFaehigkeitenKontext, ProjektTyp } from './types.ts'
 
 /** Ablage der lokalen Datei (E-F45-8) — nur der CLI-Bindeblock des Leitstands setzt diesen Pfad (Delta B7). */
 export const STANDARD_FAEHIGKEITEN_LOKAL_PFAD = join(homedir(), '.ai-workforce', 'faehigkeiten.lokal.json')
@@ -41,6 +41,33 @@ export const NAME_MUSTER = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 export const SHA256_MUSTER = /^[0-9a-f]{64}$/
 /** Projekt-Schlüssel '<typ>:<name>'. */
 const SCHLUESSEL_MUSTER = /^(agent|skill):([A-Za-z0-9][A-Za-z0-9._-]*)$/
+
+/** F45 F-3b-1: Plugin-id aus Stefans Claude Code ('<name>@<marketplace>'); src/plugin-kopie prüft zusätzlich pruefePfad. */
+export const PLUGIN_ID_MUSTER = /^[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9._-]*$/
+/** F45 F-3b-1: Eintrag der Zuordnung '<skill|agent>:<plugin-id>:<name>'. */
+const ZUORDNUNG_MUSTER = /^(agent|skill):[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9._-]*:[A-Za-z0-9][A-Za-z0-9._-]*$/
+/** F45 F-3b-1: Kennung des Prüfberichts einer Plugin-Freigabe '<artefakt_id>@<version>'. */
+const BERICHT_KENNUNG_MUSTER = /^pruefbericht-[a-z0-9][a-z0-9-]*@[1-9][0-9]*$/
+
+/**
+ * F45 F-3b-1 (E-F3b-3 = nur Ausführung): Rollen, denen Plugin-Skills/-Agents zugeordnet werden können. Nur 'ausfuehrung' hat
+ * einen Fähigkeiten-Weg in den Lauf (leitstand-server.mjs erhaeltKatalogFaehigkeiten, Werkzeugsatz 'schreibend'); lesende
+ * Rollen (Architekt, Advisor, Code-Reviewer, QA) später mit eigenem Schritt, Coach mit B5a (E-F3b-2), jarvis/router/scout/
+ * eignungspruefung nie. Das Datenmodell bleibt je Rolle.
+ */
+export const PLUGIN_ROLLEN: readonly string[] = Object.freeze(['ausfuehrung'])
+
+/**
+ * Eintrag der Zuordnung aus Typ, Plugin-id und Name; Commands sind nicht zuordenbar (E-F3b-5).
+ * @param typ - 'skill' | 'agent'
+ * @param pluginId - '<name>@<marketplace>'
+ * @param name - Name des Bestandteils
+ * @returns Eintrag oder null bei falscher Form
+ */
+export function zuordnungsEintrag(typ: 'skill' | 'agent', pluginId: string, name: string): string | null {
+  const eintrag = `${typ}:${pluginId}:${name}`
+  return (typ === 'skill' || typ === 'agent') && ZUORDNUNG_MUSTER.test(eintrag) && PLUGIN_ID_MUSTER.test(pluginId) && NAME_MUSTER.test(name) ? eintrag : null
+}
 
 /** Frontmatter-Positivliste (Advisor A2) — Agent: tools Pflicht; Skill: nur beschreibende Felder. */
 const AGENT_FELDER: ReadonlySet<string> = new Set(['name', 'description', 'tools', 'model', 'color'])
@@ -75,8 +102,26 @@ export function zerlegeSchluessel(schluessel: unknown): { typ: ProjektTyp; name:
 export function validiereFaehigkeitenLokal(daten: unknown): string[] {
   if (!istObjekt(daten)) return ['Wurzel ist kein Objekt']
   const v: string[] = []
-  for (const feld of Object.keys(daten)) if (feld !== 'faehigkeiten_lokal_schema' && feld !== 'projekte') v.push(`unbekanntes Feld '${feld}'`)
+  for (const feld of Object.keys(daten)) if (feld !== 'faehigkeiten_lokal_schema' && feld !== 'projekte' && feld !== 'plugin_freigaben') v.push(`unbekanntes Feld '${feld}'`)
   if (daten.faehigkeiten_lokal_schema !== 'v0') v.push("'faehigkeiten_lokal_schema' muss 'v0' sein")
+  // F45 F-3b-1: Freigaben je Plugin-id (global) — Form wie schemas/faehigkeiten-lokal.schema.json.
+  if ('plugin_freigaben' in daten) {
+    const f = daten.plugin_freigaben
+    if (!istObjekt(f)) v.push("'plugin_freigaben' muss ein Objekt sein")
+    else
+      for (const [id, e] of Object.entries(f)) {
+        const p = `plugin_freigaben.${id}`
+        if (!PLUGIN_ID_MUSTER.test(id)) v.push(`'plugin_freigaben': Schlüssel '${id}' muss eine Plugin-id '<name>@<marketplace>' sein`)
+        if (!istObjekt(e)) {
+          v.push(`'${p}' muss ein Objekt sein`)
+          continue
+        }
+        for (const feld of Object.keys(e)) if (!['kopie_hash', 'pruefbericht', 'freigegeben_am'].includes(feld)) v.push(`unbekanntes Feld '${p}.${feld}'`)
+        if (typeof e.kopie_hash !== 'string' || !SHA256_MUSTER.test(e.kopie_hash)) v.push(`'${p}.kopie_hash' muss ein sha256 sein`)
+        if (typeof e.pruefbericht !== 'string' || !BERICHT_KENNUNG_MUSTER.test(e.pruefbericht)) v.push(`'${p}.pruefbericht' muss '<artefakt_id>@<version>' sein`)
+        if (typeof e.freigegeben_am !== 'string' || e.freigegeben_am === '') v.push(`'${p}.freigegeben_am' fehlt`)
+      }
+  }
   if (!istObjekt(daten.projekte)) {
     v.push("'projekte' muss ein Objekt sein")
     return v
@@ -88,7 +133,23 @@ export function validiereFaehigkeitenLokal(daten: unknown): string[] {
       v.push(`'${p}' muss ein Objekt sein`)
       continue
     }
-    for (const feld of Object.keys(eintrag)) if (!['an', 'aus', 'inhalt_freigaben'].includes(feld)) v.push(`unbekanntes Feld '${p}.${feld}'`)
+    for (const feld of Object.keys(eintrag)) if (!['an', 'aus', 'inhalt_freigaben', 'plugin_zuordnung'].includes(feld)) v.push(`unbekanntes Feld '${p}.${feld}'`)
+    if ('plugin_zuordnung' in eintrag) {
+      const z = eintrag.plugin_zuordnung
+      if (!istObjekt(z)) v.push(`'${p}.plugin_zuordnung' muss ein Objekt sein`)
+      else
+        for (const [rolle, liste] of Object.entries(z)) {
+          if (!(PLUGIN_ROLLEN as readonly string[]).includes(rolle)) v.push(`'${p}.plugin_zuordnung': Rolle '${rolle}' ist nicht zuordenbar (nur ${PLUGIN_ROLLEN.join(', ')}, E-F3b-3)`)
+          if (!Array.isArray(liste)) {
+            v.push(`'${p}.plugin_zuordnung.${rolle}' muss ein Array sein`)
+            continue
+          }
+          liste.forEach((x, i) => {
+            if (typeof x !== 'string' || !ZUORDNUNG_MUSTER.test(x)) v.push(`'${p}.plugin_zuordnung.${rolle}[${i}]' muss '<skill|agent>:<plugin-id>:<name>' sein`)
+          })
+          if (new Set(liste).size !== liste.length) v.push(`'${p}.plugin_zuordnung.${rolle}' enthält Doppelte`)
+        }
+    }
     const liste = (feld: string, gueltig: (e: unknown) => boolean, regel: string): void => {
       if (!(feld in eintrag)) return
       const wert = eintrag[feld]
@@ -170,7 +231,9 @@ export function hashLokaleDatei(pfad: string | null): string {
  */
 export function projektEinstellungen(daten: FaehigkeitenLokal, projektId: string): ProjektEinstellungen {
   const p = Object.hasOwn(daten.projekte, projektId) ? daten.projekte[projektId] : undefined
-  return { an: [...(p?.an ?? [])], aus: [...(p?.aus ?? [])], inhalt_freigaben: { ...(p?.inhalt_freigaben ?? {}) } }
+  // F45 F-3b-1: plugin_zuordnung nur, wenn das Projekt eine hat — die bisherige Form bleibt für alle anderen Aufrufer gleich.
+  const zuordnung = p?.plugin_zuordnung === undefined ? undefined : Object.fromEntries(Object.entries(p.plugin_zuordnung).map(([rolle, liste]) => [rolle, [...liste]]))
+  return { an: [...(p?.an ?? [])], aus: [...(p?.aus ?? [])], inhalt_freigaben: { ...(p?.inhalt_freigaben ?? {}) }, ...(zuordnung !== undefined ? { plugin_zuordnung: zuordnung } : {}) }
 }
 
 /**
@@ -204,17 +267,77 @@ export function setzeInhaltsfreigabe(daten: FaehigkeitenLokal, projektId: string
   return mitProjekt(daten, projektId, { ...e, inhalt_freigaben: { ...e.inhalt_freigaben, [schluessel]: hash } })
 }
 
-/** Setzt die Einstellungen eines Projekts, ohne leere Felder. */
+/**
+ * Setzt die Einstellungen eines Projekts, ohne leere Felder. F45 F-3b-1 (Advisor F3): plugin_zuordnung des Projekts und
+ * plugin_freigaben oben bleiben erhalten — vorher hätte jedes Schalten beide still gelöscht.
+ * @param daten - gültige Datei
+ * @param projektId - Projekt-id
+ * @param e - neue Einstellungen des Projekts
+ * @returns neue Datei
+ */
 function mitProjekt(daten: FaehigkeitenLokal, projektId: string, e: ProjektEinstellungen): FaehigkeitenLokal {
+  const zuordnung = Object.fromEntries(Object.entries(e.plugin_zuordnung ?? {}).filter(([, liste]) => liste.length > 0))
   const kompakt: Partial<ProjektEinstellungen> = {
     ...(e.an.length > 0 ? { an: e.an } : {}),
     ...(e.aus.length > 0 ? { aus: e.aus } : {}),
     ...(Object.keys(e.inhalt_freigaben).length > 0 ? { inhalt_freigaben: e.inhalt_freigaben } : {}),
+    ...(Object.keys(zuordnung).length > 0 ? { plugin_zuordnung: zuordnung } : {}),
   }
   const projekte = { ...daten.projekte }
   if (Object.keys(kompakt).length === 0) delete projekte[projektId]
   else projekte[projektId] = kompakt
-  return { faehigkeiten_lokal_schema: 'v0', projekte }
+  return mitFreigaben(daten.plugin_freigaben, projekte)
+}
+
+/**
+ * Neue Datei aus Freigaben und Projekten (leere Freigaben fallen weg; Reihenfolge der Felder fest).
+ * @param freigaben - plugin_freigaben oder undefined
+ * @param projekte - Projekte
+ * @returns Datei
+ */
+function mitFreigaben(freigaben: FaehigkeitenLokal['plugin_freigaben'], projekte: FaehigkeitenLokal['projekte']): FaehigkeitenLokal {
+  const f = freigaben === undefined ? {} : Object.fromEntries(Object.entries(freigaben).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+  return { faehigkeiten_lokal_schema: 'v0', ...(Object.keys(f).length > 0 ? { plugin_freigaben: f } : {}), projekte }
+}
+
+/**
+ * F45 F-3b-1, rein: neue Datei mit gesetzter Plugin-Freigabe (aufgerufen nur aus aendereLokaleDatei, Gate).
+ * @param daten - gültige Datei
+ * @param pluginId - '<name>@<marketplace>'
+ * @param freigabe - { kopie_hash, pruefbericht, freigegeben_am }
+ * @returns neue Datei
+ */
+export function setzePluginFreigabe(daten: FaehigkeitenLokal, pluginId: string, freigabe: PluginFreigabe): FaehigkeitenLokal {
+  return mitFreigaben({ ...(daten.plugin_freigaben ?? {}), [pluginId]: { kopie_hash: freigabe.kopie_hash, pruefbericht: freigabe.pruefbericht, freigegeben_am: freigabe.freigegeben_am } }, daten.projekte)
+}
+
+/**
+ * F45 F-3b-1, rein: Rücknahme einer Plugin-Freigabe. Zuordnungen bleiben gespeichert (wirken ohne Freigabe nicht).
+ * @param daten - gültige Datei
+ * @param pluginId - Plugin-id
+ * @returns neue Datei
+ */
+export function entfernePluginFreigabe(daten: FaehigkeitenLokal, pluginId: string): FaehigkeitenLokal {
+  const rest = { ...(daten.plugin_freigaben ?? {}) }
+  delete rest[pluginId]
+  return mitFreigaben(rest, daten.projekte)
+}
+
+/**
+ * F45 F-3b-1, rein: Eintrag der Zuordnung einer Rolle setzen/entfernen (sortiert, ohne Doppelte; Form prüft der Aufrufer).
+ * @param daten - gültige Datei
+ * @param projektId - Projekt-id
+ * @param rolle - zuordenbare Rolle (PLUGIN_ROLLEN)
+ * @param eintrag - zuordnungsEintrag(...)
+ * @param an - true = zuordnen
+ * @returns neue Datei
+ */
+export function aenderePluginZuordnung(daten: FaehigkeitenLokal, projektId: string, rolle: string, eintrag: string, an: boolean): FaehigkeitenLokal {
+  const e = projektEinstellungen(daten, projektId)
+  const zuordnung = e.plugin_zuordnung ?? {}
+  const liste = zuordnung[rolle] ?? []
+  const neu = an ? [...new Set([...liste, eintrag])].sort() : liste.filter((x) => x !== eintrag)
+  return mitProjekt(daten, projektId, { ...e, plugin_zuordnung: { ...zuordnung, [rolle]: neu } })
 }
 
 /**
