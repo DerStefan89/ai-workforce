@@ -949,3 +949,54 @@ Zeitgrenze teils als Erfolg mit leerer Ausgabe (Node-execFile-Wettlauf, vorbeste
 B2a-2 (#330); 10 „Stefan muss keinen Zwischentext lesen“ → B2a-3a (Jarvis „Deine Schritte“, Review-Hinweise statt stiller
 Status) und B2a-3b („Review veraltet“ sichtbar statt eines stillen alten Urteils; Befehlsblöcke direkt ausführbar mit cd);
 „Bereit zum Sichern“ folgt mit B2b.
+
+## Stand F-3a
+
+Branch `f45/f3a-plugins-bestand`, Basis `bcffea7` (main mit B2a-3b, #332). Plan `features/F45/plan-f3a.md` (Plan v1 → Advisor-Pass
+„überarbeiten“ (H1 Messlücke, H2 `plugin.json`-Felder, M1–M7, Zuschnitt zu groß) → Entscheidungen Stefan → Plan v2 → Delta-Advisor
+„freigegeben mit Auflagen“ 1–6 → Spike → Bau). Entscheidung Stefan 13.10.2026: dieselben Plugins wie in Claude Code — Quelle ist sein
+installierter Bestand, nicht die Sammlung.
+
+**Entscheidungen Stefan (14.10.2026):** E-F3a-1 Quelle = `claude plugin list --json` (die CLI legt dabei in `.in_use/` der
+synced-Plugins eine Marke an und löscht sie wieder — gemessen, als Nebenwirkung angenommen; keine Datei trägt den Aktiv-Stand der
+synced-Plugins); E-F3a-2 F-3 geteilt in F-3a-1 (dieser Stand), F-3a-2 (Oberfläche) und F-3b (Plugins im Lauf); E-F3a-3 Spike mit
+Stefans Konto wie jeder Lauf.
+
+**F-3a-1 gebaut:** `src/claude-plugins` liest je Plugin Name, Marketplace, Version, Commit (`installed_plugins.json`), Aktiv-Stand
+(mit Projektbezug bei `scope local`), Pfad, Inhalts-Hash (Form wie `berechneInhaltHash`, ohne `.git/` und `.in_use/`, Grenze
+5 000 Dateien / 50 MiB, Symlink → kein Hash mit Grund), Lizenzdatei/-feld und die Bestandteile aus den Standardorten und den sechs
+`plugin.json`-Feldern (Pfad, Liste, eingebettet; unbekannte Form → Teilfehler). Risiken als Fakten: `hook_befehl`, `mcp_ungepinnt`,
+`mcp_entfernt`, `rechte_ausserhalb` („nicht wörtlich im Werkzeugsatz ‚schreibend‘“), `externe_wirkung` (erstes Wort des Befehls,
+nacktes Bash/`Bash(*)`, Web-Werkzeuge). `env`/`headers` werden nie gelesen. Route GET `/api/plugins` je Projektinstanz (cwd =
+Projektordner, unverändertes `starteProzess`, Zeitgrenze 10 s, geteilter Abruf ohne gemerktes Ergebnis, Maskierung über alle Strings,
+Fehlerstand 200 mit Grund). Eingebaute Plugins getrennt (Referenzliste + `@builtin` aus der Liste). Kein Lauf geändert: kein
+`--plugin-dir`, kein Import im Lauf-Code, Init-Gate unberührt, `init.plugins` bleibt `[]`.
+
+**Stefans Bestand** (Gegenprobe gegen `claude plugin details`: 4 von 4 gleich): superpowers 6.2.0 (inaktiv; 14 Skills, SessionStart-Hook),
+gitkraken (aktiv; 1 MCP `npx -y @gitkraken/gk` ungepinnt), design (aktiv; 7 Skills, 9 entfernte MCP-Server), cowork-plugin-management
+(aktiv; 2 Skills, keine Treffer der Regeln).
+
+**Spike** (`features/F45/nachweise/f3a/spike.md`, CLI 2.1.299, Startargumente eines Laufs + `--plugin-dir`): (a) `init.plugins` =
+`spike-plugin@inline`, Skills/Agents/Commands mit Präfix `<plugin>:`; unter `--setting-sources project` erscheinen Stefans
+synced-Plugins nie, mit den heutigen Settings bleibt `init.plugins` `[]` (kein drittes eingebautes Plugin im `-p`-Lauf); (b) Plugin-Hooks
+laufen (SessionStart, UserPromptSubmit, PreToolUse); (c) `allowed-tools` eines Commands erweitert den Werkzeugsatz (`gh pr comment`
+lief über den Command, ohne Command verweigert — `gh` war eine Attrappe, kein Remote, Token leer); (d) `enabledPlugins:false` wirkt auf
+ein `--plugin-dir`-Plugin. Ein leerer Ordner `~/.claude/plugins/data/spike-plugin-inline` stammt vom Spike (Löschen durch Stefan).
+F-3b neu geschätzt ≈ 1,0–1,25 AT (F-1090).
+
+**Register:** F-910 Nachtrag; F-1052 → B2b (mit F-1072); F-1051 Nachtrag (F-3b); neu F-1090 (F-3b). Vermerk in
+`docs/harness/kandidaten-2026-09-15.md` unter der Plugin-Tabelle (Code Review gestrichen, Playwright-Plugin ungepinnt, Claude Code
+Setup ein read-only Skill).
+
+**Tests/Gates:** Unit-Tests `src/claude-plugins/plugins.test.ts` (11), neues Gate `scripts/check-f45-f3a-plugins.mjs` (in der Kette nach
+f45-b2a3b; Fixture `scripts/_plugin-fixture.ts`; 20 Rotfälle kalibriert).
+
+**Prüfpass** (frischer Kontext): code-reviewer „freigegeben mit Hinweisen“, qa „nicht freigegeben“ (Geheimnis als eigenes
+`args`-Element unmaskiert, `allowed-tools` gequotet/leerzeichengetrennt verfehlt, Leerbestand ungetestet). Eine Korrekturrunde:
+Maskierung Flag + Folgeelement (`maskiereArgs`), Regel-Zerlegung (Anführungszeichen um den ganzen Wert, Leerraum als Trenner),
+YAML-Liste ohne Einrückung, `cmd /c`, `pipx run`/`--spec`, `uvx --python`, PowerShell-Regeln, leere url, einzelner kaputter
+Listeneintrag kippt nicht die Liste, stderr an Wortgrenze gekürzt, Lesefehler einmal gemeldet, `ordner_fehlt`-Flag, Grenze und
+Link-Bericht bei der `.md`-Suche, geteilter Abruf ohne Wurf-Falle, maskiertes Log, `instanz_pfad` statt `projekt_pfad` auf oberster
+Ebene; Leerbestand gemessen (CLI ohne Plugins/Anmeldung: `[]`, Exit 0) und als `ok` ohne Plugins festgelegt. Gate um Junction,
+Zeitgrenze über `listenErgebnisAusProzess`, Läufer-Prüfung, Leerbestand, drei Geheimnisse, Ankunftszähler statt fester Wartezeit
+erweitert (30 Rotfälle); Unit-Tests 13. Rest F-1091.

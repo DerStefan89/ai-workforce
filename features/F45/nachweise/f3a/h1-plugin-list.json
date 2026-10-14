@@ -1,0 +1,13 @@
+{
+  "gemessen_am": "2026-10-14T06:31:44.584Z",
+  "eintraege_vor": 8130,
+  "eintraege_nach": 8130,
+  "snapshot_ms": 363,
+  "aufruf_ms": 1437,
+  "plugins": 4,
+  "diff": [
+    "~ <HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\cowork-plugin-management~g2\\.in_use d 1791958926252.1182  -> d 1791959504175.1868 ",
+    "~ <HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\design\\.in_use d 1791958926252.1182  -> d 1791959504175.1868 ",
+    "~ <HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\gitkraken\\.in_use d 1791958926252.1182  -> d 1791959504175.1868 "
+  ]
+}

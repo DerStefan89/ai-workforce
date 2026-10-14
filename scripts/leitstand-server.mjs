@@ -545,6 +545,7 @@ import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, eins
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
 import { baueHarnessAbgleichAntwort, baueHarnessAbgleichOhneLauf, schreibeHarnessAbgleichAmKettenende } from './leitstand/routen-harness-abgleich.mjs'
+import { echterPluginListenLaeufer, erzeugePluginAbruf } from './leitstand/routen-plugins.mjs'
 import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } from './leitstand/routen-sammlung.mjs'
 import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
@@ -5323,6 +5324,10 @@ export function erzeugeRequestHandler(optionen = {}) {
     istWorkforceInstanz = false,
     // F45 F-2b-2: Runner der Quell-Aufrufe des Prüflaufs { git, npm } — undefined = echt (ECHTE_RUNNER); nur Tests.
     pruefungRunner = undefined,
+    // F45 F-3a-1: Listenläufer und Konfigurationsordner des Plugin-Bestands — undefined = echt (Claude-CLI der Startvorlage,
+    // CLAUDE_CONFIG_DIR bzw. ~/.claude); nur Gates/Tests setzen eine Attrappe und einen Wegwerf-Ordner.
+    pluginListe = undefined,
+    pluginClaudeOrdner = undefined,
   } = optionen
 
   /**
@@ -5585,6 +5590,13 @@ export function erzeugeRequestHandler(optionen = {}) {
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const profilReferenz = leiteProfilReferenzAb(vorlage)
+  // F45 F-3a-1: Plugin-Bestand aus Stefans Claude Code (GET /api/plugins) — ein geteilter Abruf je Instanz, cwd = Projektordner.
+  const pluginAbruf = erzeugePluginAbruf({
+    liste: pluginListe ?? echterPluginListenLaeufer(vorlage.werkzeugStartziel, repoWurzel),
+    claudeOrdner: pluginClaudeOrdner,
+    werkzeugsatz: vorlage.werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? null,
+    projektPfad: repoWurzel,
+  })
 
   /**
    * F45 F-2b-1 (F-1057, Delta B5): Scout-Felder des Lauf-Details — scoutErgebnis unverändert (das geprüfte Modellergebnis),
@@ -8083,6 +8095,17 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       const aufgeloest = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
       sendeJson(res, 200, pfad === '/api/ressourcen' ? projeziereLibrary(aufgeloest, startvorlagePfad) : projeziereAbdeckung(ROLLENVERTRAEGE, aufgeloest, startvorlagePfad))
+      return
+    }
+
+    // F45 F-3a-1: Plugin-Bestand aus Stefans Claude Code — rein lesend, nicht im Poll; Fehlerstand als 200 mit Grund (Muster
+    // /api/sammlung). Regeln in src/claude-plugins, Abruf/Maskierung in scripts/leitstand/routen-plugins.mjs.
+    if (pfad === '/api/plugins') {
+      if (req.method !== 'GET') {
+        sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+        return
+      }
+      sendeJson(res, 200, await pluginAbruf())
       return
     }
 

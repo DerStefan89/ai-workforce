@@ -5,6 +5,7 @@
  * - leseFrontmatter: name/description aus dem Frontmatter einer SKILL.md bzw. Agent-Datei
  *   (vorher in src/ressourcen/index.ts, unverändert hierher verschoben, damit Installation und
  *   Start ihn ohne Importzyklus nutzen),
+ * - leseFrontmatterFeld (F45 F-3a-1): Rohwert eines Frontmatter-Felds wie allowed-tools/tools für src/claude-plugins,
  * - SKILL_NAME_MUSTER und EINGEBAUTE_SKILLS_S7 (Namen der eingebauten Skills laut Spike S7, CLI
  *   2.1.284 — nur für die Kollisionsprüfung bei Installation und Start, keine Sperrliste),
  * - berechneInhaltHash: sha256 über alle Dateien eines Skill-Ordners (Symlink → Wurf),
@@ -12,7 +13,8 @@
  *   installation_vorlage.skill_pfad.
  *
  * Wird aufgerufen von: src/ressourcen/index.ts, src/ressourcen/skill-installation.ts,
- * src/ressourcen/ort-b-start.ts, zugehörige Tests und scripts/check-f36-ws5b-skill.mjs.
+ * src/ressourcen/ort-b-start.ts, src/claude-plugins/index.ts (F45 F-3a-1), zugehörige Tests und
+ * scripts/check-f36-ws5b-skill.mjs.
  *
  * Wichtig: inhalt_hash-Form (festgeschrieben, sonst passt kein gespeicherter Hash mehr): Dateien des
  * Ordners rekursiv, relativer Pfad mit '/' als Trenner, sortiert nach Codepunkten; gehasht wird die
@@ -81,6 +83,34 @@ export function leseFrontmatter(inhalt: string): { name: string | null; beschrei
     if (beschreibungTreffer) beschreibung = beschreibungTreffer[1].trim()
   }
   return { name, beschreibung }
+}
+
+/**
+ * F45 F-3a: Rohwert eines Frontmatter-Felds (z. B. allowed-tools, tools) — additiv neben leseFrontmatter, das unberührt
+ * bleibt (Auflage 3 Delta-Advisor). Der Wert steht entweder in derselben Zeile ('feld: a, b') oder als YAML-Listenzeilen
+ * darunter ('feld:' gefolgt von '  - a' oder '- a'). Gelesen wird nachsichtig wie leseFrontmatter.
+ * @param inhalt - Dateiinhalt
+ * @param feld - Feldname
+ * @returns die Wertteile (eine Zeile = ein Teil, Listenzeilen ohne '- '), [] bei leerem Wert, null ohne Feld/Frontmatter
+ */
+export function leseFrontmatterFeld(inhalt: string, feld: string): string[] | null {
+  const zeilen = inhalt.split(/\r?\n/)
+  if (zeilen[0]?.trim() !== '---') return null
+  const ende = zeilen.findIndex((z, i) => i > 0 && z.trim() === '---')
+  if (ende === -1) return null
+  const kopf = zeilen.slice(1, ende)
+  const start = kopf.findIndex((z) => z.startsWith(`${feld}:`))
+  if (start === -1) return null
+  const inline = kopf[start].slice(feld.length + 1).trim()
+  if (inline !== '') return [inline]
+  const teile: string[] = []
+  for (const zeile of kopf.slice(start + 1)) {
+    // YAML-Liste auch ohne Einrückung ('- a' direkt unter 'feld:', Code-Review 2).
+    const listenzeile = /^\s*-\s+(.*)$/.exec(zeile)
+    if (listenzeile === null) break
+    teile.push(listenzeile[1].trim())
+  }
+  return teile
 }
 
 /**

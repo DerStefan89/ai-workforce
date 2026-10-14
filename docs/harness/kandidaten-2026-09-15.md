@@ -295,6 +295,8 @@ Erfasste Bewertungszeilen: **176**. Aufnehmen: 21, Optional: 28, Nur Ausnahme: 9
 | [Claude-mem](https://github.com/thedotmack/claude-mem) | Referenz | Persistenter agentenübergreifender Kontext; README nennt inzwischen Grok Mem. | Apache-2.0 (GitHub-Metadaten) | Lokaler Betrieb plus Zusammenfassungsmodell | Umbenennung und breiter Datenzugriff; kein weiteres automatisches Gedächtnis neben deinem führenden Dateisystem. |
 | [Claude Code Setup](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/claude-code-setup) | Offen | Analysiert Projekte und schlägt passende Skills, Hooks und MCPs vor. | Pluginlizenz vor konkretem Import prüfen | Modellquota; Empfehlungen selbst kostenlos | Vor Aktivierung vollständige kommerzielle Nutzungsrechte klären. Laut README read-only. Gute Quelle für Werkzeugauswahl; Vorschläge nicht automatisch installieren. |
 
+Vermerk (F45 F-3a, 14.10.2026; Fakten aus dem Sparse-Clone `anthropics/claude-plugins-official`, Challenger; die Zeilen oben bleiben unverändert): **Code Review** kommentiert über `gh pr comment` im PR (`allowed-tools` u. a. `Bash(gh pr comment:*)`) — Wirkung nach außen, als Sammlungs-Kandidat gestrichen. **Playwright** als Plugin ist nur eine `.mcp.json` mit `npx @playwright/mcp@latest` (ungepinnt); der gepinnte Playwright-MCP steht schon im Katalog. **Claude Code Setup** ist ein einzelner read-only Skill. Plugins kommen seit der Entscheidung Stefans vom 13.10.2026 aus seinem Claude Code, nicht aus dieser Sammlung (`features/F45/nachweise/f3a/spike.md`).
+
 ### Skills
 
 | Name / Quelle | Urteil | Kurzbeschreibung | Lizenzbasis | Kosten | Sicherheits-/Fit-Bewertung |

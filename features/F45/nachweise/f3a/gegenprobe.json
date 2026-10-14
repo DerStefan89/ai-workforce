@@ -1,0 +1,508 @@
+{
+  "gemessen_am": "2026-10-14T07:16:58.825Z",
+  "dauer_ms": 1395,
+  "status": "ok",
+  "grund": null,
+  "zaehlungen": [
+    {
+      "id": "superpowers@claude-plugins-official",
+      "aktiv": false,
+      "cli": {
+        "skills": 14,
+        "agents": 0,
+        "hooks": 1,
+        "mcp": 0,
+        "lsp": 0
+      },
+      "leser": {
+        "skills": 14,
+        "agents": 0,
+        "hooks": 1,
+        "mcp": 0,
+        "lsp": 0
+      },
+      "gleich": true
+    },
+    {
+      "id": "gitkraken@synced",
+      "aktiv": true,
+      "cli": {
+        "skills": 0,
+        "agents": 0,
+        "hooks": 0,
+        "mcp": 1,
+        "lsp": 0
+      },
+      "leser": {
+        "skills": 0,
+        "agents": 0,
+        "hooks": 0,
+        "mcp": 1,
+        "lsp": 0
+      },
+      "gleich": true
+    },
+    {
+      "id": "cowork-plugin-management@synced",
+      "aktiv": true,
+      "cli": {
+        "skills": 2,
+        "agents": 0,
+        "hooks": 0,
+        "mcp": 0,
+        "lsp": 0
+      },
+      "leser": {
+        "skills": 2,
+        "agents": 0,
+        "hooks": 0,
+        "mcp": 0,
+        "lsp": 0
+      },
+      "gleich": true
+    },
+    {
+      "id": "design@synced",
+      "aktiv": true,
+      "cli": {
+        "skills": 7,
+        "agents": 0,
+        "hooks": 0,
+        "mcp": 9,
+        "lsp": 0
+      },
+      "leser": {
+        "skills": 7,
+        "agents": 0,
+        "hooks": 0,
+        "mcp": 9,
+        "lsp": 0
+      },
+      "gleich": true
+    }
+  ],
+  "plugins_ordner_abweichung": [
+    "~ <HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\cowork-plugin-management~g2\\.in_use",
+    "~ <HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\design\\.in_use",
+    "~ <HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\gitkraken\\.in_use"
+  ],
+  "antwort": {
+    "status": "ok",
+    "quelle": {
+      "befehl": "claude plugin list --json",
+      "claude_ordner": "<HOME>\\.claude"
+    },
+    "plugins": [
+      {
+        "id": "superpowers@claude-plugins-official",
+        "name": "superpowers",
+        "marketplace": "claude-plugins-official",
+        "version": "6.2.0",
+        "scope": "local",
+        "aktiv": false,
+        "projekt_pfad": "<HOME>\\superpowers-test",
+        "projekt_aktiv": false,
+        "pfad": "<HOME>\\.claude\\plugins\\cache\\claude-plugins-official\\superpowers\\6.2.0",
+        "commit": "44c9b2d6e889982ac18c27d05a19fefe335194e1",
+        "inhalt_hash": "0141f95511c9537e4c81a906044648df6dbc3a3fe0f39ee3293602540a81da64",
+        "hash_grund": null,
+        "lizenz_datei": true,
+        "lizenz_feld": "MIT",
+        "bestandteile": {
+          "skills": [
+            {
+              "name": "brainstorming",
+              "pfad": "skills/brainstorming/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "dispatching-parallel-agents",
+              "pfad": "skills/dispatching-parallel-agents/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "executing-plans",
+              "pfad": "skills/executing-plans/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "finishing-a-development-branch",
+              "pfad": "skills/finishing-a-development-branch/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "receiving-code-review",
+              "pfad": "skills/receiving-code-review/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "requesting-code-review",
+              "pfad": "skills/requesting-code-review/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "subagent-driven-development",
+              "pfad": "skills/subagent-driven-development/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "systematic-debugging",
+              "pfad": "skills/systematic-debugging/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "test-driven-development",
+              "pfad": "skills/test-driven-development/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "using-git-worktrees",
+              "pfad": "skills/using-git-worktrees/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "using-superpowers",
+              "pfad": "skills/using-superpowers/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "verification-before-completion",
+              "pfad": "skills/verification-before-completion/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "writing-plans",
+              "pfad": "skills/writing-plans/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "writing-skills",
+              "pfad": "skills/writing-skills/SKILL.md",
+              "allowed_tools": []
+            }
+          ],
+          "agents": [],
+          "commands": [],
+          "hooks": [
+            {
+              "ereignis": "SessionStart",
+              "matcher": "startup|clear|compact",
+              "typ": "command",
+              "befehl": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start",
+              "quelle": "hooks/hooks.json"
+            }
+          ],
+          "mcp": [],
+          "lsp": []
+        },
+        "risiken": [
+          {
+            "art": "hook_befehl",
+            "bestandteil": "hook:SessionStart",
+            "text": "Shell-Befehl bei jedem Ereignis SessionStart (matcher startup|clear|compact): \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start"
+          }
+        ],
+        "fehler": []
+      },
+      {
+        "id": "gitkraken@synced",
+        "name": "gitkraken",
+        "marketplace": "synced",
+        "version": "1.0.0",
+        "scope": "synced",
+        "aktiv": true,
+        "projekt_pfad": null,
+        "projekt_aktiv": null,
+        "pfad": "<HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\gitkraken",
+        "commit": null,
+        "inhalt_hash": "0bdf65b6222eb816dd14124395e55965b3f72da3b079b2360fefe2419e42a21a",
+        "hash_grund": null,
+        "lizenz_datei": true,
+        "lizenz_feld": null,
+        "bestandteile": {
+          "skills": [],
+          "agents": [],
+          "commands": [],
+          "hooks": [],
+          "mcp": [
+            {
+              "name": "gitkraken",
+              "art": "stdio",
+              "befehl": "npx",
+              "args": [
+                "-y",
+                "@gitkraken/gk",
+                "mcp",
+                "--plugin",
+                "--host=claude"
+              ],
+              "url": null,
+              "pin": "ungepinnt",
+              "paket": "@gitkraken/gk",
+              "quelle": "mcp.json"
+            }
+          ],
+          "lsp": []
+        },
+        "risiken": [
+          {
+            "art": "mcp_ungepinnt",
+            "bestandteil": "mcp:gitkraken",
+            "text": "MCP-Server startet @gitkraken/gk ohne feste Version (npx -y @gitkraken/gk mcp --plugin --host=claude)"
+          }
+        ],
+        "fehler": []
+      },
+      {
+        "id": "cowork-plugin-management@synced",
+        "name": "cowork-plugin-management",
+        "marketplace": "synced",
+        "version": "0.2.2",
+        "scope": "synced",
+        "aktiv": true,
+        "projekt_pfad": null,
+        "projekt_aktiv": null,
+        "pfad": "<HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\cowork-plugin-management~g2",
+        "commit": null,
+        "inhalt_hash": "7f61da58f20bd84f599aed4506ed06886530c57e6b1813be05b6345d2415474f",
+        "hash_grund": null,
+        "lizenz_datei": true,
+        "lizenz_feld": null,
+        "bestandteile": {
+          "skills": [
+            {
+              "name": "cowork-plugin-customizer",
+              "pfad": "skills/cowork-plugin-customizer/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "create-cowork-plugin",
+              "pfad": "skills/create-cowork-plugin/SKILL.md",
+              "allowed_tools": []
+            }
+          ],
+          "agents": [],
+          "commands": [],
+          "hooks": [],
+          "mcp": [],
+          "lsp": []
+        },
+        "risiken": [],
+        "fehler": []
+      },
+      {
+        "id": "design@synced",
+        "name": "design",
+        "marketplace": "synced",
+        "version": "1.2.0",
+        "scope": "synced",
+        "aktiv": true,
+        "projekt_pfad": null,
+        "projekt_aktiv": null,
+        "pfad": "<HOME>\\.claude\\plugins\\synced\\<KONTO-ID>\\design",
+        "commit": null,
+        "inhalt_hash": "676b6f93049d5673818238bac033fbeb0e297aaab10df03a33ff5d4139246c30",
+        "hash_grund": null,
+        "lizenz_datei": false,
+        "lizenz_feld": null,
+        "bestandteile": {
+          "skills": [
+            {
+              "name": "accessibility-review",
+              "pfad": "skills/accessibility-review/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "design-critique",
+              "pfad": "skills/design-critique/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "design-handoff",
+              "pfad": "skills/design-handoff/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "design-system",
+              "pfad": "skills/design-system/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "research-synthesis",
+              "pfad": "skills/research-synthesis/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "user-research",
+              "pfad": "skills/user-research/SKILL.md",
+              "allowed_tools": []
+            },
+            {
+              "name": "ux-copy",
+              "pfad": "skills/ux-copy/SKILL.md",
+              "allowed_tools": []
+            }
+          ],
+          "agents": [],
+          "commands": [],
+          "hooks": [],
+          "mcp": [
+            {
+              "name": "slack",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "https://mcp.slack.com/mcp",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "figma",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "https://mcp.figma.com/mcp",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "linear",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "https://mcp.linear.app/mcp",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "asana",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "https://mcp.asana.com/v2/mcp",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "atlassian",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "https://mcp.atlassian.com/v1/mcp",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "notion",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "https://mcp.notion.com/mcp",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "intercom",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "https://mcp.intercom.com/mcp",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "google calendar",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            },
+            {
+              "name": "gmail",
+              "art": "http",
+              "befehl": null,
+              "args": [],
+              "url": "",
+              "pin": "entfernt",
+              "paket": null,
+              "quelle": ".mcp.json"
+            }
+          ],
+          "lsp": []
+        },
+        "risiken": [
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:slack",
+            "text": "Entfernter MCP-Server: https://mcp.slack.com/mcp"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:figma",
+            "text": "Entfernter MCP-Server: https://mcp.figma.com/mcp"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:linear",
+            "text": "Entfernter MCP-Server: https://mcp.linear.app/mcp"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:asana",
+            "text": "Entfernter MCP-Server: https://mcp.asana.com/v2/mcp"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:atlassian",
+            "text": "Entfernter MCP-Server: https://mcp.atlassian.com/v1/mcp"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:notion",
+            "text": "Entfernter MCP-Server: https://mcp.notion.com/mcp"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:intercom",
+            "text": "Entfernter MCP-Server: https://mcp.intercom.com/mcp"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:google calendar",
+            "text": "Entfernter MCP-Server: (ohne url)"
+          },
+          {
+            "art": "mcp_entfernt",
+            "bestandteil": "mcp:gmail",
+            "text": "Entfernter MCP-Server: (ohne url)"
+          }
+        ],
+        "fehler": []
+      }
+    ],
+    "eingebaut": [
+      {
+        "id": "cc-plugin-telemetry@builtin",
+        "quelle": "referenzliste",
+        "cli_version": "2.1.296 (Claude Code)"
+      },
+      {
+        "id": "cc-plugin-plugin-authoring@builtin",
+        "quelle": "referenzliste",
+        "cli_version": "2.1.296 (Claude Code)"
+      }
+    ],
+    "eingebaut_fehler": null,
+    "instanz_pfad": "<HOME>\\Projekte\\ai-workforce"
+  }
+}
