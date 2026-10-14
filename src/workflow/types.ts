@@ -198,23 +198,24 @@ export interface SchrittErgebnis {
   /** OPTIONAL (F39 WS-2b): Anzahl der Fragen in 'entscheidungen_mensch[]' — nur für den Halt-Grund-Text, keine eigene Prüfung. */
   architekturAnzahlFragen?: number
   /**
-   * OPTIONAL (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH"): true,
-   * wenn ein gerade gelaufener 'architecture-advisor'-Schritt keine erkennbare 'Urteil: ...'-Zeile
-   * trägt. Der Aufrufer (scripts/leitstand-server.mjs) berechnet das Feld NUR für diese Rolle
-   * (liest den Prosa-Text des Laufs) — dieses Modul bleibt abhängigkeitsarm (Kopfkommentar) und
-   * prüft den Text selbst nicht. Ein fehlendes Feld (jeder andere Schritt) bleibt für Regel 1d
-   * folgenlos, wie ein fehlendes 'urteil' für Regel 1b.
+   * OPTIONAL (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH"; F45 B2b-1b:
+   * Schema statt 'Urteil: …'-Zeile): Verstöße des gerade gelaufenen 'architecture-advisor'-Ergebnisses
+   * gegen schemas/ergebnis-architecture-advisor.schema.json (validiereErgebnisAdvisor, inkl. „nicht
+   * lesbar“). Der Aufrufer (scripts/leitstand-server.mjs) berechnet das Feld NUR für diese Rolle —
+   * dieses Modul bleibt abhängigkeitsarm (Kopfkommentar) und prüft den Text selbst nicht. Leer = gültig;
+   * ein fehlendes Feld (jeder andere Schritt) bleibt für Regel 1d folgenlos, wie ein fehlendes
+   * 'urteil' für Regel 1b.
    */
-  advisorUrteilFehlt?: boolean
+  advisorVerstoesse?: string[]
   /**
    * OPTIONAL (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem als
    * ERFOLGREICH" — real beobachtet, F39-WS-3b-Reallauf Versuch 3b, Lauf
    * e1c59219-615f-4f20-8737-8b9a99b4ff5c, 23.09.2026): true, wenn ein gerade gelaufener
    * 'ausfuehrung'-Schritt sich selbst über den CLAUDE.md-Status-Block als 'Blockiert' markiert.
    * Der Aufrufer (scripts/leitstand-server.mjs) berechnet das Feld NUR für diese Rolle (liest den
-   * Ergebnistext, Muster advisorUrteilFehlt oben) — dieses Modul bleibt abhängigkeitsarm
+   * Ergebnistext, Muster advisorVerstoesse oben) — dieses Modul bleibt abhängigkeitsarm
    * (Kopfkommentar) und prüft den Text selbst nicht. Ein fehlendes Feld (jeder andere Schritt)
-   * bleibt für Regel 1e folgenlos, wie ein fehlendes 'advisorUrteilFehlt' für Regel 1d.
+   * bleibt für Regel 1e folgenlos, wie ein fehlendes 'advisorVerstoesse' für Regel 1d.
    */
   ausfuehrungSelbstblockiert?: boolean
   /**

@@ -19,7 +19,7 @@
  *
  * leseSelbstblockadeAusAusfuehrungstext liest, ob eine 'ausfuehrung'-Antwort sich selbst über den
  * CLAUDE.md-Status-Block als 'Blockiert' markiert (F-649) — Regel 1e (src/workflow/index.ts) hält
- * den Workflow dann an, statt automatisch fortzusetzen (Muster Regel 1d/leseUrteilAusAdvisorText,
+ * den Workflow dann an, statt automatisch fortzusetzen (Muster Regel 1d, früher leseUrteilAusAdvisorText in
  * src/architecture-advisor/index.ts).
  *
  * findeRueckfrageZeile/erkenneRueckfrage (F-689) ergänzen das feste Signal um eine Heuristik: ein
@@ -103,7 +103,7 @@ const SELBSTBLOCKADE_ZEILE = /^-\s*\[[xX]\]\s*Blockiert\b/m
 
 /**
  * Liest, ob ein 'ausfuehrung'-Ergebnistext sich selbst über den CLAUDE.md-Status-Block als
- * 'Blockiert' markiert — Muster leseUrteilAusAdvisorText (src/architecture-advisor/index.ts),
+ * 'Blockiert' markiert — Muster der früheren Urteilszeile des Advisors (bis F45 B2b-1b),
  * hier aber auf einer Checkbox-Zeile statt einer 'Urteil: ...'-Zeile, weil 'ausfuehrung' (anders
  * als 'architecture-advisor') keine eigene Rolleninstruktion mit eigenem Urteilsvertrag bekommt,
  * sondern dem allgemeinen CLAUDE.md-Status-Format folgt ("## Status\n- [ ] Freigegeben\n- [ ]

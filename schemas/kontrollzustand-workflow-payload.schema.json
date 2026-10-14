@@ -47,7 +47,7 @@
       "required": ["max_schritte", "max_replans"],
       "properties": {
         "max_schritte": { "type": "integer", "minimum": 1 },
-        "max_replans": { "type": "integer", "minimum": 0 }
+        "max_replans": { "type": "integer", "minimum": 0, "description": "F45 B2b-1a (F-203): höchste Zahl automatischer Rückwege (Korrekturrunden nach Review bzw. Advisor) über alle Stufen zusammen; je Stufe zusätzlich höchstens einer (scripts/leitstand/f35-ws3-adjust-automatik.mjs, pruefeRueckweg). 0 = keine automatische Korrekturrunde. Prüfer wiederholen und menschliche Anpassungen zählen nicht." }
       }
     },
     "schritte": {

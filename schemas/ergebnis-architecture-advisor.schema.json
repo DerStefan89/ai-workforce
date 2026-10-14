@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-architecture-advisor.schema.json",
+  "title": "Rollen-Ergebnis: architecture-advisor",
+  "description": "F45 B2b-1b (F-909, Muster ergebnis-code-reviewer). Ergebnis eines Advisor-Passes auf einen Plan VOR dem Bau — Regeln aus .claude/skills/advisor-pass/SKILL.md: Befunde mit Evidenz-Marker und Fundstelle (Schritt 6), entlastende Befunde (Schritt 7), Urteil mit Begründung nach Schwere (Schritt 8), Rollengrenze (Schritt 5). Das vierstufige Skill-Urteil ist auf drei Werte abgebildet (Entscheidung Stefan B5, features/F45/plan-b2b1.md): Freigegeben = FREIGEGEBEN, Freigegeben mit Hinweisen = FREIGEGEBEN_MIT_AUFLAGEN, Nicht freigegeben und Blockiert = UEBERARBEITEN (Blockiert mit einem Befund „Entscheidung Stefan nötig“). FREIGEGEBEN nur ohne Befunde; die beiden anderen Urteile tragen mindestens einen — die Konsistenz prüft validiereErgebnisAdvisor (src/architecture-advisor), nicht dieses Schema. additionalProperties:false und jedes Feld in 'required' auf jeder Objektebene: Strict-Dialekt wie die übrigen Rollen-Ergebnisschemata. Kein Rollenvertrag (F-184), nur die Form der Antwort.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["urteil", "begruendung", "befunde", "entlastend", "grenzen_der_pruefung"],
+  "properties": {
+    "urteil": {
+      "enum": ["FREIGEGEBEN", "FREIGEGEBEN_MIT_AUFLAGEN", "UEBERARBEITEN"],
+      "description": "FREIGEGEBEN: Plan geht unverändert zur Ausführung (keine Befunde). FREIGEGEBEN_MIT_AUFLAGEN / UEBERARBEITEN: der Architekt schreibt einmal Plan v2 mit diesen Befunden."
+    },
+    "begruendung": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Begründung des Urteils: Befunde nach Schwere sortiert, was vor dem Bau zu klären ist und was mitlaufen darf."
+    },
+    "befunde": {
+      "type": "array",
+      "description": "Belastende Befunde. Leer genau dann, wenn das Urteil FREIGEGEBEN ist.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "schwere", "evidenz", "fundstelle", "zusammenfassung", "korrekturrichtung"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "description": "A1, A2, … — eindeutig in diesem Ergebnis." },
+          "schwere": { "enum": ["KRITISCH", "HOCH", "MITTEL", "NIEDRIG"] },
+          "evidenz": {
+            "enum": ["FAKT", "SCHLUSSFOLGERUNG", "ANNAHME", "OFFENE_UNSICHERHEIT"],
+            "description": "Evidenz-Marker (Skill Schritt 6): im Code belegt · aus Fakten abgeleitet · unbelegte Prämisse des Plans · weder belegt noch widerlegt."
+          },
+          "fundstelle": { "type": "string", "minLength": 1, "description": "Datei und Zeile (oder Planabschnitt) — ein Befund ohne Beleg ist eine Meinung." },
+          "zusammenfassung": { "type": "string", "minLength": 1 },
+          "korrekturrichtung": { "type": "string", "minLength": 1, "description": "Was Plan v2 ändern soll." }
+        }
+      }
+    },
+    "entlastend": {
+      "type": "array",
+      "description": "Geprüfte und tragfähige Stellen des Plans (Skill Schritt 7, [Fakt, entlastend]). Leer ist zulässig.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fundstelle", "zusammenfassung"],
+        "properties": {
+          "fundstelle": { "type": "string", "minLength": 1 },
+          "zusammenfassung": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "grenzen_der_pruefung": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Rollengrenze und blinde Flecken (Skill Schritt 5): was mit nur lesenden Werkzeugen nicht prüfbar war."
+    }
+  }
+}

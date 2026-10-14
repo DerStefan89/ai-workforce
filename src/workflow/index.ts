@@ -95,6 +95,13 @@ const WORKER = ['claude-code', 'codex']
 /** Erlaubte Werte von freigabe — Freigabebedarf eines Schritts. */
 const FREIGABE = ['AUTOMATISCH', 'EMPFOHLEN', 'ZWINGEND']
 
+/**
+ * Regel 4b (F45 B2b-1b, F-1105): Ausgabeschemata, die ein claude-code-Schritt tragen darf — nur solche, die die
+ * Claude-Code-CLI in einem echten Lauf per '--json-schema' eingelöst hat (F-638/F-1086: ein Schema erst nach echtem
+ * Lauf). Exportiert für die Tests; der Gateway-Aufbau liest den Schemanamen nicht, sondern bekommt den Text.
+ */
+export const CLAUDE_CODE_AUSGABESCHEMAS: readonly string[] = ['ergebnis-architecture-advisor']
+
 // Die DREI Allowlists von ermittleNaechstenSchritt (F15 WS-2a). Alle drei sind
 // bewusst Teilmengen der Arrays oben und keine Negation davon: wächst
 // WORKFLOW_STATUS, SCHRITT_STATUS oder FREIGABE um einen Wert, fällt der neue
@@ -686,6 +693,9 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    JEDEN Datensatz, auch über die bereits geschriebenen, append-only
  *    (ARCHITECTURE.md §2) — dieselbe Regel dort machte den Bestand
  *    rückwirkend ungültig, statt nur seinen nächsten Start anzuhalten.
+ *    F45 B2b-1b (F-1105): Ausnahme per Allowlist CLAUDE_CODE_AUSGABESCHEMAS — Schemata, die die
+ *    Claude-Code-CLI real per '--json-schema' einlöst (je Schema ein echter Lauf, Spike
+ *    features/F45/nachweise/b2b1b/spike-f1105.md). Heute nur 'ergebnis-architecture-advisor'.
  * 5. freigabe ∉ {AUTOMATISCH, EMPFOHLEN} UND freigabe_erteilt ≠ true →
  *    haltFreigabe, sonst starte. Der zweite Halbsatz ist WS-2c (b1): ein
  *    ZWINGEND-Schritt, für den ein Mensch real freigegeben hat, ist startbar;
@@ -791,7 +801,7 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     if (vorschrittErgebnis.ergebnis !== 'ERFOLGREICH') {
       return {
         art: 'haltKlaerung',
-        // F45 B2a-3a (Spec §9.8): die Ursache (Zeitgrenze, Werkzeugausfall) setzt der Aufrufer, heute nur beim Review.
+        // F45 B2a-3a (Spec §9.8): die Ursache (Zeitgrenze, Werkzeugausfall) setzt der Aufrufer, beim Review und (F45 B2b-1b) beim Advisor.
         grund: `Schritt '${vorschritt.schritt_id}' endete ${vorschrittErgebnis.ergebnis} (Lauf '${vorschrittErgebnis.laufId}')${vorschrittErgebnis.ursache !== undefined ? ` — Ursache: ${vorschrittErgebnis.ursache}` : ''}`,
         aktiverSchrittId: vorschritt.schritt_id,
       }
@@ -894,27 +904,32 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     }
     // Regel 1d (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH" — real
     // beobachtet, F39-WS-3b-Reallauf, Lauf 4b3ebc42-91df-422b-9dd4-b2fc02dc4151, 23.09.2026):
-    // architecture-advisor trägt bewusst output_schema:null (ROLLENVERTRAEGE — Prosa-Urteil statt
-    // JSON-Vertrag). Anders als Regel 1b/1c gibt es deshalb KEIN output_schema, an das sich diese
-    // Prüfung koppeln könnte ('ausfuehrung' trägt ebenfalls null — output_schema unterscheidet die
-    // beiden Rollen nicht). vorschritt.rolle ist hier die einzige verlässliche Unterscheidung —
+    // ein Bestands-hoch trägt am Advisor output_schema:null, ein neuer 'ergebnis-architecture-advisor'
+    // (F45 B2b-1b) — beide liefern JSON nach dem Advisor-Schema. Die Rolle ist der einzige gemeinsame
+    // Nenner, an den sich diese Prüfung koppeln kann. vorschritt.rolle ist hier die verlässliche Unterscheidung —
     // bewusste Abweichung von der sonstigen "Kopplung an output_schema statt an rolle"-Konvention
     // dieses Moduls (Regel 4b-Kommentar): kein Import von src/rollen/ROLLENVERTRAEGE, nur ein
     // String-Vergleich auf dem ohnehin vorhandenen Feld. Der Aufrufer (leitstand-server.mjs)
-    // berechnet advisorUrteilFehlt NUR für rolle 'architecture-advisor' (liest den Prosa-Text auf
-    // eine eigene 'Urteil: ...'-Zeile) — für jede andere Rolle bleibt das Feld undefined.
-    if (vorschritt.rolle === 'architecture-advisor' && vorschrittErgebnis.advisorUrteilFehlt === true) {
+    // berechnet advisorVerstoesse NUR für rolle 'architecture-advisor' — für jede andere Rolle bleibt
+    // das Feld undefined.
+    // F45 B2b-1b (features/F45/plan-b2b1b.md): der Halt greift bei Verstößen gegen das Schema (Ausweg:
+    // Prüfer wiederholen, B2b-1a — im Leitstand gibt es dafür bis B2b-1b-2 nur den Review-Knopf, der
+    // Grund sagt das ehrlich und nennt die Reparatur als Weg). Übergang B2b-1b-1 (Entscheidung Stefan A5): jedes GÜLTIGE Urteil setzt
+    // fort — zur ZWINGEND-Freigabe der Ausführung; der Rückweg der Plan-Stufe (Plan v2) folgt mit B2b-1b-2.
+    if (vorschritt.rolle === 'architecture-advisor' && vorschrittErgebnis.advisorVerstoesse !== undefined && vorschrittErgebnis.advisorVerstoesse.length > 0) {
+      const verstoesse = vorschrittErgebnis.advisorVerstoesse
+      const weitere = verstoesse.length > 3 ? ` (und ${verstoesse.length - 3} weitere)` : ''
       return {
         art: 'haltKlaerung',
-        grund: `Schritt '${vorschritt.schritt_id}' (architecture-advisor) trägt kein erkennbares Urteil (Zeile 'Urteil: ...' fehlt) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
+        grund: `Schritt '${vorschritt.schritt_id}' (architecture-advisor) liefert kein gültiges Ergebnis nach dem Advisor-Schema: ${verstoesse.slice(0, 3).join('; ')}${weitere} — kein automatischer Fortschritt. Ausweg: Prüfer wiederholen (im Leitstand noch ohne eigenen Knopf für den Advisor) oder den Ablauf reparieren (Lauf '${vorschrittErgebnis.laufId}')`,
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
     // Regel 1e (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem als
     // ERFOLGREICH" — real beobachtet, F39-WS-3b-Reallauf Versuch 3b, Lauf
     // e1c59219-615f-4f20-8737-8b9a99b4ff5c, 23.09.2026): dieselbe Kopplung an schritt.rolle statt
-    // output_schema wie Regel 1d, aus demselben Grund — 'ausfuehrung' trägt wie
-    // 'architecture-advisor' bewusst output_schema:null. KEINE Aussage über die inhaltliche
+    // output_schema wie Regel 1d — 'ausfuehrung' trägt bewusst output_schema:null, das Feld
+    // unterscheidet sie nicht von anderen schemalosen Rollen. KEINE Aussage über die inhaltliche
     // Richtigkeit der Selbstblockade, nur darüber, dass sie nicht stillschweigend übergangen wird.
     //
     // F-689: zusätzlich hält eine erkannte Rückfrage OHNE jede Dateiänderung ('ausfuehrungRueckfrage',
@@ -1071,11 +1086,13 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
   // gesetztem output_schema fällt damit in "hält an" statt lautlos zu starten.
   // Der Vergleich steht trotz Regel 4 nicht überflüssig da — er ist die
   // Tiefenverteidigung, falls WORKER je um einen Wert wächst, den diese
-  // Funktion nicht kennt.
-  if (worker !== 'codex' && naechsterSchritt.output_schema !== null) {
+  // Funktion nicht kennt. F45 B2b-1b: claude-code mit einem Schema aus
+  // CLAUDE_CODE_AUSGABESCHEMAS ist die zweite, ebenso allowlist-förmige Ausnahme.
+  const claudeCodeMitBelegtemSchema = worker === 'claude-code' && naechsterSchritt.output_schema !== null && CLAUDE_CODE_AUSGABESCHEMAS.includes(naechsterSchritt.output_schema)
+  if (worker !== 'codex' && naechsterSchritt.output_schema !== null && !claudeCodeMitBelegtemSchema) {
     return {
       art: 'haltKlaerung',
-      grund: `Schritt '${naechsterSchritt.schritt_id}' setzt output_schema '${naechsterSchritt.output_schema}', aber Worker '${worker}' kennt kein Ausgabeschema — nur 'codex' wird mit '--output-schema' gestartet`,
+      grund: `Schritt '${naechsterSchritt.schritt_id}' setzt output_schema '${naechsterSchritt.output_schema}', aber Worker '${worker}' löst dieses Ausgabeschema nicht ein — 'codex' wird mit '--output-schema' gestartet, 'claude-code' mit '--json-schema' nur für ${CLAUDE_CODE_AUSGABESCHEMAS.map((name) => `'${name}'`).join(', ')}`,
       aktiverSchrittId: naechsterSchritt.schritt_id,
     }
   }

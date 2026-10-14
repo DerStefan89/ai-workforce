@@ -36,7 +36,7 @@ import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../check
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
-import { baueAufruf, leseModellBeobachtet, leseSlashCommandsReferenz, leseVerbrauch, pruefeInitZeile, pruefeUndVerweigereBeiTreffer, starteGateway, validiereLaufakteDaten } from './index.ts'
+import { baueAufruf, baueClaudeJsonSchema, leseModellBeobachtet, leseSlashCommandsReferenz, leseVerbrauch, pruefeInitZeile, pruefeUndVerweigereBeiTreffer, starteGateway, validiereLaufakteDaten } from './index.ts'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, fuehreUmgebungZusammen, pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
@@ -1568,4 +1568,35 @@ test('F45 F-3b-2 pruefeInitZeile: init.plugins = Soll (mehr/fehlend = Verstoß);
   assert.equal(pruefeInitZeile({ ...init, tools: [...init.tools, 'Task'], agents: ['claude', 'Explore', 'superpowers:pruefer'] }, mitAgent), null)
   // Ohne Soll wie bisher: jedes Plugin ist ein Verstoß.
   assert.match(pruefeInitZeile(init, { skills: ['superpowers:systematic-debugging'], mcpServer: [] }) ?? '', /init\.plugins nicht leer: superpowers@inline/)
+})
+
+// ─── F45 B2b-1b: Ausgabeschema per --json-schema (Spike F-1105) ───────────────────────────────
+
+test('F45 B2b-1b baueAufruf: ohne jsonSchema bitgleich; mit jsonSchema --json-schema <text> unmittelbar vor -p (nach --plugin-dir)', () => {
+  const basis = gueltigeEingaben()
+  const ohne = baueAufruf(basis)
+  assert.deepEqual(baueAufruf({ ...basis, jsonSchema: undefined }), ohne)
+  assert.ok(!ohne.includes('--json-schema'))
+  const mit = baueAufruf({ ...basis, pluginDirs: ['C:/lauf/aaa'], jsonSchema: '{"type":"object"}' })
+  const p = mit.indexOf('-p')
+  assert.deepEqual(mit.slice(p - 4, p), ['--plugin-dir', 'C:/lauf/aaa', '--json-schema', '{"type":"object"}'])
+  assert.equal(mit.at(-1), basis.prompt)
+})
+
+test('F45 B2b-1b baueClaudeJsonSchema: entfernt $schema und $id (CLI kennt Draft 2020-12 nicht, Spike Versuch 1), Rest unverändert und kompakt', () => {
+  const roh = readFileSync('schemas/ergebnis-architecture-advisor.schema.json', 'utf-8')
+  const text = baueClaudeJsonSchema(roh)
+  const geparst = JSON.parse(text)
+  assert.equal('$schema' in geparst, false)
+  assert.equal('$id' in geparst, false)
+  const { $schema: _s, $id: _i, ...erwartet } = JSON.parse(roh)
+  assert.deepEqual(geparst, erwartet)
+  assert.ok(!text.includes('\n'), 'kompakt, eine Zeile')
+  // Argv-Element unter Windows (Grenze der Befehlszeile 32 767 Zeichen, der Prompt geht über stdin): Puffer für Wachstum.
+  assert.ok(text.length < 8000, `Schematext ${text.length} Zeichen — über 8000 die Argv-Länge neu bewerten`)
+})
+
+test('F45 B2b-1b baueClaudeJsonSchema: kein JSON-Objekt ⇒ wirft (Aufrufer-Vertrag, Schema ist vorher über loeseAusgabeSchemaAuf geprüft)', () => {
+  assert.throws(() => baueClaudeJsonSchema('[]'), /JSON-Objekt/)
+  assert.throws(() => baueClaudeJsonSchema('kein json'))
 })

@@ -8,6 +8,11 @@
  * ist scripts/check-f35-ws3-adjust-automatik.mjs vorbehalten (Muster
  * check-f35-ws2-urteil-je-ak.mjs: reine Funktionen hier isoliert, der
  * schreibende/D13-abhängige Teil nur am realen Aufrufpfad).
+ *
+ * F45 B2b-1a (features/F45/plan-b2b1.md): Rückweg-Regel (pruefeRueckweg, je Stufe eine Korrekturrunde innerhalb
+ * max_replans), Halt bei denselben Befunden (sindDieselbenBefunde) und „Prüfer wiederholen“ (pruefschrittWiederholbar);
+ * HTTP-Rundlauf in scripts/check-f45-b2b1-rueckweg.mjs. F45 B2b-1b: der Advisor-Zweig liest die Verstöße gegen das
+ * Advisor-Schema (advisorVerstoesse) statt der früheren Urteilszeile (F-1104 (4)).
  */
 
 import assert from 'node:assert/strict'
@@ -98,7 +103,7 @@ test('ermittleAutomatischeAnpassung: löst AUS bei Urteil BEREIT_NACH_KORREKTUR 
 // F45 B2b-1a: die Grenze kommt aus grenzen.max_replans, je Stufe höchstens 1 Rückweg.
 const BLOCKIERT_BASIS = { outputSchema: 'ergebnis-code-reviewer', schrittStatus: 'ERFOLGREICH', heilbar: false, urteil: 'BLOCKIERT', akVerstoesse: [] }
 
-test('ermittleAutomatischeAnpassung: zweiter automatischer Rückweg der Bau-Stufe ist gesperrt (art grenze, lesbarer Grund)', () => {
+test('ermittleAutomatischeAnpassung: zweite automatische Korrekturrunde (Rückweg) der Bau-Stufe ist gesperrt (art grenze, lesbarer Grund)', () => {
   const ergebnis = ermittleAutomatischeAnpassung({ ...BLOCKIERT_BASIS, anzahlBisherigerKernVersionen: 1, maxReplans: 5 })
   assert.equal(ergebnis.ausloesen, false)
   assert.equal(ergebnis.art, 'grenze')
@@ -167,7 +172,7 @@ test('sindDieselbenBefunde: Schlüssel Schwere + Datei ohne Zeile, Reihenfolge u
 })
 
 const REVIEW_SCHRITT = { schritt_id: 'schritt-2-review', rolle: 'code-reviewer', output_schema: 'ergebnis-code-reviewer', lauf_id: 'lauf-r', status: 'FEHLGESCHLAGEN' }
-const ADVISOR_SCHRITT = { schritt_id: 'schritt-2-architektur', rolle: 'architecture-advisor', output_schema: null, lauf_id: 'lauf-a', status: 'ERFOLGREICH' }
+const ADVISOR_SCHRITT = { schritt_id: 'schritt-2-architektur', rolle: 'architecture-advisor', output_schema: 'ergebnis-architecture-advisor', lauf_id: 'lauf-a', status: 'ERFOLGREICH' }
 
 test('pruefschrittWiederholbar: Review nach Werkzeugausfall ist wiederholbar, nur bei KLAERUNG_ERFORDERLICH', () => {
   assert.deepEqual(pruefschrittWiederholbar({ workflowStatus: 'KLAERUNG_ERFORDERLICH', schritt: REVIEW_SCHRITT, befund: {} }), { wiederholbar: true })
@@ -188,11 +193,15 @@ test('pruefschrittWiederholbar: erfolgreicher Review — nur fehlendes Urteil od
   assert.equal(pruefe({ urteil: 'BEREIT_NACH_KORREKTUR', akVerstoesse: [], reviewVerstoesse: [] }), false, 'Review trägt')
 })
 
-test('pruefschrittWiederholbar: Advisor nach Werkzeugausfall oder ohne Urteil (B4); andere Rollen nie', () => {
+test('pruefschrittWiederholbar: Advisor nach Werkzeugausfall oder mit Verstößen gegen das Advisor-Schema (B4, F45 B2b-1b); andere Rollen nie', () => {
   const pruefe = (schritt, befund) => pruefschrittWiederholbar({ workflowStatus: 'KLAERUNG_ERFORDERLICH', schritt, befund }).wiederholbar
-  assert.equal(pruefe(ADVISOR_SCHRITT, { advisorUrteilFehlt: true }), true)
+  assert.equal(pruefe(ADVISOR_SCHRITT, { advisorVerstoesse: ['Ergebnis ist kein JSON-Objekt'] }), true)
+  assert.equal(pruefe({ ...ADVISOR_SCHRITT, output_schema: null }, { advisorVerstoesse: ["'urteil' fehlt"] }), true, 'Bestands-hoch ohne Schema am Schritt')
   assert.equal(pruefe({ ...ADVISOR_SCHRITT, status: 'FEHLGESCHLAGEN' }, {}), true)
-  assert.equal(pruefe(ADVISOR_SCHRITT, { advisorUrteilFehlt: false }), false)
+  assert.equal(pruefe(ADVISOR_SCHRITT, { advisorVerstoesse: [] }), false, 'gültiges Ergebnis')
+  assert.equal(pruefe(ADVISOR_SCHRITT, {}), false, 'kein Befund gelesen')
+  assert.equal(pruefe({ ...ADVISOR_SCHRITT, status: 'VERWEIGERT' }, {}), false)
+  assert.match(pruefschrittWiederholbar({ workflowStatus: 'KLAERUNG_ERFORDERLICH', schritt: { ...ADVISOR_SCHRITT, status: 'VERWEIGERT' }, befund: {} }).grund, /dieselbe Ablehnung/, 'VERWEIGERT mit eigenem Grund, nicht „gültiges Ergebnis“')
   assert.equal(pruefe({ ...ADVISOR_SCHRITT, rolle: 'ausfuehrung', status: 'FEHLGESCHLAGEN' }, {}), false)
 })
 
@@ -203,6 +212,12 @@ test('sindDieselbenBefunde: Zeilen-/Spaltenformate am Ende werden abgeschnitten,
   }
   assert.equal(sindDieselbenBefunde([{ schwere: 'HOCH', fundstelle: 'src/Zeile1.ts' }], [{ schwere: 'HOCH', fundstelle: 'src/Zeile2.ts' }]), false, 'Dateinamen bleiben unterscheidbar')
   assert.equal(sindDieselbenBefunde([{ schwere: 'HOCH', fundstelle: 'Zeile 12' }], [{ schwere: 'HOCH', fundstelle: 'Zeile 40' }]), false, 'ohne Pfad bleibt die Fundstelle ganz')
+})
+
+test('sindDieselbenBefunde: kombinierte Zeilenangaben werden bis zum Festpunkt abgeschnitten (F-1104 (11))', () => {
+  for (const form of ['src/a.ts:12 (Zeile 12)', 'src/a.ts:12-20, Z. 14', 'src/a.ts#L3 (line 3)']) {
+    assert.equal(sindDieselbenBefunde([{ schwere: 'HOCH', fundstelle: 'src/a.ts' }], [{ schwere: 'HOCH', fundstelle: form }]), true, form)
+  }
 })
 
 test('sindDieselbenBefunde: ein Befund ohne Fundstelle macht den Vergleich unmöglich (keine Wiederholung)', () => {

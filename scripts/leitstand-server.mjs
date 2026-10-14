@@ -468,8 +468,8 @@ import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
 import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, registriereAuftrag, traegtArbeitspaket, validiereAuftragAkzeptanzkriterien, validiereAuftragHerkunft, validiereAuftragPflichtfelder } from '../src/auftrag/index.ts'
-import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
-import { baueBeobachtungsBlock, leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
+import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
+import { baueBeobachtungsBlock, baueClaudeJsonSchema, leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
 import { arbeitsverzeichnisseGleich } from '../src/invocation-policy/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
@@ -510,7 +510,7 @@ import {
   traegtAdrVerweisAufEntscheidung,
   validiereErgebnisArchitektur,
 } from '../src/architekt/index.ts'
-import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
+import { baueArchitectureAdvisorAuftragstext, validiereErgebnisAdvisor } from '../src/architecture-advisor/index.ts'
 import { leseDodPunkte, leseHarnessInventar } from '../src/harness-abgleich/index.ts'
 import { analysiereArchitektur, baueProjektkarte, istKarteRolle } from '../src/projektkarte/index.ts'
 import { istAusnahmePfad, pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
@@ -2260,6 +2260,10 @@ export function pruefeStartauftrag(body) {
       grund: "'aufrufEingaben.ortB' wird ausschließlich serverseitig aus der angezeigten Katalog-Empfehlung gesetzt (F36 WS-5b) und ist im Body nicht erlaubt",
     }
   }
+  // F45 B2b-1b: 'jsonSchema' (--json-schema) setzt ausschließlich loeseAusfuehrungsEingabenAuf aus dem output_schema des Schritts.
+  if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'jsonSchema' in body.aufrufEingaben) {
+    return { ok: false, grund: "'aufrufEingaben.jsonSchema' wird ausschließlich serverseitig aus dem output_schema des Workflow-Schritts gesetzt (F45 B2b-1b) und ist im Body nicht erlaubt" }
+  }
   if (!Array.isArray(body.anfragen)) {
     return { ok: false, grund: "'anfragen' muss ein Array sein" }
   }
@@ -3044,6 +3048,21 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       }
     }
   }
+  // F45 B2b-1b (F-1105): claude-code löst ein Ausgabeschema über '--json-schema' ein (Regel 4b lässt nur real belegte Schemata
+  // durch, CLAUDE_CODE_AUSGABESCHEMAS). Der Text kommt aus derselben, schon geprüften Datei; ohne Schema fehlt das Feld (Argv bitgleich).
+  let schemaZusatz = {}
+  if (ausgabeSchemaPfad !== null && worker === 'claude-code') {
+    // Zweite Sicherung (QA B2b-1b-1): auch an Regel 4b vorbei (anderer Aufrufpfad) geht nur ein real belegtes Schema an die CLI.
+    const schemaName = basename(ausgabeSchemaPfad, '.schema.json')
+    if (!CLAUDE_CODE_AUSGABESCHEMAS.includes(schemaName)) {
+      return { ok: false, grund: `output_schema '${schemaName}': Worker 'claude-code' löst nur ${CLAUDE_CODE_AUSGABESCHEMAS.map((name) => `'${name}'`).join(', ')} per '--json-schema' ein (je Schema ein echter Lauf, F-1105)` }
+    }
+    try {
+      schemaZusatz = { jsonSchema: baueClaudeJsonSchema(readFileSync(ausgabeSchemaPfad, 'utf8')) }
+    } catch (fehler) {
+      return { ok: false, grund: `output_schema '${basename(ausgabeSchemaPfad, '.schema.json')}': für '--json-schema' nicht lesbar (${fehler.message})` }
+    }
+  }
 
   // AK10, Ablehnung 9 von 10 (siehe die Zählung am Kopf von
   // loeseAusgabeSchemaAuf): codex + nicht-lesender Werkzeugsatz. Steht
@@ -3360,7 +3379,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       rolle: eingabenRoh.rolle,
       anfragen: anfragenMitInhalt,
       budget: eingabenRoh.budget,
-      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, ...skillZusatz, ...pruefZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
+      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, ...skillZusatz, ...pruefZusatz, ...schemaZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
       werkzeugStartziel,
       werkzeugVersionDeklariert,
       berechtigungskontext,
@@ -3630,10 +3649,11 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
   // da. Gepinnt in scripts/check-f16-codex-gateway.mjs (h).
   //
   // Unabhängig vom Worker geprüft: ein claude-code-Schritt mit gesetztem
-  // output_schema kommt hier gar nicht an (Regel 4b in
-  // ermittleNaechstenSchritt hält ihn vorher), und eine zweite,
-  // worker-abhängige Bedingung an dieser Stelle wäre ein stiller Durchlass,
-  // falls diese Funktion je aus einem anderen Pfad gerufen wird.
+  // output_schema kommt hier nur mit einem Schema aus CLAUDE_CODE_AUSGABESCHEMAS an
+  // (Regel 4b in ermittleNaechstenSchritt hält jedes andere vorher; F45 B2b-1b),
+  // und eine zweite, worker-abhängige Bedingung an dieser Stelle wäre ein stiller
+  // Durchlass, falls diese Funktion je aus einem anderen Pfad gerufen wird —
+  // loeseAusfuehrungsEingabenAuf prüft die Allowlist für '--json-schema' deshalb erneut.
   let ausgabeSchemaPfad = null
   if (schritt.output_schema !== null) {
     // E-F41-2 (löst F-676): schemas/ ist Workforce-EIGEN, installWurzel statt der Projekt-repoWurzel.
@@ -3675,8 +3695,7 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     // liefert aber das LAUFERGEBNIS selbst (strukturiertes Output-Artefakt bzw. roher
     // Ergebnistext, leseErgebnistextAusRohstrom), nicht eine gesondert registrierte
     // Änderungsübersicht. Funktioniert deshalb für JEDEN Schritt, auch einen lesenden ohne
-    // output_schema (z. B. 'architecture-advisor', dessen Rollenvertrag erlaubtes_output_schema:
-    // null trägt) — anders als 'aenderungsuebersicht-@', das nur für schreibende, real
+    // output_schema (z. B. 'ausfuehrung'; bis F45 B2b-1b auch 'architecture-advisor') — anders als 'aenderungsuebersicht-@', das nur für schreibende, real
     // erfolgreiche Schritte eine Übersicht findet. Dieselben drei Schutzregeln wie oben
     // (Selbstverweis, unbekannte schritt_id, nicht gestartet), danach ein eigener,
     // nicht-gemeinsamer Abschluss (continue) statt des Artefakt-Anfragen-Baus unten: die
@@ -3718,7 +3737,7 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
         }
       }
       // Strukturiertes Output-Artefakt bevorzugt (lesbar formatiertes JSON), sonst der rohe
-      // Ergebnistext unverändert (z. B. architecture-advisors Prosa-Urteil, output_schema: null).
+      // Ergebnistext unverändert (z. B. ein Prosa-Ergebnis ohne output_schema; der Advisor liefert seit F45 B2b-1b JSON).
       let formatierterInhalt = ergebnistextErgebnis.text
       try {
         formatierterInhalt = JSON.stringify(JSON.parse(ergebnistextErgebnis.text), null, 2)
@@ -3953,7 +3972,7 @@ export function extrahiereErstesJsonObjekt(text) {
  * 'ergebnis-@<schrittId>'-Eingabe-Platzhalter (F39 WS-2a, D5 — EIN
  * Extraktionsschritt statt zweier unabhängig alternder Kopien): der
  * Platzhalter liefert bewusst „strukturiertes Output-Artefakt bzw.
- * Ergebnistext" — ein Schritt ohne output_schema (z. B. `architecture-advisor`)
+ * Ergebnistext" — ein Schritt ohne output_schema (z. B. `ausfuehrung`; der Advisor bis F45 B2b-1b)
  * hat keinen JSON-Ergebnistext, sein Prosa-Ergebnis soll trotzdem
  * weiterreichbar sein.
  * @param laufakteDaten - bereits geladene LaufakteV0Daten
@@ -4167,7 +4186,7 @@ function versucheJsonParse(kandidat) {
  * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): optionen.jsonObjektFallback
  * (Default false) schaltet eine DRITTE Fallback-Stufe frei (extrahiereErstesJsonObjekt), NUR
  * für den worker 'claude-code'-Zweig, NUR wenn die zweite Stufe (Codezaun) scheitert — bislang
- * ausschließlich von leseJarvisErgebnisAusLaufakte/Coach gesetzt. Bewusst NICHT für router/scout/
+ * von leseJarvisErgebnisAusLaufakte/Coach und (F45 B2b-1b) leseAdvisorErgebnisAusLaufakte gesetzt. Bewusst NICHT für router/scout/
  * code-reviewer aktiviert (D2, kein stillschweigender Vertragsbruch): deren Beobachtung landet
  * in schemas/kontrollzustand-router-ergebnis-payload.schema.json' ENUM [null, 'fence_entfernt']
  * (src/router/index.ts ROUTER_ERGEBNIS_BEOBACHTUNG) — ein dritter Beobachtungswert bräche diese
@@ -4188,7 +4207,7 @@ function versucheJsonParse(kandidat) {
  * (a) gilt bewusst für ALLE claude-code-Rollen (Router, Review-Urteil, Architekt, Scout, Chat;
  * Bauauftrag WS-8b f, Prüfpass qa S2): ein Ergebnis, das bisher nur an einem inneren Zaun
  * scheiterte, wird jetzt gelesen und danach wie jedes andere gegen sein Rollen-Schema geprüft.
- * Die dritte Stufe (b) bleibt auf jsonObjektFallback (Jarvis/Coach) begrenzt.
+ * Die dritte Stufe (b) bleibt auf jsonObjektFallback (Jarvis/Coach, Advisor) begrenzt.
  */
 function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
   const { jsonObjektFallback = false } = optionen
@@ -4408,6 +4427,25 @@ export function normalisiereSchrittAusgang(ergebnis) {
 }
 
 /**
+ * F45 B2b-1b (features/F45/plan-b2b1b.md, Advisor-Pass A4): liest das Ergebnis eines architecture-advisor-Laufs aus dem
+ * Rohstrom (leseRollenErgebnisRohstrom, dasselbe Lesemuster wie leseUrteilAusLaufakte darunter) und prüft es mit
+ * validiereErgebnisAdvisor (src/architecture-advisor). Wirft nie: ein Lese- oder Parsefehler wird zum Verstoß — Regel 1d
+ * entscheidet aus genau einem Feld (Muster leseArchitekturErgebnisAusLaufakte). EINE Stelle für Nachlauf und
+ * ermittlePrueferBefund.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten des Advisor-Laufs
+ * @returns { verstoesse, ergebnis } — ergebnis ist das geparste Objekt nur, wenn verstoesse leer ist, sonst null
+ */
+function leseAdvisorErgebnisAusLaufakte(laufakteDaten) {
+  // jsonObjektFallback (Muster Jarvis/Coach): ein Bestands-hoch trägt am Advisor noch output_schema:null, dort setzt die CLI
+  // das Schema nicht durch — Prosa vor oder nach dem JSON (z. B. ein Status-Block) soll nicht anhalten. Den Inhalt prüft
+  // danach ohnehin validiereErgebnisAdvisor (Code-Review B2b-1b-1, Befund 6).
+  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten, { jsonObjektFallback: true })
+  if (!gelesen.ok) return { verstoesse: [`Ergebnistext nicht lesbar: ${gelesen.grund}`], ergebnis: null }
+  const verstoesse = validiereErgebnisAdvisor(gelesen.geparst)
+  return { verstoesse, ergebnis: verstoesse.length === 0 ? gelesen.geparst : null }
+}
+
+/**
  * Liest das geparste ergebnis-code-reviewer-Ergebnisobjekt (urteil, befunde[],
  * empfehlung) eines ERFOLGREICH klassifizierten Post-Build-Review-Laufs
  * (output_schema 'ergebnis-code-reviewer') direkt aus dessen Rohstrom (F23
@@ -4515,7 +4553,7 @@ export function leseScoutErgebnisAusLaufakte(laufakteDaten) {
  * '--output-schema'-Mechanismus für claude-code (F-337), die Formprüfung
  * passiert deshalb erst hier, nach dem Codezaun-Fallback.
  *
- * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): einziger Aufrufer, der
+ * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): erster Aufrufer (seit F45 B2b-1b auch der Advisor), der
  * leseRollenErgebnisRohstroms dritte Fallback-Stufe (jsonObjektFallback) freischaltet — ein
  * Chat-Turn ohne Menschen, der eine schlechte Antwort nachfragt, braucht die robustere
  * Extraktion am dringendsten (real beobachtet: Prosa vor einem ```json-Zaun). router/scout/
@@ -5255,7 +5293,7 @@ function mitRueckwegGrund(grund, ausgang, rueckwegEntscheid) {
 /**
  * F45 B2b-1a (Umfang 5, Delta-Advisor D5): liest aus der Laufakte eines Prüfschritts, was pruefschrittWiederholbar
  * braucht — mit denselben Lesern wie der Nachlauf (leseUrteilAusLaufakte, pruefeAkUrteile, pruefeReviewErgebnisFuer,
- * leseUrteilAusAdvisorText). EINE Stelle für GET …/abnahme und POST …/pruefer-wiederholen. Synchron, wirft nicht
+ * leseAdvisorErgebnisAusLaufakte). EINE Stelle für GET …/abnahme und POST …/pruefer-wiederholen. Synchron, wirft nicht
  * (ein Lesefehler gilt als unlesbares Ergebnis). Auftrag und Policy werden nur bei einem tragenden Urteil gelesen —
  * nur dann entscheiden AK- und Vertragsverstöße (pruefschrittWiederholbar); GET …/abnahme reicht die bereits gelesene
  * Laufakte durch (Poll alle 2 s, Prüfpass B2b-1a).
@@ -5263,7 +5301,7 @@ function mitRueckwegGrund(grund, ausgang, rueckwegEntscheid) {
  * @param auftragId - auftrag_id des Workflows (Akzeptanzkriterien)
  * @param ladeOptionen - { basisVerzeichnis, schreiber }
  * @param vorgelesen - optional { laufakte, geparst } aus GET …/abnahme (dieselbe Laufakte, kein zweites Lesen)
- * @returns { urteil, akVerstoesse, reviewVerstoesse, advisorUrteilFehlt } (Felder ggf. undefined)
+ * @returns { urteil, akVerstoesse, reviewVerstoesse, advisorVerstoesse } (Felder ggf. undefined)
  */
 function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = null) {
   if (schritt === null || schritt === undefined || schritt.lauf_id === null || schritt.status !== 'ERFOLGREICH') return {}
@@ -5281,12 +5319,12 @@ function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = nu
       }
     }
     if (schritt.rolle === 'architecture-advisor') {
-      const text = laufakte !== null ? leseErgebnistextAusRohstrom(laufakte.daten) : { ok: false }
-      return { advisorUrteilFehlt: (text.ok ? leseUrteilAusAdvisorText(text.text) : null) === null }
+      return { advisorVerstoesse: laufakte !== null ? leseAdvisorErgebnisAusLaufakte(laufakte.daten).verstoesse : [`Laufakte 'laufakte-${schritt.lauf_id}' nicht gefunden`] }
     }
   } catch (fehler) {
     console.error(`[leitstand] Ergebnis des Prüfschritts '${schritt.schritt_id}' nicht lesbar: ${fehler.message}`)
-    return schritt.output_schema === 'ergebnis-code-reviewer' ? { urteil: null } : { advisorUrteilFehlt: true }
+    if (schritt.output_schema === 'ergebnis-code-reviewer') return { urteil: null }
+    return schritt.rolle === 'architecture-advisor' ? { advisorVerstoesse: [`Ergebnis nicht lesbar: ${fehler.message}`] } : {}
   }
   return {}
 }
@@ -7127,7 +7165,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       const schrittStatus = fehler !== null ? 'FEHLGESCHLAGEN' : normalisiereSchrittAusgang(ergebnis)
       // F45 B2a-3a (Spec §9.8): die Ursache eines gescheiterten Reviews (Zeitgrenze, Werkzeugausfall) geht in den Halt-Grund
       // (Regel 1), damit Abnahme und Blick sie zeigen; andere Rollen bleiben bitgleich.
-      const reviewUrsache = !heilbar && schrittStatus !== 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer' ? beschreibeLaufUrsache(ergebnis, fehler, schritt.zeitgrenze_ms) : undefined
+      // F45 B2b-1b (QA): auch beim Advisor — lehnt die CLI das '--json-schema' ab (Exit 1 vor dem Lauf), steht die Ursache im Grund.
+      const reviewUrsache = !heilbar && schrittStatus !== 'ERFOLGREICH' && (schritt.output_schema === 'ergebnis-code-reviewer' || schritt.rolle === 'architecture-advisor') ? beschreibeLaufUrsache(ergebnis, fehler, schritt.zeitgrenze_ms) : undefined
       const schrittFelder = heilbar ? { status: 'OFFEN', lauf_id: null } : { status: schrittStatus, lauf_id: laufId }
       // F-760 (state/findings.md, löst "ein vollständiger Baulauf endete VERWEIGERT, ohne dass die
       // Kette zum Review noch erreichbar war"): dieselbe bypass_verdacht_anzahl wie beim
@@ -7228,19 +7267,17 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       // Regel 1d (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH" —
       // real beobachtet Lauf 4b3ebc42-91df-422b-9dd4-b2fc02dc4151, 23.09.2026). Gekoppelt an
-      // schritt.rolle statt output_schema, weil architecture-advisor bewusst output_schema:null
-      // trägt (ROLLENVERTRAEGE) — anders als bei Regel 1c gibt es hier kein Schema-Feld, an das
-      // sich die Berechnung koppeln könnte (Begründung: src/workflow/index.ts, Regel-1d-Kommentar).
-      let advisorUrteilFehlt
+      // schritt.rolle statt output_schema: ein Bestands-hoch trägt am Advisor noch output_schema:null,
+      // ein neuer 'ergebnis-architecture-advisor' (F45 B2b-1b) — beide liefern JSON nach dem Advisor-Schema
+      // und werden hier gleich geprüft (Begründung: src/workflow/index.ts, Regel-1d-Kommentar).
+      let advisorVerstoesse
       if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'architecture-advisor') {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
-        const textErgebnis = laufakteVersion !== null ? leseErgebnistextAusRohstrom(laufakteVersion.daten) : { ok: false }
-        const urteil = textErgebnis.ok ? leseUrteilAusAdvisorText(textErgebnis.text) : null
-        advisorUrteilFehlt = urteil === null
+        advisorVerstoesse = laufakteVersion !== null ? leseAdvisorErgebnisAusLaufakte(laufakteVersion.daten).verstoesse : [`Laufakte 'laufakte-${laufId}' nicht gefunden`]
       }
       // Regel 1e (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem
       // als ERFOLGREICH" — real beobachtet Lauf e1c59219-615f-4f20-8737-8b9a99b4ff5c, 23.09.2026).
-      // Dasselbe Lesemuster wie advisorUrteilFehlt direkt darüber, hier auf dem CLAUDE.md-Status-
+      // Dasselbe Lesemuster wie advisorVerstoesse direkt darüber, hier auf dem CLAUDE.md-Status-
       // Block statt einer 'Urteil: ...'-Zeile (Begründung: src/korrekturschleife/index.ts,
       // Kopfkommentar von leseSelbstblockadeAusAusfuehrungstext).
       let ausfuehrungSelbstblockiert
@@ -7459,7 +7496,7 @@ export function erzeugeRequestHandler(optionen = {}) {
               architekturVerstoesse,
               architekturEntscheidungAusstehend,
               architekturAnzahlFragen,
-              advisorUrteilFehlt,
+              advisorVerstoesse,
               ausfuehrungSelbstblockiert,
               ausfuehrungRueckfrage,
               pruefergebnis,
