@@ -500,6 +500,7 @@ import { fuehreAufrufDurch, pruefeVorschau } from '../src/projekt-aufruf/index.t
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import {
   baueArchitektAuftragstext,
+  baueArchitektPlanV2Instruktion,
   baueBashAllowlistSatz,
   baueStackEntscheidungsInstruktion,
   baueUmsetzungsInstruktion,
@@ -558,11 +559,22 @@ import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAu
 import {
   findeWorkflowEntscheidungFuerSchritt,
   formatiereWorkflowEntscheidungAlsText,
+  offeneArchitekturFragen,
   pruefeWorkflowEntscheidungsformular,
   registriereWorkflowEntscheidung,
   workflowEntscheidungArtefaktId,
 } from './leitstand/routen-f39.mjs'
-import { baueAutomatischeAnpassungsBegruendung, ermittleAutomatischeAnpassung, pruefschrittWiederholbar, zaehleKernVersionen } from './leitstand/f35-ws3-adjust-automatik.mjs'
+import {
+  baueAutomatischeAnpassungsBegruendung,
+  baueSchritteFuerPlanRueckweg,
+  ermittleAutomatischeAnpassung,
+  ermittlePlanRueckweg,
+  planStufenSatz,
+  pruefschrittWiederholbar,
+  uebernimmRueckwege,
+  zaehleKernVersionen,
+  zaehlePlanRueckwege,
+} from './leitstand/f35-ws3-adjust-automatik.mjs'
 
 /**
  * F34 WS-1: Rollenkonfiguration für starteRollenChatLauf/leseRollenChatErgebnisAusLaufakte —
@@ -4096,13 +4108,14 @@ export function ermittleSichtungsHalt(daten) {
 
 /**
  * F-768: der Teil einer Fassung, den die Sichtung NICHT ändern darf — alles außer status,
- * aktiver_schritt_id, grund und schritte[].freigabe_erteilt (die normalisiert der Server ohnehin).
+ * aktiver_schritt_id, grund und schritte[].freigabe_erteilt/rueckweg (die normalisiert der Server ohnehin).
  * @param daten - WORKFLOW_V0-Datensatz
  * @returns kanonischer JSON-Text zum Vergleich
  */
 function sichtungsVergleichsform(daten) {
   const { status: _s, aktiver_schritt_id: _a, grund: _g, ...rest } = daten
-  return kanonischesJson({ ...rest, schritte: (rest.schritte ?? []).map(({ freigabe_erteilt: _f, ...schritt }) => schritt) })
+  // F45 B2b-1b-2a (D7): rueckweg gehört wie freigabe_erteilt dem Server (POST /api/workflows übernimmt den gespeicherten Wert).
+  return kanonischesJson({ ...rest, schritte: (rest.schritte ?? []).map(({ freigabe_erteilt: _f, rueckweg: _r, ...schritt }) => schritt) })
 }
 
 /**
@@ -4955,7 +4968,7 @@ function ermittleStartHinweis(istPfad) {
  * vorher berechnete Feldmenge müsste den Datensatz ein zweites Mal laden oder auf
  * einem veralteten Stand rechnen.
  * @param schrittFelder - zu setzende Schrittfelder (status, lauf_id); leeres Objekt, wenn nur die Workflow-Ebene fortgeschrieben wird
- * @param leiteWorkflowFelderAb - (datenMitSchritt) => { status, aktiver_schritt_id, grund }
+ * @param leiteWorkflowFelderAb - (datenMitSchritt) => { status, aktiver_schritt_id, grund, schritte? } — schritte nur, wenn der Ausgang die Schrittliste selbst neu setzt (Anpassung, Prüfer wiederholen, F45 B2b-1b-2a Rückweg der Plan-Stufe)
  * @param profilReferenz - Profilbezug, unverändert an F2 gereicht
  * @param ladeOptionen - basisVerzeichnis/schreiber
  * @param erwarteteLaufId - Identitätsprüfung (F-227, WS-2c (b2)): ist sie gesetzt, muss der GELADENE Schritt genau diese lauf_id tragen, sonst wird NICHTS geschrieben. Nur die Nachbereitung eines Laufs setzt sie.
@@ -5327,6 +5340,63 @@ function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = nu
     return schritt.rolle === 'architecture-advisor' ? { advisorVerstoesse: [`Ergebnis nicht lesbar: ${fehler.message}`] } : {}
   }
   return {}
+}
+
+/**
+ * F45 B2b-1b-2a (features/F45/plan-b2b1b2.md): liest, was der Architekt für Plan v2 braucht — Plan v1 (Laufakte
+ * rueckweg.vorheriger_lauf_id, formatiertes JSON wie bei 'ergebnis-@'), das Advisor-Ergebnis des Anlass-LAUFS
+ * (rueckweg.anlass_lauf_id, nicht die heutige lauf_id des Schritts — Delta-Advisor M1) und die zusammengeführten
+ * Antworten Stefans. Synchron, wirft nicht; jede fehlende Quelle wird zum Grund (Start abgelehnt, Ausweg im Text, D6).
+ * @param workflowId - Kennung des Workflows
+ * @param schritt - Architekt-Schritt mit rueckweg
+ * @param stackOffen - istStackOffen des Laufordners
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns { ok: true, eingaben } (PlanV2Eingaben) oder { ok: false, grund }
+ */
+function lesePlanV2Eingaben(workflowId, schritt, stackOffen, ladeOptionen) {
+  const ausweg = 'Plan v2 startet nicht ohne Plan v1 und Advisor-Ergebnis; lege den Ablauf neu an, um die Plan-Stufe von vorn zu beginnen.'
+  // Der Grund landet im gespeicherten Halt-Grund (Stefan liest ihn) — ohne Kennungen; die Einzelheiten gehen ins Log (QA 3).
+  const abgelehnt = (satz, einzelheit) => {
+    console.error(`[leitstand] Plan v2 für Workflow '${workflowId}', Schritt '${schritt.schritt_id}' nicht startbar: ${einzelheit}`)
+    return { ok: false, grund: `${satz} ${ausweg}` }
+  }
+  try {
+    const { vorheriger_lauf_id: v1LaufId, anlass_lauf_id: advisorLaufId } = schritt.rueckweg
+    const v1Laufakte = ladeArtefaktVersion(`laufakte-${v1LaufId}`, undefined, ladeOptionen)
+    const planV1 = v1Laufakte !== null ? leseErgebnistextAusRohstrom(v1Laufakte.daten) : { ok: false, grund: `Laufakte '${v1LaufId}' nicht gefunden` }
+    if (!planV1.ok) return abgelehnt('Plan v1 des Architekten ist nicht lesbar.', `Plan v1 (Lauf '${v1LaufId}'): ${planV1.grund}`)
+    const advisorLaufakte = ladeArtefaktVersion(`laufakte-${advisorLaufId}`, undefined, ladeOptionen)
+    const advisor = advisorLaufakte !== null ? leseAdvisorErgebnisAusLaufakte(advisorLaufakte.daten) : { verstoesse: [`Laufakte '${advisorLaufId}' nicht gefunden`], ergebnis: null }
+    if (advisor.ergebnis === null) return abgelehnt('Das Ergebnis des Advisors ist nicht lesbar.', `Advisor (Lauf '${advisorLaufId}'): ${advisor.verstoesse.slice(0, 3).join('; ')}`)
+    let planV1Text = planV1.text
+    try {
+      planV1Text = JSON.stringify(JSON.parse(planV1.text), null, 2)
+    } catch {
+      // Kein gültiges JSON — der rohe Ergebnistext bleibt (Muster 'ergebnis-@').
+    }
+    const entscheidung = findeWorkflowEntscheidungFuerSchritt(ladeOptionen.basisVerzeichnis, workflowId, schritt.schritt_id)
+    return {
+      ok: true,
+      eingaben: { planV1: planV1Text, advisor: { urteil: advisor.ergebnis.urteil, begruendung: advisor.ergebnis.begruendung, befunde: advisor.ergebnis.befunde }, entscheidungen: entscheidung?.antworten ?? [], stackOffen },
+    }
+  } catch (fehler) {
+    return abgelehnt('Die Eingaben für Plan v2 sind nicht lesbar.', fehler.message)
+  }
+}
+
+/**
+ * F45 B2b-1b-2a (Delta-Advisor D2): hängt an den Grund eines Freigabe-Halts den Satz der Plan-Stufe (planStufenSatz) —
+ * eine Stelle für den Nachlauf (Advisor, Architekt v2) und die Route POST …/entscheidung.
+ * @param grund - Grund aus beschreibeAutomatAusgang
+ * @param naechster - Ausgang von ermittleNaechstenSchritt
+ * @param daten - Fassung, auf der naechster berechnet wurde
+ * @param vorschrittId - gemeldeter Schritt
+ * @param planEntscheid - ermittlePlanRueckweg nach einem Advisor-Lauf, sonst null
+ * @returns der Grund, ggf. ergänzt
+ */
+function mitPlanStufenSatz(grund, naechster, daten, vorschrittId, planEntscheid) {
+  const satz = planStufenSatz({ naechster, schritte: daten.schritte, vorschrittId, planEntscheid })
+  return satz === null ? grund : `${grund} — ${satz}`
 }
 
 /**
@@ -6766,6 +6836,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       // (Workforce-eigenes Dokument), nicht aus dem Projekt; fehlt die Datei, kein Auszug.
       const stackOffen = istStackOffen(laufWurzel)
       auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, stackOffen, leseEntschiedeneAdrs(laufWurzel), stackOffen ? leseStackKandidatenAuszug(installWurzel) : null)
+      // F45 B2b-1b-2a (features/F45/plan-b2b1b2.md, F-909): Rückweg der Plan-Stufe — dieser Lauf schreibt Plan v2 mit Plan v1,
+      // den Befunden des Anlass-Laufs und Stefans Antworten. Fehlt eine Quelle, startet nichts (kein stiller v2 ohne v1).
+      if (schritt.rueckweg !== undefined) {
+        const planV2 = lesePlanV2Eingaben(workflowId, schritt, stackOffen, ladeOptionen)
+        if (!planV2.ok) return { ok: false, art: 'konflikt', grund: planV2.grund }
+        auftragstext = `${auftragstext}\n\n${baueArchitektPlanV2Instruktion(planV2.eingaben)}`
+      }
     } else if (schritt.rolle === 'architecture-advisor') {
       // F-641 (Muster F39 WS-3a/baueArchitektAuftragstext oben): ohne diese Umhüllung bekommt der
       // Advisor nur den rohen Planungsauftrag — dessen Abschnitt "Auftrag an den Baudurchgang" ist
@@ -6971,6 +7048,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         grund: `Schritt '${schritt.schritt_id}' hat ${gelaufeneVorschritte.length} gelaufene Vorschritte (${gelaufeneVorschritte.map((s) => s.schritt_id).join(', ')}) — der Lineage-Vorgänger ist nicht bestimmbar`,
       }
     }
+    // F45 B2b-1b-2a (Advisor N3, F-1109): nach Plan v2 ist der Lineage-Vorgänger der Ausführung der Advisor-Lauf (Regel 3a
+    // springt über ihn), nicht der Plan-v2-Lauf — die Eingaben (ergebnis-@ des Architekten) sind davon unberührt.
     const vorgaengerLaufId = gelaufeneVorschritte[0]?.lauf_id ?? undefined
 
     // F36 WS-3 („Anzeige = Start“, E-F36-4): nur mit angezeigten ids und nur für Läufe mit
@@ -7236,6 +7315,8 @@ export function erzeugeRequestHandler(optionen = {}) {
           maxReplans: workflowDaten.grenzen?.max_replans,
           befunde,
           vorherigeBefunde: leseVorherigeReviewBefunde(workflowId, laufId, ladeOptionen),
+          // F45 B2b-1b-2a: ein Plan v2 verbraucht eine Runde von max_replans mit (Summe über die Stufen).
+          planRueckwege: zaehlePlanRueckwege(workflowDaten.schritte),
         })
       }
       // Regel 1c (F39 WS-2b, löst F-632 Teil b) — dasselbe zweite, eigenständige Lesen wie beim
@@ -7259,11 +7340,14 @@ export function erzeugeRequestHandler(optionen = {}) {
           const uebernahme = gleicheEinrichtungAb(workflowDaten.auftrag_id, laufId, ladeOptionen)
           if (!uebernahme.ok) architekturVerstoesse = [uebernahme.grund]
         }
-        architekturAnzahlFragen = architekturErgebnis.entscheidungenMensch.length
-        architekturEntscheidungAusstehend =
-          architekturVerstoesse.length === 0 &&
-          architekturAnzahlFragen > 0 &&
-          findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, schritt.schritt_id) === null
+        // F45 B2b-1b-2a (Entscheidung Stefan H1): offen sind die Fragen ohne Antwort in der Zusammenführung aller
+        // Entscheidungen zu diesem Schritt — nach Plan v2 halten nur neue Fragen an (für Plan v1: alle).
+        const offeneFragen =
+          architekturVerstoesse.length === 0 && architekturErgebnis.entscheidungenMensch.length > 0
+            ? offeneArchitekturFragen(architekturErgebnis.entscheidungenMensch, findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, schritt.schritt_id))
+            : []
+        architekturAnzahlFragen = offeneFragen.length
+        architekturEntscheidungAusstehend = offeneFragen.length > 0
       }
       // Regel 1d (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH" —
       // real beobachtet Lauf 4b3ebc42-91df-422b-9dd4-b2fc02dc4151, 23.09.2026). Gekoppelt an
@@ -7271,9 +7355,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       // ein neuer 'ergebnis-architecture-advisor' (F45 B2b-1b) — beide liefern JSON nach dem Advisor-Schema
       // und werden hier gleich geprüft (Begründung: src/workflow/index.ts, Regel-1d-Kommentar).
       let advisorVerstoesse
+      // F45 B2b-1b-2a: das gültige Advisor-Ergebnis entscheidet im Updater über den Rückweg der Plan-Stufe (Plan v2); die
+      // Bau-Rückwege werden schon hier gezählt (nur Lesen), alles andere rechnet der Updater auf der frischen Fassung (N1).
+      let advisorErgebnis = null
+      let kernVersionenFuerPlan = 0
       if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'architecture-advisor') {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
-        advisorVerstoesse = laufakteVersion !== null ? leseAdvisorErgebnisAusLaufakte(laufakteVersion.daten).verstoesse : [`Laufakte 'laufakte-${laufId}' nicht gefunden`]
+        const gelesen = laufakteVersion !== null ? leseAdvisorErgebnisAusLaufakte(laufakteVersion.daten) : { verstoesse: [`Laufakte 'laufakte-${laufId}' nicht gefunden`], ergebnis: null }
+        advisorVerstoesse = gelesen.verstoesse
+        advisorErgebnis = gelesen.ergebnis
+        if (advisorErgebnis !== null) kernVersionenFuerPlan = zaehleKernVersionen(workflowId, ladeOptionen)
       }
       // Regel 1e (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem
       // als ERFOLGREICH" — real beobachtet Lauf e1c59219-615f-4f20-8737-8b9a99b4ff5c, 23.09.2026).
@@ -7472,6 +7563,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Ein zweiter Aufruf von ermittleNaechstenSchritt auf einem selbst zusammengebauten
       // Datensatz wäre die zweite Fassung derselben Entscheidung.
       let naechster = null
+      // F45 B2b-1b-2a: Ergebnis von ermittlePlanRueckweg im Updater (nur nach einem gültigen Advisor-Ergebnis), für den Grund.
+      let planEntscheid = null
 
       const nachlauf = schreibeWorkflowFortschritt(
         workflowId,
@@ -7482,6 +7575,30 @@ export function erzeugeRequestHandler(optionen = {}) {
           // dem ein Folgeschritt entstehen dürfte. Der Cursor bleibt auf ihm stehen, der
           // Mensch klärt (KLAERUNG_ERFORDERLICH), und ein erneuter Start ist danach möglich.
           if (heilbar) return { status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: schritt.schritt_id, grund: heilungsGrund }
+          // F45 B2b-1b-2a (features/F45/plan-b2b1b2.md, F-909): Rückweg der Plan-Stufe im SELBEN Schreibvorgang wie der
+          // Advisor-Ausgang — der Architekt steht wieder OFFEN mit dem Rückweg, der Cursor auf ihm, Status aus
+          // ermittleNaechstenSchritt ohne Vorschrittergebnis (hoch: ZWINGEND ⇒ Freigabe). Kein Zwischenzustand, keine
+          // zweite Schreibstelle (F-228); Regel 1d bleibt rein. Ohne Rückweg weiter wie bisher (zur Freigabe der Ausführung).
+          if (advisorErgebnis !== null) {
+            planEntscheid = ermittlePlanRueckweg({
+              schritte: datenMitSchritt.schritte,
+              maxReplans: datenMitSchritt.grenzen?.max_replans,
+              advisorSchrittId: schritt.schritt_id,
+              urteil: advisorErgebnis.urteil,
+              befundAnzahl: advisorErgebnis.befunde.length,
+              kernVersionen: kernVersionenFuerPlan,
+            })
+          }
+          if (planEntscheid?.ausloesen === true) {
+            const schritte = baueSchritteFuerPlanRueckweg(datenMitSchritt.schritte, { architektSchrittId: planEntscheid.architektSchrittId, advisorSchrittId: schritt.schritt_id })
+            naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, schritte, aktiver_schritt_id: planEntscheid.architektSchrittId })
+            return {
+              schritte,
+              status: workflowStatusZuAusgang(naechster),
+              aktiver_schritt_id: naechster.aktiverSchrittId,
+              grund: naechster.art === 'starte' ? null : mitPlanStufenSatz(beschreibeAutomatAusgang(naechster), naechster, { schritte }, schritt.schritt_id, planEntscheid),
+            }
+          }
           naechster =
             hintergrundHalt ??
             verweigertHalt ??
@@ -7511,8 +7628,9 @@ export function erzeugeRequestHandler(optionen = {}) {
           return {
             status: workflowStatusZuAusgang(naechster),
             aktiver_schritt_id: naechster.aktiverSchrittId,
-            // (a5): der Halt-Grund wird persistiert, ein Start räumt ihn ab. Derselbe Text, den
-            // die 409-Antwort des Startendpunkts nennt — kein zweiter Formulierungssatz.
+            // (a5): der Halt-Grund wird persistiert, ein Start räumt ihn ab. Grundlage ist derselbe Text, den
+            // die 409-Antwort des Startendpunkts nennt — kein zweiter Formulierungssatz; seit F45 B2b-1a/1b-2a
+            // ggf. um den Satz der Rückweg-Automatik bzw. der Plan-Stufe ergänzt (nur im gespeicherten Grund).
             //
             // Den Grund eines vom Menschen gestoppten Workflows kann dieser Ausdruck nicht mehr
             // überschreiben: auf einem GESTOPPT ruft schreibeWorkflowFortschritt
@@ -7521,7 +7639,8 @@ export function erzeugeRequestHandler(optionen = {}) {
             //
             // F45 B2b-1a: hält der Review an und folgt KEIN Rückweg, weil die Grenze erreicht ist oder dieselben
             // Befunde wiederkehren, sagt der Grund das dazu (nur bei diesen beiden Ablehnungen, Advisor B10).
-            grund: naechster.art === 'starte' ? null : mitRueckwegGrund(beschreibeAutomatAusgang(naechster), naechster, rueckwegEntscheid),
+            // F45 B2b-1b-2a: bei einem Freigabe-Halt dazu der Satz der Plan-Stufe (Plan v2 entfällt mit Grund, oder Plan v2 liegt vor).
+            grund: naechster.art === 'starte' ? null : mitPlanStufenSatz(mitRueckwegGrund(beschreibeAutomatAusgang(naechster), naechster, rueckwegEntscheid), naechster, datenMitSchritt, schritt.schritt_id, planEntscheid),
           }
         },
         profilReferenz,
@@ -8327,12 +8446,13 @@ export function erzeugeRequestHandler(optionen = {}) {
         if (architektSchritt !== undefined && architektSchritt.output_schema === 'ergebnis-architektur' && architektSchritt.status === 'ERFOLGREICH' && architektSchritt.lauf_id !== null) {
           const architektLaufakteVersion = ladeArtefaktVersion(`laufakte-${architektSchritt.lauf_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
           const architekturErgebnis = architektLaufakteVersion === null ? null : leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten, istStackOffen(laufwurzelFuer(workflowId, version.daten)))
-          const bereitsEntschieden =
+          // F45 B2b-1b-2a (H1, Delta-Advisor N2): nur die offenen Fragen — genau die verlangt die Route POST …/entscheidung.
+          const offeneFragen =
             architekturErgebnis !== null && architekturErgebnis.verstoesse.length === 0 && architekturErgebnis.entscheidungenMensch.length > 0
-              ? findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchritt.schritt_id)
-              : null
-          if (architekturErgebnis !== null && architekturErgebnis.verstoesse.length === 0 && architekturErgebnis.entscheidungenMensch.length > 0 && bereitsEntschieden === null) {
-            architekturEntscheidung = { schrittId: architektSchritt.schritt_id, fragen: architekturErgebnis.entscheidungenMensch }
+              ? offeneArchitekturFragen(architekturErgebnis.entscheidungenMensch, findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchritt.schritt_id))
+              : []
+          if (offeneFragen.length > 0) {
+            architekturEntscheidung = { schrittId: architektSchritt.schritt_id, fragen: offeneFragen }
           }
         }
       }
@@ -9128,6 +9248,17 @@ export function erzeugeRequestHandler(optionen = {}) {
         sichtung = { laufId: halt.laufId, ergebnis: laufStatus.ergebnis, vorhandeneKenntnisnahme: vorhandeneEntscheidung }
       }
 
+      // F45 B2b-1b-2a (Advisor B11, Delta-Advisor M1/D7, Code-Review 1): schritte[].rueckweg (Plan v2) gehört dem Server —
+      // ein Body darf keinen Sprung über den Advisor erzeugen; der gespeicherte Wert bleibt (uebernimmRueckwege). Der
+      // eingesetzte Datensatz wird HIER erneut geprüft, vor jedem Seiteneffekt (Bezeugung, Kenntnisnahme, D2) — die
+      // Body-Prüfung oben lief vor dem Einsetzen.
+      const schritteMitRueckweg = uebernimmRueckwege(body.schritte, bestand?.daten?.schritte ?? null)
+      const eingesetztVerstoesse = validiereWorkflowDaten({ ...body, schritte: schritteMitRueckweg })
+      if (eingesetztVerstoesse.length > 0) {
+        sendeJson(res, 400, { grund: `Workflow verletzt WORKFLOW_V0 nach Übernahme der Serverfelder: ${eingesetztVerstoesse.join('; ')}`, verstoesse: eingesetztVerstoesse })
+        return
+      }
+
       // ─── Bezeugung einer abgeschwächten Freigabepflicht (F15 WS-2c (b3), löst F-226) ────
       //
       // Der Vergleich läuft gegen den ohnehin geladenen Bestand — kein zusätzliches I/O. Bei
@@ -9251,13 +9382,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       // braucht eine neue Freigabe; der Schritt hält wieder an, statt ungefragt loszulaufen.
       // F45 B2a-2 (Code-Review 4): basis_commit gehört dem Server (Stand vor dem Bau, Prüfmaßstab des Reviews) — aus dem
       // Body nie übernommen; eine neue Fassung desselben Ablaufs behält den festgehaltenen Wert.
+      // F45 B2b-1b-2a: schritte[].rueckweg kommt aus schritteMitRueckweg (oben, vor der Bezeugung übernommen und geprüft).
       const { basis_commit: _basisAusBody, ...bodyOhneBasis } = body
       const festgehalteneBasis = ladeArtefaktVersion(`workflow-${body.workflow_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })?.daten?.basis_commit
       const koerperOhneFreigaben = {
         ...bodyOhneBasis,
         ...(typeof festgehalteneBasis === 'string' ? { basis_commit: festgehalteneBasis } : {}),
         grund: null,
-        schritte: body.schritte.map((schritt) => {
+        schritte: schritteMitRueckweg.map((schritt) => {
           const { freigabe_erteilt: _verworfen, ...rest } = schritt
           return rest
         }),
@@ -10522,14 +10654,18 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `Der Architektur-Lauf von Schritt '${formular.schrittId}' ist selbst ungültig, keine Entscheidung möglich: ${architekturErgebnis.verstoesse.join('; ')}` })
         return
       }
-      if (architekturErgebnis.entscheidungenMensch.length === 0) {
-        sendeJson(res, 409, { grund: `Schritt '${formular.schrittId}' trägt keine offene Frage in 'entscheidungen_mensch[]' — keine Entscheidung zu treffen` })
+      // F45 B2b-1b-2a (Entscheidung Stefan H1, Delta-Advisor D1): offen sind nur die Fragen ohne Antwort in der
+      // Zusammenführung — nach Plan v2 beantwortet Stefan nur die neuen. Ohne offene Frage (z. B. KLAERUNG aus der
+      // Einrichtungs-Übernahme) gibt es nichts zu entscheiden: 409, keine leere Entscheidung hinter dem Halt.
+      const offeneFragen = offeneArchitekturFragen(architekturErgebnis.entscheidungenMensch, findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, formular.schrittId))
+      if (offeneFragen.length === 0) {
+        sendeJson(res, 409, { grund: 'Am Architekten ist keine Frage offen — es gibt nichts zu entscheiden.' })
         return
       }
 
-      // Kreuzprüfung gegen die tatsächlichen Fragen — jede genau einmal beantwortet, 'gewaehlt'
+      // Kreuzprüfung gegen die offenen Fragen — jede genau einmal beantwortet, 'gewaehlt'
       // nennt eine gelistete Option (src/workflow-entscheidung/index.ts, D5, kein zweiter Regelsatz).
-      const antwortVerstoesse = pruefeAntwortenGegenFragen(formular.antworten, architekturErgebnis.entscheidungenMensch)
+      const antwortVerstoesse = pruefeAntwortenGegenFragen(formular.antworten, offeneFragen)
       if (antwortVerstoesse.length > 0) {
         sendeJson(res, 400, { grund: `Antworten verletzen die Fragen aus Schritt '${formular.schrittId}': ${antwortVerstoesse.join('; ')}` })
         return
@@ -10563,7 +10699,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         entscheidungsArtefakt = registriereWorkflowEntscheidung(basisVerzeichnis, workflowId, profilReferenz, formular.schrittId, formular.antworten, entschiedenAm, [
           {
             pfad: `artefakt:laufakte-${architektSchritt.lauf_id}`,
-            zitierter_bereich: `entscheidungen_mensch[] (${architekturErgebnis.entscheidungenMensch.length} Frage(n))`,
+            zitierter_bereich: `entscheidungen_mensch[] (${offeneFragen.length} offene von ${architekturErgebnis.entscheidungenMensch.length} Frage(n))`,
             inhalts_hash: architektLaufakteVersion.inhaltsHash,
           },
         ])
@@ -10590,7 +10726,8 @@ export function erzeugeRequestHandler(optionen = {}) {
           return {
             status: workflowStatusZuAusgang(naechster),
             aktiver_schritt_id: naechster.aktiverSchrittId,
-            grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
+            // F45 B2b-1b-2a (D2): nach Plan v2 mit neuer Frage entsteht die Freigabe der Ausführung HIER — derselbe Satz wie im Nachlauf.
+            grund: naechster.art === 'starte' ? null : mitPlanStufenSatz(beschreibeAutomatAusgang(naechster), naechster, datenMitSchritt, formular.schrittId, null),
           }
         },
         profilReferenz,

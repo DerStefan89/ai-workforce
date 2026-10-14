@@ -11817,13 +11817,14 @@ Maßnahme: Übergaben nennen die Laufzeit aus `package.json` (Node 24.x) bzw. ke
 Status: offen.
 Feature/Run: Entdeckt im WS-2b-Bericht, 01.10.2026.
 
-**F-909** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-909** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Workforce-Planungskette ohne Plan v2 und ohne Rückweg nach dem Advisor-Urteil.
 Beschreibung: In `workflow-vorlagen/hoch.json` bekommt die Ausführung Plan v1 und das Advisor-Urteil als Eingabe und arbeitet beides selbst ein. Der Advisor hat `output_schema` null. Einen Replan-Pfad gibt es nicht (`max_replans` ohne Leser, F-203). `standard` und `fast-lane` haben weder Architekt noch Advisor.
 Fundstelle: `workflow-vorlagen/hoch.json`, `src/workflow/index.ts`, `.claude/skills/advisor-pass/SKILL.md`.
 Auswirkung: Der Bauende prüft das Urteil faktisch selbst.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B2.
 Status: offen — B2b-1 wurde nach dem Advisor-Pass geteilt (Stefan, 14.10.2026): die Rückweg-Regel (`pruefeRueckweg`, max_replans) steht mit B2b-1a; Advisor-Schema, Plan v2 und Ausführung nur mit dem letzten Plan folgen mit B2b-1b (`features/F45/plan-b2b1.md`). Nachtrag 14.10.2026: B2b-1b erneut geteilt (Stefan nach dem Advisor-Pass, `features/F45/plan-b2b1b.md`). B2b-1b-1 erledigt: der Advisor hat ein Ausgabeschema (`schemas/ergebnis-architecture-advisor.schema.json`, an claude-code per `--json-schema` durchgesetzt, F-1105), Regel 1d hält bei Schemaverstoß. Offen mit B2b-1b-2: Plan v2 (Rückweg der Plan-Stufe), Ausführung nur mit dem letzten Plan — bis dahin bekommt die Ausführung weiterhin Plan v1 und das (jetzt strukturierte) Advisor-Ergebnis, und jedes gültige Urteil geht zur ZWINGEND-Freigabe der Ausführung.
+Nachtrag: erledigt (F45 B2b-1b-2a, 14.10.2026, `features/F45/plan-b2b1b2.md`; B2b-1b-2 nach dem Advisor-Pass geteilt in 2a Kern / 2b Anzeige, Stefan). Bei FREIGEGEBEN_MIT_AUFLAGEN/UEBERARBEITEN schreibt der Architekt einmal Plan v2 mit Plan v1, allen Befunden und Stefans Antworten (im selben Schreibvorgang wie der Advisor-Ausgang, `ermittlePlanRueckweg`/`baueSchritteFuerPlanRueckweg`, Schrittfeld `rueckweg`); die Runde zählt in `max_replans` (Summe Plan + Bau); nach Plan v2 läuft kein zweiter Advisor (Regel 3a, nur über genau den Anlass-Lauf); die Ausführung bekommt nur den letzten Plan und die zusammengeführten Entscheidungen (`hoch.json`, B13 für Bestand); Plan v2 stellt nur neue Fragen, die Stack-Frage bei offenem Stack wortgleich (H1, `offeneArchitekturFragen`). Gate `check-f45-b2b1-rueckweg` (c)(c2)(c3)(c7)+D1(c9)(c10)(c10b)(c11)(c12)(c13)(c14)(d). Anzeige von Plan und Befunden auf der Freigabe-Seite: F-1106 (2b).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-910** · `TECH_DEBT` · P2 · teilweise
@@ -13647,7 +13648,7 @@ Beschreibung: (1) Wiederholungsschlüssel Schwere + Datei: zwei verschiedene Bef
 Fundstelle: `scripts/leitstand/f35-ws3-adjust-automatik.mjs` (`sindDieselbenBefunde`, `pruefschrittWiederholbar`), `scripts/leitstand-server.mjs` (`setzePrueferZurueck`), `public/leitstand/views/workflows.js` (`fuehrePrueferWiederholenAus`).
 Auswirkung: Gering — jeweils sichtbar, nie ein stiller Weiterlauf.
 Maßnahme: (4) mit B2b-1b (Advisor-Anzeige, Schema statt Urteilszeile); (8)–(13) als kleine Nacharbeit mit B2b-1b (Gate-Fall 409, `grund` in der Antwort, Satz für 1k, Ersetzung in einer Schleife, Kommentare, Meldung „lief erneut“); (1)(2)(3)(5)(6)(7) bei realem Bedarf.
-Status: offen. Nachtrag F45 B2b-1b-1 (14.10.2026): erledigt (4) Schema-Teil — die Vorbedingung des Advisors liest Verstöße gegen das Advisor-Schema (`advisorVerstoesse`) statt der Urteilszeile; ein eigener Advisor-Knopf im Leitstand bleibt offen (mit der Advisor-Anzeige in B2b-1b-2 bzw. F-1107); (8) Gate-Fall (e7): 409 bei aktivem Lauf, danach 200; (11) `dateipfadAusFundstelle` schneidet bis zum Festpunkt ab (Test mit kombinierten Formen); (12) Kopfkommentar und Testtitel nennen B2b-1a/„Korrekturrunde“. Prüfpass 1b-1 (code-reviewer 8, qa 1): ein Codex-Advisor mit `ergebnis-architecture-advisor` (Rollenvertrag erlaubt codex, Regel 4b lässt codex mit jedem Schema zu) ist nicht real erprobt — `hoch` nutzt claude-code; vor einem Wechsel echter Codex-Lauf (F-638/F-1086). Der Advisor-Halt nennt „Prüfer wiederholen“, im Leitstand gibt es dafür bis B2b-1b-2 keinen eigenen Knopf (Grund sagt es, Reparatur als Weg). Bewusst offen: (9) `grund` in der Antwort, (10) Satz für Regel 1k, (13) Meldung „lief erneut“ — Texte der Review-Notiz, keine Plan-Stufe/kein Rückweg; gehören zum UX-Durchgang (F-1107); (1)(2)(3)(5)(6)(7) bei realem Bedarf.
+Status: offen. Nachtrag F45 B2b-1b-1 (14.10.2026): erledigt (4) Schema-Teil — die Vorbedingung des Advisors liest Verstöße gegen das Advisor-Schema (`advisorVerstoesse`) statt der Urteilszeile; ein eigener Advisor-Knopf im Leitstand bleibt offen (mit der Advisor-Anzeige in B2b-1b-2b bzw. F-1107; Zuschnitt 14.10.2026, `features/F45/plan-b2b1b2.md` D5); (8) Gate-Fall (e7): 409 bei aktivem Lauf, danach 200; (11) `dateipfadAusFundstelle` schneidet bis zum Festpunkt ab (Test mit kombinierten Formen); (12) Kopfkommentar und Testtitel nennen B2b-1a/„Korrekturrunde“. Prüfpass 1b-1 (code-reviewer 8, qa 1): ein Codex-Advisor mit `ergebnis-architecture-advisor` (Rollenvertrag erlaubt codex, Regel 4b lässt codex mit jedem Schema zu) ist nicht real erprobt — `hoch` nutzt claude-code; vor einem Wechsel echter Codex-Lauf (F-638/F-1086). Der Advisor-Halt nennt „Prüfer wiederholen“, im Leitstand gibt es dafür bis B2b-1b-2b keinen eigenen Knopf (Grund sagt es, Reparatur als Weg). Bewusst offen: (9) `grund` in der Antwort, (10) Satz für Regel 1k, (13) Meldung „lief erneut“ — Texte der Review-Notiz, keine Plan-Stufe/kein Rückweg; gehören zum UX-Durchgang (F-1107); (1)(2)(3)(5)(6)(7) bei realem Bedarf.
 Feature/Run: Entdeckt: F45 B2b-1a (Advisor-Pass, Delta-Advisor-Pass, qa, Nachpass code-reviewer/qa), 14.10.2026.
 
 **F-1105** · `HARNESS_IMPROVEMENT` · P2 · erledigt
@@ -13665,7 +13666,7 @@ Beschreibung: Die ZWINGEND-Freigabe vor der Ausführung soll in hoch Plan v2 pr�
 Fundstelle: `public/leitstand/views/workflows.js` (Freigabedialog), Advisor-Pass B2b-1 B14.
 Auswirkung: Mittel — Stefan gibt Plan v2 frei, ohne ihn im Dialog zu sehen.
 Maßnahme: Mit B2b-1b: Plan (letzte Fassung) und Advisor-Befunde im Freigabedialog der Ausführung zeigen, oder bewusst annehmen.
-Status: offen — mit B2b-1b-2 (Teilung 14.10.2026, `features/F45/plan-b2b1b.md`): Freigabe-Seite zeigt Plan (v1/v2) und Advisor-Befunde, auch vor dem Architekten v2 (Advisor-Pass A9) und mit „Kein Plan v2: <Grund>“ bei gesperrtem Rückweg (Entscheidung Stefan A2).
+Status: offen — mit B2b-1b-2 (Teilung 14.10.2026, `features/F45/plan-b2b1b.md`): Freigabe-Seite zeigt Plan (v1/v2) und Advisor-Befunde, auch vor dem Architekten v2 (Advisor-Pass A9) und mit „Kein Plan v2: <Grund>“ bei gesperrtem Rückweg (Entscheidung Stefan A2). Nachtrag 14.10.2026: B2b-1b-2 geteilt (Stefan, `features/F45/plan-b2b1b2.md`, M3); die Anzeige folgt mit **B2b-1b-2b** (Projektion `planFreigabe`, Karten, Knopf „Advisor wiederholen“ = Rest F-1104 (4), Render-Nachweis). Seit 2a nennt der gespeicherte Halt-Grund der Freigabe „Plan v2: …“, „Kein Plan v2: …“ bzw. „Plan v2 liegt vor …“ und verweist auf die Läufe; Plan und Befunde selbst sieht Stefan bis 2b nur im Lauf-Detail.
 Feature/Run: Entdeckt: F45 B2b-1 (Advisor-Pass B14), 14.10.2026.
 
 **F-1107** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -13676,3 +13677,30 @@ Auswirkung: Mittel — Stefan findet den Grund des Halts und den günstigsten Au
 Maßnahme: Mit dem UX-Durchgang nach F30 oder B2b-1b (Advisor-Anzeige): Halt-Grund des Reviews im Vorab-Block, oberer Hinweis verweist bei wiederholbarem Review auf „Review wiederholen“, Hauptknopf je Lage festlegen; (4) im Render prüfen; (5) Überlaufmessung in `scripts/render-nachweis.mjs`.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-1a (design-guardian, qa), 14.10.2026.
+
+**F-1108** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Satz der Plan-Stufe nur im gespeicherten Halt-Grund, nicht in allen Lagen.
+Beschreibung: Seit B2b-1b-2a hängt der Kern an den Grund eines Freigabe-Halts „Plan v2: …“, „Advisor: … Kein Plan v2: …“ oder „Plan v2 liegt vor …“ (`planStufenSatz`). Die Projektion `naechster` (`baueNaechsterProjektion`) rechnet den Grund ohne diesen Satz neu; Abläufe, deren Advisor-Nachlauf auf GESTOPPT traf oder die aus 1b-1 schon an der Freigabe der Ausführung stehen, tragen ihn nicht (Delta-Advisor D2, Advisor-Pass M2).
+Fundstelle: `scripts/leitstand-server.mjs` (`mitPlanStufenSatz`, `baueNaechsterProjektion`), `scripts/leitstand/f35-ws3-adjust-automatik.mjs` (`planStufenSatz`).
+Auswirkung: Niedrig — in diesen Lagen fehlt der Hinweis; nichts läuft still weiter.
+Maßnahme: Mit B2b-1b-2b: Projektion `planFreigabe` mit `keinPlanV2` für alle Fälle „Urteil ≠ FREIGEGEBEN, kein Rückweg“.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-1b-2a (Advisor-Pass M2, Delta-Advisor D2), 14.10.2026.
+
+**F-1109** · `TECH_DEBT` · P3 · offen
+Titel: Bestands-hoch und Lineage nach Plan v2.
+Beschreibung: (1) Vor B2b-1b-2a angelegte hoch-Abläufe tragen an der Ausführung noch `artefakt:ergebnis-@<advisor>`; im FREIGEGEBEN-Weg bekommt die Ausführung das Advisor-JSON weiterhin (im Rückweg entfernt der Kern die Eingabe, B13). (2) Der Lineage-Vorgänger (`vorgaengerLaufId`) der Ausführung ist nach Plan v2 der Advisor-Lauf, nicht der Plan-v2-Lauf (Vorgänger = Schritt, dessen nachfolger die Ausführung ist).
+Fundstelle: `workflow-vorlagen/hoch.json`, `scripts/leitstand-server.mjs` (`gelaufeneVorschritte` in `starteWorkflowSchritt`).
+Auswirkung: Niedrig — (1) ein freigegebener Plan ohne Befunde, harmlos; (2) nur die Lineage-Kette, die Eingaben sind richtig.
+Maßnahme: Bei realem Bedarf: Bestandsabläufe beim Start der Ausführung angleichen; Lineage-Vorgänger nach Regel 3a bestimmen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-1b-2a (Plan R1, Advisor-Pass N3), 14.10.2026.
+
+**F-1110** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Plan-Stufe nach Plan v2: veraltete Antworten, kein Weg „Plan v1 behalten“, Bau-Summe nur im Unit-Test.
+Beschreibung: (1) Die Zusammenführung der Entscheidungen (`findeWorkflowEntscheidungFuerSchritt`) gibt auch Antworten auf Fragen aus Plan v1 weiter, die Plan v2 nicht mehr stellt; formuliert Plan v2 die Stack-Frage nicht wortgleich, wird sie neu verlangt und `entscheidung-@` trägt danach zwei Stack-Antworten (Erweiterung von O3; Code-Review 6, qa 5). (2) Wer an der Freigabe des Architekten (Plan v2) ablehnt, um Plan v1 zu behalten, landet in GESTOPPT und kommt nur per Reparatur oder neuem Ablauf weiter; `zaehlePlanRueckwege` zählt das Vorhandensein von `rueckweg`, nicht einen gelaufenen Plan v2 — nach einer Reparatur ohne v2-Lauf meldet ein späteres UEBERARBEITEN „Die Plan-Stufe hatte ihre eine automatische Korrekturrunde schon“ (qa 6). (3) Dass ein Plan v2 die Bau-Stufe bei `max_replans 1` sperrt, belegt nur ein Unit-Test, kein Gate-Fall (qa 9). (4) Scheitert der Start des Architekten v2 nach der Freigabe (Plan v1 oder Advisor-Ergebnis nicht lesbar), verpackt die Freigabe-Route den lesbaren Grund in ihre bestehende Hülle mit Schritt- und Ablauf-Kennung, „(konflikt)“ und „über eine korrigierte Fassung erreichbar“ — das widerspricht dem inneren Ausweg „Ablauf neu anlegen“ (eine Reparatur behält den Rückweg und scheitert wieder; qa-Nachpass 1).
+Fundstelle: `scripts/leitstand/routen-f39.mjs`, `scripts/leitstand/f35-ws3-adjust-automatik.mjs` (`zaehlePlanRueckwege`), POST …/freigabe (Ablehnen).
+Auswirkung: Niedrig — die Instruktion nennt die Antworten bindend; nichts läuft still weiter.
+Maßnahme: Mit B2b-1b-2b entscheiden (Stefan): `entscheidung-@` auf Fragen des aktuellen Laufs plus nicht wiederholte filtern oder bewusst annehmen; Option „Plan v1 freigeben“ an der Freigabe des Architekten; Gate-Fall Bau-Summe; Hülle der Freigabe-Route je Startfehler-Art (4).
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-1b-2a (Code-Review, qa), 14.10.2026.

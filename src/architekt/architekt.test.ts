@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   baueArchitektAuftragstext,
+  baueArchitektPlanV2Instruktion,
   baueStackEntscheidungsInstruktion,
   baueUmsetzungsInstruktion,
   istStackOffen,
@@ -288,4 +289,40 @@ test('baueArchitektAuftragstext (F36 WS-3): Stack-Auszug nur bei offenem Stack, 
   assert.ok(offen.includes(`${STACK_KANDIDATEN_UEBERSCHRIFT}\n${auszug}\n\nPlanungsauftrag:`))
   assert.equal(baueArchitektAuftragstext('x', 'feature', null, false, '', auszug), baueArchitektAuftragstext('x', 'feature', null, false, ''))
   assert.equal(baueArchitektAuftragstext('x', 'projekt', null, true, '', null), baueArchitektAuftragstext('x', 'projekt', null, true, ''))
+})
+
+
+// ─── F45 B2b-1b-2a: Plan-v2-Instruktion (features/F45/plan-b2b1b2.md) ─────────────────────────
+
+const PLAN_V2_EINGABEN = {
+  planV1: '{\n  "zusammenfassung": "PLAN-V1-MARKE"\n}',
+  advisor: {
+    urteil: 'UEBERARBEITEN',
+    begruendung: 'Vor dem Bau klären.',
+    befunde: [{ id: 'A1', schwere: 'HOCH', evidenz: 'FAKT', fundstelle: 'src/a.ts:3', zusammenfassung: 'Fehlerpfad fehlt.', korrekturrichtung: 'Fehlerpfad ergänzen.' }],
+  },
+  entscheidungen: [{ frage: 'Welcher Stack?', gewaehlt: 'Node', begruendung: 'Bestand.' }],
+  stackOffen: false,
+}
+
+test('baueArchitektPlanV2Instruktion: Plan v1, jeder Befund mit Korrekturrichtung und Stefans Antworten als bindender Block', () => {
+  const text = baueArchitektPlanV2Instruktion(PLAN_V2_EINGABEN)
+  assert.match(text, /Plan v2/)
+  assert.ok(text.includes('PLAN-V1-MARKE'))
+  assert.ok(text.includes('A1 [HOCH, FAKT] src/a.ts:3 — Fehlerpfad fehlt. Korrektur: Fehlerpfad ergänzen.'))
+  assert.ok(text.includes('- Welcher Stack? → Node (Bestand.)'))
+  assert.match(text, /vollständig/)
+  assert.doesNotMatch(text, /wortgleich/)
+})
+
+test('baueArchitektPlanV2Instruktion: bei offenem Stack wird die Stack-Frage wortgleich wiederholt (H1); ohne Befunde und Antworten kein leerer Block', () => {
+  const text = baueArchitektPlanV2Instruktion({ ...PLAN_V2_EINGABEN, stackOffen: true, entscheidungen: [], advisor: { ...PLAN_V2_EINGABEN.advisor, befunde: [] } })
+  assert.match(text, /kategorie 'stack'.*wortgleich/)
+  assert.doesNotMatch(text, /Bereits entschieden/)
+})
+
+test('baueArchitektPlanV2Instruktion: ohne offenen Stack kein Verweis auf eine Stack-Frage (Code-Review 3)', () => {
+  const text = baueArchitektPlanV2Instruktion(PLAN_V2_EINGABEN)
+  assert.doesNotMatch(text, /Stack-Frage unten/)
+  assert.match(baueArchitektPlanV2Instruktion({ ...PLAN_V2_EINGABEN, stackOffen: true }), /außer der Stack-Frage unten/)
 })

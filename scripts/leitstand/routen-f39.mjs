@@ -23,8 +23,11 @@
  * Server ruft sie direkt auf, NACHDEM er den Lauf geladen hat (dieses Modul
  * kennt weder Laufakten noch den Checkpoint Store dafür).
  *
+ * F45 B2b-1b-2a: findeWorkflowEntscheidungFuerSchritt führt alle Versionen einer schritt_id zusammen (Plan v2),
+ * offeneArchitekturFragen nennt die Fragen, die noch eine Antwort brauchen.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs,
- * scripts/check-f39-architekt.mjs.
+ * scripts/check-f39-architekt.mjs, scripts/leitstand/routen-f39.test.mjs.
  */
 
 import { listeVersionen, registriereKernArtefakt } from '../../src/lineage-registry/index.ts'
@@ -101,23 +104,48 @@ export function registriereWorkflowEntscheidung(basisVerzeichnis, workflowId, pr
 }
 
 /**
- * Findet die zuletzt für 'schrittId' erfasste Architektur-Entscheidung —
+ * Findet die für 'schrittId' erfassten Architektur-Entscheidungen —
  * genutzt sowohl von Regel 1c' Aufrufer (architekturEntscheidungAusstehend
  * bestimmen) als auch vom 'entscheidung-@<schrittId>'-Eingabe-Platzhalter.
  * Eine (noch) leere oder fehlende Kette ist kein Fehler (Muster
  * baueSparringVerlaufsProjektion) — sie liefert dann null.
+ *
+ * F45 B2b-1b-2a (Advisor A1, features/F45/plan-b2b1b2.md): ZUSAMMENGEFÜHRT über alle Versionen derselben schritt_id —
+ * nach Plan v2 trägt dieselbe schritt_id eine zweite Entscheidung (nur die neuen Fragen), und Stefans Antworten zu
+ * Plan v1 gelten weiter. Je 'frage' gewinnt die letzte Antwort (Reihenfolge der ersten Nennung), entschieden_am ist das
+ * der neuesten Version. Gleiche Rückgabeform wie bisher; bei nur einer Version ist das Ergebnis diese Version.
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
  * @param workflowId - id des betroffenen Workflows
  * @param schrittId - schritt_id des Architektur-Schritts
- * @returns die zuletzt geschriebene WorkflowArchitekturEntscheidungV0Daten für 'schrittId', oder null
+ * @returns { schritt_id, antworten, entschieden_am } (zusammengeführt) für 'schrittId', oder null
  */
 export function findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, schrittId) {
   const versionen = listeVersionen(workflowEntscheidungArtefaktId(workflowId), { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
   let treffer = null
+  const antwortJeFrage = new Map()
   for (const version of versionen) {
-    if (version.daten?.schritt_id === schrittId) treffer = version.daten
+    if (version.daten?.schritt_id !== schrittId) continue
+    treffer = version.daten
+    for (const antwort of version.daten.antworten ?? []) antwortJeFrage.set(antwort.frage, antwort)
   }
-  return treffer
+  return treffer === null ? null : { ...treffer, antworten: [...antwortJeFrage.values()] }
+}
+
+/**
+ * F45 B2b-1b-2a (Entscheidung Stefan H1, Delta-Advisor D3): die Fragen eines Architekt-Laufs, die noch eine Antwort
+ * brauchen — ohne Antwort in der Zusammenführung, oder deren letzte Antwort keine Option der AKTUELLEN Frage mehr nennt
+ * (Plan v2 hat die Optionen geändert). Eine Stelle für Regel-1c-Aufrufer (Nachlauf), GET-Projektion
+ * architekturEntscheidung und die Route POST …/entscheidung. Für Plan v1 (keine Entscheidung) sind es alle Fragen.
+ * @param fragen - entscheidungen_mensch[] des aktuellen Architekt-Laufs
+ * @param entscheidung - Rückgabe von findeWorkflowEntscheidungFuerSchritt, oder null
+ * @returns die offenen Fragen (Teilliste von 'fragen', Reihenfolge erhalten)
+ */
+export function offeneArchitekturFragen(fragen, entscheidung) {
+  const antworten = new Map((entscheidung?.antworten ?? []).map((antwort) => [antwort.frage, antwort.gewaehlt]))
+  return fragen.filter((frage) => {
+    const gewaehlt = antworten.get(frage.frage)
+    return gewaehlt === undefined || !(frage.optionen ?? []).some((option) => option.titel === gewaehlt)
+  })
 }
 
 /**

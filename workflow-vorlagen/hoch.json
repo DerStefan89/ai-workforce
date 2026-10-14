@@ -35,7 +35,7 @@
       "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__", "artefakt:ergebnis-@schritt-1-architekt", "artefakt:entscheidung-@schritt-1-architekt"],
       "output_schema": "ergebnis-architecture-advisor",
       "freigabe": "ZWINGEND",
-      "risiko": "Kein Schreibzugriff — Plan wird vor dem Bau geprüft. Hohe Kontrolltiefe: Freigabe zwingend vor jedem Schritt, nicht nur vor dem Schreiben. F39 WS-2a-Korrektur (23.09.2026): worker 'claude-code' (wie 'ausfuehrung') statt 'codex' — Autor (Architekt, codex) und Prüfer auf verschiedenen Modellen. F45 B2b-1b (F-909/F-1105): Urteil FREIGEGEBEN / FREIGEGEBEN_MIT_AUFLAGEN / UEBERARBEITEN mit Befunden als JSON nach 'ergebnis-architecture-advisor'; die Claude-Code-CLI setzt das Schema per '--json-schema' durch (Spike features/F45/nachweise/b2b1b/spike-f1105.md, Regel 4b lässt dieses Schema an claude-code zu), der Kern prüft beim Lesen (Regel 1d). Bis B2b-1b-2 geht jedes gültige Urteil zur Freigabe der Ausführung; Plan v2 folgt dort.",
+      "risiko": "Kein Schreibzugriff — Plan wird vor dem Bau geprüft. Hohe Kontrolltiefe: Freigabe zwingend vor jedem Schritt, nicht nur vor dem Schreiben. F39 WS-2a-Korrektur (23.09.2026): worker 'claude-code' (wie 'ausfuehrung') statt 'codex' — Autor (Architekt, codex) und Prüfer auf verschiedenen Modellen. F45 B2b-1b (F-909/F-1105): Urteil FREIGEGEBEN / FREIGEGEBEN_MIT_AUFLAGEN / UEBERARBEITEN mit Befunden als JSON nach 'ergebnis-architecture-advisor'; die Claude-Code-CLI setzt das Schema per '--json-schema' durch (Spike features/F45/nachweise/b2b1b/spike-f1105.md, Regel 4b lässt dieses Schema an claude-code zu), der Kern prüft beim Lesen (Regel 1d). F45 B2b-1b-2a (F-909): bei FREIGEGEBEN_MIT_AUFLAGEN oder UEBERARBEITEN schreibt der Architekt einmal Plan v2 mit den Befunden (eine Korrekturrunde der Plan-Stufe, Grenze aus max_replans); der Advisor prüft Plan v2 nicht erneut, die Ausführung bekommt nur den letzten Plan.",
       "zeitgrenze_ms": 600000,
       "nachfolger": "schritt-3-ausfuehrung",
       "status": "OFFEN",
@@ -50,12 +50,11 @@
       "eingaben": [
         "artefakt:auftrag-__AUFTRAG_ID__",
         "artefakt:ergebnis-@schritt-1-architekt",
-        "artefakt:entscheidung-@schritt-1-architekt",
-        "artefakt:ergebnis-@schritt-2-architektur"
+        "artefakt:entscheidung-@schritt-1-architekt"
       ],
       "output_schema": null,
       "freigabe": "ZWINGEND",
-      "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend.",
+      "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend. Eingaben: der letzte Plan des Architekten (nach dem Rückweg Plan v2) und Stefans Entscheidungen, nicht das Advisor-Ergebnis (F45 B2b-1b-2a).",
       "zeitgrenze_ms": 1800000,
       "nachfolger": "schritt-4-review",
       "status": "OFFEN",

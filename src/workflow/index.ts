@@ -44,10 +44,11 @@
  * - scripts/check-f15-workflow.mjs
  * - scripts/leitstand-server.mjs (POST/GET /api/workflows, F15 WS-2a)
  *
- * Wichtig: Fünf Regeln lassen sich in JSON Schema nicht ausdrücken und leben
- * nur hier — Eindeutigkeit der schritt_id, die Querverweise nachfolger und
- * aktiver_schritt_id INNERHALB derselben schritte-Liste, die Zyklenfreiheit
- * der nachfolger-Kette und (F15 WS-2b) die Zusammenführungsfreiheit: zwei
+ * Wichtig: Sechs Regeln lassen sich in JSON Schema nicht ausdrücken und leben
+ * nur hier — Eindeutigkeit der schritt_id, die Querverweise nachfolger,
+ * aktiver_schritt_id und (F45 B2b-1b-2a) rueckweg.anlass_schritt_id INNERHALB
+ * derselben schritte-Liste, die Zyklenfreiheit der nachfolger-Kette und
+ * (F15 WS-2b) die Zusammenführungsfreiheit: zwei
  * Schritte dürfen nicht denselben nachfolger tragen. Wer das Schema ändert,
  * muss diese Funktion mitändern; das Gate hält beide über dieselben Fixtures
  * aneinander.
@@ -170,7 +171,12 @@ const SCHRITT_FELDER = new Set([
   // Workflow-Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld
   // nicht.
   'freigabe_erteilt',
+  // OPTIONAL (F45 B2b-1b-2a): Rückweg der Plan-Stufe am Architekt-Schritt (Plan v2), Form in pruefeSchrittForm.
+  'rueckweg',
 ])
+
+/** Felder des optionalen Schrittfelds 'rueckweg' (F45 B2b-1b-2a) — alle drei Pflicht, keine weiteren. */
+const RUECKWEG_FELDER = new Set(['anlass_schritt_id', 'anlass_lauf_id', 'vorheriger_lauf_id'])
 
 /**
  * Prüft, ob ein Wert ein einfaches Objekt ist (kein Array, nicht null).
@@ -290,11 +296,23 @@ function pruefeSchrittForm(schritt: unknown, praefix: string, verstoesse: string
   if (!istStringOderNull(schritt, 'lauf_id')) {
     verstoesse.push(`'${praefix}lauf_id' muss ein nicht-leerer String oder null sein`)
   }
-  // Einziges OPTIONALES Feld auf Schrittebene (F15 WS-2c (b1)): ein FEHLENDES
+  // OPTIONALES Feld auf Schrittebene (F15 WS-2c (b1); seit F45 B2b-1b-2a dazu 'rueckweg' unten): ein FEHLENDES
   // Feld ist gültig (Bestandsversionen), ein vorhandenes muss ein boolean
   // sein. Deshalb die 'in'-Prüfung davor — Muster 'grund' auf Workflow-Ebene.
   if ('freigabe_erteilt' in schritt && typeof schritt.freigabe_erteilt !== 'boolean') {
     verstoesse.push(`'${praefix}freigabe_erteilt' muss ein boolean sein (optionales Feld)`)
+  }
+  // F45 B2b-1b-2a: optional wie freigabe_erteilt; ob anlass_schritt_id existiert, prüft validiereWorkflowDaten (Querverweis).
+  if ('rueckweg' in schritt) {
+    const rueckweg = schritt.rueckweg
+    if (!istObjekt(rueckweg)) {
+      verstoesse.push(`'${praefix}rueckweg' muss ein Objekt sein (optionales Feld)`)
+    } else {
+      meldeUnbekannteFelder(rueckweg, RUECKWEG_FELDER, `${praefix}rueckweg.`, verstoesse)
+      for (const feld of RUECKWEG_FELDER) {
+        if (!istNichtLeererString(rueckweg[feld])) verstoesse.push(`'${praefix}rueckweg.${feld}' muss ein nicht-leerer String sein`)
+      }
+    }
   }
 }
 
@@ -314,10 +332,11 @@ function kuerzeFragezeile(zeile: string): string {
  * Reine Funktion: prüft ein geparstes Objekt gegen
  * schemas/kontrollzustand-workflow-payload.schema.json (WORKFLOW_V0).
  * Keine Seiteneffekte, kein Datei-I/O — Muster validiereAuftragDaten (D5).
- * Über die reine Formprüfung hinaus gelten drei Querverweisregeln, die JSON
+ * Über die reine Formprüfung hinaus gelten Querverweisregeln, die JSON
  * Schema nicht ausdrücken kann: keine doppelte schritt_id, jeder gesetzte
- * nachfolger zeigt auf eine schritt_id derselben Liste, und
- * aktiver_schritt_id (falls gesetzt) ebenso.
+ * nachfolger zeigt auf eine schritt_id derselben Liste, aktiver_schritt_id
+ * (falls gesetzt) ebenso, und (F45 B2b-1b-2a) rueckweg.anlass_schritt_id
+ * ebenso; dazu Zusammenführungs- und Zyklusfreiheit (unten).
  * @param daten - geparstes, sonst unbekanntes Objekt
  * @returns Liste der Regelverletzungen; leeres Array = gültig
  */
@@ -402,6 +421,11 @@ export function validiereWorkflowDaten(daten: unknown): string[] {
     const nachfolger = schritt.nachfolger
     if (istNichtLeererString(nachfolger) && !bekannteIds.has(nachfolger)) {
       verstoesse.push(`'schritte[${i}].nachfolger' verweist auf die unbekannte schritt_id '${nachfolger}'`)
+    }
+    // F45 B2b-1b-2a (Advisor B11): der Rückweg nennt einen Schritt derselben Liste.
+    const anlass = istObjekt(schritt.rueckweg) ? schritt.rueckweg.anlass_schritt_id : undefined
+    if (istNichtLeererString(anlass) && !bekannteIds.has(anlass)) {
+      verstoesse.push(`'schritte[${i}].rueckweg.anlass_schritt_id' verweist auf die unbekannte schritt_id '${anlass}'`)
     }
   }
 
@@ -601,6 +625,23 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
 }
 
 /**
+ * Regel 3a (F45 B2b-1b-2a, features/F45/plan-b2b1b2.md): der Schritt, über den die Kette nach Plan v2 hinwegspringt —
+ * der Anlass-Schritt des Rückwegs am Vorschritt, wenn er der direkte nachfolger ist, ERFOLGREICH steht und noch genau den
+ * Anlass-Lauf trägt (ist der Advisor seither zurückgesetzt oder neu gelaufen, springt nichts). EINE Stelle für
+ * ermittleNaechstenSchritt und den Halt-Satz „Plan v2 liegt vor“ (planStufenSatz, scripts/leitstand/
+ * f35-ws3-adjust-automatik.mjs, Code-Review B2b-1b-2a 5). Reine Funktion.
+ * @param schritte - Schrittliste des Workflows
+ * @param vorschritt - der gerade gemeldete Schritt
+ * @returns der übersprungene Anlass-Schritt, oder undefined (kein Sprung)
+ */
+export function planV2Sprungziel(schritte: WorkflowV0Schritt[], vorschritt: WorkflowV0Schritt): WorkflowV0Schritt | undefined {
+  const rueckweg = vorschritt.rueckweg
+  if (rueckweg === undefined || rueckweg.anlass_schritt_id !== vorschritt.nachfolger) return undefined
+  const anlass = schritte.find((s) => s.schritt_id === rueckweg.anlass_schritt_id)
+  return anlass !== undefined && anlass.status === 'ERFOLGREICH' && anlass.lauf_id === rueckweg.anlass_lauf_id ? anlass : undefined
+}
+
+/**
  * Reine Entscheidungsregel des Schritt-Automaten (F15 WS-2a, E-M3-1): was
  * geschieht nach dem gemeldeten Schrittergebnis — und beim Erststart eines
  * Workflows, wenn kein Ergebnis vorliegt. Kein Datei-I/O, kein Schreiben,
@@ -608,8 +649,9 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
  * übersetzt, ist WS-2b.
  *
- * Prüfungen (0, 1, 1b, 1i, 1k, 1c, 1d, 1e, 1f, 1g, 1h, 1j, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
- * die Reihenfolge ist die eigentliche Aussage:
+ * Prüfungen (0, 1, 1b, 1i, 1k, 1c, 1d, 1e, 1f, 1g, 1h, 1j, 3a, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
+ * die Reihenfolge ist die eigentliche Aussage (3a, F45 B2b-1b-2a: nach Plan v2 über den gelaufenen Advisor hinweg zum
+ * nächsten Schritt — Kommentar an der Regel):
  *
  * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
  *    fertig, wenn ein ABGESCHLOSSENER Workflow ohne Ergebnis angeschaut
@@ -913,9 +955,11 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     // berechnet advisorVerstoesse NUR für rolle 'architecture-advisor' — für jede andere Rolle bleibt
     // das Feld undefined.
     // F45 B2b-1b (features/F45/plan-b2b1b.md): der Halt greift bei Verstößen gegen das Schema (Ausweg:
-    // Prüfer wiederholen, B2b-1a — im Leitstand gibt es dafür bis B2b-1b-2 nur den Review-Knopf, der
-    // Grund sagt das ehrlich und nennt die Reparatur als Weg). Übergang B2b-1b-1 (Entscheidung Stefan A5): jedes GÜLTIGE Urteil setzt
-    // fort — zur ZWINGEND-Freigabe der Ausführung; der Rückweg der Plan-Stufe (Plan v2) folgt mit B2b-1b-2.
+    // Prüfer wiederholen, B2b-1a — im Leitstand gibt es dafür bis B2b-1b-2b nur den Review-Knopf, der
+    // Grund sagt das ehrlich und nennt die Reparatur als Weg). Jedes GÜLTIGE Urteil setzt hier fort. Den Rückweg der
+    // Plan-Stufe (Plan v2 bei FREIGEGEBEN_MIT_AUFLAGEN/UEBERARBEITEN, F45 B2b-1b-2a) entscheidet der Aufrufer VOR dieser
+    // Regel (ermittlePlanRueckweg, scripts/leitstand/f35-ws3-adjust-automatik.mjs) und schreibt ihn im selben
+    // Schreibvorgang; folgt keiner, geht es wie bisher zur ZWINGEND-Freigabe der Ausführung.
     if (vorschritt.rolle === 'architecture-advisor' && vorschrittErgebnis.advisorVerstoesse !== undefined && vorschrittErgebnis.advisorVerstoesse.length > 0) {
       const verstoesse = vorschrittErgebnis.advisorVerstoesse
       const weitere = verstoesse.length > 3 ? ` (und ${verstoesse.length - 3} weitere)` : ''
@@ -1032,10 +1076,18 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         return { art: 'haltKlaerung', grund: nachlaufVerstoesse.join(' | '), aktiverSchrittId: vorschritt.schritt_id }
       }
     }
-    if (vorschritt.nachfolger === null) {
+    // Regel 3a (F45 B2b-1b-2a, features/F45/plan-b2b1b2.md): nach Plan v2 läuft kein zweiter Advisor (manueller Ablauf,
+    // Stefans Freigabe vor der Ausführung prüft v2). Trägt der Vorschritt einen Rückweg der Plan-Stufe und ist sein
+    // nachfolger genau der Anlass-Schritt mit genau dem Anlass-Lauf (ERFOLGREICH), geht die Kette bei dessen nachfolger
+    // weiter. Ist der Advisor seither zurückgesetzt oder neu gelaufen (Reparatur, Prüfer wiederholen), springt nichts —
+    // der Advisor prüft dann Plan v2 regulär. Steht nach den Regeln 1–1j (Plan v2 mit offener Frage hält über 1c).
+    // Ausdrücklich unterschieden, nicht über '??': ein übersprungener Advisor ohne nachfolger heißt „fertig“, nicht „Advisor“.
+    const sprung = planV2Sprungziel(daten.schritte, vorschritt)
+    const nachfolgerId = sprung !== undefined ? sprung.nachfolger : vorschritt.nachfolger
+    if (nachfolgerId === null) {
       return { art: 'fertig', aktiverSchrittId: null }
     }
-    naechsteId = vorschritt.nachfolger
+    naechsteId = nachfolgerId
   }
 
   const naechsterSchritt = schrittNachId.get(naechsteId)

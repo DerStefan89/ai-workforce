@@ -28,7 +28,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, validiereWorkflowDaten } from './index.ts'
+import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, planV2Sprungziel, validiereWorkflowDaten } from './index.ts'
 import type { WorkflowV0Daten, WorkflowV0Schritt } from './types.ts'
 
 /** Baut einen frischen, gültigen Zweischritt-Workflow als Mutationsbasis. */
@@ -1465,4 +1465,70 @@ test('Grenze: derselbe Lauf wird nicht doppelt gezählt', () => {
     { grenzen: { max_schritte: 2, max_replans: 1 } }
   )
   assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' }).art, 'starte')
+})
+
+
+// ─── F45 B2b-1b-2a: Schrittfeld rueckweg und Routing nach Plan v2 (Regel 3a) ──────────────────
+
+/** Architekt → Advisor → Ausführung; der Architekt trägt nach dem Rückweg Plan v2 (rueckweg), der Advisor ist gelaufen. */
+function planV2Workflow(advisorFelder: Partial<WorkflowV0Schritt> = {}, rueckweg: WorkflowV0Schritt['rueckweg'] = { anlass_schritt_id: 'schritt-2', anlass_lauf_id: 'lauf-adv', vorheriger_lauf_id: 'lauf-v1' }): WorkflowV0Daten {
+  return typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'architekt', worker: 'codex', output_schema: 'ergebnis-architektur', freigabe: 'ZWINGEND', status: 'ERFOLGREICH', lauf_id: 'lauf-v2', rueckweg }),
+      typisierterSchritt('schritt-2', 'schritt-3', { rolle: 'architecture-advisor', freigabe: 'ZWINGEND', status: 'ERFOLGREICH', lauf_id: 'lauf-adv', ...advisorFelder }),
+      typisierterSchritt('schritt-3', null, { rolle: 'ausfuehrung', freigabe: 'ZWINGEND' }),
+    ],
+    { status: 'LAEUFT', aktiver_schritt_id: 'schritt-1' }
+  )
+}
+
+test('F45 B2b-1b-2a: rueckweg ist ein gültiges optionales Schrittfeld', () => {
+  assert.deepStrictEqual(validiereWorkflowDaten(planV2Workflow()), [])
+})
+
+for (const [name, rueckweg] of [
+  ['kein Objekt', 'schritt-2'],
+  ['anlass_lauf_id fehlt', { anlass_schritt_id: 'schritt-2', vorheriger_lauf_id: 'lauf-v1' }],
+  ['vorheriger_lauf_id leer', { anlass_schritt_id: 'schritt-2', anlass_lauf_id: 'lauf-adv', vorheriger_lauf_id: '' }],
+  ['unbekanntes Feld', { anlass_schritt_id: 'schritt-2', anlass_lauf_id: 'lauf-adv', vorheriger_lauf_id: 'lauf-v1', zusatz: 1 }],
+  ['anlass_schritt_id unbekannt', { anlass_schritt_id: 'schritt-9', anlass_lauf_id: 'lauf-adv', vorheriger_lauf_id: 'lauf-v1' }],
+] as [string, unknown][]) {
+  test(`F45 B2b-1b-2a: Rotfall rueckweg — ${name}`, () => {
+    assert.ok(validiereWorkflowDaten(planV2Workflow({}, rueckweg as WorkflowV0Schritt['rueckweg'])).length > 0)
+  })
+}
+
+test('F45 B2b-1b-2a Regel 3a: nach Plan v2 springt die Kette über den gelaufenen Advisor zur Ausführung (kein zweiter Advisor)', () => {
+  const ergebnis = ermittleNaechstenSchritt(planV2Workflow(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-v2', architekturVerstoesse: [] })
+  assert.equal(ergebnis.art, 'haltFreigabe')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-3')
+})
+
+test('F45 B2b-1b-2a Regel 3a: ist der Advisor seit dem Rückweg neu gelaufen oder zurückgesetzt, springt die Kette nicht', () => {
+  const zurueckgesetzt = ermittleNaechstenSchritt(planV2Workflow({ status: 'OFFEN', lauf_id: null }), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-v2' })
+  assert.equal(zurueckgesetzt.art, 'haltFreigabe')
+  assert.equal(zurueckgesetzt.aktiverSchrittId, 'schritt-2')
+  const anderer = ermittleNaechstenSchritt(planV2Workflow({ lauf_id: 'lauf-adv-2' }), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-v2' })
+  assert.equal(anderer.art, 'haltKlaerung')
+  assert.equal(anderer.aktiverSchrittId, 'schritt-2')
+})
+
+test('F45 B2b-1b-2a Regel 3a: Regel 1c geht vor — Plan v2 mit offener Frage hält am Architekten', () => {
+  const ergebnis = ermittleNaechstenSchritt(planV2Workflow(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-v2', architekturVerstoesse: [], architekturEntscheidungAusstehend: true, architekturAnzahlFragen: 1 })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+})
+
+test('F45 B2b-1b-2a Regel 3a: ist der Advisor der letzte Schritt, ist der Ablauf nach Plan v2 fertig', () => {
+  const daten = planV2Workflow({ nachfolger: null })
+  daten.schritte = daten.schritte.filter((s) => s.schritt_id !== 'schritt-3')
+  assert.equal(ermittleNaechstenSchritt(daten, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-v2' }).art, 'fertig')
+})
+
+test('F45 B2b-1b-2a planV2Sprungziel: liefert den übersprungenen Advisor nur bei passendem Anlass-Lauf', () => {
+  const daten = planV2Workflow()
+  assert.equal(planV2Sprungziel(daten.schritte, daten.schritte[0])?.schritt_id, 'schritt-2')
+  const neu = planV2Workflow({ lauf_id: 'lauf-adv-2' })
+  assert.equal(planV2Sprungziel(neu.schritte, neu.schritte[0]), undefined)
+  assert.equal(planV2Sprungziel(daten.schritte, daten.schritte[1]), undefined, 'ohne rueckweg kein Sprung')
 })
