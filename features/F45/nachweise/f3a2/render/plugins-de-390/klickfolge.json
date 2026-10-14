@@ -1,0 +1,125 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#werkstatt-bereich-faehigkeiten",
+    "hoehe": 4200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Zustand",
+        "selector": "#plugins [data-pl-zustand]",
+        "attribut": "data-pl-zustand"
+      },
+      {
+        "name": "Hinweis Lauf",
+        "selector": "[data-pl-hinweis=\"f3b\"] strong"
+      },
+      {
+        "name": "Aktiv (Detail)",
+        "selector": "#plugins-detail [data-pl-aktiv]",
+        "attribut": "data-pl-aktiv"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "data-plugin-index"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Tabelle",
+        "selector": "#plugins table.pl-tabelle"
+      },
+      {
+        "name": "Hook-Risiko",
+        "selector": "#plugins-detail [data-pl-risiko=\"hook_befehl\"]"
+      },
+      {
+        "name": "MCP-Risiko",
+        "selector": "#plugins-detail [data-pl-risiko=\"mcp_ungepinnt\"]"
+      },
+      {
+        "name": "Teilfehler",
+        "selector": "#plugins-detail [data-pl-fehler]"
+      },
+      {
+        "name": "Eingebaut",
+        "selector": "#plugins [data-pl-eingebaut]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Reiter „Plugins“ gewählt → Liste",
+      "klick": "#faehigkeiten-reiter-plugins",
+      "warteAufSelector": {
+        "selector": "#plugins table.pl-tabelle",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-liste.png"
+    },
+    {
+      "label": "Detail „voll“ (Hook- und MCP-Risiko)",
+      "klick": "#plugins .library-name[data-plugin-index=\"0\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-risiko=\"hook_befehl\"]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "02-detail-voll.png"
+    },
+    {
+      "label": "Hooks aufgeklappt",
+      "klick": "#plugins-detail details[data-pl-teil=\"hooks\"] > summary"
+    },
+    {
+      "label": "MCP-Server aufgeklappt",
+      "klick": "#plugins-detail details[data-pl-teil=\"mcp\"] > summary",
+      "screenshot": "02b-detail-voll-hooks-mcp.png"
+    },
+    {
+      "label": "Detail „nur-skill“ (scope local)",
+      "klick": "#plugins .library-name[data-plugin-index=\"1\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-aktiv=\"ordner\"]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "03-detail-lokal.png"
+    },
+    {
+      "label": "Detail „kaputt“ (Teilfehler)",
+      "klick": "#plugins .library-name[data-plugin-index=\"3\"]",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-fehler]",
+        "timeoutMs": 5000
+      },
+      "screenshot": "04-detail-teilfehler.png"
+    }
+  ],
+  "farbschema": "dark"
+}

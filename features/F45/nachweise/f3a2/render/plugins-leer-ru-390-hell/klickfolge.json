@@ -1,0 +1,122 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "ru"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#werkstatt-bereich-faehigkeiten",
+    "hoehe": 1100
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Zustand",
+        "selector": "#plugins [data-pl-zustand]",
+        "attribut": "data-pl-zustand"
+      },
+      {
+        "name": "Hinweis Lauf",
+        "selector": "[data-pl-hinweis=\"f3b\"] strong"
+      },
+      {
+        "name": "Aktiv (Detail)",
+        "selector": "#plugins-detail [data-pl-aktiv]",
+        "attribut": "data-pl-aktiv"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "data-plugin-index"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Tabelle",
+        "selector": "#plugins table.pl-tabelle"
+      },
+      {
+        "name": "Hook-Risiko",
+        "selector": "#plugins-detail [data-pl-risiko=\"hook_befehl\"]"
+      },
+      {
+        "name": "MCP-Risiko",
+        "selector": "#plugins-detail [data-pl-risiko=\"mcp_ungepinnt\"]"
+      },
+      {
+        "name": "Teilfehler",
+        "selector": "#plugins-detail [data-pl-fehler]"
+      },
+      {
+        "name": "Eingebaut",
+        "selector": "#plugins [data-pl-eingebaut]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/plugins",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "quelle": {
+          "befehl": "claude plugin list --json",
+          "claude_ordner": "C:\\fixture\\claude"
+        },
+        "plugins": [],
+        "eingebaut": [
+          {
+            "id": "cc-plugin-telemetry@builtin",
+            "quelle": "referenzliste",
+            "cli_version": "2.1.296 (Claude Code)"
+          },
+          {
+            "id": "cc-plugin-plugin-authoring@builtin",
+            "quelle": "referenzliste",
+            "cli_version": "2.1.296 (Claude Code)"
+          },
+          {
+            "id": "cc-plugin-fixture@builtin",
+            "quelle": "cli-liste",
+            "cli_version": null
+          }
+        ],
+        "eingebaut_fehler": null,
+        "instanz_pfad": "C:\\fixture\\projekt-a"
+      }
+    }
+  ],
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Reiter „Plugins“ gewählt",
+      "klick": "#faehigkeiten-reiter-plugins",
+      "warteAufSelector": {
+        "selector": "#plugins [data-pl-zustand=\"leer\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-zustand.png"
+    }
+  ],
+  "farbschema": "light"
+}

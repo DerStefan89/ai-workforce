@@ -1000,3 +1000,39 @@ Link-Bericht bei der `.md`-Suche, geteilter Abruf ohne Wurf-Falle, maskiertes Lo
 Ebene; Leerbestand gemessen (CLI ohne Plugins/Anmeldung: `[]`, Exit 0) und als `ok` ohne Plugins festgelegt. Gate um Junction,
 Zeitgrenze über `listenErgebnisAusProzess`, Läufer-Prüfung, Leerbestand, drei Geheimnisse, Ankunftszähler statt fester Wartezeit
 erweitert (30 Rotfälle); Unit-Tests 13. Rest F-1091.
+
+## Stand F-3a-2
+
+Branch `f45/f3a2-plugins-anzeige`, Basis `a427f0b` (main mit F-3a-1, #333). Plan `features/F45/plan-f3a2.md` (kein eigener
+Advisor-Pass, reine Anzeige auf fertiger Route — Auftrag Stefan). Nachweise `features/F45/nachweise/f3a2/`.
+
+**Messung F-1091 (2)** (`messung-scope-local.mjs`, isolierter `CLAUDE_CONFIG_DIR`, nichts unter `~/.claude`; echter
+`~/.claude/plugins` 0 Abweichungen): Mess-Plugin mit scope local in Ordner A — `enabled` aus A `true`, aus B und C `false`,
+nach `disable` überall `false`; `projectEnabled` immer `false`. **`enabled` hängt vom Arbeitsordner des Aufrufs ab.**
+
+**Gebaut:** Reiter „Plugins aus deinem Claude Code“ im Unterregister der Capability Library (`index.html`, `views/plugins.js`,
+reine Anzeige `plugins-anzeige.js`, `api.js` `holePlugins` präfigiert je Projektinstanz). Fester Hinweis „Noch nicht im
+Workforce-Lauf nutzbar — kommt im nächsten Schritt.“ (Challenger 14.10.2026: keine interne Kennung im sichtbaren Text, Gate (b)). Liste: Name, Marketplace, Version, Status; bei scope ≠ user „Je nach Ordner“ mit Scope und
+Installationsprojekt unter dem Namen; Marken „N Risiken“/„Teilfehler“. Detail: Kennwerte (ID, Commit und Inhalts-Hash voll, Scope,
+Aktiv, Plugin-Ordner, Lizenz), Risiken als Fakten mit Anzahl, Bestandteile aufklappbar (Skills/Commands mit allowed-tools, Agents mit
+tools, Hooks mit Ereignis/Matcher/Befehl, MCP mit gepinnt ja/nein, LSP), leere Arten in einer Zeile, Teilfehler. `aktiv` bei scope
+local: „laut Abruf aus <instanz_pfad>“ + Installationsprojekt + Messhinweis; scope project/unbekannt „nicht gemessen“. Eingebaute
+getrennt mit Messversion der Referenzliste (F-1091 (1)). Leer und unlesbar (Route oder Abruf, Zeitlimit mit eigenem Text) mit Grund;
+Ladezeit im Kopf. Gelesen nur bei Wechsel auf den Reiter (bzw. Klick, solange nach Projektwechsel nichts geladen ist) und per „Neu
+laden“ bei gewähltem Reiter; Projektwechsel setzt nur zurück, Überholschutz. Keine Aktivierung, kein Knopf mit Wirkung. Typ
+`PluginAntwort` in `src/claude-plugins/types.ts` (F-1091 (18)). Route-Semantik und Lauf unverändert.
+
+**Tests/Gates:** `public/leitstand/plugins-anzeige.test.mjs` (15; erster Lauf rot am fehlenden Modul), neues Gate
+`scripts/check-f45-f3a2-anzeige.mjs` (in der Kette nach f45-f3a; Fixture über die echte Route, XSS je Quelle, kein Abruf ohne
+Reiterwahl, `starteWorkflowSchritt(` 6×; 42 Rotfälle kalibriert).
+
+**Render-Nachweis** (`render/`, Fixture-Instanz `instanz.mjs` auf Port 4199, Pfade neutralisiert): 11 Folgen — 1440/390, hell/dunkel,
+de/en/tr/ru, 200 %, Liste, Detail mit Hook- und MCP-Risiko (aufgeklappt), scope local, Teilfehler, leer, unlesbar; kein waagerechter
+Überlauf.
+
+**Prüfpass** (frischer Kontext): code-reviewer „mit Hinweisen“, qa und design-guardian „nicht freigegeben“ (Aktiv-Hinweis widersprach
+der Messung; Reiterleiste nicht im Nachweis; Silbentrennung in Kennungen; Spezifität der Abstände; Detail ohne Gliederung und zu lang;
+Risiken nur im Detail; Gate (e)/(f) zu weich). Eine Korrekturrunde, Nachpass aller drei „freigegeben mit Hinweisen“; kleiner Nachzug
+(Klick lädt bei „nicht geladen“, i18n-Schlüssel abgesichert, vier Rotfälle). Rest F-1093.
+
+**Register:** F-910 Nachtrag (Anzeige erledigt, offen nur F-3b); F-1091 Stand (1)(2)(18) erledigt, (4) entschärft; neu F-1093.
