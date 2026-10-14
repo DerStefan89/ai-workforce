@@ -137,7 +137,7 @@ test('entschieden: kompakte Zeile mit Ergebnis, Begründung und Datum; F18 nur b
   assert.equal(abnahmeLage(kern), 'entschieden', 'eine aktuelle Entscheidung hat Vorrang vor dem Freigabe-Halt')
   const kernHtml = renderAbnahme('w-1', kern).unten
   assert.match(kernHtml, /Anpassung gewünscht/)
-  assert.match(kernHtml, /class="note amber abnahme-automatisch"><strong>Automatisch angelegt · Iteration 2\/3 · Start erfordert deine Freigabe<\/strong>/)
+  assert.match(kernHtml, /class="note amber abnahme-automatisch"><strong>Automatisch angelegt · Korrekturrunde 2 · Start erfordert deine Freigabe<\/strong>/)
 })
 
 test('veraltet: die frühere Entscheidung bleibt sichtbar (Audit-Spur), die Abnahme ist wieder offen', () => {
@@ -320,6 +320,16 @@ test('Vorab-Block: Servertext in lang="de", escaped; Status übersetzt; Satz zum
   assert.match(r.unten, /Nächster Schritt: Den Review allein kannst du nicht wiederholen/)
   const amber = renderAbnahme('wf-1', abnahme({ urteil: { ...URTEIL, kontext_luecken: ['x'] } }))
   assert.doesNotMatch(amber.oben, /Nächster Schritt/)
+  assert.doesNotMatch(r.unten, /wf-pruefer-wiederholen/, 'ohne reviewWiederholbar kein Knopf')
+})
+
+test('F45 B2b-1a: reviewWiederholbar zeigt „Review wiederholen“ mit eigenem Satz in der roten Notiz (Lage vorab), Knopf auf eigener Zeile', () => {
+  const a = abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', reviewWiederholbar: true, urteil: { status: 'fehlgeschlagen', laufId: 'l-r', schrittStatus: 'FEHLGESCHLAGEN', grund: 'Werkzeugausfall' } })
+  const r = renderAbnahme('wf-<1>', a)
+  assert.match(r.unten, /<\/p><p><button type="button" class="button wf-pruefer-wiederholen" data-workflow-id="wf-&lt;1&gt;">Review wiederholen<\/button><\/p>/)
+  assert.match(r.unten, /du kannst den Review allein wiederholen \(zählt nicht als automatische Korrekturrunde\)/)
+  assert.doesNotMatch(r.unten, /Den Review allein kannst du nicht wiederholen/)
+  assert.doesNotMatch(r.unten, /wf-pruefung-wiederholen/, 'nicht verwechselt mit „Prüfung wiederholen“ (F-656)')
 })
 
 test('reviewHinweise: nicht lesbar und Laufakte fehlt sind rot sichtbar (qa 3)', () => {
@@ -389,4 +399,12 @@ test('F45 B2a-3b (qa 1): reviewHinweisKennung ändert sich mit „veraltet“ un
   assert.equal(frisch, '')
   assert.equal(new Set([frisch, veraltet, unbestimmtA, unbestimmtB]).size, 4)
   assert.equal(reviewHinweisKennung(undefined), '')
+})
+
+test('F45 B2b-1a (Prüfpass): reviewWiederholbar ohne roten Hinweis (unbekanntes Urteil) zeigt trotzdem rote Notiz mit Knopf', () => {
+  const a = abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', reviewWiederholbar: true, urteil: { status: 'ok', urteil: 'GO', befunde: [], laufId: 'l-r' } })
+  const r = renderAbnahme('wf-1', a)
+  assert.match(r.unten, /class="note red abnahme-review-hinweise"/)
+  assert.match(r.unten, /wf-pruefer-wiederholen/)
+  assert.doesNotMatch(r.unten, /<ul><\/ul>/, 'keine leere Liste')
 })

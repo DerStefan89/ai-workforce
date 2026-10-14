@@ -1038,7 +1038,8 @@ function legeAusfuehrungMitReviewWorkflowAn(basisVerzeichnis, auftragId, zeitgre
       ziel: 'Realcheck: Ausführung gefolgt von Post-Build-Review.',
       status: 'OFFEN',
       aktiver_schritt_id: 'schritt-1',
-      grenzen: { max_schritte: 8, max_replans: 0 },
+      // F45 B2b-1a: die Anpassungsautomatik liest grenzen.max_replans — 0 sperrte den Rückweg, den (i) erwartet.
+      grenzen: { max_schritte: 8, max_replans: 1 },
       schritte: [
         schrittFixture('schritt-1', 'schritt-2', zeitgrenzeMs),
         schrittFixture('schritt-2', null, zeitgrenzeMs, {

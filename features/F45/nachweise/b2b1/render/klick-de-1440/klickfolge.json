@@ -1,0 +1,61 @@
+{
+  "url": "http://127.0.0.1:4398/#/workflows/wf-b2b1-ausfall-1791997932151",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1500
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweise zum Review",
+        "selector": ".abnahme-review-hinweise"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hinweis rot",
+        "selector": ".abnahme-review-hinweise.red"
+      },
+      {
+        "name": "Fehlgeschlagen",
+        "selector": "[data-review-hinweis=\"fehlgeschlagen\"]"
+      },
+      {
+        "name": "Knopf Review wiederholen",
+        "selector": ".wf-pruefer-wiederholen"
+      },
+      {
+        "name": "Knopf Prüfung wiederholen (F-656)",
+        "selector": ".wf-pruefung-wiederholen"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Halt mit Knopf",
+      "warteAufSelector": {
+        "selector": ".wf-pruefer-wiederholen",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-vorher.webp"
+    },
+    {
+      "label": "Klick „Review wiederholen“ → Review läuft erneut → Abnahme",
+      "klick": ".wf-pruefer-wiederholen",
+      "warteAufSelector": {
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-nachher.webp"
+    }
+  ]
+}

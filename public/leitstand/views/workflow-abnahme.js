@@ -15,7 +15,7 @@
  *   die Ausführung gelaufen ist, sonst „Auftrag ablehnen oder Anpassung wünschen“;
  * - offen (vor dem Bau, Freigabe-Halt, kein erlaubter Status): eine Zeile unter der Timeline;
  * - entschieden: eine kompakte Zeile mit Ergebnis, Begründung und Datum, bei erzeuger 'kern' der
- *   F18-Hinweis „Automatisch angelegt · Iteration n/3“.
+ *   F18-Hinweis „Automatisch angelegt · Korrekturrunde n“ (F45 B2b-1a: höchstens eine je Stufe).
  * Dazu die Zeilen „Review-Urteil“ und „Deine Abnahme“ für „Auf einen Blick“.
  * F45 B2a-3a (Codex-Review-Spec §9.8): Fehlerfälle und Vertrag des Reviews sind sichtbar statt still — reviewHinweise
  * (eine Quelle) erscheint im Blick (jeder Urteilsstatus), im Block der Lage 'vorab' (KLAERUNG_ERFORDERLICH) und in der
@@ -234,21 +234,29 @@ const ROTE_HINWEISE = new Set(['fehlgeschlagen', 'nichtGelaufen', 'nichtLesbar',
 /**
  * Rendert reviewHinweise als Notiz — rot (mit dem nächsten Schritt), wenn der Review nicht trägt, sonst amber; ohne
  * Hinweise nichts. Servertexte stehen in einem lang="de"-Span (design-guardian 4).
+ * F45 B2b-1a: ist der Review allein wiederholbar (abnahme.reviewWiederholbar, Server-Vorbedingung wie POST
+ * …/pruefer-wiederholen), ist die Notiz rot — auch ohne roten Hinweis (z. B. unbekanntes Urteil, Prüfpass) —, der Satz
+ * zum nächsten Schritt nennt diesen Weg, und der Knopf „Review wiederholen“ steht auf eigener Zeile darunter (Muster
+ * „Ablauf reparieren“, design-guardian 1).
  * @param urteil - abnahme.urteil
+ * @param workflowId - Kennung des Workflows (für den Knopf)
+ * @param wiederholbar - abnahme.reviewWiederholbar
  * @returns HTML oder ''
  */
-function renderReviewHinweise(urteil) {
+function renderReviewHinweise(urteil, workflowId = '', wiederholbar = false) {
   const hinweise = reviewHinweise(urteil)
-  if (hinweise.length === 0) return ''
-  const rot = hinweise.some((h) => ROTE_HINWEISE.has(h.art))
+  if (hinweise.length === 0 && !wiederholbar) return ''
+  const rot = wiederholbar || hinweise.some((h) => ROTE_HINWEISE.has(h.art))
   const punkte = hinweise
     .map((h) => {
       const inhalt = h.server === null ? escapeHtml(h.text) : tHtml(`abnahme.review.${h.art}`, h.parameter ?? {}, { text: `<span lang="de">${escapeHtml(h.server)}</span>` })
       return `<li data-review-hinweis="${h.art}">${inhalt}</li>`
     })
     .join('')
-  const weiter = rot ? `<p>${tHtml('abnahme.review.weiter')}</p>` : ''
-  return `<div class="note ${rot ? 'red' : 'amber'} abnahme-review-hinweise" role="note"><p><strong>${tHtml('abnahme.review.titel')}</strong></p><ul>${punkte}</ul>${weiter}</div>`
+  const knopf = wiederholbar ? `<p><button type="button" class="button wf-pruefer-wiederholen" data-workflow-id="${escapeHtml(workflowId)}">${tHtml('abnahme.pruefer.wiederholen')}</button></p>` : ''
+  const weiter = rot ? `<p>${tHtml(wiederholbar ? 'abnahme.review.weiterWiederholbar' : 'abnahme.review.weiter')}</p>${knopf}` : ''
+  const liste = punkte === '' ? '' : `<ul>${punkte}</ul>`
+  return `<div class="note ${rot ? 'red' : 'amber'} abnahme-review-hinweise" role="note"><p><strong>${tHtml('abnahme.review.titel')}</strong></p>${liste}${weiter}</div>`
 }
 
 /**
@@ -423,6 +431,7 @@ function renderPruefungKachel(workflowId, abnahme) {
  * @param urteil - abnahme.urteil
  * @returns HTML
  */
+// Ohne „Review wiederholen“: die Kachel steht nur in der Lage „entscheidbar“ (abgeschlossen), reviewWiederholbar verlangt KLAERUNG_ERFORDERLICH.
 function renderReviewKachel(urteil) {
   const inhalt =
     urteil.status === 'ok'
@@ -574,7 +583,7 @@ function renderVorab(workflowId, abnahme, harnessAbgleich) {
   return `<section class="abnahme-stand abnahme-vorab" aria-labelledby="abnahme-vorab-titel">
     <h3 id="abnahme-vorab-titel">${gelaufen ? tHtml('abnahme.vorab.titelErgebnis') : tHtml('abnahme.vorab.titel')}</h3>
     <p class="subtle">${gelaufen ? tHtml('abnahme.vorab.textErgebnis') : tHtml('abnahme.vorab.text')}</p>
-    ${renderReviewHinweise(abnahme.urteil)}
+    ${renderReviewHinweise(abnahme.urteil, workflowId, abnahme.reviewWiederholbar === true)}
     ${renderFruehereEntscheidung(abnahme.entscheidung)}
     ${ergebnis}
     <label class="field" for="wf-abnahme-begruendung">${tHtml('abnahme.entscheidung.begruendung')}</label>

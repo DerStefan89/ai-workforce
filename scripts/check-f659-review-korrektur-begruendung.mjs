@@ -278,7 +278,7 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewLau
             // Die Begründung kommt jetzt aus baueAutomatischeAnpassungsBegruendung (F35 WS-3), nicht
             // mehr aus einem frei gewählten Testtext — geprüft wird deshalb der feste Kopf statt
             // eines wörtlichen Zitats.
-            const traegtBegruendung = iter2ReviewAuftragstext.includes('Automatische Anpassung (Iteration 1 von max. 3) nach Review-Urteil BLOCKIERT')
+            const traegtBegruendung = iter2ReviewAuftragstext.includes('Automatische Anpassung (Korrekturrunde 1 von 1, Bau-Stufe) nach Review-Urteil BLOCKIERT')
             const traegtVorrang = iter2ReviewAuftragstext.includes('Verbindliche Klarstellung des Auftrags durch den Menschen')
             const traegtBefund = iter2ReviewAuftragstext.includes(REALER_BEFUND.zusammenfassung)
             if (!traegtBegruendung || !traegtVorrang || !traegtBefund) {
