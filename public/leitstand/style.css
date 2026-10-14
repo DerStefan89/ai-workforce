@@ -7901,7 +7901,8 @@ th {
 /* F44 WS-4b: Die Checkboxen sind disabled (rein anzeigend). Die native Darstellung blasst eine
    disabled-angekreuzte Box im hellen Theme bis zur Unkenntlichkeit aus — deshalb selbst gezeichnet:
    Rahmen --check-rand, angekreuzt Fläche --mint mit Haken --check-haken (Kontrastpaare im Token-Gate). */
-.empfehlung-liste .check input[type='checkbox'] {
+.empfehlung-liste .check input[type='checkbox'],
+.pl-zuordnung .check input[type='checkbox'] {
   appearance: none;
   display: inline-grid;
   place-content: center;
@@ -7911,12 +7912,14 @@ th {
   background: var(--field);
 }
 
-.empfehlung-liste .check input[type='checkbox']:checked {
+.empfehlung-liste .check input[type='checkbox']:checked,
+.pl-zuordnung .check input[type='checkbox']:checked {
   border-color: var(--mint);
   background: var(--mint);
 }
 
-.empfehlung-liste .check input[type='checkbox']:checked::after {
+.empfehlung-liste .check input[type='checkbox']:checked::after,
+.pl-zuordnung .check input[type='checkbox']:checked::after {
   content: '';
   width: 4px;
   height: 8px;
@@ -7929,6 +7932,24 @@ th {
 .empfehlung-liste .check input[type='checkbox']:disabled {
   opacity: 1;
   cursor: default;
+}
+
+/* F45 F-3b-1 (design-guardian 10): dieselbe gezeichnete Box in der Zuordnung des Plugin-Reiters — dort sind die Kästchen
+   bedienbar; gesperrt bleiben sie erkennbar, aber gedämpft. */
+.pl-zuordnung .check input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.pl-zuordnung .check input[type='checkbox']:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.pl-zuordnung .check input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
 }
 
 /* ─────────── Ausführungen (F44 WS-5a, Vorlage V10 d_arbeit_verlauf, d_ausfuehrung_failed) ───────────
@@ -14100,4 +14121,52 @@ button.harness-ordner-eintrag {
 
 .pl-eingebaut {
   margin-top: 24px;
+}
+
+/* F45 F-3b-1: Workforce-Abschnitt im Plugin-Detail (übernommen, Prüfung und Freigabe, Zuordnung je Rolle) — nur bestehende
+   Tokens; Knöpfe umbrechen, Kästchen stehen je Bestandteil in einer umbrechenden Zeile (390 px ohne breite Matrix). */
+.pl-wf-zwischen {
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+
+.pl-wf-bericht {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.pl-wf-bericht p {
+  margin: 0;
+}
+
+/* Kästchen der Zuordnung ohne den großen Außenabstand der Formular-Kästchen (design-guardian 6). */
+.v10-seite .pl-zuordnung .check {
+  margin: 0;
+  align-items: center;
+}
+
+.pl-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pl-zuordnung li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.pl-zuordnung-rollen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
 }

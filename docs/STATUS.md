@@ -636,9 +636,21 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Detail mit Bestandteilen und Risiken, eingebaute mit Messversion, `aktiv`
   bei scope local nur mit Ordnerbezug — gemessen: hängt vom Arbeitsordner
   ab —, Laden nur bei Reiterwahl/„Neu laden“, Gate f45-f3a2; Route und
-  Lauf unverändert).
-  Reihenfolge ab F: F-3a-1 → F-3a-2 → F-3b → B2b → B5a/B5b → B3 → R → R2.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1093. Nach F46, vor F30
+  Lauf unverändert); gemergt #334 (`8ac4647`). F-3b geteilt (Stefan
+  14.10.2026) in F-3b-1 Freigabe und F-3b-2 Plugins im Lauf; F-3b-1 gebaut,
+  nicht committet (Branch `f45/f3b1-plugins-freigabe`: gefilterte, gepinnte
+  Kopie je Plugin unter `~/.ai-workforce/plugin-kopien` ohne Hooks/MCP/LSP,
+  Prüfbericht über die Kopie, Freigabe an Hash und Bericht gebunden,
+  Zuordnung nur Ausführung in der lokalen Fähigkeiten-Datei, Drift sichtbar,
+  Gate f45-f3b1; kein Lauf geändert). **Hinweis bis zum Merge:** keine echte
+  Plugin-Freigabe in Stefans `faehigkeiten.lokal.json` — ein Checkout ohne
+  F-3b-1 hält die Datei mit Plugin-Feldern für ungültig und sperrt dort
+  Starts mit Katalog-Fähigkeiten. Eine Freigabe gilt nur im Checkout mit dem
+  Prüfbericht; die Zuordnung wirkt erst mit F-3b-2 und nur in schreibenden
+  Ausführungsschritten.
+  Reihenfolge ab F (Stefan, 14.10.2026, E-F45-11/12): F-3b-1 → F-3b-2 → B2b → Fähigkeit bauen → B5a/B5b → B3 → R → R2 → F30
+  (R2 = Motion im Leitstand, neuer Baustein „Fähigkeit bauen“).
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1097. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

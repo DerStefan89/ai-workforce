@@ -1,0 +1,6 @@
+| Aktion | Übernommen | Nicht übernommen (Hook) | Prüfen bedienbar | Freigeben bedienbar | Zurücknehmen bedienbar | debuggen zugeordnet | Kästchen bedienbar | Sperre | Verwaist | lang | Freigabe | Bericht | Aktion | Hinweis Lauf | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Workforce geladen | false | false | false | false | false | false | false | false | false | ru | (fehlt) | (fehlt) | (fehlt) | В прогоне Workforce пока не действует — разрешение и назначение вы можете задать уже сейчас. | false | true |
+| Capability Library | false | false | false | false | false | false | false | false | false | ru | (fehlt) | (fehlt) | (fehlt) | В прогоне Workforce пока не действует — разрешение и назначение вы можете задать уже сейчас. | false | true |
+| Reiter „Plugins“ gewählt → Liste | false | false | false | false | false | false | false | false | false | ru | (fehlt) | (fehlt) | (fehlt) | В прогоне Workforce пока не действует — разрешение и назначение вы можете задать уже сейчас. | false | true |
+| Detail: Lauf aktiv sperrt | true | true | false | false | false | true | false | true | false | ru | freigegeben | passt | (fehlt) | В прогоне Workforce пока не действует — разрешение и назначение вы можете задать уже сейчас. | false | true |

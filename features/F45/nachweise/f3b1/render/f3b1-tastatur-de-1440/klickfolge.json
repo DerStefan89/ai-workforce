@@ -1,0 +1,177 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "de"
+  },
+  "screenshotAusschnitt": {
+    "selector": "#werkstatt-bereich-faehigkeiten",
+    "hoehe": 5200
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Freigabe",
+        "selector": "#plugins-detail [data-pl-freigabe]",
+        "attribut": "data-pl-freigabe"
+      },
+      {
+        "name": "Bericht",
+        "selector": "#plugins-detail [data-pl-bericht]",
+        "attribut": "data-pl-bericht"
+      },
+      {
+        "name": "Aktion",
+        "selector": "#plugins-detail [data-pl-aktion-status]",
+        "attribut": "data-pl-aktion-status"
+      },
+      {
+        "name": "Hinweis Lauf",
+        "selector": "[data-pl-hinweis=\"f3b\"] strong"
+      },
+      {
+        "name": "Fokus (Element)",
+        "selector": ":focus",
+        "attribut": "data-pl-fokus"
+      },
+      {
+        "name": "Fokus (Knopf)",
+        "selector": ":focus",
+        "attribut": "data-pl-aktion"
+      },
+      {
+        "name": "Fokus (id)",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus (Kästchen)",
+        "selector": ":focus",
+        "attribut": "data-pl-name"
+      },
+      {
+        "name": "Live-Region",
+        "selector": "#plugins-status"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Übernommen",
+        "selector": "#plugins-detail [data-pl-uebernommen]"
+      },
+      {
+        "name": "Nicht übernommen (Hook)",
+        "selector": "#plugins-detail [data-pl-grund=\"hook_nie\"]"
+      },
+      {
+        "name": "Prüfen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"pruefen\"]:not([disabled])"
+      },
+      {
+        "name": "Freigeben bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"freigeben\"]:not([disabled])"
+      },
+      {
+        "name": "Zurücknehmen bedienbar",
+        "selector": "#plugins-detail [data-pl-aktion=\"zuruecknehmen\"]:not([disabled])"
+      },
+      {
+        "name": "debuggen zugeordnet",
+        "selector": "#plugins-detail input[data-pl-name=\"debuggen\"]:checked"
+      },
+      {
+        "name": "Kästchen bedienbar",
+        "selector": "#plugins-detail input[data-pl-zuordnung]:not([disabled])"
+      },
+      {
+        "name": "Sperre",
+        "selector": "#plugins-detail [data-pl-sperre]"
+      },
+      {
+        "name": "Verwaist",
+        "selector": "#plugins [data-pl-verwaist]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workforce geladen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-reiter-faehigkeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Capability Library",
+      "klick": "#werkstatt-reiter-faehigkeiten"
+    },
+    {
+      "label": "Reiter „Plugins“ gewählt → Liste",
+      "klick": "#faehigkeiten-reiter-plugins",
+      "warteAufSelector": {
+        "selector": "#plugins table.pl-tabelle",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Detail „kraft“ per Tastatur",
+      "fokus": "#plugins .library-name[data-plugin-index=\"0\"]",
+      "taste": "Enter",
+      "warteAufSelector": {
+        "selector": "#plugins-detail [data-pl-wf=\"freigabe\"]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Fokus „Kopie prüfen“ + Enter → Prüfbericht, Fokus auf der Meldung",
+      "fokus": "#plugins-detail [data-pl-aktion=\"pruefen\"]",
+      "taste": "Enter",
+      "warteAufSelector": {
+        "selector": "#plugins-detail:has([data-pl-bericht=\"passt\"]) [data-pl-aktion-status=\"ok\"]:focus",
+        "timeoutMs": 30000
+      },
+      "screenshot": "01-nach-pruefen.png"
+    },
+    {
+      "label": "Fokus „Freigeben“ + Enter → freigegeben, Fokus auf der Meldung",
+      "fokus": "#plugins-detail [data-pl-aktion=\"freigeben\"]",
+      "taste": "Enter",
+      "warteAufSelector": {
+        "selector": "#plugins-detail:has([data-pl-freigabe=\"freigegeben\"]) [data-pl-aktion-status=\"ok\"]:focus",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-nach-freigeben.png"
+    },
+    {
+      "label": "Fokus Kästchen „debuggen“ + Leertaste → zugeordnet, Fokus bleibt auf dem Kästchen",
+      "fokus": "#plugins-detail input[data-pl-name=\"debuggen\"]",
+      "taste": "Space",
+      "warteAufSelector": {
+        "selector": "#plugins-detail input[data-pl-name=\"debuggen\"]:checked:focus",
+        "timeoutMs": 15000
+      },
+      "screenshot": "03-nach-zuordnen.png"
+    },
+    {
+      "label": "Fokus „Freigabe zurücknehmen“ + Enter → Fokus auf der Meldung",
+      "fokus": "#plugins-detail [data-pl-aktion=\"zuruecknehmen\"]",
+      "taste": "Enter",
+      "warteAufSelector": {
+        "selector": "#plugins-detail:has([data-pl-freigabe=\"keine\"]) [data-pl-aktion-status=\"ok\"]:focus",
+        "timeoutMs": 15000
+      },
+      "screenshot": "04-nach-zuruecknehmen.png"
+    }
+  ],
+  "farbschema": "dark"
+}

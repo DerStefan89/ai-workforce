@@ -18,7 +18,11 @@
  * (F-1075: die Installation vergleicht sie mit dem, was sie tatsächlich schreibt). Pfad-Zwillinge (Schreibweise, Unicode-Form)
  * und Datei/Ordner-Konflikte im GANZEN gepinnten git-Baum (alle ls-tree-Einträge, ohne Größengrenze) → 422 vor dem Checkout.
  *
- * Wird aufgerufen von: scripts/leitstand/routen-pruefung.mjs, src/sammlung/quelle.test.ts, src/ressourcen/npm-echt.test.ts.
+ * Seit F45 F-3b-1 legt legeLokalenInhaltAb einen im Speicher vorliegenden Inhalt (gefilterte Plugin-Kopie) mit demselben
+ * Schreiber in den Prüfordner.
+ *
+ * Wird aufgerufen von: scripts/leitstand/routen-pruefung.mjs, src/sammlung/quelle.test.ts, src/ressourcen/npm-echt.test.ts,
+ * scripts/leitstand/routen-plugin-freigabe.mjs (Prüflauf eines Plugins, F45 F-3b-1).
  *
  * Wichtig: Runner (git, npm) sind injizierbar (Tests ohne Netz). Jeder Fehlschlag liefert { ok:false, status, grund };
  * aufräumen muss der Aufrufer (er besitzt die Wurzel). Kein Fehlschlag lässt einen halben Prüfordner als Erfolg stehen.
@@ -333,6 +337,29 @@ export async function holeNpmInhalt(quelle: { paket: string; version: string; in
       console.error(`[pruefung] Installationsordner '${install}' nicht entfernbar:`, fehler)
     }
   }
+}
+
+/**
+ * F45 F-3b-1: legt einen schon im Speicher vorliegenden Inhalt (gefilterte Plugin-Kopie, src/plugin-kopie) neutralisiert in
+ * den Prüfordner `<wurzel>/inhalt` — derselbe Schreiber und dieselben Grenzen wie bei git/npm (Advisor F4b: `.claude-plugin`
+ * → `_.claude-plugin`, Zwillinge 422). Die Dateiliste trägt die Pfade des Inhalts (vor der Neutralisierung), damit später
+ * vergleicheInhalt die geschriebene Kopie gegen den Bericht prüfen kann. Synchron, kein Netz.
+ * @param dateien - Inhalt mit Pfad wie in der Kopie
+ * @param wurzel - Temp-Wurzel des Prüflaufs (der Aufrufer räumt sie)
+ * @returns Prüfordner + Fakten oder Fehler
+ */
+export function legeLokalenInhaltAb(dateien: readonly InhaltDatei[], wurzel: string): GeholterInhalt {
+  const grenze = pruefeGrenzen(
+    dateien.length,
+    dateien.reduce((s, d) => s + d.bytes.length, 0)
+  )
+  if (grenze !== null) return grenze
+  const uebersprungen: Uebersprungen[] = []
+  const geschriebenErgebnis = schreibeInhalt(join(wurzel, 'inhalt'), dateien, uebersprungen)
+  if ('ok' in geschriebenErgebnis) return geschriebenErgebnis
+  const { umbenannt, geschrieben } = geschriebenErgebnis
+  if (uebersprungen.length > 0) return { ok: false, status: 422, grund: `Prüfordner: ${uebersprungen.length} Datei(en) nicht ablegbar — abgebrochen` }
+  return { ok: true, inhaltOrdner: join(wurzel, 'inhalt'), fakten: sammleFakten(geschrieben, uebersprungen, umbenannt), commitZeit: null, dateien: dateiListe(geschrieben) }
 }
 
 /**

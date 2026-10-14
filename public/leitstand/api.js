@@ -269,6 +269,12 @@ export const holeSammlung = () => holeJsonOderWirf(mitPraefix('/sammlung'), { si
  * ZEITLIMIT_SEKUNDEN in plugins-anzeige.js, dort nur für den Text). */
 const PLUGINS_ZEITLIMIT_MS = 20_000
 export const holePlugins = () => holeJsonOderWirf(mitPraefix('/plugins'), { signal: AbortSignal.timeout(PLUGINS_ZEITLIMIT_MS) })
+// F45 F-3b-1: Plugin prüfen (Prüflauf in der Workforce-Instanz wie die Sammlung, unpräfigiert), freigeben, zurücknehmen und je
+// Rolle zuordnen (je Projekt; die lokale Datei ist dieselbe). Alle lesen den Bestand frisch (≈ 1,5 s) — Zeitlimit wie holePlugins.
+export const startePluginPruefung = (koerper) => fetch('/api/plugins/pruefung', { method: 'POST', body: JSON.stringify(koerper), signal: AbortSignal.timeout(PLUGINS_ZEITLIMIT_MS) })
+export const sendePluginFreigabe = (koerper) => fetch(mitPraefix('/plugins/freigabe'), { method: 'POST', body: JSON.stringify(koerper), signal: AbortSignal.timeout(PLUGINS_ZEITLIMIT_MS) })
+export const sendePluginRuecknahme = (koerper) => fetch(mitPraefix('/plugins/freigabe/ruecknahme'), { method: 'POST', body: JSON.stringify(koerper), signal: AbortSignal.timeout(PLUGINS_ZEITLIMIT_MS) })
+export const sendePluginZuordnung = (koerper) => fetch(mitPraefix('/plugins/zuordnung'), { method: 'POST', body: JSON.stringify(koerper), signal: AbortSignal.timeout(PLUGINS_ZEITLIMIT_MS) })
 // F45 F-2b-2a (F-1056): Auswählen → Eignungsprüfung. Bewusst UNPRÄFIGIERT (Muster holeProjekte): Prüfläufe laufen immer in
 // der Workforce-Instanz (Advisor A3), gleich welches Projekt aktiv ist. vorbereiten pinnt nur (git ls-remote / npm view, ohne
 // Zeitlimit des Polls — ein Pin darf länger dauern); der Start antwortet 202 { laufId }; der Zustand wird nur gefragt, solange

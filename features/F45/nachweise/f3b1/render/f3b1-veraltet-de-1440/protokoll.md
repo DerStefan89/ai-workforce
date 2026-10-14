@@ -1,0 +1,6 @@
+| Aktion | Übernommen | Nicht übernommen (Hook) | Prüfen bedienbar | Freigeben bedienbar | Zurücknehmen bedienbar | debuggen zugeordnet | Kästchen bedienbar | Sperre | Verwaist | lang | Freigabe | Bericht | Aktion | Hinweis Lauf | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Workforce geladen | false | false | false | false | false | false | false | false | false | de | (fehlt) | (fehlt) | (fehlt) | Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon festlegen. | false | true |
+| Capability Library | false | false | false | false | false | false | false | false | false | de | (fehlt) | (fehlt) | (fehlt) | Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon festlegen. | false | true |
+| Reiter „Plugins“ gewählt → Liste | false | false | false | false | false | false | false | false | false | de | (fehlt) | (fehlt) | (fehlt) | Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon festlegen. | false | true |
+| Detail: veraltet, Zuordnung wirkt nicht | true | true | true | false | true | true | true | false | false | de | veraltet | anderer | (fehlt) | Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon festlegen. | false | true |

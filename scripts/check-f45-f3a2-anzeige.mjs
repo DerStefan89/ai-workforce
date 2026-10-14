@@ -6,7 +6,8 @@
  * (a) Fixture-Bestand (scripts/_plugin-fixture.ts) über den echten Handler GET /api/plugins → renderPlugins: Liste mit den drei
  *     Plugins (Name, Marketplace, Version, Status), Detail „voll“ mit Hooks (Ereignis, Befehl), MCP gepinnt ja/nein, Hook- und
  *     MCP-Risiko; scope local mit Ordnerbezug statt „an/aus“ (F-1091 (2)).
- * (b) Fester Hinweis „Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.“ im Panel des Reiters (index.html), in
+ * (b) Fester Hinweis (seit F45 F-3b-1 „Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon
+ *     festlegen.“, vorher „Noch nicht im Workforce-Lauf nutzbar …“) im Panel des Reiters (index.html), in
  *     allen vier Wörterbüchern vorhanden; kein sichtbarer Text des Reiters (Wörterbuch plugins.*, Reitername, Panel-Text ohne
  *     Kommentare/Attribute, gerenderte Zustände) enthält eine interne Kennung /\bF-\d/ (Challenger 14.10.2026).
  * (c) Eingebaute getrennt: nicht in der Liste, eigener Block mit Messversion der Referenzliste (F-1091 (1)).
@@ -42,7 +43,8 @@ console.log('\n=== F45-F-3a-2-Anzeige-Check ===\n')
 
 const BOESE = '" data-boese="1"><img src=x onerror=alert(1)><script>alert(2)</script>'
 /** Vereinbarter Hinweis (de) im Panel des Reiters — ohne interne Kennung (Challenger 14.10.2026). */
-const HINWEIS_DE = 'Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.'
+// F45 F-3b-1: Text angepasst (Freigabe und Zuordnung sind jetzt möglich; der Lauf folgt im nächsten Schritt) — die Prüfung bleibt gleich streng.
+const HINWEIS_DE = 'Im Workforce-Lauf noch nicht wirksam — Freigabe und Zuordnung kannst du schon festlegen.'
 const REFERENZ_VERSION = JSON.parse(readFileSync('src/faehigkeiten/eingebaut-referenz.json', 'utf8')).cli_version
 
 // ─── Reine Prüffunktionen ─────────────────────────────────────────────────────
@@ -79,7 +81,7 @@ function pruefeListeDetail(liste, voll, lokal) {
 }
 
 /**
- * (b) Hinweis „noch nicht im Lauf nutzbar“ im Panel und in den Wörterbüchern; keine interne Kennung im sichtbaren Text.
+ * (b) Fester Hinweis zum Lauf im Panel und in den Wörterbüchern; keine interne Kennung im sichtbaren Text.
  * @param html - index.html
  * @param buecher - Wörterbücher
  * @param gerendert - gerenderte Zustände des Reiters (HTML)
@@ -180,7 +182,19 @@ function pruefeQuelltext(dateien, cap, view) {
   // Code-Review 3: auch die Lade-Wrapper und die Steuerung nur in den drei Dateien des Reiters; kein Timer/Abo in der View.
   const wrapper = dateien.filter((d) => !/views[\\/](capabilities|plugins)\.js$|plugins-anzeige\.js$/.test(d.pfad) && /ladePlugins(BeiReiterwahl|Neu)|setzePluginsZurueck|erzeugePluginSteuerung/.test(d.text)).map((d) => d.pfad)
   if (wrapper.length > 0) b.push(`(f) Lade-Wrapper der Plugins außerhalb des Reiters: ${wrapper.join(', ')}`)
-  if (/setInterval|setTimeout|abonniere/.test(view)) b.push('(f) Timer oder Abo in views/plugins.js')
+  // F45 F-3b-1 (angepasst): erlaubt ist genau ein setTimeout im Takt von warteAufPruefung — dort wird nach einem Klick auf
+  // „Kopie prüfen“ der Prüflauf (GET …/sammlung/pruefung/<id>) abgefragt, nie die Plugin-Liste. Außerhalb dieser Funktion
+  // bleibt jeder Timer/jedes Abo ein Befund; in ihr darf weder holePlugins noch ein Neuladen stehen.
+  const warte = /async function warteAufPruefung\([^)]*\) \{[\s\S]*?\n\}\n/.exec(view)?.[0] ?? ''
+  const ohneWarte = warte === '' ? view : view.replace(warte, '')
+  if (/setInterval|setTimeout|abonniere/.test(ohneWarte)) b.push('(f) Timer oder Abo in views/plugins.js')
+  if (/holePlugins|neuLaden|setInterval|abonniere/.test(warte) || (warte.match(/setTimeout/g) ?? []).length > 1) b.push('(f) warteAufPruefung lädt Plugins oder trägt mehr als einen Timer')
+  // F45 F-3b-1 (Code-Review 3): Neuladen nach einer Aktion nur in derselben Generation (kein Abruf nach einem Projektwechsel) —
+  // jedes steuerung.neuLaden() in fuehreAus steht in der Form „if (aktuell()) await steuerung.neuLaden()“.
+  const fuehre = /async function fuehreAus\([^)]*\) \{[\s\S]*?\n\}\n/.exec(view)?.[0] ?? ''
+  const alle = (fuehre.match(/steuerung\.neuLaden\([^)]*\)/g) ?? []).length
+  const bewacht = (fuehre.match(/if \(aktuell\(\)\) await steuerung\.neuLaden\([^)]*\)/g) ?? []).length
+  if (fuehre === '' || alle === 0 || alle !== bewacht) b.push('(f) fuehreAus lädt nach einer Aktion neu, ohne die Generation (Projektwechsel) zu prüfen')
   const lade = cap.match(/async function ladeCapabilities\(\)[\s\S]*?\n}\n/)?.[0] ?? ''
   if (lade === '' || /Plugin/.test(lade)) b.push('(f) ladeCapabilities lädt Plugins (oder nicht gefunden)')
   const aufrufe = cap.split('ladePluginsBeiReiterwahl()').length - 1
@@ -263,7 +277,7 @@ const pruefe = (name, ergebnis, meldung) => {
 const INDEX = readFileSync('public/leitstand/index.html', 'utf8')
 pruefe('(a)', pruefeListeDetail(LISTE, VOLL, LOKAL), '(a) Fixture über die echte Route: 3 Zeilen; Detail mit Hooks, MCP gepinnt ja/nein, Hook- und MCP-Risiko; scope local mit Ordnerbezug.')
 const GERENDERT = [LISTE, VOLL, LOKAL, LEER, UNLESBAR].join('')
-pruefe('(b)', pruefeHinweis(INDEX, WOERTERBUECHER, GERENDERT), '(b) Hinweis „noch nicht im Lauf nutzbar“ fest im Panel, in de/en/tr/ru; keine interne Kennung (F-<Zahl>) im sichtbaren Text.')
+pruefe('(b)', pruefeHinweis(INDEX, WOERTERBUECHER, GERENDERT), '(b) Fester Hinweis zum Lauf im Panel, in de/en/tr/ru; keine interne Kennung (F-<Zahl>) im sichtbaren Text.')
 pruefe('(c)', pruefeEingebaut(LISTE, REFERENZ_VERSION), `(c) Eingebaute getrennt, Messversion ${REFERENZ_VERSION}.`)
 pruefe('(d)', pruefeLeerUnlesbar(LEER, UNLESBAR, 'Exit 1: Gate'), '(d) Leer mit Grund (eingebaute bleiben), unlesbar mit Grund der Route.')
 pruefe('(e)', pruefeXss(XSS), '(e) XSS: Plugin-Name und Hook-Befehl über die Route, dazu Version, Command, Risiko-Text, Fehlergrund escaped; kein Attribut-Einbruch.')
@@ -357,6 +371,9 @@ pruefe('(g)', pruefeServer(SERVER), '(g) starteWorkflowSchritt( genau 6-mal im S
     ['späte Antwort übernommen', pruefeSteuerung({ ...zaehlung, nachSpaeterAntwort: 'ok' })],
     ['Wrapper im Poll', pruefeQuelltext([...DATEIEN, { pfad: 'public/leitstand/zustand.js', text: "import { ladePluginsNeu } from './views/plugins.js'\nladePluginsNeu()" }], CAP, VIEW)],
     ['Timer in der View', pruefeQuelltext(DATEIEN, CAP, `${VIEW}\nsetInterval(ladePluginsNeu, 5000)\n`)],
+    ['Neuladen nach Projektwechsel', pruefeQuelltext(DATEIEN, CAP, VIEW.replace('if (aktuell()) await steuerung.neuLaden({ still: true })', 'await steuerung.neuLaden({ still: true })'))],
+    ['setTimeout außerhalb von warteAufPruefung', pruefeQuelltext(DATEIEN, CAP, `${VIEW}\nsetTimeout(ladePluginsNeu, 5000)\n`)],
+    ['Plugins laden im Warten auf den Prüflauf', pruefeQuelltext(DATEIEN, CAP, VIEW.replace('async function warteAufPruefung(laufId, gen) {', 'async function warteAufPruefung(laufId, gen) {\n  void holePlugins()'))],
     ['erneuter Klick lädt', pruefeQuelltext(DATEIEN, CAP.replace('if ((neuGewaehlt || pluginsNichtGeladen()) && reiter?.id === PLUGINS_REITER)', 'if (reiter?.id === PLUGINS_REITER)'), VIEW)],
     ['Abruf beim Erzeugen', pruefeSteuerung({ ...zaehlung, nachErzeugen: 1 })],
     ['Abruf beim Wählen', pruefeSteuerung({ ...zaehlung, nachWaehlen: 1 })],

@@ -32,7 +32,9 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-F45-10 = A** (Stefan, 12.10.2026, gegen die Empfehlung B) — Website-Fähigkeit (Motion, Interaktion, 3D; Website- und Design-Empfehlungen durch die Workforce) gehört ins Fixpaket, vor F30. B3 wird „Design & Motion in Fremdprojekten“ (bisheriger Inhalt plus Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung: Bildfolge/Video, Ladezeit-Budget, „Bewegung reduzieren“). Neuer Referenzauftrag R2 nach R (kleine Landingpage mit Scroll-Animation, Interaktion und einem 3D-Element), neuer Beleg 15.
 - **Sammlung als Basis** (Stefan, 12.10.2026) — `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl; sie kommt in F-2b in den Leitstand (Kurzbeschreibung, Urteil, Lizenz, Kosten, Stand) mit „Auswählen“ → Prüflauf → Katalog. Reihenfolge ab F (Challenger, 12.10.2026): F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2 — B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht. (Vorher, Stefan 12.10.2026: F-1 → F-2a → F-2b → F-3 → B2a → …)
 - **F-2b geteilt** (Stefan, 12.10.2026, nach dem Advisor-Pass, Befund A1 „Zuschnitt zu groß“) — F-2b-1: Sammlung lesen und zeigen, Zuordnung zum Katalog, Scout liest die Sammlung, F-1060 (6); F-2b-2: Auswählen → Eignungsprüfung (Prüfbericht) → Katalog, Sperre der Freigabe, F-1061 (1). Sammlung: alle 176 Zeilen der Bewertungsmatrix sichtbar (172 mit Link, die 4 ohne Link nicht auswählbar; O1). extern_lesend-MCPs von F-2b nach F-3.
-- **Reihenfolge ab F** (Challenger, 12.10.2026) — F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2; B2a liegt auf dem Weg zu R (Belege 1/2), F-3 nicht.
+- **E-F45-11 = A** (Stefan, 14.10.2026) — R2 = Motion im Leitstand der Workforce: Bewegungs-Tokens, `prefers-reduced-motion` Pflicht, Bewegung mit Zweck, kein Ruckeln beim Poll, design-guardian und Render-Nachweis mit Bewegung; Bau im eigenen Worktree, nie am laufenden Leitstand. R bleibt im Fremdprojekt (haushaltsbuch2). Das 3D-Element entfällt vorerst.
+- **E-F45-12 = A** (Stefan, 14.10.2026) — neuer Baustein „Fähigkeit bauen“ nach B2b, vor B3 (≈ 0,5–0,75 AT nach Challenge): Vorschlagsordner und Übernahme per Knopf (F-1069) und Form-Empfehlung durch den Architekten (F-1096, K39).
+- **Reihenfolge ab F** (Stefan, 14.10.2026) — F-3b-1 → F-3b-2 → B2b → Fähigkeit bauen → B5a/B5b → B3 → R → R2 → F30. Codex prüft heute schon im Review-Schritt (Vorlagen standard/hoch); sein Nutzen wird in B2b gemessen (F-1050). Vorher (Challenger, 12.10.2026): F-1 → F-2a → F-2b-1 → F-2b-2 → B2a → F-3 → B2b → B5a/B5b → B3 → R → R2.
 - **B2a-3 geteilt** (Stefan, 13.10.2026, Advisor-Pass B2a-3) — B2a-3a Spec, Policy, Schema v2, Regel 1k, Fehlerfälle, Jarvis-Regel; B2a-3b geprüfter Stand/„Review veraltet“ und Befehlsblöcke im Leitstand. Vorrang Policy vor Karte (Prozesspunkte der DoD „nicht anwendbar (Harness-Abgleich)“, Beobachtungsblock beim Claude-Reviewer als Ausnahme); Regel 1k hält nur bei leeren Befunden ohne den Pflichtsatz.
 - **B2a geteilt** (Challenger, 13.10.2026) — B2a-1 Projektkarte (≈ 0,6–0,7 AT), B2a-2 Arbeitspaket (≈ 0,5–0,6 AT), B2a-3 Codex-Review-Spec + Ausgaberegel (≈ 0,4 AT); F-1072 (API-Schlüssel) nach B2b. Grundlage Abschnitt 5.
 - **O2 B2a-1 — Pflichtabschnitte von ARCHITECTURE.md** (Challenger, 13.10.2026, Vorschlag Advisor) — Pflicht beim Stack-Entscheid sind „Ordnerstruktur“ und „Datenzugriff“; „Module“ steht nur als Satz in der Stack-Instruktion; das Skelett bleibt unverändert.
@@ -52,17 +54,18 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 | F-2a | Fähigkeiten-Oberfläche: Seite Workforce, Bindung an die Anzeige, Gründe der Empfehlung, Lauf-Detail, Beleg 13 | F-1054, F-1012 (Oberfläche), F-1055 (1) Anzeige | F-1 | Advisor-Pass, vor Merge | Teil von 1,25–1,5 | |
 | F-2b-1 | Sammlung im Leitstand (Unterreiter „Sammlung“: Urteil, Lizenz, Kosten, Stand, Zuordnung, Typ, Auswahlgrund), Scout liest die Sammlung, voller Hash im Lauf-Detail | F-1057 (K21), F-1060 (6) | F-2a | Advisor-Pass, vor Merge | ≈ 0,6 | |
 | F-2b-2 | „Auswählen“ → Eignungsprüfung (Prüfbericht) → Katalog, Freigabe nur mit Bericht, Stand der lokalen Datei über Neustarts — geteilt in F-2b-2a (Prüflauf, #326), F-2b-2b (npm-Strukturfix Variante C, F-1075) und F-2b-2c (Vormerken/Katalog, „Eignung prüfen“, Detail als volle Zeile, F-1061 (1)) | F-1056 (K20), F-1061 (1), F-1075 | F-2b-1 | Advisor-Pass, vor Merge | ≈ 1–1,25 | |
-| F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge | Schätzung fehlt | |
+| F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge | Schätzung fehlt | F-3a-1 ≈ 0,5, F-3a-2 ≈ 0,4, F-3b-1 ≈ 0,95 AT (beauftragt 0,5; Grund: Advisor-Auflagen) |
 | B2a-1 | Projektkarte (geteilt am 13.10.2026): `src/projektkarte`, Zuschnitt je Rolle an Architekt, Advisor, Code-Reviewer (Claude und Codex gleich, als Text), Hash in der Laufakte; Architekt im Feature-Modus mit Karte, Capability-Auszug, Lese-Anweisung; ARCHITECTURE.md Pflicht beim Stack-Entscheid; DoD/Checkliste mit Urteil je Punkt; Beobachtungsblock nur claude-code | F-936, F-1064 (K26), F-1065 (K27), F-1066 (K28), F-929, F-931, F-829, F-1062 (K24) | B1b | Advisor-Pass, vor Merge | ≈ 0,6–0,7 | |
 | B2a-2 | Arbeitspaket: Auftrag v0 additiv (DoD-Verweis, betroffene Bereiche, Risiko/Kontrolltiefe, „Einrichtung durch Stefan“, Feature-Bezug), AK-Entwurf aus der Finding-Maßnahme, Server rendert den Prompt, Gate Pflichtfelder, Einrichtungsliste vor dem Bau | F-938, F-989, F-1071 (K31) | B2a-1 | Advisor-Pass, vor Merge | ≈ 0,5–0,6 | |
 | B2a-3a | Codex-Review-Spec (`docs/projekt/codex-review-spec.md`), Review-Policy (`src/review-policy`), Review-Schema v2 additiv, Regel 1k und Fehlerfälle sichtbar, Jarvis „direkt ausführbar“ mit cd-Pfad und „Deine Schritte“ (geteilt am 13.10.2026) | F-1063 (K25) teilweise, F-959 (Jarvis), F-998 | B2a-1 | Advisor-Pass, design-guardian, vor Merge | ≈ 0,4 (Ist ≈ 0,5) | |
 | B2a-3b | Geprüfter Stand und „Review veraltet“, Befehlsblöcke im Leitstand mit cd und getrennten Blöcken | F-1063 (Rest), F-959 (Rest) | B2a-3a | Advisor-Pass, design-guardian, vor Merge | Schätzung fehlt | |
 | B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011, F-1072 (K32, aus B2a am 13.10.2026) | B2a | Advisor-Pass, vor Merge | 1,25–1,5 (ohne F-1072) | |
+| Fähigkeit bauen | Neuer Baustein (E-F45-12 = A): Vorschlagsordner + Übernahme per Knopf, Form-Empfehlung durch den Architekten | F-1069, F-1096 (K39) | B2b | Advisor-Pass, design-guardian, vor Merge | ≈ 0,5–0,75 | |
 | B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 | |
 | B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 | |
 | B3 | Design & Motion in Fremdprojekten (E-F45-10): impeccable, design-guardian und Token-Gate im Skelett; Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung | F-911, F-1058 (K22), F-1059 (K23) | B1a, B2b, F-2b | nach Merge | ≈ 1,4–1,55 | |
 | R | Referenzauftrag in einem Fremdprojekt (Vorschlag: haushaltsbuch2; nicht F30, damit die F30-Messcheckliste unberührt bleibt), Belege 1–14, eine Fixrunde, Abschluss F45 | F-980 | alle | echter Lauf | 1–2 | |
-| R2 | Referenzauftrag Website (E-F45-10): Landingpage mit Scroll-Animation, Interaktion, 3D-Element; Beleg 15 | F-1059 (K23) | R, B3 | echter Lauf | ≈ 1 | |
+| R2 | Motion im Leitstand der Workforce (E-F45-11 = A): Bewegungs-Tokens, `prefers-reduced-motion` Pflicht, Bewegung mit Zweck, kein Ruckeln beim Poll, design-guardian und Render-Nachweis mit Bewegung, Bau im eigenen Worktree; 3D-Element entfällt vorerst; Beleg 15 | F-1059 (K23) | R, B3 | design-guardian, Render-Nachweis, vor Merge | ≈ 1 | |
 
 Die Spalte „Ist“ trägt der Challenger nach Abschluss eines Workstreams nach.
 
@@ -1036,3 +1039,42 @@ Risiken nur im Detail; Gate (e)/(f) zu weich). Eine Korrekturrunde, Nachpass all
 (Klick lädt bei „nicht geladen“, i18n-Schlüssel abgesichert, vier Rotfälle). Rest F-1093.
 
 **Register:** F-910 Nachtrag (Anzeige erledigt, offen nur F-3b); F-1091 Stand (1)(2)(18) erledigt, (4) entschärft; neu F-1093.
+
+## Stand F-3b-1
+
+Branch `f45/f3b1-plugins-freigabe`, Basis `8ac4647` (main mit F-3a-2, #334). Plan `features/F45/plan-f3b.md` (Plan F-3b gesamt;
+Advisor-Pass „überarbeiten“, Delta-Advisor „freigegeben mit Auflagen“, verbindlich v2.1). Nachweise `features/F45/nachweise/f3b1/`.
+
+**Entscheidungen Stefan (14.10.2026):** Plugin-Skills/-Agents sollen im Workforce-Lauf nutzbar sein, Zuordnung je Rolle.
+E-F3b-1 = A Hooks nie im Lauf (die Workforce nennt zugeordnete Skills über die Fähigkeiten-Instruktion im Auftrag); E-F3b-2 = A
+Brainstorming/Coach erst mit B5a. Nach dem Advisor-Pass: E-F3b-3 zuordenbar nur die Ausführung (einziger Fähigkeiten-Weg in den
+Lauf), E-F3b-4 Kopie unter `~/.ai-workforce/plugin-kopien`, E-F3b-5 Commands nicht zuordenbar, E-F3b-6 Agent-`tools` Pflicht wie
+Projekt-Agents. Übernommen aus der Challenge: gefilterte, gepinnte Kopie; Freigabe nur mit Prüfbericht über die Kopie; Zuordnung
+additiv in der lokalen Datei, Standard leer; Risiko-Fakten aus Texten; maßgeblich die Workforce-Freigabe, nicht `enabled` (F-1093 (2)
+geschlossen); nur Worker claude-code.
+
+**Gebaut (1a Server, 1b Oberfläche, getrennt stagebar):** `src/plugin-kopie` (Positivliste je Bestandteil, Frontmatter fail-closed
+inkl. BOM/`--- `/Leerzeile, Sperrnamen in Normalform, Grenzen und Pfadregeln des Prüflaufs, Manifest neu, `kopie_hash`, Schreiben
+inhaltsadressiert ohne Überschreiben, eine Auflösung der Plugin-id, Freigabe-Zustand mit Vorrang); Prüflauf wiederverwendet
+(`starteEignungspruefung` mit `holen`, neutralisierte Temp-Kopie, Quelle `art: plugin`, Auftrag ohne Befehle/URLs); lokale Datei
+additiv `plugin_freigaben`/`plugin_zuordnung`, alle Schreibwege erhalten beide Felder; Routen `…/plugins/pruefung` (nur
+Workforce-Instanz), `…/plugins/freigabe` (Reihenfolge N1, Laufsperre nach dem Abruf erneut), `…/freigabe/ruecknahme`,
+`…/plugins/zuordnung`; GET `…/plugins` mit Workforce-Stand je Plugin und verwaisten Einträgen; Risiko-Fakten aus Texten (push/merge/PR,
+worktree, Subagenten, Inline-Shell) und Agent-Werkzeugen; Leitstand: Prüfung und Freigabe, Übernahme, Zuordnung je Rolle, verwaiste
+Einträge, Sperren (Lauf, Datei ungültig/fremd geändert). Kein Lauf geändert (Startargumente, Init-Gate, `init.plugins` `[]`).
+
+**Tests/Gates:** Kernmodule Tests zuerst (rot 12:18); neues Gate `check-f45-f3b1-freigabe.mjs` (a)–(o), 40 Rotfälle; angepasst
+`check-f45-f3a2-anzeige.mjs` (Hinweistext; Timer nur im Warten auf den Prüflauf, Neuladen nur in derselben Generation).
+
+**Prüfpass:** code-reviewer „mit Hinweisen“, qa und design-guardian „nicht freigegeben“; eine Korrekturrunde (fester Werkzeugsatz
+der Projektion, Prüfen nur in der Workforce-Ansicht, verwaiste Einträge, Fremdänderung sperrt, Bericht überholt, 404 ohne Wirkung,
+Generation bei Projektwechsel, V10-Knöpfe, keine eigene Live-Region, Fokus, Reihenfolge, Gate-Rotfälle (k)/(b2) echt). Rest F-1094.
+
+**Grenzen:** Eine Freigabe gilt nur im Checkout, dessen Kontrollzustand den Prüfbericht trägt (sonst „Bericht fehlt“); die Zuordnung
+wirkt nur in Ausführungsschritten mit Werkzeugsatz `schreibend` und erst mit F-3b-2. Ein Checkout ohne F-3b-1 hält die lokale Datei
+mit Plugin-Feldern für ungültig — bis zum Merge keine echte Plugin-Freigabe in Stefans Datei.
+
+**Register:** F-910, F-1051 Nachtrag; F-1090 teilweise; F-1091 (3)(5)(12) Stand; F-1092 Nachtrag; F-1093 (2) geschlossen; neu
+F-1094. **Ist F-3b-1 ≈ 0,95 AT** (beauftragt 0,5; Grund: Auflagen des Advisor-Passes — 16 Auflagen und Delta-Auflagen, Teilung in Server und Oberfläche); F-3b-2 nach Plan ≈ 0,6 AT.
+
+**Vor dem Merge (Challenger 14.10.2026):** F-1094 (8) Fokus nach Aktionen (Statusbereich, Meldung bzw. nächstes Bedienelement, Liste nach dem Entfernen; Statusmeldungen über die feste Live-Region `#plugins-status`) und F-1094 (9) Werkzeugsatz `null` = „unbekannt“ (kein Rückfall per `??`; Fakt sichtbar, keine Bewertung im Satz; Gate (o)). Gezielte Nachpässe design-guardian (Fokus) und code-reviewer ((9)), keine weitere Korrekturrunde.

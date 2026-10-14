@@ -45,6 +45,8 @@ import type {
   PluginEintrag,
   Risiko,
   SkillTeil,
+  TextTreffer,
+  TextTrefferArt,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -267,11 +269,57 @@ export function regelExterneWirkung(regel: string): boolean {
   return EXTERN_EIN_WORT.has(erstes) || EXTERN_ZWEI_WORTE.has(`${erstes} ${(woerter[1] ?? '').toLowerCase()}`)
 }
 
+/** F45 F-3b-1: Muster der Text-Fakten (je Zeile; Wortgrenzen, kein Teilstring wie ghost → gh). */
+const TEXT_MUSTER: ReadonlyArray<readonly [TextTrefferArt, readonly RegExp[]]> = [
+  ['text_veroeffentlichen', [/\bgit\s+(push|merge)\b/i, /\bgh\s+pr\b/i]],
+  ['text_worktree', [/\bgit\s+worktree\s+add\b/i]],
+  ['text_subagenten', [/\bsub-?agents?\b/i, /\b(Task|Agent)\s+tool\b/i]],
+  ['text_shell_inline', [/!`[^`\n]+`/]],
+]
+
+/** Kurztext je Art (Risiko-Text; die Oberfläche übersetzt die Art). */
+const TEXT_BESCHREIBUNG: Readonly<Record<TextTrefferArt, string>> = {
+  text_veroeffentlichen: 'nennt git push/merge oder gh pr',
+  text_worktree: 'nennt git worktree add',
+  text_subagenten: 'nennt Subagenten bzw. das Task-/Agent-Werkzeug',
+  text_shell_inline: 'enthält Inline-Shell (!`…`)',
+}
+
+/**
+ * F45 F-3b-1: Text-Fakten einer Datei — je Art die erste Zeile (1-basiert in der ganzen Datei) und die Zahl der Zeilen mit
+ * Treffer. Ein Frontmatter am Anfang ('---' … '---') wird übersprungen: allowed-tools darin sind schon eigene Risiken.
+ * @param datei - Pfad relativ zum Plugin-Ordner
+ * @param text - Inhalt
+ * @returns Treffer in fester Reihenfolge der Arten
+ */
+export function textTreffer(datei: string, text: string): TextTreffer[] {
+  const zeilen = text.split(/\r?\n/)
+  let start = 0
+  if (zeilen[0]?.replace(/^\uFEFF/, '').trim() === '---') {
+    const ende = zeilen.findIndex((z, i) => i > 0 && z.trim() === '---')
+    if (ende > 0) start = ende + 1
+  }
+  const treffer: TextTreffer[] = []
+  for (const [art, muster] of TEXT_MUSTER) {
+    let erste = 0
+    let anzahl = 0
+    for (let i = start; i < zeilen.length; i++) {
+      if (!muster.some((m) => m.test(zeilen[i]))) continue
+      if (anzahl === 0) erste = i + 1
+      anzahl++
+    }
+    if (anzahl > 0) treffer.push({ art, datei, zeile: erste, anzahl })
+  }
+  return treffer
+}
+
 /**
  * Risiken eines Plugins als Fakten aus der Deklaration.
+ * Seit F45 F-3b-1 zusätzlich: Agent-Werkzeuge außerhalb des Werkzeugsatzes bzw. Agent ohne tools (erbt alle Werkzeuge) und
+ * Text-Fakten der Skills/Agents/Commands (git push/merge, gh pr, git worktree add, Subagenten, Inline-Shell).
  * @param b - Bestandteile
  * @param werkzeugsatz - erlaubte_werkzeuge des Werkzeugsatzes 'schreibend', null = nicht bestimmbar
- * @returns Risiken in fester Reihenfolge (Hooks, MCP, Skills, Commands)
+ * @returns Risiken in fester Reihenfolge (Hooks, MCP, Skills, Commands, Agents, Texte)
  */
 export function risikenVon(b: Bestandteile, werkzeugsatz: readonly string[] | null): Risiko[] {
   const risiken: Risiko[] = []
@@ -293,6 +341,23 @@ export function risikenVon(b: Bestandteile, werkzeugsatz: readonly string[] | nu
   }
   for (const s of b.skills) regelRisiken('skill', s.name, s.allowed_tools)
   for (const c of b.commands) regelRisiken('command', c.name, c.allowed_tools)
+  // F-1094 (9): Werkzeugsatz unbekannt → einmal je Plugin sichtbar, und keine Bewertung „im Werkzeugsatz enthalten“.
+  if (werkzeugsatz === null && b.skills.length + b.agents.length + b.commands.length > 0) risiken.push({ art: 'rechte_nicht_bestimmbar', bestandteil: 'plugin', text: "Werkzeugsatz 'schreibend' unbekannt — Rechte und Agent-Werkzeuge nicht bewertet" })
+  const namen = werkzeugsatz === null ? null : new Set(werkzeugsatz.map(werkzeugName))
+  for (const a of b.agents) {
+    if (a.tools.length === 0) risiken.push({ art: 'agent_werkzeuge', bestandteil: `agent:${a.name}`, text: 'Agent ohne tools — erbt alle Werkzeuge des Laufs' })
+    else if (namen === null) risiken.push({ art: 'agent_werkzeuge', bestandteil: `agent:${a.name}`, text: `tools ${a.tools.join(', ')}: Werkzeugsatz 'schreibend' nicht bestimmbar` })
+    else {
+      const fremd = a.tools.filter((t) => !namen.has(werkzeugName(t)))
+      if (fremd.length > 0) risiken.push({ art: 'agent_werkzeuge', bestandteil: `agent:${a.name}`, text: `tools ${fremd.join(', ')} nicht im Werkzeugsatz 'schreibend'` })
+    }
+  }
+  const textRisiken = (art: 'skill' | 'agent' | 'command', name: string, treffer: readonly TextTreffer[] | undefined): void => {
+    for (const t of treffer ?? []) risiken.push({ art: t.art, bestandteil: `${art}:${name}`, text: `${TEXT_BESCHREIBUNG[t.art]} (${t.datei}:${t.zeile}, ${t.anzahl}×)` })
+  }
+  for (const s of b.skills) textRisiken('skill', s.name, s.text_treffer)
+  for (const a of b.agents) textRisiken('agent', a.name, a.text_treffer)
+  for (const c of b.commands) textRisiken('command', c.name, c.text_treffer)
   return risiken
 }
 
@@ -578,6 +643,15 @@ function argsVon(s: Record<string, unknown>): string[] {
   return Array.isArray(s.args) ? s.args.filter((a): a is string => typeof a === 'string') : []
 }
 
+/**
+ * Feld text_treffer nur mit Treffern (die Form eines Bestandteils ohne Treffer bleibt wie in F-3a).
+ * @param treffer - Treffer
+ * @returns {} oder { text_treffer }
+ */
+function mitTreffern(treffer: TextTreffer[]): { text_treffer?: TextTreffer[] } {
+  return treffer.length > 0 ? { text_treffer: treffer } : {}
+}
+
 /** Ergebnis von lesePluginOrdner. */
 export interface PluginOrdnerErgebnis {
   bestandteile: Bestandteile
@@ -609,7 +683,14 @@ export async function lesePluginOrdner(wurzel: string): Promise<PluginOrdnerErge
       for (const dir of kandidaten.sort()) {
         const text = await leseText(k, join(dir, 'SKILL.md'))
         if (text.art !== 'ok') continue
-        b.skills.push({ name: leseFrontmatter(text.wert).name ?? (dir.split(sep).pop() as string), pfad: relPfad(k, join(dir, 'SKILL.md')), allowed_tools: zerlegeRegeln(leseFrontmatterFeld(text.wert, 'allowed-tools')) })
+        // F45 F-3b-1: Text-Fakten aus SKILL.md und jeder weiteren .md im Skill-Ordner (z. B. Vorlagen für Subagenten).
+        const treffer = textTreffer(relPfad(k, join(dir, 'SKILL.md')), text.wert)
+        for (const weitere of await mdDateien(k, dir)) {
+          if (weitere === join(dir, 'SKILL.md')) continue
+          const t = await leseText(k, weitere)
+          if (t.art === 'ok') treffer.push(...textTreffer(relPfad(k, weitere), t.wert))
+        }
+        b.skills.push({ name: leseFrontmatter(text.wert).name ?? (dir.split(sep).pop() as string), pfad: relPfad(k, join(dir, 'SKILL.md')), allowed_tools: zerlegeRegeln(leseFrontmatterFeld(text.wert, 'allowed-tools')), ...mitTreffern(treffer) })
       }
     }
     // Agents und Commands: Standardordner und plugin.json-Pfade (Datei oder Ordner mit .md).
@@ -627,7 +708,7 @@ export async function lesePluginOrdner(wurzel: string): Promise<PluginOrdnerErge
     for (const datei of await mdAus('agents', manifest.agents, 'agents')) {
       const text = await leseText(k, datei)
       if (text.art !== 'ok') continue
-      const a: AgentTeil = { name: leseFrontmatter(text.wert).name ?? (datei.split(sep).pop() as string).replace(/\.md$/i, ''), pfad: relPfad(k, datei), tools: zerlegeRegeln(leseFrontmatterFeld(text.wert, 'tools')) }
+      const a: AgentTeil = { name: leseFrontmatter(text.wert).name ?? (datei.split(sep).pop() as string).replace(/\.md$/i, ''), pfad: relPfad(k, datei), tools: zerlegeRegeln(leseFrontmatterFeld(text.wert, 'tools')), ...mitTreffern(textTreffer(relPfad(k, datei), text.wert)) }
       b.agents.push(a)
     }
     for (const datei of await mdAus('commands', manifest.commands, 'commands')) {
@@ -636,7 +717,7 @@ export async function lesePluginOrdner(wurzel: string): Promise<PluginOrdnerErge
       // Name wie die CLI: relativ zu commands/ (Unterordner mit ':'), sonst Dateiname.
       const imStandard = relative(join(wurzel, 'commands'), datei)
       const basis = imStandard.startsWith('..') ? (datei.split(sep).pop() as string) : imStandard
-      const c: CommandTeil = { name: basis.replace(/\.md$/i, '').split(sep).join(':'), pfad: relPfad(k, datei), allowed_tools: zerlegeRegeln(leseFrontmatterFeld(text.wert, 'allowed-tools')) }
+      const c: CommandTeil = { name: basis.replace(/\.md$/i, '').split(sep).join(':'), pfad: relPfad(k, datei), allowed_tools: zerlegeRegeln(leseFrontmatterFeld(text.wert, 'allowed-tools')), ...mitTreffern(textTreffer(relPfad(k, datei), text.wert)) }
       b.commands.push(c)
     }
     // Hooks, MCP, LSP: Standarddatei + plugin.json (Pfad, Liste, eingebettet).

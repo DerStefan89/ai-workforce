@@ -85,7 +85,7 @@ function uebernehmeBericht(id, z) {
   if (e.pruefbericht !== 'lokal') e.pruefbericht = 'vorhanden'
   const q = bericht.quelle ?? {}
   // F-2b-2c: bericht_kurz (Server, berichtKurz) trägt typ, geprüftes bin und SKILL.md für „Vormerken“.
-  e.pruefbericht_letzter = z.bericht_kurz ?? { artefakt_id: bericht.artefakt_id, version: bericht.version, urteil: bericht.ergebnis?.urteil, gepinnte_version: q.art === 'git' ? q.sha : q.version, quelle: q, erstellt_am: bericht.erstellt_am, lauf_id: bericht.lauf_id }
+  e.pruefbericht_letzter = z.bericht_kurz ?? { artefakt_id: bericht.artefakt_id, version: bericht.version, urteil: bericht.ergebnis?.urteil, gepinnte_version: q.art === 'git' ? q.sha : q.art === 'npm' ? q.version : q.kopie_hash, quelle: q, erstellt_am: bericht.erstellt_am, lauf_id: bericht.lauf_id }
   // QA M5: ein schon vorgemerkter Eintrag bleibt vorgemerkt (kein zweites Vormerken nach „Erneut prüfen“); nur ein Fehler wird verworfen.
   if (vormerken.get(id)?.phase === 'fehler') vormerken.delete(id)
   zeichneListe()

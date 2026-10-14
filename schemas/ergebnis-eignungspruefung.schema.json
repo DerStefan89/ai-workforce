@@ -11,7 +11,7 @@
       "enum": ["GEEIGNET", "MIT_AUFLAGEN", "NICHT_GEEIGNET"],
       "description": "GEEIGNET: keine Auflage nötig. MIT_AUFLAGEN: nur mit den genannten Auflagen (mindestens eine). NICHT_GEEIGNET: sperrt 'Freigeben & installieren' für diese Version."
     },
-    "typ": { "enum": ["skill", "mcp", "agent"], "description": "Typ der geprüften Fähigkeit, exakt wie im Auftrag vorgegeben." },
+    "typ": { "enum": ["skill", "mcp", "agent", "plugin"], "description": "Typ der geprüften Fähigkeit, exakt wie im Auftrag vorgegeben. 'plugin' seit F45 F-3b-1: die gefilterte Kopie eines Plugins aus Stefans Claude Code (gepinnte_version = kopie_hash)." },
     "gepinnte_version": {
       "type": "string",
       "minLength": 1,

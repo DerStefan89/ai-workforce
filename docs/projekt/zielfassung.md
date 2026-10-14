@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.42 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.43 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -82,6 +82,8 @@ v1.39 → v1.40: **§13.6 E-M5-18 um die neue Reihenfolge ergänzt, E-F46-1 und 
 v1.40 → v1.41: **§13.6 um E-F45-3 = A ergänzt** (Stefan, 11.10.2026, Fixpaket „Arbeitsfähigkeit“, B1a): jeder schreibende Ablauf arbeitet in einem eigenen Git-Worktree auf eigenem Branch neben dem Projekt; der Projektordner bleibt unberührt; Löschen im eigenen Worktree nur über eine vom Server geprüfte Löschliste (F-715). Umsetzung F45 B1a-1.
 
 v1.41 → v1.42: **§13.6 um E-F45-6 bis E-F45-10 und die Sammlung ergänzt** (Stefan, 11./12.10.2026, Fixpaket „Arbeitsfähigkeit“, WS F): E-F45-6/7/8 aus F-1 nachgetragen (Opt-in je Projekt für Projekt-Agents/-Skills; kaputte lokale Datei sperrt Läufe mit Fähigkeiten; Ablage `~/.ai-workforce/faehigkeiten.lokal.json`). E-F45-9 = B (Plugins installierbar und im Lauf nutzbar, gegen die Empfehlung A; eigener Workstream F-3 mit Sicherheitsprüfung). E-F45-10 = A (Website-Fähigkeit mit Motion, Interaktion und 3D ins Fixpaket vor F30, gegen die Empfehlung B; B3 wird „Design & Motion in Fremdprojekten“, neuer Referenzauftrag R2 und Beleg 15). Stefans Sammlung `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl (F-2b). Findings F-1056 bis F-1059 (K20–K23).
+
+v1.42 → v1.43: **§13.6 um E-F45-11 und E-F45-12 ergänzt** (Stefan, 14.10.2026, Fixpaket „Arbeitsfähigkeit“, „2x A“): E-F45-11 = A (R2 = Motion im Leitstand der Workforce statt Landingpage im Fremdprojekt; R bleibt in haushaltsbuch2; 3D-Element entfällt vorerst; Beleg 15 angepasst). E-F45-12 = A (neuer Baustein „Fähigkeit bauen“ nach B2b, vor B3: F-1069 Vorschlagsordner + Übernahme per Knopf, F-1096 Form-Empfehlung durch den Architekten). Neue Reihenfolge F-3b-1 → F-3b-2 → B2b → Fähigkeit bauen → B5a/B5b → B3 → R → R2 → F30. Findings F-1095 bis F-1097 (K38–K40).
 
 ---
 
@@ -1059,6 +1061,20 @@ als Eingabe mit Empfehlung, Motion-Skills über den Weg aus WS F und ein
 Render-Nachweis mit Bewegung (Bildfolge oder Video, Ladezeit-Budget, „Bewegung
 reduzieren“). Neuer Referenzauftrag R2 nach R: eine kleine Landingpage mit
 Scroll-Animation, Interaktion und einem 3D-Element; neuer Beleg 15.
+
+**E-F45-11 = A** *(Stefan, 14.10.2026)* — R2 wird Motion im Leitstand der
+Workforce: Bewegungs-Tokens, `prefers-reduced-motion` Pflicht, Bewegung mit
+Zweck, kein Ruckeln beim Poll, design-guardian und Render-Nachweis mit
+Bewegung; gebaut im eigenen Worktree, nie am laufenden Leitstand. Der
+Referenzauftrag R bleibt im Fremdprojekt (haushaltsbuch2). Das 3D-Element
+aus E-F45-10 entfällt vorerst.
+
+**E-F45-12 = A** *(Stefan, 14.10.2026)* — Neuer Baustein „Fähigkeit bauen“
+nach B2b, vor B3 (≈ 0,5–0,75 AT): ein Ablauf baut eine Fähigkeit in einen
+Vorschlagsordner, Stefan übernimmt sie per Knopf (F-1069); bei
+wiederkehrenden Aufgaben empfiehlt der Architekt die Form mit Begründung —
+Skript/Gate, Skill, Agent oder MCP (F-1096). Reihenfolge danach: F-3b-1 →
+F-3b-2 → B2b → Fähigkeit bauen → B5a/B5b → B3 → R → R2 → F30.
 
 **Sammlung als Basis** *(Stefan, 12.10.2026)* — Stefans bewertete Sammlung
 `docs/harness/kandidaten-2026-09-15.md` ist die Basis der Fähigkeiten-Auswahl.

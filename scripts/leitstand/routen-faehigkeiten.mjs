@@ -29,7 +29,7 @@
 
 import { mkdirSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { aendereAktivierung, hashLokaleDatei, ladeFaehigkeitenLokal, projektEinstellungen, SHA256_MUSTER, schreibeFaehigkeitenLokal, setzeInhaltsfreigabe, zerlegeSchluessel } from '../../src/faehigkeiten/index.ts'
+import { aendereAktivierung, aenderePluginZuordnung, entfernePluginFreigabe, hashLokaleDatei, ladeFaehigkeitenLokal, projektEinstellungen, SHA256_MUSTER, schreibeFaehigkeitenLokal, setzeInhaltsfreigabe, setzePluginFreigabe, zerlegeSchluessel } from '../../src/faehigkeiten/index.ts'
 import { ladeLokalStand, schreibeLokalStand } from '../../src/faehigkeiten/stand.ts'
 import { ID_MUSTER } from '../../src/projekte/index.ts'
 
@@ -351,10 +351,36 @@ export function freigabeSperrgrund(projekt, eintrag, hash) {
 }
 
 /**
+ * Neue Datei je Änderungsart (rein; F45 F-3b-1, Advisor F3) — der einzige Ort, der setzePluginFreigabe aufruft (Gate f45-f3b1).
+ * @param daten - gültige Datei
+ * @param projektId - Projekt dieser Instanz
+ * @param aenderung - siehe aendereLokaleDatei
+ * @returns neue Datei oder null bei unbekannter Art
+ */
+function neueDatei(daten, projektId, aenderung) {
+  switch (aenderung?.art) {
+    case 'aktivierung':
+      return aendereAktivierung(daten, projektId, aenderung.eintrag, aenderung.aktiv)
+    case 'freigabe':
+      return setzeInhaltsfreigabe(daten, projektId, aenderung.eintrag, aenderung.hash)
+    case 'plugin_freigabe':
+      return setzePluginFreigabe(daten, aenderung.pluginId, aenderung.freigabe)
+    case 'plugin_ruecknahme':
+      return entfernePluginFreigabe(daten, aenderung.pluginId)
+    case 'plugin_zuordnung':
+      return aenderePluginZuordnung(daten, projektId, aenderung.rolle, aenderung.eintrag, aenderung.an)
+    default:
+      return null
+  }
+}
+
+/**
  * Liest die lokale Datei, wendet eine Änderung an und schreibt sie synchron. Nie über eine ungültige Datei (E-F45-7).
  * @param pfad - Pfad der lokalen Datei oder null (Instanz ohne Datei: 500)
  * @param projektId - Projekt dieser Instanz
- * @param aenderung - { art: 'aktivierung', eintrag, aktiv } | { art: 'freigabe', eintrag, hash }
+ * @param aenderung - { art: 'aktivierung', eintrag, aktiv } | { art: 'freigabe', eintrag, hash } | seit F45 F-3b-1
+ *   { art: 'plugin_freigabe', pluginId, freigabe } | { art: 'plugin_ruecknahme', pluginId } | { art: 'plugin_zuordnung', rolle, eintrag, an }
+ *   (Advisor F3: vollständige Fallunterscheidung — eine unbekannte Art schreibt nichts, 500)
  * @param stand - F45 F-2a (QA 1): angezeigter Hash der Datei (oder 'fehlt'); weicht der aktuelle ab, wird nichts geschrieben
  *   (409) — so übernimmt kein Klick eine Fremdänderung, die nach dem Laden der Seite geschah. undefined = ohne Vergleich.
  * @returns { ok: true, einstellungen, hash (F45 F-2a: sha256 der geschriebenen Bytes, für den Wächter) } oder { ok: false, status, grund }
@@ -366,7 +392,8 @@ export function aendereLokaleDatei(pfad, projektId, aenderung, stand = undefined
   if (waechter !== null && waechter.pruefe(hashLokaleDatei(pfad)) !== null) return { ok: false, status: 409, grund: `${FREMD_UNBESTAETIGT} — nichts geändert` }
   const lokal = ladeFaehigkeitenLokal(pfad)
   if (lokal.zustand === 'ungueltig') return { ok: false, status: 409, grund: `${lokal.grund} — erst von Hand reparieren oder löschen, nichts geändert` }
-  const neu = aenderung.art === 'aktivierung' ? aendereAktivierung(lokal.daten, projektId, aenderung.eintrag, aenderung.aktiv) : setzeInhaltsfreigabe(lokal.daten, projektId, aenderung.eintrag, aenderung.hash)
+  const neu = neueDatei(lokal.daten, projektId, aenderung)
+  if (neu === null) return { ok: false, status: 500, grund: `unbekannte Änderungsart '${String(aenderung?.art)}' — nichts geändert` }
   let hash
   try {
     mkdirSync(dirname(pfad), { recursive: true })

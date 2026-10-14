@@ -1,0 +1,6 @@
+| Aktion | Übernommen | Nicht übernommen (Hook) | Prüfen bedienbar | Freigeben bedienbar | Zurücknehmen bedienbar | debuggen zugeordnet | Kästchen bedienbar | Sperre | Verwaist | lang | Freigabe | Bericht | Aktion | Hinweis Lauf | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Workforce geladen | false | false | false | false | false | false | false | false | false | tr | (fehlt) | (fehlt) | (fehlt) | Workforce çalıştırmasında henüz etkili değil — onayı ve atamayı şimdiden belirleyebilirsiniz. | false | true |
+| Capability Library | false | false | false | false | false | false | false | false | false | tr | (fehlt) | (fehlt) | (fehlt) | Workforce çalıştırmasında henüz etkili değil — onayı ve atamayı şimdiden belirleyebilirsiniz. | false | true |
+| Reiter „Plugins“ gewählt → Liste | false | false | false | false | false | false | false | false | false | tr | (fehlt) | (fehlt) | (fehlt) | Workforce çalıştırmasında henüz etkili değil — onayı ve atamayı şimdiden belirleyebilirsiniz. | false | true |
+| Detail: veraltet (tr) | true | true | true | false | true | true | true | false | false | tr | veraltet | anderer | (fehlt) | Workforce çalıştırmasında henüz etkili değil — onayı ve atamayı şimdiden belirleyebilirsiniz. | false | true |

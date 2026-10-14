@@ -11835,6 +11835,7 @@ Maßnahme: Fixpaket Arbeitsfähigkeit, B4.
 Status: teilweise (F45 F-1, 12.10.2026, Teil Init-Gate): `pruefeInitZeile` verlangt `init.plugins` leer (fehlend = Verstoß); jeder Lauf mit Init-Gate schaltet die eingebauten Plugins per `--settings enabledPlugins` ab (Spike F-1 S3: `cc-plugin-telemetry@builtin`, `cc-plugin-plugin-authoring@builtin` auch mit `--setting-sources project`). Offen (F-2): Plugins im Fähigkeitenmodell/Katalog.
 Nachtrag (F45 F-3a-1, 14.10.2026): Entscheidung Stefan 13.10.2026 — Quelle sind Stefans in Claude Code installierte Plugins, nicht die Sammlung. Bestand gelesen (nur lesend, `claude plugin list --json` + Plugin-Ordner, `src/claude-plugins/`, Route GET `/api/plugins`, Gate `check-f45-f3a-plugins.mjs`): superpowers (inaktiv), gitkraken, design, cowork-plugin-management (aktiv, synced). Spike `features/F45/nachweise/f3a/spike.md`: (a) Plugin-Bestandteile erscheinen mit Präfix `<plugin>:` in init.skills/agents/slash_commands, `init.plugins` = `<name>@inline`; (b) Plugin-Hooks laufen; (c) allowed-tools eines Commands erweitert den Werkzeugsatz; (d) `enabledPlugins:false` wirkt auf `--plugin-dir`. Unter CLI 2.1.299 ist `init.plugins` mit den heutigen Settings weiter `[]`. Offen: Anzeige im Leitstand (F45 F-3a-2), Plugins im Lauf (F-1090, F45 F-3b).
 Nachtrag (F45 F-3a-2, 14.10.2026): Anzeige erledigt — Reiter „Plugins aus deinem Claude Code“ in der Capability Library (Liste, Detail mit Bestandteilen und Risiken, eingebaute getrennt mit Messversion, leer/unlesbar mit Grund, fester Hinweis „Noch nicht im Workforce-Lauf nutzbar — kommt im nächsten Schritt.“; gelesen nur bei Reiterwahl und „Neu laden“; Gate `check-f45-f3a2-anzeige.mjs`). Offen bleibt nur Plugins im Lauf (F-1090, F45 F-3b).
+Nachtrag (F45 F-3b-1, 14.10.2026): Plugins freigeben gebaut (gefilterte Kopie `src/plugin-kopie`, Prüfbericht über die Kopie, Freigabe an Hash und Bericht gebunden, Zuordnung je Rolle nur Ausführung); `init.plugins` bleibt `[]`, Startargumente unverändert. Offen: Plugins im Lauf (F-1090, F45 F-3b-2).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-911** · `TECH_DEBT` · P2 · offen
@@ -13103,6 +13104,7 @@ Auswirkung: Mittel — Codex läuft in jeder Kette mit, ohne belegten Nutzen.
 Maßnahme: Die Laufakte zählt je Review bestätigte Befunde „nur Codex“ / „nur Claude-Prüfer“ / „beide“. Codex bleibt Reviewer, wenn er in R plus der ersten F30-Woche ≥ 1 bestätigten Befund findet, den die Claude-Prüfer nicht fanden; sonst nur noch bei Kontrolltiefe „hoch“. Voraussetzung F-829/F-929 (B2a).
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
+Nachtrag (Stefan, 14.10.2026): Codex prüft heute schon im Review-Schritt (Vorlagen standard/hoch). Der Nutzen wird in B2b gemessen (Codex-Review-Spec §11): nur Codex / nur Claude / beide, Fehlalarme, Kosten.
 Zugeordnet: Fixpaket Arbeitsfähigkeit, B2b.
 
 **F-1051** · `TECH_DEBT` · P2 · offen
@@ -13116,6 +13118,7 @@ Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Nachtrag (Challenger, Auftrag F45 F-2b-2, 12.10.2026): Priorität P3 → P2. Maßnahme neu: F-3 — fremde Agents installierbar über denselben Weg wie Plugins (Pin, Inhalts-Hash, Prüfbericht, Freigabe, Opt-in je Projekt). Der Auftrag nennt dafür F-1052; inhaltlich (P3, fremde Agents) ist es dieser Eintrag — F-1052 (API-Schlüssel, schon P2) bleibt unverändert.
 Zugeordnet: F45 F-3.
 Nachtrag (F45 F-3a-1, 14.10.2026): F-3 ist geteilt; fremde Agents gehen mit F-3b (F-1090) über den Plugin-Weg — Spike `features/F45/nachweise/f3a/spike.md`: ein Agent aus einem Plugin erscheint als `<plugin>:<agent>` in `init.agents`.
+Nachtrag (F45 F-3b-1, 14.10.2026): Agents aus Plugins gehen über die gefilterte Kopie (Frontmatter wie Projekt-Agents: `tools` Pflicht ohne Agent/Task/Skill und im Werkzeugsatz, `model` nur inherit, E-F3b-6), werden mit dem Plugin geprüft und freigegeben und sind der Ausführung zuordenbar; im Lauf erst mit F45 F-3b-2.
 
 **F-1052** · `TECH_DEBT` · P2 · offen
 Titel: extern_lesend-MCPs mit API-Schlüssel sind nicht nutzbar (Challenger K18).
@@ -13301,6 +13304,7 @@ Beschreibung: Läufe dürfen `**/.claude/**` nicht schreiben (deny Write/Edit) �
 Fundstelle: `src/faehigkeiten/start.ts` (Write/Edit(`**/.claude/**`)), `src/ressourcen/ort-b-start.ts` (CLAUDE_ORDNER_SPERREN).
 Auswirkung: Mittel — „Fähigkeit bauen“ endet heute in Handarbeit.
 Maßnahme: nach F30/Teil 2 — Ablauf „Fähigkeit bauen“ schreibt in einen Vorschlagsordner; Stefan übernimmt per Knopf (Server schreibt, Freigabe nach Inhalt wie F-1/F-2a).
+Nachtrag (Stefan, 14.10.2026, E-F45-12 = A): vorgezogen in den neuen Baustein „Fähigkeit bauen“ nach B2b, vor B3 (≈ 0,5–0,75 AT), zusammen mit der Form-Empfehlung durch den Architekten (F-1096, K39).
 Status: offen.
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 
@@ -13501,15 +13505,15 @@ Maßnahme: Eigener Merker statt `execFile`-`timeout`: ein Zeitgeber setzt `zeitA
 Status: erledigt (F45 B2a-3b, Korrekturrunde Challenger, 13.10.2026).
 Feature/Run: Entdeckt: F45 B2a-3b (CI/Cloud), 13.10.2026.
 
-**F-1090** · `TECH_DEBT` · P2 · offen
+**F-1090** · `TECH_DEBT` · P2 · teilweise
 Titel: Plugins aus Stefans Claude Code laufen in der Workforce nicht (F45 F-3b).
 Beschreibung: Entscheidung Stefan 13.10.2026: dieselben Plugins wie in Claude Code. F-3a-1 liest und zeigt den Bestand nur (`src/claude-plugins/`, GET `/api/plugins`); kein Lauf lädt ein Plugin (`init.plugins` bleibt `[]`). Spike `features/F45/nachweise/f3a/spike.md` (CLI 2.1.299): ein per `--plugin-dir` geladenes Plugin bringt alle Bestandteile auf einmal (Skills/Agents/Commands mit Präfix `<plugin>:`, `init.plugins` = `<name>@inline`); seine Hooks laufen ohne Abfrage (SessionStart, UserPromptSubmit, PreToolUse — auch vor einem verweigerten Aufruf); `allowed-tools` eines Commands erweitert den Werkzeugsatz (S1: `gh pr comment` lief über den Command, ohne Command verweigert); `enabledPlugins:false` schaltet auch ein `--plugin-dir`-Plugin ab; der erste Lauf legt `~/.claude/plugins/data/<name>-inline` an (leerer Ordner `spike-plugin-inline` vom Spike liegt noch dort).
 Fundstelle: `src/claude-code-gateway/index.ts` (`baueAufruf`, `pruefeInitZeile`), `src/faehigkeiten/start.ts`, `src/claude-plugins/`.
 Auswirkung: Mittel — Stefans Plugins (z. B. design-Skills) stehen dem Lauf nicht zur Verfügung.
 Maßnahme: F45 F-3b: gepinnte Kopie je Plugin mit Inhalts-Hash (nie Stefans Ordner laden), Freigabe je Plugin; Hook nur nach Freigabe je Hook-Hash; Plugin-MCP nur gepinnt (entfernte/ungepinnte nach E-F36-4 gesperrt); Commands und Skills mit erweiterten Rechten oder externer Wirkung gesperrt (aus der Kopie entfernt oder `allowed-tools` gestrichen, Prüfbericht nennt es); `init.plugins` = Soll und Präfixnamen in den Init-Gate-Mengen; nur Worker claude-code; Datenordner `plugins/data/<name>-inline` im Vorher/Nachher. Schätzung ≈ 1,0–1,25 AT, Advisor-Pass vorab.
-Status: offen.
+Status: teilweise — F45 F-3b-1 (14.10.2026, Plan `features/F45/plan-f3b.md` v2.1): gefilterte, gepinnte Kopie je Plugin (`src/plugin-kopie`: nur `skills/`, `agents/`, `commands/` nach Positivliste, Frontmatter fail-closed, Grenzen des Prüflaufs, Manifest neu; nie Hooks/MCP/LSP — E-F3b-1 = A Hooks nie im Lauf), Ablage `~/.ai-workforce/plugin-kopien/<id>/<hash>` (E-F3b-4), Prüfbericht über die Kopie mit dem bestehenden Prüflauf (Quelle `art: plugin`), Freigabe je Plugin an Hash und Bericht gebunden (Reihenfolge Advisor N1), Rücknahme, Zuordnung je Rolle additiv in der lokalen Datei (nur Ausführung E-F3b-3, Commands nicht E-F3b-5), Drift (veraltet, Kopie verändert, Bericht überholt/fehlt, Quelle fehlt, mehrdeutig), Risiko-Fakten aus Texten; Gate `check-f45-f3b1-freigabe.mjs`. Kein Lauf geändert. Offen: Plugins im Lauf (F45 F-3b-2: Spike-Nachmessung, Lauf-Kopie, `--plugin-dir`, Init-Gate, Hash-Prüfung vor dem Lauf, Instruktion).
 Feature/Run: F45 F-3a-1 (Spike), 14.10.2026.
-Zugeordnet: F45 F-3b.
+Zugeordnet: F45 F-3b-1 (gebaut), F45 F-3b-2 (Rest).
 
 **F-1091** · `TECH_DEBT` · P3 · offen
 Titel: Restpunkte F45 F-3a-1 (Plugin-Bestand lesen).
@@ -13518,6 +13522,7 @@ Fundstelle: `src/claude-plugins/index.ts`, `scripts/leitstand/routen-plugins.mjs
 Auswirkung: Gering — Anzeige, kein Lauf betroffen.
 Maßnahme: (1)(2) mit F45 F-3a-2 (Anzeige mit Messversion der Referenzliste; Messung `enabled` aus zwei Ordnern — vorher zeigt die Oberfläche `aktiv` bei scope local nicht als Stand dieses Projekts); (3)(4)(6)(7)(8)(9)(11)(13)–(17) bei Bedarf; (12) vor F-3b; (18) mit F-3a-2; (5) mit F-3b (F-1090); (10) bleibt.
 Stand F45 F-3a-2 (14.10.2026): (1) erledigt — eingebaute getrennt, Kopf „Referenzliste, gemessen mit <cli_version>“, Hinweis auf weitere eingebaute Plugins neuerer Versionen, Quelle je Eintrag, Lesefehler der Liste mit Grund. (2) erledigt — gemessen (`features/F45/nachweise/f3a2/messung-scope-local.mjs`/`.json`, isolierter `CLAUDE_CONFIG_DIR`, CLI der Messung): `enabled` hängt vom Arbeitsordner ab (aus dem Installationsprojekt `true`, aus anderen Ordnern `false`; `projectEnabled` immer `false`); die Oberfläche zeigt bei scope ≠ user „Je nach Ordner“ und im Detail den Wert „laut Abruf aus <instanz_pfad>“ mit Installationsprojekt und Messhinweis (scope project/unbekannt „nicht gemessen“). (4) in der Anzeige entschärft (Scope und Installationsprojekt unter dem Namen, Auswahl über id+scope+projekt_pfad). (18) erledigt — Typ `PluginAntwort` in `src/claude-plugins/types.ts`. Übrige Punkte unverändert.
+Stand F45 F-3b-1 (14.10.2026): (5) entschärft — Drift einer Freigabe misst nur die Projektion der übernommenen Teile (Laufzeitdateien außerhalb der Standardordner ändern sie nicht; im Skill-Ordner zählen sie weiter). (12) bleibt Anzeige: MCP kommt nie in die Kopie, und der Auftrag des Prüflaufs nennt nicht übernommene Teile nur mit Art, Name und Grund-Code (keine Befehle, Argumente, URLs). (3) Hooks im Frontmatter von Skills/Agents sperren die Übernahme (Positivliste).
 Status: offen (Rest).
 Feature/Run: Entdeckt: F45 F-3a-1 (qa, code-reviewer), 14.10.2026.
 
@@ -13529,6 +13534,7 @@ Auswirkung: Gering — Tests und Gate-Rotfälle vorhanden; ohne Regel kann ein T
 Maßnahme: Testentwurf (Fälle mit erwartetem Ergebnis) vor dem Modul im Plan festhalten; der Bauauftrag verlangt den roten Lauf vor dem Modul als Beleg.
 Status: offen.
 Feature/Run: F45 F-3a-1 (Challenger vor dem Commit), 14.10.2026.
+Nachtrag (F45 F-3b-1, 14.10.2026): Für die vier Kernmodule Tests zuerst, roter Lauf 12:18 als Beleg (`features/F45/nachweise/f3b1/nachweis.md` §1). Nach dem Modul geschrieben (vermerkt): Routen-Bausteine und Oberfläche — dort ist rot nur über die Rotfälle der Gates belegt.
 
 **F-1093** · `TECH_DEBT` · P3 · offen
 Titel: Restpunkte F45 F-3a-2 (Reiter „Plugins aus deinem Claude Code“).
@@ -13536,5 +13542,44 @@ Beschreibung: Aus den Nachpässen (code-reviewer, qa, design-guardian, alle „f
 Fundstelle: `public/leitstand/plugins-anzeige.js`, `public/leitstand/api.js`, `public/leitstand/plugins-anzeige.test.mjs`, `public/leitstand/i18n/{tr,ru}.js`, `features/F45/nachweise/f3a2/render/erzeuge-nachweis.mjs`.
 Auswirkung: Gering — reine Anzeige, kein Lauf betroffen.
 Maßnahme: (1)(3)(4)(6) bei Bedarf bzw. mit dem nächsten Eingriff am Reiter; (2) mit F45 F-3b (Spike/Plan; Challenger 14.10.2026): Messung wie `features/F45/nachweise/f3a2/messung-scope-local.mjs` mit scope user + Projekt-Settings; (5) beim nächsten Render-Nachweis (Persona ausblenden, Abrufe zählen); (7) erledigt.
-Status: offen.
+Status: offen (Rest) — (2) geschlossen (F45 F-3b-1, 14.10.2026, Challenger-Empfehlung (5)): maßgeblich für den Workforce-Lauf ist die Workforce-Freigabe, nicht `enabled` in Claude Code; eine Messung für scope user entfällt. (7) erledigt.
 Feature/Run: Entdeckt: F45 F-3a-2 (Nachpässe code-reviewer, qa, design-guardian), 14.10.2026.
+
+**F-1094** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte F45 F-3b-1 (Plugins freigeben).
+Beschreibung: Aus der Korrekturrunde (code-reviewer, qa, design-guardian): (1) Prüfläufe startet nur die Workforce-Instanz (die Oberfläche zeigt in Projektansichten „Prüfen geht in der Ansicht des Projekts ai-workforce“). Laut Messung `features/F45/nachweise/f3a2/messung-scope-local.json` meldet die CLI-Liste scope local aus jedem Ordner — für scope `project` ist das nicht gemessen; ein solches Plugin wäre in der Workforce-Ansicht nicht prüfbar und erschiene dort gegebenenfalls als „nicht mehr installiert“ (verwaist je Ansicht, QA-Nachpass N5). (2) Doppelter Code: Frontmatter-Positivlisten, `werkzeugName`, `LIZENZ_MUSTER`, Muster der Bericht-Kennung und `vergleicheOrdner` neben `leseInstalliert`; `projiziereKopie` ist lang (≈ 200 Zeilen, Teilung in Skills/Agents/Commands). (3) Jedes GET …/plugins liest die Inhalte aller Plugins (Grenze 25 MB je Plugin) und vergleicht die gespeicherte Kopie — keine Messung gegen das Zeitlimit von 20 s; mehr als 3000 Einträge bzw. 25 MB unter den Standardordnern machen das ganze Plugin nicht kopierbar, auch wenn die Masse in nicht übernommenen Teilen liegt. (4) Fehlertexte der Routen werden roh (escaped) angezeigt; die Plugin-Routen sind ohne Lauf-id, Artefakt-id und Regex, aber Pfade bleiben: der 409 bei geändertem `stand` und das Schreiben der lokalen Datei nennen den Pfad von `faehigkeiten.lokal.json` (`routen-faehigkeiten.mjs`), `fehler.message` von Node (Lesen/Schreiben der Kopie, „nicht bestimmbar“, „unerwartet abgebrochen“) enthält Pfade; der D13-409 des Prüfstarts nennt die Lauf-id. (5) Gate (f) erkennt nur statische Importe; `FELD_ERLAUBT` enthält den ganzen Server (die Startfunktion ist gesondert geprüft). (6) Render-Nachweis ohne „Prüfung läuft“ (die Attrappe ist zu schnell) und mit sichtbarer Persona-Schaltfläche (F-1093 (5)). (7) ru/tr im Plugin-Block gesiezt (F-1093 (6), beibehalten). Nachpässe (nach der einen Korrekturrunde nicht mehr umgesetzt): (8) design-guardian „nicht freigegeben“ wegen Fokus — während einer laufenden Aktion, nach erfolgreichem „Freigeben“ (Knopf dann gesperrt), nach „Freigabe zurücknehmen“ (Knopf weg) und nach dem Entfernen verwaister Einträge fällt der Fokus auf body; dazu: gesperrte Knöpfe bei verwaisten Einträgen ohne Sperrtext/aria-describedby, Freigabe-Zustand im Detail noch unter den Stammdaten, Grund aus `freigabe_sperre` nicht gezeigt, Hauptknopf bleibt neben einer Fehlermeldung hervorgehoben, Sperrhinweis klebt an den Auflagen, kein Render mit reduzierter Bewegung; `setzeFokus` nimmt die erste Meldung im ganzen Container. (9) Code-Review: `pluginWerkzeugsatz` `null` fällt per `??` auf den Werkzeugsatz der eigenen Startvorlage zurück (Hashes wieder je Instanz) — besser `!== undefined`; `plugin.json` ohne Größengrenze gelesen, gezählt wird `lstat`-Größe statt gelesener Bytes; kaputtes `plugin.json` still (Name aus der id); `existsSync` folgt einer ins Leere zeigenden Junction (500 statt 409); Ordner-Links unter agents/commands und Einträge `eintragstyp` nicht bzw. als `link` angezeigt; leeres `LEITSTAND_PLUGIN_KOPIEN_WURZEL` ergäbe das Arbeitsverzeichnis; `berichtUeberholt` optional; Text „neu prüfen und freigeben“ zu streng (erneutes Freigeben reicht bei passendem Bericht). (10) QA: „Erneut prüfen“ bei freigegebenem Plugin setzt die Freigabe auf „Bericht überholt“ ohne Vorwarnung am Knopf; 422 „ohne Skill/Agent“ im Server ungetestet; Steuerungstest prüft nur den Zähler der Generation.
+Fundstelle: `src/plugin-kopie/index.ts`, `scripts/leitstand/routen-plugin-freigabe.mjs`, `public/leitstand/plugins-anzeige.js`, `scripts/check-f45-f3b1-freigabe.mjs`, `features/F45/nachweise/f3b1/render/`.
+Auswirkung: Gering — Freigabe und Zuordnung wirken im Lauf erst mit F-3b-2; alle Punkte sind sichtbar oder fail-closed.
+Maßnahme: (1) mit F-3b-2 entscheiden (Prüflauf je Projektinstanz oder Liste aus dem Projektordner; scope project messen); (2)(3) beim nächsten Eingriff in `src/plugin-kopie`, (3) Messung vor F-3b-2; (4)(5) bei Bedarf; (6) mit dem nächsten Render-Nachweis; (7) bleibt; (8) vor oder mit F-3b-2 als kleiner Nachzug (Stefan entscheidet, ob vor dem Merge); (9) `??`-Fallback vor F-3b-2 (die Lauf-Kopie hängt am selben Werkzeugsatz), Rest beim nächsten Eingriff; (10) bei Bedarf.
+Stand (Challenger 14.10.2026, vor dem Merge): (8) erledigt — Fokus während einer Aktion auf dem Statusbereich des Plugins, danach auf der Ergebnis- bzw. Fehlermeldung (bei der Zuordnung auf dem Kästchen), nach dem Entfernen nicht mehr installierter Plugins auf der Liste bzw. dem Kopf des Reiters, nie body (`fokusZiele`, `fokusUndAnsage`); Statusmeldungen über die eine feste Live-Region `#plugins-status` (Entscheidung Challenger); Tests in `plugins-workforce-anzeige.test.mjs`, Render-Folgen `f3b1-tastatur-de-1440` und `f3b1-tastatur-verwaist-de-390`. Nach dem gezielten Nachpass vervollständigt: stilles Neuladen nach einer Aktion (kein Ladezustand, Meldung und Fokus bleiben bis zur neuen Antwort stehen), Fokus und Ansage direkt nach dem Ergebnis; Test mit verzögertem Abruf. Offen (nicht blockierend): Phase „läuft“ ohne Render-Schritt (Attrappe zu schnell; Code und Unit-Test belegen sie); Fokus und Live-Region sagen denselben Text an — mit NVDA in der Abnahme prüfen, ob doppelt vorgelesen wird. Die übrigen Design-Hinweise aus (8) (Sperrtext bei verwaisten Einträgen, Zustand unter den Stammdaten, Grund aus `freigabe_sperre`, Hauptknopf neben Fehlermeldung, Abstand Sperrhinweis, reduzierte Bewegung) bleiben offen. (9) erledigt — `pluginWerkzeugsatz` null gilt als „Werkzeugsatz unbekannt“ (kein Rückfall per `??`, auch die Risiko-Fakten des Bestands nutzen denselben Werkzeugsatz): Fakt „Werkzeugsatz 'schreibend' unbekannt“ je Plugin, keine Bewertung „im Werkzeugsatz“, Agents nicht übernommen; Gate f3b1 (o) mit sechs Rotfällen; Doku der Option (Server, baueProjektHandlerMap) nachgezogen. Offen (nicht blockierend): die Quelltext-Prüfung in (o) kennt nur die heutige Schreibweise — der Laufzeitteil ist der eigentliche Nachweis. Die übrigen Code-Review-Hinweise aus (9) bleiben offen.
+Status: offen (Rest).
+Feature/Run: Entdeckt: F45 F-3b-1 (code-reviewer, qa, design-guardian), 14.10.2026.
+
+**F-1095** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Arbeitsweise als Ziel der Workforce (Challenger K38).
+Beschreibung: Stefan, 14.10.2026: „So wie es aktuell läuft, soll die Workforce laufen.“ Sechs Prinzipien der heutigen Arbeitsweise: (1) kleine Schnitte, „zu groß → teilen“; (2) Plan → Advisor → Plan v2, Bau erst nach freigegebenem Plan; (3) code-reviewer + qa + design-guardian in frischem Kontext, eine Korrekturrunde + Nachpass; (4) unabhängige volle Prüfung vor dem Merge (check, gitleaks, Invarianten); (5) echte Läufe als Beleg; (6) „Deine Schritte“ / direkt ausführbare Befehle. Die Workforce erfüllt (1)–(5) heute nicht durchgängig.
+Fundstelle: `docs/projekt/fixpaket-f45.md` (B2b, R), Kette der Workforce (`src/workflow`, Leitstand).
+Auswirkung: Mittel — ohne diese Prinzipien arbeitet die Workforce nicht gleichwertig zum heutigen Ablauf.
+Maßnahme: Lücken bei (1)–(5) in B2b schließen; die sechs Prinzipien als Prüfliste im Referenzauftrag R.
+Status: offen.
+Feature/Run: Challenger, Entscheidung Stefan 14.10.2026.
+Zugeordnet: F45 B2b, F45 R.
+
+**F-1096** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Form-Empfehlung durch den Architekten (Challenger K39).
+Beschreibung: Bei wiederkehrenden Aufgaben empfiehlt der Architekt die Form mit Begründung: deterministisch/wiederholt → Skript/Gate; Urteil/Wissen → Skill; eigene Rolle mit eigenem Kontext → Agent; fremder Dienst/Daten → MCP. Heute fehlt diese Empfehlung; die Form entsteht nach Gefühl.
+Fundstelle: Rolle `architekt` (`src/architekt`), Ausgabeschema `ergebnis-architektur`.
+Auswirkung: Mittel — falsch gewählte Form (z. B. Skill statt Gate) macht eine Regel unzuverlässig oder teuer.
+Maßnahme: mit F-1069 im Baustein „Fähigkeit bauen“ (E-F45-12 = A).
+Status: offen.
+Feature/Run: Challenger, Entscheidung Stefan 14.10.2026.
+Zugeordnet: F45 „Fähigkeit bauen“.
+
+**F-1097** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Sammlung per Liste erweitern (Challenger K40).
+Beschreibung: Ein Auftrag ergänzt `docs/harness/kandidaten-2026-09-15.md` aus Stefans Liste (Name, Link, wofür); der Scout darf Lücken recherchieren; Prüfläufe nur für Gewünschtes (≈ 0,45 USD je Prüflauf). Erster Eintrag REA „reverse-engineer-anything“ (Link vor der Aufnahme prüfen, vermutet github.com/morluto/rea), als Skill über git-Pin. Nicht-Ziel in solchen Aufträgen: „Verhalten nachbauen, keinen fremden Code/Assets übernehmen“. Grenzen: MCPs mit fremdem Dienst/API-Schlüssel erst nach B2b; einzelne fremde Agents noch nicht installierbar (Agents aus Plugins ab F-3b); Binärdateien F-1080.
+Fundstelle: `docs/harness/kandidaten-2026-09-15.md`, Scout (`src/scout`), Prüflauf (`scripts/leitstand/routen-pruefung.mjs`).
+Auswirkung: Gering — die Sammlung wächst heute nur von Hand.
+Maßnahme: eigener kleiner Auftrag, parallel zu F-3b-2/B2b möglich.
+Status: offen.
+Feature/Run: Challenger, Entscheidung Stefan 14.10.2026.

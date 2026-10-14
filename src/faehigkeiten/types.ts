@@ -14,16 +14,31 @@
  * inhalt_freigaben, der Laufakte (id) und den Endpunkten.
  */
 
-/** Einstellungen eines Projekts in der lokalen Datei — an: Projekt-Einträge (Opt-in), aus: Katalog-ids. */
+/**
+ * Einstellungen eines Projekts in der lokalen Datei — an: Projekt-Einträge (Opt-in), aus: Katalog-ids. Seit F45 F-3b-1
+ * zusätzlich plugin_zuordnung (Rolle → '<skill|agent>:<plugin-id>:<name>', nur 'ausfuehrung', E-F3b-3); optional, damit
+ * bestehende Aufrufer und Tests ohne das Feld gültig bleiben; projektEinstellungen liefert es nur, wenn das Projekt eines hat.
+ */
 export interface ProjektEinstellungen {
   an: string[]
   aus: string[]
   inhalt_freigaben: Record<string, string>
+  plugin_zuordnung?: Record<string, string[]>
+}
+
+/** F45 F-3b-1: Freigabe eines Plugins aus Stefans Claude Code — an den Hash der gefilterten Kopie und genau einen Bericht gebunden. */
+export interface PluginFreigabe {
+  kopie_hash: string
+  /** '<artefakt_id>@<version>' des Prüfberichts, der bei der Freigabe galt */
+  pruefbericht: string
+  freigegeben_am: string
 }
 
 /** Geparste, gültige lokale Datei. */
 export interface FaehigkeitenLokal {
   faehigkeiten_lokal_schema: 'v0'
+  /** F45 F-3b-1: Freigaben je Plugin-id (global, für den Inhalt) — fehlt, wenn leer. */
+  plugin_freigaben?: Record<string, PluginFreigabe>
   projekte: Record<string, Partial<ProjektEinstellungen>>
 }
 
