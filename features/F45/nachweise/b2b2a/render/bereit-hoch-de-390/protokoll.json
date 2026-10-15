@@ -1,0 +1,15 @@
+[
+  {
+    "label": "BEREIT mit HOCH-Befund, Claude-Reviewer — de-390",
+    "Hinweis amber": true,
+    "Hinweis rot": false,
+    "Hinweis schwere Befunde": true,
+    "Zahl im Blick": true,
+    "Abnehmen": true,
+    "Hinweise zum Review": "Hinweise zum ReviewDas Review sagt „bereit“, meldet aber einen schweren Befund (kritisch oder hoch). Prüfe ihn, bevor du",
+    "Reviewer": "Claude",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true
+  }
+]

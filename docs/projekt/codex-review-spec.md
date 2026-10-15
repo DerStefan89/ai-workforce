@@ -12,11 +12,16 @@ Teil über einen festen sha256 (LF-normalisiert) unverändert. Ob der Wortlaut S
 | §7 Ausgabeformat | Schema `ergebnis-code-reviewer` v2: je Befund `id`, `dimension`, `evidenz`, `korrekturrichtung` (Strict-Modus: in `required`, nullable), Schwere `KRITISCH`; Zuordnung critical/high/medium/low = KRITISCH/HOCH/MITTEL/NIEDRIG; ohne Befunde der Satz in `empfehlung` | B2a-3a |
 | §9.8 Fehlerfälle | Toolausfall/Timeout und nicht gelaufener Review mit Grund in Abnahme und „Auf einen Blick“; leere Befunde ohne den Satz → Halt (Regel 1k); fehlende Pflichtwerte je Befund → sichtbarer Hinweis ohne Halt (Entscheidung Stefan 13.10.2026); unvollständiger Kontext (Lücken der Projektkarte) → sichtbar, kein Halt | B2a-3a |
 | §9.6 geprüfter Stand, „Review veraltet“ | `geprueft_stand` vom Server in der Laufakte, Anzeige „Review veraltet“ | B2a-3b |
+| §8 Critical/High vor Freigabe | Urteil BEREIT mit KRITISCH/HOCH ⇒ sichtbarer Hinweis in der Abnahme (kein Halt, kein Neubau; die Pflicht-Begründung der Abnahme ist die dokumentierte Entscheidung) | B2b-2a |
+| §10 „an Claude übergeben und gezielt nachgeprüft“ | Neubau und Re-Review bekommen je Befund zusätzlich Befund-ID, Evidenz und Korrekturrichtung (`src/korrekturschleife`) | B2b-2a |
 | §8 Status strittiger Befunde (`accepted`, `rejected-with-reason`, `needs-human-decision`), widersprüchliche Befunde | später | B2b |
 | §11 Erfolgsmessung | später | F-1050 (B2b) |
 
-Grenze: Ein claude-code-Reviewer im Ablauf hat kein Ausgabeschema (Regel 4b) — für ihn wirkt die Policy nur als Text,
-ohne Vertragsprüfung (Regel 1k) und ohne Abnahme-Anzeige des Urteils.
+Claude-Reviewer (F45 B2b-2a): ein claude-code-Reviewer mit `output_schema: ergebnis-code-reviewer` bekommt das Schema per
+`--json-schema` (echter Lauf `features/F45/nachweise/b2b2a/spike-reviewer-schema.md`); Vertragsprüfung (Regel 1k),
+Abnahme-Anzeige und „Review wiederholen“ gelten für ihn wie für Codex. Die Vorlagen nutzen weiter Codex. Grenze: der Satz
+der Policy `review-policy-1` „maschinell geprüft wird das Format nur beim Codex-Reviewer“ ist für diesen Fall überholt
+(Text bewusst unverändert, eine Änderung braucht eine neue Policy-Version — F-1113).
 
 <!-- SPEC-ANFANG — ab hier wörtlich (Stefan, 12.10.2026) -->
 # Codex Technical Code Review – Umsetzungsspezifikation

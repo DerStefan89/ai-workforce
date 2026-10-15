@@ -529,7 +529,7 @@ import {
 } from '../src/arbeitsordner/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
-import { baueReviewPolicyBlock, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION } from '../src/review-policy/index.ts'
+import { baueReviewPolicyBlock, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION, zaehleSchwereBeiBereit } from '../src/review-policy/index.ts'
 import { leseGeprueftenStandAsync, leseGeprueftenStandSync, standIstVeraltet } from '../src/review-stand/index.ts'
 import { cdZeile } from '../public/leitstand/code-daten.js'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
@@ -7078,7 +7078,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (abnahmeVersion !== null && abnahmeVersion.daten.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
         const reviewLaufId = abnahmeVersion.daten.bezug?.review_lauf_id
         const reviewLaufakteVersion = typeof reviewLaufId === 'string' ? ladeArtefaktVersion(`laufakte-${reviewLaufId}`, undefined, ladeOptionen) : null
-        const vorherigeBefunde = reviewLaufakteVersion !== null ? (leseUrteilAusLaufakte(reviewLaufakteVersion.daten)?.befunde ?? []) : []
+        // F45 B2b-2a (Code-Review 3, qa 12): nur Objekte — ein roher null-Eintrag brächte die Instruktion sonst zum Absturz.
+        const vorherigeBefunde = (reviewLaufakteVersion !== null ? (leseUrteilAusLaufakte(reviewLaufakteVersion.daten)?.befunde ?? []) : []).filter((b) => b !== null && typeof b === 'object')
         if (schritt.rolle === 'ausfuehrung') {
           auftragstext = `${auftragstext}\n\n${baueAusfuehrungKorrekturInstruktion(abnahmeVersion.daten.begruendung, vorherigeBefunde)}`
         } else if (vorherigeBefunde.length > 0) {
@@ -8374,7 +8375,8 @@ export function erzeugeRequestHandler(optionen = {}) {
             const policyVersion = typeof laufakteVersion.daten.review?.policy_version === 'string' ? laufakteVersion.daten.review.policy_version : null
             const vertrag = pruefeReviewErgebnisFuer(policyVersion, geparst) ?? { halt: [], hinweise: [] }
             const fehlend = laufakteVersion.daten.projektkarte?.fehlend
-            const stand = await vergleicheReviewStand(workflowId, workflowDaten, laufakteVersion.daten.review, ermittleAbnahmeStand(workflowDaten, abnahmeVersion).offen)
+            const abnahmeOffen = ermittleAbnahmeStand(workflowDaten, abnahmeVersion).offen
+            const stand = await vergleicheReviewStand(workflowId, workflowDaten, laufakteVersion.daten.review, abnahmeOffen)
             urteilProjektion = {
               status: 'ok',
               laufId: reviewSchritt.lauf_id,
@@ -8386,6 +8388,12 @@ export function erzeugeRequestHandler(optionen = {}) {
               vertrag_verstoesse: vertrag.halt,
               vertrag_hinweise: vertrag.hinweise,
               kontext_luecken: Array.isArray(fehlend) ? fehlend.filter((f) => typeof f === 'string') : [],
+              // F45 B2b-2a (F-1085 (4), Spec §8): BEREIT trotz KRITISCH/HOCH — die Abnahme zeigt einen Hinweis (kein Halt, kein Neubau).
+              // Nur bei offener Abnahme (qa 2, Muster „Review veraltet“): nach der Entscheidung passt „bevor du abnimmst“ nicht mehr.
+              schwere_bei_bereit: abnahmeOffen ? zaehleSchwereBeiBereit(geparst.urteil, geparst.befunde) : 0,
+              // F45 B2b-2a (F-1085 (2), Advisor A5): wer den Review lief — aus der Laufakte (dieselbe Regel wie
+              // leseErgebnistextAusRohstrom), nicht aus dem Schritt, der nach einer Reparatur vom Lauf abweichen kann.
+              worker: laufakteVersion.daten.worker ?? 'claude-code',
               ...stand,
             }
           }

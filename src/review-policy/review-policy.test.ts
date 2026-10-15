@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueReviewPolicyBlock, KEINE_BEFUNDE_SATZ, pruefeReviewErgebnis, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION } from './index.ts'
+import { baueReviewPolicyBlock, KEINE_BEFUNDE_SATZ, pruefeReviewErgebnis, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION, zaehleSchwereBeiBereit } from './index.ts'
 
 const VOLLER_BEFUND = { id: 'B1', dimension: 'bugs', evidenz: 'confirmed', korrekturrichtung: 'Grenze prüfen', schwere: 'HOCH', fundstelle: 'a.ts:1', zusammenfassung: 'x', beleg: 'y' }
 
@@ -104,4 +104,20 @@ test('pruefeReviewErgebnis: unbekannte Dimension/Evidenz → Hinweis', () => {
 
 test('pruefeReviewErgebnis: befunde kein Array → wie leer behandelt', () => {
   assert.equal(pruefeReviewErgebnis({ empfehlung: 'x' }).halt.length, 1)
+})
+
+// ─── F45 B2b-2a (F-1085 (4), Spec §8): BEREIT mit KRITISCH/HOCH ─────────────────────────────────────────────
+
+test('zaehleSchwereBeiBereit: zählt KRITISCH und HOCH nur beim Urteil BEREIT', () => {
+  const befunde = [{ schwere: 'HOCH' }, { schwere: 'KRITISCH' }, { schwere: 'MITTEL' }, { schwere: 'NIEDRIG' }]
+  assert.equal(zaehleSchwereBeiBereit('BEREIT', befunde), 2)
+  assert.equal(zaehleSchwereBeiBereit('BEREIT_NACH_KORREKTUR', befunde), 0)
+  assert.equal(zaehleSchwereBeiBereit('BLOCKIERT', befunde), 0)
+  assert.equal(zaehleSchwereBeiBereit(null, befunde), 0)
+})
+
+test('zaehleSchwereBeiBereit: leer, kein Array, Befund ohne schwere oder kein Objekt (roh aus dem Modell) ⇒ zählt nicht', () => {
+  assert.equal(zaehleSchwereBeiBereit('BEREIT', []), 0)
+  assert.equal(zaehleSchwereBeiBereit('BEREIT', null), 0)
+  assert.equal(zaehleSchwereBeiBereit('BEREIT', [{}, null, 'HOCH', { schwere: 'hoch' }]), 0)
 })

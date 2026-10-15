@@ -85,7 +85,8 @@ function baueAttrappe({ beobachtung, ausfuehrungsKlassifikation = { ergebnis: 'E
 
 /**
  * Startet Server, legt Auftrag + Zwei-Schritt-Workflow an, startet ihn und wartet auf das Ende.
- * F45 B2a-1 (F-1062): reviewWorker wählt den Worker des Review-Schritts — claude-code nur mit output_schema null (Regel 4b).
+ * F45 B2a-1 (F-1062): reviewWorker wählt den Worker des Review-Schritts — claude-code hier mit output_schema null (Bestand ohne
+ * Schema; seit F45 B2b-2a ließe Regel 4b auch 'ergebnis-code-reviewer' zu, Gate check-f45-b2b2-pruefer).
  */
 async function fuehreDurch(attrappe, reviewWorker = 'claude-code') {
   const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, repoWurzel, installWurzel: process.cwd(), startvorlagePfad, fuehreAufgabeDurchFn: attrappe.fn }))

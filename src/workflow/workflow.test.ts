@@ -575,7 +575,7 @@ test('Regel 1k: leere oder fehlende reviewVerstoesse → fertig (Alt-Verhalten)'
   }
 })
 
-test('Regel 1k greift NICHT ohne output_schema ergebnis-code-reviewer (claude-code-Reviewer: Policy nur als Text)', () => {
+test('Regel 1k greift NICHT ohne output_schema ergebnis-code-reviewer (Reviewer ohne Schema: Policy nur als Text)', () => {
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
   const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', reviewVerstoesse: ['x'] })
   assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
@@ -1072,16 +1072,17 @@ test("Ausgang 'haltFreigabe': ein Codex-Schritt mit ZWINGEND wird dem Menschen v
 test("Ausgang 'haltKlaerung': claude-code mit gesetztem output_schema hält an, statt es still zu ignorieren", () => {
   const workflow = typisierterWorkflow([
     typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
-    typisierterSchritt('schritt-2', null, { worker: 'claude-code', output_schema: 'ergebnis-code-reviewer' }),
+    // F45 B2b-2a: 'ergebnis-code-reviewer' ist an claude-code jetzt belegt (Allowlist) — der Rotfall nutzt ein nicht belegtes Schema.
+    typisierterSchritt('schritt-2', null, { worker: 'claude-code', output_schema: 'ergebnis-architektur' }),
   ])
   const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
   assert.equal(ergebnis.art, 'haltKlaerung')
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
-  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /output_schema 'ergebnis-code-reviewer'/)
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /output_schema 'ergebnis-architektur'/)
 })
 
 test("Regel 4b schlägt den ZWINGEND-Halt — ein so nicht startbarer Schritt wird nicht zur Freigabe vorgelegt", () => {
-  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer', freigabe: 'ZWINGEND' })])
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-architektur', freigabe: 'ZWINGEND' })])
   assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltKlaerung')
 })
 
@@ -1090,7 +1091,7 @@ test('Regel 3 schlägt Regel 4b: ein bereits gelaufener Schritt meldet seine Sta
   // Regel 4b vor Regel 3 schieben, und ein längst gelaufener Schritt bekäme
   // einen Grundtext über sein Ausgabeschema statt über seinen Zustand.
   const workflow = typisierterWorkflow(
-    [typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })],
+    [typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-architektur', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })],
     { aktiver_schritt_id: 'schritt-1' }
   )
   const ergebnis = ermittleNaechstenSchritt(workflow)
@@ -1099,7 +1100,7 @@ test('Regel 3 schlägt Regel 4b: ein bereits gelaufener Schritt meldet seine Sta
 })
 
 test('Regel 4 schlägt Regel 4b: ein unbekannter Worker meldet seine Nicht-Dispatchbarkeit, nicht sein Schema', () => {
-  const schritt = typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer' })
+  const schritt = typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-architektur' })
   ;(schritt as unknown as Record<string, unknown>).worker = 'gemini'
   const ergebnis = ermittleNaechstenSchritt(typisierterWorkflow([schritt]))
   assert.equal(ergebnis.art, 'haltKlaerung')
@@ -1116,14 +1117,19 @@ test("Regel 4b greift NICHT bei worker 'codex' — dort ist output_schema die vo
 test("Regel 4b lässt claude-code mit 'ergebnis-architecture-advisor' starten (F45 B2b-1b, '--json-schema' real belegt, Spike F-1105)", () => {
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'claude-code', output_schema: 'ergebnis-architecture-advisor' })])
   assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
-  assert.deepEqual([...CLAUDE_CODE_AUSGABESCHEMAS], ['ergebnis-architecture-advisor'])
+  assert.deepEqual([...CLAUDE_CODE_AUSGABESCHEMAS], ['ergebnis-architecture-advisor', 'ergebnis-code-reviewer'])
+})
+
+test("Regel 4b lässt claude-code mit 'ergebnis-code-reviewer' starten (F45 B2b-2a, '--json-schema' real belegt, features/F45/nachweise/b2b2a/spike-reviewer-schema.md)", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'claude-code', output_schema: 'ergebnis-code-reviewer' })])
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
 })
 
 test('Regel 4b: jedes andere Schema an claude-code hält weiter an, der Grund nennt die belegten Schemata', () => {
-  for (const schema of ['ergebnis-code-reviewer', 'ergebnis-architektur']) {
+  for (const schema of ['ergebnis-architektur', 'ergebnis-scout']) {
     const ergebnis = ermittleNaechstenSchritt(typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'claude-code', output_schema: schema })]))
     assert.equal(ergebnis.art, 'haltKlaerung', schema)
-    assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /ergebnis-architecture-advisor/)
+    assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /'ergebnis-architecture-advisor', 'ergebnis-code-reviewer'/)
   }
 })
 
@@ -1319,7 +1325,7 @@ test('freigabe_erteilt hebt weder Regel 4b noch die Startbereitschafts-Regel auf
   // stehen VOR ihr und bleiben wirksam. Bis F16 WS-2 stand hier der Codex-Halt;
   // seit AK10 ist Codex dispatchbar, die Rolle übernimmt Regel 4b.
   const mitSchema = typisierterWorkflow(
-    [typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true, output_schema: 'ergebnis-code-reviewer' })],
+    [typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true, output_schema: 'ergebnis-architektur' })],
     { aktiver_schritt_id: 'schritt-1' }
   )
   assert.equal(ermittleNaechstenSchritt(mitSchema).art, 'haltKlaerung')

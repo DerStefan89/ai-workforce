@@ -41,8 +41,9 @@
  * (c4b) JSON im Codezaun mit Text drumherum → gelesen, weiter; (c4e) rohes JSON mit Status-Block danach → gelesen
  *      (nur über jsonObjektFallback), weiter; (c4c) leeres Ergebnis → Halt; (c4d) MIT_AUFLAGEN ohne
  *      Befund → Halt mit lesbarem Grund; (c5) Werkzeugausfall des Advisors → Grund nennt die Ursache.
- * (c6) zweite Sicherung loeseAusfuehrungsEingabenAuf: nur das belegte Schema geht als jsonSchema an claude-code,
- *      'ergebnis-code-reviewer' an claude-code und ein unlesbares Schema werden abgelehnt.
+ * (c6) zweite Sicherung loeseAusfuehrungsEingabenAuf: nur belegte Schemata gehen als jsonSchema an claude-code,
+ *      ein nicht belegtes ('ergebnis-architektur' am Architekten; bis B2b-2a 'ergebnis-code-reviewer', seitdem belegt —
+ *      Gate check-f45-b2b2-pruefer) und ein unlesbares Schema werden abgelehnt.
  * (e8) POST /api/laeufe mit aufrufEingaben.jsonSchema → 400.
  * B2b-1b-2a „Plan v2“ (features/F45/plan-b2b1b2.md; Architekt → Advisor → Ausführung, Stack offen, Architekt-Laufakten
  * aus der Attrappe):
@@ -558,14 +559,16 @@ try {
     const basis = { rolle: 'architecture-advisor', worker: 'claude-code', anfragen: [{ pfad: `features/${FEATURE_ID}/feature.md`, zweck: 'Gate' }], budget: { maxElemente: 5 }, aufrufEingaben: { modell: 'gate-modell' }, auftragId: 'gate-auftrag' }
     const advisorPfad = join(INSTALL_WURZEL, 'schemas', 'ergebnis-architecture-advisor.schema.json')
     const gut = loeseAusfuehrungsEingabenAuf({ ...basis, ausgabeSchemaPfad: advisorPfad }, 'lesend', 'Gate', vorlage, fremdprojekt)
-    const fremdesSchema = loeseAusfuehrungsEingabenAuf({ ...basis, rolle: 'code-reviewer', ausgabeSchemaPfad: join(INSTALL_WURZEL, 'schemas', 'ergebnis-code-reviewer.schema.json') }, 'lesend', 'Gate', vorlage, fremdprojekt)
+    // F45 B2b-2a (Advisor A3): 'ergebnis-code-reviewer' ist an claude-code belegt; nicht belegt ist z. B. der Architekt mit
+    // 'ergebnis-architektur' (lesend, claude-code erlaubt — der Rollenvertrag lässt die Anfrage bis zur Allowlist durch).
+    const fremdesSchema = loeseAusfuehrungsEingabenAuf({ ...basis, rolle: 'architekt', ausgabeSchemaPfad: join(INSTALL_WURZEL, 'schemas', 'ergebnis-architektur.schema.json') }, 'lesend', 'Gate', vorlage, fremdprojekt)
     const kaputtOrdner = join(verzeichnis, 'schemas-kaputt')
     mkdirSync(kaputtOrdner, { recursive: true })
     writeFileSync(join(kaputtOrdner, 'ergebnis-architecture-advisor.schema.json'), '[]', 'utf8')
     const kaputt = loeseAusfuehrungsEingabenAuf({ ...basis, ausgabeSchemaPfad: join(kaputtOrdner, 'ergebnis-architecture-advisor.schema.json') }, 'lesend', 'Gate', vorlage, fremdprojekt)
     pruefe(
-      gut.ok && typeof gut.eingaben.aufrufEingaben.jsonSchema === 'string' && !fremdesSchema.ok && /löst nur 'ergebnis-architecture-advisor'/.test(fremdesSchema.grund) && !kaputt.ok && /--json-schema/.test(kaputt.grund),
-      "(c6) loeseAusfuehrungsEingabenAuf: Advisor-Schema → jsonSchema; 'ergebnis-code-reviewer' an claude-code → abgelehnt (zweite Sicherung); unlesbares Schema → abgelehnt mit Grund.",
+      gut.ok && typeof gut.eingaben.aufrufEingaben.jsonSchema === 'string' && !fremdesSchema.ok && /löst nur 'ergebnis-architecture-advisor', 'ergebnis-code-reviewer'/.test(fremdesSchema.grund) && !kaputt.ok && /--json-schema/.test(kaputt.grund),
+      "(c6) loeseAusfuehrungsEingabenAuf: Advisor-Schema → jsonSchema; 'ergebnis-architektur' an claude-code → abgelehnt (zweite Sicherung); unlesbares Schema → abgelehnt mit Grund.",
       `(c6) erwartet ok/abgelehnt/abgelehnt — ${gut.ok}, ${JSON.stringify(fremdesSchema)}, ${JSON.stringify(kaputt)}`
     )
   }

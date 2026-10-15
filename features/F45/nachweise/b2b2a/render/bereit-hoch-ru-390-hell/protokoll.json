@@ -1,0 +1,15 @@
+[
+  {
+    "label": "BEREIT mit HOCH-Befund, Claude-Reviewer — ru-390-hell",
+    "Hinweis amber": true,
+    "Hinweis rot": false,
+    "Hinweis schwere Befunde": true,
+    "Zahl im Blick": true,
+    "Abnehmen": true,
+    "Hinweise zum Review": "Замечания к ревьюРевью говорит «готово», но сообщает о 1 серьёзном замечании (критичном или высоком). Проверь его перед ",
+    "Reviewer": "Claude",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true
+  }
+]
