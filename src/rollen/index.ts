@@ -70,7 +70,8 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     zweck: 'Definiert Akzeptanztests und Randfälle, ohne Freigabeartefakte zu sehen.',
     erlaubte_werkzeugsatz_arten: ['lesend'],
     erlaubte_worker: ['claude-code', 'codex'],
-    erlaubtes_output_schema: null,
+    // F45 B2b-2b-1 (F-820): Urteil, Befunde und Testfälle als JSON; an claude-code per --json-schema durchgesetzt (Spike b2b2b).
+    erlaubtes_output_schema: 'ergebnis-qa',
     ausschlussmuster: ['state/tasks/**'],
     benoetigte_capabilities: ['TEST_DESIGN', 'REPO_READ'],
   },

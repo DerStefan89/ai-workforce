@@ -38,6 +38,11 @@
         "review_lauf_id": {
           "type": ["string", "null"],
           "description": "null bei einer Workflow-Vorlage ohne Post-Build-Review-Schritt."
+        },
+        "qa_lauf_id": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "F45 B2b-2b-1 (F-820), optional: der Lauf der Prüfung aus Nutzersicht (qa) derselben Runde — nur in Abläufen mit qa-Schritt; null, wenn der qa-Schritt noch nicht lief. Fehlt bei allen Entscheidungen vor B2b-2b-1."
         }
       }
     }

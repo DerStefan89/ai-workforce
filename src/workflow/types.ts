@@ -179,7 +179,8 @@ export interface SchrittErgebnis {
   laufId: string
   /**
    * OPTIONAL (F23 WS-1b, löst F-351/F-377): das Urteil eines gerade gelaufenen
-   * Post-Build-Reviews (output_schema 'ergebnis-code-reviewer'), roh aus dem
+   * Post-Build-Reviews (output_schema 'ergebnis-code-reviewer'; seit F45 B2b-2b-1 ebenso das Urteil eines
+   * qa-Laufs, output_schema 'ergebnis-qa', Regel 1q), roh aus dem
    * Rohstrom des Laufs gelesen — der Aufrufer normalisiert (Muster `ergebnis`
    * oben, Kopfkommentar dieser Datei). Rückwärtskompatibel: jeder Aufrufer und
    * jede bestehende Fixture ohne dieses Feld bleibt unverändert lauffähig, ein
@@ -325,9 +326,20 @@ export interface SchrittErgebnis {
   reviewVerstoesse?: string[]
   /**
    * F45 B2a-3a (Codex-Review-Spec §9.8): Ursache eines nicht erfolgreichen Laufs (z. B. „Zeitgrenze (600 s)“,
-   * Werkzeugausfall) — vom Aufrufer gesetzt, heute nur für den code-reviewer-Schritt; Regel 1 hängt sie an den Grund.
+   * Werkzeugausfall) — vom Aufrufer gesetzt für Review, Advisor und (F45 B2b-2b-1) qa; Regel 1 hängt sie an den Grund.
    */
   ursache?: string
+  /**
+   * F45 B2b-2b-1 (Regel 1q, F-820): Verstöße eines 'ergebnis-qa'-Laufs gegen das qa-Schema (validiereErgebnisQa, src/qa —
+   * der Aufrufer prüft, dieses Modul importiert src/qa nicht). Nicht leer ⇒ Halt mit Ausweg „Prüfer wiederholen“.
+   */
+  qaVerstoesse?: string[]
+  /**
+   * F45 B2b-2b-1 (Regel 1q): das Review-Ergebnis derselben Runde, gelesen vom Aufrufer am Review-Schritt vor dem qa —
+   * Urteil (null = nicht lesbar) und AK-Verstöße. Beanstandet der Review (istReviewBeanstandet), hält 1q nach dem qa an;
+   * die Automatik nimmt dann die Befunde beider Prüfer. Fehlt das Feld (qa ohne Review davor), zählt nur das qa-Urteil.
+   */
+  vorpruefung?: { urteil: string | null; akVerstoesse: string[] }
 }
 
 /**

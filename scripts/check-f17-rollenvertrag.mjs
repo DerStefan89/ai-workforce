@@ -271,7 +271,7 @@ try {
       grundMuster: /erlaubt output_schema 'ein-anderes-schema' nicht/,
     },
     {
-      name: "4: rolle 'qa' + irgendein gesetztes output_schema",
+      name: "4: rolle 'qa' + ein anderes output_schema als 'ergebnis-qa' (F45 B2b-2b-1)",
       eingaben: eingaben({ rolle: 'qa', worker: 'codex', ausgabeSchemaPfad: '/irgendwo/schemas/ergebnis-code-reviewer.schema.json' }),
       werkzeugsatz: 'lesend',
       grundMuster: /erlaubt output_schema 'ergebnis-code-reviewer' nicht/,
@@ -318,9 +318,15 @@ try {
     befunde.push(`AK6: Grünfall 'code-reviewer/codex ohne output_schema' (Allowlist, keine Pflicht) erwartet ok:true, erhalten ${JSON.stringify(gruenAllowlist)}`)
   }
 
+  // F45 B2b-2b-1 (Delta-Advisor D7): die Rolle qa trägt jetzt ihr Schema 'ergebnis-qa' — Grünfall dazu.
+  const gruenQa = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'qa', worker: 'codex', ausgabeSchemaPfad: '/irgendwo/schemas/ergebnis-qa.schema.json' }), 'lesend', 'text', testVorlage, 'unbenutzt')
+  if (!gruenQa.ok) {
+    befunde.push(`AK6: Grünfall 'qa/codex/lesend/ergebnis-qa' (F45 B2b-2b-1) erwartet ok:true, erhalten ${JSON.stringify(gruenQa)}`)
+  }
+
   if (befunde.length === befundeVorAK6) {
     console.log(
-      '✓ AK6: fünf Rotfälle (unbekannte Rolle, Werkzeugsatz-Art, Worker, output_schema x2) und drei Grünfälle (Besetzung aus valid.json x2, Allowlist ohne output_schema) gegen loeseAusfuehrungsEingabenAuf geprüft.'
+      '✓ AK6: fünf Rotfälle (unbekannte Rolle, Werkzeugsatz-Art, Worker, output_schema x2) und vier Grünfälle (Besetzung aus valid.json x2, Allowlist ohne output_schema, qa mit ergebnis-qa) gegen loeseAusfuehrungsEingabenAuf geprüft.'
     )
   }
 }

@@ -103,7 +103,51 @@ const FREIGABE = ['AUTOMATISCH', 'EMPFOHLEN', 'ZWINGEND']
  * F45 B2b-2a (F-1085 (2)): dazu 'ergebnis-code-reviewer' — Claude-Reviewer mit Schema, echter Lauf
  * features/F45/nachweise/b2b2a/spike-reviewer-schema.md (SHA-256 der Schemafassung dort, Gate check-f45-b2b2-pruefer (s0)).
  */
-export const CLAUDE_CODE_AUSGABESCHEMAS: readonly string[] = ['ergebnis-architecture-advisor', 'ergebnis-code-reviewer']
+export const CLAUDE_CODE_AUSGABESCHEMAS: readonly string[] = ['ergebnis-architecture-advisor', 'ergebnis-code-reviewer', 'ergebnis-qa']
+
+/** Die drei Gesamturteile von Review und qa (schemas/ergebnis-code-reviewer.schema.json, ergebnis-qa.schema.json). */
+const PRUEFER_URTEILE: readonly string[] = ['BEREIT', 'BEREIT_NACH_KORREKTUR', 'BLOCKIERT']
+
+/**
+ * F45 B2b-2b-1 (F-820, Advisor A3): „der Review beanstandet“ — Urteil BLOCKIERT oder mindestens ein AK-Verstoß. EINE Stelle
+ * für den Aufschub (reviewHaltAufgeschoben), Regel 1q und die Anpassungsautomatik (scripts/leitstand/
+ * f35-ws3-adjust-automatik.mjs). Reine Funktion.
+ * @param urteil - Gesamturteil des Reviews (roh)
+ * @param akVerstoesse - AK-Verstöße (pruefeAkUrteile), ggf. undefined
+ * @returns true, wenn der Review beanstandet
+ */
+export function istReviewBeanstandet(urteil: string | null | undefined, akVerstoesse: readonly string[] | undefined): boolean {
+  return urteil === 'BLOCKIERT' || (Array.isArray(akVerstoesse) && akVerstoesse.length > 0)
+}
+
+/**
+ * F45 B2b-2b-1: der qa-Schritt direkt hinter einem Review — nur, wenn er startbereit ist (OFFEN/WARTET_FREIGABE, ohne
+ * lauf_id). In einer Reparaturfassung mit schon gelaufenem qa gibt es keinen Aufschub: der Review hält wie bisher. Reine Funktion.
+ * @param schritte - Schrittliste
+ * @param reviewSchritt - der Review-Schritt
+ * @returns der qa-Schritt oder undefined
+ */
+export function qaNachfolgerStartbereit(schritte: readonly WorkflowV0Schritt[], reviewSchritt: WorkflowV0Schritt): WorkflowV0Schritt | undefined {
+  const qa = schritte.find((s) => s.schritt_id === reviewSchritt.nachfolger)
+  if (qa === undefined || qa.output_schema !== 'ergebnis-qa' || qa.lauf_id !== null || !STARTBEREITE_SCHRITT_STATUS.includes(qa.status)) return undefined
+  return qa
+}
+
+/**
+ * F45 B2b-2b-1 (Plan v2, Advisor A1/A3): der Halt des Reviews wird auf den qa-Schritt verschoben — der Review hat ein
+ * gültiges Urteil, beanstandet (istReviewBeanstandet) und vor ihm wartet ein startbereiter qa-Schritt. Dann halten 1b, 1i
+ * und 1k nicht am Review, die Kette läuft zum qa, und die Entscheidung (Regel 1q, Automatik) fällt nach dem qa mit den
+ * Befunden beider Prüfer — sofern der qa danach tatsächlich startet (Delta D1, Prüfung in ermittleNaechstenSchritt). Der
+ * Server wertet das Prädikat nicht selbst aus: er löst die Automatik nur bei einem Klärungshalt aus. Reine Funktion.
+ * @param schritte - Schrittliste
+ * @param reviewSchritt - der gerade gelaufene Review-Schritt
+ * @param urteil - sein Gesamturteil
+ * @param akVerstoesse - seine AK-Verstöße
+ * @returns true, wenn der Halt aufgeschoben wird
+ */
+function reviewHaltAufgeschoben(schritte: readonly WorkflowV0Schritt[], reviewSchritt: WorkflowV0Schritt, urteil: string | null | undefined, akVerstoesse: readonly string[] | undefined): boolean {
+  return reviewSchritt.output_schema === 'ergebnis-code-reviewer' && typeof urteil === 'string' && PRUEFER_URTEILE.includes(urteil) && istReviewBeanstandet(urteil, akVerstoesse) && qaNachfolgerStartbereit(schritte, reviewSchritt) !== undefined
+}
 
 // Die DREI Allowlists von ermittleNaechstenSchritt (F15 WS-2a). Alle drei sind
 // bewusst Teilmengen der Arrays oben und keine Negation davon: wächst
@@ -651,7 +695,7 @@ export function planV2Sprungziel(schritte: WorkflowV0Schritt[], vorschritt: Work
  * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
  * übersetzt, ist WS-2b.
  *
- * Prüfungen (0, 1, 1b, 1i, 1k, 1c, 1d, 1e, 1f, 1g, 1h, 1j, 3a, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
+ * Prüfungen (0, 1, 1b, 1i, 1k, 1q, 1c, 1d, 1e, 1f, 1g, 1h, 1j, 3a, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
  * die Reihenfolge ist die eigentliche Aussage (3a, F45 B2b-1b-2a: nach Plan v2 über den gelaufenen Advisor hinweg zum
  * nächsten Schritt — Kommentar an der Regel):
  *
@@ -694,7 +738,10 @@ export function planV2Sprungziel(schritte: WorkflowV0Schritt[], vorschritt: Work
  * 1i/1k. Vorschritt trägt output_schema 'ergebnis-code-reviewer': 1i (F35 WS-2) hält bei
  *    AK-Verstößen, 1k (F45 B2a-3a) bei Verstößen gegen den Review-Vertrag (reviewVerstoesse) — je mit
  *    eigenem Grund, beide vom Aufrufer vorab berechnet. 1j (F-713, Nachlauf der Ausführung) hält bei
- *    veränderter Prüfkette.
+ *    veränderter Prüfkette. F45 B2b-2b-1: 1b/1i/1k werden auf den qa-Schritt aufgeschoben, wenn der Review beanstandet
+ *    und ein startbereiter qa-Schritt folgt (reviewHaltAufgeschoben).
+ * 1q. Vorschritt trägt output_schema 'ergebnis-qa' (F45 B2b-2b-1, F-820): Schemaverstoß, unlesbares Review-Ergebnis der
+ *    Runde, nicht tragendes qa-Urteil oder beanstandeter Review ⇒ haltKlaerung (Kommentar an der Regel).
  * 2. grenzen.max_schritte erreicht → haltGrenze. VOR den vier
  *    Schritt-Eigenschaften unten, weil die Grenze unabhängig davon gilt, was
  *    der nächste Schritt zufällig für einen Zustand, Worker, Freigabebedarf
@@ -739,8 +786,9 @@ export function planV2Sprungziel(schritte: WorkflowV0Schritt[], vorschritt: Work
  *    rückwirkend ungültig, statt nur seinen nächsten Start anzuhalten.
  *    F45 B2b-1b (F-1105): Ausnahme per Allowlist CLAUDE_CODE_AUSGABESCHEMAS — Schemata, die die
  *    Claude-Code-CLI real per '--json-schema' einlöst (je Schema ein echter Lauf, Spike
- *    features/F45/nachweise/b2b1b/spike-f1105.md). Heute 'ergebnis-architecture-advisor' und seit F45 B2b-2a
- *    'ergebnis-code-reviewer' (features/F45/nachweise/b2b2a/spike-reviewer-schema.md).
+ *    features/F45/nachweise/b2b1b/spike-f1105.md). Heute 'ergebnis-architecture-advisor', seit F45 B2b-2a
+ *    'ergebnis-code-reviewer' (features/F45/nachweise/b2b2a/spike-reviewer-schema.md) und seit F45 B2b-2b-1 'ergebnis-qa'
+ *    (features/F45/nachweise/b2b2b/spike-qa-schema.md).
  * 5. freigabe ∉ {AUTOMATISCH, EMPFOHLEN} UND freigabe_erteilt ≠ true →
  *    haltFreigabe, sonst starte. Der zweite Halbsatz ist WS-2c (b1): ein
  *    ZWINGEND-Schritt, für den ein Mensch real freigegeben hat, ist startbar;
@@ -882,6 +930,15 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     // (scripts/leitstand-server.mjs, loeseAusfuehrungsEingabenAuf, Ablehnung
     // 8/10, da ROLLENVERTRAEGE.ausfuehrung.erlaubtes_output_schema === null).
     // Wer eine der beiden Seiten ändert, prüft die andere mit.
+    // F45 B2b-2b-1 (Plan v2/v2.1, Advisor A1, Delta D1): beanstandet der Review mit gültigem Urteil und wartet ein
+    // startbereiter qa-Schritt, halten 1b, 1i und 1k hier nicht — die Kette läuft zum qa, Regel 1q und die Automatik
+    // entscheiden danach mit beiden Prüfern. Der Aufschub gilt nur, wenn derselbe Ablauf mit tragendem Review den qa
+    // tatsächlich startet (Regeln 2, 3, 4, 4b und 5 aus derselben Funktion, kein zweiter Regelsatz); sonst hält der Review wie
+    // bisher und seine Automatik greift. Ein unlesbares/unbekanntes Urteil hält weiter sofort. Ohne qa-Nachfolger bitgleich.
+    if (reviewHaltAufgeschoben(daten.schritte, vorschritt, vorschrittErgebnis.urteil, vorschrittErgebnis.akVerstoesse)) {
+      const ohneBeanstandung = ermittleNaechstenSchritt(daten, { ...vorschrittErgebnis, urteil: 'BEREIT', akVerstoesse: [], reviewVerstoesse: [] })
+      if (ohneBeanstandung.art === 'starte' && ohneBeanstandung.schritt.output_schema === 'ergebnis-qa') return ohneBeanstandung
+    }
     if (vorschritt.output_schema === 'ergebnis-code-reviewer') {
       const urteil: string | null | undefined = vorschrittErgebnis.urteil
       if (urteil !== 'BEREIT' && urteil !== 'BEREIT_NACH_KORREKTUR') {
@@ -923,6 +980,44 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         art: 'haltKlaerung',
         grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-code-reviewer): Review-Vertrag verletzt — ${vorschrittErgebnis.reviewVerstoesse.join('; ')} — kein stilles BEREIT, kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
         aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
+    // Regel 1q (F45 B2b-2b-1, F-820, features/F45/plan-b2b2b.md): der qa-Schritt nach dem Review — Kopplung an output_schema
+    // 'ergebnis-qa' wie 1b/1i/1k. (a) Verstöße gegen das qa-Schema ⇒ Halt, Ausweg „Prüfer wiederholen“ (Muster Regel 1d);
+    // (b) das Review-Ergebnis derselben Runde ist nicht lesbar ⇒ Halt (fail closed: ohne Review-Urteil keine Abnahme);
+    // (c) die Prüfung aus Nutzersicht trägt nicht und/oder der Review hat beanstandet (aufgeschoben, istReviewBeanstandet) ⇒
+    // EIN Halt, der beide nennt. Die Anpassungsautomatik im Server löst in (c) mit den Befunden beider Prüfer aus.
+    if (vorschritt.output_schema === 'ergebnis-qa') {
+      const lauf = `(Lauf '${vorschrittErgebnis.laufId}')`
+      const vorpruefung = vorschrittErgebnis.vorpruefung
+      const reviewBeanstandet = vorpruefung !== undefined && istReviewBeanstandet(vorpruefung.urteil, vorpruefung.akVerstoesse)
+      const verstoesse = vorschrittErgebnis.qaVerstoesse ?? []
+      if (verstoesse.length > 0) {
+        const weitere = verstoesse.length > 3 ? ` (und ${verstoesse.length - 3} weitere)` : ''
+        // Delta D5: die Beanstandung des Reviews derselben Runde geht nicht verloren, während der qa wiederholt wird.
+        const review = reviewBeanstandet ? ' Der Review dieser Runde hat beanstandet; nach der Wiederholung wird über beide Prüfer entschieden (Korrekturrunde nur, solange die Grenze eine erlaubt).' : ''
+        return {
+          art: 'haltKlaerung',
+          grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-qa) liefert kein gültiges Ergebnis nach dem qa-Schema: ${verstoesse.slice(0, 3).join('; ')}${weitere} — kein automatischer Fortschritt. Ausweg: Prüfer wiederholen oder den Ablauf reparieren ${lauf}.${review}`,
+          aktiverSchrittId: vorschritt.schritt_id,
+        }
+      }
+      if (vorpruefung !== undefined && (typeof vorpruefung.urteil !== 'string' || !PRUEFER_URTEILE.includes(vorpruefung.urteil))) {
+        return {
+          art: 'haltKlaerung',
+          grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-qa): Review-Ergebnis dieser Runde nicht lesbar — kein automatischer Fortschritt (fail closed). Ausweg: „Anpassung wünschen“, „Ablehnen“ oder den Ablauf reparieren ${lauf}`,
+          aktiverSchrittId: vorschritt.schritt_id,
+        }
+      }
+      const teile: string[] = []
+      const qaUrteil = vorschrittErgebnis.urteil
+      if (qaUrteil !== 'BEREIT' && qaUrteil !== 'BEREIT_NACH_KORREKTUR') teile.push(`die Prüfung aus Nutzersicht trägt Urteil ${qaUrteil === null || qaUrteil === undefined ? 'fehlend' : `'${qaUrteil}'`}`)
+      if (reviewBeanstandet) {
+        const ak = vorpruefung.akVerstoesse.length > 0 ? `verletzte Akzeptanzkriterien: ${vorpruefung.akVerstoesse.join('; ')}` : null
+        teile.push(`der Review dieser Runde hat beanstandet (${[vorpruefung.urteil === 'BLOCKIERT' ? "Urteil 'BLOCKIERT'" : null, ak].filter((t) => t !== null).join(', ')})`)
+      }
+      if (teile.length > 0) {
+        return { art: 'haltKlaerung', grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-qa): ${teile.join('; ')} — kein automatischer Fortschritt ${lauf}`, aktiverSchrittId: vorschritt.schritt_id }
       }
     }
     // Regel 1c (F39 WS-2b, löst F-632 Teil b) — Kopplung an output_schema aus

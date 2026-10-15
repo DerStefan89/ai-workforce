@@ -25,8 +25,11 @@
  * (sindDieselbenBefunde), gibt es keinen weiteren Rückweg.
  * pruefschrittWiederholbar ist die Vorbedingung von „Prüfer wiederholen“
  * (POST /api/workflows/<id>/pruefer-wiederholen, F-1085 (1)): ein Prüfschritt
- * (code-reviewer, architecture-advisor) läuft nach Werkzeugausfall oder
+ * (code-reviewer, architecture-advisor, seit F45 B2b-2b-1 qa) läuft nach Werkzeugausfall oder
  * unlesbarem Ergebnis allein erneut — das zählt nicht als Rückweg.
+ * F45 B2b-2b-1 (F-820, features/F45/plan-b2b2b.md): folgt dem Review ein qa-Schritt, entscheidet
+ * ermittleAutomatischeAnpassung im Nachlauf des qa (qaErgebnis) — Review und qa zusammen eine Runde,
+ * Wiederholung über beide Befundlisten, die Begründung nennt beide Urteile und je Herkunft die Befunde.
  *
  * Die eigentliche Schreiblogik (Entscheidungsartefakt registrieren,
  * Ausführungs-/Review-Schritt zurücksetzen — 'wendeAutomatischeAnpassungAn')
@@ -48,7 +51,7 @@
  */
 
 import { listeVersionen } from '../../src/lineage-registry/index.ts'
-import { planV2Sprungziel } from '../../src/workflow/index.ts'
+import { istReviewBeanstandet, planV2Sprungziel } from '../../src/workflow/index.ts'
 
 /** Höchstens ein automatischer Rückweg je Stufe (Stefan, B2b-1: wie der manuelle Ablauf, eine Korrekturrunde). */
 const GRENZE_JE_STUFE = 1
@@ -105,16 +108,22 @@ export function zaehleKernVersionen(workflowId, ladeOptionen) {
  * @param befunde - befunde[] aus dem geparsten Reviewer-Ergebnis (schwere/fundstelle/zusammenfassung)
  * @param akVerstoesse - Verstoß-Strings aus pruefeAkUrteile, ggf. leer
  * @param iteration - 1-basierte Nummer dieses Rückwegs der Bau-Stufe (1..GRENZE_JE_STUFE)
+ * @param qaErgebnis - F45 B2b-2b-1 (F-820): { urteil, befunde } der Prüfung aus Nutzersicht derselben Runde, oder null
+ *   (Vorgabe) — dann bitgleich wie zuvor; sonst nennt der Kopf beide Urteile und je Herkunft steht ein eigener Abschnitt
  * @returns die Begründung als Text
  */
-export function baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoesse, iteration) {
-  const zeilen = [`Automatische Anpassung (Korrekturrunde ${iteration} von ${GRENZE_JE_STUFE}, Bau-Stufe) nach Review-Urteil ${urteil ?? 'unbekannt'}:`]
-  if (befunde.length > 0) {
-    zeilen.push('', 'Befunde:')
-    befunde.forEach((befund, index) => {
+export function baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoesse, iteration, qaErgebnis = null) {
+  const qaKopf = qaErgebnis === null ? '' : ` und Urteil der Prüfung aus Nutzersicht (qa) ${qaErgebnis.urteil ?? 'unbekannt'}`
+  const zeilen = [`Automatische Anpassung (Korrekturrunde ${iteration} von ${GRENZE_JE_STUFE}, Bau-Stufe) nach Review-Urteil ${urteil ?? 'unbekannt'}${qaKopf}:`]
+  const abschnitt = (titel, liste) => {
+    if (liste.length === 0) return
+    zeilen.push('', titel)
+    liste.forEach((befund, index) => {
       zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}`)
     })
   }
+  abschnitt(qaErgebnis === null ? 'Befunde:' : 'Befunde des Reviews:', befunde)
+  if (qaErgebnis !== null) abschnitt('Befunde der Prüfung aus Nutzersicht (qa):', Array.isArray(qaErgebnis.befunde) ? qaErgebnis.befunde : [])
   if (akVerstoesse.length > 0) {
     zeilen.push('', 'Verletzte Akzeptanzkriterien:')
     akVerstoesse.forEach((verstoss) => zeilen.push(`- ${verstoss}`))
@@ -137,12 +146,18 @@ export function baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoe
  * hängt der Aufrufer den Grund an den Halt (Advisor B10: ein 1k- oder Urteil-Halt bekommt keinen Grenzsatz).
  * @param eingabe - { outputSchema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen,
  *   maxReplans (grenzen.max_replans), befunde (dieses Reviews), vorherigeBefunde (Review vor der letzten Anpassung, sonst null),
- *   planRueckwege (zaehlePlanRueckwege, F45 B2b-1b-2a; Vorgabe 0) }
+ *   planRueckwege (zaehlePlanRueckwege, F45 B2b-1b-2a; Vorgabe 0), qaErgebnis (F45 B2b-2b-1: { urteil, befunde } des
+ *   qa-Laufs, nur beim Aufruf aus dem qa-Nachlauf mit outputSchema 'ergebnis-qa'; dann sind urteil/akVerstoesse/befunde die des
+ *   Reviews derselben Runde, ausgelöst wird bei beanstandetem Review ODER qa BLOCKIERT, Wiederholung über beide Befundlisten) }
  * @returns { ausloesen: true } oder { ausloesen: false, grund, art? } — art 'wiederholung' | 'grenze' nur bei diesen Ablehnungen
  */
-export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen, maxReplans, befunde = [], vorherigeBefunde = null, planRueckwege = 0 }) {
-  if (outputSchema !== 'ergebnis-code-reviewer') {
+export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen, maxReplans, befunde = [], vorherigeBefunde = null, planRueckwege = 0, qaErgebnis = null }) {
+  const mitQa = outputSchema === 'ergebnis-qa'
+  if (outputSchema !== 'ergebnis-code-reviewer' && !mitQa) {
     return { ausloesen: false, grund: "output_schema ist nicht 'ergebnis-code-reviewer'" }
+  }
+  if (mitQa && (qaErgebnis === null || typeof qaErgebnis !== 'object')) {
+    return { ausloesen: false, grund: 'Kein gültiges Ergebnis der Prüfung aus Nutzersicht — Entscheidung beim Menschen' }
   }
   if (heilbar) {
     return { ausloesen: false, grund: 'Lauf ist heilbar (kein Checkpoint geschrieben) — kein auswertbares Ergebnis' }
@@ -156,16 +171,20 @@ export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, hei
   if (!BEKANNTE_URTEILE.has(urteil)) {
     return { ausloesen: false, grund: 'Urteil fehlt/unbekannt — Entscheidung beim Menschen (AK18)' }
   }
-  const istBlockiert = urteil === 'BLOCKIERT'
-  const hatAkVerstoesse = Array.isArray(akVerstoesse) && akVerstoesse.length > 0
-  if (!istBlockiert && !hatAkVerstoesse) {
-    return { ausloesen: false, grund: `Urteil '${urteil ?? 'fehlend'}' ist nicht 'BLOCKIERT' und es gibt keine AK-Verstöße` }
+  if (mitQa && !BEKANNTE_URTEILE.has(qaErgebnis.urteil)) {
+    return { ausloesen: false, grund: 'Urteil der Prüfung aus Nutzersicht fehlt/unbekannt — Entscheidung beim Menschen' }
   }
-  if (sindDieselbenBefunde(vorherigeBefunde, befunde)) {
+  // F45 B2b-2b-1 (Advisor A3): „beanstandet“ an EINER Stelle (src/workflow, istReviewBeanstandet) — dieselbe wie Regel 1q.
+  if (!istReviewBeanstandet(urteil, akVerstoesse) && !(mitQa && qaErgebnis.urteil === 'BLOCKIERT')) {
+    return { ausloesen: false, grund: mitQa ? 'Weder der Review noch die Prüfung aus Nutzersicht beanstanden' : `Urteil '${urteil ?? 'fehlend'}' ist nicht 'BLOCKIERT' und es gibt keine AK-Verstöße` }
+  }
+  // Wiederholung über beide Prüfer (Schlüssel Schwere|Datei wie bisher, die Herkunft zählt nicht — Plan O3).
+  const alleBefunde = mitQa ? [...befunde, ...(Array.isArray(qaErgebnis.befunde) ? qaErgebnis.befunde : [])] : befunde
+  if (sindDieselbenBefunde(vorherigeBefunde, alleBefunde)) {
     return {
       ausloesen: false,
       art: 'wiederholung',
-      grund: `Keine weitere automatische Anpassung: Der Review meldet nach der Korrektur dieselben Befunde wie zuvor (${nenneBefunde(befunde)}). ${AUSWEG.bau}`,
+      grund: `Keine weitere automatische Anpassung: ${mitQa ? 'Die Prüfer melden' : 'Der Review meldet'} nach der Korrektur dieselben Befunde wie zuvor (${nenneBefunde(alleBefunde)}). ${AUSWEG.bau}`,
     }
   }
   // F45 B2b-1b-2a: max_replans ist die Summe über beide Stufen — ein Plan v2 verbraucht eine Runde mit.
@@ -400,7 +419,8 @@ const TRAGENDE_REVIEW_URTEILE = new Set(['BEREIT', 'BEREIT_NACH_KORREKTUR'])
  * Advisor (Rolle architecture-advisor) — FEHLGESCHLAGEN · ERFOLGREICH mit Verstößen gegen das Advisor-Schema (Regel 1d; F45
  * B2b-1b, vorher: ohne Urteilszeile). Ein gültiges Urteil mit Befunden ist eine Beanstandung, kein Ausfall — nicht wiederholbar.
  * VERWEIGERT nie: ein lesender Prüfer liefe erneut in dieselbe Ablehnung.
- * @param eingabe - { workflowStatus, schritt (Cursor-Schritt oder null), befund: { urteil, akVerstoesse, reviewVerstoesse, advisorVerstoesse } }
+ * qa (output_schema 'ergebnis-qa', F45 B2b-2b-1) — FEHLGESCHLAGEN · ERFOLGREICH mit Verstößen gegen das qa-Schema (Regel 1q (a)).
+ * @param eingabe - { workflowStatus, schritt (Cursor-Schritt oder null), befund: { urteil, akVerstoesse, reviewVerstoesse, advisorVerstoesse, qaVerstoesse } }
  * @returns { wiederholbar: true } oder { wiederholbar: false, grund }
  */
 export function pruefschrittWiederholbar({ workflowStatus, schritt, befund }) {
@@ -419,11 +439,19 @@ export function pruefschrittWiederholbar({ workflowStatus, schritt, befund }) {
     if (Array.isArray(b.reviewVerstoesse) && b.reviewVerstoesse.length > 0) return { wiederholbar: true }
     return { wiederholbar: false, grund: 'Der Review trägt — es gibt nichts zu wiederholen' }
   }
+  // F45 B2b-2b-1 (Advisor A6): die Prüfung aus Nutzersicht (qa) nach Werkzeugausfall oder mit Verstößen gegen das qa-Schema
+  // (Regel 1q (a)); jedes gültige Ergebnis ist eine Beurteilung, auch wenn der Halt aus dem Review derselben Runde kommt.
+  if (schritt.output_schema === 'ergebnis-qa') {
+    if (schritt.status === 'FEHLGESCHLAGEN') return { wiederholbar: true }
+    if (schritt.status === 'VERWEIGERT') return { wiederholbar: false, grund: 'Die Prüfung aus Nutzersicht endete VERWEIGERT — ein lesender Prüfer liefe erneut in dieselbe Ablehnung' }
+    if (schritt.status === 'ERFOLGREICH' && Array.isArray(b.qaVerstoesse) && b.qaVerstoesse.length > 0) return { wiederholbar: true }
+    return { wiederholbar: false, grund: 'Die Prüfung aus Nutzersicht hat ein gültiges Ergebnis — dafür gibt es „Anpassung wünschen“ oder „Ablehnen“, nicht die Wiederholung' }
+  }
   if (schritt.rolle === 'architecture-advisor') {
     if (schritt.status === 'FEHLGESCHLAGEN') return { wiederholbar: true }
     if (schritt.status === 'ERFOLGREICH' && Array.isArray(b.advisorVerstoesse) && b.advisorVerstoesse.length > 0) return { wiederholbar: true }
     if (schritt.status === 'VERWEIGERT') return { wiederholbar: false, grund: 'Der Advisor endete VERWEIGERT — ein lesender Prüfer liefe erneut in dieselbe Ablehnung' }
     return { wiederholbar: false, grund: `Der Advisor endete ${schritt.status} mit gültigem Ergebnis — nichts zu wiederholen` }
   }
-  return { wiederholbar: false, grund: `Schritt '${schritt.schritt_id}' (${schritt.rolle}) ist kein Prüfschritt — wiederholbar sind nur Review und Advisor` }
+  return { wiederholbar: false, grund: `Schritt '${schritt.schritt_id}' (${schritt.rolle}) ist kein Prüfschritt — wiederholbar sind nur Review, Advisor und qa` }
 }

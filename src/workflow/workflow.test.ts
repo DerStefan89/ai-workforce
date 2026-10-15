@@ -28,8 +28,8 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, planV2Sprungziel, validiereWorkflowDaten } from './index.ts'
-import type { WorkflowV0Daten, WorkflowV0Schritt } from './types.ts'
+import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, istReviewBeanstandet, planV2Sprungziel, qaNachfolgerStartbereit, validiereWorkflowDaten } from './index.ts'
+import type { SchrittErgebnis, WorkflowV0Daten, WorkflowV0Schritt } from './types.ts'
 
 /** Baut einen frischen, gültigen Zweischritt-Workflow als Mutationsbasis. */
 function gueltigerWorkflow(): Record<string, unknown> {
@@ -1117,7 +1117,7 @@ test("Regel 4b greift NICHT bei worker 'codex' — dort ist output_schema die vo
 test("Regel 4b lässt claude-code mit 'ergebnis-architecture-advisor' starten (F45 B2b-1b, '--json-schema' real belegt, Spike F-1105)", () => {
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'claude-code', output_schema: 'ergebnis-architecture-advisor' })])
   assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
-  assert.deepEqual([...CLAUDE_CODE_AUSGABESCHEMAS], ['ergebnis-architecture-advisor', 'ergebnis-code-reviewer'])
+  assert.deepEqual([...CLAUDE_CODE_AUSGABESCHEMAS], ['ergebnis-architecture-advisor', 'ergebnis-code-reviewer', 'ergebnis-qa'])
 })
 
 test("Regel 4b lässt claude-code mit 'ergebnis-code-reviewer' starten (F45 B2b-2a, '--json-schema' real belegt, features/F45/nachweise/b2b2a/spike-reviewer-schema.md)", () => {
@@ -1539,4 +1539,128 @@ test('F45 B2b-1b-2a planV2Sprungziel: liefert den übersprungenen Advisor nur be
   const neu = planV2Workflow({ lauf_id: 'lauf-adv-2' })
   assert.equal(planV2Sprungziel(neu.schritte, neu.schritte[0]), undefined)
   assert.equal(planV2Sprungziel(daten.schritte, daten.schritte[1]), undefined, 'ohne rueckweg kein Sprung')
+})
+
+// ─── F45 B2b-2b-1 (F-820): qa-Schritt nach dem Review — Aufschub des Review-Halts und Regel 1q ──────────────────
+
+/** Review (codex) → qa (claude-code, ergebnis-qa); der Review ist gerade gelaufen. */
+function reviewMitQa(qaFelder: Partial<WorkflowV0Schritt> = {}): WorkflowV0Daten {
+  return typisierterWorkflow([
+    typisierterSchritt('schritt-2-review', 'schritt-3-qa', { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-r' }),
+    typisierterSchritt('schritt-3-qa', null, { rolle: 'qa', output_schema: 'ergebnis-qa', ...qaFelder }),
+  ])
+}
+
+/** Review gelaufen, qa gerade gelaufen. */
+function qaGelaufen(): WorkflowV0Daten {
+  return reviewMitQa({ status: 'ERFOLGREICH', lauf_id: 'lauf-q' })
+}
+
+const reviewErgebnis = (felder: Partial<SchrittErgebnis>): SchrittErgebnis => ({ schrittId: 'schritt-2-review', ergebnis: 'ERFOLGREICH', laufId: 'lauf-r', akVerstoesse: [], reviewVerstoesse: [], ...felder })
+const qaErgebnis = (felder: Partial<SchrittErgebnis>): SchrittErgebnis => ({
+  schrittId: 'schritt-3-qa',
+  ergebnis: 'ERFOLGREICH',
+  laufId: 'lauf-q',
+  urteil: 'BEREIT',
+  qaVerstoesse: [],
+  vorpruefung: { urteil: 'BEREIT', akVerstoesse: [] },
+  ...felder,
+})
+const grundVon = (ergebnis: ReturnType<typeof ermittleNaechstenSchritt>): string => (ergebnis.art === 'haltKlaerung' ? ergebnis.grund : `kein Halt: ${ergebnis.art}`)
+
+test('B2b-2b-1 istReviewBeanstandet: BLOCKIERT oder mindestens ein AK-Verstoß', () => {
+  assert.equal(istReviewBeanstandet('BLOCKIERT', []), true)
+  assert.equal(istReviewBeanstandet('BEREIT', ['AK1 fehlt']), true)
+  assert.equal(istReviewBeanstandet('BEREIT_NACH_KORREKTUR', []), false)
+  assert.equal(istReviewBeanstandet('BEREIT', undefined), false)
+  assert.equal(istReviewBeanstandet(null, []), false)
+})
+
+test('B2b-2b-1 qaNachfolgerStartbereit: nur ein startbereiter qa-Schritt direkt hinter dem Review zählt', () => {
+  const w = reviewMitQa()
+  assert.equal(qaNachfolgerStartbereit(w.schritte, w.schritte[0] as WorkflowV0Schritt)?.schritt_id, 'schritt-3-qa')
+  const gelaufen = qaGelaufen()
+  assert.equal(qaNachfolgerStartbereit(gelaufen.schritte, gelaufen.schritte[0] as WorkflowV0Schritt), undefined, 'Reparaturfassung: qa schon gelaufen')
+  const ohne = typisierterWorkflow([typisierterSchritt('schritt-2-review', null, { output_schema: 'ergebnis-code-reviewer' })])
+  assert.equal(qaNachfolgerStartbereit(ohne.schritte, ohne.schritte[0] as WorkflowV0Schritt), undefined)
+})
+
+test('B2b-2b-1 Aufschub: Review BLOCKIERT mit qa-Nachfolger hält nicht, die Kette läuft zum qa', () => {
+  const ergebnis = ermittleNaechstenSchritt(reviewMitQa(), reviewErgebnis({ urteil: 'BLOCKIERT' }))
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-3-qa')
+})
+
+test('B2b-2b-1 Aufschub (A1): AK-Verstoß und Vertragsbruch (1k) bei beanstandetem Review halten ebenfalls nicht', () => {
+  assert.equal(ermittleNaechstenSchritt(reviewMitQa(), reviewErgebnis({ urteil: 'BEREIT', akVerstoesse: ['AK1 fehlt'] })).art, 'starte')
+  assert.equal(ermittleNaechstenSchritt(reviewMitQa(), reviewErgebnis({ urteil: 'BLOCKIERT', reviewVerstoesse: ['keine Befunde, aber der Satz fehlt'] })).art, 'starte')
+})
+
+test('B2b-2b-1 kein Aufschub: unbekanntes Urteil, Vertragsbruch bei tragendem Urteil, qa nicht startbereit, Bestand ohne qa', () => {
+  assert.equal(ermittleNaechstenSchritt(reviewMitQa(), reviewErgebnis({ urteil: null })).art, 'haltKlaerung')
+  assert.equal(ermittleNaechstenSchritt(reviewMitQa(), reviewErgebnis({ urteil: 'BEREIT', reviewVerstoesse: ['x'] })).art, 'haltKlaerung')
+  const reparatur = reviewMitQa({ status: 'ERFOLGREICH', lauf_id: 'lauf-alt' })
+  const ergebnis = ermittleNaechstenSchritt(reparatur, reviewErgebnis({ urteil: 'BLOCKIERT' }))
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2-review', 'hält am Review wie bisher (Regel 1b)')
+  const bestand = typisierterWorkflow([typisierterSchritt('schritt-2-review', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-r' })])
+  assert.match(grundVon(ermittleNaechstenSchritt(bestand, reviewErgebnis({ urteil: 'BLOCKIERT' }))), /trägt Urteil 'BLOCKIERT'/)
+})
+
+test('B2b-2b-1 Regel 1q: Review und qa tragen ⇒ fertig', () => {
+  assert.equal(ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis({})).art, 'fertig')
+  assert.equal(ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis({ urteil: 'BEREIT_NACH_KORREKTUR' })).art, 'fertig')
+})
+
+test('B2b-2b-1 Regel 1q (a): Verstöße gegen das qa-Schema halten, Ausweg „Prüfer wiederholen“', () => {
+  const ergebnis = ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis({ qaVerstoesse: ["'testfaelle' ist leer"] }))
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-3-qa')
+  assert.match(grundVon(ergebnis), /qa-Schema.*'testfaelle' ist leer.*Prüfer wiederholen/)
+})
+
+test('B2b-2b-1 Regel 1q (b): Review-Ergebnis der Runde nicht lesbar ⇒ Halt (fail closed)', () => {
+  const ergebnis = ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis({ vorpruefung: { urteil: null, akVerstoesse: [] } }))
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(grundVon(ergebnis), /Review-Ergebnis dieser Runde nicht lesbar/)
+})
+
+test('B2b-2b-1 Regel 1q (c): qa BLOCKIERT, Review beanstandet oder beides ⇒ ein Halt, der beide nennt', () => {
+  const grund = (felder: Partial<SchrittErgebnis>) => grundVon(ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis(felder)))
+  assert.match(grund({ urteil: 'BLOCKIERT' }), /qa.*Urteil 'BLOCKIERT'/)
+  assert.match(grund({ vorpruefung: { urteil: 'BLOCKIERT', akVerstoesse: [] } }), /Review dieser Runde.*BLOCKIERT/)
+  assert.match(grund({ vorpruefung: { urteil: 'BEREIT', akVerstoesse: ['AK2 nicht erfüllt'] } }), /AK2 nicht erfüllt/)
+  const beide = grund({ urteil: 'BLOCKIERT', vorpruefung: { urteil: 'BLOCKIERT', akVerstoesse: [] } })
+  assert.match(beide, /Review dieser Runde/)
+  assert.match(beide, /Urteil 'BLOCKIERT'/)
+})
+
+test('B2b-2b-1 Regel 1q: ohne vorpruefung (qa ohne Review davor) entscheidet nur das qa-Urteil', () => {
+  assert.equal(ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis({ vorpruefung: undefined })).art, 'fertig')
+  assert.equal(ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis({ vorpruefung: undefined, urteil: 'BLOCKIERT' })).art, 'haltKlaerung')
+})
+
+test("B2b-2b-1 Regel 4b lässt claude-code mit 'ergebnis-qa' starten (Spike features/F45/nachweise/b2b2b/spike-qa-schema.md)", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'qa', worker: 'claude-code', output_schema: 'ergebnis-qa' })])
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
+  assert.deepEqual([...CLAUDE_CODE_AUSGABESCHEMAS], ['ergebnis-architecture-advisor', 'ergebnis-code-reviewer', 'ergebnis-qa'])
+})
+
+test('B2b-2b-1 Aufschub nur, wenn der qa wirklich startet (Delta D1): ZWINGEND-qa oder max_schritte erreicht ⇒ Halt am Review wie bisher', () => {
+  const zwingend = reviewMitQa({ freigabe: 'ZWINGEND' })
+  const e1 = ermittleNaechstenSchritt(zwingend, reviewErgebnis({ urteil: 'BLOCKIERT' }))
+  assert.equal(e1.art, 'haltKlaerung')
+  assert.equal(e1.aktiverSchrittId, 'schritt-2-review')
+  const grenze = { ...reviewMitQa(), grenzen: { max_schritte: 1, max_replans: 1 } }
+  const e2 = ermittleNaechstenSchritt(grenze, reviewErgebnis({ urteil: 'BLOCKIERT' }))
+  assert.equal(e2.art, 'haltKlaerung')
+  assert.match(grundVon(e2), /trägt Urteil 'BLOCKIERT'/)
+  // Gegenprobe: ohne Beanstandung gelten 2/5 wie bisher.
+  assert.equal(ermittleNaechstenSchritt(zwingend, reviewErgebnis({ urteil: 'BEREIT' })).art, 'haltFreigabe')
+})
+
+test('B2b-2b-1 Regel 1q (a) nennt eine Beanstandung des Reviews mit (Delta D5)', () => {
+  const grund = grundVon(ermittleNaechstenSchritt(qaGelaufen(), qaErgebnis({ qaVerstoesse: ['x'], vorpruefung: { urteil: 'BLOCKIERT', akVerstoesse: [] } })))
+  assert.match(grund, /qa-Schema: x/)
+  assert.match(grund, /Der Review dieser Runde hat beanstandet/)
 })

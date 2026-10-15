@@ -99,9 +99,9 @@ gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
-`docs/projekt/fixpaket-f45.md`; B0 bis F-2b-1 gemergt, zuletzt #325; F-2b-2a
-gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
-22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 12.10.2026).
+`docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2a, zuletzt #343; B2b-2b-1
+(qa-Schritt, Kern) gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 15.10.2026).
 
 ## Erledigt
 
@@ -672,9 +672,16 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Hinweis (kein Halt, kein Neubau); ein Claude-Reviewer mit Schema `ergebnis-code-reviewer` ist
   gültig (Spike `features/F45/nachweise/b2b2a/`, Regel-4b-Allowlist), Vorlagen bleiben bei Codex;
   Gate f45-b2b2-pruefer, Render-Nachweis `features/F45/nachweise/b2b2a/` (F-1085 (2)(3)(4)).
-  Offen: B2b-2b qa-Schritt (F-820); der design-guardian-Schritt im Lauf geht nach B3.
+  Der design-guardian-Schritt im Lauf geht nach B3.
   Startfreigabe für CLI 2.1.300 erneuert (15.10.2026; Autoupdate aus, F-1101/F-1102/F-1111 (3) erledigt).
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1115. Nach F46, vor F30
+  B2b-2b geteilt (Stefan 15.10.2026 nach dem Advisor-Pass „zu groß“): B2b-2b-1 „qa-Schritt, Kern“
+  gebaut (15.10.2026, `features/F45/plan-b2b2b.md`): Schema `ergebnis-qa` (Spike: per `--json-schema`
+  real durchgesetzt, `features/F45/nachweise/b2b2b/`), Regel 1q, Review und qa zusammen höchstens
+  eine Korrekturrunde mit den Befunden beider je Herkunft, Wiederholungs-Halt über beide, „Prüfer
+  wiederholen“ für qa; Vorlagen unverändert (Bestand bitgleich), Gate f45-b2b2-pruefer (q1)–(q11).
+  Offen: B2b-2b-2 (qa in den Vorlagen standard/hoch, Abnahme-Karte, Render-Nachweis; F-820 Rest,
+  F-1117) — B2b-2 ist erst damit abgeschlossen. F-648 geschlossen (umgesetzt, geprüft gegen B2b-2a).
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1117. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
