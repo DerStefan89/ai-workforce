@@ -706,6 +706,8 @@ test("Ausgang 'haltKlaerung': ein Advisor-Ergebnis mit Verstößen gegen das Sch
   assert.equal(ergebnis.art, 'haltKlaerung')
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
   assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /architecture-advisor.*Ergebnis ist kein JSON-Objekt.*Prüfer wiederholen/)
+  // F45 B2b-1b-2b (D9): seit dem Leitstand-Knopf „Advisor wiederholen“ entfällt der Hinweis auf den fehlenden Knopf.
+  assert.doesNotMatch(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /ohne eigenen Knopf/)
 })
 
 test('Regel 1d nennt höchstens drei Verstöße und die Zahl der übrigen', () => {

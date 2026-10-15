@@ -95,7 +95,8 @@
  * und wartet wie nach einem Klick), "auswaehlen": { "selector", "wert" } (page.selectOption),
  * "fokus": "<selector>" und "taste": "Enter" (Tastaturbedienung). Beobachtungen zusätzlich:
  * "getroffen": [{ "name", "selector" }] (trifft ein Klick auf die Mitte das Element?),
- * "ueberlauf": true (waagerechter Überlauf der Seite) und immer die Spalte "Seite geladen"
+ * "ueberlauf": true (waagerechter Überlauf der Seite, seit F45 B2b-1b-2b mit der Spalte "scrollWidth/clientWidth"
+ * des Dokuments) und immer die Spalte "Seite geladen"
  * (document.readyState === 'complete').
  *
  * F44 WS-1b (Motion-Nachweis, Abgleich F-725 §4 Punkt 9): Schritt "animationenBei": <ms> hält
@@ -164,7 +165,11 @@ async function leseZustand(page, beobachtete) {
       zeile[eintrag.name] = oben !== null && (oben === element || element.contains(oben))
     }
     // F44 WS-1a: 'ueberlauf' — läuft die Seite waagerecht über den Viewport hinaus?
-    if (beobachtete.ueberlauf) zeile['waagerechter Überlauf'] = document.documentElement.scrollWidth > window.innerWidth
+    if (beobachtete.ueberlauf) {
+      zeile['waagerechter Überlauf'] = document.documentElement.scrollWidth > window.innerWidth
+      // F45 B2b-1b-2b (F-1107 (5)): die Messwerte dazu — scrollWidth ≤ clientWidth heißt kein waagerechter Bildlauf.
+      zeile['scrollWidth/clientWidth'] = `${document.documentElement.scrollWidth}/${document.documentElement.clientWidth}`
+    }
     // F44 WS-1a: immer — war die Seite beim Ablesen vollständig geladen ('load')? Ein tolerant
     // übergangenes 'load' (siehe erzwingeNavigation) bleibt so im Protokoll sichtbar.
     zeile['Seite geladen'] = document.readyState === 'complete'

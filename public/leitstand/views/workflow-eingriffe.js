@@ -4,7 +4,8 @@
  * Zweck: Anzeige der Eingriffe am Ablauf (F44 WS-4b, Vorlage V10 d_workflow_klaerung; Abgleich F-725
  * F6, F8, F9): die Notizen über der Timeline — „Jarvis braucht deine Entscheidung.“ (Rückfrage des
  * Architekten, F39), „Abgelehnte Befehle sichten“ (F-768) und „Der Ablauf steht.“ bzw. „Dieser Ablauf
- * ist nicht gültig.“ (Reparatur, F-240/F-247) —, die Dialoginhalte für Rückfrage und Sichtung, der
+ * ist nicht gültig.“ (Reparatur, F-240/F-247), seit F45 B2b-1b-2b „Der Advisor hat kein verwertbares Ergebnis
+ * geliefert.“ (Advisor wiederholen) —, die Dialoginhalte für Rückfrage und Sichtung, der
  * Reparatureditor samt Warnungen und die reinen Funktionen des Reparaturzugs (baueReparaturEntwurf,
  * ermittleAbgeschwaechteFreigabenAnzeige, ermittleReparaturWarnungen).
  *
@@ -20,7 +21,8 @@
  *
  * Wichtig:
  * - Angeboten wird nur, was der Server ausweist (D5): architekturEntscheidung (Regel 1c), sichtung
- *   (istSichtungsHaltAnzeige, F-760-Halt), status bzw. eine ungültige Fassung für die Reparatur.
+ *   (istSichtungsHaltAnzeige, F-760-Halt), prueferWiederholbar (Advisor, F45 B2b-1b-2b), status bzw. eine
+ *   ungültige Fassung für die Reparatur.
  * - Servertexte (Fragen, Optionen, Vor- und Nachteile, Begründungen, grund, IDs) bleiben roh und
  *   werden escaped; alle übrigen Texte über t()/tHtml().
  * - IDs bleiben: wf-architektur-frage-<i>, wf-architektur-begruendung-<i>, wf-sichtung-begruendung,
@@ -111,21 +113,38 @@ export function renderReparaturNotiz(workflowId, ungueltig) {
 }
 
 /**
- * Die Notizen eines Workflows in der Reihenfolge Rückfrage, Sichtung, Reparatur. Angeboten wird nur,
- * was der Server ausweist; ohne fälligen Eingriff ''.
+ * F45 B2b-1b-2b (F-1104 (4), Plan v1 §3.10): rot „Der Advisor hat kein verwertbares Ergebnis geliefert.“ mit „Advisor
+ * wiederholen“ (data-aktion pruefer-wiederholen → POST …/pruefer-wiederholen, views/workflows.js). Nur, wenn der Server den
+ * Advisor für wiederholbar hält (prueferWiederholbar, dieselbe Vorbedingung wie die Route).
+ * @param workflowId - Kennung des Workflows
+ * @returns HTML
+ */
+export function renderAdvisorWiederholenNotiz(workflowId) {
+  return `<div class="note red wf-advisor-wiederholen">
+    <strong>${tHtml('eingriff.advisor.titel')}</strong>
+    <p>${tHtml('eingriff.advisor.text', { ort: t('ablauf.technik.titel') })}</p>
+    <button type="button" class="button primary wf-aktion" data-aktion="pruefer-wiederholen" data-workflow-id="${escapeHtml(workflowId)}">${tHtml('eingriff.advisor.knopf')}</button>
+  </div>`
+}
+
+/**
+ * Die Notizen eines Workflows in der Reihenfolge Rückfrage, Sichtung, Advisor wiederholen, Reparatur. Angeboten wird
+ * nur, was der Server ausweist; ohne fälligen Eingriff ''.
  * @param workflowId - Kennung des Workflows
  * @param status - daten.status
  * @param ungueltig - true, wenn die Fassung nicht gegen WORKFLOW_V0 validiert
  * @param architekturEntscheidung - { schrittId, fragen } oder null (Regel 1c, F39 WS-2b)
  * @param sichtung - istSichtungsHaltAnzeige oder null (F-768)
+ * @param prueferWiederholbar - F45 B2b-1b-2b: GET /api/workflows/<id> prueferWiederholbar (Advisor)
  * @returns HTML
  */
-export function renderEingriffe(workflowId, status, ungueltig = false, architekturEntscheidung = null, sichtung = null) {
+export function renderEingriffe(workflowId, status, ungueltig = false, architekturEntscheidung = null, sichtung = null, prueferWiederholbar = false) {
   const notizen = []
   // Ohne lesbare Frage gibt es nichts zu beantworten (der Halt bleibt über die Reparatur-Notiz bedienbar).
   if (architekturEntscheidung !== null && architekturEntscheidung.fragen?.length > 0) notizen.push(renderKlaerungNotiz(workflowId, architekturEntscheidung))
   // F-768: nur beim reinen F-760-Halt; mit Zusatzgründen bleibt allein die Reparaturfassung.
   if (sichtung !== null && !ungueltig) notizen.push(renderSichtungNotiz(workflowId, sichtung))
+  if (prueferWiederholbar === true && !ungueltig) notizen.push(renderAdvisorWiederholenNotiz(workflowId))
   if (REPARIERBARE_WORKFLOW_STATUS.includes(status) || ungueltig) notizen.push(renderReparaturNotiz(workflowId, ungueltig))
   return notizen.join('')
 }

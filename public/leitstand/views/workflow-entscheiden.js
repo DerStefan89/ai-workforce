@@ -7,7 +7,9 @@
  * bestimmt den Modus und baut Kopf und Freigabe-Teil; den Abnahme-Teil baut views/workflow-abnahme.js
  * (renderAbnahmeSeite, renderAbnahmePanel).
  *
- * Freigabe (naechster.art haltFreigabe bei gültiger Fassung): „Was startet, wenn du freigibst“ (die
+ * Freigabe (naechster.art haltFreigabe bei gültiger Fassung): an einem Halt der Plan-Stufe zuerst „Plan, den du
+ * freigibst“ (Plan v1/v2) bzw. „Plan v1 — wird überarbeitet“ und „Befunde des Advisors“ (F45 B2b-1b-2b, F-1106,
+ * detail.planFreigabe); danach „Was startet, wenn du freigibst“ (die
  * Schritte in Planreihenfolge mit Rolle und Worker, der fällige Schritt markiert), Werkzeugsatz und
  * Zeitgrenze des fälligen Schritts, sein Risiko; Kontrolltiefe („kommt“, F-372: das Router-Ergebnis hat
  * keinen Lesepfad) und Schätzung („kommt“, Fixpaket B5); „Arbeitspaket“ („kommt“, Fixpaket B2);
@@ -34,7 +36,7 @@ import { escapeHtml } from '../render.js'
 import { rollenName, workerName } from '../rollen-anzeige.js'
 import { renderArbeitsordnerKarte } from './arbeitsordner-anzeige.js'
 import { renderEntscheidungsPanel } from './entscheidung-panel.js'
-import { abnahmeEinleitung, abnahmeLage } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, FARBE_SCHWERE } from './workflow-abnahme.js'
 import { ordneSchritteNachPlan, renderEinrichtungsListe } from './workflow-detail.js'
 
 /** Optionen der Freigabe in der Reihenfolge der Vorlage. */
@@ -175,13 +177,96 @@ function renderFaehigkeiten(empfehlung) {
   return `<section class="entscheiden-karte" aria-labelledby="freigabe-faehigkeiten">${kopf}${inhalt}<p class="subtle">${tHtml('entscheiden.freigabe.installierenHinweis')}</p></section>`
 }
 
+/** Feste Wertemengen des Advisor-Schemas (schemas/ergebnis-architecture-advisor.schema.json) mit übersetztem Text. */
+const ADVISOR_URTEILE = new Set(['FREIGEGEBEN', 'FREIGEGEBEN_MIT_AUFLAGEN', 'UEBERARBEITEN'])
+const ADVISOR_SCHWEREN = new Set(Object.keys(FARBE_SCHWERE))
+const ADVISOR_EVIDENZEN = new Set(['FAKT', 'SCHLUSSFOLGERUNG', 'ANNAHME', 'OFFENE_UNSICHERHEIT'])
+/** Statusfarbe (Klasse von .ablauf-status) je Advisor-Urteil — Anzeige, keine Regel. */
+const FARBE_ADVISOR_URTEIL = { FREIGEGEBEN: 'ok', FREIGEGEBEN_MIT_AUFLAGEN: 'warten', UEBERARBEITEN: 'fehler' }
+
 /**
- * Hauptspalte der Freigabe.
- * @param detail - { workflowId, daten, naechster, empfehlung, arbeitsordner, codeStand, einrichtung } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js; F45 B2a-2: einrichtung aus GET /api/workflows/<id>
+ * Übersetzt einen Wert einer festen Wertemenge; ein unbekannter erscheint roh (Muster workflow-abnahme.js).
+ * @param menge - bekannte Werte @param praefix - Schlüsselpräfix @param wert - Serverwert
+ * @returns Text
+ */
+function wertText(menge, praefix, wert) {
+  return menge.has(wert) ? t(`${praefix}.${wert}`) : String(wert ?? '')
+}
+
+/**
+ * F45 B2b-1b-2b (Plan 2b P3, F-1106): „Plan, den du freigibst“ (Freigabe der Ausführung, Kennzeichen Plan v1/v2) bzw.
+ * „Plan v1 — wird überarbeitet“ (Freigabe des Architekten für Plan v2, mit dem ehrlichen Satz, dass Plan v1 hier nicht unverändert freigebbar ist):
+ * Zusammenfassung, Module (Name · Zweck), Stefans Entscheidungen (Frage → Antwort). Keine internen Kennungen.
+ * @param planFreigabe - detail.planFreigabe (nicht null)
+ * @returns HTML
+ */
+function renderPlanKarte(planFreigabe) {
+  const vorV2 = planFreigabe.art === 'plan_v2'
+  const titel = vorV2 ? tHtml('entscheiden.plan.titelV1Ueberarbeitet') : `${tHtml('entscheiden.plan.titel')} <span class="ablauf-marke">${tHtml('entscheiden.plan.fassung', { zahl: planFreigabe.fassung === 2 ? 2 : 1 })}</span>`
+  const plan = planFreigabe.plan ?? {}
+  let inhalt
+  if (typeof plan.fehler === 'string') inhalt = `<p class="fehler">${tHtml('entscheiden.plan.nichtLesbar')}</p>`
+  else {
+    const module = Array.isArray(plan.module) ? plan.module : []
+    const entscheidungen = Array.isArray(plan.entscheidungen) ? plan.entscheidungen : []
+    inhalt = [
+      typeof plan.zusammenfassung === 'string' && plan.zusammenfassung !== '' ? `<p>${escapeHtml(plan.zusammenfassung)}</p>` : '',
+      module.length === 0 ? '' : `<h3>${tHtml('entscheiden.plan.module')}</h3><ul class="entscheiden-plan-liste">${module.map((m) => `<li><strong>${escapeHtml(m.name ?? '')}</strong>${m.zweck ? ` · <span class="subtle">${escapeHtml(m.zweck)}</span>` : ''}</li>`).join('')}</ul>`,
+      entscheidungen.length === 0 ? '' : `<h3>${tHtml('entscheiden.plan.entscheidungen')}</h3><ul class="entscheiden-plan-liste">${entscheidungen.map((e) => `<li>${escapeHtml(e.frage ?? '')} <span aria-hidden="true">→</span><span class="sr-only">:</span> <strong>${escapeHtml(e.gewaehlt ?? '')}</strong></li>`).join('')}</ul>`,
+    ].join('')
+  }
+  // Der Knopfname kommt aus der Option der Spalte „Deine Entscheidung“ — so stimmt er in jeder Sprache mit der Seite überein.
+  const behalten = vorV2 ? `<p class="subtle">${tHtml('entscheiden.plan.v1Behalten', { knopf: t('entscheiden.freigabe.option.ablehnen') })}</p>` : ''
+  return `<section class="entscheiden-karte entscheiden-plan" aria-labelledby="freigabe-plan">
+    <h2 id="freigabe-plan">${titel}</h2>
+    ${inhalt}${behalten}
+  </section>`
+}
+
+/**
+ * F45 B2b-1b-2b: „Befunde des Advisors“ — Urteil-Badge, Begründung, je Befund Schwere-Badge, Fundstelle, Zusammenfassung
+ * und Korrekturrichtung (Listenmuster der Review-Befunde). Der Hinweis darüber sagt, was mit den Befunden geschieht:
+ * „Kein Plan v2: <Grund>“, gehen an den Architekten (vor Plan v2), in Plan v2 eingearbeitet (nur, wenn genau dieser
+ * Advisor-Lauf der Anlass war). Ohne Advisor keine Karte.
+ * @param planFreigabe - detail.planFreigabe (nicht null)
+ * @returns HTML oder ''
+ */
+function renderAdvisorKarte(planFreigabe) {
+  const advisor = planFreigabe.advisor
+  if (advisor === null || advisor === undefined) return ''
+  const kopf = `<h2 id="freigabe-advisor">${tHtml('entscheiden.advisor.titel')}</h2>`
+  if (typeof advisor.fehler === 'string') return `<section class="entscheiden-karte entscheiden-plan" aria-labelledby="freigabe-advisor">${kopf}<p class="fehler">${tHtml('entscheiden.advisor.nichtLesbar')}</p></section>`
+  let hinweis = ''
+  if (typeof planFreigabe.keinPlanV2 === 'string') hinweis = `<p class="entscheiden-plan-hinweis">${tHtml('entscheiden.advisor.keinPlanV2', { grund: planFreigabe.keinPlanV2 })}</p>`
+  else if (planFreigabe.art === 'plan_v2') hinweis = `<p class="entscheiden-plan-hinweis">${tHtml('entscheiden.advisor.anArchitekten')}</p>`
+  else if (planFreigabe.fassung === 2 && planFreigabe.advisorIstAnlass === true) hinweis = `<p class="entscheiden-plan-hinweis">${tHtml('entscheiden.advisor.eingearbeitet')}</p>`
+  const urteil = `<p><span class="ablauf-status ${FARBE_ADVISOR_URTEIL[advisor.urteil] ?? 'neutral'}">${escapeHtml(wertText(ADVISOR_URTEILE, 'entscheiden.advisor.urteil', advisor.urteil))}</span></p>`
+  const begruendung = typeof advisor.begruendung === 'string' && advisor.begruendung !== '' ? `<p>${escapeHtml(advisor.begruendung)}</p>` : ''
+  const befunde = Array.isArray(advisor.befunde) ? advisor.befunde : []
+  const liste =
+    befunde.length === 0
+      ? `<p class="subtle">${tHtml('entscheiden.advisor.keine')}</p>`
+      : `<ul class="abnahme-liste abnahme-befunde">${befunde
+          .map(
+            (b) => `<li class="abnahme-befund">
+      <p><span class="ablauf-status ${FARBE_SCHWERE[b.schwere] ?? 'neutral'}">${escapeHtml(wertText(ADVISOR_SCHWEREN, 'abnahme.schwere', b.schwere))}</span> <span class="subtle">${escapeHtml(b.id ?? '')} · ${escapeHtml(wertText(ADVISOR_EVIDENZEN, 'entscheiden.advisor.evidenz', b.evidenz))}</span> <code>${escapeHtml(b.fundstelle ?? '')}</code></p>
+      <p>${escapeHtml(b.zusammenfassung ?? '')}</p>
+      <p>${tHtml('entscheiden.advisor.korrektur', { text: String(b.korrekturrichtung ?? '') })}</p>
+    </li>`
+          )
+          .join('')}</ul>`
+  return `<section class="entscheiden-karte entscheiden-plan" aria-labelledby="freigabe-advisor">${kopf}${hinweis}${urteil}${begruendung}${liste}</section>`
+}
+
+/**
+ * Hauptspalte der Freigabe. F45 B2b-1b-2b: vor „Was startet“ der Plan und die Befunde des Advisors (detail.planFreigabe).
+ * @param detail - { workflowId, daten, naechster, empfehlung, arbeitsordner, codeStand, einrichtung, planFreigabe } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js; F45 B2a-2: einrichtung aus GET /api/workflows/<id>; F45 B2b-1b-2b: planFreigabe aus GET /api/workflows/<id> (oder null)
  * @returns HTML
  */
 export function renderFreigabeSeite(detail) {
-  return `<div class="entscheiden-inhalt">${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket(detail.einrichtung ?? null, detail.workflowId ?? '')}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
+  const planFreigabe = detail.planFreigabe ?? null
+  const planKarten = planFreigabe === null ? '' : `${renderPlanKarte(planFreigabe)}${renderAdvisorKarte(planFreigabe)}`
+  return `<div class="entscheiden-inhalt">${planKarten}${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket(detail.einrichtung ?? null, detail.workflowId ?? '')}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
 }
 
 /**

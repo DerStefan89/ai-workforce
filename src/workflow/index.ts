@@ -955,8 +955,8 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     // berechnet advisorVerstoesse NUR für rolle 'architecture-advisor' — für jede andere Rolle bleibt
     // das Feld undefined.
     // F45 B2b-1b (features/F45/plan-b2b1b.md): der Halt greift bei Verstößen gegen das Schema (Ausweg:
-    // Prüfer wiederholen, B2b-1a — im Leitstand gibt es dafür bis B2b-1b-2b nur den Review-Knopf, der
-    // Grund sagt das ehrlich und nennt die Reparatur als Weg). Jedes GÜLTIGE Urteil setzt hier fort. Den Rückweg der
+    // Prüfer wiederholen, B2b-1a — im Leitstand seit B2b-1b-2b der Knopf „Advisor wiederholen“, daneben
+    // die Reparatur als Weg). Jedes GÜLTIGE Urteil setzt hier fort. Den Rückweg der
     // Plan-Stufe (Plan v2 bei FREIGEGEBEN_MIT_AUFLAGEN/UEBERARBEITEN, F45 B2b-1b-2a) entscheidet der Aufrufer VOR dieser
     // Regel (ermittlePlanRueckweg, scripts/leitstand/f35-ws3-adjust-automatik.mjs) und schreibt ihn im selben
     // Schreibvorgang; folgt keiner, geht es wie bisher zur ZWINGEND-Freigabe der Ausführung.
@@ -965,7 +965,7 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
       const weitere = verstoesse.length > 3 ? ` (und ${verstoesse.length - 3} weitere)` : ''
       return {
         art: 'haltKlaerung',
-        grund: `Schritt '${vorschritt.schritt_id}' (architecture-advisor) liefert kein gültiges Ergebnis nach dem Advisor-Schema: ${verstoesse.slice(0, 3).join('; ')}${weitere} — kein automatischer Fortschritt. Ausweg: Prüfer wiederholen (im Leitstand noch ohne eigenen Knopf für den Advisor) oder den Ablauf reparieren (Lauf '${vorschrittErgebnis.laufId}')`,
+        grund: `Schritt '${vorschritt.schritt_id}' (architecture-advisor) liefert kein gültiges Ergebnis nach dem Advisor-Schema: ${verstoesse.slice(0, 3).join('; ')}${weitere} — kein automatischer Fortschritt. Ausweg: Prüfer wiederholen (im Leitstand „Advisor wiederholen“) oder den Ablauf reparieren (Lauf '${vorschrittErgebnis.laufId}')`,
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }

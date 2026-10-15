@@ -661,11 +661,12 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   ungültige Freigabe (Drift) sperrt den Start mit Grund.
   Reihenfolge ab F (Stefan, 14.10.2026, E-F45-11/12): F-3b-1 → F-3b-2 → B2b → Fähigkeit bauen → B5a/B5b → B3 → R → R2 → F30
   (R2 = Motion im Leitstand, neuer Baustein „Fähigkeit bauen“).
-  B2b-1 (Rückweg und Plan v2, `docs/projekt/fixpaket-f45.md`): 1a (#338) und 1b-1 (#339)
-  gemergt, 1b-2a „Plan v2, Kern“ gebaut (Architekt schreibt nach FREIGEGEBEN_MIT_AUFLAGEN/
-  UEBERARBEITEN einmal Plan v2, kein zweiter Advisor, Ausführung nur mit dem letzten Plan),
-  1b-2b „Anzeige“ (Freigabe-Seite mit Plan und Befunden, F-1106) offen.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1110. Nach F46, vor F30
+  B2b-1 (Rückweg und Plan v2, `docs/projekt/fixpaket-f45.md`): 1a (#338), 1b-1 (#339) und
+  1b-2a „Plan v2, Kern“ (#340) gemergt; 1b-2b „Anzeige“ gebaut (15.10.2026, Freigabe-Seite mit
+  Plan v1/v2 und Advisor-Befunden, „Kein Plan v2: …“ zur Lesezeit, Knopf „Advisor wiederholen“;
+  F-1106, F-1104 (4), F-1108) — damit ist B2b-1 abgeschlossen. Hülle der Freigabe-Route,
+  Gate-Fall Bau-Summe und Schwärzung der Zählungen nach dem Advisor-Pass als F-1111 offen.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1111. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

@@ -9977,6 +9977,36 @@ th {
   overflow-wrap: anywhere;
 }
 
+/* F45 B2b-1b-2b: Plan und Befunde des Advisors auf der Freigabe-Seite — nur Abstand und Umbruch, keine eigenen Farben
+   (Befunde in .abnahme-liste/.abnahme-befund). Lange Modulnamen, Fragen und Fundstellen brechen um. */
+.workflow-seite .entscheiden-plan {
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .entscheiden-plan h3 {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.workflow-seite .entscheiden-plan-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+.workflow-seite .entscheiden-plan-liste strong {
+  font-weight: 500;
+}
+
+/* Was mit den Befunden geschieht (Kein Plan v2 / an den Architekten / eingearbeitet) — abgesetzt ohne eigene Farbe. */
+.workflow-seite .entscheiden-plan-hinweis {
+  font-weight: 500;
+}
+
 .workflow-seite .faehigkeit-chip {
   display: inline-block;
   padding: 2px 8px;

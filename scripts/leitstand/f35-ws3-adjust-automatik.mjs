@@ -234,6 +234,24 @@ export function ermittlePlanRueckweg({ schritte, maxReplans, advisorSchrittId, u
 }
 
 /**
+ * F45 B2b-1b-2b (F-1108): der Satz „Kein Plan v2: <Grund>“ zur LESEZEIT (Projektion planFreigabe), für jede Lage „Urteil ≠
+ * FREIGEGEBEN, kein Rückweg für diesen Advisor-Lauf“ — auch dort, wo der gespeicherte Halt-Grund ihn nicht trägt (Nachlauf
+ * traf auf GESTOPPT, danach Reparatur; Bestand aus 1b-1). „Plan v2 lief“ heißt: der Architekt vor dem Advisor trägt den
+ * Rückweg genau dieses Laufs (dieselbe Bedingung wie planV2Sprungziel). Sonst entscheidet ermittlePlanRueckweg auf dem
+ * heutigen Stand: gesperrt ⇒ dessen Grund; „würde auslösen“ ⇒ der Rückweg ist damals nicht gelaufen (eigener Satz).
+ * @param eingabe - wie ermittlePlanRueckweg, dazu advisorLaufId (lauf_id des Advisor-Ergebnisses, das die Seite zeigt)
+ * @returns Grund (Text ohne Kennungen) oder null
+ */
+export function ermittleKeinPlanV2({ schritte, maxReplans, advisorSchrittId, advisorLaufId, urteil, befundAnzahl, kernVersionen }) {
+  if (!PLAN_V2_URTEILE.has(urteil)) return null
+  const architekt = (Array.isArray(schritte) ? schritte : []).find((s) => s?.nachfolger === advisorSchrittId)
+  if (architekt?.rolle === 'architekt' && architekt.rueckweg?.anlass_lauf_id === advisorLaufId) return null
+  const entscheid = ermittlePlanRueckweg({ schritte, maxReplans, advisorSchrittId, urteil, befundAnzahl, kernVersionen })
+  if (!entscheid.ausloesen) return entscheid.grund
+  return `Plan v2 wurde für dieses Advisor-Ergebnis nicht ausgelöst (der Ablauf war angehalten oder stammt aus der Zeit vor Plan v2). ${AUSWEG.plan}`
+}
+
+/**
  * Schrittliste der neuen Fassung beim Rückweg der Plan-Stufe: der Architekt steht wieder OFFEN (lauf_id null, ohne
  * freigabe_erteilt — ein neuer Lauf braucht eine neue Freigabe) und trägt den Rückweg; der Advisor bleibt ERFOLGREICH mit
  * seinem Lauf (Regel 3a springt nach Plan v2 über genau ihn). B13: der Nachfolger des Advisors verliert die Eingabe

@@ -1,0 +1,4 @@
+| Aktion | Plan-Karte | Befund-Karte | Befunde | Satz Plan v1 behalten | Knopf Advisor wiederholen | Spalte Freigabe | Plan-Titel | Hinweis Advisor | Advisor-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Advisor-Halt mit Knopf | false | false | false | false | true | false | (fehlt) | (fehlt) | Der Advisor hat kein verwertbares Ergebnis geliefert. Du kannst den Advisor allein wiederholen — der Plan des Architekte |  | false | 1440/1440 | true |
+| Klick „Advisor wiederholen“ → Advisor zurückgesetzt, Freigabe des Advisors | false | false | false | false | false | true | (fehlt) | (fehlt) | (fehlt) | Der Advisor ist zurückgesetzt. Er startet nach deiner Freigabe. | false | 1440/1440 | true |
