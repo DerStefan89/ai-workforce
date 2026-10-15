@@ -60,6 +60,8 @@ export interface EntscheidungAbnahmeBezug {
   workflow_version: number
   ausfuehrung_lauf_id: string
   review_lauf_id: string | null
+  /** F45 B2b-2b-1 (F-820): der qa-Lauf derselben Runde — nur in Abläufen mit qa-Schritt gesetzt (Bestand ohne das Feld). */
+  qa_lauf_id?: string | null
 }
 
 /** Schreibstelle seit F23 WS-2a: POST /api/workflows/<id>/abnahme. */

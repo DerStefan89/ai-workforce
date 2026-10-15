@@ -45,6 +45,8 @@ const PLANAENDERUNG_FELDER = new Set([...BASIS_FELDER, 'abgeschwaechte_freigaben
 const ABGESCHWAECHTE_FREIGABE_FELDER = new Set(['schritt_id', 'vorher', 'nachher'])
 const ABNAHME_FELDER = new Set([...BASIS_FELDER, 'bezug'])
 const BEZUG_FELDER = new Set(['workflow_version', 'ausfuehrung_lauf_id', 'review_lauf_id'])
+/** F45 B2b-2b-1 (F-820): optionales Feld von bezug — der qa-Lauf derselben Runde; Bestand ohne das Feld bleibt gültig. */
+const BEZUG_OPTIONALE_FELDER = new Set(['qa_lauf_id'])
 
 function istBekannteArt(wert: unknown): wert is EntscheidungArt {
   return typeof wert === 'string' && (ENTSCHEIDUNG_ARTEN as string[]).includes(wert)
@@ -149,7 +151,7 @@ export function validiereEntscheidungsDaten(daten: unknown): string[] {
     } else {
       const bezug = daten.bezug
       for (const feld of Object.keys(bezug)) {
-        if (!BEZUG_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld 'bezug.${feld}' (additionalProperties: false)`)
+        if (!BEZUG_FELDER.has(feld) && !BEZUG_OPTIONALE_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld 'bezug.${feld}' (additionalProperties: false)`)
       }
       for (const feld of BEZUG_FELDER) {
         if (!(feld in bezug)) verstoesse.push(`Pflichtfeld 'bezug.${feld}' fehlt`)
@@ -162,6 +164,9 @@ export function validiereEntscheidungsDaten(daten: unknown): string[] {
       }
       if ('review_lauf_id' in bezug && bezug.review_lauf_id !== null && !istNichtLeererString(bezug.review_lauf_id)) {
         verstoesse.push("'bezug.review_lauf_id' muss ein nicht-leerer String oder null sein")
+      }
+      if ('qa_lauf_id' in bezug && bezug.qa_lauf_id !== null && !istNichtLeererString(bezug.qa_lauf_id)) {
+        verstoesse.push("'bezug.qa_lauf_id' muss ein nicht-leerer String oder null sein")
       }
     }
   }

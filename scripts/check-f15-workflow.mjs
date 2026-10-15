@@ -223,7 +223,7 @@ const automatFaelle = [
       art: 'haltKlaerung',
       grund:
         // F45 B2b-1b: der Grund nennt jetzt auch das für claude-code per '--json-schema' belegte Schema (Regel-4b-Allowlist).
-        "Schritt 'schritt-2' setzt output_schema 'ergebnis-architektur', aber Worker 'claude-code' löst dieses Ausgabeschema nicht ein — 'codex' wird mit '--output-schema' gestartet, 'claude-code' mit '--json-schema' nur für 'ergebnis-architecture-advisor', 'ergebnis-code-reviewer'",
+        "Schritt 'schritt-2' setzt output_schema 'ergebnis-architektur', aber Worker 'claude-code' löst dieses Ausgabeschema nicht ein — 'codex' wird mit '--output-schema' gestartet, 'claude-code' mit '--json-schema' nur für 'ergebnis-architecture-advisor', 'ergebnis-code-reviewer', 'ergebnis-qa'",
       aktiverSchrittId: 'schritt-2',
     },
   },

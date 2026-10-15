@@ -468,7 +468,7 @@ import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
 import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, registriereAuftrag, traegtArbeitspaket, validiereAuftragAkzeptanzkriterien, validiereAuftragHerkunft, validiereAuftragPflichtfelder } from '../src/auftrag/index.ts'
-import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
+import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, istReviewBeanstandet, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { baueBeobachtungsBlock, baueClaudeJsonSchema, leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
 import { arbeitsverzeichnisseGleich } from '../src/invocation-policy/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
@@ -528,6 +528,7 @@ import {
   validiereArbeitsordnerDaten,
 } from '../src/arbeitsordner/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
+import { baueQaAuftragstext, validiereErgebnisQa } from '../src/qa/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { baueReviewPolicyBlock, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION, zaehleSchwereBeiBereit } from '../src/review-policy/index.ts'
 import { leseGeprueftenStandAsync, leseGeprueftenStandSync, standIstVeraltet } from '../src/review-stand/index.ts'
@@ -2059,6 +2060,46 @@ function findeAusfuehrungsSchritt(workflowDaten) {
 function findeReviewSchritt(workflowDaten) {
   if (!Array.isArray(workflowDaten?.schritte)) return null
   return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.output_schema === 'ergebnis-code-reviewer') ?? null
+}
+
+/**
+ * F45 B2b-2b-1 (F-820): der qa-Schritt einer Fassung — Kopplung an output_schema 'ergebnis-qa' (Muster findeReviewSchritt,
+ * Regel 1q). Robust gegen ungültige Daten wie findeAusfuehrungsSchritt.
+ * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
+ * @returns der Schritt, oder null
+ */
+function findeQaSchritt(workflowDaten) {
+  if (!Array.isArray(workflowDaten?.schritte)) return null
+  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.output_schema === 'ergebnis-qa') ?? null
+}
+
+/**
+ * F45 B2b-2b-1 (Delta-Advisor D4): der Review, dessen nachfolger der qa-Schritt ist — dieselbe Beziehung wie der Aufschub
+ * (qaNachfolgerStartbereit, src/workflow). Von ihm stammt die vorpruefung der Regel 1q.
+ * @param workflowDaten - Workflow-Daten
+ * @param qaSchritt - der qa-Schritt
+ * @returns der Review-Schritt, oder null (qa ohne Review davor)
+ */
+function findeReviewVorQa(workflowDaten, qaSchritt) {
+  if (!Array.isArray(workflowDaten?.schritte) || qaSchritt === null) return null
+  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.nachfolger === qaSchritt.schritt_id && s.output_schema === 'ergebnis-code-reviewer') ?? null
+}
+
+/**
+ * Der bezug einer Abnahme-Entscheidung (F23 WS-2a) — EINE Stelle für Kern und Mensch. F45 B2b-2b-1: in Abläufen mit
+ * qa-Schritt zusätzlich qa_lauf_id (optional im Schema); ohne qa-Schritt bitgleich wie zuvor.
+ * @param workflowDaten - Workflow-Daten der abgenommenen Fassung
+ * @param ausfuehrungSchritt - der gelaufene Ausführungsschritt
+ * @returns bezug
+ */
+function baueAbnahmeBezug(workflowDaten, ausfuehrungSchritt) {
+  const qaSchritt = findeQaSchritt(workflowDaten)
+  return {
+    workflow_version: workflowDaten.version,
+    ausfuehrung_lauf_id: ausfuehrungSchritt.lauf_id,
+    review_lauf_id: findeReviewSchritt(workflowDaten)?.lauf_id ?? null,
+    ...(qaSchritt !== null ? { qa_lauf_id: qaSchritt.lauf_id ?? null } : {}),
+  }
 }
 
 /**
@@ -4460,6 +4501,33 @@ function leseAdvisorErgebnisAusLaufakte(laufakteDaten) {
 }
 
 /**
+ * F45 B2b-2b-1 (F-820, Regel 1q): liest das Ergebnis eines qa-Laufs aus dem Rohstrom (leseRollenErgebnisRohstrom) und prüft
+ * es mit validiereErgebnisQa (src/qa). Wirft nie: ein Lese- oder Parsefehler wird zum Verstoß (Muster
+ * leseAdvisorErgebnisAusLaufakte). EINE Stelle für Nachlauf, ermittlePrueferBefund und den Korrekturblock.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten des qa-Laufs
+ * @returns { verstoesse, ergebnis } — ergebnis (urteil, befunde nur Objekte, testfaelle, empfehlung) nur ohne Verstöße, sonst null
+ */
+function leseQaErgebnisAusLaufakte(laufakteDaten) {
+  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
+  if (!gelesen.ok) return { verstoesse: [`Ergebnistext nicht lesbar: ${gelesen.grund}`], ergebnis: null }
+  const verstoesse = validiereErgebnisQa(gelesen.geparst)
+  return { verstoesse, ergebnis: verstoesse.length === 0 ? gelesen.geparst : null }
+}
+
+/**
+ * F45 B2b-2b-1: die Befunde eines qa-Laufs (für Neubau, Wiederholungs-Halt) — [] ohne Lauf, ohne Laufakte oder bei einem
+ * Ergebnis mit Verstößen. Synchron, wirft nicht.
+ * @param laufId - lauf_id des qa-Laufs (beliebiger Wert)
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns Befundliste
+ */
+function leseQaBefunde(laufId, ladeOptionen) {
+  if (typeof laufId !== 'string') return []
+  const laufakte = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+  return laufakte !== null ? (leseQaErgebnisAusLaufakte(laufakte.daten).ergebnis?.befunde ?? []) : []
+}
+
+/**
  * Liest das geparste ergebnis-code-reviewer-Ergebnisobjekt (urteil, befunde[],
  * empfehlung) eines ERFOLGREICH klassifizierten Post-Build-Review-Laufs
  * (output_schema 'ergebnis-code-reviewer') direkt aus dessen Rohstrom (F23
@@ -5201,13 +5269,15 @@ function wendeAutomatischeAnpassungAn(workflowId, begruendung, erzeuger, profilR
   if (ausfuehrungSchritt === null || ausfuehrungSchritt.lauf_id === null) {
     // HEUTE UNERREICHBAR über beide Aufrufer (der POST-Handler validiert dieselbe Bedingung
     // bereits VOR diesem Aufruf auf derselben, synchron unveränderten Fassung; der Automaten-Hook
-    // feuert nur nach einem gerade erfolgreich gelaufenen Review, dessen Vorschritt zwangsläufig
-    // gelaufen ist) — Tiefenverteidigung, kein eigener Rot-Fall im Gate (ARCHITECTURE.md §8).
+    // feuert nur nach einem gerade erfolgreich gelaufenen Review bzw. (F45 B2b-2b-1) qa, deren Vorschritte zwangsläufig
+    // gelaufen sind) — Tiefenverteidigung, kein eigener Rot-Fall im Gate (ARCHITECTURE.md §8).
     return { ok: false, grund: `Workflow '${workflowId}' hat keinen gelaufenen Schritt mit rolle 'ausfuehrung' — Anpassung nicht möglich` }
   }
   const reviewSchritt = findeReviewSchritt(workflowDaten)
+  // F45 B2b-2b-1 (F-820): der qa-Schritt läuft nach dem Neubau ebenfalls erneut (Review und qa zusammen eine Runde).
+  const qaSchritt = findeQaSchritt(workflowDaten)
 
-  const bezug = { workflow_version: workflowDaten.version, ausfuehrung_lauf_id: ausfuehrungSchritt.lauf_id, review_lauf_id: reviewSchritt?.lauf_id ?? null }
+  const bezug = baueAbnahmeBezug(workflowDaten, ausfuehrungSchritt)
   const abgenommeneVersion = [
     { pfad: `artefakt:workflow-${workflowId}`, zitierter_bereich: `WORKFLOW_V0 versionSequenz ${workflowVersion.versionSequenz}`, inhalts_hash: workflowVersion.inhaltsHash },
   ]
@@ -5236,7 +5306,7 @@ function wendeAutomatischeAnpassungAn(workflowId, begruendung, erzeuger, profilR
           const { freigabe_erteilt: _verworfen, ...rest } = s
           return { ...rest, status: 'OFFEN', lauf_id: null, eingaben: eingabenMitEntscheidung }
         }
-        if (reviewSchritt !== null && s.schritt_id === reviewSchritt.schritt_id) {
+        if ((reviewSchritt !== null && s.schritt_id === reviewSchritt.schritt_id) || (qaSchritt !== null && s.schritt_id === qaSchritt.schritt_id)) {
           const { freigabe_erteilt: _verworfen, ...rest } = s
           return { ...rest, status: 'OFFEN', lauf_id: null }
         }
@@ -5269,11 +5339,14 @@ function wendeAutomatischeAnpassungAn(workflowId, begruendung, erzeuger, profilR
  * Lesepfad wie F-648 (Korrekturblock in starteWorkflowSchritt, D5): die NEUESTE Abnahme-Version, nur wenn deren
  * Ergebnis ANPASSUNG_ANGEFORDERT ist, und nur ein Review-Lauf, der nicht der gerade gemeldete ist.
  * @param workflowId - Kennung des Workflows
- * @param laufId - lauf_id des gerade beendeten Reviews
+ * F45 B2b-2b-1 (Advisor A7): aus dem qa-Nachlauf mit qaLaufId — dann die Befunde des Reviews UND des qa der Vorrunde
+ * (bezug.qa_lauf_id, nur wenn ungleich dem gerade gemeldeten qa-Lauf); laufId ist dann der Review-Lauf dieser Runde.
+ * @param laufId - lauf_id des Reviews dieser Runde (gerade beendet, bzw. vor dem gerade beendeten qa)
  * @param ladeOptionen - { basisVerzeichnis, schreiber }
- * @returns Befundliste des vorherigen Reviews, oder null (kein vergleichbarer Review)
+ * @param qaLaufId - lauf_id des gerade beendeten qa-Laufs, oder null (Aufruf aus dem Review-Nachlauf, bitgleich wie zuvor)
+ * @returns Befundliste der vorherigen Prüfer, oder null (kein vergleichbarer Review)
  */
-function leseVorherigeReviewBefunde(workflowId, laufId, ladeOptionen) {
+function leseVorherigeReviewBefunde(workflowId, laufId, ladeOptionen, qaLaufId = null) {
   // Läuft VOR dem Nachlauf-Schreiben: ein Wurf hier ließe den Ablauf ohne Fortschreibung auf LAEUFT stehen. Ein
   // Lesefehler heißt deshalb nur „keine Wiederholung erkennbar“ — die Grenze greift weiterhin.
   try {
@@ -5282,7 +5355,10 @@ function leseVorherigeReviewBefunde(workflowId, laufId, ladeOptionen) {
     const reviewLaufId = abnahmeVersion.daten.bezug?.review_lauf_id
     if (typeof reviewLaufId !== 'string' || reviewLaufId === laufId) return null
     const laufakte = ladeArtefaktVersion(`laufakte-${reviewLaufId}`, undefined, ladeOptionen)
-    return laufakte !== null ? (leseUrteilAusLaufakte(laufakte.daten)?.befunde ?? null) : null
+    const reviewBefunde = laufakte !== null ? (leseUrteilAusLaufakte(laufakte.daten)?.befunde ?? null) : null
+    if (qaLaufId === null || reviewBefunde === null) return reviewBefunde
+    const vorherQa = abnahmeVersion.daten.bezug?.qa_lauf_id
+    return [...(reviewBefunde ?? []), ...(vorherQa !== qaLaufId ? leseQaBefunde(vorherQa, ladeOptionen) : [])]
   } catch (fehler) {
     console.error(`[leitstand] Befunde des vorherigen Reviews von Workflow '${workflowId}' nicht lesbar: ${fehler.message}`)
     return null
@@ -5310,27 +5386,38 @@ function mitRueckwegGrund(grund, ausgang, rueckwegEntscheid) {
  * leseAdvisorErgebnisAusLaufakte). EINE Stelle für GET …/abnahme und POST …/pruefer-wiederholen. Synchron, wirft nicht
  * (ein Lesefehler gilt als unlesbares Ergebnis). Auftrag und Policy werden nur bei einem tragenden Urteil gelesen —
  * nur dann entscheiden AK- und Vertragsverstöße (pruefschrittWiederholbar); GET …/abnahme reicht die bereits gelesene
- * Laufakte durch (Poll alle 2 s, Prüfpass B2b-1a).
+ * Laufakte durch (Poll alle 2 s, Prüfpass B2b-1a). F45 B2b-2b-1 (Delta D4, Code-Review 1): mit akBeiBlockiert (nur der
+ * qa-Nachlauf, vorpruefung der Regel 1q) auch bei BLOCKIERT die AK-Verstöße; die Befunde stehen immer im Ergebnis.
  * @param schritt - der Prüfschritt (Cursor) oder null
  * @param auftragId - auftrag_id des Workflows (Akzeptanzkriterien)
  * @param ladeOptionen - { basisVerzeichnis, schreiber }
  * @param vorgelesen - optional { laufakte, geparst } aus GET …/abnahme (dieselbe Laufakte, kein zweites Lesen)
- * @returns { urteil, akVerstoesse, reviewVerstoesse, advisorVerstoesse } (Felder ggf. undefined)
+ * @param akBeiBlockiert - true nur aus dem qa-Nachlauf: AK-Verstöße auch bei BLOCKIERT lesen (lädt den Auftrag)
+ * @returns { urteil, akVerstoesse, reviewVerstoesse, befunde, advisorVerstoesse, qaVerstoesse } (Felder ggf. undefined)
  */
-function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = null) {
+function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = null, akBeiBlockiert = false) {
   if (schritt === null || schritt === undefined || schritt.lauf_id === null || schritt.status !== 'ERFOLGREICH') return {}
   try {
     const laufakte = vorgelesen?.laufakte ?? ladeArtefaktVersion(`laufakte-${schritt.lauf_id}`, undefined, ladeOptionen)
     if (schritt.output_schema === 'ergebnis-code-reviewer') {
       const geparst = vorgelesen !== null ? vorgelesen.geparst : laufakte !== null ? leseUrteilAusLaufakte(laufakte.daten) : null
       if (geparst === null) return { urteil: null }
-      if (geparst.urteil !== 'BEREIT' && geparst.urteil !== 'BEREIT_NACH_KORREKTUR') return { urteil: geparst.urteil }
+      // F45 B2b-2b-1 (Delta D4): Befunde und (auch bei BLOCKIERT) AK-Verstöße für die vorpruefung der Regel 1q —
+      // pruefschrittWiederholbar prüft BLOCKIERT vor den AK-Verstößen, sein Ergebnis ändert sich dadurch nicht.
+      const befunde = geparst.befunde.filter((b) => b !== null && typeof b === 'object')
+      if (geparst.urteil !== 'BEREIT' && geparst.urteil !== 'BEREIT_NACH_KORREKTUR' && !(geparst.urteil === 'BLOCKIERT' && akBeiBlockiert)) return { urteil: geparst.urteil, befunde }
       const auftrag = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, ladeOptionen)
+      const akVerstoesse = pruefeAkUrteile(auftrag?.daten?.akzeptanzkriterien, geparst.ak_urteile)
+      if (geparst.urteil === 'BLOCKIERT') return { urteil: geparst.urteil, akVerstoesse, befunde }
       return {
         urteil: geparst.urteil,
-        akVerstoesse: pruefeAkUrteile(auftrag?.daten?.akzeptanzkriterien, geparst.ak_urteile),
+        akVerstoesse,
         reviewVerstoesse: pruefeReviewErgebnisFuer(laufakte?.daten?.review?.policy_version, geparst)?.halt,
+        befunde,
       }
+    }
+    if (schritt.output_schema === 'ergebnis-qa') {
+      return { qaVerstoesse: laufakte !== null ? leseQaErgebnisAusLaufakte(laufakte.daten).verstoesse : [`Laufakte 'laufakte-${schritt.lauf_id}' nicht gefunden`] }
     }
     if (schritt.rolle === 'architecture-advisor') {
       return { advisorVerstoesse: laufakte !== null ? leseAdvisorErgebnisAusLaufakte(laufakte.daten).verstoesse : [`Laufakte 'laufakte-${schritt.lauf_id}' nicht gefunden`] }
@@ -5338,6 +5425,7 @@ function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = nu
   } catch (fehler) {
     console.error(`[leitstand] Ergebnis des Prüfschritts '${schritt.schritt_id}' nicht lesbar: ${fehler.message}`)
     if (schritt.output_schema === 'ergebnis-code-reviewer') return { urteil: null }
+    if (schritt.output_schema === 'ergebnis-qa') return { qaVerstoesse: [`Ergebnis nicht lesbar: ${fehler.message}`] }
     return schritt.rolle === 'architecture-advisor' ? { advisorVerstoesse: [`Ergebnis nicht lesbar: ${fehler.message}`] } : {}
   }
   return {}
@@ -6980,6 +7068,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       // die Dokumentations-Schreibschritte und bat um Schreibzugriff, statt zu bewerten.
       // F-750: entschiedene ADRs des PROJEKTS (repoWurzel, nicht installWurzel) als bindender Kontext.
       auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext, leseEntschiedeneAdrs(laufWurzel))
+    } else if (schritt.output_schema === 'ergebnis-qa') {
+      // F45 B2b-2b-1 (F-820, Delta D6): Rolleninstruktion mit JSON-Vertrag, AK und Nicht-Ziele des Auftrags — gekoppelt an das
+      // Schema (wie Regel 1q), nicht an die Rolle: ein qa-Schritt ohne Schema bekäme sonst einen Vertrag, den niemand prüft.
+      auftragstext = baueQaAuftragstext(auftragVersion.daten.auftragstext, auftragVersion.daten.akzeptanzkriterien ?? [], auftragVersion.daten.nicht_ziele ?? [])
     }
 
     // F45 B2a-2 (F-938, F-1071): der Arbeitspaket-Block für architekt und ausfuehrung — einzige Textquelle ist
@@ -7073,15 +7165,21 @@ export function erzeugeRequestHandler(optionen = {}) {
     // (der bislang GAR KEINE Sonderbehandlung bekam). Kein Treffer (kein Abnahme-Artefakt, oder
     // letztes Ergebnis nicht ANPASSUNG_ANGEFORDERT) lässt auftragstext bitgenau unverändert —
     // jede erste Iteration jedes Workflows bleibt bitgenau wie vor diesem Nachtrag.
-    if (schritt.rolle === 'ausfuehrung' || schritt.rolle === 'code-reviewer') {
+    // F45 B2b-2b-1 (F-820): dazu der qa-Schritt — der Neubau bekommt die Befunde beider Prüfer je Herkunft
+    // (bezug.qa_lauf_id), der qa der neuen Runde seine eigenen Vorbefunde (gezielt nachprüfen, Muster Re-Review).
+    const istQaSchritt = schritt.output_schema === 'ergebnis-qa'
+    if (schritt.rolle === 'ausfuehrung' || schritt.rolle === 'code-reviewer' || istQaSchritt) {
       const abnahmeVersion = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, ladeOptionen)
       if (abnahmeVersion !== null && abnahmeVersion.daten.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
         const reviewLaufId = abnahmeVersion.daten.bezug?.review_lauf_id
         const reviewLaufakteVersion = typeof reviewLaufId === 'string' ? ladeArtefaktVersion(`laufakte-${reviewLaufId}`, undefined, ladeOptionen) : null
         // F45 B2b-2a (Code-Review 3, qa 12): nur Objekte — ein roher null-Eintrag brächte die Instruktion sonst zum Absturz.
         const vorherigeBefunde = (reviewLaufakteVersion !== null ? (leseUrteilAusLaufakte(reviewLaufakteVersion.daten)?.befunde ?? []) : []).filter((b) => b !== null && typeof b === 'object')
+        const qaVorbefunde = leseQaBefunde(abnahmeVersion.daten.bezug?.qa_lauf_id, ladeOptionen)
         if (schritt.rolle === 'ausfuehrung') {
-          auftragstext = `${auftragstext}\n\n${baueAusfuehrungKorrekturInstruktion(abnahmeVersion.daten.begruendung, vorherigeBefunde)}`
+          auftragstext = `${auftragstext}\n\n${baueAusfuehrungKorrekturInstruktion(abnahmeVersion.daten.begruendung, vorherigeBefunde, qaVorbefunde)}`
+        } else if (istQaSchritt) {
+          if (qaVorbefunde.length > 0) auftragstext = `${auftragstext}\n\n${baueReviewKorrekturInstruktion(abnahmeVersion.daten.begruendung, qaVorbefunde, 'qa')}`
         } else if (vorherigeBefunde.length > 0) {
           auftragstext = `${auftragstext}\n\n${baueReviewKorrekturInstruktion(abnahmeVersion.daten.begruendung, vorherigeBefunde)}`
         }
@@ -7375,7 +7473,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // F45 B2a-3a (Spec §9.8): die Ursache eines gescheiterten Reviews (Zeitgrenze, Werkzeugausfall) geht in den Halt-Grund
       // (Regel 1), damit Abnahme und Blick sie zeigen; andere Rollen bleiben bitgleich.
       // F45 B2b-1b (QA): auch beim Advisor — lehnt die CLI das '--json-schema' ab (Exit 1 vor dem Lauf), steht die Ursache im Grund.
-      const reviewUrsache = !heilbar && schrittStatus !== 'ERFOLGREICH' && (schritt.output_schema === 'ergebnis-code-reviewer' || schritt.rolle === 'architecture-advisor') ? beschreibeLaufUrsache(ergebnis, fehler, schritt.zeitgrenze_ms) : undefined
+      const reviewUrsache = !heilbar && schrittStatus !== 'ERFOLGREICH' && (schritt.output_schema === 'ergebnis-code-reviewer' || schritt.output_schema === 'ergebnis-qa' || schritt.rolle === 'architecture-advisor') ? beschreibeLaufUrsache(ergebnis, fehler, schritt.zeitgrenze_ms) : undefined
       const schrittFelder = heilbar ? { status: 'OFFEN', lauf_id: null } : { status: schrittStatus, lauf_id: laufId }
       // F-760 (state/findings.md, löst "ein vollständiger Baulauf endete VERWEIGERT, ohne dass die
       // Kette zum Review noch erreichbar war"): dieselbe bypass_verdacht_anzahl wie beim
@@ -7449,6 +7547,52 @@ export function erzeugeRequestHandler(optionen = {}) {
           planRueckwege: zaehlePlanRueckwege(workflowDaten.schritte),
         })
       }
+      // Regel 1q (F45 B2b-2b-1, F-820, features/F45/plan-b2b2b.md): der qa-Schritt nach dem Review. vorpruefung kommt vom Review,
+      // dessen nachfolger dieser qa ist (Delta D4), über ermittlePrueferBefund (dieselben Leser wie GET …/abnahme, Advisor A3);
+      // ist er nicht ERFOLGREICH oder unlesbar, ist das Urteil null ⇒ Regel 1q (b). Bei gültigem qa-Ergebnis fällt hier die
+      // Entscheidung der Anpassungsautomatik mit den Befunden BEIDER Prüfer (Review und qa zusammen eine Korrekturrunde) —
+      // ausgelöst wird sie unten nur bei einem Klärungshalt (Delta D1). Ein qa ohne Review davor löst keine Runde aus
+      // (kein Review-Urteil, die Automatik verlangt eines; Regel 1q hält dann nur über das qa-Urteil).
+      let qaVerstoesse
+      let qaErgebnis = null
+      let vorpruefung
+      let reviewBefundeDerRunde = []
+      const reviewVorQa = !heilbar && schritt.output_schema === 'ergebnis-qa' ? findeReviewVorQa(workflowDaten, schritt) : null
+      if (reviewVorQa !== null) {
+        const befund = ermittlePrueferBefund(reviewVorQa, workflowDaten.auftrag_id, ladeOptionen, null, true)
+        vorpruefung = { urteil: typeof befund.urteil === 'string' ? befund.urteil : null, akVerstoesse: befund.akVerstoesse ?? [] }
+        reviewBefundeDerRunde = befund.befunde ?? []
+      }
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-qa') {
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+        const gelesen = laufakteVersion !== null ? leseQaErgebnisAusLaufakte(laufakteVersion.daten) : { verstoesse: [`Laufakte 'laufakte-${laufId}' nicht gefunden`], ergebnis: null }
+        qaVerstoesse = gelesen.verstoesse
+        qaErgebnis = gelesen.ergebnis
+        if (qaErgebnis !== null) urteil = qaErgebnis.urteil
+        if (qaErgebnis !== null && reviewVorQa !== null) {
+          anzahlBisherigerKernVersionen = zaehleKernVersionen(workflowId, ladeOptionen)
+          rueckwegEntscheid = ermittleAutomatischeAnpassung({
+            outputSchema: schritt.output_schema,
+            schrittStatus,
+            heilbar,
+            urteil: vorpruefung.urteil,
+            akVerstoesse: vorpruefung.akVerstoesse,
+            anzahlBisherigerKernVersionen,
+            maxReplans: workflowDaten.grenzen?.max_replans,
+            befunde: reviewBefundeDerRunde,
+            vorherigeBefunde: leseVorherigeReviewBefunde(workflowId, reviewVorQa.lauf_id, ladeOptionen, laufId),
+            planRueckwege: zaehlePlanRueckwege(workflowDaten.schritte),
+            qaErgebnis: { urteil: qaErgebnis.urteil, befunde: qaErgebnis.befunde },
+          })
+        }
+      }
+      // Advisor A5 (Code-Review 2, qa 1): fällt der qa aus, nachdem der Review beanstandet hat, nennt der Halt-Grund die
+      // Beanstandung mit — auch ohne bekannte Ursache, und ohne eine Korrekturrunde zu versprechen (die Grenze kann sie sperren).
+      const beanstandungsSatz =
+        schrittStatus !== 'ERFOLGREICH' && vorpruefung !== undefined && istReviewBeanstandet(vorpruefung.urteil, vorpruefung.akVerstoesse)
+          ? 'der Review dieser Runde hat beanstandet — nach der Wiederholung wird über beide Prüfer entschieden'
+          : undefined
+      const laufUrsache = [reviewUrsache, beanstandungsSatz].filter((teil) => teil !== undefined).join('; ') || undefined
       // Regel 1c (F39 WS-2b, löst F-632 Teil b) — dasselbe zweite, eigenständige Lesen wie beim
       // urteil-Block direkt darüber, hier für 'ergebnis-architektur'. architekturEntscheidungAusstehend
       // fragt die Kernartefakt-Kette 'workflow-entscheidung-<workflowId>' NUR ab, wenn das Ergebnis
@@ -7739,7 +7883,9 @@ export function erzeugeRequestHandler(optionen = {}) {
               urteil,
               akVerstoesse,
               reviewVerstoesse,
-              ursache: reviewUrsache,
+              ursache: laufUrsache,
+              qaVerstoesse,
+              vorpruefung,
               architekturVerstoesse,
               architekturEntscheidungAusstehend,
               architekturAnzahlFragen,
@@ -7857,9 +8003,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       // (immer wahr), bleibt aber als Tiefenverteidigung stehen (kein eigener Rot-Fall im Gate,
       // ARCHITECTURE.md §8), falls sich die Aufrufreihenfolge einmal ändert.
       // F45 B2b-1a: die Entscheidung (Grenze aus max_replans, Wiederholung) ist oben vor dem Schreiben gefallen.
-      if (rueckwegEntscheid !== null && !laufAktiv && !globalerLaufZustand.aktiv) {
+      // F45 B2b-2b-1 (Delta D1): ausgelöst wird nur bei einem Klärungshalt — ein aufgeschobener Review (die Kette läuft zum qa)
+      // trifft hier auf 'starte' und entscheidet nicht; aus dem Ausgang abgeleitet, nicht aus einer zweiten Prädikatsauswertung.
+      if (rueckwegEntscheid !== null && naechster?.art === 'haltKlaerung' && !laufAktiv && !globalerLaufZustand.aktiv) {
         if (rueckwegEntscheid.ausloesen) {
-          const begruendung = baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoesse ?? [], anzahlBisherigerKernVersionen + 1)
+          const begruendung =
+            qaErgebnis !== null
+              ? baueAutomatischeAnpassungsBegruendung(vorpruefung?.urteil ?? null, reviewBefundeDerRunde, vorpruefung?.akVerstoesse ?? [], anzahlBisherigerKernVersionen + 1, { urteil: qaErgebnis.urteil, befunde: qaErgebnis.befunde })
+              : baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoesse ?? [], anzahlBisherigerKernVersionen + 1)
           const angewendet = wendeAutomatischeAnpassungAn(workflowId, begruendung, 'kern', profilReferenz, ladeOptionen)
           if (!angewendet.ok) {
             const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Automatische Anpassung (F35 WS-3) für Workflow '${workflowId}' fehlgeschlagen: ${angewendet.grund}` }
@@ -12082,7 +12233,6 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `Workflow '${workflowId}' hat keinen gelaufenen Schritt mit rolle 'ausfuehrung' — Abnahme nicht möglich` })
         return
       }
-      const reviewSchritt = findeReviewSchritt(workflowDaten)
 
       // (5b) Nacharbeit 15.09.2026 (F-384, korrigierte Maßnahme), QA-Pass TC-05: keine zweite/
       // widersprüchliche Entscheidung zu DEMSELBEN BAU-ERGEBNIS — Muster
@@ -12153,7 +12303,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
 
       const entschiedenAm = new Date().toISOString()
-      const bezug = { workflow_version: workflowDaten.version, ausfuehrung_lauf_id: ausfuehrungSchritt.lauf_id, review_lauf_id: reviewSchritt?.lauf_id ?? null }
+      const bezug = baueAbnahmeBezug(workflowDaten, ausfuehrungSchritt)
 
       // Das Entscheidungsartefakt entsteht VOR jeder Zustandsänderung (D2, Bauauftrag Punkt 4;
       // Muster Freigabe-Endpunkt). eingaben-Referenz auf die abgenommene Workflow-VERSION, Form

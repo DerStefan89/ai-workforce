@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-qa.schema.json",
+  "title": "Rollen-Ergebnis: qa",
+  "description": "F45 B2b-2b (F-820, features/F45/plan-b2b2b.md). Ergebnis des qa-Schritts nach dem Review: prüft das Ergebnis aus Nutzersicht (Akzeptanztests, Randfälle, Leerzustände). 'urteil' hat dieselbe Wertemenge wie beim Review (schemas/ergebnis-code-reviewer.schema.json), 'befunde' GENAU dieselbe Befundform (ohne 'dimension'), damit die Befunde beider Prüfer gemeinsam in die Korrekturschleife gehen (src/korrekturschleife). 'testfaelle' sind die geprüften Akzeptanztests und Randfälle. additionalProperties:false auf JEDER Objektebene und alle Felder in 'required' (Strict-Dialekt, wie ergebnis-code-reviewer); nullable Felder nur für 'id', 'korrekturrichtung', 'evidenz' wie dort. Den Rollenvertrag (Pflichten der Rolle) trägt nicht dieses Schema, sondern src/rollen und die Rolleninstruktion (src/qa).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["urteil", "befunde", "testfaelle", "empfehlung"],
+  "properties": {
+    "urteil": {
+      "enum": ["BEREIT", "BEREIT_NACH_KORREKTUR", "BLOCKIERT"],
+      "description": "Gesamturteil aus Nutzersicht — dieselbe geschlossene Wertemenge wie beim Review."
+    },
+    "befunde": {
+      "type": "array",
+      "description": "Einzelbefunde in der Befundform des Reviews. Leeres Array bedeutet: kein Befund (nicht: nicht geprüft).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "schwere", "evidenz", "fundstelle", "zusammenfassung", "korrekturrichtung", "beleg"],
+        "properties": {
+          "id": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "description": "Befund-ID Q1, Q2, … — eindeutig in diesem Ergebnis."
+          },
+          "schwere": { "enum": ["NIEDRIG", "MITTEL", "HOCH", "KRITISCH"] },
+          "evidenz": {
+            "type": ["string", "null"],
+            "enum": ["confirmed", "likely", "needs-validation", null],
+            "description": "confirmed belegt, likely plausibel, needs-validation offen."
+          },
+          "fundstelle": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Datei und, wenn bestimmbar, Zeile — oder die Stelle der Oberfläche/des Ablaufs."
+          },
+          "zusammenfassung": { "type": "string", "minLength": 1 },
+          "korrekturrichtung": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "description": "Vorgeschlagene minimal-invasive Korrektur."
+          },
+          "beleg": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Der konkrete Beleg (zitierte Stelle, beobachtetes Verhalten, durchgespielter Testfall)."
+          }
+        }
+      }
+    },
+    "testfaelle": {
+      "type": "array",
+      "description": "Geprüfte Akzeptanztests und Randfälle aus Nutzersicht (Default, Leerzustand, Fehlerfall, Grenzwerte). Trägt der Auftrag Akzeptanzkriterien, deckt mindestens ein Testfall jedes ab.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "schritte", "erwartet", "ergebnis"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "schritte": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Die Schritte des Testfalls in Reihenfolge (mindestens einer — prüft validiereErgebnisQa, src/qa)."
+          },
+          "erwartet": { "type": "string", "minLength": 1 },
+          "ergebnis": {
+            "enum": ["bestanden", "durchgefallen", "nicht_pruefbar"],
+            "description": "nicht_pruefbar nur, wenn der Fall mit lesenden Werkzeugen nicht nachvollziehbar ist — dann steht der Grund in 'erwartet' oder in einem Befund."
+          }
+        }
+      }
+    },
+    "empfehlung": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Die empfohlene nächste Handlung. Nicht bindend: die Entscheidung trifft der Mensch."
+    }
+  }
+}

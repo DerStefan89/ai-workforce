@@ -186,3 +186,32 @@ test('B2b-2a (qa 7): mehrere Befunde gemischt (v2 voll, v1, nur ID + Korrekturri
   ].join('\n')
   assert.ok(text.includes(`Offene Befunde des vorherigen Reviews, die diese Iteration beheben muss:\n${erwartet}`), text)
 })
+
+// ─── F45 B2b-2b-1 (F-820): Befunde der Prüfung aus Nutzersicht (qa) mit Herkunft ───────────────────────────────────
+
+const QA_BEFUND = { id: 'Q1', schwere: 'HOCH', fundstelle: 'src/b.ts:5', zusammenfassung: 'Leerzustand fehlt.', beleg: 'Liste leer → Absturz.', korrekturrichtung: 'Leere Liste abfangen.', evidenz: 'confirmed' }
+
+test('B2b-2b-1: ohne qa-Befunde bleiben beide Instruktionen bitgleich (Golden, Vorgabe-Parameter)', () => {
+  assert.equal(baueAusfuehrungKorrekturInstruktion('Begr.', [V1_BEFUND], []), GOLDEN_AUSFUEHRUNG)
+  assert.equal(baueReviewKorrekturInstruktion('Begr.', [V1_BEFUND], 'review'), GOLDEN_REVIEW)
+})
+
+test('B2b-2b-1: Neubau mit qa-Befunden — eigener Abschnitt mit Herkunft, Zusatzzeilen, nach den Review-Befunden', () => {
+  const text = baueAusfuehrungKorrekturInstruktion('Begr.', [V1_BEFUND], [QA_BEFUND])
+  const review = text.indexOf('Offene Befunde des vorherigen Reviews, die diese Iteration beheben muss:')
+  const qa = text.indexOf('Offene Befunde der vorherigen Prüfung aus Nutzersicht (qa), die diese Iteration beheben muss:\n1. [HOCH] src/b.ts:5 — Leerzustand fehlt. (Beleg: Liste leer → Absturz.)\n   Befund-ID: Q1 · Evidenz: confirmed\n   Korrekturrichtung: Leere Liste abfangen.\n')
+  assert.ok(review >= 0 && qa > review, text)
+})
+
+test('B2b-2b-1: Neubau nur mit qa-Befunden — kein leerer Review-Abschnitt', () => {
+  const text = baueAusfuehrungKorrekturInstruktion('Begr.', [], [QA_BEFUND])
+  assert.ok(!text.includes('Offene Befunde des vorherigen Reviews'))
+  assert.ok(text.includes('Offene Befunde der vorherigen Prüfung aus Nutzersicht (qa)'))
+})
+
+test('B2b-2b-1: qa der neuen Runde bekommt seine Vorbefunde mit eigener Herkunft und derselben Pflicht behoben/offen', () => {
+  const text = baueReviewKorrekturInstruktion('Begr.', [QA_BEFUND], 'qa')
+  assert.ok(text.includes('Die vorherige Prüfung aus Nutzersicht (qa) meldete zusätzlich die folgenden Befunde:\n1. [HOCH] src/b.ts:5 — Leerzustand fehlt.\n   Befund-ID: Q1'))
+  assert.ok(!text.includes('Das vorherige Review meldete'))
+  assert.ok(text.includes('darf dein urteil NICHT "BEREIT" sein'))
+})

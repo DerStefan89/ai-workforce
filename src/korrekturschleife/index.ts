@@ -31,6 +31,10 @@
  * den Neubau und den Re-Review; die Begründung der Automatik (f35-ws3-adjust-automatik.mjs) bleibt bewusst ohne sie
  * (Entscheidung Stefan A1 = a, features/F45/plan-b2b2a.md: sonst stünden sie im Neubau zweimal).
  *
+ * F45 B2b-2b-1 (F-820, features/F45/plan-b2b2b.md): Review und qa-Schritt lösen zusammen eine Korrekturrunde aus — der
+ * Neubau bekommt die Befunde beider Prüfer je Herkunft in eigenen Abschnitten (qaBefunde), der qa der neuen Runde seine
+ * Vorbefunde (herkunft 'qa'). Ohne qa-Befunde bleiben beide Texte bitgleich (Golden-Tests).
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs, src/korrekturschleife/korrekturschleife.test.ts.
  */
 
@@ -82,21 +86,26 @@ export function baueBefundZusatzzeilen(befund: KorrekturBefund): string[] {
  * Funktion, kein I/O.
  * @param begruendung - `entscheidung-workflow-<id>-abnahme`.daten.begruendung, real vom Menschen erfasst
  * @param vorherigeBefunde - `befunde[]` des Review-Laufs, auf den die Abnahme sich bezieht (`bezug.review_lauf_id`) — leer, wenn kein Review lief oder es keine strukturierten Befunde gab
+ * @param qaBefunde - F45 B2b-2b-1 (F-820): `befunde[]` des qa-Laufs derselben Runde (`bezug.qa_lauf_id`) — eigener Abschnitt mit
+ *   Herkunft hinter den Review-Befunden; leer (Vorgabe) ⇒ Text bitgleich wie zuvor
  * @returns der Zusatzblock als Text, an `auftragstext` anzuhängen (Trennzeile bleibt Sache des Aufrufers)
  */
-export function baueAusfuehrungKorrekturInstruktion(begruendung: string, vorherigeBefunde: KorrekturBefund[]): string {
+export function baueAusfuehrungKorrekturInstruktion(begruendung: string, vorherigeBefunde: KorrekturBefund[], qaBefunde: KorrekturBefund[] = []): string {
   const zeilen = [
     'VORRANGIGER AUFTRAG dieser Iteration: der Mensch hat dein vorheriges Ergebnis NICHT angenommen und "Anpassung anfordern" gewählt.',
     'Begründung der Abnahme-Entscheidung:',
     begruendung,
   ]
-  if (vorherigeBefunde.length > 0) {
-    zeilen.push('', 'Offene Befunde des vorherigen Reviews, die diese Iteration beheben muss:')
-    vorherigeBefunde.forEach((befund, index) => {
+  const abschnitt = (titel: string, befunde: KorrekturBefund[]) => {
+    if (befunde.length === 0) return
+    zeilen.push('', titel)
+    befunde.forEach((befund, index) => {
       const beleg = befund.beleg ? ` (Beleg: ${befund.beleg})` : ''
       zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}${beleg}`, ...baueBefundZusatzzeilen(befund))
     })
   }
+  abschnitt('Offene Befunde des vorherigen Reviews, die diese Iteration beheben muss:', vorherigeBefunde)
+  abschnitt('Offene Befunde der vorherigen Prüfung aus Nutzersicht (qa), die diese Iteration beheben muss:', qaBefunde)
   zeilen.push(
     '',
     'Prüfe zuerst, ob diese konkreten Punkte im AKTUELLEN Code tatsächlich behoben sind. "Die ursprüngliche Anforderung ist bereits erfüllt" ist KEINE ausreichende Antwort auf diesen Korrekturauftrag, solange auch nur einer der obigen Punkte offen bleibt.'
@@ -116,15 +125,17 @@ export function baueAusfuehrungKorrekturInstruktion(begruendung: string, vorheri
  * als `baueAusfuehrungKorrekturInstruktion` direkt oberhalb, die `begruendung` bereits erhält.
  * @param begruendung - `entscheidung-workflow-<id>-abnahme`.daten.begruendung, real vom Menschen erfasst — dieselbe Quelle wie bei `baueAusfuehrungKorrekturInstruktion`, kein zweiter Lesepfad
  * @param vorherigeBefunde - `befunde[]` des Review-Laufs, auf den die Abnahme sich bezieht — der Aufrufer ruft diese Funktion nur bei einem nicht-leeren Array auf (kein Zusatzblock ohne Befunde)
+ * @param herkunft - F45 B2b-2b-1 (F-820): 'review' (Vorgabe, Text bitgleich) oder 'qa' — derselbe Block für den qa-Lauf der
+ *   neuen Runde mit seinen eigenen Vorbefunden (`bezug.qa_lauf_id`), nur die Herkunftszeile unterscheidet sich
  * @returns der Zusatzblock als Text, an `auftragstext` anzuhängen
  */
-export function baueReviewKorrekturInstruktion(begruendung: string, vorherigeBefunde: KorrekturBefund[]): string {
+export function baueReviewKorrekturInstruktion(begruendung: string, vorherigeBefunde: KorrekturBefund[], herkunft: 'review' | 'qa' = 'review'): string {
   const zeilen = [
     'Diese Iteration folgt auf "Anpassung anfordern".',
     'Verbindliche Klarstellung des Auftrags durch den Menschen (Abnahme-Begründung). Sie hat Vorrang vor dem ursprünglichen Auftragstext. Bewusste Entscheidungen darin sind KEIN offener Befund:',
     begruendung,
     '',
-    'Das vorherige Review meldete zusätzlich die folgenden Befunde:',
+    herkunft === 'qa' ? 'Die vorherige Prüfung aus Nutzersicht (qa) meldete zusätzlich die folgenden Befunde:' : 'Das vorherige Review meldete zusätzlich die folgenden Befunde:',
   ]
   vorherigeBefunde.forEach((befund, index) => {
     zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}`, ...baueBefundZusatzzeilen(befund))

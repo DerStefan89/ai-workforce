@@ -377,3 +377,60 @@ test('B2b-1b-2b ermittleKeinPlanV2: Rückweg wäre frei, lief aber nicht (GESTOP
   assert.match(satz, /^Plan v2 wurde für dieses Advisor-Ergebnis nicht ausgelöst/)
   assert.match(satz, /Entscheide bei der Freigabe der Ausführung: Freigeben oder Ablehnen\.$/)
 })
+
+// ─── F45 B2b-2b-1 (F-820): Review und qa zusammen — eine Korrekturrunde, Befunde mit Herkunft ─────────────────────
+
+const QA_BEFUND = { id: 'Q1', schwere: 'HOCH', fundstelle: 'src/liste.ts:8', zusammenfassung: 'Leerzustand fehlt.', korrekturrichtung: 'Leere Liste abfangen.' }
+const QA_BASIS = { outputSchema: 'ergebnis-qa', schrittStatus: 'ERFOLGREICH', heilbar: false, urteil: 'BEREIT', akVerstoesse: [], anzahlBisherigerKernVersionen: 0, maxReplans: 1, befunde: [] }
+
+test('B2b-2b-1 ermittleAutomatischeAnpassung: qa BLOCKIERT bei tragendem Review löst aus', () => {
+  assert.equal(ermittleAutomatischeAnpassung({ ...QA_BASIS, qaErgebnis: { urteil: 'BLOCKIERT', befunde: [QA_BEFUND] } }).ausloesen, true)
+})
+
+test('B2b-2b-1 ermittleAutomatischeAnpassung: Review beanstandet (BLOCKIERT oder AK), qa trägt ⇒ löst nach dem qa aus', () => {
+  assert.equal(ermittleAutomatischeAnpassung({ ...QA_BASIS, urteil: 'BLOCKIERT', befunde: [EIN_BEFUND], qaErgebnis: { urteil: 'BEREIT', befunde: [] } }).ausloesen, true)
+  assert.equal(ermittleAutomatischeAnpassung({ ...QA_BASIS, akVerstoesse: ['AK1 fehlt'], qaErgebnis: { urteil: 'BEREIT', befunde: [] } }).ausloesen, true)
+})
+
+test('B2b-2b-1 ermittleAutomatischeAnpassung: beide tragen, qa-Urteil unbekannt oder kein qa-Ergebnis am qa-Schritt ⇒ nichts', () => {
+  assert.equal(ermittleAutomatischeAnpassung({ ...QA_BASIS, qaErgebnis: { urteil: 'BEREIT_NACH_KORREKTUR', befunde: [QA_BEFUND] } }).ausloesen, false)
+  assert.equal(ermittleAutomatischeAnpassung({ ...QA_BASIS, qaErgebnis: { urteil: 'UNKLAR', befunde: [QA_BEFUND] } }).ausloesen, false)
+  assert.equal(ermittleAutomatischeAnpassung({ ...QA_BASIS, qaErgebnis: null }).ausloesen, false)
+})
+
+test('B2b-2b-1 ermittleAutomatischeAnpassung: Review und qa BLOCKIERT ⇒ die zweite Runde ist gesperrt (Grenze gilt über beide)', () => {
+  const ergebnis = ermittleAutomatischeAnpassung({ ...QA_BASIS, urteil: 'BLOCKIERT', befunde: [EIN_BEFUND], anzahlBisherigerKernVersionen: 1, qaErgebnis: { urteil: 'BLOCKIERT', befunde: [QA_BEFUND] } })
+  assert.equal(ergebnis.ausloesen, false)
+  assert.equal(ergebnis.art, 'grenze')
+})
+
+test('B2b-2b-1 ermittleAutomatischeAnpassung: Wiederholung über beide Prüfer, eigener Grund ohne „Der Review“', () => {
+  const vorher = [EIN_BEFUND, { ...QA_BEFUND, fundstelle: 'src/liste.ts:30' }]
+  const ergebnis = ermittleAutomatischeAnpassung({ ...QA_BASIS, urteil: 'BLOCKIERT', befunde: [EIN_BEFUND], vorherigeBefunde: vorher, qaErgebnis: { urteil: 'BLOCKIERT', befunde: [QA_BEFUND] } })
+  assert.equal(ergebnis.art, 'wiederholung')
+  assert.match(ergebnis.grund, /^Keine weitere automatische Anpassung: Die Prüfer melden nach der Korrektur dieselben Befunde wie zuvor \(/)
+  const nurReview = ermittleAutomatischeAnpassung({ ...QA_BASIS, urteil: 'BLOCKIERT', befunde: [EIN_BEFUND], vorherigeBefunde: vorher, qaErgebnis: { urteil: 'BEREIT', befunde: [] } })
+  assert.equal(nurReview.ausloesen, true, 'Teilmenge ist keine Wiederholung')
+})
+
+test('B2b-2b-1 baueAutomatischeAnpassungsBegruendung: mit qa beide Urteile und je Herkunft ein Abschnitt; ohne qa bitgleich', () => {
+  const golden = 'Automatische Anpassung (Korrekturrunde 1 von 1, Bau-Stufe) nach Review-Urteil BLOCKIERT:\n\nBefunde:\n1. [HOCH] src/beispiel.ts:12 — Fehlende Fehlerbehandlung beim Schreibpfad.'
+  assert.equal(baueAutomatischeAnpassungsBegruendung('BLOCKIERT', [EIN_BEFUND], [], 1, null), golden)
+  const text = baueAutomatischeAnpassungsBegruendung('BEREIT', [EIN_BEFUND], [], 1, { urteil: 'BLOCKIERT', befunde: [QA_BEFUND] })
+  assert.equal(
+    text,
+    'Automatische Anpassung (Korrekturrunde 1 von 1, Bau-Stufe) nach Review-Urteil BEREIT und Urteil der Prüfung aus Nutzersicht (qa) BLOCKIERT:\n\nBefunde des Reviews:\n1. [HOCH] src/beispiel.ts:12 — Fehlende Fehlerbehandlung beim Schreibpfad.\n\nBefunde der Prüfung aus Nutzersicht (qa):\n1. [HOCH] src/liste.ts:8 — Leerzustand fehlt.'
+  )
+  assert.ok(!baueAutomatischeAnpassungsBegruendung('BEREIT', [], [], 1, { urteil: 'BLOCKIERT', befunde: [QA_BEFUND] }).includes('Befunde des Reviews:'))
+})
+
+test('B2b-2b-1 pruefschrittWiederholbar: qa nach Werkzeugausfall oder mit Verstößen gegen das qa-Schema; jedes gültige Ergebnis nicht (A6)', () => {
+  const QA_SCHRITT = { schritt_id: 'schritt-3-qa', rolle: 'qa', output_schema: 'ergebnis-qa', lauf_id: 'lauf-q', status: 'ERFOLGREICH' }
+  const pruefe = (schritt, befund) => pruefschrittWiederholbar({ workflowStatus: 'KLAERUNG_ERFORDERLICH', schritt, befund })
+  assert.equal(pruefe({ ...QA_SCHRITT, status: 'FEHLGESCHLAGEN' }, {}).wiederholbar, true)
+  assert.equal(pruefe(QA_SCHRITT, { qaVerstoesse: ["'testfaelle' ist leer"] }).wiederholbar, true)
+  assert.equal(pruefe(QA_SCHRITT, { qaVerstoesse: [] }).wiederholbar, false, 'gültiges Ergebnis, auch wenn der Halt aus dem Review kommt')
+  assert.match(pruefe(QA_SCHRITT, { qaVerstoesse: [] }).grund, /Anpassung wünschen/)
+  assert.equal(pruefe({ ...QA_SCHRITT, status: 'VERWEIGERT' }, {}).wiederholbar, false)
+  assert.match(pruefe({ ...QA_SCHRITT, rolle: 'ausfuehrung', output_schema: null, status: 'FEHLGESCHLAGEN' }, {}).grund, /Review, Advisor und qa/)
+})

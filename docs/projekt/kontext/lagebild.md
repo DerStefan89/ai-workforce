@@ -100,9 +100,9 @@ gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
-`docs/projekt/fixpaket-f45.md`; B0 bis F-2b-1 gemergt, zuletzt #325; F-2b-2a
-gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
-22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 12.10.2026).
+`docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2a, zuletzt #343; B2b-2b-1
+(qa-Schritt, Kern) gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 15.10.2026).
 
 ## Offene P1-Findings
 
@@ -146,7 +146,6 @@ gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 - F-523 · TECH_DEBT · Greenfield-Projekt über Jarvis ist strukturell blockiert.
 - F-553 · PROCESS_IMPROVEMENT · Challenger bezifferte den Nutzen einer Option ohne direkte Messung.
 - F-589 · HARNESS_IMPROVEMENT · Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.
-- F-648 · BUG · Die Korrekturschleife nach „Anpassung anfordern" trägt weder die Abnahme-Begründung noch die vorherigen Review-Befunde erkennbar in die Instruktion der neuen Iteration — Ausführung und Review wiederholen sich dadurch blind.
 - F-666 · TECH_DEBT · Ein vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, `code-reviewer` erfolgreich, Regel 1c real ausgelöst) wurde nie belegt — Pflicht-AK der F41-Abnahme (E-F39-2 = A).
 - F-675 · TECH_DEBT · Die Coach-Struktur geht im Auftrag in Freitext über — Ausführung und Review arbeiten nicht verpflichtend gegen die Akzeptanzkriterien.
 - F-678 · TECH_DEBT · Neue Projekte haben keinen Projekt-Harness — Rolleninstruktionen verweisen auf Dateien, die dort nicht existieren.

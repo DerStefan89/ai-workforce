@@ -2,7 +2,8 @@
 /**
  * Datei: scripts/check-f45-b2b2-pruefer.mjs
  *
- * Zweck: Gate für F45 B2b-2a „Review vollständig“ (features/F45/plan-b2b2a.md, Plan v2 + Entscheidung Stefan A1 = a).
+ * Zweck: Gate für F45 B2b-2a „Review vollständig“ (features/F45/plan-b2b2a.md, Plan v2 + Entscheidung Stefan A1 = a) und
+ * F45 B2b-2b-1 „qa-Schritt, Kern“ (features/F45/plan-b2b2b.md, Plan v2.1; Fixture-Abläufe mit qa-Schritt, Vorlagen erst 2b-2).
  * Nachweis am REALEN Aufrufpfad (Muster scripts/check-f45-b2b1-rueckweg.mjs): echter HTTP-Testserver, echte
  * Workflow-Artefakte, gestubbter Worker (fuehreAufgabeDurchFn) mit REAL registrierten Laufakten — Automat,
  * Rückweg-Automatik, Korrekturschleife und GET …/abnahme lesen Urteil und Befunde am tatsächlichen Lesepfad; kein Netz.
@@ -27,6 +28,22 @@
  * (g1) Gegenprobe: claude-code mit dem nicht belegten 'ergebnis-architektur' → KLAERUNG_ERFORDERLICH (Regel 4b), kein Lauf;
  *      zweite Sicherung loeseAusfuehrungsEingabenAuf lehnt ab, der Reviewer mit Schema bekommt jsonSchema.
  * (f)  Quelltext: starteWorkflowSchritt( genau 6-mal im Server (wie f45-b2a3/b2a3b).
+ * B2b-2b-1 (Ablauf Ausführung → Review → qa, qa claude-code mit 'ergebnis-qa'):
+ * (s1) schemas/ergebnis-qa.schema.json = Spike-Fassung (SHA-256 in features/F45/nachweise/b2b2b/spike-qa-schema.md).
+ * (q1) Review und qa BEREIT ⇒ ABGESCHLOSSEN; Läufe in der Reihenfolge Ausführung, Review, qa; der qa mit jsonSchema und
+ *      Rolleninstruktion samt AK des Auftrags.
+ * (q2) qa BLOCKIERT ⇒ eine Korrekturrunde, bezug.qa_lauf_id; Neubau mit dem qa-Abschnitt (Herkunft) und Q1, ohne
+ *      Review-Abschnitt; der qa der neuen Runde mit seinen Vorbefunden.
+ * (q3) Review BLOCKIERT und qa BLOCKIERT ⇒ der qa läuft trotzdem, genau eine Runde, Neubau mit beiden Abschnitten.
+ * (q4) zweite Runde wieder beanstandet ⇒ keine zweite Kern-Version, Halt am qa mit dem Grenz-Grund.
+ * (q5) qa mit Schemaverstoß ⇒ Halt am qa, POST …/pruefer-wiederholen 200, qa zurückgesetzt, keine Runde; nach dem Start
+ *      läuft der qa erneut und der Ablauf endet ABGESCHLOSSEN (qa-Prüfpass 4a).
+ * (q6) Advisor A1: Review BLOCKIERT ohne Befunde und ohne Pflichtsatz (Regel 1k) ⇒ der qa läuft, die Runde löst aus.
+ * (q8) qa FEHLGESCHLAGEN nach beanstandetem Review ⇒ Halt nennt die Beanstandung, wiederholbar; nach Wiederholung und Start
+ *      entscheidet die Runde über beide Prüfer (eine Kern-Version, Neubau mit dem Review-Befund).
+ * (q11) zweite Runde mit denselben Befunden ⇒ Wiederholungs-Grund über beide Prüfer (Lesepfad der Vorrunde im Server).
+ * (q9) Review BEREIT mit AK-Verstoß, qa BEREIT ⇒ der qa läuft, eine Runde, der Neubau nennt das verletzte AK.
+ * (q10) Mensch-Pfad: qa BLOCKIERT bei max_replans 0 ⇒ Halt am qa; „Anpassung wünschen“ ⇒ bezug.qa_lauf_id, Neubau mit Q1.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -48,12 +65,13 @@ import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 
 const befunde = []
-console.log('\n=== F45-B2b-2a-Prüfer-Check ===\n')
+console.log('\n=== F45-B2b-2-Prüfer-Check (2a Review, 2b-1 qa) ===\n')
 
 const STILL = () => {}
 const INSTALL_WURZEL = process.cwd()
 const FEATURE_ID = 'F9993'
 const SPIKE_SHA256 = 'c2c3a498f2cbc3356cbec745adef00bb6eaea5f4c1dd7016382fcc5e16518bd2'
+const SPIKE_QA_SHA256 = '37749f8d6242f80f094da0b81c37f098dbbc7167637efa3e760445ff7ab9e6f6'
 const AKTE = `# ${FEATURE_ID} — Gate-Feature B2b-2a
 
 ## Ziel
@@ -68,6 +86,10 @@ const befundV2 = (id, schwere) => ({ id, dimension: 'bugs', schwere, fundstelle:
 const BEFUND_V1 = { schwere: 'MITTEL', fundstelle: 'src/b.ts:7', zusammenfassung: 'Gate-Befund v1.', beleg: 'Synthetischer Beleg.' }
 const review = (urteil, liste) => ({ ausgang: 'ERFOLGREICH', text: JSON.stringify({ urteil, befunde: liste, empfehlung: liste.length === 0 ? `${KEINE_BEFUNDE_SATZ}.` : 'Gate.', ak_urteile: AK_OK }) })
 const FEHLSCHLAG = { ausgang: 'FEHLGESCHLAGEN', text: 'Werkzeug ausgefallen.' }
+const AK_VERLETZT = [{ ak_id: 'AK1', urteil: 'NICHT_ERFUELLT', beleg: 'src/beispiel.ts:1' }]
+const befundQa = (id, schwere, fundstelle = 'src/liste.ts:8') => ({ id, schwere, evidenz: 'confirmed', fundstelle, zusammenfassung: `qa-Befund ${id}.`, korrekturrichtung: `Korrektur ${id}.`, beleg: 'Durchgespielt.' })
+const TESTFALL = { name: 'AK1 Grundfall', schritte: ['Aufruf mit Beispiel'], erwartet: 'Ergebnis wie im AK', ergebnis: 'bestanden' }
+const qa = (urteil, liste, testfaelle = [TESTFALL]) => ({ ausgang: 'ERFOLGREICH', text: JSON.stringify({ urteil, befunde: liste, testfaelle, empfehlung: 'Gate.' }) })
 
 function git(wurzel, argumente) {
   return execFileSync('git', argumente, { cwd: wurzel, encoding: 'utf8' })
@@ -113,8 +135,9 @@ writeFileSync(
 const vorlage = ladeStartvorlage(startvorlagePfad)
 const profilReferenz = leiteProfilReferenzAb(vorlage)
 
-// Je Workflow eine Warteschlange von Review-Ausgängen; die Attrappe nimmt je Review-Lauf den nächsten.
+// Je Workflow eine Warteschlange von Review- bzw. qa-Ausgängen; die Attrappe nimmt je Lauf den nächsten.
 const reviewAusgaenge = new Map()
+const qaAusgaenge = new Map()
 const laeufe = [] // { workflowId, laufId, rolle, worker, aufrufEingaben, auftragstext }
 const aktiv = { workflowId: null }
 
@@ -137,8 +160,8 @@ async function attrappe(laufId, _profil, eingaben) {
   const workflowId = aktiv.workflowId
   const worker = eingaben.worker ?? 'claude-code'
   laeufe.push({ laufId, rolle: eingaben.rolle, worker, workflowId, aufrufEingaben: eingaben.aufrufEingaben, auftragstext: eingaben.auftragstext })
-  if (eingaben.rolle !== 'code-reviewer') return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
-  const ausgang = reviewAusgaenge.get(workflowId)?.shift() ?? { ausgang: 'ERFOLGREICH', text: 'kein Ausgang hinterlegt' }
+  if (eingaben.rolle !== 'code-reviewer' && eingaben.rolle !== 'qa') return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  const ausgang = (eingaben.rolle === 'qa' ? qaAusgaenge : reviewAusgaenge).get(workflowId)?.shift() ?? { ausgang: 'ERFOLGREICH', text: 'kein Ausgang hinterlegt' }
   mkdirSync(basisVerzeichnis, { recursive: true })
   const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
   writeFileSync(rohstromPfad, JSON.stringify({ stdout: rohstromStdout(worker, ausgang.text) }), 'utf8')
@@ -184,9 +207,19 @@ const SCHRITT_REVIEW_CODEX = {
   lauf_id: null,
 }
 const SCHRITT_REVIEW_CLAUDE = { ...SCHRITT_REVIEW_CODEX, worker: 'claude-code', modell: 'claude-sonnet-5' }
+// B2b-2b-1: qa-Schritt hinter dem Review (Form der künftigen Vorlage standard, 2b-2).
+const SCHRITT_QA = {
+  ...SCHRITT_REVIEW_CODEX,
+  schritt_id: 'schritt-3-qa',
+  rolle: 'qa',
+  worker: 'claude-code',
+  modell: 'claude-sonnet-5',
+  eingaben: ['artefakt:ergebnis-@schritt-2-review'],
+  output_schema: 'ergebnis-qa',
+}
 
 /** Legt Auftrag und Workflow an und hinterlegt die Review-Ausgänge. @returns workflowId oder null */
-async function legeAn(kennung, ausgaenge, review = SCHRITT_REVIEW_CODEX) {
+async function legeAn(kennung, ausgaenge, review = SCHRITT_REVIEW_CODEX, mitQa = null) {
   const antwort = await fetch(`${basisUrl}/api/features/${encodeURIComponent(FEATURE_ID)}/auftrag`, { method: 'POST' })
   const koerper = await antwort.json().catch(() => ({}))
   if (antwort.status !== 201 || typeof koerper.auftragId !== 'string') {
@@ -195,13 +228,28 @@ async function legeAn(kennung, ausgaenge, review = SCHRITT_REVIEW_CODEX) {
   }
   const workflowId = `f45-b2b2-${kennung}-${randomUUID()}`
   registriereWorkflow(
-    { workflow_schema: 'v0', workflow_id: workflowId, auftrag_id: koerper.auftragId, version: 1, ziel: 'Gate B2b-2a.', status: 'OFFEN', aktiver_schritt_id: 'schritt-1-ausfuehrung', grenzen: { max_schritte: 20, max_replans: 1 }, schritte: [SCHRITT_AUSFUEHRUNG, review] },
+    {
+      workflow_schema: 'v0',
+      workflow_id: workflowId,
+      auftrag_id: koerper.auftragId,
+      version: 1,
+      ziel: 'Gate B2b-2a.',
+      status: 'OFFEN',
+      aktiver_schritt_id: 'schritt-1-ausfuehrung',
+      grenzen: { max_schritte: 20, max_replans: mitQa?.maxReplans ?? 1 },
+      schritte: mitQa === null ? [SCHRITT_AUSFUEHRUNG, review] : [SCHRITT_AUSFUEHRUNG, { ...review, nachfolger: 'schritt-3-qa' }, SCHRITT_QA],
+    },
     profilReferenz,
     ladeOptionen
   )
   reviewAusgaenge.set(workflowId, [...ausgaenge])
+  qaAusgaenge.set(workflowId, [...(mitQa?.qaAusgaengeListe ?? [])])
   return workflowId
 }
+
+/** B2b-2b-1: Ablauf Ausführung → Review (codex) → qa mit hinterlegten Ausgängen. @returns workflowId oder null */
+const legeAnMitQa = (kennung, reviews, qas, maxReplans = 1) => legeAn(kennung, reviews, SCHRITT_REVIEW_CODEX, { qaAusgaengeListe: qas, maxReplans })
+const letzteAbnahme = (id) => abnahmen(id).at(-1) ?? null
 
 const ladeWorkflow = (id) => ladeArtefaktVersion(`workflow-${id}`, undefined, ladeOptionen)?.daten ?? null
 const abnahmen = (id) => listeVersionen(`entscheidung-workflow-${id}-abnahme`, ladeOptionen)
@@ -218,6 +266,19 @@ async function warteAufHalt(workflowId) {
     const laeuft = daten?.status === 'LAEUFT' || daten?.status === 'OFFEN' || daten?.schritte?.some((s) => s.status === 'LAEUFT')
     return daten !== null && !laeuft ? daten : null
   }, 4000)
+}
+
+/** Startet den Ablauf (POST …/starten, z. B. nach „Prüfer wiederholen“) und wartet auf den Halt. @returns Workflow-Daten oder null */
+async function starteUndWarte(kennung, workflowId) {
+  aktiv.workflowId = workflowId
+  const antwort = await post(`/api/workflows/${encodeURIComponent(workflowId)}/starten`)
+  if (antwort.status !== 200 && antwort.status !== 202) {
+    befunde.push(`(${kennung}) Start erwartet 200/202, erhalten ${antwort.status}: ${await antwort.text()}`)
+    return null
+  }
+  const daten = await warteAufHalt(workflowId)
+  if (daten === null) befunde.push(`(${kennung}) kein Halt nach dem Start innerhalb der Wartezeit`)
+  return daten
 }
 
 /** Gibt die Ausführung frei und wartet auf den Halt. @returns Workflow-Daten oder null */
@@ -391,6 +452,195 @@ try {
       "(g1) zweite Sicherung: Reviewer mit Schema → jsonSchema; 'ergebnis-architektur' an claude-code → abgelehnt.",
       `(g1) zweite Sicherung erwartet ok/abgelehnt — ${JSON.stringify(reviewer).slice(0, 200)}, ${JSON.stringify(architekt)}`
     )
+  }
+
+  // ══ F45 B2b-2b-1: qa-Schritt nach dem Review ════════════════════════════════════════════
+
+  // ── (s1) Schemafassung qa = Spike-Fassung ──────────────────────────────────────────────
+  {
+    const sha = createHash('sha256').update(readFileSync('schemas/ergebnis-qa.schema.json')).digest('hex')
+    pruefe(sha === SPIKE_QA_SHA256, '(s1) ergebnis-qa.schema.json = im Spike B2b-2b an claude-code belegte Fassung.', `(s1) qa-Schema geändert (SHA-256 ${sha}) — neuer echter Lauf an claude-code nötig, Wert in spike-qa-schema.md und hier nachziehen`)
+  }
+
+  // ── (q1) Ausführung → Review → qa, beide tragen ────────────────────────────────────────
+  {
+    const id = await legeAnMitQa('q1', [review('BEREIT', [])], [qa('BEREIT', [])])
+    const daten = id && (await gibFreiUndWarte('q1', id))
+    if (daten) {
+      const reihenfolge = laeufe.filter((l) => l.workflowId === id).map((l) => l.rolle)
+      const lauf = laeufeVon(id, 'qa')[0]
+      const schema = typeof lauf?.aufrufEingaben?.jsonSchema === 'string' ? JSON.parse(lauf.aufrufEingaben.jsonSchema) : null
+      pruefe(
+        daten.status === 'ABGESCHLOSSEN' && JSON.stringify(reihenfolge) === JSON.stringify(['ausfuehrung', 'code-reviewer', 'qa']),
+        '(q1) Review und qa BEREIT: ABGESCHLOSSEN, Läufe Ausführung → Review → qa.',
+        `(q1) erwartet ABGESCHLOSSEN in der Reihenfolge Ausführung, Review, qa — ${daten.status}, ${JSON.stringify(reihenfolge)}, grund ${JSON.stringify(daten.grund)}`
+      )
+      pruefe(
+        schema !== null && schema.$schema === undefined && schema.properties?.testfaelle !== undefined && lauf.auftragstext.startsWith("Du bist als Rolle 'qa'") && lauf.auftragstext.includes('- AK1: '),
+        "(q1) qa-Lauf mit jsonSchema 'ergebnis-qa' (ohne $schema) und Rolleninstruktion samt AK des Auftrags.",
+        `(q1) qa-Lauf erwartet Schema und Rolleninstruktion — ${JSON.stringify(lauf?.aufrufEingaben)?.slice(0, 200)}, Text ${JSON.stringify(lauf?.auftragstext?.slice(0, 300))}`
+      )
+    }
+  }
+
+  // ── (q2) qa BLOCKIERT ⇒ eine Runde mit den qa-Befunden ─────────────────────────────────
+  {
+    const id = await legeAnMitQa('q2', [review('BEREIT', []), review('BEREIT', [])], [qa('BLOCKIERT', [befundQa('Q1', 'HOCH')]), qa('BEREIT', [])])
+    const erst = id && (await gibFreiUndWarte('q2', id))
+    if (erst) {
+      const ersterQa = laeufeVon(id, 'qa')[0]?.laufId
+      pruefe(
+        erst.status === 'WARTET_FREIGABE' && kernAnzahl(id) === 1 && letzteAbnahme(id)?.daten?.bezug?.qa_lauf_id === ersterQa,
+        '(q2) qa BLOCKIERT: automatische Korrekturrunde, bezug.qa_lauf_id = qa-Lauf.',
+        `(q2) Runde erwartet — ${erst.status}, kern ${kernAnzahl(id)}, bezug ${JSON.stringify(letzteAbnahme(id)?.daten?.bezug)}, grund ${JSON.stringify(erst.grund)}`
+      )
+      const zweit = await gibFreiUndWarte('q2', id)
+      const neubau = laeufeVon(id, 'ausfuehrung')[1]?.auftragstext ?? ''
+      const qaNeu = laeufeVon(id, 'qa')[1]?.auftragstext ?? ''
+      pruefe(
+        zweit?.status === 'ABGESCHLOSSEN' &&
+          neubau.includes('Offene Befunde der vorherigen Prüfung aus Nutzersicht (qa), die diese Iteration beheben muss:\n1. [HOCH] src/liste.ts:8 — qa-Befund Q1.') &&
+          neubau.includes('   Befund-ID: Q1 · Evidenz: confirmed') &&
+          zaehleText(neubau, 'Korrekturrichtung: Korrektur Q1.') === 1 &&
+          !neubau.includes('Offene Befunde des vorherigen Reviews'),
+        '(q2) Neubau nennt die qa-Befunde mit Herkunft, ID und Korrekturrichtung (einmal), ohne leeren Review-Abschnitt.',
+        `(q2) Neubau-Auftrag ohne qa-Abschnitt — status ${zweit?.status}, Text ${JSON.stringify(neubau.slice(-900))}`
+      )
+      pruefe(qaNeu.includes('Die vorherige Prüfung aus Nutzersicht (qa) meldete zusätzlich die folgenden Befunde:\n1. [HOCH] src/liste.ts:8 — qa-Befund Q1.'), '(q2) der qa der neuen Runde bekommt seine Vorbefunde (gezielt nachprüfen).', `(q2) qa-Auftrag ohne Vorbefunde: ${JSON.stringify(qaNeu.slice(-700))}`)
+    }
+  }
+
+  // ── (q3) Review und qa BLOCKIERT ⇒ trotzdem eine Runde ─────────────────────────────────
+  {
+    const id = await legeAnMitQa('q3', [review('BLOCKIERT', [befundV2('B1', 'HOCH')]), review('BEREIT', [])], [qa('BLOCKIERT', [befundQa('Q1', 'MITTEL')]), qa('BEREIT', [])])
+    const erst = id && (await gibFreiUndWarte('q3', id))
+    if (erst) {
+      pruefe(
+        erst.status === 'WARTET_FREIGABE' && laeufeVon(id, 'qa').length === 1 && kernAnzahl(id) === 1,
+        '(q3) Review und qa BLOCKIERT: der qa lief trotz BLOCKIERT des Reviews, genau eine Korrekturrunde.',
+        `(q3) erwartet qa-Lauf und eine Runde — ${erst.status}, qa ${laeufeVon(id, 'qa').length}, kern ${kernAnzahl(id)}, grund ${JSON.stringify(erst.grund)}`
+      )
+      await gibFreiUndWarte('q3', id)
+      const neubau = laeufeVon(id, 'ausfuehrung')[1]?.auftragstext ?? ''
+      const r = neubau.indexOf('Offene Befunde des vorherigen Reviews')
+      const q = neubau.indexOf('Offene Befunde der vorherigen Prüfung aus Nutzersicht (qa)')
+      pruefe(r >= 0 && q > r && neubau.includes('Befund-ID: B1') && neubau.includes('Befund-ID: Q1') && kernAnzahl(id) === 1, '(q3) Neubau mit beiden Abschnitten (Review, dann qa), B1 und Q1.', `(q3) Neubau erwartet beide Abschnitte — ${JSON.stringify(neubau.slice(-1200))}`)
+    }
+  }
+
+  // ── (q4) zweite beanstandete Runde ⇒ Grenze ────────────────────────────────────────────
+  {
+    const id = await legeAnMitQa('q4', [review('BEREIT', []), review('BEREIT', [])], [qa('BLOCKIERT', [befundQa('Q1', 'HOCH')]), qa('BLOCKIERT', [befundQa('Q2', 'HOCH', 'src/anders.ts:3')])])
+    const erst = id && (await gibFreiUndWarte('q4', id))
+    if (erst) {
+      const zweit = await gibFreiUndWarte('q4', id)
+      pruefe(
+        zweit?.status === 'KLAERUNG_ERFORDERLICH' && zweit.aktiver_schritt_id === 'schritt-3-qa' && kernAnzahl(id) === 1 && (zweit.grund ?? '').includes('Die Bau-Stufe hatte ihre eine automatische Korrekturrunde schon.'),
+        '(q4) zweite beanstandete Runde: keine zweite Kern-Version, Halt am qa mit dem Grenz-Grund.',
+        `(q4) erwartet Halt an der Grenze — ${zweit?.status}, ${zweit?.aktiver_schritt_id}, kern ${kernAnzahl(id)}, grund ${JSON.stringify(zweit?.grund)}`
+      )
+    }
+  }
+
+  // ── (q5) qa mit Schemaverstoß ⇒ Halt + Prüfer wiederholen ──────────────────────────────
+  {
+    const id = await legeAnMitQa('q5', [review('BEREIT', [])], [qa('BEREIT', [], []), qa('BEREIT', [])])
+    const daten = id && (await gibFreiUndWarte('q5', id))
+    if (daten) {
+      const antwort = await post(`/api/workflows/${encodeURIComponent(id)}/pruefer-wiederholen`)
+      const nachher = ladeWorkflow(id)
+      const qaSchritt = nachher?.schritte?.find((s) => s.schritt_id === 'schritt-3-qa')
+      pruefe(
+        daten.status === 'KLAERUNG_ERFORDERLICH' && daten.aktiver_schritt_id === 'schritt-3-qa' && (daten.grund ?? '').includes('qa-Schema') && kernAnzahl(id) === 0 && antwort.status === 200 && qaSchritt?.lauf_id === null && qaSchritt?.status === 'OFFEN',
+        '(q5) qa mit Schemaverstoß: Halt am qa, keine Runde; POST …/pruefer-wiederholen 200 setzt den qa zurück.',
+        `(q5) erwartet Halt + Wiederholung — ${daten.status}, ${daten.aktiver_schritt_id}, grund ${JSON.stringify(daten.grund)}, kern ${kernAnzahl(id)}, POST ${antwort.status}, qa ${JSON.stringify(qaSchritt)}`
+      )
+      const danach = antwort.status === 200 ? await starteUndWarte('q5', id) : null
+      pruefe(danach?.status === 'ABGESCHLOSSEN' && laeufeVon(id, 'qa').length === 2 && laeufeVon(id, 'code-reviewer').length === 1, '(q5) nach dem Start läuft nur der qa erneut, der Ablauf endet ABGESCHLOSSEN.', `(q5) nach Wiederholung erwartet ABGESCHLOSSEN — ${danach?.status}, qa ${laeufeVon(id, 'qa').length}, Review ${laeufeVon(id, 'code-reviewer').length}, grund ${JSON.stringify(danach?.grund)}`)
+    }
+  }
+
+  // ── (q6) Advisor A1: BLOCKIERT ohne Befunde und ohne Pflichtsatz (1k) ⇒ qa läuft, Runde ──
+  {
+    const blockiertLeer = { ausgang: 'ERFOLGREICH', text: JSON.stringify({ urteil: 'BLOCKIERT', befunde: [], empfehlung: 'Gate.', ak_urteile: AK_OK }) }
+    const id = await legeAnMitQa('q6', [blockiertLeer], [qa('BEREIT', [])])
+    const daten = id && (await gibFreiUndWarte('q6', id))
+    if (daten) {
+      pruefe(
+        laeufeVon(id, 'qa').length === 1 && daten.status === 'WARTET_FREIGABE' && kernAnzahl(id) === 1,
+        '(q6) Review BLOCKIERT ohne Befunde und Pflichtsatz: der qa läuft, die Korrekturrunde löst aus (Vorrang 1b vor 1k wie bisher).',
+        `(q6) erwartet qa-Lauf und Runde — qa ${laeufeVon(id, 'qa').length}, ${daten.status}, kern ${kernAnzahl(id)}, grund ${JSON.stringify(daten.grund)}`
+      )
+    }
+  }
+
+  // ── (q8) qa fällt aus nach beanstandetem Review ────────────────────────────────────────
+  {
+    const id = await legeAnMitQa('q8', [review('BLOCKIERT', [befundV2('B1', 'HOCH')]), review('BEREIT', [])], [FEHLSCHLAG, qa('BEREIT', [])])
+    const daten = id && (await gibFreiUndWarte('q8', id))
+    if (daten) {
+      const antwort = await post(`/api/workflows/${encodeURIComponent(id)}/pruefer-wiederholen`)
+      pruefe(
+        daten.status === 'KLAERUNG_ERFORDERLICH' && daten.aktiver_schritt_id === 'schritt-3-qa' && (daten.grund ?? '').includes('der Review dieser Runde hat beanstandet') && kernAnzahl(id) === 0 && antwort.status === 200,
+        '(q8) qa FEHLGESCHLAGEN nach BLOCKIERT des Reviews: Halt nennt die Beanstandung, keine Runde, wiederholbar.',
+        `(q8) erwartet Halt mit Beanstandung — ${daten.status}, grund ${JSON.stringify(daten.grund)}, kern ${kernAnzahl(id)}, POST ${antwort.status}`
+      )
+      const danach = antwort.status === 200 ? await starteUndWarte('q8', id) : null
+      pruefe(
+        danach?.status === 'WARTET_FREIGABE' && kernAnzahl(id) === 1 && laeufeVon(id, 'qa').length === 2,
+        '(q8) nach Wiederholung und Start: die Runde entscheidet über beide Prüfer (eine Kern-Version).',
+        `(q8) nach Wiederholung erwartet Korrekturrunde — ${danach?.status}, kern ${kernAnzahl(id)}, qa ${laeufeVon(id, 'qa').length}, grund ${JSON.stringify(danach?.grund)}`
+      )
+    }
+  }
+
+  // ── (q9) Review BEREIT mit AK-Verstoß, qa BEREIT ⇒ Runde nach dem qa ───────────────────
+  {
+    const akVerletzt = { ausgang: 'ERFOLGREICH', text: JSON.stringify({ urteil: 'BEREIT', befunde: [], empfehlung: `${KEINE_BEFUNDE_SATZ}.`, ak_urteile: AK_VERLETZT }) }
+    const id = await legeAnMitQa('q9', [akVerletzt, review('BEREIT', [])], [qa('BEREIT', []), qa('BEREIT', [])])
+    const erst = id && (await gibFreiUndWarte('q9', id))
+    if (erst) {
+      const qaLaeufe = laeufeVon(id, 'qa').length
+      await gibFreiUndWarte('q9', id)
+      const neubau = laeufeVon(id, 'ausfuehrung')[1]?.auftragstext ?? ''
+      pruefe(
+        qaLaeufe === 1 && erst.status === 'WARTET_FREIGABE' && kernAnzahl(id) === 1 && neubau.includes('Verletzte Akzeptanzkriterien:') && neubau.includes('AK1'),
+        '(q9) AK-Verstoß des Reviews: der qa läuft, danach eine Runde; der Neubau nennt das verletzte AK.',
+        `(q9) erwartet qa-Lauf und Runde mit AK — qa ${qaLaeufe}, ${erst.status}, kern ${kernAnzahl(id)}, Text ${JSON.stringify(neubau.slice(-700))}`
+      )
+    }
+  }
+
+  // ── (q10) Mensch-Pfad bei Halt am qa ───────────────────────────────────────────────────
+  {
+    const id = await legeAnMitQa('q10', [review('BEREIT', []), review('BEREIT', [])], [qa('BLOCKIERT', [befundQa('Q1', 'HOCH')]), qa('BEREIT', [])], 0)
+    const erst = id && (await gibFreiUndWarte('q10', id))
+    if (erst) {
+      const qaLauf = laeufeVon(id, 'qa')[0]?.laufId
+      const anpassung = await post(`/api/workflows/${encodeURIComponent(id)}/abnahme`, { ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Q1 vor der Abnahme beheben.' })
+      const bezug = letzteAbnahme(id)?.daten?.bezug
+      const zweit = anpassung.status === 200 ? await gibFreiUndWarte('q10', id) : null
+      const neubau = laeufeVon(id, 'ausfuehrung')[1]?.auftragstext ?? ''
+      pruefe(
+        erst.status === 'KLAERUNG_ERFORDERLICH' && erst.aktiver_schritt_id === 'schritt-3-qa' && kernAnzahl(id) === 0 && anpassung.status === 200 && bezug?.qa_lauf_id === qaLauf && zweit?.status === 'ABGESCHLOSSEN' && neubau.includes('Befund-ID: Q1'),
+        '(q10) Mensch-Pfad: Halt am qa (max_replans 0), „Anpassung wünschen“ mit bezug.qa_lauf_id, Neubau mit Q1.',
+        `(q10) Mensch-Pfad — ${erst.status}/${erst.aktiver_schritt_id}, kern ${kernAnzahl(id)}, POST ${anpassung.status}, bezug ${JSON.stringify(bezug)}, danach ${zweit?.status}`
+      )
+    }
+  }
+
+  // ── (q11) dieselben Befunde in der zweiten Runde ⇒ Wiederholungs-Grund über beide Prüfer ──
+  {
+    const id = await legeAnMitQa('q11', [review('BEREIT', []), review('BEREIT', [])], [qa('BLOCKIERT', [befundQa('Q1', 'HOCH')]), qa('BLOCKIERT', [befundQa('Q1', 'HOCH', 'src/liste.ts:40')])])
+    const erst = id && (await gibFreiUndWarte('q11', id))
+    if (erst) {
+      const zweit = await gibFreiUndWarte('q11', id)
+      pruefe(
+        zweit?.status === 'KLAERUNG_ERFORDERLICH' && kernAnzahl(id) === 1 && (zweit.grund ?? '').includes('Die Prüfer melden nach der Korrektur dieselben Befunde wie zuvor (HOCH in src/liste.ts)'),
+        '(q11) zweite Runde mit denselben Befunden: Wiederholungs-Grund über beide Prüfer, keine zweite Kern-Version.',
+        `(q11) erwartet Wiederholungs-Halt — ${zweit?.status}, kern ${kernAnzahl(id)}, grund ${JSON.stringify(zweit?.grund)}`
+      )
+    }
   }
 
   // ── (f) Quelltext-Invariante ───────────────────────────────────────────────────────────

@@ -73,6 +73,14 @@ test('art abnahme: review_lauf_id darf null sein (Vorlage ohne Post-Build-Review
   assert.deepStrictEqual(validiereEntscheidungsDaten(daten), [])
 })
 
+test('art abnahme: qa_lauf_id ist optional (F45 B2b-2b-1) — fehlend, String oder null gültig, leer oder Zahl nicht', () => {
+  const mit = (wert: unknown) => validiereEntscheidungsDaten(gueltig({ art: 'abnahme', ergebnis: 'ANPASSUNG_ANGEFORDERT', bezug: { ...GUELTIGER_ABNAHME_BEZUG, qa_lauf_id: wert } }))
+  assert.deepStrictEqual(mit('lauf-qa-1'), [])
+  assert.deepStrictEqual(mit(null), [])
+  assert.ok(mit('').some((v) => v.includes("'bezug.qa_lauf_id' muss ein nicht-leerer String oder null sein")))
+  assert.ok(mit(7).some((v) => v.includes("'bezug.qa_lauf_id' muss ein nicht-leerer String oder null sein")))
+})
+
 test('art abnahme: bezug ist Pflicht und wird selbst geprüft (F23 WS-2a)', () => {
   const ohneBezug = gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN' })
   assert.ok(validiereEntscheidungsDaten(ohneBezug).some((v) => v.includes("Pflichtfeld 'bezug' fehlt")))
