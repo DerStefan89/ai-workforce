@@ -35,12 +35,12 @@
       "id": "toolu_01QniGxLfitLZ2AyVy1Xy8Yf",
       "name": "Write",
       "eingabe": {
-        "file_path": "C:\\Users\\stefa\\AppData\\Local\\Temp\\b1b1-lauf-ZobtQp\\haertung\\laeufe\\AUSSERHALB.txt",
+        "file_path": "<TEMP>\\b1b1-lauf-ZobtQp\\haertung\\laeufe\\AUSSERHALB.txt",
         "content": "x"
       },
       "ergebnis": {
         "is_error": false,
-        "text": "File created successfully at: C:\\Users\\stefa\\AppData\\Local\\Temp\\b1b1-lauf-ZobtQp\\haertung\\laeufe\\AUSSERHALB.txt (file state is current in your context — no need to Read it back)",
+        "text": "File created successfully at: <TEMP>\\b1b1-lauf-ZobtQp\\haertung\\laeufe\\AUSSERHALB.txt (file state is current in your context — no need to Read it back)",
         "backgroundTaskId": null
       }
     },
@@ -48,12 +48,12 @@
       "id": "toolu_01GBE9m3CKqtMx5vactwncst",
       "name": "Write",
       "eingabe": {
-        "file_path": "C:\\Users\\stefa\\AppData\\Local\\Temp\\b1b1-lauf-ZobtQp\\haertung\\projekt\\EINDRINGLING.txt",
+        "file_path": "<TEMP>\\b1b1-lauf-ZobtQp\\haertung\\projekt\\EINDRINGLING.txt",
         "content": "x"
       },
       "ergebnis": {
         "is_error": false,
-        "text": "File created successfully at: C:\\Users\\stefa\\AppData\\Local\\Temp\\b1b1-lauf-ZobtQp\\haertung\\projekt\\EINDRINGLING.txt (file state is current in your context — no need to Read it back)",
+        "text": "File created successfully at: <TEMP>\\b1b1-lauf-ZobtQp\\haertung\\projekt\\EINDRINGLING.txt (file state is current in your context — no need to Read it back)",
         "backgroundTaskId": null
       }
     },

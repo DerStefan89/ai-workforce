@@ -156,4 +156,3 @@ gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 - F-791 · HARNESS_IMPROVEMENT · Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste wird bei jedem Update still undicht.
 - F-1018 · BUG · Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor ≈ 5–10.
 - F-1049 · HARNESS_IMPROVEMENT · Eingriffsprotokoll fehlt (Challenger K15).
-- F-1101 · HARNESS_IMPROVEMENT · Claude-Code-Selbstupdate sperrt jeden Lauf bis zur erneuerten Startfreigabe.
