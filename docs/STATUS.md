@@ -686,7 +686,7 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Gate f45-b2b2-pruefer (v1)–(v7), Render-Nachweis `features/F45/nachweise/b2b2b2/` (F-820, F-1117
   erledigt) — damit ist B2b-2 abgeschlossen. Rest F-1118 (3), F-1119 (2)–(14) (zweite Runde: F-1118 (1)(2), F-1119 (1) erledigt).
   F-648 geschlossen (umgesetzt, geprüft gegen B2b-2a).
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1119. Nach F46, vor F30
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1120. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

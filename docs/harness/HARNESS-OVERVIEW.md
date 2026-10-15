@@ -92,7 +92,10 @@ jedem beobachteten Fall.
    `architecture-advisor` per `advisor-pass`-Skill gegenprüfen. Nach dem
    Bauen: `code-reviewer`. Vor „fertig": `qa`.
 5. Vor Commit: `npm run check` lokal. Push/PR: CI wiederholt es auf
-   frischer Maschine.
+   frischer Maschine. Bricht `npm run check` lokal wegen Speicher ab, ist
+   die Rückfallebene `npm run check:gates` (dieselbe Gate-Kette ohne
+   Unit-Tests und Nachlauf) plus die betroffenen Unit-Tests einzeln
+   (`node --test <datei>`) — die volle Kette prüft dann die CI (F-1120).
 6. Neues Werkzeug: Skill `werkzeug-auswahl` zuerst. Vor größeren
    Änderungen: Skill `repo-audit` für einen Ist-Stand-Scan.
 7. Architekturentscheidungen mit Alternativen: ADR anlegen
