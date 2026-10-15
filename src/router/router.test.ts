@@ -104,17 +104,17 @@ test('waehleWorkflowVorlage: fast-lane liefert genau einen ZWINGEND-Schreibschri
  * F45 B2b-2b-2 (F-1117 (4)(5)): der qa-Schritt am Ende der Vorlagen standard und hoch — claude-code (nur dort ist
  * 'ergebnis-qa' per Spike belegt), lesend, AUTOMATISCH, mit Auftrag, Änderungsübersicht, Prüfergebnis und Review-Ergebnis.
  * @param schritt - der letzte Schritt der Vorlage
- * @param ausfuehrung - schritt_id der Ausführung
- * @param review - schritt_id des Reviews
+ * @param ausfuehrungId - schritt_id der Ausführung
+ * @param reviewId - schritt_id des Reviews
  */
-function pruefeQaSchritt(schritt: WorkflowV0Schritt, ausfuehrung: string, review: string): void {
+function pruefeQaSchritt(schritt: WorkflowV0Schritt, ausfuehrungId: string, reviewId: string): void {
   assert.strictEqual(schritt.rolle, 'qa')
   assert.strictEqual(schritt.worker, 'claude-code')
   assert.strictEqual(schritt.werkzeugsatz, 'lesend')
   assert.strictEqual(schritt.output_schema, 'ergebnis-qa')
   assert.strictEqual(schritt.freigabe, 'AUTOMATISCH')
   assert.strictEqual(schritt.nachfolger, null)
-  assert.deepStrictEqual(schritt.eingaben, ['artefakt:auftrag-auftrag-123', `artefakt:aenderungsuebersicht-@${ausfuehrung}`, `artefakt:pruefergebnis-@${ausfuehrung}`, `artefakt:ergebnis-@${review}`])
+  assert.deepStrictEqual(schritt.eingaben, ['artefakt:auftrag-auftrag-123', `artefakt:aenderungsuebersicht-@${ausfuehrungId}`, `artefakt:pruefergebnis-@${ausfuehrungId}`, `artefakt:ergebnis-@${reviewId}`])
 }
 
 test('waehleWorkflowVorlage: standard liefert Ausführung (ZWINGEND) → Post-Build-Review (AUTOMATISCH) → qa (AUTOMATISCH) (F23 WS-1b, F45 B2b-2b-2)', () => {
