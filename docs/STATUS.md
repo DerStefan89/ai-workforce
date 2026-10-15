@@ -666,7 +666,14 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Plan v1/v2 und Advisor-Befunden, „Kein Plan v2: …“ zur Lesezeit, Knopf „Advisor wiederholen“;
   F-1106, F-1104 (4), F-1108) — damit ist B2b-1 abgeschlossen. Hülle der Freigabe-Route,
   Gate-Fall Bau-Summe und Schwärzung der Zählungen nach dem Advisor-Pass als F-1111 offen.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1111. Nach F46, vor F30
+  B2b-2 geteilt (E-B2b-2-1 = A, Stefan 15.10.2026): B2b-2a „Review vollständig“ gebaut
+  (15.10.2026, `features/F45/plan-b2b2a.md`): Neubau und Re-Review bekommen je Befund Befund-ID,
+  Evidenz und Korrekturrichtung; Urteil BEREIT mit KRITISCH/HOCH zeigt in der Abnahme einen amber
+  Hinweis (kein Halt, kein Neubau); ein Claude-Reviewer mit Schema `ergebnis-code-reviewer` ist
+  gültig (Spike `features/F45/nachweise/b2b2a/`, Regel-4b-Allowlist), Vorlagen bleiben bei Codex;
+  Gate f45-b2b2-pruefer, Render-Nachweis `features/F45/nachweise/b2b2a/` (F-1085 (2)(3)(4)).
+  Offen: B2b-2b qa-Schritt (F-820); der design-guardian-Schritt im Lauf geht nach B3.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1114. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

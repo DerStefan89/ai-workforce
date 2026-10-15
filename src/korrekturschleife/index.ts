@@ -27,15 +27,53 @@
  * über Regel 1e an — real beobachtet in Lauf 40045f94-6692-44a8-9514-766c5c5f295e, der ohne
  * '- [x] Blockiert' mit "Frage an dich: Wie soll ich vorgehen?" endete.
  *
+ * F45 B2b-2a (F-1085 (3)): je Befund zusätzlich Befund-ID, Evidenz und Korrekturrichtung (baueBefundZusatzzeilen) — für
+ * den Neubau und den Re-Review; die Begründung der Automatik (f35-ws3-adjust-automatik.mjs) bleibt bewusst ohne sie
+ * (Entscheidung Stefan A1 = a, features/F45/plan-b2b2a.md: sonst stünden sie im Neubau zweimal).
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs, src/korrekturschleife/korrekturschleife.test.ts.
  */
 
-/** Form eines einzelnen Befunds aus schemas/ergebnis-code-reviewer.schema.json — nur die vier Felder, die hier zitiert werden. */
+/**
+ * Form eines einzelnen Befunds aus schemas/ergebnis-code-reviewer.schema.json — nur die Felder, die hier zitiert werden.
+ * F45 B2b-2a (F-1085 (3)): dazu die v2-Felder id/evidenz/korrekturrichtung (nullable im Schema; ein v1-Befund hat sie nicht).
+ */
 export interface KorrekturBefund {
   schwere?: string
   fundstelle?: string
   zusammenfassung?: string
   beleg?: string
+  id?: string | null
+  evidenz?: string | null
+  korrekturrichtung?: string | null
+}
+
+/**
+ * Nicht-leerer String oder null — die Befunde kommen roh aus dem Modell, der TS-Typ schützt zur Laufzeit nicht.
+ * Zeilenumbrüche werden zu einem Leerzeichen (qa 4): eine mehrzeilige Korrekturrichtung („1. X“ und darunter „2. Y“)
+ * sähe in der nummerierten Befundliste sonst wie ein eigener Befund aus.
+ */
+function textOderNull(wert: unknown): string | null {
+  return typeof wert === 'string' && wert.trim() !== '' ? wert.trim().replace(/\s*\r?\n\s*/g, ' ') : null
+}
+
+/**
+ * F45 B2b-2a (F-1085 (3), Codex-Review-Spec §10 „an Claude übergeben und gezielt nachgeprüft“): die Zeilen unter einer
+ * Befundzeile mit Befund-ID, Evidenz und Korrekturrichtung — nur die vorhandenen, nicht-leeren Werte. Ohne diese Felder
+ * (Befund v1, null, leer) [] — der Text der Instruktionen bleibt dann bitgleich wie vor B2b-2a. Reine Funktion.
+ * @param befund - ein Befund des Reviews (roh)
+ * @returns eingerückte Zusatzzeilen, ggf. leer
+ */
+export function baueBefundZusatzzeilen(befund: KorrekturBefund): string[] {
+  if (befund === null || typeof befund !== 'object') return []
+  const id = textOderNull(befund.id)
+  const evidenz = textOderNull(befund.evidenz)
+  const korrekturrichtung = textOderNull(befund.korrekturrichtung)
+  const zeilen: string[] = []
+  const kopf = [id === null ? null : `Befund-ID: ${id}`, evidenz === null ? null : `Evidenz: ${evidenz}`].filter((teil) => teil !== null)
+  if (kopf.length > 0) zeilen.push(`   ${kopf.join(' · ')}`)
+  if (korrekturrichtung !== null) zeilen.push(`   Korrekturrichtung: ${korrekturrichtung}`)
+  return zeilen
 }
 
 /**
@@ -56,7 +94,7 @@ export function baueAusfuehrungKorrekturInstruktion(begruendung: string, vorheri
     zeilen.push('', 'Offene Befunde des vorherigen Reviews, die diese Iteration beheben muss:')
     vorherigeBefunde.forEach((befund, index) => {
       const beleg = befund.beleg ? ` (Beleg: ${befund.beleg})` : ''
-      zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}${beleg}`)
+      zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}${beleg}`, ...baueBefundZusatzzeilen(befund))
     })
   }
   zeilen.push(
@@ -89,7 +127,7 @@ export function baueReviewKorrekturInstruktion(begruendung: string, vorherigeBef
     'Das vorherige Review meldete zusätzlich die folgenden Befunde:',
   ]
   vorherigeBefunde.forEach((befund, index) => {
-    zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}`)
+    zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}`, ...baueBefundZusatzzeilen(befund))
   })
   zeilen.push(
     '',

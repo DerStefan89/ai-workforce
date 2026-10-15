@@ -54,6 +54,13 @@ test('baueAutomatischeAnpassungsBegruendung: listet jeden Befund nummeriert mit 
   assert.ok(text.includes('1. [HOCH] src/beispiel.ts:12 — Fehlende Fehlerbehandlung beim Schreibpfad.'))
 })
 
+test('baueAutomatischeAnpassungsBegruendung: F45 B2b-2a (A1 = a) — v2-Felder stehen NICHT in der Begründung (sonst im Neubau doppelt), Text bitgleich', () => {
+  const v2 = { ...EIN_BEFUND, id: 'B1', evidenz: 'confirmed', korrekturrichtung: 'Fehler fangen.' }
+  const golden = 'Automatische Anpassung (Korrekturrunde 1 von 1, Bau-Stufe) nach Review-Urteil BLOCKIERT:\n\nBefunde:\n1. [HOCH] src/beispiel.ts:12 — Fehlende Fehlerbehandlung beim Schreibpfad.'
+  assert.equal(baueAutomatischeAnpassungsBegruendung('BLOCKIERT', [EIN_BEFUND], [], 1), golden)
+  assert.equal(baueAutomatischeAnpassungsBegruendung('BLOCKIERT', [v2], [], 1), golden)
+})
+
 test('baueAutomatischeAnpassungsBegruendung: nennt AK-Verstöße wörtlich (tragen die AK-ID bereits selbst)', () => {
   const verstoss = "AK 'AK2': Urteil 'NICHT_ERFUELLT' ist nicht 'ERFUELLT'"
   const text = baueAutomatischeAnpassungsBegruendung('BEREIT', [], [verstoss], 1)

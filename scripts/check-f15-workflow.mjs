@@ -216,13 +216,14 @@ const automatFaelle = [
     // sonst hätte die Reihenfolge „Schritt-Eigenschaft vor Freigabe" keinen
     // Beleg mehr.
     name: 'Regel-4b-Halt (Rotfall der Automatik): claude-code mit gesetztem output_schema hält an, statt es still zu ignorieren (E-159)',
-    workflow: gateWorkflow([gelaufen('schritt-2'), gateSchritt('schritt-2', null, { output_schema: 'ergebnis-code-reviewer' })]),
+    // F45 B2b-2a: 'ergebnis-code-reviewer' ist an claude-code jetzt belegt (Allowlist) — der Rotfall nutzt ein nicht belegtes Schema.
+    workflow: gateWorkflow([gelaufen('schritt-2'), gateSchritt('schritt-2', null, { output_schema: 'ergebnis-architektur' })]),
     ergebnis: ERFOLG_1,
     erwartet: {
       art: 'haltKlaerung',
       grund:
         // F45 B2b-1b: der Grund nennt jetzt auch das für claude-code per '--json-schema' belegte Schema (Regel-4b-Allowlist).
-        "Schritt 'schritt-2' setzt output_schema 'ergebnis-code-reviewer', aber Worker 'claude-code' löst dieses Ausgabeschema nicht ein — 'codex' wird mit '--output-schema' gestartet, 'claude-code' mit '--json-schema' nur für 'ergebnis-architecture-advisor'",
+        "Schritt 'schritt-2' setzt output_schema 'ergebnis-architektur', aber Worker 'claude-code' löst dieses Ausgabeschema nicht ein — 'codex' wird mit '--output-schema' gestartet, 'claude-code' mit '--json-schema' nur für 'ergebnis-architecture-advisor', 'ergebnis-code-reviewer'",
       aktiverSchrittId: 'schritt-2',
     },
   },
@@ -2392,7 +2393,7 @@ async function starteTestserver(optionen) {
       //     gesetztem output_schema — 'codex' ist mit AK10 dispatchbar geworden), darf keine
       //     Freigabefrage sein — die Freigabe bliebe folgenlos.
       const schemaHaltId = `ws2c-freigabe-schema-${randomUUID()}`
-      await legeWorkflowAn(basisUrl, schemaHaltId, [gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', output_schema: 'ergebnis-code-reviewer' })])
+      await legeWorkflowAn(basisUrl, schemaHaltId, [gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', output_schema: 'ergebnis-architektur' })])
       const schemaHalt = await freigebe(basisUrl, schemaHaltId, { schrittId: 'schritt-1', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate.' })
       const schemaHaltKoerper = await schemaHalt.json()
       if (schemaHalt.status !== 409 || schemaHaltKoerper.art !== 'haltKlaerung') {
@@ -2410,7 +2411,7 @@ async function starteTestserver(optionen) {
       const profilReferenzW1 = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
       const wartetAberSchemaId = `ws2c-freigabe-wartet-schema-${randomUUID()}`
       registriereWorkflow(
-        gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', output_schema: 'ergebnis-code-reviewer' })], {
+        gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', output_schema: 'ergebnis-architektur' })], {
           workflow_id: wartetAberSchemaId,
           auftrag_id: auftragId,
           status: 'WARTET_FREIGABE',
@@ -3114,7 +3115,7 @@ async function starteTestserver(optionen) {
     // schrittId null, obwohl der Halt einen Schritt betrifft: 'haltKlaerung' trägt in der Union
     // keinen schritt_id-Namen, nur einen Grundtext (der ihn nennt). Die Projektion erfindet
     // dafür nichts — sie gibt weiter, was der Ausgang trägt.
-    { art: 'haltKlaerung', workflowId: 'ws3b-haltklaerung', schrittId: null, daten: gateWorkflow([gateSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer' })]) },
+    { art: 'haltKlaerung', workflowId: 'ws3b-haltklaerung', schrittId: null, daten: gateWorkflow([gateSchritt('schritt-1', null, { output_schema: 'ergebnis-architektur' })]) },
     {
       art: 'haltGrenze',
       workflowId: 'ws3b-haltgrenze',

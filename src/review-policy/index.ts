@@ -12,7 +12,8 @@
  * Wird aufgerufen von:
  * - scripts/leitstand-server.mjs (starteWorkflowSchritt: Policy-Block und Laufakte review.policy_version; Nachlauf des
  *   Reviews und GET …/abnahme: pruefeReviewErgebnis)
- * - scripts/check-f45-b2a3-codex-review.mjs, src/review-policy/review-policy.test.ts
+ * - scripts/leitstand-server.mjs GET …/abnahme: zaehleSchwereBeiBereit (F45 B2b-2a, Hinweis BEREIT mit KRITISCH/HOCH)
+ * - scripts/check-f45-b2a3-codex-review.mjs, scripts/check-f45-b2b2-pruefer.mjs, src/review-policy/review-policy.test.ts
  *
  * Wichtig:
  * - Jede Änderung am Text braucht eine neue REVIEW_POLICY_VERSION — das Gate koppelt den sha256 des Texts an die Version.
@@ -148,4 +149,24 @@ export function pruefeReviewErgebnis(ergebnis: ReviewErgebnisRoh): ReviewPruefun
     }
   })
   return { halt, hinweise }
+}
+
+/** Schweren, die nach Spec §8 vor der Freigabe behoben oder bewusst als Risiko entschieden werden müssen. */
+const SCHWERE_VOR_FREIGABE = ['KRITISCH', 'HOCH']
+
+/**
+ * F45 B2b-2a (F-1085 (4), Codex-Review-Spec §8): Anzahl der Befunde KRITISCH/HOCH bei Urteil BEREIT — ein BEREIT trotz
+ * schwerer Befunde soll in der Abnahme sichtbar sein (Hinweis, kein Halt, kein automatischer Neubau). Bei
+ * BEREIT_NACH_KORREKTUR und BLOCKIERT sagt das Urteil selbst, dass etwas offen ist (0). Reine Funktion; die Befunde kommen
+ * roh aus dem Modell.
+ * @param urteil - Gesamturteil des Reviews
+ * @param befunde - befunde[] des Ergebnisses (roh)
+ * @returns Anzahl der schweren Befunde, 0 außer bei BEREIT
+ */
+export function zaehleSchwereBeiBereit(urteil: unknown, befunde: unknown): number {
+  if (urteil !== 'BEREIT' || !Array.isArray(befunde)) return 0
+  return befunde.filter((b) => {
+    const schwere = b !== null && typeof b === 'object' ? (b as Record<string, unknown>).schwere : undefined
+    return typeof schwere === 'string' && SCHWERE_VOR_FREIGABE.includes(schwere)
+  }).length
 }

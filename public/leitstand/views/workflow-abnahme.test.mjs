@@ -408,3 +408,43 @@ test('F45 B2b-1a (Prüfpass): reviewWiederholbar ohne roten Hinweis (unbekanntes
   assert.match(r.unten, /wf-pruefer-wiederholen/)
   assert.doesNotMatch(r.unten, /<ul><\/ul>/, 'keine leere Liste')
 })
+
+// ─── F45 B2b-2a: BEREIT mit schweren Befunden (F-1085 (4), Spec §8) und Claude-Reviewer (F-1085 (2)) ─────────
+
+test('F45 B2b-2a: BEREIT mit schweren Befunden ⇒ amber Hinweis mit Anzahl, ohne Feldnamen und Kennungen; überall, wo die Review-Hinweise stehen', () => {
+  const urteil = { ...URTEIL, befunde: [{ id: 'B1', schwere: 'HOCH', fundstelle: 'src/a.ts:3', zusammenfassung: 'x', beleg: 'y' }], schwere_bei_bereit: 1 }
+  const h = reviewHinweise(urteil)
+  assert.deepEqual(
+    h.map((e) => e.art),
+    ['schwereBeiBereit']
+  )
+  assert.equal(h[0].server, null)
+  assert.match(h[0].text, /bereit/i)
+  assert.match(h[0].text, /einen schweren Befund/, 'Singular ohne Ziffer (design-guardian 3: „: 1.“ las sich als Aufzählung)')
+  assert.match(reviewHinweise({ ...urteil, schwere_bei_bereit: 2 })[0].text, /2 schwere Befunde/)
+  assert.doesNotMatch(h[0].text, /schwere_bei_bereit|\bbefunde\b|B1|HOCH|KRITISCH|BEREIT/, 'kein Feldname, keine Kennung, kein Enum-Wert')
+  const { oben } = renderAbnahme('w-1', abnahme({ urteil }), null)
+  assert.match(oben, /note amber abnahme-review-hinweise[\s\S]*data-review-hinweis="schwereBeiBereit"/)
+  assert.doesNotMatch(oben, /note red abnahme-review-hinweise/, 'kein Halt: amber, nicht rot')
+  assert.match(renderAbnahmeBlick(abnahme({ urteil })), /data-review-hinweise-anzahl="1"/)
+  // design-guardian 1: Badge „Bereit“ amber (warten) statt grün, in Kachel und Blick.
+  assert.match(oben, /ablauf-status warten">Bereit<\/span> <span class="subtle">Codex/)
+  assert.match(renderAbnahmeBlick(abnahme({ urteil })), /ablauf-status warten">Bereit/)
+  assert.match(renderAbnahme('w-1', abnahme(), null).oben, /ablauf-status ok">Bereit/, 'ohne schwere Befunde bleibt es grün')
+})
+
+test('F45 B2b-2a: ohne schwere Befunde, bei 0 oder alter Projektion (ohne Feld) kein Hinweis', () => {
+  assert.deepEqual(reviewHinweise({ ...URTEIL, schwere_bei_bereit: 0 }), [])
+  assert.deepEqual(reviewHinweise(URTEIL), [])
+  assert.deepEqual(reviewHinweise({ ...URTEIL, schwere_bei_bereit: 'zwei' }), [])
+})
+
+test('F45 B2b-2a (Advisor A7): reviewHinweisKennung ändert sich mit der Anzahl schwerer Befunde', () => {
+  assert.notEqual(reviewHinweisKennung({ ...URTEIL, schwere_bei_bereit: 1 }), reviewHinweisKennung({ ...URTEIL, schwere_bei_bereit: 2 }))
+})
+
+test('F45 B2b-2a: Kachel „Review“ nennt den Worker aus der Projektion — Claude bei claude-code, sonst (auch ohne Feld) Codex', () => {
+  assert.match(renderAbnahme('w-1', abnahme({ urteil: { ...URTEIL, worker: 'claude-code' } }), null).oben, /Bereit<\/span> <span class="subtle">Claude<\/span>/)
+  assert.match(renderAbnahme('w-1', abnahme({ urteil: { ...URTEIL, worker: 'codex' } }), null).oben, /Bereit<\/span> <span class="subtle">Codex<\/span>/)
+  assert.match(renderAbnahme('w-1', abnahme({ urteil: URTEIL }), null).oben, /Bereit<\/span> <span class="subtle">Codex<\/span>/, 'ohne Feld (alte Projektion)')
+})

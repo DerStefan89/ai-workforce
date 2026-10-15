@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, erkenneRueckfrage, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from './index.ts'
+import { baueAusfuehrungKorrekturInstruktion, baueBefundZusatzzeilen, baueReviewKorrekturInstruktion, erkenneRueckfrage, findeRueckfrageZeile, type KorrekturBefund, leseSelbstblockadeAusAusfuehrungstext } from './index.ts'
 
 // Reale Begründung aus der Abnahme-Entscheidung (Lauf-übergreifend, Workflow
 // router-a0d04470-d4eb-4204-aec4-ad3ee21e2b91, entschieden_am 2026-09-23T17:09:35.892Z), wörtlich
@@ -130,4 +130,59 @@ test('erkenneRueckfrage: nur die letzten 20 nicht-leeren Zeilen zählen — eine
   const fuellzeilen = (anzahl: number): string[] => Array.from({ length: anzahl }, (_, i) => `Zeile ${i + 1}.`)
   assert.equal(erkenneRueckfrage(['Wie soll ich das verstehen?', ...fuellzeilen(20)].join('\n\n'), 0), false)
   assert.equal(erkenneRueckfrage(['Wie soll ich das verstehen?', ...fuellzeilen(19)].join('\n'), 0), true)
+})
+
+// ─── F45 B2b-2a (F-1085 (3), Codex-Review-Spec §10): ID, Evidenz, Korrekturrichtung an den Neubau ───────────
+
+/** Befund v1 (ohne die v2-Felder) — der Text muss bitgleich wie vor B2b-2a bleiben (Golden-Text, vor der Änderung festgehalten). */
+const V1_BEFUND = { schwere: 'MITTEL', fundstelle: 'src/a.ts:3', zusammenfassung: 'Kurz.', beleg: 'Beleg.' }
+const GOLDEN_AUSFUEHRUNG =
+  'VORRANGIGER AUFTRAG dieser Iteration: der Mensch hat dein vorheriges Ergebnis NICHT angenommen und "Anpassung anfordern" gewählt.\nBegründung der Abnahme-Entscheidung:\nBegr.\n\nOffene Befunde des vorherigen Reviews, die diese Iteration beheben muss:\n1. [MITTEL] src/a.ts:3 — Kurz. (Beleg: Beleg.)\n\nPrüfe zuerst, ob diese konkreten Punkte im AKTUELLEN Code tatsächlich behoben sind. "Die ursprüngliche Anforderung ist bereits erfüllt" ist KEINE ausreichende Antwort auf diesen Korrekturauftrag, solange auch nur einer der obigen Punkte offen bleibt.'
+const GOLDEN_REVIEW =
+  'Diese Iteration folgt auf "Anpassung anfordern".\nVerbindliche Klarstellung des Auftrags durch den Menschen (Abnahme-Begründung). Sie hat Vorrang vor dem ursprünglichen Auftragstext. Bewusste Entscheidungen darin sind KEIN offener Befund:\nBegr.\n\nDas vorherige Review meldete zusätzlich die folgenden Befunde:\n1. [MITTEL] src/a.ts:3 — Kurz.\n\nBewerte JEDEN dieser Punkte einzeln und explizit als "behoben" oder "offen" (mit Begründung) — nicht nur den neuen Diff allgemein. Ein Punkt, den die Abnahme-Begründung oben ausdrücklich als bewusste Entscheidung festhält, ist "behoben", nicht "offen".\nIst auch nur EINER der verbleibenden Punkte noch offen, darf dein urteil NICHT "BEREIT" sein ("BEREIT_NACH_KORREKTUR" oder "BLOCKIERT", je nach Schwere).'
+
+test('B2b-2a: Befund v1 (ohne id/evidenz/korrekturrichtung) — beide Instruktionen bitgleich wie vor der Änderung', () => {
+  assert.equal(baueAusfuehrungKorrekturInstruktion('Begr.', [V1_BEFUND]), GOLDEN_AUSFUEHRUNG)
+  assert.equal(baueReviewKorrekturInstruktion('Begr.', [V1_BEFUND]), GOLDEN_REVIEW)
+})
+
+test('B2b-2a: Befund v2 — Neubau und Re-Review bekommen Befund-ID, Evidenz und Korrekturrichtung direkt unter der Befundzeile', () => {
+  const befund = { ...V1_BEFUND, id: 'B1', evidenz: 'confirmed', korrekturrichtung: 'Grenze prüfen.' }
+  const erwartet = '1. [MITTEL] src/a.ts:3 — Kurz. (Beleg: Beleg.)\n   Befund-ID: B1 · Evidenz: confirmed\n   Korrekturrichtung: Grenze prüfen.\n'
+  assert.ok(baueAusfuehrungKorrekturInstruktion('Begr.', [befund]).includes(erwartet))
+  assert.ok(baueReviewKorrekturInstruktion('Begr.', [befund]).includes('1. [MITTEL] src/a.ts:3 — Kurz.\n   Befund-ID: B1 · Evidenz: confirmed\n   Korrekturrichtung: Grenze prüfen.\n'))
+})
+
+test('baueBefundZusatzzeilen: nur vorhandene, nicht-leere Strings; null, leer, Leerzeichen und Nicht-Strings (roh aus dem Modell) fallen weg', () => {
+  assert.deepEqual(baueBefundZusatzzeilen({}), [])
+  assert.deepEqual(baueBefundZusatzzeilen({ id: null, evidenz: '', korrekturrichtung: '   ' }), [])
+  assert.deepEqual(baueBefundZusatzzeilen({ id: 7, evidenz: ['x'], korrekturrichtung: { a: 1 } } as unknown as KorrekturBefund), [])
+  assert.deepEqual(baueBefundZusatzzeilen({ id: 'B2' }), ['   Befund-ID: B2'])
+  assert.deepEqual(baueBefundZusatzzeilen({ evidenz: 'likely' }), ['   Evidenz: likely'])
+  assert.deepEqual(baueBefundZusatzzeilen({ korrekturrichtung: 'Test ergänzen.' }), ['   Korrekturrichtung: Test ergänzen.'])
+  assert.deepEqual(baueBefundZusatzzeilen({ id: 'B3', korrekturrichtung: 'Grenze prüfen.' }), ['   Befund-ID: B3', '   Korrekturrichtung: Grenze prüfen.'])
+  assert.deepEqual(baueBefundZusatzzeilen(null as unknown as KorrekturBefund), [], 'qa 12: null-Eintrag wirft nicht')
+})
+
+test('B2b-2a (qa 4): mehrzeilige Korrekturrichtung bleibt eine eingerückte Zeile — sie sieht nicht wie ein eigener Befund aus', () => {
+  assert.deepEqual(baueBefundZusatzzeilen({ korrekturrichtung: '1. Grenze prüfen.\r\n2. Test ergänzen.\n' }), ['   Korrekturrichtung: 1. Grenze prüfen. 2. Test ergänzen.'])
+})
+
+test('B2b-2a (qa 7): mehrere Befunde gemischt (v2 voll, v1, nur ID + Korrekturrichtung) — Nummerierung und Zusatzzeilen je eigenem Befund', () => {
+  const text = baueAusfuehrungKorrekturInstruktion('Begr.', [
+    { ...V1_BEFUND, id: 'B1', evidenz: 'confirmed', korrekturrichtung: 'Eins.' },
+    V1_BEFUND,
+    { ...V1_BEFUND, fundstelle: 'src/c.ts:9', id: 'B3', korrekturrichtung: 'Drei.' },
+  ])
+  const erwartet = [
+    '1. [MITTEL] src/a.ts:3 — Kurz. (Beleg: Beleg.)',
+    '   Befund-ID: B1 · Evidenz: confirmed',
+    '   Korrekturrichtung: Eins.',
+    '2. [MITTEL] src/a.ts:3 — Kurz. (Beleg: Beleg.)',
+    '3. [MITTEL] src/c.ts:9 — Kurz. (Beleg: Beleg.)',
+    '   Befund-ID: B3',
+    '   Korrekturrichtung: Drei.',
+    '',
+  ].join('\n')
+  assert.ok(text.includes(`Offene Befunde des vorherigen Reviews, die diese Iteration beheben muss:\n${erwartet}`), text)
 })

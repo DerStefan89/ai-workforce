@@ -1,0 +1,57 @@
+{
+  "url": "http://127.0.0.1:4401/#/workflows/wf-b2b2a-bereit-hoch-1792059956762",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3200
+  },
+  "farbschema": "light",
+  "localStorageSetzen": {
+    "leitstand-sprache": "ru"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweise zum Review",
+        "selector": ".abnahme-review-hinweise"
+      },
+      {
+        "name": "Reviewer",
+        "selector": ".entscheiden-kachel .ablauf-status + .subtle"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-review-hinweise.amber"
+      },
+      {
+        "name": "Hinweis rot",
+        "selector": ".abnahme-review-hinweise.red"
+      },
+      {
+        "name": "Hinweis schwere Befunde",
+        "selector": "[data-review-hinweis=\"schwereBeiBereit\"]"
+      },
+      {
+        "name": "Zahl im Blick",
+        "selector": "[data-review-hinweise-anzahl]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "BEREIT mit HOCH-Befund, Claude-Reviewer — ru-390-hell",
+      "warteAufSelector": {
+        "selector": "[data-review-hinweis=\"schwereBeiBereit\"]",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-ru-390-hell.webp"
+    }
+  ]
+}

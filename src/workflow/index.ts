@@ -100,8 +100,10 @@ const FREIGABE = ['AUTOMATISCH', 'EMPFOHLEN', 'ZWINGEND']
  * Regel 4b (F45 B2b-1b, F-1105): Ausgabeschemata, die ein claude-code-Schritt tragen darf — nur solche, die die
  * Claude-Code-CLI in einem echten Lauf per '--json-schema' eingelöst hat (F-638/F-1086: ein Schema erst nach echtem
  * Lauf). Exportiert für die Tests; der Gateway-Aufbau liest den Schemanamen nicht, sondern bekommt den Text.
+ * F45 B2b-2a (F-1085 (2)): dazu 'ergebnis-code-reviewer' — Claude-Reviewer mit Schema, echter Lauf
+ * features/F45/nachweise/b2b2a/spike-reviewer-schema.md (SHA-256 der Schemafassung dort, Gate check-f45-b2b2-pruefer (s0)).
  */
-export const CLAUDE_CODE_AUSGABESCHEMAS: readonly string[] = ['ergebnis-architecture-advisor']
+export const CLAUDE_CODE_AUSGABESCHEMAS: readonly string[] = ['ergebnis-architecture-advisor', 'ergebnis-code-reviewer']
 
 // Die DREI Allowlists von ermittleNaechstenSchritt (F15 WS-2a). Alle drei sind
 // bewusst Teilmengen der Arrays oben und keine Negation davon: wächst
@@ -737,7 +739,8 @@ export function planV2Sprungziel(schritte: WorkflowV0Schritt[], vorschritt: Work
  *    rückwirkend ungültig, statt nur seinen nächsten Start anzuhalten.
  *    F45 B2b-1b (F-1105): Ausnahme per Allowlist CLAUDE_CODE_AUSGABESCHEMAS — Schemata, die die
  *    Claude-Code-CLI real per '--json-schema' einlöst (je Schema ein echter Lauf, Spike
- *    features/F45/nachweise/b2b1b/spike-f1105.md). Heute nur 'ergebnis-architecture-advisor'.
+ *    features/F45/nachweise/b2b1b/spike-f1105.md). Heute 'ergebnis-architecture-advisor' und seit F45 B2b-2a
+ *    'ergebnis-code-reviewer' (features/F45/nachweise/b2b2a/spike-reviewer-schema.md).
  * 5. freigabe ∉ {AUTOMATISCH, EMPFOHLEN} UND freigabe_erteilt ≠ true →
  *    haltFreigabe, sonst starte. Der zweite Halbsatz ist WS-2c (b1): ein
  *    ZWINGEND-Schritt, für den ein Mensch real freigegeben hat, ist startbar;
@@ -910,7 +913,8 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
       }
     }
     // Regel 1k (F45 B2a-3a, Codex-Review-Spec §9.8 „leere Findings“): dieselbe Kopplung an output_schema wie 1b/1i —
-    // ein claude-code-Reviewer trägt nach Regel 4b kein Ausgabeschema, für ihn wirkt die Policy nur als Text. Nach 1i:
+    // seit F45 B2b-2a gilt sie auch für einen claude-code-Reviewer mit Schema (Regel 4b, '--json-schema'); ein Reviewer
+    // ohne Schema (Bestand) bekommt die Policy nur als Text. Nach 1i:
     // ein BLOCKIERT oder ein AK-Verstoß meldet sich zuerst (und löst ggf. die Anpassungsautomatik aus); ein Vertragsbruch
     // des Reviewers selbst löst sie nicht aus (sie liest nur Urteil und AK-Verstöße). Ausweg für den Menschen: in der
     // Abnahme (KLAERUNG_ERFORDERLICH) „Anpassung anfordern“ oder „Ablehnen“.

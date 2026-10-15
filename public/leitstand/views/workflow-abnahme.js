@@ -208,6 +208,11 @@ export function reviewHinweise(urteil) {
     const eintraege = liste(urteil[feld])
     if (eintraege.length > 0) hinweise.push(hinweis(art, eintraege.join('; ')))
   }
+  // F45 B2b-2a (F-1085 (4), Spec §8): BEREIT trotz KRITISCH/HOCH — amber, kein Halt; Satz ohne Feldnamen und Kennungen.
+  if (Number.isInteger(urteil.schwere_bei_bereit) && urteil.schwere_bei_bereit > 0) {
+    const parameter = { anzahl: urteil.schwere_bei_bereit }
+    hinweise.push({ art: 'schwereBeiBereit', server: null, parameter, text: t('abnahme.review.schwereBeiBereit', parameter) })
+  }
   // qa 3: beim verletzten Vertrag sieht Stefan, was der Reviewer tatsächlich geschrieben hat.
   if (hinweise.some((h) => h.art === 'vertragVerletzt')) hinweise.splice(1, 0, hinweis('empfehlung', typeof urteil.empfehlung === 'string' && urteil.empfehlung !== '' ? urteil.empfehlung : t('abnahme.empfehlung.keine')))
   // F45 B2a-3b (Spec §9.6): der geprüfte Stand gegen den aktuellen — veraltet, oder (bei offener Abnahme) nicht bestimmbar mit
@@ -220,13 +225,28 @@ export function reviewHinweise(urteil) {
 /**
  * F45 B2a-3b (qa 1): Kennung der Review-Hinweise für das Render-Kennzeichen der Abnahme (views/workflows.js) — ändert sich
  * ein Hinweis ohne Statuswechsel (z. B. „Review veraltet“ aus dem Poll), wird die Abnahme neu gezeichnet.
+ * F45 B2b-2a (Advisor A7): mit der Anzahl schwerer Befunde (Hinweis ohne Servertext).
  * @param urteil - abnahme.urteil
  * @returns Text (leer ohne Hinweise)
  */
 export function reviewHinweisKennung(urteil) {
   return reviewHinweise(urteil)
-    .map((h) => `${h.art}:${h.server ?? ''}`)
+    .map((h) => `${h.art}:${h.server ?? ''}:${h.parameter?.anzahl ?? ''}`)
     .join(';')
+}
+
+/**
+ * Farbe des Urteil-Badges (Kachel „Review“ und „Auf einen Blick“, eine Ableitung): ein Urteil, dessen Vertrag verletzt
+ * ist, steht nicht in der Erfolgsfarbe (design-guardian 1, B2a-3a) — neutral; ein BEREIT trotz schwerer Befunde
+ * (F45 B2b-2a, design-guardian 1) amber wie seine Notiz; sonst die Farbe des Urteils.
+ * @param urteil - abnahme.urteil
+ * @param hinweise - reviewHinweise(urteil)
+ * @returns Klasse für ablauf-status
+ */
+function urteilFarbe(urteil, hinweise) {
+  if (hinweise.some((h) => h.art === 'vertragVerletzt')) return 'neutral'
+  if (hinweise.some((h) => h.art === 'schwereBeiBereit')) return 'warten'
+  return FARBE_URTEIL[urteil?.urteil] ?? 'neutral'
 }
 
 /** Arten, die eine rote Notiz und den Satz zum nächsten Schritt auslösen (der Review trägt nicht). */
@@ -428,7 +448,8 @@ function renderPruefungKachel(workflowId, abnahme) {
 }
 
 /**
- * Kachel „Review“: das Urteil des Reviews (Codex) mit Empfehlung; Urteile je Claude-Prüfer „kommt“.
+ * Kachel „Review“: das Urteil des Reviews mit Empfehlung und wer prüfte (Codex, seit F45 B2b-2a bei worker claude-code
+ * „Claude“ — aus der Laufakte, GET …/abnahme); Urteile je Claude-Prüfer „kommt“.
  * @param urteil - abnahme.urteil
  * @returns HTML
  */
@@ -436,7 +457,7 @@ function renderPruefungKachel(workflowId, abnahme) {
 function renderReviewKachel(urteil) {
   const inhalt =
     urteil.status === 'ok'
-      ? `<p><span class="ablauf-status ${FARBE_URTEIL[urteil.urteil] ?? 'neutral'}">${escapeHtml(wertText(URTEILE, 'abnahme.urteil.kurz', urteil.urteil))}</span> <span class="subtle">${tHtml('entscheiden.abnahme.reviewWer')}</span></p>
+      ? `<p><span class="ablauf-status ${urteilFarbe(urteil, reviewHinweise(urteil))}">${escapeHtml(wertText(URTEILE, 'abnahme.urteil.kurz', urteil.urteil))}</span> <span class="subtle">${tHtml(urteil.worker === 'claude-code' ? 'entscheiden.abnahme.reviewWerClaude' : 'entscheiden.abnahme.reviewWer')}</span></p>
         <p class="entscheiden-review-text">${urteil.empfehlung ? escapeHtml(urteil.empfehlung) : tHtml('abnahme.empfehlung.keine')}</p>
         <p class="subtle">${tHtml('abnahme.empfehlung.lauf', {}, { lauf: `<code>${escapeHtml(urteil.laufId ?? '')}</code>` })}</p>`
       : `<p class="subtle">${escapeHtml(wertText(URTEIL_STATUS, 'abnahme.urteil.status', urteil.status))}</p>`
@@ -627,8 +648,7 @@ export function renderAbnahmeBlick(abnahme) {
   if (abnahme === null || abnahme === undefined) return ''
   const urteil = abnahme.urteil
   const hinweise = reviewHinweise(urteil)
-  // design-guardian 1: ein Urteil, dessen Vertrag verletzt ist, steht nicht in der Erfolgsfarbe.
-  const farbe = hinweise.some((h) => h.art === 'vertragVerletzt') ? 'neutral' : (FARBE_URTEIL[urteil?.urteil] ?? 'neutral')
+  const farbe = urteilFarbe(urteil, hinweise)
   const urteilZeile =
     urteil?.status === 'ok'
       ? `<dt>${tHtml('abnahme.blick.urteil')}</dt><dd><span class="ablauf-status ${farbe}">${escapeHtml(wertText(URTEILE, 'abnahme.urteil.kurz', urteil.urteil))}</span></dd>`

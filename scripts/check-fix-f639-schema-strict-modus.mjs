@@ -28,7 +28,8 @@
  * Zwang kommt ausschließlich über Codex' '--output-schema'-Flag (Regel 4b,
  * src/workflow/index.ts, hält jeden Schritt mit worker 'claude-code' UND
  * gesetztem output_schema strukturell an — 'claude-code' hat keinen
- * --output-schema-Mechanismus). Eine Rolle wie 'scout' (erlaubte_worker NUR
+ * --output-schema-Mechanismus; seit F45 B2b-1b/B2b-2a Ausnahme per Allowlist
+ * CLAUDE_CODE_AUSGABESCHEMAS über '--json-schema', je Schema ein echter Lauf). Eine Rolle wie 'scout' (erlaubte_worker NUR
  * ['claude-code']) durchläuft diesen Zwang strukturell nie — ihr Schema
  * bleibt bewusst ungeprüft von diesem Gate, auch wenn es selbst eine
  * 'required'-Lücke trägt (real gefunden, F-640, eigenständiges Finding,
