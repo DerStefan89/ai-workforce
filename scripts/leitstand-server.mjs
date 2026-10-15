@@ -4528,6 +4528,57 @@ function leseQaBefunde(laufId, ladeOptionen) {
 }
 
 /**
+ * F45 B2b-2b-2 (F-1117 (1)(2), Plan B2b-2b-2 §3.2): die Projektion der Prüfung aus Nutzersicht für GET …/abnahme — Muster
+ * urteilProjektion (Review): fehlende Teile nie stillschweigend leer, sondern als { status }. Jeder Status trägt halt (der
+ * Ablauf wartet am qa-Schritt auf Klärung) und dann grund (Server-Grund roh, nur zur Diagnose; die Abnahme zeigt eine
+ * Ursache je Status, F-1116 (5)). schwere_bei_bereit wie beim Review nur bei offener Abnahme und nur bei BEREIT
+ * (zaehleSchwereBeiBereit, eine Regel; Advisor A12). Synchron, wirft nicht: ein Lesefehler wird zu 'nicht_lesbar'.
+ * @param workflowDaten - Workflow-Daten
+ * @param abnahmeVersion - geladene Abnahme-Entscheidung oder null
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns { projektion, vorgelesen } — vorgelesen = { laufakte } für ermittlePrueferBefund (kein zweites Lesen), sonst null
+ */
+function baueQaAbnahmeProjektion(workflowDaten, abnahmeVersion, ladeOptionen) {
+  const qaSchritt = findeQaSchritt(workflowDaten)
+  if (qaSchritt === null) return { projektion: { status: 'kein_qa_schritt', halt: false }, vorgelesen: null }
+  const halt = workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === qaSchritt.schritt_id
+  // F-1119 (1): beim Halt am qa, ob der Review davor beanstandet hat — dieselbe Regel wie der Aufschub und Regel 1q
+  // (istReviewBeanstandet über ermittlePrueferBefund, AK-Verstöße auch bei BLOCKIERT); gelesen nur beim Halt (Poll).
+  const reviewBefund = halt ? ermittlePrueferBefund(findeReviewVorQa(workflowDaten, qaSchritt), workflowDaten.auftrag_id, ladeOptionen, null, true) : {}
+  const basis = { schrittId: qaSchritt.schritt_id, halt, ...(halt ? { grund: workflowDaten.grund ?? null, reviewBeanstandet: istReviewBeanstandet(reviewBefund.urteil, reviewBefund.akVerstoesse) } : {}) }
+  if (qaSchritt.lauf_id === null) return { projektion: { ...basis, status: halt ? 'nicht_gelaufen_klaerung' : 'noch_nicht_gelaufen' }, vorgelesen: null }
+  if (qaSchritt.status === 'FEHLGESCHLAGEN' || qaSchritt.status === 'VERWEIGERT') return { projektion: { ...basis, status: 'fehlgeschlagen', laufId: qaSchritt.lauf_id, schrittStatus: qaSchritt.status }, vorgelesen: null }
+  // Prüfpass (code-reviewer 1, qa 1): lauf_id steht schon beim Start, die Laufakte erst nach dem Lauf — ein laufender qa ist
+  // weder „Laufakte fehlt“ noch „nicht lesbar“. F-1118 (1): steht der Ablauf dabei auf Klärung (Stale-Heilung nach einem
+  // Neustart, der Schritt bleibt LAEUFT), wurde der Lauf unterbrochen — eigener Status mit Ursache und Ausweg.
+  if (qaSchritt.status === 'LAEUFT') return { projektion: { ...basis, status: halt ? 'abgebrochen' : 'laeuft', laufId: qaSchritt.lauf_id }, vorgelesen: null }
+  try {
+    const laufakte = ladeArtefaktVersion(`laufakte-${qaSchritt.lauf_id}`, undefined, ladeOptionen)
+    if (laufakte === null) return { projektion: { ...basis, status: 'laufakte_fehlt', laufId: qaSchritt.lauf_id }, vorgelesen: { laufakte: null } }
+    const gelesen = leseQaErgebnisAusLaufakte(laufakte.daten)
+    if (gelesen.ergebnis === null) return { projektion: { ...basis, status: 'nicht_lesbar', laufId: qaSchritt.lauf_id, verstoesse: gelesen.verstoesse }, vorgelesen: { laufakte } }
+    const abnahmeOffen = ermittleAbnahmeStand(workflowDaten, abnahmeVersion).offen
+    return {
+      projektion: {
+        ...basis,
+        status: 'ok',
+        laufId: qaSchritt.lauf_id,
+        urteil: gelesen.ergebnis.urteil,
+        befunde: gelesen.ergebnis.befunde,
+        testfaelle: gelesen.ergebnis.testfaelle,
+        empfehlung: gelesen.ergebnis.empfehlung,
+        schwere_bei_bereit: abnahmeOffen ? zaehleSchwereBeiBereit(gelesen.ergebnis.urteil, gelesen.ergebnis.befunde) : 0,
+        worker: laufakte.daten.worker ?? 'claude-code',
+      },
+      vorgelesen: { laufakte },
+    }
+  } catch (fehler) {
+    console.error(`[leitstand] Ergebnis der Prüfung aus Nutzersicht ('${qaSchritt.schritt_id}') nicht lesbar: ${fehler.message}`)
+    return { projektion: { ...basis, status: 'nicht_lesbar', laufId: qaSchritt.lauf_id, verstoesse: [fehler.message] }, vorgelesen: null }
+  }
+}
+
+/**
  * Liest das geparste ergebnis-code-reviewer-Ergebnisobjekt (urteil, befunde[],
  * empfehlung) eines ERFOLGREICH klassifizierten Post-Build-Review-Laufs
  * (output_schema 'ergebnis-code-reviewer') direkt aus dessen Rohstrom (F23
@@ -5398,7 +5449,8 @@ function mitRueckwegGrund(grund, ausgang, rueckwegEntscheid) {
 function ermittlePrueferBefund(schritt, auftragId, ladeOptionen, vorgelesen = null, akBeiBlockiert = false) {
   if (schritt === null || schritt === undefined || schritt.lauf_id === null || schritt.status !== 'ERFOLGREICH') return {}
   try {
-    const laufakte = vorgelesen?.laufakte ?? ladeArtefaktVersion(`laufakte-${schritt.lauf_id}`, undefined, ladeOptionen)
+    // vorgelesen.laufakte darf null sein (qa: Laufakte fehlt) — dann kein zweites Lesen (Code-Review B2b-2b-2, 4).
+    const laufakte = vorgelesen !== null ? vorgelesen.laufakte : ladeArtefaktVersion(`laufakte-${schritt.lauf_id}`, undefined, ladeOptionen)
     if (schritt.output_schema === 'ergebnis-code-reviewer') {
       const geparst = vorgelesen !== null ? vorgelesen.geparst : laufakte !== null ? leseUrteilAusLaufakte(laufakte.daten) : null
       if (geparst === null) return { urteil: null }
@@ -8551,6 +8603,9 @@ export function erzeugeRequestHandler(optionen = {}) {
         }
       }
 
+      // F45 B2b-2b-2 (F-1117 (1)(2)): das Ergebnis der Prüfung aus Nutzersicht (qa) — Muster urteilProjektion oben.
+      const qa = baueQaAbnahmeProjektion(workflowDaten, abnahmeVersion, ladeOptionen)
+
       let aenderungsuebersichtProjektion
       if (ausfuehrungSchritt === null) {
         aenderungsuebersichtProjektion = { status: 'kein_ausfuehrungs_schritt' }
@@ -8643,6 +8698,12 @@ export function erzeugeRequestHandler(optionen = {}) {
           schritt: cursorSchritt,
           befund: ermittlePrueferBefund(cursorSchritt, workflowDaten.auftrag_id, ladeOptionen, cursorSchritt.schritt_id === reviewSchritt?.schritt_id ? reviewVorgelesen : null),
         }).wiederholbar
+      // F45 B2b-2b-2: „Prüfung aus Nutzersicht wiederholen“ — dieselbe Vorbedingung, nur am Halt auf dem qa-Schritt; die oben
+      // gelesene qa-Laufakte geht durch (Advisor A10, kein zweites Lesen je Poll).
+      const qaWiederholbar =
+        qa.projektion.halt === true &&
+        cursorSchritt !== null &&
+        pruefschrittWiederholbar({ workflowStatus: workflowDaten.status, schritt: cursorSchritt, befund: ermittlePrueferBefund(cursorSchritt, workflowDaten.auftrag_id, ladeOptionen, qa.vorgelesen) }).wiederholbar
 
       sendeJson(res, 200, {
         workflowId,
@@ -8654,6 +8715,9 @@ export function erzeugeRequestHandler(optionen = {}) {
         entscheidung: entscheidungProjektion,
         freigabeHalt,
         reviewWiederholbar,
+        // F45 B2b-2b-2: additiv — Prüfung aus Nutzersicht (qa) und ob sie allein wiederholt werden kann.
+        qaErgebnis: qa.projektion,
+        qaWiederholbar,
       })
       return
     }

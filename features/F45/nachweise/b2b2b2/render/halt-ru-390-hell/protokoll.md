@@ -1,0 +1,3 @@
+| Aktion | qa-Karte | Review-Kachel | Hinweis amber | Hinweis rot | Badge amber (Karte) | Testfälle (3) | qa-Befundliste da | Knopf qa wiederholen | Zahl im Blick | Abnehmen | qa-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Halt am qa nach Werkzeugausfall, Knopf — ru-390-hell | false | false | false | true | false | false | false | true | true | false | Проверка глазами пользователяИнструмент проверки глазами пользователя дал сбой.Без проверки глазами пользователя приёмка |  | false | 390/390 | true |

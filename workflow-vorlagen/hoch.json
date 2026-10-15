@@ -71,6 +71,21 @@
       "freigabe": "AUTOMATISCH",
       "risiko": "Kein Schreibzugriff — Post-Build-Pruefung des tatsaechlichen Diffs.",
       "zeitgrenze_ms": 600000,
+      "nachfolger": "schritt-5-qa",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-5-qa",
+      "rolle": "qa",
+      "werkzeugsatz": "lesend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__", "artefakt:aenderungsuebersicht-@schritt-3-ausfuehrung", "artefakt:pruefergebnis-@schritt-3-ausfuehrung", "artefakt:ergebnis-@schritt-4-review"],
+      "output_schema": "ergebnis-qa",
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Kein Schreibzugriff — Pruefung aus Nutzersicht nach dem Review (F45 B2b-2b-2, F-820): Urteil, Befunde und Testfaelle nach 'ergebnis-qa'. worker 'claude-code', weil die CLI dieses Schema per '--json-schema' real durchsetzt (Spike features/F45/nachweise/b2b2b/spike-qa-schema.md); an Codex ist es nicht belegt. Review und qa loesen zusammen hoechstens eine Korrekturrunde der Bau-Stufe aus.",
+      "zeitgrenze_ms": 600000,
       "nachfolger": null,
       "status": "OFFEN",
       "lauf_id": null

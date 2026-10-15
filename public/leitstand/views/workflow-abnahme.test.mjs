@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, renderAbnahme, renderAbnahmeBlick, reviewHinweise, reviewHinweisKennung, zaehleAkUrteile } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweise, reviewHinweisKennung, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -56,7 +56,7 @@ test('entscheidbar (F46 D2): Hauptspalte mit Kriterien, Kacheln, Selbst ausprobi
   assert.match(oben, /<code class="ak-id">AK2<\/code>[\s\S]*ak-urteil-warten[\s\S]*Nicht prüfbar/)
   assert.match(oben, /<span class="eyebrow">Prüfung<\/span><strong class="entscheiden-wert entscheiden-wert-ok">GRÜN<\/strong>[\s\S]*Exit-Code 0/)
   assert.match(oben, /<span class="eyebrow">Review<\/span>[\s\S]*Bereit<\/span> <span class="subtle">Codex<\/span>[\s\S]*Abnehmen &lt;b&gt;bitte&lt;\/b&gt;/, 'empfehlung bleibt roh und escaped')
-  assert.match(oben, /Urteile je Claude-Prüfer <span class="kommt-badge">kommt<\/span>/)
+  assert.match(oben, /Weitere Claude-Prüfer <span class="kommt-badge">kommt<\/span>/, 'B2b-2b-2 (Advisor A4): qa urteilt jetzt, code-reviewer und design-guardian noch nicht')
   assert.match(oben, /1 Datei geändert[\s\S]*1 Befund des Reviews[\s\S]*Alle Nachweise/)
   assert.match(oben, /<a class="button" href="http:\/\/127\.0\.0\.1:3000" target="_blank" rel="noopener noreferrer">Produkt öffnen/)
   assert.match(oben, /Änderungen im Code-Reiter <span class="kommt-badge">kommt<\/span>/)
@@ -447,4 +447,135 @@ test('F45 B2b-2a: Kachel „Review“ nennt den Worker aus der Projektion — Cl
   assert.match(renderAbnahme('w-1', abnahme({ urteil: { ...URTEIL, worker: 'claude-code' } }), null).oben, /Bereit<\/span> <span class="subtle">Claude<\/span>/)
   assert.match(renderAbnahme('w-1', abnahme({ urteil: { ...URTEIL, worker: 'codex' } }), null).oben, /Bereit<\/span> <span class="subtle">Codex<\/span>/)
   assert.match(renderAbnahme('w-1', abnahme({ urteil: URTEIL }), null).oben, /Bereit<\/span> <span class="subtle">Codex<\/span>/, 'ohne Feld (alte Projektion)')
+})
+
+// ─── F45 B2b-2b-2: Prüfung aus Nutzersicht (qa) live (F-1117 (7), Plan B2b-2b-2 v1.1) ─────────
+
+const QA = {
+  status: 'ok',
+  halt: false,
+  laufId: 'l-qa',
+  urteil: 'BEREIT',
+  worker: 'claude-code',
+  empfehlung: 'Abnehmen <ok>',
+  befunde: [{ id: 'Q1', schwere: 'HOCH', evidenz: 'confirmed', fundstelle: 'src/liste.ts:8', zusammenfassung: 'Leere Liste <stürzt>', korrekturrichtung: 'Leerfall abfangen.', beleg: 'Durchgespielt.' }],
+  testfaelle: [
+    { name: 'AK1 Grundfall', schritte: ['Liste öffnen', 'Eintrag <neu>'], erwartet: 'Eintrag sichtbar', ergebnis: 'bestanden' },
+    { name: 'Leere Liste', schritte: ['Liste leeren'], erwartet: 'Leerzustand', ergebnis: 'durchgefallen' },
+    { name: 'Offline', schritte: ['Netz trennen'], erwartet: 'Hinweis', ergebnis: 'nicht_pruefbar' },
+  ],
+  schwere_bei_bereit: 1,
+}
+/** Kennungen und Feldnamen, die im sichtbaren Text nicht stehen dürfen (Auftrag: keine Feldnamen oder Kennungen). */
+const KENNUNGEN = /schritt-3-qa|ergebnis-qa|qaErgebnis|schwere_bei_bereit|nicht_pruefbar|\bqa\b|BEREIT|BLOCKIERT|FEHLGESCHLAGEN/
+
+test('F45 B2b-2b-2: entscheidbar — Karte „Prüfung aus Nutzersicht“ unter den Kacheln mit Urteil, Claude, Empfehlung, Hinweis, Befunden und Testfällen', () => {
+  const { oben } = renderAbnahme('w-1', abnahme({ qaErgebnis: QA }), null)
+  const karte = oben.slice(oben.lastIndexOf('<section', oben.indexOf('abnahme-qa-karte')), oben.indexOf('abnahme-selbst-titel'))
+  assert.ok(oben.indexOf('entscheiden-kacheln') < oben.indexOf('abnahme-qa-karte') && oben.indexOf('abnahme-qa-karte') < oben.indexOf('abnahme-selbst-titel'), 'zwischen Kachelreihe und „Selbst ausprobieren“')
+  assert.match(karte, /<h2 id="abnahme-qa-titel">Prüfung aus Nutzersicht<\/h2>/)
+  assert.match(karte, /ablauf-status warten">Bereit<\/span> <span class="subtle">Claude<\/span>/, 'amber bei schwerem Befund trotz BEREIT')
+  assert.match(karte, /Abnehmen &lt;ok&gt;/)
+  assert.match(karte, /note amber abnahme-qa-hinweise[\s\S]*data-qa-hinweis="schwereBeiBereit"[\s\S]*Die Prüfung aus Nutzersicht sagt „bereit“, meldet aber einen schweren Befund/)
+  assert.match(karte, /<code>src\/liste.ts:8<\/code>[\s\S]*Leere Liste &lt;stürzt&gt;[\s\S]*<code>Q1<\/code>[\s\S]*Korrekturrichtung: Leerfall abfangen\./)
+  // design-guardian 1: Testfälle aufklappbar, die Zahlen je Ergebnis stehen zugeklappt in der Zusammenfassung.
+  assert.match(karte, /<details class="abnahme-details abnahme-testfaelle-details"><summary>Testfälle · 1 bestanden · 1 durchgefallen · 1 nicht prüfbar<\/summary>/)
+  assert.match(karte, /AK1 Grundfall<\/strong> <span class="ak-urteil abnahme-testfall-ok[^"]*"><span aria-hidden="true">✓ <\/span>Bestanden[\s\S]*<li>Liste öffnen<\/li><li>Eintrag &lt;neu&gt;<\/li>[\s\S]*Erwartet: Eintrag sichtbar/)
+  assert.match(karte, /abnahme-qa-hinweise" role="note"><p><strong>Hinweise zur Prüfung aus Nutzersicht<\/strong>/, 'in der Karte wiederholt die Notiz den Kartentitel nicht')
+  assert.match(karte, /abnahme-testfall-fehler[\s\S]*✗[\s\S]*Durchgefallen/)
+  assert.match(karte, /abnahme-testfall-warten[\s\S]*\?[\s\S]*Nicht prüfbar/)
+  assert.doesNotMatch(karte.replace(/<[^>]+>/g, ' '), KENNUNGEN, 'sichtbarer Text ohne Feldnamen und Kennungen')
+  assert.match(renderAbnahme('w-1', abnahme({ qaErgebnis: { ...QA, schwere_bei_bereit: 0 } }), null).oben, /abnahme-qa-karte[\s\S]*ablauf-status ok">Bereit/, 'ohne schweren Befund grün')
+})
+
+test('F45 B2b-2b-2: Leerzustände — kein qa-Schritt ⇒ keine Karte; keine Befunde/Testfälle ⇒ Satz; nicht gelaufen ⇒ Satz', () => {
+  assert.doesNotMatch(renderAbnahme('w-1', abnahme({ qaErgebnis: { status: 'kein_qa_schritt', halt: false } }), null).oben, /abnahme-qa-karte/)
+  assert.doesNotMatch(renderAbnahme('w-1', abnahme(), null).oben, /abnahme-qa-karte/, 'alte Projektion ohne Feld')
+  const leer = renderAbnahme('w-1', abnahme({ qaErgebnis: { ...QA, befunde: [], testfaelle: [], schwere_bei_bereit: 0 } }), null).oben
+  assert.match(leer, /abnahme-qa-karte[\s\S]*Keine Befunde\.[\s\S]*Keine Testfälle\./)
+  assert.match(renderAbnahme('w-1', abnahme({ qaErgebnis: { status: 'noch_nicht_gelaufen', halt: false } }), null).oben, /abnahme-qa-karte[\s\S]*Die Prüfung aus Nutzersicht ist noch nicht gelaufen\./)
+})
+
+test('F45 B2b-2b-2: qaHinweise — Ursache je Status ohne Kennungen (Advisor A2), neutraler Halt bei gültigem Ergebnis (A1), schwere Befunde', () => {
+  const art = (qa) => qaHinweise(qa).map((h) => h.art)
+  assert.deepEqual(art({ status: 'fehlgeschlagen', halt: true, schrittStatus: 'FEHLGESCHLAGEN', grund: "Schritt 'schritt-3-qa' (ergebnis-qa) …" }), ['ausgefallen'])
+  assert.deepEqual(art({ status: 'fehlgeschlagen', halt: true, schrittStatus: 'VERWEIGERT' }), ['verweigert'])
+  assert.deepEqual(art({ status: 'nicht_gelaufen_klaerung', halt: true }), ['nichtGestartet'])
+  assert.deepEqual(art({ status: 'nicht_lesbar', halt: true, verstoesse: ['testfaelle fehlt'] }), ['nichtLesbar'])
+  assert.deepEqual(art({ status: 'laufakte_fehlt', halt: true }), ['nichtLesbar'])
+  assert.deepEqual(art({ ...QA, urteil: 'BLOCKIERT', halt: true, schwere_bei_bereit: 0 }), ['haltNachQa'])
+  assert.deepEqual(art(QA), ['schwereBeiBereit'])
+  assert.deepEqual(art({ ...QA, schwere_bei_bereit: 0 }), [])
+  for (const leer of [null, undefined, { status: 'kein_qa_schritt' }, { status: 'noch_nicht_gelaufen', halt: false }]) assert.deepEqual(qaHinweise(leer), [])
+  for (const h of [...qaHinweise({ status: 'fehlgeschlagen', halt: true, schrittStatus: 'FEHLGESCHLAGEN', grund: "Schritt 'schritt-3-qa'" }), ...qaHinweise({ ...QA, halt: true })]) assert.doesNotMatch(h.text, KENNUNGEN, h.art)
+  assert.notEqual(qaHinweisKennung(QA), qaHinweisKennung({ ...QA, schwere_bei_bereit: 2 }))
+  assert.equal(qaHinweisKennung(undefined), '')
+})
+
+test('F45 B2b-2b-2: vorab — Halt am qa ⇒ rote Notiz mit Ursache, Ausweg in einem Satz und Knopf (nur bei qaWiederholbar), kein Server-Grund', () => {
+  const ausfall = { status: 'fehlgeschlagen', halt: true, laufId: 'l-qa', schrittStatus: 'FEHLGESCHLAGEN', grund: "Schritt 'schritt-3-qa' (ergebnis-qa) — Werkzeugausfall" }
+  const r = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', qaErgebnis: ausfall, qaWiederholbar: true }))
+  assert.equal(r.lage, 'vorab')
+  assert.match(r.unten, /class="note red abnahme-qa-hinweise"[\s\S]*Prüfung aus Nutzersicht[\s\S]*Das Werkzeug der Prüfung aus Nutzersicht ist ausgefallen\./)
+  assert.match(r.unten, /Ohne Prüfung aus Nutzersicht ist keine Abnahme möglich — wiederhole sie/)
+  assert.match(r.unten, /<p><button type="button" class="button wf-pruefer-wiederholen" data-pruefer="qa" data-workflow-id="wf-1">Prüfung aus Nutzersicht wiederholen<\/button><\/p>/)
+  assert.doesNotMatch(r.unten, /schritt-3-qa|ergebnis-qa|Werkzeugausfall/, 'der Server-Grund steht nicht in der Abnahme (F-1116 (5), A11)')
+  const ohne = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', qaErgebnis: { status: 'nicht_gelaufen_klaerung', halt: true, grund: 'x' }, qaWiederholbar: false })).unten
+  assert.match(ohne, /Die Prüfung aus Nutzersicht ist nicht gestartet\.[\s\S]*Ohne Prüfung aus Nutzersicht ist keine Abnahme möglich — repariere oder starte den Ablauf/)
+  assert.doesNotMatch(ohne, /data-pruefer="qa"/, 'ohne qaWiederholbar kein Knopf')
+})
+
+test('F45 B2b-2b-2 (Advisor A1, A8 aus 2b-1): Halt am qa mit gültigem Ergebnis ⇒ Urteil, qa-Befunde und neutraler Satz, kein Knopf', () => {
+  const blockiert = { ...QA, urteil: 'BLOCKIERT', halt: true, schwere_bei_bereit: 0, grund: 'Grenze …' }
+  const r = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', qaErgebnis: blockiert, qaWiederholbar: false }))
+  assert.match(r.unten, /class="note red abnahme-qa-hinweise"[\s\S]*ablauf-status fehler">Blockiert[\s\S]*Der Ablauf hält nach der Prüfung aus Nutzersicht — eine automatische Korrekturrunde startet nicht[\s\S]*<h4>Befunde<\/h4>[\s\S]*<code>src\/liste.ts:8<\/code>/)
+  assert.doesNotMatch(r.unten, /<h3>Befunde<\/h3>/, 'design-guardian 2: unter dem h3 des Vorab-Blocks eine Ebene tiefer')
+  // qa-Prüfpass 2: BEREIT mit HOCH bei einem Halt (Review beanstandet) — kein „bevor du abnimmst“, Abnehmen ist gesperrt.
+  assert.deepEqual(
+    qaHinweise({ ...QA, halt: true }).map((h) => h.art),
+    ['haltNachQa']
+  )
+  assert.doesNotMatch(r.unten, /wf-pruefer-wiederholen/)
+  assert.doesNotMatch(r.unten, /Ohne Prüfung aus Nutzersicht ist keine Abnahme möglich/, 'der A1-Satz trägt den Ausweg selbst')
+})
+
+test('F45 B2b-2b-2: Auf einen Blick — Zeile „Prüfung aus Nutzersicht“ mit Urteil und Befundzahl, Hinweiszahl bei Halt oder schweren Befunden', () => {
+  const blick = renderAbnahmeBlick(abnahme({ qaErgebnis: QA }))
+  assert.match(blick, /<dt>Prüfung aus Nutzersicht<\/dt><dd><span class="ablauf-status warten">Bereit<\/span> · 1 Befund<\/dd>/)
+  // F-1118 (2): ohne Richtungswort — der Blick steht je Lage und Breite über oder unter den Details.
+  assert.match(blick, /data-qa-hinweise-anzahl="1">1 — Details bei der Prüfung<\/span>/)
+  assert.doesNotMatch(blick, /Details (unten|oben)/)
+  const halt = renderAbnahmeBlick(abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', qaErgebnis: { status: 'fehlgeschlagen', halt: true, schrittStatus: 'FEHLGESCHLAGEN' } }))
+  assert.match(halt, /ablauf-status fehler" data-qa-hinweise-anzahl="1"/)
+  assert.doesNotMatch(renderAbnahmeBlick(abnahme()), /Prüfung aus Nutzersicht/, 'ohne qa keine Zeile')
+})
+
+test('F45 B2b-2b-2 (Prüfpass code-reviewer 1, qa 1): ein laufender qa ist kein Hinweis — Karte mit „läuft gerade“, keine Zeile im Blick', () => {
+  const laeuft = { status: 'laeuft', halt: false, laufId: 'l-qa' }
+  assert.deepEqual(qaHinweise(laeuft), [])
+  assert.equal(qaHinweisKennung(laeuft), '')
+  assert.match(renderAbnahme('w-1', abnahme({ qaErgebnis: laeuft }), null).oben, /abnahme-qa-karte[\s\S]*Die Prüfung aus Nutzersicht läuft gerade\./)
+  assert.doesNotMatch(renderAbnahmeBlick(abnahme({ workflowStatus: 'LAEUFT', qaErgebnis: laeuft })), /data-qa-hinweise-anzahl/)
+})
+
+// ─── F45 B2b-2b-2, zweite Runde (Entscheidung Challenger): F-1118 (1), F-1119 (1) ─────────
+
+test('F-1118 (1): ein hängender qa-Lauf nach einem Neustart (Halt, Schritt läuft noch) ⇒ rote Notiz mit Ursache und Ausweg', () => {
+  const haengt = { status: 'abgebrochen', halt: true, laufId: 'l-qa', grund: "Schritt 'schritt-3-qa' …" }
+  assert.deepEqual(
+    qaHinweise(haengt).map((h) => h.art),
+    ['abgebrochen']
+  )
+  const r = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', qaErgebnis: haengt, qaWiederholbar: false }))
+  assert.match(r.unten, /class="note red abnahme-qa-hinweise"[\s\S]*Der Lauf der Prüfung aus Nutzersicht wurde unterbrochen[\s\S]*Ohne Prüfung aus Nutzersicht ist keine Abnahme möglich — repariere oder starte den Ablauf/)
+  assert.doesNotMatch(r.unten, /schritt-3-qa/)
+})
+
+test('F-1119 (1): Halt am qa nach einer Beanstandung des Reviews ⇒ der Vorab-Block zeigt zusätzlich die Review-Befunde', () => {
+  const qa = { ...QA, halt: true, schwere_bei_bereit: 0, reviewBeanstandet: true }
+  const urteil = { ...URTEIL, urteil: 'BLOCKIERT', befunde: [{ id: 'B1', schwere: 'HOCH', fundstelle: 'src/review.ts:4', zusammenfassung: 'Review-Befund <x>', beleg: 'y' }] }
+  const mit = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil, qaErgebnis: qa })).unten
+  assert.match(mit, /abnahme-qa-hinweise[\s\S]*<h4>Befunde des Reviews<\/h4>[\s\S]*<code>src\/review.ts:4<\/code>[\s\S]*Review-Befund &lt;x&gt;/)
+  const ohne = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil, qaErgebnis: { ...qa, reviewBeanstandet: false } })).unten
+  assert.doesNotMatch(ohne, /Befunde des Reviews/, 'nur, wenn der Server die Beanstandung meldet (keine zweite Regel in der Oberfläche)')
 })

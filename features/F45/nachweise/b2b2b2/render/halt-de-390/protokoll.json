@@ -1,0 +1,21 @@
+[
+  {
+    "label": "Halt am qa nach Werkzeugausfall, Knopf — de-390",
+    "qa-Karte": false,
+    "Review-Kachel": false,
+    "Hinweis amber": false,
+    "Hinweis rot": true,
+    "Badge amber (Karte)": false,
+    "Testfälle (3)": false,
+    "qa-Befundliste da": false,
+    "Knopf qa wiederholen": true,
+    "Review-Befunde in der qa-Notiz": false,
+    "Zahl im Blick": true,
+    "Abnehmen": false,
+    "qa-Notiz": "Prüfung aus NutzersichtDas Werkzeug der Prüfung aus Nutzersicht ist ausgefallen.Ohne Prüfung aus Nutzersicht ist keine A",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true
+  }
+]

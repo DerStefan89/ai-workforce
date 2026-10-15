@@ -1,0 +1,3 @@
+| Aktion | qa-Karte | Review-Kachel | Hinweis amber | Hinweis rot | Badge amber (Karte) | Testfälle (3) | qa-Befundliste da | Knopf qa wiederholen | Review-Befunde in der qa-Notiz | Zahl im Blick | Abnehmen | qa-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Halt am qa nach BLOCKIERT des Reviews, mit den Befunden des Reviews — de-1440 | false | false | false | true | false | false | true | false | true | true | false | Prüfung aus NutzersichtBereit ClaudeDer Ablauf hält nach der Prüfung aus Nutzersicht — eine automatische Korrekturrunde  |  | false | 1440/1440 | true |

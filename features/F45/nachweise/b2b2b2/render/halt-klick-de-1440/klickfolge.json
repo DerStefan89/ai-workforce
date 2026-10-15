@@ -1,0 +1,82 @@
+{
+  "url": "http://127.0.0.1:4402/#/workflows/router-f805b664-6577-45f2-845b-8b6404e0ed2e",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "qa-Notiz",
+        "selector": ".abnahme-qa-hinweise"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "qa-Karte",
+        "selector": ".abnahme-qa-karte"
+      },
+      {
+        "name": "Review-Kachel",
+        "selector": ".entscheiden-kacheln"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-qa-hinweise.amber"
+      },
+      {
+        "name": "Hinweis rot",
+        "selector": ".abnahme-qa-hinweise.red"
+      },
+      {
+        "name": "Badge amber (Karte)",
+        "selector": ".abnahme-qa-karte .ablauf-status.warten"
+      },
+      {
+        "name": "Testfälle (3)",
+        "selector": ".abnahme-testfaelle > li:nth-child(3)"
+      },
+      {
+        "name": "qa-Befundliste da",
+        "selector": ".abnahme-qa-hinweise .abnahme-befunde, .abnahme-qa-karte .abnahme-befunde"
+      },
+      {
+        "name": "Knopf qa wiederholen",
+        "selector": ".wf-pruefer-wiederholen[data-pruefer=\"qa\"]"
+      },
+      {
+        "name": "Zahl im Blick",
+        "selector": "[data-qa-hinweise-anzahl]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Halt am qa mit Knopf",
+      "warteAufSelector": {
+        "selector": ".wf-pruefer-wiederholen[data-pruefer=\"qa\"]",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-vorher.webp"
+    },
+    {
+      "label": "Klick „Prüfung aus Nutzersicht wiederholen“ → nur der qa läuft erneut → Abnahme",
+      "klick": ".wf-pruefer-wiederholen[data-pruefer=\"qa\"]",
+      "warteAufSelector": {
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-nachher.webp"
+    }
+  ]
+}

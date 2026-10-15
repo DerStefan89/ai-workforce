@@ -19,12 +19,16 @@ const schritt = (rolle, status, laufId = null, worker = 'claude-code') => ({ sch
 /** Nur die Status je Rolle. */
 const nurStatus = (ergebnis) => Object.fromEntries(Object.entries(ergebnis).map(([rolle, { status }]) => [rolle, status]))
 
-test('Abbildung: die vier Schritt-Rollen der Workflow-Vorlagen, Reviewer ≠ Satellit code-reviewer', () => {
-  assert.deepEqual(KREIS_ROLLE_JE_SCHRITT_ROLLE, { architekt: 'planner', 'architecture-advisor': 'advisor', ausfuehrung: 'builder', 'code-reviewer': 'reviewer' })
+test('Abbildung: die fünf Schritt-Rollen der Workflow-Vorlagen, Reviewer ≠ Satellit code-reviewer, qa = Satellit qa (F45 B2b-2b-2)', () => {
+  assert.deepEqual(KREIS_ROLLE_JE_SCHRITT_ROLLE, { architekt: 'planner', 'architecture-advisor': 'advisor', ausfuehrung: 'builder', 'code-reviewer': 'reviewer', qa: 'qa' })
   for (const schrittRolle of Object.keys(KREIS_ROLLE_JE_SCHRITT_ROLLE)) assert.ok(ROLLEN.includes(schrittRolle), `${schrittRolle} ist keine bekannte Rolle`)
   assert.deepEqual(KREIS_ROLLEN, ['planner', 'advisor', 'builder', 'pruefschritt', 'reviewer', 'abnahme'])
   assert.deepEqual(SATELLITEN, ['code-reviewer', 'qa', 'design-guardian'])
-  assert.ok(!Object.values(KREIS_ROLLE_JE_SCHRITT_ROLLE).some((kreis) => SATELLITEN.includes(kreis)), 'kein Schritt landet bei einem Satelliten')
+  // Seit B2b-2b-2 hat genau ein Satellit eine Quelle: der qa-Schritt der Vorlagen standard/hoch.
+  assert.deepEqual(
+    Object.values(KREIS_ROLLE_JE_SCHRITT_ROLLE).filter((kreis) => SATELLITEN.includes(kreis)),
+    ['qa']
+  )
 })
 
 test('ohne Workflow (oder ohne Schritte): alle Rollen und Satelliten offen', () => {
@@ -80,9 +84,17 @@ test('Abnahme: fertig bei gültigem ANGENOMMEN, jetzt bei abgeschlossenem Workfl
   assert.equal(kreisStatus({ ...basis }).abnahme.status, 'offen')
 })
 
-test('Satelliten bleiben offen, auch wenn ein Schritt die Rolle qa trägt (keine Quelle für Urteile je Claude-Prüfer)', () => {
-  const ergebnis = kreisStatus({ schritte: [schritt('qa', 'ERFOLGREICH', 'l9')] })
-  for (const satellit of SATELLITEN) assert.equal(ergebnis[satellit].status, 'offen')
+test('F45 B2b-2b-2: der Satellit qa folgt dem qa-Schritt (läuft/fertig/offen); code-reviewer und design-guardian bleiben offen', () => {
+  const fertig = kreisStatus({ schritte: [schritt('ausfuehrung', 'ERFOLGREICH', 'l1'), schritt('code-reviewer', 'ERFOLGREICH', 'l2', 'codex'), schritt('qa', 'ERFOLGREICH', 'l9')] })
+  assert.equal(fertig.qa.status, 'fertig')
+  assert.equal(fertig.qa.schritt.lauf_id, 'l9')
+  assert.equal(fertig['code-reviewer'].status, 'offen')
+  assert.equal(fertig['design-guardian'].status, 'offen')
+  assert.equal(kreisStatus({ schritte: [schritt('qa', 'FEHLGESCHLAGEN', 'l9')] }).qa.status, 'offen')
+  const laeuft = kreisStatus({ schritte: [schritt('ausfuehrung', 'ERFOLGREICH', 'l1'), schritt('code-reviewer', 'ERFOLGREICH', 'l2', 'codex'), schritt('qa', 'LAEUFT', 'l9')] })
+  assert.equal(laeuft.qa.status, 'jetzt')
+  // Advisor A8: die Vorauswahl folgt der laufenden Rolle auch bei einem Satelliten (sonst Mitte „qa läuft“, Panel Builder).
+  assert.equal(vorgewaehlteRolle(laeuft), 'qa')
 })
 
 test('Vorauswahl ohne „jetzt“: Builder', () => {

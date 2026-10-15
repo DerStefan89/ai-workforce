@@ -37,7 +37,8 @@ test('rollenName: bekannte Rolle übersetzt (de), unbekannte als ID, null leer',
 
 test('werSpalte: Rollenname statt ID, Escaping, Leerzustand, Titel mit Rolle in der Schrittzeile', () => {
   const html = werSpalte('Jetzt', { rolle: 'qa', schritt_id: '<s1>' })
-  assert.match(html, /<strong>Qualitätssicherung<\/strong>/)
+  // F45 B2b-2b-2 (Advisor A9): ein Name für die Rolle qa in Timeline und Abnahme.
+  assert.match(html, /<strong>Prüfung aus Nutzersicht<\/strong>/)
   assert.match(html, /<code>&lt;s1&gt;<\/code>/)
   assert.match(werSpalte('Zuvor', null), /<strong>–<\/strong><p>Kein Schritt<\/p>/)
   const mitTitel = werSpalte('Jetzt', { rolle: '<x>', schritt_id: 's2' }, { titelHtml: 'Deine Freigabe', klasse: 'execution-current' })

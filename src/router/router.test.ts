@@ -14,6 +14,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { validiereErgebnisRouter, waehleWorkflowVorlage } from './index.ts'
 import { validiereWorkflowDaten } from '../workflow/index.ts'
+import type { WorkflowV0Schritt } from '../workflow/types.ts'
 import type { ErgebnisRouter } from './types.ts'
 
 const REPO_WURZEL = process.cwd()
@@ -96,26 +97,47 @@ test('waehleWorkflowVorlage: fast-lane liefert genau einen ZWINGEND-Schreibschri
   assert.strictEqual(workflow.schritte[0].rolle, 'ausfuehrung')
   assert.strictEqual(workflow.schritte[0].werkzeugsatz, 'schreibend')
   assert.strictEqual(workflow.schritte[0].freigabe, 'ZWINGEND')
+  assert.ok(!workflow.schritte.some((s) => s.rolle === 'qa'), 'fast-lane bleibt ohne qa (F45 B2b-2b-2)')
 })
 
-test('waehleWorkflowVorlage: standard liefert Ausführung (ZWINGEND) gefolgt von Post-Build-Review (AUTOMATISCH) (F23 WS-1b)', () => {
+/**
+ * F45 B2b-2b-2 (F-1117 (4)(5)): der qa-Schritt am Ende der Vorlagen standard und hoch — claude-code (nur dort ist
+ * 'ergebnis-qa' per Spike belegt), lesend, AUTOMATISCH, mit Auftrag, Änderungsübersicht, Prüfergebnis und Review-Ergebnis.
+ * @param schritt - der letzte Schritt der Vorlage
+ * @param ausfuehrung - schritt_id der Ausführung
+ * @param review - schritt_id des Reviews
+ */
+function pruefeQaSchritt(schritt: WorkflowV0Schritt, ausfuehrung: string, review: string): void {
+  assert.strictEqual(schritt.rolle, 'qa')
+  assert.strictEqual(schritt.worker, 'claude-code')
+  assert.strictEqual(schritt.werkzeugsatz, 'lesend')
+  assert.strictEqual(schritt.output_schema, 'ergebnis-qa')
+  assert.strictEqual(schritt.freigabe, 'AUTOMATISCH')
+  assert.strictEqual(schritt.nachfolger, null)
+  assert.deepStrictEqual(schritt.eingaben, ['artefakt:auftrag-auftrag-123', `artefakt:aenderungsuebersicht-@${ausfuehrung}`, `artefakt:pruefergebnis-@${ausfuehrung}`, `artefakt:ergebnis-@${review}`])
+}
+
+test('waehleWorkflowVorlage: standard liefert Ausführung (ZWINGEND) → Post-Build-Review (AUTOMATISCH) → qa (AUTOMATISCH) (F23 WS-1b, F45 B2b-2b-2)', () => {
   const workflow = waehleWorkflowVorlage(klassifikation('standard'), 'auftrag-123', 'Testziel', REPO_WURZEL)
-  assert.strictEqual(workflow.schritte.length, 2)
-  assert.strictEqual(workflow.schritte[0].rolle, 'ausfuehrung')
-  assert.strictEqual(workflow.schritte[0].freigabe, 'ZWINGEND')
-  assert.strictEqual(workflow.schritte[1].rolle, 'code-reviewer')
-  assert.strictEqual(workflow.schritte[1].output_schema, 'ergebnis-code-reviewer')
-  assert.strictEqual(workflow.schritte[1].freigabe, 'AUTOMATISCH')
-  assert.strictEqual(workflow.schritte[1].nachfolger, null)
-  assert.strictEqual(workflow.schritte[0].nachfolger, workflow.schritte[1].schritt_id)
-})
-
-test('waehleWorkflowVorlage: hoch liefert Architekt (ZWINGEND) → Architektur-Prüfung (ZWINGEND) → Ausführung (ZWINGEND) → Post-Build-Review (AUTOMATISCH) (F23 WS-1b, F39 WS-2a)', () => {
-  const workflow = waehleWorkflowVorlage(klassifikation('hoch'), 'auftrag-123', 'Testziel', REPO_WURZEL)
-  assert.strictEqual(workflow.schritte.length, 4)
+  assert.strictEqual(workflow.schritte.length, 3)
   assert.deepStrictEqual(
     workflow.schritte.map((s) => s.rolle),
-    ['architekt', 'architecture-advisor', 'ausfuehrung', 'code-reviewer']
+    ['ausfuehrung', 'code-reviewer', 'qa']
+  )
+  assert.strictEqual(workflow.schritte[0].freigabe, 'ZWINGEND')
+  assert.strictEqual(workflow.schritte[1].output_schema, 'ergebnis-code-reviewer')
+  assert.strictEqual(workflow.schritte[1].freigabe, 'AUTOMATISCH')
+  assert.strictEqual(workflow.schritte[0].nachfolger, workflow.schritte[1].schritt_id)
+  assert.strictEqual(workflow.schritte[1].nachfolger, workflow.schritte[2].schritt_id)
+  pruefeQaSchritt(workflow.schritte[2], 'schritt-1-ausfuehrung', 'schritt-2-review')
+})
+
+test('waehleWorkflowVorlage: hoch liefert Architekt (ZWINGEND) → Architektur-Prüfung (ZWINGEND) → Ausführung (ZWINGEND) → Post-Build-Review (AUTOMATISCH) → qa (AUTOMATISCH) (F23 WS-1b, F39 WS-2a, F45 B2b-2b-2)', () => {
+  const workflow = waehleWorkflowVorlage(klassifikation('hoch'), 'auftrag-123', 'Testziel', REPO_WURZEL)
+  assert.strictEqual(workflow.schritte.length, 5)
+  assert.deepStrictEqual(
+    workflow.schritte.map((s) => s.rolle),
+    ['architekt', 'architecture-advisor', 'ausfuehrung', 'code-reviewer', 'qa']
   )
   // F39 WS-2a-Korrektur: 'architekt' läuft auf worker 'codex' mit output_schema
   // 'ergebnis-architektur' (löst das Schema real über '--output-schema' ein) — Regel 4b
@@ -127,8 +149,9 @@ test('waehleWorkflowVorlage: hoch liefert Architekt (ZWINGEND) → Architektur-P
   assert.strictEqual(workflow.schritte[1].output_schema, 'ergebnis-architecture-advisor')
   assert.strictEqual(workflow.schritte[3].output_schema, 'ergebnis-code-reviewer')
   assert.strictEqual(workflow.schritte[3].freigabe, 'AUTOMATISCH')
-  assert.strictEqual(workflow.schritte[3].nachfolger, null)
+  assert.strictEqual(workflow.schritte[3].nachfolger, workflow.schritte[4].schritt_id)
   assert.ok(workflow.schritte.slice(0, 3).every((s) => s.freigabe === 'ZWINGEND'))
+  pruefeQaSchritt(workflow.schritte[4], 'schritt-3-ausfuehrung', 'schritt-4-review')
 })
 
 test('waehleWorkflowVorlage: workflow_id/auftrag_id/ziel werden aus den Platzhaltern befüllt', () => {

@@ -1,0 +1,4 @@
+| Aktion | qa-Karte | Review-Kachel | Hinweis amber | Hinweis rot | Badge amber (Karte) | Testfälle (3) | qa-Befundliste da | Knopf qa wiederholen | Zahl im Blick | Abnehmen | qa-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Halt am qa mit Knopf | false | false | false | true | false | false | false | true | true | false | Prüfung aus NutzersichtDas Werkzeug der Prüfung aus Nutzersicht ist ausgefallen.Ohne Prüfung aus Nutzersicht ist keine A |  | false | 1440/1440 | true |
+| Klick „Prüfung aus Nutzersicht wiederholen“ → nur der qa läuft erneut → Abnahme | true | true | false | false | false | true | false | false | false | true | (fehlt) | Prüfung aus Nutzersicht neu gestartet — nur dieser Schritt läuft erneut, Umsetzung und Review bleiben. | false | 1440/1440 | true |

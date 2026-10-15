@@ -99,8 +99,8 @@ gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
-`docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2a, zuletzt #343; B2b-2b-1
-(qa-Schritt, Kern) gebaut, nicht gemergt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+`docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
+(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 15.10.2026).
 
 ## Erledigt
@@ -679,9 +679,14 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   real durchgesetzt, `features/F45/nachweise/b2b2b/`), Regel 1q, Review und qa zusammen höchstens
   eine Korrekturrunde mit den Befunden beider je Herkunft, Wiederholungs-Halt über beide, „Prüfer
   wiederholen“ für qa; Vorlagen unverändert (Bestand bitgleich), Gate f45-b2b2-pruefer (q1)–(q11).
-  Offen: B2b-2b-2 (qa in den Vorlagen standard/hoch, Abnahme-Karte, Render-Nachweis; F-820 Rest,
-  F-1117) — B2b-2 ist erst damit abgeschlossen. F-648 geschlossen (umgesetzt, geprüft gegen B2b-2a).
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1117. Nach F46, vor F30
+  B2b-2b-2 „qa-Schritt live“ gebaut (15.10.2026, `features/F45/plan-b2b2b.md`): qa nach dem Review in
+  den Vorlagen standard/hoch (fast-lane ohne), Abnahme-Karte „Prüfung aus Nutzersicht“ (Urteil,
+  Befunde, Testfälle, Hinweis bei schweren Befunden trotz „bereit“), Halt am qa mit Ursache, Ausweg
+  und „Prüfung aus Nutzersicht wiederholen“, kein Annehmen ohne qa, Rollen-Kreis, Harness-Zuordnung;
+  Gate f45-b2b2-pruefer (v1)–(v7), Render-Nachweis `features/F45/nachweise/b2b2b2/` (F-820, F-1117
+  erledigt) — damit ist B2b-2 abgeschlossen. Rest F-1118 (3), F-1119 (2)–(14) (zweite Runde: F-1118 (1)(2), F-1119 (1) erledigt).
+  F-648 geschlossen (umgesetzt, geprüft gegen B2b-2a).
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1119. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

@@ -1,0 +1,3 @@
+| Aktion | qa-Karte | Review-Kachel | Hinweis amber | Hinweis rot | Badge amber (Karte) | Testfälle (3) | qa-Befundliste da | Knopf qa wiederholen | Zahl im Blick | Abnehmen | qa-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Halt am qa mit gültigem BLOCKIERT, Befunde, kein Knopf — de-1440 | false | false | false | true | false | false | true | false | true | false | Prüfung aus NutzersichtBlockiert ClaudeDer Ablauf hält nach der Prüfung aus Nutzersicht — eine automatische Korrekturrun |  | false | 1440/1440 | true |
