@@ -17,7 +17,7 @@
       "id": "toolu_01BZBn1z8G8oDfeRKdn7V2TZ",
       "name": "Read",
       "eingabe": {
-        "file_path": "C:\\Users\\stefa\\AppData\\Local\\Temp\\b1b1-lauf-ZobtQp\\hooks\\projekt\\.claude\\settings.json"
+        "file_path": "<TEMP>\\b1b1-lauf-ZobtQp\\hooks\\projekt\\.claude\\settings.json"
       },
       "ergebnis": {
         "is_error": false,
@@ -30,7 +30,7 @@
       "name": "Edit",
       "eingabe": {
         "replace_all": false,
-        "file_path": "C:\\Users\\stefa\\AppData\\Local\\Temp\\b1b1-lauf-ZobtQp\\hooks\\projekt\\.claude\\settings.json",
+        "file_path": "<TEMP>\\b1b1-lauf-ZobtQp\\hooks\\projekt\\.claude\\settings.json",
         "old_string": "      \"Bash(npm run *)\"",
         "new_string": "      \"Bash(npm run check)\""
       },
@@ -49,7 +49,7 @@
       "tool_name": "Edit",
       "tool_use_id": "toolu_01HwYrtfjbKfBoXpAQBeGXPx",
       "tool_input": {
-        "file_path": "C:\\Users\\stefa\\AppData\\Local\\Temp\\b1b1-lauf-ZobtQp\\hooks\\projekt\\.claude\\settings.json",
+        "file_path": "<TEMP>\\b1b1-lauf-ZobtQp\\hooks\\projekt\\.claude\\settings.json",
         "old_string": "      \"Bash(npm run *)\"",
         "new_string": "      \"Bash(npm run check)\"",
         "replace_all": false
