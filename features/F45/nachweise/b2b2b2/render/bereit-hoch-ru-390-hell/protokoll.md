@@ -1,0 +1,3 @@
+| Aktion | qa-Karte | Review-Kachel | Hinweis amber | Hinweis rot | Badge amber (Karte) | Testfälle (3) | qa-Befundliste da | Knopf qa wiederholen | Review-Befunde in der qa-Notiz | Zahl im Blick | Abnehmen | qa-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qa bereit mit HOCH-Befund, Karte unter dem Review — ru-390-hell | true | true | true | false | true | true | true | false | false | true | true | Замечания к проверке глазами пользователяПроверка глазами пользователя говорит «готово», но сообщает о 1 серьёзном замеч |  | false | 390/390 | true |

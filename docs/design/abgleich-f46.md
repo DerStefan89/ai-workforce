@@ -213,7 +213,7 @@ Abnahme:
 | Abnahmekriterien mit Urteil und Beleg, Zusammenfassung „x erfüllt · y nicht erfüllt“ | U | `ak_urteile` aus `GET …/abnahme` |
 | Prüfung mit Ergebnis, „Prüfung wiederholen“ | U | bestehend |
 | Review-Urteil (Codex) | U | bestehend |
-| Urteile je Claude-Prüfer (code-reviewer, qa, design-guardian) | K | keine Quelle; die Laufakte zeigt nur den Aufruf |
+| Urteile je Claude-Prüfer (code-reviewer, qa, design-guardian) | U (qa) / K | qa seit F45 B2b-2b-2 als eigener Schritt (`GET …/abnahme` `qaErgebnis`); code-reviewer und design-guardian: keine Quelle (design-guardian B3) |
 | Nachweise (Prüfbericht) | U | bestehend; Kacheln Desktop/Mobil/Hell nur, wenn Dateien vorliegen |
 | Selbst ausprobieren: „Produkt öffnen“ | U | F43 `vorschau_url` |
 | „Änderungen im Code-Reiter“ | U | → `#/code` (ab D4) |
@@ -227,6 +227,7 @@ Umsetzung D2 (Abweichungen, begründet):
 - Abnahmekriterien zeigen Kennung, Beleg und Urteil — das Review liefert den Wortlaut eines AK nicht; der Link „Beleg“ entfällt (der Beleg steht in der Zeile). Die Review-Empfehlung steht in der Kachel gekürzt, im Volltext unter „Nachweise im Einzelnen“.
 - „Jarvis empfiehlt“ in der Spalte: K (keine Quelle). Kacheln Desktop/Mobil/Hell entfallen, solange keine Nachweisdateien vorliegen.
 - Im Entscheidungsmodus ist „Der Weg zum Ergebnis“ (Timeline, Auf einen Blick, Aktionen mit Stoppen) zugeklappt; der Status steht als Zeile im Kopf. Die Seitenleiste markiert „Entscheidungen“, der Rückweg heißt „← Deine Entscheidungen“.
+- F45 B2b-2b-2 (F-1117 (7)): das Urteil des qa steht nicht als Zeile in der Review-Kachel, sondern als eigene Karte „Prüfung aus Nutzersicht“ unter den Kacheln (Urteil, Empfehlung, Hinweis, Befunde; Testfälle aufklappbar mit Zahlenzeile) — Stefan soll die qa-Befunde vor der Abnahme sehen, eine Zeile trüge sie nicht. In der Review-Kachel bleibt „Weitere Claude-Prüfer · kommt“.
 
 
 ### 4.6 Eintrag im Detail: Feature — `#/workboard/<id>` (07-eintrag-detail--Main) · D3

@@ -10,7 +10,7 @@
  *
  * Status je Rolle ('fertig' | 'jetzt' | 'offen') kommt aus den Schritten des Workflows zum Feature
  * in Arbeit (kreisStatus). Abbildung Schritt-Rolle → Kreis-Rolle: KREIS_ROLLE_JE_SCHRITT_ROLLE.
- * - Planner, Advisor, Builder, Reviewer: aus den Schritten ihrer Schritt-Rolle — ein Schritt
+ * - Planner, Advisor, Builder, Reviewer (und Satellit qa): aus den Schritten ihrer Schritt-Rolle — ein Schritt
  *   LAEUFT → 'jetzt'; alle Schritte ERFOLGREICH oder UEBERSPRUNGEN (mindestens einer ERFOLGREICH)
  *   → 'fertig'; sonst (offen, wartet auf Freigabe, verweigert, fehlgeschlagen) → 'offen'.
  * - Prüfschritt: hat keinen eigenen Workflow-Schritt; 'fertig', wenn die deterministische Prüfung
@@ -19,7 +19,8 @@
  *   Workflow ABGESCHLOSSEN ist und die Abnahme-Quelle geladen ist, aber keine gültige Entscheidung
  *   trägt (wartet auf dich); fehlt die Quelle (GET …/abnahme nicht ladbar), bleibt sie 'offen' —
  *   nichts wird geraten (Prüfpass D1, cr 1).
- * - Satelliten: immer 'offen' — es gibt keine Quelle für Urteile je Claude-Prüfer (K, §4.5).
+ * - Satelliten: qa aus dem qa-Schritt der Vorlagen standard/hoch (F45 B2b-2b-2), dieselbe Statusregel wie oben;
+ *   code-reviewer und design-guardian immer 'offen' — für sie gibt es noch keine Quelle (K, §4.5; design-guardian B3).
  * - Ohne Workflow (oder solange er lädt): alle 'offen'.
  *
  * Bedienung: Die Rollen sind ein Register (role=tablist/tab, Muster F44 WS-7/WS-8): Klick oder
@@ -53,16 +54,17 @@ export const SATELLITEN = Object.freeze(['code-reviewer', 'qa', 'design-guardian
 export const ALLE_KREIS_ROLLEN = Object.freeze([...KREIS_ROLLEN, ...SATELLITEN])
 
 /**
- * Abbildung Schritt-Rolle (schritt.rolle, src/rollen) → Kreis-Rolle. Nur diese vier Rollen kommen als
+ * Abbildung Schritt-Rolle (schritt.rolle, src/rollen) → Kreis-Rolle. Nur diese fünf Rollen kommen als
  * Workflow-Schritt vor (workflow-vorlagen/*.json); jede andere Schritt-Rolle erscheint nicht im Kreis.
  * Der Review-Schritt trägt die Rolle 'code-reviewer' (Worker Codex) — im Kreis ist das der Reviewer,
- * nicht der Satellit code-reviewer (Claude-Subagent am Builder).
+ * nicht der Satellit code-reviewer (Claude-Subagent am Builder). Der qa-Schritt (F45 B2b-2b-2) ist der Satellit qa.
  */
 export const KREIS_ROLLE_JE_SCHRITT_ROLLE = Object.freeze({
   architekt: 'planner',
   'architecture-advisor': 'advisor',
   ausfuehrung: 'builder',
   'code-reviewer': 'reviewer',
+  qa: 'qa',
 })
 
 /** Erledigte Schrittstatus (src/workflow/index.ts SCHRITT_STATUS). */
@@ -99,12 +101,13 @@ export function kreisStatus(nachtrag) {
 }
 
 /**
- * Die vorgewählte Rolle: die erste mit Status 'jetzt' in Kreisreihenfolge, sonst der Builder.
+ * Die vorgewählte Rolle: die erste mit Status 'jetzt' in Tab-Reihenfolge (Kreis-Rollen, dann Satelliten — F45 B2b-2b-2,
+ * sonst nennte die Kreismitte „qa läuft“, während das Panel den Builder zeigt), sonst der Builder.
  * @param status - Ergebnis von kreisStatus
  * @returns Rollen-ID
  */
 export function vorgewaehlteRolle(status) {
-  return KREIS_ROLLEN.find((rolle) => status?.[rolle]?.status === 'jetzt') ?? 'builder'
+  return ALLE_KREIS_ROLLEN.find((rolle) => status?.[rolle]?.status === 'jetzt') ?? 'builder'
 }
 
 /**

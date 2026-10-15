@@ -1,0 +1,77 @@
+{
+  "url": "http://127.0.0.1:4402/#/workflows/router-f056210d-8bbc-418e-a2df-7fc05781a13a",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "qa-Notiz",
+        "selector": ".abnahme-qa-hinweise"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "qa-Karte",
+        "selector": ".abnahme-qa-karte"
+      },
+      {
+        "name": "Review-Kachel",
+        "selector": ".entscheiden-kacheln"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-qa-hinweise.amber"
+      },
+      {
+        "name": "Hinweis rot",
+        "selector": ".abnahme-qa-hinweise.red"
+      },
+      {
+        "name": "Badge amber (Karte)",
+        "selector": ".abnahme-qa-karte .ablauf-status.warten"
+      },
+      {
+        "name": "Testfälle (3)",
+        "selector": ".abnahme-testfaelle > li:nth-child(3)"
+      },
+      {
+        "name": "qa-Befundliste da",
+        "selector": ".abnahme-qa-hinweise .abnahme-befunde, .abnahme-qa-karte .abnahme-befunde"
+      },
+      {
+        "name": "Knopf qa wiederholen",
+        "selector": ".wf-pruefer-wiederholen[data-pruefer=\"qa\"]"
+      },
+      {
+        "name": "Review-Befunde in der qa-Notiz",
+        "selector": ".abnahme-qa-hinweise h4:nth-of-type(2)"
+      },
+      {
+        "name": "Zahl im Blick",
+        "selector": "[data-qa-hinweise-anzahl]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "qa bereit mit HOCH-Befund, Karte unter dem Review — de-1440",
+      "warteAufSelector": {
+        "selector": ".abnahme-qa-karte [data-qa-hinweis=\"schwereBeiBereit\"]",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-de-1440.webp"
+    }
+  ]
+}

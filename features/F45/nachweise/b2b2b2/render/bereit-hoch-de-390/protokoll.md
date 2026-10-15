@@ -1,0 +1,3 @@
+| Aktion | qa-Karte | Review-Kachel | Hinweis amber | Hinweis rot | Badge amber (Karte) | Testfälle (3) | qa-Befundliste da | Knopf qa wiederholen | Review-Befunde in der qa-Notiz | Zahl im Blick | Abnehmen | qa-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qa bereit mit HOCH-Befund, Karte unter dem Review — de-390 | true | true | true | false | true | true | true | false | false | true | true | Hinweise zur Prüfung aus NutzersichtDie Prüfung aus Nutzersicht sagt „bereit“, meldet aber einen schweren Befund (kritis |  | false | 390/390 | true |

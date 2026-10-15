@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Halt am qa mit Knopf",
+    "qa-Karte": false,
+    "Review-Kachel": false,
+    "Hinweis amber": false,
+    "Hinweis rot": true,
+    "Badge amber (Karte)": false,
+    "Testfälle (3)": false,
+    "qa-Befundliste da": false,
+    "Knopf qa wiederholen": true,
+    "Zahl im Blick": true,
+    "Abnehmen": false,
+    "qa-Notiz": "Prüfung aus NutzersichtDas Werkzeug der Prüfung aus Nutzersicht ist ausgefallen.Ohne Prüfung aus Nutzersicht ist keine A",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick „Prüfung aus Nutzersicht wiederholen“ → nur der qa läuft erneut → Abnahme",
+    "qa-Karte": true,
+    "Review-Kachel": true,
+    "Hinweis amber": false,
+    "Hinweis rot": false,
+    "Badge amber (Karte)": false,
+    "Testfälle (3)": true,
+    "qa-Befundliste da": false,
+    "Knopf qa wiederholen": false,
+    "Zahl im Blick": false,
+    "Abnehmen": true,
+    "qa-Notiz": "(fehlt)",
+    "Meldung": "Prüfung aus Nutzersicht neu gestartet — nur dieser Schritt läuft erneut, Umsetzung und Review bleiben.",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]

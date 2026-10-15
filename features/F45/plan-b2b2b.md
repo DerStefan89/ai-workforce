@@ -276,3 +276,219 @@ Urteil **FREIGEGEBEN_MIT_AUFLAGEN** (A1–A7 sachlich gelöst). Eingearbeitet:
 - Nachpass: code-reviewer und qa je „Freigegeben mit Hinweisen“, alle Punkte erledigt; Resthinweise (toter `?? []`,
   Leerzeile in `src/qa`, F35-Altkommentar „NIE 'starte'“, Testtitel, zwei Formulierungen desselben Halt-Satzes, F3-Zweig
   ohne Test) und die übrigen Erstpass-Punkte in F-1116; Live-Schaltung und Anzeige in F-1117 (B2b-2b-2).
+
+## Plan B2b-2b-2 „qa-Schritt live“ (Plan v1, 15.10.2026)
+
+Branch `f45/b2b2b2-qa-live` (von origin/main `8b5ce98`, nach dem Merge von B2b-2b-1 #344). Umfang = F-1117 (1)–(9);
+dazu F-1114 (6) und F-1116 (5)(6), soweit Anzeige und Gate sie berühren. Nicht: design-guardian-Schritt im Lauf (B3),
+Doppel-Reviewer, F-1111-Reste; kein `.claude/`, `projekte.json`, `ressourcen.json`, `vorlagen/`, `.githooks`; in
+`workflow-vorlagen/` nur `standard.json` und `hoch.json`; `starteWorkflowSchritt(` bleibt 6× im Server; F-228-Zählung
+unverändert (keine neue Schreibstelle).
+
+### 1. Ziel der Iteration
+
+Die Vorlagen standard und hoch prüfen nach dem Review aus Nutzersicht (qa); Stefan sieht das qa-Ergebnis vor der Abnahme
+(Urteil, Befunde, Testfälle, Hinweis bei schweren Befunden trotz BEREIT), bei einem Halt am qa die Ursache ohne Kennungen,
+den Ausweg in einem Satz und den Knopf „Prüfung aus Nutzersicht wiederholen“. Damit sind B2b-2 und F-820 abgeschlossen.
+
+### 2. Referenzen
+
+F-1117 (1)–(9), F-1116 (5), F-1114 (6), Advisor A8/A9 (oben), Plan v2.1 2b-1; Muster Review: `reviewHaltGrund`,
+`reviewWiederholbar`, `renderReviewHinweise`, `schwere_bei_bereit` (B2b-2a), Render `features/F45/nachweise/b2b2a/` und
+Klickfolge `features/F45/nachweise/b2b1/render/`.
+
+### 3. Module und Datenbedarf
+
+**3.1 Vorlagen (F-1117 (4)(5)(9))** — `standard.json`: `schritt-2-review.nachfolger` → `schritt-3-qa`; neuer Schritt
+`schritt-3-qa` (rolle qa, lesend, worker claude-code, modell claude-sonnet-5, output_schema `ergebnis-qa`, AUTOMATISCH,
+600 000 ms, nachfolger null), Eingaben `artefakt:auftrag-__AUFTRAG_ID__`, `artefakt:aenderungsuebersicht-@schritt-1-ausfuehrung`,
+`artefakt:pruefergebnis-@schritt-1-ausfuehrung`, `artefakt:ergebnis-@schritt-2-review`; `risiko` nennt claude-code (Spike
+B2b-2b: `ergebnis-qa` nur dort real belegt). `hoch.json` gleich mit `schritt-5-qa` hinter `schritt-4-review` (Eingaben
+auf `schritt-3-ausfuehrung`/`schritt-4-review`). `max_schritte` reicht (standard 3 ≤ 6, hoch 5 ≤ 8; das Budget zählt
+verschiedene Schritte). `fast-lane.json` unverändert. Router-Tests: Schrittzahl 3 bzw. 5, Rollenfolge, qa-Schritt (Schema,
+worker, AUTOMATISCH, Eingaben inkl. `ergebnis-@<review>`, nachfolger null), fast-lane ohne qa.
+
+**3.2 Server, GET …/abnahme (F-1117 (1)(2))** — additiv:
+- `qaErgebnis`: Projektion des qa-Schritts (`findeQaSchritt`) nach dem Muster `urteil`: `kein_qa_schritt` (fast-lane,
+  Bestand) · `noch_nicht_gelaufen` · `nicht_gelaufen_klaerung` (lauf_id null, Halt am qa) · `fehlgeschlagen`
+  (FEHLGESCHLAGEN/VERWEIGERT) · `laufakte_fehlt` · `nicht_lesbar` (Verstöße gegen das qa-Schema über
+  `leseQaErgebnisAusLaufakte`; `verstoesse` nur zur Diagnose, nicht angezeigt) · `ok` (urteil, befunde, testfaelle,
+  empfehlung, `schwere_bei_bereit` nur bei offener Abnahme über `zaehleSchwereBeiBereit` — dieselbe Regel wie beim Review,
+  also nur BEREIT —, worker, laufId). Jeder Status trägt `halt` (Ablauf KLAERUNG_ERFORDERLICH mit Cursor am qa) und bei
+  Halt `grund` (Server-Grund roh, nur Diagnose — die Oberfläche zeigt ihn nicht, F-1116 (5)).
+- `qaWiederholbar`: dieselbe Vorbedingung wie POST …/pruefer-wiederholen (`pruefschrittWiederholbar` +
+  `ermittlePrueferBefund`), nur wenn der Cursor auf dem qa-Schritt steht (gelesen nur dann, Poll 2 s).
+- Lauf-Detail (GET /api/workflows/<id>): `prueferWiederholbar` bleibt beim Advisor (steuert „Advisor wiederholen“ in den
+  Eingriffen); der qa-Halt wird wie der Review-Halt über die Abnahme derselben Seite `#/workflows/<id>` bedient — kein
+  zweiter Knopf. Siehe O1.
+
+**3.3 Anzeige (`views/workflow-abnahme.js`, `views/workflows.js`, `rollen-kreis.js`; F-1117 (7), Auftrag 3/4)**
+- Lage „entscheidbar“: eigene Karte „Prüfung aus Nutzersicht“ (`section.entscheiden-karte`) direkt unter der Kachelreihe
+  (Prüfung · Review · Nachweise), vor „Selbst ausprobieren“: Urteil-Badge (Farbe wie beim Review, amber bei schweren
+  Befunden trotz BEREIT), wer prüfte („Claude“), Empfehlung, amber Hinweis „bereit trotz schwerer Befunde“ (eigener Satz
+  „Die Prüfung aus Nutzersicht sagt „bereit“ …“, Pluralform wie beim Review), Befunde (`renderBefunde` wiederverwendet —
+  ohne Dimension, das qa-Schema hat keine), Testfälle (Name, Schritte als Liste, Erwartet, Ergebnis-Badge bestanden/
+  durchgefallen/nicht prüfbar mit Symbol ✓/✗/?; der Text trägt die Bedeutung). Leerzustände: `kein_qa_schritt` ⇒ keine
+  Karte (Bestand, fast-lane bitgleich); keine Befunde ⇒ „Keine Befunde.“; keine Testfälle ⇒ eigener Satz; andere Status ⇒
+  Satz statt Inhalt.
+- Lage „vorab“ (Halt am qa): Notiz „Prüfung aus Nutzersicht“ — rot bei Ausfall/nicht lesbar/nicht gestartet mit Ursache
+  ohne Kennungen („Das Werkzeug ist ausgefallen.“ / „Das Ergebnis war unvollständig oder nicht lesbar.“ / „Sie ist nicht
+  gestartet.“) und **einem Satz zum Ausweg** (Auftrag 4, Entscheidung Challenger: „Ohne Prüfung aus Nutzersicht ist keine
+  Abnahme möglich — wiederhole sie, repariere den Ablauf, wünsche eine Anpassung oder lehne ab.“; kein Annehmen ohne qa),
+  dazu der Knopf „Prüfung aus Nutzersicht wiederholen“ (`.wf-pruefer-wiederholen`, `data-pruefer="qa"`) auf eigener Zeile,
+  wenn `qaWiederholbar`. Halt bei gültigem Ergebnis (BLOCKIERT an der Grenze oder Wiederholung, Advisor A8): Urteil-Badge
+  und die qa-Befunde (dieselbe Liste); kein Knopf (der Server lässt ein gültiges Ergebnis nicht wiederholen).
+- „Auf einen Blick“: Zeile „Prüfung aus Nutzersicht“ mit Urteil-Badge, sobald `qaErgebnis.status === 'ok'`; bei Hinweisen
+  (Halt, schwere Befunde) die Zahl mit „Details bei der Prüfung aus Nutzersicht“ (Liste nur einmal, design-guardian 2 B2a-3a).
+- Bedienung (`views/workflows.js`): Kennzeichen um `qaErgebnis.status/laufId/halt`, die qa-Hinweiskennung und
+  `qaWiederholbar`; Klick auf `.wf-pruefer-wiederholen` bleibt derselbe Weg (POST …/pruefer-wiederholen, danach POST
+  …/starten); Meldungen je `data-pruefer` („Prüfung aus Nutzersicht neu gestartet …“ statt „Review neu gestartet …“).
+- Rollen-Kreis: `KREIS_ROLLE_JE_SCHRITT_ROLLE.qa = 'qa'` — der Satellit qa wird aus dem qa-Schritt ‚jetzt‘/‚fertig‘/‚offen‘
+  (dieselbe Statusregel wie die Kreis-Rollen); code-reviewer/design-guardian bleiben ‚offen‘. Kopfkommentar nachziehen.
+- i18n de/en/ru/tr: neue Schlüssel unter `abnahme.qa.*` und `entscheiden.abnahme.qa.*`; sichtbarer Text ohne Feldnamen,
+  Kennungen oder Rohwerte; ru mit Pluralformen.
+
+**3.4 Harness-Zuordnung (`harness-abgleich/standard.json`, F-1117 (8), F-1114 (6))** — Agent qa: `bewusst_nicht` →
+`ersetzt_durch` `{ rolle: 'qa' }` mit `fehlt_im_ablauf` („Kontrolltiefe fast-lane und Abläufe aus der Zeit vor B2b-2b-2 ohne
+qa-Schritt“); DoD dod-04a521a7/dod-283ac334: Begründung „Review und qa sind eigene Workflow-Schritte (standard, hoch) …“
+(Schritt-Feld bleibt code-reviewer — das Schema erlaubt eine Rolle); design-guardian und die UI-/Render-DoD: „B2b“ → „B3“.
+
+**3.5 Gate `scripts/check-f45-b2b2-pruefer.mjs` (Auftrag 6)** — neue Fälle an den **echten Vorlagen** (Datei geladen,
+Platzhalter ersetzt; dieselbe Attrappe):
+- (v1) standard aus der Vorlage: Läufe Ausführung → Review → qa, ABGESCHLOSSEN; der qa-Auftrag enthält das Review-Ergebnis.
+- (v2) qa-Halt (FEHLGESCHLAGEN) ⇒ GET …/abnahme `qaErgebnis.halt` true mit Status und `grund`, `qaWiederholbar` true.
+- (v3) „qa wiederholen“: POST …/pruefer-wiederholen + POST …/starten ⇒ nur der qa läuft erneut, ABGESCHLOSSEN, danach
+  `qaWiederholbar` false.
+- (v4) qa BEREIT mit HOCH ⇒ `qaErgebnis.schwere_bei_bereit` 1, Testfälle in der Projektion; nach ANGENOMMEN 0.
+- (v5) fast-lane aus der Vorlage: kein qa-Lauf, `qaErgebnis.status` `kein_qa_schritt`.
+- (v6) hoch-Vorlage strukturell: qa hinter dem Review, Eingaben zeigen auf `schritt-3-ausfuehrung`/`schritt-4-review`.
+- Bestehende Fälle bleiben. Gates mit echten standard-Abläufen, die an einer Attrappe ohne qa-Laufakte nun am qa halten,
+  werden mit Begründung angepasst (Attrappe beantwortet qa bzw. Erwartung um den qa-Schritt ergänzt) — §7.
+- Unit rot→grün: `workflow-abnahme.test.mjs` (Karte, Testfälle, Hinweis, Leerzustände, Vorab-Notiz mit Knopf und Satz,
+  Blick, keine Kennungen im Text), `rollen-kreis.test.mjs` (qa-Satellit), `router.test.ts`.
+
+**3.6 Render-Nachweis `features/F45/nachweise/b2b2b2/`** (Muster b2b2a/b2b1): `instanz.mjs` (Port 4402, Wegwerf-Ablage,
+Attrappe, kein Netz) legt zwei Abläufe in der Form der Vorlage standard an: (a) Review BEREIT mit einem MITTEL-Befund, qa
+BEREIT mit einem HOCH-Befund (lange Fundstelle) und drei Testfällen (bestanden, durchgefallen, nicht prüfbar) ⇒ Abnahme
+mit Review-Kachel und qa-Karte, amber Hinweis; (b) qa im ersten Lauf FEHLGESCHLAGEN, im zweiten BEREIT ⇒ Halt am qa mit
+roter Notiz und Knopf; Klick ⇒ qa läuft erneut ⇒ Abnahme. `render/erzeuge-nachweis.mjs`: je Folge de 1440 dunkel, de 1440
+hell, de 390, ru 390 hell, de 1440 200 % (b vor dem Klick), dazu `halt-klick-de-1440` zuletzt; Klicktabelle mit Spalten für
+Karte, Hinweis, Badge-Klasse (F-1114 (13)), Knopf, scrollWidth/clientWidth; `nachweis.md`. Danach design-guardian.
+
+### 4. Zustände
+
+Default: Review und qa BEREIT ⇒ Karte grün mit Testfällen. Leer: kein qa-Schritt ⇒ keine Karte; keine Befunde/Testfälle ⇒
+Satz. Ladend: Poll wie bisher (Kennzeichen erweitert). Fehler: qa ausgefallen/nicht lesbar/nicht gestartet ⇒ rote Notiz mit
+Ursache, Satz zum Ausweg und (wenn wiederholbar) Knopf; Halt mit gültigem BLOCKIERT ⇒ Befunde im Vorab-Block. Hover: Knopf
+wie `.button` (kein neuer Stil, keine neuen Farben).
+
+### 5. Akzeptanzkriterien
+
+1. standard/hoch aus der Vorlage laufen Ausführung → Review → qa; fast-lane ohne qa (Router-Tests, Gate v1/v5/v6).
+2. GET …/abnahme liefert `qaErgebnis` (Urteil, Befunde, Testfälle, `schwere_bei_bereit`), bei Halt am qa `halt`/`grund`
+   und `qaWiederholbar` (v2, v4).
+3. „Prüfung aus Nutzersicht wiederholen“ setzt nur den qa zurück und startet ihn; danach ABGESCHLOSSEN (v3, Klickfolge).
+4. Abnahme zeigt die Karte mit Urteil, Befunden, Testfällen; BEREIT mit KRITISCH/HOCH ⇒ amber Hinweis; Vorab/Blick zeigen
+   bei Halt die qa-Befunde bzw. Ursache und Ausweg in einem Satz; Rollen-Kreis zeigt qa als Satellit; de/en/ru/tr ohne
+   Feldnamen/Kennungen (Unit, Render).
+5. Harness-Zuordnung: qa `ersetzt_durch` mit `fehlt_im_ablauf`, design-guardian „B3“ (Validator und Abgleich-Gates grün).
+6. Render-Nachweis ohne waagerechten Überlauf; design-guardian ohne offenen HOCH-Befund; `npm run check` Exit 0 (einmal);
+   `starteWorkflowSchritt(` 6×.
+
+### 6. Risiken
+
+- Die Vorlagenänderung trifft Gates, die echte standard/hoch-Abläufe mit einer Attrappe fahren, die nur Review-Laufakten
+  schreibt ⇒ Halt am qa statt ABGESCHLOSSEN. Anpassung je Gate mit Begründung, nicht durch Abschwächen.
+- Harness-Abgleich: ein Ablauf mit qa-Schritt, der nicht lief, zählt qa als „offen“ (vorher „bewusst nicht“) — gewollt.
+- `capabilities-ansicht` liest die Vorlagen: Rolle qa ⇒ TEST_DESIGN, in `ressourcen.json` vorhanden (nicht ändern).
+- Echtbetrieb: ein qa-Lauf (≈ 1 min) je Runde; erster echter qa-Lauf mit allen vier Eingaben erst in R (F-1116 (7)(8)).
+
+### 7. Anzupassende Prüfungen (Vorabliste)
+
+`src/router/router.test.ts`, `scripts/check-f45-b2b2-pruefer.mjs`; Kandidaten mit echten Vorlagen (einzeln laufen lassen):
+`check-f23-abnahme`, `check-f35-ws1-feature-auftrag`, `check-f35-ws3-adjust-automatik`, `check-f39-architekt`,
+`check-f652-pruefschritt`, `check-fixpaket-f30-vorbedingungen`, `check-fix-f676-installwurzel`, `check-f22-click-to-work`,
+`check-f42-projekt-harness`, `check-fixpaket-f35-reallauf`, `check-f36-ws3/ws5a/ws5b`, `check-f813-csrf`, `check-f814-host`,
+`check-f45-b2b1-rueckweg`, `scripts/leitstand-abnahme-stand.test.mjs`, `src/capabilities-ansicht`.
+
+### 8. Doku
+
+`state/findings.md`: F-820 und F-1117 erledigt, F-1114 (6) erledigt, F-1116 (5) (Anzeige-Teil) erledigt, neue Findings ab
+F-1118; `docs/projekt/fixpaket-f45.md`: B2b-2b-2 gebaut, B2b-2 abgeschlossen; `docs/STATUS.md`.
+
+### Offene Punkte (nicht stillschweigend entschieden)
+
+- O1: „Lauf-Detail“ im Auftrag (F-1117 (1): `prueferWiederholbar` dort nur für den Advisor). Vorschlag: Detail unverändert,
+  weil der qa-Halt wie der Review-Halt in der Abnahme derselben Seite bedient wird; ein zweiter Knopf in den Eingriffen wäre
+  doppelt. Alternative: `prueferWiederholbar` im Detail auch für qa und die qa-Notiz in den Eingriffen statt in der Abnahme.
+- O2: Der Server-Grund des qa-Halts trägt Kennungen (F-1116 (5)); die Oberfläche zeigt ihn nicht, sondern eine Ursache je
+  Status. „Korrekturrunde aufgebraucht“ bei einem BLOCKIERT-Halt an der Grenze zeigt die Oberfläche nur über den Satz zum
+  Ausweg — eine strukturierte Halt-Art vom Server ist nicht Teil dieses Baus.
+- O3: Zuschnitt — bei „zu groß“ zuerst §3.4 (Harness-Zuordnung) als Finding herausnehmen (Auftrag).
+
+## Advisor-Pass B2b-2b-2 (15.10.2026, frischer Kontext, `architecture-advisor`) und Plan v1.1
+
+Urteil **FREIGEGEBEN_MIT_AUFLAGEN**, Zuschnitt passt (knapp; bei „zu groß“ zuerst den Rollen-Kreis abtrennen, nicht §3.4).
+Entlastend belegt: die vier Eingaben lösen für einen qa-Schritt real auf (`loeseSchrittEingabenAuf`), `max_schritte` reicht,
+„Prüfer wiederholen“ ist serverseitig fertig, Harness-Zuordnung ist reine Datenänderung, O1 tragbar, kein D5-/F-228-Konflikt.
+Eingearbeitet (Delta zu Plan v1):
+- **A1 (MITTEL):** Halt am qa bei gültigem qa-Ergebnis (Regel 1q (b)/(c): Review nicht lesbar oder beanstandet an der
+  Grenze/Wiederholung) ⇒ ein fester, neutraler Satz für `status ok && halt` (keine Unterscheidung (b)/(c) in der
+  Oberfläche, D5): „Der Ablauf hält nach der Prüfung aus Nutzersicht — es gibt keine automatische Korrekturrunde mehr.
+  Prüfe die Urteile und wünsche eine Anpassung oder lehne ab.“ Dazu Badge und Befunde, Unit-Test, Render-Folge (c).
+- **A2 (MITTEL):** Ursache je Status: FEHLGESCHLAGEN „Das Werkzeug ist ausgefallen.“, VERWEIGERT „Der Lauf wurde
+  verweigert.“ (über `schrittStatus` wie beim Review), nicht lesbar/Laufakte fehlt „Das Ergebnis war unvollständig oder
+  nicht lesbar.“, nicht gestartet „Sie ist nicht gestartet.“. Ausweg-Satz je Lage (Muster `weiter`/`weiterWiederholbar`):
+  wiederholbar ⇒ „… wiederhole sie (zählt nicht als Korrekturrunde), repariere den Ablauf, wünsche eine Anpassung oder
+  lehne ab“; nicht wiederholbar ⇒ „… repariere oder starte den Ablauf, wünsche eine Anpassung oder lehne ab“. Beide
+  beginnen mit „Ohne Prüfung aus Nutzersicht ist keine Abnahme möglich“ (Auftrag 4, ein Satz).
+- **A3 (MITTEL):** Render-Folge (c) „qa BLOCKIERT bei `max_replans` 0“ (Vorab-Block mit qa-Befunden und A1-Satz, kein
+  Knopf), de 1440 und de 390; Klicktabelle mit „Befundliste da“ und „Knopf fehlt“.
+- **A4 (MITTEL):** „Urteile je Claude-Prüfer · kommt“ in der Review-Kachel wird „Weitere Claude-Prüfer · kommt“ (de/en/ru/tr)
+  — qa urteilt jetzt, code-reviewer und design-guardian noch nicht (F-1114 (4) teilweise).
+- **A5 (MITTEL), abgewandelt:** Bau-Reihenfolge zuerst Vorlagen + Router-Tests, dann die Kandidaten-Gates aus §7 **einzeln**
+  (nicht die volle Kette — Auftrag: `npm run check` genau einmal am Ende); `scripts/leitstand/routen-faehigkeiten.test.mjs`
+  in die Liste. Die echte Liste roter Gates steht im Bauabschnitt.
+- **A6:** Gate (v1) über `waehleWorkflowVorlage(...)` (eine Ersetzungsstelle); belegt `artefakt:aenderungsuebersicht-<lauf>`
+  und `artefakt:ergebnis-<reviewLauf>` in den Anfragen des qa-Laufs; `pruefergebnis-@` belegt der Router-Test (Vorlage).
+- **A7:** (v4) prüft nach ANGENOMMEN `entscheidung.bezug.qa_lauf_id` (F-1116 (6) HTTP-Pfad). F-1116 (1)(2) bleiben offen
+  (die Abnahme zeigt den Server-Grund nicht).
+- **A8:** `vorgewaehlteRolle` wählt die erste laufende Rolle über alle Reiter (Kreis-Rollen, dann Satelliten) — sonst sagt
+  die Mitte „qa läuft“ und das Panel zeigt den Builder. Kommentare im Kreis nachziehen. Kein eigener Render-Nachweis des
+  Kreises (Unit-Test; Kreis außerhalb der Abnahme-Seite).
+- **A9:** ein Name: „Prüfung aus Nutzersicht“ für Karte und Timeline (`rolle.qa`, de/en/ru/tr); im Kreis bleibt das
+  Kürzel „qa“ wie die Nachbarn code-reviewer/design-guardian (Subagenten-Namen, Bestand F46).
+- **A10:** die in der Projektion gelesene qa-Laufakte geht an `ermittlePrueferBefund` (Muster `reviewVorgelesen`).
+- **A11:** O2 präzisiert — die **Abnahme** zeigt den Server-Grund nicht (Liste und Technik-Teil zeigen ihn weiter).
+- **A12:** `schwere_bei_bereit` nur bei BEREIT (dieselbe Regel wie beim Review, `zaehleSchwereBeiBereit`) — bewusst,
+  abweichend vom Wortlaut von F-1117 (2); bei der Erledigung notieren.
+- **A13:** F-1117 (6) dokumentieren (Fixpaket/STATUS): kein Annehmen ohne qa; eine Reparaturfassung kann den
+  AUTOMATISCH-qa-Schritt entfernen (`ermittleFreigabeAbschwaechungen` prüft nur ZWINGEND) — `fehlt_im_ablauf` nennt das.
+
+## Bau und Prüfpass B2b-2b-2 (15.10.2026)
+
+- Bau nach Plan v1.1. Reihenfolge (A5, abgewandelt): zuerst Router-Tests rot (Schrittzahl 4 statt 5), dann die Vorlagen
+  ⇒ 22/22 grün; danach die Kandidaten aus §7 **einzeln** gegen die neuen Vorlagen: `check-f23-abnahme`,
+  `check-f35-ws1-feature-auftrag`, `check-f35-ws3-adjust-automatik`, `check-f39-architekt`, `check-f652-pruefschritt`,
+  `check-fixpaket-f30-vorbedingungen`, `check-fix-f676-installwurzel`, `check-f22-click-to-work`, `check-f42-projekt-harness`,
+  `check-fixpaket-f35-reallauf`, `check-f36-ws3/ws5a/ws5b`, `check-f813-csrf`, `check-f814-host`, `check-f45-b2b1-rueckweg`,
+  `check-f45-b2b2-pruefer`, `leitstand-abnahme-stand.test`, `routen-faehigkeiten.test`, `startvorlage-wahl.test`,
+  `capabilities-ansicht.test`, `harness-abgleich.test` — **alle 22 grün, kein Gate angepasst** (keines fährt einen
+  standard/hoch-Ablauf bis hinter den Review). Angepasst nur Tests mit Begründung: `router.test.ts` (Schrittzahl, qa-Schritt),
+  `rollen-kreis.test.mjs` (Abbildung mit qa; der frühere Fall „Satelliten bleiben offen, auch mit qa-Schritt“ ist durch die
+  Entscheidung F-1117 (7) überholt), `rollen-anzeige.test.mjs` (Rollenname „Prüfung aus Nutzersicht“, A9),
+  `workflow-abnahme.test.mjs` („Weitere Claude-Prüfer“, A4).
+- Rot→grün: Unit-Tests der Anzeige vor der Implementierung rot (fehlender Export), Kreis/Rollenname 3 rot; Gate gegen den
+  Server-Stand HEAD rot mit 5 Befunden ((v2)–(v5)), danach grün.
+- Prüfpass (frischer Kontext): code-reviewer „Freigegeben mit Hinweisen“, design-guardian „Freigegeben mit Hinweisen“ (kein
+  HOCH), qa „Nicht freigegeben“ (laufender qa zeigte „nicht lesbar“; AK 6 noch ohne Beleg).
+- Korrekturrunde: Status `laeuft` in der qa-Projektion (code-reviewer 1, qa 1; Gate (v7), Unit), Gate (q5)/(q10) mit
+  GET …/abnahme (code-reviewer 3), `ermittlePrueferBefund` liest eine fehlende Laufakte nicht zweimal (code-reviewer 4), bei
+  Halt kein „bevor du abnimmst“ und Satz „… startet nicht. Prüfe die Urteile von Review und Prüfung aus Nutzersicht …“ (qa 2),
+  Testfälle aufklappbar mit Zahlenzeile + `abgleich-f46.md` qa „U (qa) / K“ mit begründeter Abweichung (design-guardian 1),
+  h4 im Vorab-Block ohne letzte Linie (design-guardian 2), kürzerer Blick-Text (design-guardian 3), `kreis.aufgabe.qa`
+  (design-guardian 5), ru „Не проверяемо“, Harness-Wortlaut ohne Kennung (qa 7). Render alle 13 Folgen neu.
+- Nachpass: code-reviewer, qa und design-guardian je „Freigegeben mit Hinweisen“. Zwei Punkte sind durch die Korrektur neu
+  entstanden (MITTEL) und bleiben nach der einen Korrekturrunde offen: `laeuft` auch bei Halt nach einer Stale-Heilung
+  (Vorab-Block ohne Ursache) und „Details unten“ zeigt in zwei Lagen in die falsche Richtung — F-1118 (dazu derselbe
+  Fehlalarm beim laufenden Review). Übrige Punkte F-1119.

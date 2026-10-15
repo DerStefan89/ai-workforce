@@ -1,0 +1,3 @@
+| Aktion | qa-Karte | Review-Kachel | Hinweis amber | Hinweis rot | Badge amber (Karte) | Testfälle (3) | qa-Befundliste da | Knopf qa wiederholen | Zahl im Blick | Abnehmen | qa-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Halt am qa nach Werkzeugausfall, Knopf — de-1440 | false | false | false | true | false | false | false | true | true | false | Prüfung aus NutzersichtDas Werkzeug der Prüfung aus Nutzersicht ist ausgefallen.Ohne Prüfung aus Nutzersicht ist keine A |  | false | 1440/1440 | true |

@@ -44,6 +44,16 @@
  * (q11) zweite Runde mit denselben Befunden ⇒ Wiederholungs-Grund über beide Prüfer (Lesepfad der Vorrunde im Server).
  * (q9) Review BEREIT mit AK-Verstoß, qa BEREIT ⇒ der qa läuft, eine Runde, der Neubau nennt das verletzte AK.
  * (q10) Mensch-Pfad: qa BLOCKIERT bei max_replans 0 ⇒ Halt am qa; „Anpassung wünschen“ ⇒ bezug.qa_lauf_id, Neubau mit Q1.
+ * B2b-2b-2 (qa live in den ECHTEN Vorlagen, waehleWorkflowVorlage; features/F45/plan-b2b2b.md Plan B2b-2b-2 v1.1):
+ * (v1) standard: Läufe Ausführung → Review → qa, ABGESCHLOSSEN; der qa bekommt Auftrag, Änderungsübersicht, Review-Ergebnis.
+ * (v2) qa FEHLGESCHLAGEN ⇒ GET …/abnahme qaErgebnis { halt, status, grund }, qaWiederholbar true, Review unberührt.
+ * (v3) „qa wiederholen“ (POST …/pruefer-wiederholen + …/starten) ⇒ nur der qa läuft erneut, ABGESCHLOSSEN.
+ * (v4) qa BEREIT mit HOCH ⇒ qaErgebnis.schwere_bei_bereit 1, Testfälle; nach ANGENOMMEN 0 und bezug.qa_lauf_id.
+ * (v5) fast-lane ohne qa (qaErgebnis kein_qa_schritt). (v6) hoch: qa hinter dem Review (strukturell).
+ * (v7) laufender qa ohne Laufakte ⇒ qaErgebnis 'laeuft' (kein Fehlalarm). Dazu in (q5) nicht_lesbar + qaWiederholbar und in
+ *      (q10) Halt mit gültigem BLOCKIERT ⇒ qaErgebnis ok + halt, qaWiederholbar false (Prüfpass B2b-2b-2).
+ * (v7b) F-1118 (1): qa LAEUFT bei KLAERUNG_ERFORDERLICH (Stale-Heilung) ⇒ 'abgebrochen' mit Halt und Grund.
+ * (v8) F-1119 (1): Review BLOCKIERT + qa BEREIT ohne Runde ⇒ Halt am qa mit qaErgebnis.reviewBeanstandet true.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -60,12 +70,13 @@ import { join } from 'node:path'
 import { ladeArtefaktVersion, listeVersionen, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { KEINE_BEFUNDE_SATZ } from '../src/review-policy/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
+import { waehleWorkflowVorlage } from '../src/router/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 
 const befunde = []
-console.log('\n=== F45-B2b-2-Prüfer-Check (2a Review, 2b-1 qa) ===\n')
+console.log('\n=== F45-B2b-2-Prüfer-Check (2a Review, 2b-1 qa, 2b-2 qa live) ===\n')
 
 const STILL = () => {}
 const INSTALL_WURZEL = process.cwd()
@@ -138,7 +149,7 @@ const profilReferenz = leiteProfilReferenzAb(vorlage)
 // Je Workflow eine Warteschlange von Review- bzw. qa-Ausgängen; die Attrappe nimmt je Lauf den nächsten.
 const reviewAusgaenge = new Map()
 const qaAusgaenge = new Map()
-const laeufe = [] // { workflowId, laufId, rolle, worker, aufrufEingaben, auftragstext }
+const laeufe = [] // { workflowId, laufId, rolle, worker, aufrufEingaben, auftragstext, anfragen }
 const aktiv = { workflowId: null }
 
 /**
@@ -159,7 +170,7 @@ function rohstromStdout(worker, text) {
 async function attrappe(laufId, _profil, eingaben) {
   const workflowId = aktiv.workflowId
   const worker = eingaben.worker ?? 'claude-code'
-  laeufe.push({ laufId, rolle: eingaben.rolle, worker, workflowId, aufrufEingaben: eingaben.aufrufEingaben, auftragstext: eingaben.auftragstext })
+  laeufe.push({ laufId, rolle: eingaben.rolle, worker, workflowId, aufrufEingaben: eingaben.aufrufEingaben, auftragstext: eingaben.auftragstext, anfragen: eingaben.anfragen })
   if (eingaben.rolle !== 'code-reviewer' && eingaben.rolle !== 'qa') return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   const ausgang = (eingaben.rolle === 'qa' ? qaAusgaenge : reviewAusgaenge).get(workflowId)?.shift() ?? { ausgang: 'ERFOLGREICH', text: 'kein Ausgang hinterlegt' }
   mkdirSync(basisVerzeichnis, { recursive: true })
@@ -250,6 +261,24 @@ async function legeAn(kennung, ausgaenge, review = SCHRITT_REVIEW_CODEX, mitQa =
 /** B2b-2b-1: Ablauf Ausführung → Review (codex) → qa mit hinterlegten Ausgängen. @returns workflowId oder null */
 const legeAnMitQa = (kennung, reviews, qas, maxReplans = 1) => legeAn(kennung, reviews, SCHRITT_REVIEW_CODEX, { qaAusgaengeListe: qas, maxReplans })
 const letzteAbnahme = (id) => abnahmen(id).at(-1) ?? null
+
+/**
+ * B2b-2b-2 (Advisor A6): Ablauf aus der ECHTEN Vorlage (waehleWorkflowVorlage — eine Ersetzungsstelle für die Platzhalter),
+ * mit hinterlegten Review- und qa-Ausgängen. @returns { workflowId, daten } oder null
+ */
+async function legeAnAusVorlage(kennung, kontrolltiefe, reviews, qas) {
+  const antwort = await fetch(`${basisUrl}/api/features/${encodeURIComponent(FEATURE_ID)}/auftrag`, { method: 'POST' })
+  const koerper = await antwort.json().catch(() => ({}))
+  if (antwort.status !== 201 || typeof koerper.auftragId !== 'string') {
+    befunde.push(`(${kennung}) Vorbedingung POST …/auftrag: ${antwort.status} ${JSON.stringify(koerper)}`)
+    return null
+  }
+  const daten = waehleWorkflowVorlage({ kontrolltiefe, risikoklasse: 'mittel', task_typen: ['bugfix'], rueckfragen: [], begruendung: 'Gate.' }, koerper.auftragId, `Gate B2b-2b-2 (${kennung}).`, INSTALL_WURZEL)
+  registriereWorkflow(daten, profilReferenz, ladeOptionen)
+  reviewAusgaenge.set(daten.workflow_id, [...reviews])
+  qaAusgaenge.set(daten.workflow_id, [...qas])
+  return { workflowId: daten.workflow_id, daten }
+}
 
 const ladeWorkflow = (id) => ladeArtefaktVersion(`workflow-${id}`, undefined, ladeOptionen)?.daten ?? null
 const abnahmen = (id) => listeVersionen(`entscheidung-workflow-${id}-abnahme`, ladeOptionen)
@@ -547,6 +576,9 @@ try {
     const id = await legeAnMitQa('q5', [review('BEREIT', [])], [qa('BEREIT', [], []), qa('BEREIT', [])])
     const daten = id && (await gibFreiUndWarte('q5', id))
     if (daten) {
+      // B2b-2b-2 (Code-Review 3): Schemaverstoß ⇒ nicht_lesbar mit halt, wiederholbar.
+      const vorher = await holeAbnahme(id)
+      pruefe(vorher.qaErgebnis?.status === 'nicht_lesbar' && vorher.qaErgebnis.halt === true && vorher.qaWiederholbar === true, '(q5) GET …/abnahme: qaErgebnis nicht_lesbar mit halt, qaWiederholbar true.', `(q5) Abnahme-Projektion — ${JSON.stringify(vorher.qaErgebnis)}, qaWiederholbar ${vorher.qaWiederholbar}`)
       const antwort = await post(`/api/workflows/${encodeURIComponent(id)}/pruefer-wiederholen`)
       const nachher = ladeWorkflow(id)
       const qaSchritt = nachher?.schritte?.find((s) => s.schritt_id === 'schritt-3-qa')
@@ -617,6 +649,13 @@ try {
     const erst = id && (await gibFreiUndWarte('q10', id))
     if (erst) {
       const qaLauf = laeufeVon(id, 'qa')[0]?.laufId
+      // B2b-2b-2 (Code-Review 3): Halt mit gültigem Ergebnis — die Abnahme zeigt Urteil und Befunde, nicht wiederholbar.
+      const halt = await holeAbnahme(id)
+      pruefe(
+        halt.qaErgebnis?.status === 'ok' && halt.qaErgebnis.halt === true && halt.qaErgebnis.urteil === 'BLOCKIERT' && halt.qaErgebnis.befunde?.[0]?.id === 'Q1' && halt.qaWiederholbar === false,
+        '(q10) Halt am qa mit gültigem BLOCKIERT: GET …/abnahme qaErgebnis ok mit halt und Befunden, qaWiederholbar false.',
+        `(q10) Abnahme-Projektion am Halt — ${JSON.stringify(halt.qaErgebnis)}, qaWiederholbar ${halt.qaWiederholbar}`
+      )
       const anpassung = await post(`/api/workflows/${encodeURIComponent(id)}/abnahme`, { ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Q1 vor der Abnahme beheben.' })
       const bezug = letzteAbnahme(id)?.daten?.bezug
       const zweit = anpassung.status === 200 ? await gibFreiUndWarte('q10', id) : null
@@ -639,6 +678,139 @@ try {
         zweit?.status === 'KLAERUNG_ERFORDERLICH' && kernAnzahl(id) === 1 && (zweit.grund ?? '').includes('Die Prüfer melden nach der Korrektur dieselben Befunde wie zuvor (HOCH in src/liste.ts)'),
         '(q11) zweite Runde mit denselben Befunden: Wiederholungs-Grund über beide Prüfer, keine zweite Kern-Version.',
         `(q11) erwartet Wiederholungs-Halt — ${zweit?.status}, kern ${kernAnzahl(id)}, grund ${JSON.stringify(zweit?.grund)}`
+      )
+    }
+  }
+
+  // ══ F45 B2b-2b-2: qa-Schritt live in den echten Vorlagen ═══════════════════════════════════
+
+  // ── (v1) standard aus der Vorlage: Ausführung → Review → qa mit den Eingaben ──────────────
+  {
+    const angelegt = await legeAnAusVorlage('v1', 'standard', [review('BEREIT', [])], [qa('BEREIT', [])])
+    const daten = angelegt && (await gibFreiUndWarte('v1', angelegt.workflowId))
+    if (daten) {
+      const id = angelegt.workflowId
+      const reihenfolge = laeufe.filter((l) => l.workflowId === id).map((l) => l.rolle)
+      const ausfuehrungLauf = laeufeVon(id, 'ausfuehrung')[0]?.laufId
+      const reviewLauf = laeufeVon(id, 'code-reviewer')[0]?.laufId
+      const pfade = (laeufeVon(id, 'qa')[0]?.anfragen ?? []).map((a) => a?.pfad)
+      pruefe(
+        daten.status === 'ABGESCHLOSSEN' && JSON.stringify(reihenfolge) === JSON.stringify(['ausfuehrung', 'code-reviewer', 'qa']),
+        '(v1) standard aus der Vorlage: ABGESCHLOSSEN, Läufe Ausführung → Review → qa.',
+        `(v1) erwartet Ausführung → Review → qa — ${daten.status}, ${JSON.stringify(reihenfolge)}, grund ${JSON.stringify(daten.grund)}`
+      )
+      pruefe(
+        pfade.includes(`artefakt:auftrag-${daten.auftrag_id}`) && pfade.includes(`artefakt:aenderungsuebersicht-${ausfuehrungLauf}`) && pfade.includes(`artefakt:ergebnis-${reviewLauf}`),
+        '(v1) der qa-Lauf bekommt Auftrag, Änderungsübersicht und Review-Ergebnis (Prüfergebnis: Router-Test, ohne Prüfbefehl folgenlos).',
+        `(v1) Eingaben des qa unvollständig: ${JSON.stringify(pfade)}`
+      )
+    }
+  }
+
+  // ── (v2)/(v3) qa fällt aus ⇒ Abnahme zeigt den Halt; „qa wiederholen“ startet nur den qa ──
+  {
+    const angelegt = await legeAnAusVorlage('v2', 'standard', [review('BEREIT', [])], [FEHLSCHLAG, qa('BEREIT', [])])
+    const daten = angelegt && (await gibFreiUndWarte('v2', angelegt.workflowId))
+    if (daten) {
+      const id = angelegt.workflowId
+      const abnahme = await holeAbnahme(id)
+      pruefe(
+        daten.status === 'KLAERUNG_ERFORDERLICH' && abnahme.qaErgebnis?.halt === true && abnahme.qaErgebnis.status === 'fehlgeschlagen' && typeof abnahme.qaErgebnis.grund === 'string' && abnahme.qaWiederholbar === true && abnahme.reviewWiederholbar === false && abnahme.urteil?.status === 'ok',
+        '(v2) qa FEHLGESCHLAGEN: GET …/abnahme qaErgebnis mit halt, Status und Grund, qaWiederholbar true; Review unberührt.',
+        `(v2) erwartet Halt am qa in der Abnahme — ${daten.status}, qa ${JSON.stringify(abnahme.qaErgebnis)}, qaWiederholbar ${abnahme.qaWiederholbar}, reviewWiederholbar ${abnahme.reviewWiederholbar}`
+      )
+      const antwort = await post(`/api/workflows/${encodeURIComponent(id)}/pruefer-wiederholen`)
+      const danach = antwort.status === 200 ? await starteUndWarte('v3', id) : null
+      const nachher = await holeAbnahme(id)
+      pruefe(
+        danach?.status === 'ABGESCHLOSSEN' && laeufeVon(id, 'qa').length === 2 && laeufeVon(id, 'code-reviewer').length === 1 && laeufeVon(id, 'ausfuehrung').length === 1 && nachher.qaWiederholbar === false && nachher.qaErgebnis?.status === 'ok' && nachher.qaErgebnis.halt === false,
+        '(v3) „qa wiederholen“ + Start: nur der qa läuft erneut, ABGESCHLOSSEN, danach nicht mehr wiederholbar.',
+        `(v3) erwartet nur einen zweiten qa-Lauf — POST ${antwort.status}, ${danach?.status}, qa ${laeufeVon(id, 'qa').length}, Review ${laeufeVon(id, 'code-reviewer').length}, Ausführung ${laeufeVon(id, 'ausfuehrung').length}, ${JSON.stringify(nachher.qaErgebnis)}`
+      )
+    }
+  }
+
+  // ── (v4) qa BEREIT mit HOCH ⇒ Hinweis; nach ANGENOMMEN 0 und bezug.qa_lauf_id (F-1116 (6)) ──
+  {
+    const angelegt = await legeAnAusVorlage('v4', 'standard', [review('BEREIT', [])], [qa('BEREIT', [befundQa('Q1', 'HOCH'), befundQa('Q2', 'NIEDRIG')])])
+    const daten = angelegt && (await gibFreiUndWarte('v4', angelegt.workflowId))
+    if (daten) {
+      const id = angelegt.workflowId
+      const vorher = await holeAbnahme(id)
+      pruefe(
+        daten.status === 'ABGESCHLOSSEN' && vorher.qaErgebnis?.status === 'ok' && vorher.qaErgebnis.urteil === 'BEREIT' && vorher.qaErgebnis.schwere_bei_bereit === 1 && vorher.qaErgebnis.befunde?.[0]?.id === 'Q1' && vorher.qaErgebnis.testfaelle?.[0]?.ergebnis === 'bestanden' && vorher.qaErgebnis.worker === 'claude-code' && kernAnzahl(id) === 0,
+        '(v4) qa BEREIT mit HOCH: ABGESCHLOSSEN ohne Runde, qaErgebnis mit Urteil, Befunden, Testfällen, schwere_bei_bereit 1.',
+        `(v4) erwartet Hinweis ohne Runde — ${daten.status}, ${JSON.stringify(vorher.qaErgebnis)}, kern ${kernAnzahl(id)}`
+      )
+      const angenommen = await post(`/api/workflows/${encodeURIComponent(id)}/abnahme`, { ergebnis: 'ANGENOMMEN', begruendung: 'Q1 bewusst angenommen.' })
+      const nachher = await holeAbnahme(id)
+      pruefe(
+        angenommen.status === 200 && nachher.qaErgebnis?.schwere_bei_bereit === 0 && nachher.entscheidung?.bezug?.qa_lauf_id === laeufeVon(id, 'qa')[0]?.laufId,
+        '(v4) nach ANGENOMMEN: schwere_bei_bereit 0, entscheidung.bezug.qa_lauf_id = qa-Lauf (HTTP-Pfad, F-1116 (6)).',
+        `(v4) nach ANGENOMMEN — POST ${angenommen.status}, schwere ${nachher.qaErgebnis?.schwere_bei_bereit}, bezug ${JSON.stringify(nachher.entscheidung?.bezug)}`
+      )
+    }
+  }
+
+  // ── (v5) fast-lane aus der Vorlage: kein qa ────────────────────────────────────────────
+  {
+    const angelegt = await legeAnAusVorlage('v5', 'fast-lane', [], [])
+    const daten = angelegt && (await gibFreiUndWarte('v5', angelegt.workflowId))
+    if (daten) {
+      const abnahme = await holeAbnahme(angelegt.workflowId)
+      pruefe(
+        daten.status === 'ABGESCHLOSSEN' && laeufeVon(angelegt.workflowId, 'qa').length === 0 && abnahme.qaErgebnis?.status === 'kein_qa_schritt' && abnahme.qaWiederholbar === false,
+        '(v5) fast-lane aus der Vorlage: ABGESCHLOSSEN ohne qa-Lauf, qaErgebnis kein_qa_schritt.',
+        `(v5) erwartet fast-lane ohne qa — ${daten.status}, qa ${laeufeVon(angelegt.workflowId, 'qa').length}, ${JSON.stringify(abnahme.qaErgebnis)}`
+      )
+    }
+  }
+
+  // ── (v6) hoch aus der Vorlage (strukturell): qa hinter dem Review mit den Eingaben der Bau-Stufe ──
+  {
+    const hoch = waehleWorkflowVorlage({ kontrolltiefe: 'hoch', risikoklasse: 'mittel', task_typen: ['bugfix'], rueckfragen: [], begruendung: 'Gate.' }, 'gate-v6', 'Gate.', INSTALL_WURZEL)
+    const qaSchritt = hoch.schritte.at(-1)
+    const reviewSchritt = hoch.schritte.find((s) => s.nachfolger === qaSchritt?.schritt_id)
+    pruefe(
+      qaSchritt?.output_schema === 'ergebnis-qa' && reviewSchritt?.output_schema === 'ergebnis-code-reviewer' && qaSchritt.eingaben.includes('artefakt:ergebnis-@schritt-4-review') && qaSchritt.eingaben.includes('artefakt:aenderungsuebersicht-@schritt-3-ausfuehrung'),
+      '(v6) hoch: qa hinter dem Review, Eingaben auf Ausführung und Review der Bau-Stufe.',
+      `(v6) hoch-Vorlage ohne passenden qa-Schritt: ${JSON.stringify(qaSchritt)}`
+    )
+  }
+
+  // ── (v7) Prüfpass (code-reviewer 1, qa 1): ein laufender qa (lauf_id gesetzt, Laufakte noch nicht da) ist 'laeuft' ──
+  {
+    const angelegt = await legeAnAusVorlage('v7', 'standard', [], [])
+    if (angelegt) {
+      const laufend = { ...angelegt.daten, version: 2, status: 'LAEUFT', aktiver_schritt_id: 'schritt-3-qa', schritte: angelegt.daten.schritte.map((s, i) => ({ ...s, status: i < 2 ? 'ERFOLGREICH' : 'LAEUFT', lauf_id: `gate-v7-${i}` })) }
+      registriereWorkflow(laufend, profilReferenz, ladeOptionen)
+      const abnahme = await holeAbnahme(angelegt.workflowId)
+      pruefe(
+        abnahme.qaErgebnis?.status === 'laeuft' && abnahme.qaErgebnis.halt === false && abnahme.qaErgebnis.reviewBeanstandet === undefined && abnahme.qaWiederholbar === false,
+        "(v7) qa LAEUFT ohne Laufakte: qaErgebnis 'laeuft' (kein 'laufakte_fehlt'), kein Halt, nicht wiederholbar.",
+        `(v7) laufender qa — ${JSON.stringify(abnahme.qaErgebnis)}, qaWiederholbar ${abnahme.qaWiederholbar}`
+      )
+      // F-1118 (1): Stale-Heilung nach einem Neustart — Ablauf auf Klärung, der qa-Schritt bleibt LAEUFT.
+      registriereWorkflow({ ...laufend, version: 3, status: 'KLAERUNG_ERFORDERLICH', grund: 'Gate (v7b): Lauf hängt.' }, profilReferenz, ladeOptionen)
+      const haengt = await holeAbnahme(angelegt.workflowId)
+      pruefe(
+        haengt.qaErgebnis?.status === 'abgebrochen' && haengt.qaErgebnis.halt === true && typeof haengt.qaErgebnis.grund === 'string',
+        "(v7b) F-1118 (1): qa LAEUFT bei KLAERUNG_ERFORDERLICH (nach einem Neustart) ⇒ qaErgebnis 'abgebrochen' mit Halt und Grund.",
+        `(v7b) hängender qa — ${JSON.stringify(haengt.qaErgebnis)}`
+      )
+    }
+  }
+
+  // ── (v8) F-1119 (1): Halt am qa nach einer Beanstandung des Reviews ⇒ qaErgebnis.reviewBeanstandet ──
+  {
+    const id = await legeAnMitQa('v8', [review('BLOCKIERT', [befundV2('B1', 'HOCH')])], [qa('BEREIT', [])], 0)
+    const daten = id && (await gibFreiUndWarte('v8', id))
+    if (daten) {
+      const abnahme = await holeAbnahme(id)
+      pruefe(
+        daten.status === 'KLAERUNG_ERFORDERLICH' && daten.aktiver_schritt_id === 'schritt-3-qa' && abnahme.qaErgebnis?.halt === true && abnahme.qaErgebnis.reviewBeanstandet === true && abnahme.urteil?.befunde?.[0]?.id === 'B1',
+        '(v8) Review BLOCKIERT, qa BEREIT, keine Runde mehr: Halt am qa, qaErgebnis.reviewBeanstandet true, Review-Befunde in der Abnahme.',
+        `(v8) erwartet reviewBeanstandet — ${daten.status}/${daten.aktiver_schritt_id}, ${JSON.stringify(abnahme.qaErgebnis)}`
       )
     }
   }

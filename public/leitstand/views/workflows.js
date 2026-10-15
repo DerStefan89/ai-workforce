@@ -59,7 +59,7 @@ import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzei
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDialog } from './arbeitsordner-anzeige.js'
 import { bedienZustand } from './entscheidung-panel.js'
-import { abnahmeLage, ausfuehrungGelaufen, pruefWertText, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung } from './workflow-abnahme.js'
+import { abnahmeLage, ausfuehrungGelaufen, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung } from './workflow-abnahme.js'
 import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
 import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen } from './workflow-eingriffe.js'
 import { entscheidungsModus, FREIGABE_OPTIONEN, renderFreigabePanel, renderFreigabeSeite, seitenKopf } from './workflow-entscheiden.js'
@@ -147,7 +147,7 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   const e = abnahme.entscheidung ?? {}
   // F45 B2a-3b (qa 1): die Review-Hinweise (u. a. „Review veraltet“, das der Poll ohne Statuswechsel liefert) gehören ins
   // Kennzeichen — sonst zeigte „Auf einen Blick“ den Hinweis, die Review-Kachel aber nicht.
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}`
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}|${abnahme.qaErgebnis?.status ?? 'null'}|${abnahme.qaErgebnis?.laufId ?? '-'}|${abnahme.qaErgebnis?.halt === true}|${qaHinweisKennung(abnahme.qaErgebnis)}|${abnahme.qaWiederholbar === true}`
   if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) {
     zeichneEntscheiden()
     return
@@ -1309,10 +1309,13 @@ async function fuehrePruefungWiederholenAus(button) {
  * startet ihn danach über den gewöhnlichen Start (POST …/starten) — der Server startet beim Zurücksetzen nichts. Scheitert
  * der Start (z. B. ein anderer Lauf ist aktiv) oder wartet der Schritt auf eine Freigabe, bleibt der Review zurückgesetzt;
  * die Meldung erscheint dann im Fehlerstil mit dem Grund des Servers (ohne HTTP-Code) bzw. dem übersetzten Status.
+ * F45 B2b-2b-2: derselbe Weg für „Prüfung aus Nutzersicht wiederholen“ (data-pruefer="qa" — die Route setzt den Schritt am
+ * Cursor zurück); nur die Meldungen sind je Prüfer eigene.
  * @param button - der geklickte .wf-pruefer-wiederholen-Knopf
  */
 async function fuehrePrueferWiederholenAus(button) {
   const workflowId = button.dataset.workflowId
+  const meldung = button.dataset.pruefer === 'qa' ? 'abnahme.qa' : 'abnahme.pruefer'
   const anfrage = async () => {
     const zurueck = await wiederholePruefer(workflowId)
     if (!zurueck.ok) return zurueck
@@ -1324,7 +1327,7 @@ async function fuehrePrueferWiederholenAus(button) {
     return new Response(JSON.stringify({ ohneStart: fehler.grund ?? t('ablauf.fehler.unbekannt') }), { status: 200 })
   }
   await sendeAbnahmeBedienung(workflowId, anfrage, button, (inhalt) =>
-    typeof inhalt.ohneStart === 'string' ? { text: t('abnahme.pruefer.ohneStart', { grund: inhalt.ohneStart }), art: 'fehler' } : t('abnahme.pruefer.erfolg')
+    typeof inhalt.ohneStart === 'string' ? { text: t(`${meldung}.ohneStart`, { grund: inhalt.ohneStart }), art: 'fehler' } : t(`${meldung}.erfolg`)
   )
 }
 

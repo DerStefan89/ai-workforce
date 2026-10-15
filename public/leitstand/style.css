@@ -7743,6 +7743,29 @@ th {
   color: var(--ink);
 }
 
+/* F45 B2b-2b-2: Testfälle der Prüfung aus Nutzersicht untereinander wie ein Befund (Name mit Ergebnis, Schritte, Erwartet) —
+   nebeneinander brachen die Spalten bei 390 px mitten im Wort. */
+.workflow-seite .abnahme-testfall {
+  flex-direction: column;
+  gap: 0;
+}
+
+.workflow-seite .abnahme-testfall p:first-child {
+  margin-top: 0;
+}
+
+/* In der Notiz des Vorab-Blocks keine Trennlinie unter dem letzten Befund (design-guardian B2b-2b-2 2). */
+.workflow-seite .abnahme-qa-hinweise .abnahme-liste > li:last-child {
+  border-bottom: 0;
+}
+
+.workflow-seite .abnahme-testfall-schritte {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
 .workflow-seite .abnahme-symbol {
   flex-shrink: 0;
   width: 14px;

@@ -1,0 +1,21 @@
+[
+  {
+    "label": "qa bereit mit HOCH-Befund, Karte unter dem Review — ru-390-hell",
+    "qa-Karte": true,
+    "Review-Kachel": true,
+    "Hinweis amber": true,
+    "Hinweis rot": false,
+    "Badge amber (Karte)": true,
+    "Testfälle (3)": true,
+    "qa-Befundliste da": true,
+    "Knopf qa wiederholen": false,
+    "Review-Befunde in der qa-Notiz": false,
+    "Zahl im Blick": true,
+    "Abnehmen": true,
+    "qa-Notiz": "Замечания к проверке глазами пользователяПроверка глазами пользователя говорит «готово», но сообщает о 1 серьёзном замеч",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true
+  }
+]

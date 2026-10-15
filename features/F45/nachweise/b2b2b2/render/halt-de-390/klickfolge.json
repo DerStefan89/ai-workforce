@@ -1,0 +1,77 @@
+{
+  "url": "http://127.0.0.1:4402/#/workflows/router-d0fc5d4c-03ed-4640-8e74-296d3b0c49df",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "qa-Notiz",
+        "selector": ".abnahme-qa-hinweise"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "qa-Karte",
+        "selector": ".abnahme-qa-karte"
+      },
+      {
+        "name": "Review-Kachel",
+        "selector": ".entscheiden-kacheln"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-qa-hinweise.amber"
+      },
+      {
+        "name": "Hinweis rot",
+        "selector": ".abnahme-qa-hinweise.red"
+      },
+      {
+        "name": "Badge amber (Karte)",
+        "selector": ".abnahme-qa-karte .ablauf-status.warten"
+      },
+      {
+        "name": "Testfälle (3)",
+        "selector": ".abnahme-testfaelle > li:nth-child(3)"
+      },
+      {
+        "name": "qa-Befundliste da",
+        "selector": ".abnahme-qa-hinweise .abnahme-befunde, .abnahme-qa-karte .abnahme-befunde"
+      },
+      {
+        "name": "Knopf qa wiederholen",
+        "selector": ".wf-pruefer-wiederholen[data-pruefer=\"qa\"]"
+      },
+      {
+        "name": "Review-Befunde in der qa-Notiz",
+        "selector": ".abnahme-qa-hinweise h4:nth-of-type(2)"
+      },
+      {
+        "name": "Zahl im Blick",
+        "selector": "[data-qa-hinweise-anzahl]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Halt am qa nach Werkzeugausfall, Knopf — de-390",
+      "warteAufSelector": {
+        "selector": ".wf-pruefer-wiederholen[data-pruefer=\"qa\"]",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-de-390.webp"
+    }
+  ]
+}

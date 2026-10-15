@@ -21,6 +21,10 @@
  * (eine Quelle) erscheint im Blick (jeder Urteilsstatus), im Block der Lage 'vorab' (KLAERUNG_ERFORDERLICH) und in der
  * Review-Kachel; Befunde v2 zeigen ID, Dimension, Evidenz und Korrekturrichtung. F45 B2a-3b (§9.6): „Review veraltet“ bzw.
  * „Stand des Reviews nicht bestimmbar“ (urteil.veraltet/stand_grund, nur bei offener Abnahme gesetzt) über dieselbe Quelle.
+ * F45 B2b-2b-2 (F-1117 (7)): die Prüfung aus Nutzersicht (qa, GET …/abnahme qaErgebnis/qaWiederholbar) — eigene Karte unter
+ * den Kacheln (Urteil, Befunde, Testfälle, Hinweis bei schweren Befunden trotz „bereit“), im Vorab-Block bei einem Halt die
+ * Ursache, der Ausweg in einem Satz und „Prüfung aus Nutzersicht wiederholen“ bzw. die qa-Befunde, im Blick Urteil und Zahl;
+ * eine Quelle qaHinweise. Den Server-Grund des Halts zeigt die Abnahme nicht (er trägt Kennungen, F-1116 (5)).
  *
  * Reine Render-Funktionen: kein fetch, kein DOM, kein Import schreibender api.js-Funktionen; in Node
  * ohne DOM importierbar. Laden, Kennzeichen und alle POSTs bleiben in views/workflows.js.
@@ -283,12 +287,14 @@ function renderReviewHinweise(urteil, workflowId = '', wiederholbar = false) {
 /**
  * Die Befunde des Reviews als Liste: Schwere, Fundstelle, Zusammenfassung, Beleg; seit Schema v2 (F45 B2a-3a) dazu ID,
  * Dimension, Evidenz und Korrekturrichtung, soweit vorhanden (renderBefundV2).
- * @param urteil - abnahme.urteil (status 'ok')
+ * @param urteil - abnahme.urteil (status 'ok') bzw. abnahme.qaErgebnis (dieselbe Befundform, F45 B2b-2b-2)
+ * @param ebene - Überschriftenebene (3; 4 in der Notiz des Vorab-Blocks unter dessen h3, design-guardian B2b-2b-2 2)
+ * @param titel - i18n-Schlüssel der Überschrift (Standard „Befunde“; F-1119 (1): „Befunde des Reviews“ in der qa-Notiz)
  * @returns HTML
  */
-function renderBefunde(urteil) {
+function renderBefunde(urteil, ebene = 3, titel = 'abnahme.befunde.titel') {
   const befunde = Array.isArray(urteil.befunde) ? urteil.befunde : []
-  const kopf = `<h3>${tHtml('abnahme.befunde.titel')}</h3>`
+  const kopf = `<h${ebene}>${tHtml(titel)}</h${ebene}>`
   if (befunde.length === 0) return `${kopf}<p class="subtle">${tHtml('abnahme.befunde.leer')}</p>`
   const zeilen = befunde
     .map(
@@ -316,6 +322,138 @@ function renderBefundV2(b) {
   const korrektur = typeof b.korrekturrichtung === 'string' && b.korrekturrichtung !== '' ? `<p class="subtle">${tHtml('abnahme.befunde.korrektur', { text: b.korrekturrichtung })}</p>` : ''
   if (teile.length === 0 && korrektur === '') return ''
   return `<div class="abnahme-befund-v2">${teile.length > 0 ? `<p class="subtle">${teile.join(' · ')}</p>` : ''}${korrektur}</div>`
+}
+
+// ─── F45 B2b-2b-2: Prüfung aus Nutzersicht (qa, F-1117 (7), features/F45/plan-b2b2b.md Plan B2b-2b-2 v1.1) ────────
+
+/** Ergebnis eines Testfalls (schemas/ergebnis-qa.schema.json) → Statusfarbe und Symbol (Muster AK-Urteile). */
+const TESTFALL_ERGEBNISSE = new Set(['bestanden', 'durchgefallen', 'nicht_pruefbar'])
+const FARBE_TESTFALL = { bestanden: 'ok', durchgefallen: 'fehler', nicht_pruefbar: 'warten' }
+const SYMBOL_TESTFALL = { bestanden: '✓', durchgefallen: '✗', nicht_pruefbar: '?' }
+/** Arten der qa-Hinweise, die eine rote Notiz und den Satz zum Ausweg auslösen (die Prüfung trägt nicht). */
+const ROTE_QA_HINWEISE = new Set(['ausgefallen', 'verweigert', 'nichtGestartet', 'nichtLesbar', 'abgebrochen'])
+
+/**
+ * Die Hinweise zur Prüfung aus Nutzersicht — eine Quelle für Karte, Vorab-Block, Blick und Render-Kennzeichen. Die Ursache
+ * folgt allein dem Status der Projektion (Darstellung, keine Regel, D5); den Server-Grund zeigt die Abnahme nicht, er trägt
+ * Kennungen (F-1116 (5), Advisor A11). Bei einem Halt mit gültigem Ergebnis (Regel 1q (b)/(c)) ein neutraler Satz ohne
+ * Unterscheidung der Ursache (Advisor A1). BEREIT trotz KRITISCH/HOCH wie beim Review (schwere_bei_bereit, A12).
+ * @param qa - abnahme.qaErgebnis
+ * @returns Liste { art, parameter?, text } (text unescaped)
+ */
+export function qaHinweise(qa) {
+  if (qa === null || typeof qa !== 'object') return []
+  const hinweis = (art, parameter = {}) => ({ art, parameter, text: t(`abnahme.qa.${art}`, parameter) })
+  if (qa.status === 'fehlgeschlagen') return [hinweis(qa.schrittStatus === 'VERWEIGERT' ? 'verweigert' : 'ausgefallen')]
+  if (qa.status === 'nicht_gelaufen_klaerung') return [hinweis('nichtGestartet')]
+  // F-1118 (1): Halt, während der Schritt noch als laufend gilt (Stale-Heilung nach einem Neustart).
+  if (qa.status === 'abgebrochen') return [hinweis('abgebrochen')]
+  if (qa.status === 'nicht_lesbar' || qa.status === 'laufakte_fehlt') return [hinweis('nichtLesbar')]
+  if (qa.status !== 'ok') return []
+  const hinweise = []
+  // Bei einem Halt ist Abnehmen gesperrt — „bevor du abnimmst“ passte nicht (qa-Prüfpass 2); der Halt-Satz genügt.
+  if (qa.halt === true) return [hinweis('haltNachQa')]
+  if (Number.isInteger(qa.schwere_bei_bereit) && qa.schwere_bei_bereit > 0) hinweise.push(hinweis('schwereBeiBereit', { anzahl: qa.schwere_bei_bereit }))
+  return hinweise
+}
+
+/**
+ * Kennung der qa-Hinweise für das Render-Kennzeichen der Abnahme (views/workflows.js, Muster reviewHinweisKennung).
+ * @param qa - abnahme.qaErgebnis
+ * @returns Text (leer ohne Hinweise)
+ */
+export function qaHinweisKennung(qa) {
+  return qaHinweise(qa)
+    .map((h) => `${h.art}:${h.parameter?.anzahl ?? ''}`)
+    .join(';')
+}
+
+/** @param qa - abnahme.qaErgebnis (status 'ok') @param hinweise - qaHinweise(qa) @returns Klasse des Urteil-Badges (amber bei schweren Befunden trotz BEREIT, wie beim Review) */
+function qaUrteilFarbe(qa, hinweise) {
+  if (hinweise.some((h) => h.art === 'schwereBeiBereit')) return 'warten'
+  return FARBE_URTEIL[qa?.urteil] ?? 'neutral'
+}
+
+/** @param qa - abnahme.qaErgebnis (status 'ok') @param hinweise - qaHinweise(qa) @returns HTML: Urteil-Badge und „Claude“ */
+function qaUrteilZeile(qa, hinweise) {
+  return `<p><span class="ablauf-status ${qaUrteilFarbe(qa, hinweise)}">${escapeHtml(wertText(URTEILE, 'abnahme.urteil.kurz', qa.urteil))}</span> <span class="subtle">${tHtml(qa.worker === 'codex' ? 'entscheiden.abnahme.reviewWer' : 'entscheiden.abnahme.reviewWerClaude')}</span></p>`
+}
+
+/**
+ * Die Testfälle der Prüfung aus Nutzersicht als <details> („Mehr bei Bedarf“, design-guardian B2b-2b-2 1): die Zusammenfassung
+ * trägt die Zahlen je Ergebnis, damit ein durchgefallener Testfall zugeklappt sichtbar bleibt; aufgeklappt je Testfall Name,
+ * Ergebnis (Symbol aria-hidden, der Text trägt die Bedeutung, Muster AK-Liste), Schritte und Erwartet.
+ * @param qa - abnahme.qaErgebnis (status 'ok')
+ * @returns HTML
+ */
+function renderTestfaelle(qa) {
+  const liste = Array.isArray(qa.testfaelle) ? qa.testfaelle.filter((f) => f !== null && typeof f === 'object') : []
+  if (liste.length === 0) return `<p class="subtle">${tHtml('abnahme.qa.testfaelleLeer')}</p>`
+  const zahl = (ergebnis) => String(liste.filter((f) => f.ergebnis === ergebnis).length)
+  const kopf = `<details class="abnahme-details abnahme-testfaelle-details"><summary>${tHtml('abnahme.qa.testfaelle')} · ${tHtml('abnahme.qa.testfaelleZahl', { bestanden: zahl('bestanden'), durchgefallen: zahl('durchgefallen'), nichtPruefbar: zahl('nicht_pruefbar') })}</summary>`
+  const zeilen = liste
+    .map((f) => {
+      const schritte = Array.isArray(f.schritte) ? f.schritte.map((s) => `<li>${escapeHtml(String(s ?? ''))}</li>`).join('') : ''
+      const farbe = FARBE_TESTFALL[f.ergebnis] ?? 'neutral'
+      return `<li class="abnahme-testfall">
+      <p><strong>${escapeHtml(f.name ?? '')}</strong> <span class="ak-urteil abnahme-testfall-${farbe} ak-urteil-${farbe}"><span aria-hidden="true">${SYMBOL_TESTFALL[f.ergebnis] ?? '·'} </span>${escapeHtml(wertText(TESTFALL_ERGEBNISSE, 'abnahme.qa.ergebnis', f.ergebnis))}</span></p>
+      ${schritte === '' ? '' : `<ol class="abnahme-testfall-schritte">${schritte}</ol>`}
+      <p class="subtle">${tHtml('abnahme.qa.erwartet', { text: String(f.erwartet ?? '') })}</p>
+    </li>`
+    })
+    .join('')
+  return `${kopf}<ul class="abnahme-liste abnahme-testfaelle">${zeilen}</ul></details>`
+}
+
+/**
+ * Notiz zur Prüfung aus Nutzersicht — rot bei einem Halt (Ursache, Satz zum Ausweg, Knopf nur bei qaWiederholbar; bei
+ * gültigem Ergebnis Urteil und Befunde, Advisor A8 aus 2b-1), sonst amber (schwere Befunde trotz BEREIT); ohne Hinweise
+ * nichts. Ausweg (Auftrag 4, Entscheidung Challenger): dieselben Wege wie beim Review — wiederholen oder reparieren —, kein
+ * Annehmen ohne qa; ein Satz, je nachdem, ob der Server das Wiederholen erlaubt (Advisor A2).
+ * @param qa - abnahme.qaErgebnis
+ * @param workflowId - Kennung des Workflows (für den Knopf)
+ * @param wiederholbar - abnahme.qaWiederholbar
+ * @param mitBefunden - true im Vorab-Block (dort stehen die Befunde sonst nirgends)
+ * @param review - abnahme.urteil (Review) — F-1119 (1): seine Befunde, wenn der Server meldet, dass der Review vor diesem Halt
+ *   beanstandet hat (qa.reviewBeanstandet)
+ * @returns HTML oder ''
+ */
+function renderQaNotiz(qa, workflowId = '', wiederholbar = false, mitBefunden = false, review = null) {
+  const hinweise = qaHinweise(qa)
+  if (hinweise.length === 0) return ''
+  const rot = qa.halt === true
+  const traegtNicht = hinweise.some((h) => ROTE_QA_HINWEISE.has(h.art))
+  const urteil = mitBefunden && qa.status === 'ok' ? qaUrteilZeile(qa, hinweise) : ''
+  const punkte = hinweise.map((h) => `<li data-qa-hinweis="${h.art}">${escapeHtml(h.text)}</li>`).join('')
+  const knopf = wiederholbar ? `<p><button type="button" class="button wf-pruefer-wiederholen" data-pruefer="qa" data-workflow-id="${escapeHtml(workflowId)}">${tHtml('abnahme.qa.wiederholen')}</button></p>` : ''
+  const weiter = traegtNicht ? `<p>${tHtml(wiederholbar ? 'abnahme.qa.weiterWiederholbar' : 'abnahme.qa.weiter')}</p>${knopf}` : ''
+  const befunde = mitBefunden && qa.status === 'ok' && qa.halt === true ? renderBefunde(qa, 4) : ''
+  const reviewBefunde = mitBefunden && qa.halt === true && qa.reviewBeanstandet === true && review?.status === 'ok' ? renderBefunde(review, 4, 'abnahme.qa.reviewBefunde') : ''
+  // Im Vorab-Block trägt die Notiz den Namen der Prüfung; in der Karte steht er schon als Kartentitel.
+  return `<div class="note ${rot ? 'red' : 'amber'} abnahme-qa-hinweise" role="note"><p><strong>${tHtml(mitBefunden ? 'abnahme.qa.titel' : 'abnahme.qa.hinweiseTitel')}</strong></p>${urteil}<ul>${punkte}</ul>${weiter}${befunde}${reviewBefunde}</div>`
+}
+
+/**
+ * Karte „Prüfung aus Nutzersicht“ der Lage „entscheidbar“ (unter der Kachelreihe): Urteil, wer prüfte, Empfehlung, Hinweis,
+ * Befunde und Testfälle. Ohne qa-Schritt (fast-lane, Bestand, alte Projektion) keine Karte.
+ * @param qa - abnahme.qaErgebnis oder undefined
+ * @returns HTML oder ''
+ */
+function renderQaKarte(qa) {
+  if (qa === null || typeof qa !== 'object' || qa.status === 'kein_qa_schritt') return ''
+  const kopf = `<h2 id="abnahme-qa-titel">${tHtml('abnahme.qa.titel')}</h2>`
+  let inhalt
+  if (qa.status === 'ok') {
+    const hinweise = qaHinweise(qa)
+    inhalt = `${qaUrteilZeile(qa, hinweise)}
+      <p class="entscheiden-review-text">${qa.empfehlung ? escapeHtml(qa.empfehlung) : tHtml('abnahme.empfehlung.keine')}</p>
+      ${renderQaNotiz(qa)}${renderBefunde(qa)}${renderTestfaelle(qa)}`
+  } else {
+    const hinweis = qaHinweise(qa)[0]
+    const leer = qa.status === 'laeuft' ? 'abnahme.qa.laeuft' : 'abnahme.qa.nochNichtGelaufen'
+    inhalt = `<p class="subtle">${hinweis !== undefined ? escapeHtml(hinweis.text) : tHtml(leer)}</p>`
+  }
+  return `<section class="entscheiden-karte abnahme-qa-karte" aria-labelledby="abnahme-qa-titel">${kopf}${inhalt}</section>`
 }
 
 /**
@@ -449,7 +587,8 @@ function renderPruefungKachel(workflowId, abnahme) {
 
 /**
  * Kachel „Review“: das Urteil des Reviews mit Empfehlung und wer prüfte (Codex, seit F45 B2b-2a bei worker claude-code
- * „Claude“ — aus der Laufakte, GET …/abnahme); Urteile je Claude-Prüfer „kommt“.
+ * „Claude“ — aus der Laufakte, GET …/abnahme); weitere Claude-Prüfer „kommt“ (seit B2b-2b-2 urteilt qa in eigener Karte;
+ * code-reviewer und design-guardian noch nicht, Advisor A4).
  * @param urteil - abnahme.urteil
  * @returns HTML
  */
@@ -534,6 +673,7 @@ export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harness
     <section class="entscheiden-kacheln" aria-label="${tHtml('entscheiden.abnahme.kachelnLabel')}">
       ${renderPruefungKachel(workflowId, abnahme)}${renderReviewKachel(urteil)}${renderNachweiseKachel(abnahme, harnessAbgleich)}
     </section>
+    ${renderQaKarte(abnahme.qaErgebnis)}
     ${renderSelbstAusprobieren(urteil, vorschau)}
     <section id="abnahme-nachweise" class="entscheiden-karte" aria-labelledby="abnahme-nachweise-titel">
       <h2 id="abnahme-nachweise-titel" tabindex="-1">${tHtml('entscheiden.abnahme.nachweiseTitel')}</h2>
@@ -606,6 +746,7 @@ function renderVorab(workflowId, abnahme, harnessAbgleich) {
     <h3 id="abnahme-vorab-titel">${gelaufen ? tHtml('abnahme.vorab.titelErgebnis') : tHtml('abnahme.vorab.titel')}</h3>
     <p class="subtle">${gelaufen ? tHtml('abnahme.vorab.textErgebnis') : tHtml('abnahme.vorab.text')}</p>
     ${renderReviewHinweise(abnahme.urteil, workflowId, abnahme.reviewWiederholbar === true)}
+    ${renderQaNotiz(abnahme.qaErgebnis, workflowId, abnahme.qaWiederholbar === true, true, abnahme.urteil)}
     ${renderFruehereEntscheidung(abnahme.entscheidung)}
     ${ergebnis}
     <label class="field" for="wf-abnahme-begruendung">${tHtml('abnahme.entscheidung.begruendung')}</label>
@@ -658,8 +799,21 @@ export function renderAbnahmeBlick(abnahme) {
     hinweise.length > 0
       ? `<dt>${tHtml('abnahme.review.titel')}</dt><dd><span class="ablauf-status ${hinweise.some((h) => ROTE_HINWEISE.has(h.art)) ? 'fehler' : 'warten'}" data-review-hinweise-anzahl="${hinweise.length}">${tHtml('abnahme.blick.hinweise', { anzahl: hinweise.length })}</span></dd>`
       : ''
+  // F45 B2b-2b-2: Prüfung aus Nutzersicht — Urteil mit Befundzahl und (bei Halt oder schweren Befunden) die Hinweiszahl;
+  // die Liste steht einmal, in der Karte bzw. im Vorab-Block (Muster design-guardian 2).
+  const qa = abnahme.qaErgebnis
+  const qaListe = qaHinweise(qa)
+  const qaBefunde = Array.isArray(qa?.befunde) ? qa.befunde.length : 0
+  const qaZeile =
+    qa?.status === 'ok'
+      ? `<dt>${tHtml('abnahme.qa.titel')}</dt><dd><span class="ablauf-status ${qaUrteilFarbe(qa, qaListe)}">${escapeHtml(wertText(URTEILE, 'abnahme.urteil.kurz', qa.urteil))}</span>${qaBefunde > 0 ? ` · ${tHtml('abnahme.qa.befundeAnzahl', { anzahl: qaBefunde })}` : ''}</dd>`
+      : ''
+  const qaHinweisZeile =
+    qaListe.length > 0
+      ? `<dt>${tHtml('abnahme.qa.hinweiseTitel')}</dt><dd><span class="ablauf-status ${qa.halt === true ? 'fehler' : 'warten'}" data-qa-hinweise-anzahl="${qaListe.length}">${tHtml('abnahme.qa.blickHinweise', { anzahl: qaListe.length })}</span></dd>`
+      : ''
   const entscheidung = abnahme.entscheidung
   const abnahmeText = entscheidung?.status === 'ok' ? escapeHtml(ergebnisText(entscheidung.ergebnis)) : tHtml('abnahme.blick.offen')
-  return `<dl class="abnahme-blick">${urteilZeile}${hinweisZeile}<dt>${tHtml('abnahme.blick.abnahme')}</dt><dd>${abnahmeText}</dd></dl>
+  return `<dl class="abnahme-blick">${urteilZeile}${hinweisZeile}${qaZeile}${qaHinweisZeile}<dt>${tHtml('abnahme.blick.abnahme')}</dt><dd>${abnahmeText}</dd></dl>
     <div class="note abnahme-blick-hinweis"><p>${tHtml('abnahme.blick.hinweis')}</p></div>`
 }

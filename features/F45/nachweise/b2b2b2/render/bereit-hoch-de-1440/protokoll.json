@@ -1,0 +1,21 @@
+[
+  {
+    "label": "qa bereit mit HOCH-Befund, Karte unter dem Review — de-1440",
+    "qa-Karte": true,
+    "Review-Kachel": true,
+    "Hinweis amber": true,
+    "Hinweis rot": false,
+    "Badge amber (Karte)": true,
+    "Testfälle (3)": true,
+    "qa-Befundliste da": true,
+    "Knopf qa wiederholen": false,
+    "Review-Befunde in der qa-Notiz": false,
+    "Zahl im Blick": true,
+    "Abnehmen": true,
+    "qa-Notiz": "Hinweise zur Prüfung aus NutzersichtDie Prüfung aus Nutzersicht sagt „bereit“, meldet aber einen schweren Befund (kritis",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]
