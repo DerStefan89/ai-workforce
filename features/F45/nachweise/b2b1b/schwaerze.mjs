@@ -19,10 +19,22 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const regexSicher = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// Nur für Tests: SCHWAERZE_HOME/SCHWAERZE_TEMP geben Home und Temp vor (z. B. Windows-förmig unter Linux in der CI).
+// Ohne die Variablen gelten os.homedir()/os.tmpdir().
+const standardHome = () => process.env.SCHWAERZE_HOME || homedir()
+const standardTemp = () => process.env.SCHWAERZE_TEMP || tmpdir()
+
+/**
+ * Letztes nicht leeres Segment eines Pfads, getrennt an `/` und `\` — plattformunabhängig, anders als path.basename,
+ * das unter Linux einen Windows-Pfad nicht zerlegt.
+ * @param {string} pfad
+ * @returns {string}
+ */
+const letztesSegment = (pfad) => pfad.split(/[\\/]/).filter(Boolean).at(-1) ?? ''
 
 /**
  * Schreibweisen eines Pfads: doppelt JSON-escaped (JSON-Text in einem JSON-String, z. B. Werkzeugergebnis in der
@@ -43,11 +55,11 @@ const schreibweisen = (pfad) => [
  * den Wert von messaging_socket_path durch <PIPE>. Pfade mit weniger als zwei Segmenten (z. B. `/` als HOME im
  * Container) werden übersprungen, weil sie jeden Schrägstrich bzw. Bindestrich träfen.
  * @param {string} text roher Text (NDJSON oder JSON)
- * @param {string} [home] Benutzerverzeichnis, Standard os.homedir()
- * @param {string} [temp] Temp-Ordner, Standard os.tmpdir()
+ * @param {string} [home] Benutzerverzeichnis, Standard SCHWAERZE_HOME oder os.homedir()
+ * @param {string} [temp] Temp-Ordner, Standard SCHWAERZE_TEMP oder os.tmpdir()
  * @returns {string} geschwärzter Text
  */
-export function schwaerze(text, home = homedir(), temp = tmpdir()) {
+export function schwaerze(text, home = standardHome(), temp = standardTemp()) {
   let s = text
   for (const [pfad, marke] of [
     [temp, '<TEMP>'],
@@ -63,11 +75,11 @@ export function schwaerze(text, home = homedir(), temp = tmpdir()) {
  * Restprüfung: findet der Name des Benutzerordners noch als Pfadsegment (zwischen `\`, `/` oder `-`) im Text,
  * z. B. in einer Escape-Form, die `schwaerze` nicht kennt.
  * @param {string} text geschwärzter Text
- * @param {string} [home] Benutzerverzeichnis, Standard os.homedir()
+ * @param {string} [home] Benutzerverzeichnis, Standard SCHWAERZE_HOME oder os.homedir()
  * @returns {boolean}
  */
-export function hatRestpfad(text, home = homedir()) {
-  const name = basename(home)
+export function hatRestpfad(text, home = standardHome()) {
+  const name = letztesSegment(home)
   if (!name) return false
   return new RegExp(`(^|[\\\\/-])${regexSicher(name)}([\\\\/-]|$)`, 'im').test(text)
 }

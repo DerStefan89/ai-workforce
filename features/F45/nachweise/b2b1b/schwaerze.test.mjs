@@ -13,8 +13,8 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { raeumeVerzeichnis } from '../../../../scripts/_aufraeumen.ts'
@@ -23,6 +23,9 @@ import { hatRestpfad, schwaerze } from './schwaerze.mjs'
 const SKRIPT = fileURLToPath(new URL('./schwaerze.mjs', import.meta.url))
 const HOME = 'C:\\Users\\beispiel'
 const TEMP = 'C:\\Users\\beispiel\\AppData\\Local\\Temp'
+// Die CLI bekommt Home und Temp über die Test-Variablen — unabhängig von os.homedir()/os.tmpdir() der Maschine.
+const CLI_UMGEBUNG = { ...process.env, SCHWAERZE_HOME: HOME, SCHWAERZE_TEMP: TEMP }
+const cli = (...argumente) => spawnSync(process.execPath, [SKRIPT, ...argumente], { encoding: 'utf8', env: CLI_UMGEBUNG })
 
 test('schwaerze: Temp-Pfad → <TEMP>, Benutzerordner → <HOME> (JSON-escaped)', () => {
   const ein = JSON.stringify({ a: `${TEMP}\\b1b1-lauf-x\\datei.txt`, b: `${HOME}\\Projekte\\p` })
@@ -65,9 +68,9 @@ test('CLI --json: Restprüfung bricht ab und lässt die Datei unverändert', () 
   const ordner = mkdtempSync(join(tmpdir(), 'schwaerze-test-'))
   try {
     const datei = join(ordner, 'zaehlung.json')
-    const inhalt = JSON.stringify({ rest: `slug-${basename(homedir())}-rest` })
+    const inhalt = JSON.stringify({ rest: 'slug-beispiel-rest' })
     writeFileSync(datei, inhalt)
-    const lauf = spawnSync(process.execPath, [SKRIPT, '--json', datei], { encoding: 'utf8' })
+    const lauf = cli('--json', datei)
     assert.equal(lauf.status, 1)
     assert.match(lauf.stderr, /Benutzerordner nach Schwärzung noch enthalten/)
     assert.equal(readFileSync(datei, 'utf8'), inhalt)
@@ -80,12 +83,12 @@ test('CLI --json: mehrzeilige JSON-Datei als Ganzes, gültiges JSON, keine Pfade
   const ordner = mkdtempSync(join(tmpdir(), 'schwaerze-test-'))
   try {
     const datei = join(ordner, 'zaehlung.json')
-    writeFileSync(datei, JSON.stringify({ temp: join(ordner, 'a.txt'), home: join(homedir(), 'x') }, null, 2))
-    const lauf = spawnSync(process.execPath, [SKRIPT, '--json', datei], { encoding: 'utf8' })
+    writeFileSync(datei, JSON.stringify({ temp: `${TEMP}\\b1b1-lauf-x\\a.txt`, home: `${HOME}\\x` }, null, 2))
+    const lauf = cli('--json', datei)
     assert.equal(lauf.status, 0, lauf.stderr)
     const j = JSON.parse(readFileSync(datei, 'utf8'))
-    assert.match(j.temp, /^<TEMP>[\\/]schwaerze-test-/)
-    assert.match(j.home, /^<HOME>[\\/]x$/)
+    assert.equal(j.temp, '<TEMP>\\b1b1-lauf-x\\a.txt')
+    assert.equal(j.home, '<HOME>\\x')
   } finally {
     raeumeVerzeichnis(ordner)
   }
@@ -95,14 +98,14 @@ test('CLI ohne --json: NDJSON zeilenweise, mehrzeiliges JSON wird abgelehnt und 
   const ordner = mkdtempSync(join(tmpdir(), 'schwaerze-test-'))
   try {
     const ndjson = join(ordner, 'rohstrom.json')
-    writeFileSync(ndjson, `${JSON.stringify({ p: homedir() })}\n${JSON.stringify({ q: 1 })}\n`)
-    assert.equal(spawnSync(process.execPath, [SKRIPT, ndjson], { encoding: 'utf8' }).status, 0)
+    writeFileSync(ndjson, `${JSON.stringify({ p: HOME })}\n${JSON.stringify({ q: 1 })}\n`)
+    assert.equal(cli(ndjson).status, 0)
     assert.equal(readFileSync(ndjson, 'utf8'), '{"p":"<HOME>"}\n{"q":1}\n')
 
     const mehrzeilig = join(ordner, 'zaehlung.json')
-    const inhalt = JSON.stringify({ p: homedir() }, null, 2)
+    const inhalt = JSON.stringify({ p: HOME }, null, 2)
     writeFileSync(mehrzeilig, inhalt)
-    assert.equal(spawnSync(process.execPath, [SKRIPT, mehrzeilig], { encoding: 'utf8' }).status, 1)
+    assert.equal(cli(mehrzeilig).status, 1)
     assert.equal(readFileSync(mehrzeilig, 'utf8'), inhalt)
   } finally {
     raeumeVerzeichnis(ordner)
