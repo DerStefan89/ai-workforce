@@ -1,0 +1,69 @@
+{
+  "url": "http://127.0.0.1:4399/#/workflows/wf-b2b1b2b-a-1792055103130",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3200
+  },
+  "farbschema": "light",
+  "localStorageSetzen": {
+    "leitstand-sprache": "ru"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Plan-Titel",
+        "selector": "#freigabe-plan"
+      },
+      {
+        "name": "Hinweis Advisor",
+        "selector": ".entscheiden-plan-hinweis"
+      },
+      {
+        "name": "Advisor-Notiz",
+        "selector": ".wf-advisor-wiederholen"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-bedienung-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Plan-Karte",
+        "selector": ".entscheiden-plan #freigabe-plan"
+      },
+      {
+        "name": "Befund-Karte",
+        "selector": "#freigabe-advisor"
+      },
+      {
+        "name": "Befunde",
+        "selector": ".entscheiden-plan .abnahme-befund"
+      },
+      {
+        "name": "Satz Plan v1 behalten",
+        "selector": ".entscheiden-plan .subtle"
+      },
+      {
+        "name": "Knopf Advisor wiederholen",
+        "selector": "[data-aktion=\"pruefer-wiederholen\"]"
+      },
+      {
+        "name": "Spalte Freigabe",
+        "selector": "#workflow-entscheidung input[name=\"wf-freigabe-option\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Freigabe Architekt v2 (Plan v1 + Befunde) — ru-390-hell",
+      "warteAufSelector": {
+        "selector": "#freigabe-advisor",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-a-ru-390-hell.webp"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+| Aktion | Plan-Karte | Befund-Karte | Befunde | Satz Plan v1 behalten | Knopf Advisor wiederholen | Spalte Freigabe | Plan-Titel | Hinweis Advisor | Advisor-Notiz | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| „Kein Plan v2: …“ — ru-390-hell | true | true | true | true | false | true | План, который ты согласуешь План v1 | Плана v2 не будет: Die Vorlage dieses Ablaufs erlaubt keine automatische Korrekturrunde. Entscheide bei der Freigabe der | (fehlt) |  | false | 390/390 | true |

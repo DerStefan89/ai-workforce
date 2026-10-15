@@ -318,3 +318,110 @@ nur im Unit-Test, Hülle der Freigabe-Route), F-1108, F-1109; F-1106 bleibt offe
 Nachpass (frischer Kontext): code-reviewer BEREIT (1 Hinweis), qa BEREIT (Hinweise) — als Text-Nachzug übernommen:
 `uebernimmRueckwege` übernimmt nur einen formgültigen gespeicherten Wert (beschädigter Bestand bleibt ersetzbar, Unit-Test),
 Gate (c10)/(c7-D1) prüfen den genauen Satz, Gate-Listen in F-909/fixpaket, F-1104 (4) → 2b, F-1110 (4).
+
+## Plan 2b — B2b-1b-2b „Anzeige“ (15.10.2026; Delta zu Plan v1 §3.8–3.10, Gate (c8), Zustände §4)
+
+Branch `f45/b2b1b2b-anzeige` (von origin/main `9c8103f`, #340). Schließt B2b-1. Schätzung ≈ 1 AT (R4).
+
+- **P1 Projektion `planFreigabe`** (GET `/api/workflows/<id>`, additiv, sonst `null`, nur bei `naechster.art ===
+  'haltFreigabe'`): `{ art: 'ausfuehrung' | 'plan_v2', fassung, plan, advisor, keinPlanV2, rueckweg }` wie §3.8.
+  `ausfuehrung`: fälliger Schritt Rolle `ausfuehrung` und ein Architekt ERFOLGREICH mit `lauf_id` ⇒ Plan = dessen
+  `lauf_id` (`fassung` 2, wenn er `rueckweg` trägt). Advisor = Schritt `architekt.nachfolger` mit Rolle
+  architecture-advisor: dessen `lauf_id`, falls ERFOLGREICH, sonst `rueckweg.anlass_lauf_id`; kein Advisor ⇒ `null`.
+  `plan_v2`: fälliger Schritt Rolle `architekt` mit `rueckweg` ⇒ Plan aus `vorheriger_lauf_id`, Advisor aus
+  `anlass_lauf_id` (2a, M1), `fassung` 1, `keinPlanV2` null. `plan = { zusammenfassung, module[{name, zweck}],
+  entscheidungen[{frage, gewaehlt}] } | { fehler: 'nicht_lesbar' }`, `advisor = { urteil, begruendung, befunde[...] } |
+  { fehler: 'nicht_lesbar' }` — Einzelheiten (Lauf-Kennungen) nur ins Log, die Seite zeigt einen übersetzten Satz.
+  Entscheidungen = Zusammenführung (`findeWorkflowEntscheidungFuerSchritt`) je Anfrage. Zwischenspeicher je
+  `(architektLaufId, advisorLaufId)` (fertige Laufakten ändern sich nicht), höchstens 32 Einträge, ältester fällt.
+- **P2 `keinPlanV2` zur Lesezeit (F-1108)**: reine Funktion `ermittleKeinPlanV2({ schritte, maxReplans, advisorSchrittId,
+  advisorLaufId, urteil, befundAnzahl, kernVersionen })` (Automatik-Datei) → Grund oder `null`. `null` bei FREIGEGEBEN und
+  wenn der Architekt vor dem Advisor `rueckweg.anlass_lauf_id === advisorLaufId` trägt (Plan v2 lief für genau diesen
+  Lauf). Sonst `ermittlePlanRueckweg`: gesperrt ⇒ dessen Grund (Grenze, kein Architekt davor, Plan-Stufe verbraucht —
+  auch (c12)); „würde auslösen“ ⇒ fester Satz „Plan v2 wurde für dieses Advisor-Ergebnis nicht ausgelöst (der Ablauf war
+  angehalten oder stammt aus der Zeit vor Plan v2).“ + Ausweg der Plan-Stufe. Deckt Nachlauf auf GESTOPPT + Reparatur und
+  Bestand 1b-1. Der gespeicherte Halt-Grund bleibt wie in 2a (`planStufenSatz` unverändert).
+- **P3 Freigabe-Seite** (`renderFreigabeSeite`, Karten vor „Was startet“): „Plan, den du freigibst“ mit Kennzeichen
+  „Plan v1/v2“ bzw. „Plan v1 — wird überarbeitet“ + Satz „Wer Plan v1 unverändert will, lehnt ab und legt einen neuen
+  Ablauf an.“; Zusammenfassung, Module (Name · Zweck), Entscheidungen (Frage → Antwort); Fehlerfall Satz. „Befunde des
+  Advisors“: Urteil-Badge (`ablauf-status` ok/warten/fehler), Begründung, je Befund Schwere-Badge (Muster
+  `FARBE_SCHWERE`), Fundstelle in `<code>`, Zusammenfassung, Korrekturrichtung; Hinweis in dieser Reihenfolge:
+  `keinPlanV2` ⇒ „Kein Plan v2: <Grund>“, `plan_v2` ⇒ „Diese Befunde gehen an den Architekten.“, Fassung 2 ⇒ „In Plan v2
+  eingearbeitet — bitte prüfen.“; leer „Keine Befunde.“; kein Advisor ⇒ keine Karte. Neue Klassen nur für Abstand/Umbruch
+  (`overflow-wrap: anywhere`), keine neuen Farben. i18n de/en/ru/tr. `workflows.js` reicht `detail.planFreigabe` in
+  `aktuellesDetail`; das Kennzeichen der Seite nimmt die Projektion auf (neu zeichnen bei Änderung).
+- **P4 „Advisor wiederholen“** (§3.10): GET additiv `prueferWiederholbar` (boolean; nur bei KLAERUNG mit Cursor auf
+  architecture-advisor gerechnet, `pruefschrittWiederholbar` + `ermittlePrueferBefund`, dieselbe Vorbedingung wie die
+  Route). `renderEingriffe(…, prueferWiederholbar)`: rote Notiz „Der Advisor hat kein verwertbares Ergebnis geliefert.“ mit
+  `.wf-aktion` `data-aktion="pruefer-wiederholen"`; `fuehreWorkflowAktionAus` → `wiederholePruefer` (api.js); Antwort
+  WARTET_FREIGABE ⇒ „Der Advisor ist zurückgesetzt und startet nach deiner Freigabe.“, LAEUFT ⇒ Start wie beim Review,
+  Fehler ⇒ Servertext. Bedienungs-Kennzeichen nimmt `prueferWiederholbar` auf. Regel-1d-Text ohne „(im Leitstand noch ohne
+  eigenen Knopf für den Advisor)“ (D9).
+- **P5 Hülle der Freigabe-Route (F-1110 (4))**: `lesePlanV2Eingaben` meldet `ausweg: 'neuer_ablauf'`, `starteWorkflowSchritt`
+  reicht es durch (keine neue Aufrufstelle). Reine Funktion `startfehlerSatz({ grund, ausweg })`: „Der Start nach deiner
+  Freigabe ist gescheitert: <grund> Die Freigabe ist festgehalten; der Ablauf wartet auf Klärung.“ + je Art: `neuer_ablauf`
+  nichts weiter (der Grund nennt „lege den Ablauf neu an“), sonst „Weiter geht es über eine korrigierte Fassung (Ablauf
+  reparieren).“ Ohne Schritt-/Workflow-Kennung und „(art)“ im Satz; beides ins Log. Antwortfelder (`art`, `status`, …)
+  unverändert.
+- **P6 Gate** `check-f45-b2b1-rueckweg.mjs`: (c8) Advisor-Halt (Schemaverstoß) ⇒ `prueferWiederholbar` true, nach
+  FREIGEGEBEN-Weg false; (pf1) `plan_v2` vor dem Architekten (Plan v1, Befunde, `rueckweg.anlass_lauf_id`); (pf2) nach v2
+  `fassung` 2 mit Plan v2 und Befunden, `keinPlanV2` null; (pf3) FREIGEGEBEN ⇒ `fassung` 1, keine Befunde; (pf4)
+  `max_replans` 0 ⇒ `keinPlanV2` mit Grenze; (pf5) Bestand ohne Satz (direkt registriert: Freigabe der Ausführung,
+  UEBERARBEITEN, kein `rueckweg`) ⇒ `keinPlanV2` „nicht ausgelöst“; (c10h) Hülle: Grund ohne „korrigierte Fassung“,
+  „(konflikt)“, Schritt- und Workflow-Kennung, mit „neu an“; (c15) Bau-Summe: Architekt → Advisor → Ausführung → Review,
+  `max_replans` 1, Plan v2 ⇒ Review BLOCKIERT hält ohne kern-Artefakt, Grund „(höchstens 1) sind verbraucht“. Unit-Tests
+  `ermittleKeinPlanV2`, `startfehlerSatz`, Views (Karten, Notiz) rot → grün.
+- **P7** `zaehlung-*.json` (b1b1) mit `schwaerze()` (Datei als Ganzes, kein CLI-Modus), danach `JSON.parse` je Datei.
+- **Render-Nachweis** `features/F45/nachweise/b2b1b2b/`: Instanz nach Muster b2b1 (Attrappe, kein Netz, Projekt mit
+  CLAUDE.md ⇒ Stack gefüllt, keine Frage), vier Abläufe nacheinander über den HTTP-Pfad: (a) UEBERARBEITEN ⇒ Freigabe
+  Architekt v2; (b) dasselbe + Freigabe ⇒ Freigabe Ausführung nach v2; (c) `max_replans` 0 ⇒ „Kein Plan v2“; (d)
+  Advisor-JSON ungültig ⇒ Halt + Knopf, Klick. Je Folge de 1440 dunkel/hell, de 390, ru 390 hell, de 1440 200 %;
+  `ueberlauf` bei 390 px; `render-nachweis.mjs` bekommt additiv die Spalte „scrollWidth/clientWidth“ (F-1107 (5)).
+- **Nicht** (bleibt F-1110): (1) veraltete Antworten filtern, (2) „Plan v1 freigeben“. Kein `.claude/`, `projekte.json`,
+  `ressourcen.json`, Vorlagen, `.githooks`; `starteWorkflowSchritt(` bleibt 6×; F-228-Zählung unverändert.
+- **Zustände**: Default Fassung 1 ohne Befunde; Rückweg (a)/(b); Leer „Keine Befunde.“/keine Karte; Fehler Plan/Advisor
+  unlesbar ⇒ Satz, Advisor-JSON ungültig ⇒ Notiz + Knopf; Ladend: bestehender Seitenzustand.
+- **Risiken**: R1 Poll alle 2 s liest Laufakten ⇒ Zwischenspeicher; `zaehleKernVersionen` nur bei Urteil ≠ FREIGEGEBEN
+  ohne Rückweg. R2 Seite wird länger (Karten vor „Was startet“) — Render 390 px/200 %. R3 Zuschnitt knapp: bei „zu groß“
+  P5, P6 (c15) und P7 als Finding.
+- **Anzupassende Prüfungen**: `src/workflow/workflow.test.ts` (Regel-1d-Text), `f35-ws3-adjust-automatik.test.mjs`,
+  `workflow-entscheiden.test.mjs`, `workflow-eingriffe.test.mjs`, i18n-Vollständigkeit, ggf. `check-f15-workflow-oberflaeche`
+  (Kennzeichen), Gate-Kopf.
+
+### Advisor-Pass Plan 2b (15.10.2026, frischer Kontext, `architecture-advisor`) und Nachtrag
+
+Urteil: **Freigegeben mit Hinweisen.** A1 Zuschnitt zu groß ⇒ nach Stefans Vorgabe (Auftrag 2b) **P5 (Hülle, F-1110 (4)),
+P6 (c15) (Bau-Summe, F-1110 (3)) und P7 (Schwärzung) als Finding F-1111 heraus**, nicht geteilt; dort mit A2 (Startfehlerliste
+und Halt-Ablage nutzen denselben `anlass` wie das Log — die Kennungen brauchen einen eigenen Text für Liste/Log) und A6
+(`zaehlung-*.json` entstehen bei jeder Startfreigabe-Erneuerung neu ⇒ Schwärzung als Schritt in
+`docs/harness/startfreigabe-erneuern.md`; `b1b2/zaehlung-hooks.json` prüfen). Übernommen:
+- A3 Hinweis „In Plan v2 eingearbeitet — bitte prüfen.“ nur, wenn der Advisor-Lauf der Karte der Anlass ist
+  (`advisorLaufId === rueckweg.anlass_lauf_id`, dieselbe Bedingung wie P2/`planV2Sprungziel`); Projektion `advisorIstAnlass`.
+  Kein Rückfall auf `anlass_lauf_id` an der Freigabe der Ausführung (Advisor = dessen lauf_id, wenn ERFOLGREICH, sonst `null`).
+- A4 Plan-Quelle an der Freigabe der Ausführung = Architekt aus `findeArchitektEingabeTreffer` (genau der Plan, den die
+  Ausführung bekommt, AK3); ohne Treffer keine Projektion.
+- A5 kein Seiten-Kennzeichen (`setzeHtml` zeichnet bei geändertem HTML neu); `prueferWiederholbar` ins Bedienungs-Kennzeichen
+  vor den Empfehlungsteil.
+- A7 Zwischenspeicher nur für fehlerfreie Teile; Schlüssel mit `basisVerzeichnis`.
+- A8 (c8) Gegenprobe: KLAERUNG am Architekten (c7) ⇒ `prueferWiederholbar` false.
+- A9 `FARBE_SCHWERE` aus `workflow-abnahme.js` exportieren. Zustand: Freigabe der Ausführung nach einem Bau-Rückweg zeigt
+  `planFreigabe` erneut; `keinPlanV2` kann dann (Bau-Runden mitgezählt) einen anderen Grund nennen als beim Advisor — hingenommen.
+Gate 2b damit: (c8), (pf1)–(pf5). Schätzung ≈ 0,75–1 AT.
+
+## Bau und Prüfpass B2b-1b-2b (15.10.2026)
+
+Gebaut nach Plan 2b + Nachtrag (ohne P5, P6 (c15), P7 → F-1111). Unit-Tests zuerst rot (fehlender Export
+`ermittleKeinPlanV2`, Regel-1d-Text, Karten, Notiz), dann grün; Gate `check-f45-b2b1-rueckweg` um (c8)(pf1)–(pf6)
+erweitert, Gegenprobe per Mutation (prueferWiederholbar aus, advisorIstAnlass immer, „nicht ausgelöst“ ⇒ null) → (c8)
+(pf2/c12)(pf4)(pf5) rot. Render-Nachweis `features/F45/nachweise/b2b1b2b/` (21 Folgen, 390 px überall 390/390).
+Prüfpass (frischer Kontext): code-reviewer BEREIT (3 Hinweise), qa BEREIT_NACH_KORREKTUR (7), design-guardian
+freigegeben mit Hinweisen (6). Eine Korrekturrunde: Notiz verweist auf „Technischer Ablauf & Serverentscheidung“ (dg 1);
+Hinweis der Befund-Karte abgesetzt (dg 3); Fassung 2/„eingearbeitet“ nur, wenn der Architekt seit dem Rückweg neu lief
+(qa 2, Gate (pf6)); (c8) Gegenprobe im FREIGEGEBEN-Weg (qa 4); Start mit Vorbereitung des Arbeitsordners nach „Advisor
+wiederholen“ ohne Nachsendung, Meldung nennt „Starten“ (cr 1); Dateikopf, ungenutzte Variable (cr 3 teilweise, `wertText`-Kopie → F-1111 (7)). Als Finding:
+F-1111 (4)–(7) (qa 3/5/6, cr 2/3), F-1112 (dg 5, vorbestehend). Befund-IDs bleiben sichtbar (dg 2, Abgleich mit Plan v2).
+Offen für Stefan: qa 1 — der vorgegebene Satz „Wer Plan v1 unverändert will, lehnt ab und legt einen neuen Ablauf an.“
+verspricht mehr, als der neue Ablauf hält (der Architekt plant neu, der Advisor kann wieder Plan v2 auslösen); Text
+unverändert gelassen, weil wörtlich beauftragt.
+Entscheidung Challenger (15.10.2026) zu qa 1: der Satz wird ersetzt durch „Plan v1 lässt sich hier nicht unverändert freigeben, weil der Advisor Änderungen verlangt. Mit „Ablehnen“ stoppst du den Ablauf.“ (en/ru/tr sinngemäß, Knopfname aus
+`entscheiden.freigabe.option.ablehnen` der Sprache); Render-Folgen `a-*` neu erzeugt.

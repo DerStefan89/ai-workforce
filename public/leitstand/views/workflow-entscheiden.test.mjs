@@ -123,3 +123,57 @@ test('F45 B2a-2 (F-1071): Karte „Arbeitspaket“ zeigt die Einrichtung mit Abh
   assert.match(ohne, /aria-labelledby="freigabe-arbeitspaket" aria-disabled="true"/)
   assert.doesNotMatch(ohne, /Einrichtung durch dich/)
 })
+
+// ─── F45 B2b-1b-2b (features/F45/plan-b2b1b2.md, Plan 2b P3; F-1106): Plan und Befunde des Advisors ─────────────
+const PLAN = { zusammenfassung: 'Plan <Zusammenfassung>', module: [{ name: 'export<x>', zweck: 'CSV <schreiben>' }], entscheidungen: [{ frage: 'Welcher <Stack>?', gewaehlt: 'TypeScript <Node>' }] }
+const BEFUND = { id: 'A1', schwere: 'HOCH', evidenz: 'FAKT', fundstelle: 'src/<a>.ts:12', zusammenfassung: 'Fehlt <x>.', korrekturrichtung: 'Im Plan <v2> beheben.' }
+const ADVISOR_UEBERARBEITEN = { urteil: 'UEBERARBEITEN', begruendung: 'Begründung <b>', befunde: [BEFUND] }
+const RUECKWEG = { anlass_schritt_id: 'schritt-intern-adv', anlass_lauf_id: 'lauf-intern-adv', vorheriger_lauf_id: 'lauf-intern-v1' }
+const freigabeMit = (planFreigabe) => renderFreigabeSeite({ daten: DATEN, naechster: NAECHSTER, empfehlung: null, planFreigabe })
+
+test('B2b-1b-2b Freigabe vor Plan v2: „Plan v1 — wird überarbeitet“ mit Satz zu Plan v1, Befunde gehen an den Architekten', () => {
+  const html = freigabeMit({ art: 'plan_v2', fassung: 1, plan: PLAN, advisor: ADVISOR_UEBERARBEITEN, advisorIstAnlass: true, keinPlanV2: null, rueckweg: RUECKWEG })
+  assert.match(html, /Plan v1 — wird überarbeitet/)
+  // Challenger-Entscheidung zum qa-Befund 2b (1): der Satz nennt die Lage ehrlich, der Knopfname kommt aus der Option der Spalte.
+  assert.match(html, /Plan v1 lässt sich hier nicht unverändert freigeben, weil der Advisor Änderungen verlangt\. Mit „Ablehnen“ stoppst du den Ablauf\./)
+  assert.doesNotMatch(html, /neuen Ablauf an/)
+  assert.match(html, /Plan &lt;Zusammenfassung&gt;/)
+  assert.match(html, /export&lt;x&gt;[\s\S]*CSV &lt;schreiben&gt;/)
+  assert.match(html, /Welcher &lt;Stack&gt;\?[\s\S]*TypeScript &lt;Node&gt;/)
+  assert.match(html, /Befunde des Advisors/)
+  assert.match(html, /<span class="ablauf-status fehler">Überarbeiten<\/span>/)
+  assert.match(html, /<span class="ablauf-status fehler">Hoch<\/span>/)
+  assert.match(html, /<code>src\/&lt;a&gt;\.ts:12<\/code>/)
+  assert.match(html, /Fehlt &lt;x&gt;\./)
+  assert.match(html, /Im Plan &lt;v2&gt; beheben\./)
+  assert.match(html, /Diese Befunde gehen an den Architekten\./)
+  assert.doesNotMatch(html, /intern|anlass_|vorheriger_|lauf_id|schritt_id/, 'keine internen Kennungen oder Feldnamen')
+  assert.ok(html.indexOf('Befunde des Advisors') < html.indexOf('Was startet'), 'die Karten stehen vor „Was startet“')
+})
+
+test('B2b-1b-2b Freigabe der Ausführung: Plan v2 mit eingearbeiteten Befunden; Plan v1 ohne Befunde; „Kein Plan v2“', () => {
+  const v2 = freigabeMit({ art: 'ausfuehrung', fassung: 2, plan: PLAN, advisor: ADVISOR_UEBERARBEITEN, advisorIstAnlass: true, keinPlanV2: null, rueckweg: RUECKWEG })
+  assert.match(v2, /Plan, den du freigibst/)
+  assert.match(v2, /Plan v2/)
+  assert.match(v2, /In Plan v2 eingearbeitet — bitte prüfen\./)
+  assert.doesNotMatch(v2, /wird überarbeitet|lehnt ab und legt/)
+  const v1 = freigabeMit({ art: 'ausfuehrung', fassung: 1, plan: PLAN, advisor: { urteil: 'FREIGEGEBEN', begruendung: 'Passt.', befunde: [] }, advisorIstAnlass: false, keinPlanV2: null, rueckweg: null })
+  assert.match(v1, /Plan v1/)
+  assert.match(v1, /<span class="ablauf-status ok">Freigegeben<\/span>/)
+  assert.match(v1, /Keine Befunde\./)
+  assert.doesNotMatch(v1, /eingearbeitet|Kein Plan v2/)
+  const gesperrt = freigabeMit({ art: 'ausfuehrung', fassung: 2, plan: PLAN, advisor: ADVISOR_UEBERARBEITEN, advisorIstAnlass: false, keinPlanV2: 'Die <Grenze> ist erreicht.', rueckweg: RUECKWEG })
+  assert.match(gesperrt, /Kein Plan v2: Die &lt;Grenze&gt; ist erreicht\./)
+  assert.doesNotMatch(gesperrt, /eingearbeitet/, 'der Advisor hat Plan v2 erneut geprüft — seine Befunde sind nicht eingearbeitet')
+})
+
+test('B2b-1b-2b Freigabe: Plan/Advisor unlesbar ⇒ Satz; kein Advisor ⇒ keine Befund-Karte; ohne Projektion keine Karten', () => {
+  const fehler = freigabeMit({ art: 'ausfuehrung', fassung: 1, plan: { fehler: 'nicht_lesbar' }, advisor: { fehler: 'nicht_lesbar' }, advisorIstAnlass: false, keinPlanV2: null, rueckweg: null })
+  assert.match(fehler, /Der Plan ist nicht lesbar\./)
+  assert.match(fehler, /Das Ergebnis des Advisors ist nicht lesbar\./)
+  const ohneAdvisor = freigabeMit({ art: 'ausfuehrung', fassung: 1, plan: PLAN, advisor: null, advisorIstAnlass: false, keinPlanV2: null, rueckweg: null })
+  assert.match(ohneAdvisor, /Plan, den du freigibst/)
+  assert.doesNotMatch(ohneAdvisor, /Befunde des Advisors/)
+  const ohne = freigabeMit(null)
+  assert.doesNotMatch(ohne, /Plan, den du freigibst|Befunde des Advisors/)
+})

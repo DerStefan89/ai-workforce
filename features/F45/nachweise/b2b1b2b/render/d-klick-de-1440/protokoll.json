@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Advisor-Halt mit Knopf",
+    "Plan-Karte": false,
+    "Befund-Karte": false,
+    "Befunde": false,
+    "Satz Plan v1 behalten": false,
+    "Knopf Advisor wiederholen": true,
+    "Spalte Freigabe": false,
+    "Plan-Titel": "(fehlt)",
+    "Hinweis Advisor": "(fehlt)",
+    "Advisor-Notiz": "Der Advisor hat kein verwertbares Ergebnis geliefert. Du kannst den Advisor allein wiederholen — der Plan des Architekte",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick „Advisor wiederholen“ → Advisor zurückgesetzt, Freigabe des Advisors",
+    "Plan-Karte": false,
+    "Befund-Karte": false,
+    "Befunde": false,
+    "Satz Plan v1 behalten": false,
+    "Knopf Advisor wiederholen": false,
+    "Spalte Freigabe": true,
+    "Plan-Titel": "(fehlt)",
+    "Hinweis Advisor": "(fehlt)",
+    "Advisor-Notiz": "(fehlt)",
+    "Meldung": "Der Advisor ist zurückgesetzt. Er startet nach deiner Freigabe.",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Freigabe Ausführung nach Plan v2 — de-1440",
+    "Plan-Karte": true,
+    "Befund-Karte": true,
+    "Befunde": true,
+    "Satz Plan v1 behalten": true,
+    "Knopf Advisor wiederholen": false,
+    "Spalte Freigabe": true,
+    "Plan-Titel": "Plan, den du freigibst Plan v2",
+    "Hinweis Advisor": "In Plan v2 eingearbeitet — bitte prüfen.",
+    "Advisor-Notiz": "(fehlt)",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]

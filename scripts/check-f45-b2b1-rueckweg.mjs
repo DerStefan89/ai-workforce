@@ -60,7 +60,17 @@
  * (d)   FREIGEGEBEN ⇒ kein zweiter Architekt-Lauf, die Ausführung bekommt Plan v1.
  * (c13) Plan v2 mit anderer Einrichtungsliste ⇒ offen ist der Eintrag aus Plan v2 (Freigabe der Ausführung 409).
  * (c14) Plan v2 scheitert ⇒ Reparaturfassung ohne rueckweg im Body behält ihn ⇒ v2 erneut mit Plan v1, kein 2. Advisor.
- * (c10b) Advisor-Ergebnis beim v2-Start nicht lesbar ⇒ 409, Grund ohne Lauf-Kennung (die Hülle der Freigabe-Route: F-1110 (4)), kein Lauf.
+ * (c10b) Advisor-Ergebnis beim v2-Start nicht lesbar ⇒ 409, Grund ohne Lauf-Kennung (die Hülle der Freigabe-Route: F-1111), kein Lauf.
+ * B2b-1b-2b „Anzeige“ (Plan 2b, GET /api/workflows/<id>):
+ * (c8)  Advisor-Halt (Schemaverstoß) ⇒ prueferWiederholbar true; KLAERUNG am Architekten (c7) und FREIGEGEBEN-Weg (d) ⇒ false.
+ * (pf1) planFreigabe vor dem Architekten v2: art plan_v2, Plan v1, Befunde des Anlass-Laufs, rueckweg mit anlass_lauf_id.
+ * (pf2) nach Plan v2: art ausfuehrung, fassung 2, Plan v2, Befunde als eingearbeitet, keinPlanV2 null; (c12) erneut
+ *       geprüft ⇒ keinPlanV2 mit der Grenze der Plan-Stufe, nicht eingearbeitet.
+ * (pf3) FREIGEGEBEN ⇒ fassung 1, keine Befunde, keinPlanV2 null.
+ * (pf4) max_replans 0 ⇒ keinPlanV2 nennt die Grenze.
+ * (pf5) Bestand ohne Satz (Freigabe der Ausführung nach UEBERARBEITEN, kein rueckweg, gespeicherter Grund ohne Plan-Satz)
+ *       ⇒ keinPlanV2 „nicht ausgelöst“ (F-1108).
+ * (pf6) Architekt nach einer Reparatur wieder mit dem v1-Lauf (rueckweg bleibt) ⇒ fassung 1, nicht „eingearbeitet“.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -623,6 +633,8 @@ try {
   const laeufeVon = (id, rolle) => laeufe.filter((l) => l.workflowId === id && l.rolle === rolle)
   const entscheide = (id, antworten) => post(`/api/workflows/${encodeURIComponent(id)}/entscheidung`, { schrittId: ID_ARCH, antworten })
   const STACK_ANTWORT = { frage: STACK_FRAGE.frage, gewaehlt: 'TypeScript auf Node' }
+  // B2b-1b-2b: das GET-Detail mit planFreigabe und prueferWiederholbar.
+  const detailVon = async (id) => (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(id)}`)).json().catch(() => ({}))
 
   /** Bis zum Halt nach dem Advisor: Plan v1 (Stack-Frage) → Entscheidung → Freigabe Advisor. @returns { id, nachAdvisor, v1LaufId } oder null */
   async function bisNachAdvisor(kennung, maxReplans, plaene, advisorAusgaenge) {
@@ -656,6 +668,12 @@ try {
         '(c) UEBERARBEITEN: im selben Schreibvorgang Rückweg der Plan-Stufe — Architekt OFFEN mit rueckweg, WARTET_FREIGABE am Architekten, Grund nennt Plan v2.',
         `(c) Rückweg erwartet — ${d.status}, ${d.aktiver_schritt_id}, ${JSON.stringify(arch)}, grund ${JSON.stringify(d.grund)}`
       )
+      const vorV2 = (await detailVon(id)).planFreigabe
+      pruefe(
+        vorV2?.art === 'plan_v2' && vorV2.fassung === 1 && vorV2.plan?.zusammenfassung === 'PLAN-V1-C' && JSON.stringify(vorV2.advisor?.befunde?.map((b) => b.id)) === JSON.stringify(['A1', 'A2']) && vorV2.advisor.urteil === 'UEBERARBEITEN' && vorV2.rueckweg?.anlass_lauf_id === adv.lauf_id && vorV2.keinPlanV2 === null && vorV2.plan.entscheidungen?.some((e) => e.frage === STACK_FRAGE.frage && e.gewaehlt === 'TypeScript auf Node'),
+        '(pf1) planFreigabe vor dem Architekten v2: Plan v1 mit Stefans Antwort, Befunde des Anlass-Laufs, rueckweg mit anlass_lauf_id.',
+        `(pf1) erwartet plan_v2 — ${JSON.stringify(vorV2)}`
+      )
       pruefe(!schrittVon(d, ID_AUSF).eingaben.includes(`artefakt:ergebnis-@${ID_ADV}`), '(c) B13: die Ausführung verliert die Eingabe des Advisor-Ergebnisses.', `(c) Ausführung trägt noch das Advisor-Ergebnis: ${JSON.stringify(schrittVon(d, ID_AUSF).eingaben)}`)
       const v2 = await gibFreiUndWarte('c', id, ID_ARCH)
       const v2Lauf = laeufeVon(id, 'architekt').at(-1)
@@ -672,6 +690,12 @@ try {
         )
         pruefe(laeufeVon(id, 'architecture-advisor').length === 1 && schrittVon(v2, ID_ADV).lauf_id === adv.lauf_id, '(c2) nach Plan v2 kein zweiter Advisor-Lauf, Advisor-lauf_id unverändert.', `(c2) Advisor erneut gelaufen: ${laeufeVon(id, 'architecture-advisor').length}`)
         const v2LaufId = schrittVon(v2, ID_ARCH).lauf_id
+        const nachV2 = (await detailVon(id)).planFreigabe
+        pruefe(
+          nachV2?.art === 'ausfuehrung' && nachV2.fassung === 2 && nachV2.plan?.zusammenfassung === 'PLAN-V2-C' && nachV2.advisor?.befunde?.length === 2 && nachV2.advisorIstAnlass === true && nachV2.keinPlanV2 === null && nachV2.rueckweg?.vorheriger_lauf_id === v1LaufId,
+          '(pf2) planFreigabe nach Plan v2: Freigabe der Ausführung mit Plan v2 und den eingearbeiteten Befunden, kein „Kein Plan v2“.',
+          `(pf2) erwartet fassung 2 — ${JSON.stringify(nachV2)}`
+        )
         await gibFreiUndWarte('c', id, ID_AUSF)
         const pfade = laeufeVon(id, 'ausfuehrung').at(-1)?.anfragen.map((a) => a.pfad) ?? []
         pruefe(
@@ -700,6 +724,12 @@ try {
         '(c3) max_replans 0: kein Plan v2, weiter zur Freigabe der Ausführung, Grund nennt Urteil, Befunde und Grenze (Entscheidung Stefan A2).',
         `(c3) erwartet Freigabe der Ausführung mit Grund — ${d.status}, ${d.aktiver_schritt_id}, ${JSON.stringify(d.grund)}`
       )
+      const pf = (await detailVon(gesperrt.id)).planFreigabe
+      pruefe(
+        pf?.art === 'ausfuehrung' && pf.fassung === 1 && pf.advisorIstAnlass === false && (pf.keinPlanV2 ?? '').startsWith('Die Vorlage dieses Ablaufs erlaubt keine automatische Korrekturrunde.'),
+        '(pf4) max_replans 0: planFreigabe.keinPlanV2 nennt die Grenze.',
+        `(pf4) erwartet keinPlanV2 — ${JSON.stringify(pf)}`
+      )
     }
   }
 
@@ -712,6 +742,7 @@ try {
       const v2 = await gibFreiUndWarte('c7', id, ID_ARCH)
       const detail = await (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(id)}`)).json().catch(() => ({}))
       const fragen = detail.architekturEntscheidung?.fragen?.map((f) => f.frage) ?? []
+      pruefe(detail.prueferWiederholbar === false, '(c8) Gegenprobe: KLAERUNG am Architekten ⇒ prueferWiederholbar false.', `(c8) erwartet false am Architekten — ${JSON.stringify(detail.prueferWiederholbar)}`)
       pruefe(
         v2?.status === 'KLAERUNG_ERFORDERLICH' && v2.aktiver_schritt_id === ID_ARCH && (v2.grund ?? '').includes('1 offene Frage') && JSON.stringify(fragen) === JSON.stringify([NEUE_FRAGE.frage]),
         '(c7) Plan v2 mit neuer Frage: Halt (Regel 1c) nur für die neue Frage, GET-Detail nennt nur sie.',
@@ -754,6 +785,14 @@ try {
         d.status === 'WARTET_FREIGABE' && d.aktiver_schritt_id === ID_AUSF && schrittVon(d, ID_ARCH).rueckweg === undefined && !(d.grund ?? '').includes('Plan v2'),
         '(d) FREIGEGEBEN: direkt zur Freigabe der Ausführung, kein Rückweg, kein Plan-v2-Satz.',
         `(d) erwartet Freigabe der Ausführung — ${d.status}, ${d.aktiver_schritt_id}, ${JSON.stringify(d.grund)}`
+      )
+      const detailD = await detailVon(id)
+      const pf = detailD.planFreigabe
+      pruefe(detailD.prueferWiederholbar === false, '(c8) Gegenprobe: FREIGEGEBEN-Weg (Freigabe der Ausführung) ⇒ prueferWiederholbar false.', `(c8/d) erwartet false — ${JSON.stringify(detailD.prueferWiederholbar)}`)
+      pruefe(
+        pf?.art === 'ausfuehrung' && pf.fassung === 1 && pf.plan?.zusammenfassung === 'PLAN-V1-D' && pf.advisor?.urteil === 'FREIGEGEBEN' && pf.advisor.befunde.length === 0 && pf.keinPlanV2 === null && pf.rueckweg === null,
+        '(pf3) FREIGEGEBEN: planFreigabe mit Plan v1, ohne Befunde und ohne „Kein Plan v2“.',
+        `(pf3) erwartet fassung 1 — ${JSON.stringify(pf)}`
       )
       await gibFreiUndWarte('d', id, ID_AUSF)
       const pfade = laeufeVon(id, 'ausfuehrung').at(-1)?.anfragen.map((a) => a.pfad) ?? []
@@ -812,6 +851,12 @@ try {
           zweit.status === 'WARTET_FREIGABE' && zweit.aktiver_schritt_id === ID_AUSF && laeufeVon(id, 'architekt').length === 2 && (zweit.grund ?? '').includes('Kein Plan v2: Die Plan-Stufe hatte ihre eine automatische Korrekturrunde schon.'),
           '(c12) zweites UEBERARBEITEN: kein dritter Architekt-Lauf, Freigabe der Ausführung, Grund nennt die Grenze der Plan-Stufe.',
           `(c12) erwartet Grenze — ${zweit.status}, ${zweit.aktiver_schritt_id}, Architekt-Läufe ${laeufeVon(id, 'architekt').length}, ${JSON.stringify(zweit.grund)}`
+        )
+        const pf = (await detailVon(id)).planFreigabe
+        pruefe(
+          pf?.fassung === 2 && pf.advisorIstAnlass === false && JSON.stringify(pf.advisor?.befunde?.map((b) => b.id)) === JSON.stringify(['A9']) && (pf.keinPlanV2 ?? '').startsWith('Die Plan-Stufe hatte ihre eine automatische Korrekturrunde schon.'),
+          '(pf2) erneut geprüfter Plan v2: Befunde des neuen Advisor-Laufs, nicht als eingearbeitet, keinPlanV2 nennt die Grenze der Plan-Stufe.',
+          `(pf2/c12) erwartet keinPlanV2 — ${JSON.stringify(pf)}`
         )
       }
     }
@@ -873,6 +918,59 @@ try {
         '(c10b) Advisor-Ergebnis nicht lesbar: der v2-Start wird abgelehnt, der Grund ohne Lauf-Kennung, kein Lauf.',
         `(c10b) erwartet 409 ohne Kennung — ${antwort.status}, ${JSON.stringify(grund)}`
       )
+    }
+  }
+
+  // ══ B2b-1b-2b „Anzeige“ (features/F45/plan-b2b1b2.md, Plan 2b) ══════════════════════════════════════════════════
+  // ── (c8) Advisor-Halt (Schemaverstoß) → GET-Detail bietet „Advisor wiederholen“ an ─────────────────────────────
+  {
+    const lage = await bisNachAdvisor('c8', 2, [plan('PLAN-V1-C8')], [advisor('FREIGEGEBEN', [advisorBefund('A1')])])
+    if (lage) {
+      const detail = await detailVon(lage.id)
+      pruefe(
+        lage.nachAdvisor.status === 'KLAERUNG_ERFORDERLICH' && lage.nachAdvisor.aktiver_schritt_id === ID_ADV && detail.prueferWiederholbar === true && detail.planFreigabe === null,
+        '(c8) Advisor-Halt (Schemaverstoß): GET-Detail prueferWiederholbar true, keine planFreigabe (kein Freigabe-Halt).',
+        `(c8) erwartet prueferWiederholbar true — ${lage.nachAdvisor.status}, ${JSON.stringify(detail.prueferWiederholbar)}, ${JSON.stringify(detail.planFreigabe)}`
+      )
+      const zurueck = await post(`/api/workflows/${encodeURIComponent(lage.id)}/pruefer-wiederholen`)
+      const danach = await detailVon(lage.id)
+      pruefe(zurueck.status === 200 && danach.prueferWiederholbar === false && danach.daten?.status === 'WARTET_FREIGABE', '(c8) nach „Advisor wiederholen“: Freigabe des Advisors, prueferWiederholbar false.', `(c8) erwartet 200 + false — ${zurueck.status}, ${JSON.stringify(danach.prueferWiederholbar)}, ${danach.daten?.status}`)
+    }
+  }
+
+  // ── (pf5) Bestand ohne Satz: Freigabe der Ausführung nach UEBERARBEITEN, Rückweg nie gelaufen → „nicht ausgelöst“ (F-1108) ─
+  {
+    /** Laufakte mit Rohstrom im claude-code-Format (Muster attrappe). @returns laufId */
+    const legeLaufakteAn = (text) => {
+      const laufId = `pf5-${randomUUID()}`
+      const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+      writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: text }) }), 'utf8')
+      registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f45-b2b1-fake' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, ladeOptionen)
+      return laufId
+    }
+    const archLauf = legeLaufakteAn(JSON.stringify(plan('PLAN-PF5')))
+    const advLauf = legeLaufakteAn(advisor('UEBERARBEITEN', [advisorBefund('A1')]).text)
+    const id = await legeAn('pf5', 2, [], [
+      { ...SCHRITT_ARCHITEKT, status: 'ERFOLGREICH', lauf_id: archLauf, freigabe_erteilt: true },
+      { ...PLAN_SCHRITTE[1], status: 'ERFOLGREICH', lauf_id: advLauf, freigabe_erteilt: true },
+      PLAN_SCHRITTE[2],
+    ])
+    if (id) {
+      const fassung = ladeWorkflow(id)
+      registriereWorkflow({ ...fassung, status: 'WARTET_FREIGABE', aktiver_schritt_id: ID_AUSF, grund: 'Bestand ohne Satz der Plan-Stufe.' }, profilReferenz, ladeOptionen)
+      const detail = await detailVon(id)
+      const pf = detail.planFreigabe
+      pruefe(
+        detail.naechster?.art === 'haltFreigabe' && pf?.art === 'ausfuehrung' && pf.plan?.zusammenfassung === 'PLAN-PF5' && pf.advisor?.urteil === 'UEBERARBEITEN' && (pf.keinPlanV2 ?? '').startsWith('Plan v2 wurde für dieses Advisor-Ergebnis nicht ausgelöst') && !/pf5-|schritt-/.test(pf.keinPlanV2 ?? ''),
+        '(pf5) Bestand ohne Satz: planFreigabe.keinPlanV2 zur Lesezeit („nicht ausgelöst“, ohne Kennungen).',
+        `(pf5) erwartet keinPlanV2 — ${JSON.stringify(detail.naechster)}, ${JSON.stringify(pf)}`
+      )
+      // qa-Pass 2b (2): eine Reparatur setzt den Architekten mit dem v1-Lauf wieder auf ERFOLGREICH, der rueckweg bleibt ⇒
+      // Plan v1, nicht „Plan v2 … eingearbeitet“.
+      const mitRueckweg = ladeWorkflow(id)
+      registriereWorkflow({ ...mitRueckweg, schritte: mitRueckweg.schritte.map((s) => (s.schritt_id === ID_ARCH ? { ...s, rueckweg: { anlass_schritt_id: ID_ADV, anlass_lauf_id: advLauf, vorheriger_lauf_id: archLauf } } : s)) }, profilReferenz, ladeOptionen)
+      const repariert = (await detailVon(id)).planFreigabe
+      pruefe(repariert?.fassung === 1 && repariert.advisorIstAnlass === false, '(pf6) Architekt nach Reparatur wieder mit dem v1-Lauf: Plan v1, Befunde nicht als eingearbeitet.', `(pf6) erwartet fassung 1 — ${JSON.stringify(repariert)}`)
     }
   }
 } finally {

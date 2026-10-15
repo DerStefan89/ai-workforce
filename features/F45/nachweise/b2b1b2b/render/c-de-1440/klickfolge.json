@@ -1,0 +1,65 @@
+{
+  "url": "http://127.0.0.1:4399/#/workflows/wf-b2b1b2b-c-1792053458493",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Plan-Titel",
+        "selector": "#freigabe-plan"
+      },
+      {
+        "name": "Hinweis Advisor",
+        "selector": ".entscheiden-plan-hinweis"
+      },
+      {
+        "name": "Advisor-Notiz",
+        "selector": ".wf-advisor-wiederholen"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-bedienung-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Plan-Karte",
+        "selector": ".entscheiden-plan #freigabe-plan"
+      },
+      {
+        "name": "Befund-Karte",
+        "selector": "#freigabe-advisor"
+      },
+      {
+        "name": "Befunde",
+        "selector": ".entscheiden-plan .abnahme-befund"
+      },
+      {
+        "name": "Satz Plan v1 behalten",
+        "selector": ".entscheiden-plan .subtle"
+      },
+      {
+        "name": "Knopf Advisor wiederholen",
+        "selector": "[data-aktion=\"pruefer-wiederholen\"]"
+      },
+      {
+        "name": "Spalte Freigabe",
+        "selector": "#workflow-entscheidung input[name=\"wf-freigabe-option\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "„Kein Plan v2: …“ — de-1440",
+      "warteAufSelector": {
+        "selector": "#freigabe-advisor",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-c-de-1440.webp"
+    }
+  ]
+}

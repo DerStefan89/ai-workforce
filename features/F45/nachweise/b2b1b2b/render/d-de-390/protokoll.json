@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Advisor-Halt mit Knopf — de-390",
+    "Plan-Karte": false,
+    "Befund-Karte": false,
+    "Befunde": false,
+    "Satz Plan v1 behalten": false,
+    "Knopf Advisor wiederholen": true,
+    "Spalte Freigabe": false,
+    "Plan-Titel": "(fehlt)",
+    "Hinweis Advisor": "(fehlt)",
+    "Advisor-Notiz": "Der Advisor hat kein verwertbares Ergebnis geliefert. Du kannst den Advisor allein wiederholen — der Plan des Architekte",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true
+  }
+]

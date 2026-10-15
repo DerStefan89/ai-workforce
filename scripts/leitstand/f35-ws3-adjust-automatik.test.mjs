@@ -14,7 +14,8 @@
  * HTTP-Rundlauf in scripts/check-f45-b2b1-rueckweg.mjs. F45 B2b-1b: der Advisor-Zweig liest die Verstöße gegen das
  * Advisor-Schema (advisorVerstoesse) statt der früheren Urteilszeile (F-1104 (4)). F45 B2b-1b-2a
  * (features/F45/plan-b2b1b2.md): Rückweg der Plan-Stufe (ermittlePlanRueckweg, baueSchritteFuerPlanRueckweg,
- * uebernimmRueckwege, planStufenSatz) und die Summe über beide Stufen.
+ * uebernimmRueckwege, planStufenSatz) und die Summe über beide Stufen; B2b-1b-2b: der Satz „Kein Plan v2“ zur Lesezeit
+ * (ermittleKeinPlanV2, F-1108).
  */
 
 import assert from 'node:assert/strict'
@@ -23,6 +24,7 @@ import {
   baueAutomatischeAnpassungsBegruendung,
   baueSchritteFuerPlanRueckweg,
   ermittleAutomatischeAnpassung,
+  ermittleKeinPlanV2,
   ermittlePlanRueckweg,
   planStufenSatz,
   pruefeRueckweg,
@@ -347,4 +349,24 @@ test('B2b-1b-2a uebernimmRueckwege: ein beschädigter gespeicherter Wert wird ve
   for (const kaputt of [null, 'x', { anlass_schritt_id: 's2', anlass_lauf_id: 'lauf-adv' }]) {
     assert.equal('rueckweg' in uebernimmRueckwege([ARCHITEKT, ADVISOR], [{ ...ARCHITEKT, rueckweg: kaputt }, ADVISOR])[0], false)
   }
+})
+
+test('B2b-1b-2b ermittleKeinPlanV2: FREIGEGEBEN und gelaufener Plan v2 für genau diesen Advisor-Lauf ⇒ kein Satz', () => {
+  const basis = { ...PLAN_BASIS, advisorLaufId: 'lauf-adv' }
+  assert.equal(ermittleKeinPlanV2({ ...basis, urteil: 'FREIGEGEBEN' }), null)
+  assert.equal(ermittleKeinPlanV2({ ...basis, schritte: [MIT_RUECKWEG, ADVISOR, AUSFUEHRUNG] }), null)
+})
+
+test('B2b-1b-2b ermittleKeinPlanV2: gesperrter Rückweg ⇒ Grund aus ermittlePlanRueckweg (Grenze, kein Architekt, Plan-Stufe verbraucht)', () => {
+  assert.match(ermittleKeinPlanV2({ ...PLAN_BASIS, advisorLaufId: 'lauf-adv', maxReplans: 0 }), /erlaubt keine automatische Korrekturrunde/)
+  assert.match(ermittleKeinPlanV2({ ...PLAN_BASIS, advisorLaufId: 'lauf-adv', schritte: [ADVISOR, AUSFUEHRUNG] }), /kein gelaufener Architekt/)
+  // (c12): Plan v2 lief für einen früheren Advisor-Lauf, der heutige urteilt erneut ⇒ Grenze der Plan-Stufe.
+  const erneut = [MIT_RUECKWEG, { ...ADVISOR, lauf_id: 'lauf-adv-2' }, AUSFUEHRUNG]
+  assert.match(ermittleKeinPlanV2({ ...PLAN_BASIS, advisorLaufId: 'lauf-adv-2', schritte: erneut }), /^Die Plan-Stufe hatte ihre eine automatische Korrekturrunde schon\./)
+})
+
+test('B2b-1b-2b ermittleKeinPlanV2: Rückweg wäre frei, lief aber nicht (GESTOPPT im Nachlauf, Bestand 1b-1) ⇒ eigener Satz (F-1108)', () => {
+  const satz = ermittleKeinPlanV2({ ...PLAN_BASIS, advisorLaufId: 'lauf-adv' })
+  assert.match(satz, /^Plan v2 wurde für dieses Advisor-Ergebnis nicht ausgelöst/)
+  assert.match(satz, /Entscheide bei der Freigabe der Ausführung: Freigeben oder Ablehnen\.$/)
 })

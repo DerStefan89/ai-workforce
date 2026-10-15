@@ -135,3 +135,13 @@ test('Reparatureditor: IDs bleiben, Warnungen escaped, Leerzustand ohne Warnung,
   assert.match(html, /data-workflow-id="w-&lt;1&gt;"/)
   assert.match(renderReparaturWarnungen([]), /Keine Warnungen zu diesem Entwurf\./)
 })
+
+test('F45 B2b-1b-2b (F-1104 (4)): „Advisor wiederholen“ nur, wenn der Server den Advisor für wiederholbar hält — vor der Reparatur', () => {
+  const html = renderEingriffe('w<1>', 'KLAERUNG_ERFORDERLICH', false, null, null, true)
+  assert.match(html, /<div class="note red wf-advisor-wiederholen">\s*<strong>Der Advisor hat kein verwertbares Ergebnis geliefert\.<\/strong>/)
+  assert.match(html, /<button type="button" class="button primary wf-aktion" data-aktion="pruefer-wiederholen" data-workflow-id="w&lt;1&gt;">Advisor wiederholen<\/button>/)
+  assert.ok(html.indexOf('wf-advisor-wiederholen') < html.indexOf('wf-reparatur-notiz'), 'vor der Reparatur-Notiz')
+  assert.match(html, /Den Grund findest du unter „Technischer Ablauf &amp; Serverentscheidung“./, 'Ort des Grundes eingesetzt (design-guardian 1)')
+  assert.doesNotMatch(renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH', false, null, null, false), /wf-advisor-wiederholen/)
+  assert.doesNotMatch(renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH'), /wf-advisor-wiederholen/)
+})

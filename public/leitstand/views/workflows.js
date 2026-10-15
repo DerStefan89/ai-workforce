@@ -384,7 +384,7 @@ function heileSpalte(modusJetzt) {
     if (modusJetzt === 'freigabe') {
       const d = aktuellesDetail
       bedienungsKennzeichen = null
-      aktualisiereWorkflowBedienung(d.workflowId, d.daten.status ?? null, d.naechster, d.ungueltig, d.architekturEntscheidung, d.empfehlung, d.sichtung)
+      aktualisiereWorkflowBedienung(d.workflowId, d.daten.status ?? null, d.naechster, d.ungueltig, d.architekturEntscheidung, d.empfehlung, d.sichtung, d.arbeitsordner ?? null, d.prueferWiederholbar === true)
       document.getElementById('workflow-entscheidung').hidden = panelArt !== 'freigabe'
     } else if (letzteAbnahme !== null) {
       abnahmeKennzeichen = null
@@ -770,13 +770,13 @@ let bedienungsKennzeichen = null
  * nur bei ECHTER Lageänderung (Kennzeichen). Ist dabei ein Dialog offen und überholt, schließt er mit
  * „Der Stand hat sich geändert“ (kein Nachladen in den offenen Dialog). Lag der Fokus in den Notizen
  * oder der Aktionszeile, geht er auf deren erste Aktion bzw. die Seitenüberschrift.
- * @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param ungueltig - true bei ungültiger Fassung @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null
+ * @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param ungueltig - true bei ungültiger Fassung @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null @param arbeitsordner - F45 B1a-1: detail.arbeitsordner, oder null @param prueferWiederholbar - F45 B2b-1b-2b: „Advisor wiederholen“ angeboten (Teil des Kennzeichens)
  */
-function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null, arbeitsordner = null) {
+function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null, arbeitsordner = null, prueferWiederholbar = false) {
   // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung schneidet am letzten '|'); sie steht kodiert (encodeURIComponent) darin, damit ein '|' in einem Katalogtext den Schnitt nicht verschiebt (F46 D2, qa 8).
   // F45 B1a-1: die Lage des Arbeitsordners (Status, Vorbereitung, Ordner vorhanden, Grund) steht kodiert davor.
   const ordnerLage = encodeURIComponent(`${arbeitsordner?.status ?? 'null'}:${arbeitsordner?.vorbereitungLaeuft === true}:${arbeitsordner?.ordnerVorhanden !== false}:${arbeitsordner?.grund ?? ''}:${istAbnahmeOffen(status)}`)
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${ordnerLage}|${encodeURIComponent(JSON.stringify(empfehlung))}`
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${ordnerLage}|${prueferWiederholbar === true}|${encodeURIComponent(JSON.stringify(empfehlung))}`
   if (kennzeichen === bedienungsKennzeichen) return
   // Während einer laufenden Dialog-Bedienung schließt der Dialog erst mit ihrer Antwort (sendeWorkflowBedienung).
   const dialogVeraltet = offenerDialog !== null && laufendeDialogBedienung === null && dialogUeberholt(offenerDialog, kennzeichen)
@@ -789,7 +789,7 @@ function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig 
   const freigabeSpalte = naechster?.art === 'haltFreigabe' && !ungueltig
   setzePanel('freigabe', freigabeSpalte ? renderFreigabePanel({ workflowId, empfehlung }) : '', ohneEmpfehlung(kennzeichen))
   for (const [id, html] of [
-    ['workflow-bedienung', renderEingriffe(workflowId, status, ungueltig, architekturEntscheidung, sichtung)],
+    ['workflow-bedienung', renderEingriffe(workflowId, status, ungueltig, architekturEntscheidung, sichtung, prueferWiederholbar)],
     ['workflow-aktionen', renderAktionen(workflowId, status, naechster, ungueltig, { hauptknopf: !freigabeSpalte }) + renderArbeitsordnerAktion(workflowId, status, arbeitsordner, istAbnahmeOffen(status))],
   ]) {
     const container = document.getElementById(id)
@@ -1051,8 +1051,10 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     // F-768: die Sichtung ist nur beim reinen F-760-Halt fällig (bei ungültiger Fassung allein die Reparatur).
     const sichtung = ungueltig ? null : istSichtungsHaltAnzeige(daten)
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
-    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null }
-    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null)
+    // F45 B2b-1b-2b: planFreigabe (Karten der Freigabe-Seite) und prueferWiederholbar („Advisor wiederholen“) aus dem Detail.
+    const prueferWiederholbar = detail.prueferWiederholbar === true
+    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null, planFreigabe: detail.planFreigabe ?? null, prueferWiederholbar }
+    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null, prueferWiederholbar)
     pruefeAusstehendeVorbereitung(workflowId, detail)
     // F46 D2: Kopf, Freigabe-Teil und Lage der Bereiche je Modus (Freigabe, Abnahme oder heutige Ablaufseite).
     zeichneEntscheiden()
@@ -1167,6 +1169,30 @@ async function fuehreWorkflowAktionAus(button) {
 
   if (aktion === 'starten') {
     await sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), button, t('ablauf.meldung.gestartet'))
+    return
+  }
+
+  // F45 B2b-1b-2b (F-1104 (4)): „Advisor wiederholen“ — setzt nur den Advisor zurück (POST …/pruefer-wiederholen, startet
+  // nichts). In hoch ist er ZWINGEND und wartet danach auf die Freigabe; ein AUTOMATISCHER Advisor steht auf LAEUFT und
+  // wird wie beim Review über den gewöhnlichen Start gestartet (Muster fuehrePrueferWiederholenAus). Fehler: Servertext.
+  if (aktion === 'pruefer-wiederholen') {
+    const anfrage = async () => {
+      const zurueck = await wiederholePruefer(workflowId)
+      if (!zurueck.ok) return zurueck
+      const inhalt = await zurueck.json().catch(() => ({}))
+      if (inhalt.status !== 'LAEUFT') return new Response(JSON.stringify({ hinweis: inhalt.status === 'WARTET_FREIGABE' ? t('eingriff.advisor.nachFreigabe') : '' }), { status: 200 })
+      const start = await starteWorkflowSchritt(workflowId)
+      if (start.ok) {
+        const gestartet = await start.json().catch(() => ({}))
+        // 202 mit vorbereitung: der Arbeitsordner wird erst vorbereitet. Keine Nachsendung (sie wiederholte das Zurücksetzen
+        // → 409); die Meldung sagt, dass danach „Starten“ den Advisor startet (Code-Review 2b, 1).
+        if (gestartet.vorbereitung === true) return new Response(JSON.stringify({ hinweis: t('eingriff.advisor.vorbereitung') }), { status: 200 })
+        return new Response(JSON.stringify({ hinweis: t('eingriff.advisor.gestartet') }), { status: 200 })
+      }
+      const fehler = await start.json().catch(() => ({}))
+      return new Response(JSON.stringify({ grund: t('eingriff.advisor.ohneStart', { grund: fehler.grund ?? t('ablauf.fehler.unbekannt') }) }), { status: start.status })
+    }
+    await sendeWorkflowBedienung(anfrage, button, t('eingriff.advisor.zurueckgesetzt'))
     return
   }
 

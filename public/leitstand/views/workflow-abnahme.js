@@ -68,7 +68,8 @@ const PROJEKTION_STATUS = new Set(['kein_ausfuehrungs_schritt', 'noch_nicht_gela
 
 /** Statusfarbe (Klasse von .ablauf-status) je Urteil, Schwere und Abnahme-Ergebnis — Anzeige, keine Regel. */
 const FARBE_URTEIL = { BEREIT: 'ok', BEREIT_NACH_KORREKTUR: 'warten', BLOCKIERT: 'fehler' }
-const FARBE_SCHWERE = { KRITISCH: 'fehler', HOCH: 'fehler', MITTEL: 'warten', NIEDRIG: 'neutral' }
+/** Auch für die Befunde des Advisors auf der Freigabe-Seite (views/workflow-entscheiden.js, F45 B2b-1b-2b) — dieselben vier Schweren. */
+export const FARBE_SCHWERE = { KRITISCH: 'fehler', HOCH: 'fehler', MITTEL: 'warten', NIEDRIG: 'neutral' }
 const FARBE_ERGEBNIS = { ANGENOMMEN: 'ok', ANPASSUNG_ANGEFORDERT: 'warten', ABGELEHNT: 'fehler' }
 /** Symbol je AK-Urteil (Vorlage ✓); der Text daneben trägt die Bedeutung, das Symbol ist aria-hidden. */
 const SYMBOL_AK = { ERFUELLT: '✓', NICHT_ERFUELLT: '✗', NICHT_PRUEFBAR: '?' }

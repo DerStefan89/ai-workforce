@@ -568,6 +568,7 @@ import {
   baueAutomatischeAnpassungsBegruendung,
   baueSchritteFuerPlanRueckweg,
   ermittleAutomatischeAnpassung,
+  ermittleKeinPlanV2,
   ermittlePlanRueckweg,
   planStufenSatz,
   pruefschrittWiederholbar,
@@ -5384,6 +5385,134 @@ function lesePlanV2Eingaben(workflowId, schritt, stackOffen, ladeOptionen) {
   }
 }
 
+/** F45 B2b-1b-2b: höchstens so viele zwischengespeicherte Plan-/Advisor-Teile der Projektion planFreigabe. */
+const PLAN_FREIGABE_CACHE_GROESSE = 32
+/** F45 B2b-1b-2b (Plan 2b P1, Advisor A7): Schlüssel basisVerzeichnis|Plan-Lauf|Advisor-Lauf → { plan, advisor } — nur fehlerfreie Teile. */
+const planFreigabeCache = new Map()
+
+/**
+ * F45 B2b-1b-2b: Plan-Teil der Projektion aus der Laufakte eines Architekt-Laufs — nur, was die Freigabe-Seite zeigt.
+ * Synchron, wirft nicht; die Einzelheiten eines Lesefehlers gehen ins Log, die Seite zeigt einen übersetzten Satz.
+ * @param laufId - lauf_id des Architekt-Laufs
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns { zusammenfassung, module[{ name, zweck }] } oder { fehler: 'nicht_lesbar' }
+ */
+function lesePlanFuerFreigabe(laufId, ladeOptionen) {
+  try {
+    const laufakte = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+    const gelesen = laufakte === null ? { ok: false, grund: 'Laufakte nicht gefunden' } : leseRollenErgebnisRohstrom(laufakte.daten)
+    if (!gelesen.ok || typeof gelesen.geparst !== 'object' || gelesen.geparst === null) {
+      console.error(`[leitstand] Plan des Architekt-Laufs '${laufId}' für die Freigabe nicht lesbar: ${gelesen.grund ?? 'kein Objekt'}`)
+      return { fehler: 'nicht_lesbar' }
+    }
+    const text = (wert) => (typeof wert === 'string' ? wert : '')
+    const module = Array.isArray(gelesen.geparst.module) ? gelesen.geparst.module.filter((m) => typeof m === 'object' && m !== null).map((m) => ({ name: text(m.name), zweck: text(m.zweck) })) : []
+    return { zusammenfassung: text(gelesen.geparst.zusammenfassung), module }
+  } catch (fehler) {
+    console.error(`[leitstand] Plan des Architekt-Laufs '${laufId}' für die Freigabe nicht lesbar: ${fehler.message}`)
+    return { fehler: 'nicht_lesbar' }
+  }
+}
+
+/**
+ * F45 B2b-1b-2b: Advisor-Teil der Projektion (leseAdvisorErgebnisAusLaufakte, dieselbe Prüfung wie Nachlauf und Plan v2).
+ * @param laufId - lauf_id des Advisor-Laufs
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns { urteil, begruendung, befunde[] } oder { fehler: 'nicht_lesbar' }
+ */
+function leseAdvisorFuerFreigabe(laufId, ladeOptionen) {
+  try {
+    const laufakte = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+    const gelesen = laufakte === null ? { verstoesse: ['Laufakte nicht gefunden'], ergebnis: null } : leseAdvisorErgebnisAusLaufakte(laufakte.daten)
+    if (gelesen.ergebnis === null) {
+      console.error(`[leitstand] Advisor-Ergebnis des Laufs '${laufId}' für die Freigabe nicht lesbar: ${gelesen.verstoesse.slice(0, 3).join('; ')}`)
+      return { fehler: 'nicht_lesbar' }
+    }
+    const { urteil, begruendung, befunde } = gelesen.ergebnis
+    return { urteil, begruendung, befunde: befunde.map(({ id, schwere, evidenz, fundstelle, zusammenfassung, korrekturrichtung }) => ({ id, schwere, evidenz, fundstelle, zusammenfassung, korrekturrichtung })) }
+  } catch (fehler) {
+    console.error(`[leitstand] Advisor-Ergebnis des Laufs '${laufId}' für die Freigabe nicht lesbar: ${fehler.message}`)
+    return { fehler: 'nicht_lesbar' }
+  }
+}
+
+/**
+ * F45 B2b-1b-2b (features/F45/plan-b2b1b2.md, Plan 2b P1/P2 + Nachtrag A3/A4/A7; F-1106, F-1108): was Stefan an einem
+ * Freigabe-Halt der Plan-Stufe sieht — nur bei naechster.art 'haltFreigabe', sonst null.
+ * - art 'plan_v2' — fälliger Schritt ist ein Architekt mit rueckweg ⇒ Plan v1 (rueckweg.vorheriger_lauf_id) und die Befunde des
+ *   Anlass-Laufs (rueckweg.anlass_lauf_id), die an den Architekten gehen.
+ * - art 'ausfuehrung' — fälliger Schritt ist die Ausführung ⇒ der Plan, den sie bekommt (findeArchitektEingabeTreffer, AK3;
+ *   Fassung 2 mit rueckweg) und das Ergebnis des Advisors hinter diesem Architekten (dessen heutiger Lauf, falls
+ *   ERFOLGREICH); keinPlanV2 zur Lesezeit (ermittleKeinPlanV2), advisorIstAnlass nur, wenn Plan v2 genau diese Befunde
+ *   eingearbeitet hat.
+ * Fertige Laufakten ändern sich nicht (Poll alle 2 s) ⇒ Zwischenspeicher je (Plan-Lauf, Advisor-Lauf), nur fehlerfreie
+ * Teile; Entscheidungen (Zusammenführung, findeWorkflowEntscheidungFuerSchritt) und keinPlanV2 je Anfrage. Wirft nicht.
+ * @param workflowId - Kennung des Workflows
+ * @param daten - Workflow-Daten der gelesenen Fassung
+ * @param naechster - baueNaechsterProjektion derselben Fassung
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns { art, fassung, plan, advisor, advisorIstAnlass, keinPlanV2, rueckweg } oder null
+ */
+function bauePlanFreigabeProjektion(workflowId, daten, naechster, ladeOptionen) {
+  if (naechster?.art !== 'haltFreigabe' || !Array.isArray(daten?.schritte)) return null
+  try {
+    const schritte = daten.schritte
+    const faellig = schritte.find((s) => s?.schritt_id === naechster.schrittId)
+    if (faellig === undefined) return null
+    let art
+    let architekt
+    let planLaufId
+    let advisorSchritt
+    let advisorLaufId
+    if (faellig.rolle === 'architekt' && faellig.rueckweg !== undefined) {
+      art = 'plan_v2'
+      architekt = faellig
+      planLaufId = faellig.rueckweg.vorheriger_lauf_id
+      advisorLaufId = faellig.rueckweg.anlass_lauf_id
+    } else {
+      const treffer = Array.isArray(faellig.eingaben) ? findeArchitektEingabeTreffer(faellig, daten) : undefined
+      architekt = treffer === undefined ? undefined : schritte.find((s) => s.schritt_id === treffer[1])
+      if (architekt === undefined || architekt.status !== 'ERFOLGREICH' || typeof architekt.lauf_id !== 'string') return null
+      art = 'ausfuehrung'
+      planLaufId = architekt.lauf_id
+      advisorSchritt = schritte.find((s) => s.schritt_id === architekt.nachfolger && s.rolle === 'architecture-advisor')
+      advisorLaufId = advisorSchritt?.status === 'ERFOLGREICH' && typeof advisorSchritt.lauf_id === 'string' ? advisorSchritt.lauf_id : null
+    }
+    const schluessel = `${ladeOptionen.basisVerzeichnis}|${planLaufId}|${advisorLaufId ?? '-'}`
+    let teile = planFreigabeCache.get(schluessel)
+    if (teile === undefined) {
+      teile = { plan: lesePlanFuerFreigabe(planLaufId, ladeOptionen), advisor: advisorLaufId === null ? null : leseAdvisorFuerFreigabe(advisorLaufId, ladeOptionen) }
+      if (teile.plan.fehler === undefined && teile.advisor?.fehler === undefined) {
+        if (planFreigabeCache.size >= PLAN_FREIGABE_CACHE_GROESSE) planFreigabeCache.delete(planFreigabeCache.keys().next().value)
+        planFreigabeCache.set(schluessel, teile)
+      }
+    }
+    const entscheidung = findeWorkflowEntscheidungFuerSchritt(ladeOptionen.basisVerzeichnis, workflowId, architekt.schritt_id)
+    const entscheidungen = (entscheidung?.antworten ?? []).map((a) => ({ frage: a.frage, gewaehlt: a.gewaehlt }))
+    const plan = teile.plan.fehler === undefined ? { ...teile.plan, entscheidungen } : teile.plan
+    // Plan v2 liegt nur vor, wenn der Architekt seit dem Rückweg neu gelaufen ist (qa-Pass 2b, 2): eine Reparatur, die ihn
+    // mit dem v1-Lauf wieder auf ERFOLGREICH setzt, behält den rueckweg — das wäre sonst „Plan v2 … eingearbeitet“ für Plan v1.
+    const planV2Liegt = art === 'ausfuehrung' && architekt.rueckweg !== undefined && architekt.lauf_id !== architekt.rueckweg.vorheriger_lauf_id
+    const advisorIstAnlass = art === 'plan_v2' || (planV2Liegt && advisorLaufId !== null && architekt.rueckweg.anlass_lauf_id === advisorLaufId)
+    let keinPlanV2 = null
+    if (art === 'ausfuehrung' && teile.advisor !== null && teile.advisor.fehler === undefined && teile.advisor.urteil !== 'FREIGEGEBEN' && !advisorIstAnlass) {
+      keinPlanV2 = ermittleKeinPlanV2({
+        schritte,
+        maxReplans: daten.grenzen?.max_replans,
+        advisorSchrittId: advisorSchritt.schritt_id,
+        advisorLaufId,
+        urteil: teile.advisor.urteil,
+        befundAnzahl: teile.advisor.befunde.length,
+        kernVersionen: zaehleKernVersionen(workflowId, ladeOptionen),
+      })
+    }
+    return { art, fassung: planV2Liegt ? 2 : 1, plan, advisor: teile.advisor, advisorIstAnlass, keinPlanV2, rueckweg: architekt.rueckweg ?? null }
+  } catch (fehler) {
+    console.error(`[leitstand] Projektion planFreigabe für Workflow '${workflowId}' nicht berechenbar: ${fehler.message}`)
+    return null
+  }
+}
+
 /**
  * F45 B2b-1b-2a (Delta-Advisor D2): hängt an den Grund eines Freigabe-Halts den Satz der Plan-Stufe (planStufenSatz) —
  * eine Stelle für den Nachlauf (Advisor, Architekt v2) und die Route POST …/entscheidung.
@@ -8479,6 +8608,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       // demselben Datensatz im selben Request (Reviewer-Pass 10.09.2026).
       const naechster = baueNaechsterProjektion(version.daten, verstoesse)
 
+      // F45 B2b-1b-2b (F-1106, F-1108): Plan und Advisor-Befunde an der Freigabe der Plan-Stufe (bauePlanFreigabeProjektion).
+      const detailLadeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const planFreigabe = bauePlanFreigabeProjektion(workflowId, version.daten, naechster, detailLadeOptionen)
+      // F45 B2b-1b-2b (F-1104 (4), §3.10): „Advisor wiederholen“ — dieselbe Vorbedingung wie POST …/pruefer-wiederholen; die
+      // Advisor-Laufakte wird nur gelesen, wenn der Ablauf am Advisor auf Klärung wartet (Muster reviewWiederholbar).
+      const cursorSchritt = version.daten.status === 'KLAERUNG_ERFORDERLICH' ? (version.daten.schritte?.find((s) => s.schritt_id === version.daten.aktiver_schritt_id) ?? null) : null
+      const prueferWiederholbar =
+        cursorSchritt?.rolle === 'architecture-advisor' &&
+        pruefschrittWiederholbar({ workflowStatus: version.daten.status, schritt: cursorSchritt, befund: ermittlePrueferBefund(cursorSchritt, version.daten.auftrag_id, detailLadeOptionen) }).wiederholbar
+
       // F36 WS-3 (E-F36-4 „nur wenn empfohlen und angezeigt“): additiv, NUR am ZWINGEND-Start
       // (haltFreigabe) eines Schritts mit Katalog-Fähigkeiten (erhaeltKatalogFaehigkeiten) — sonst
       // null. Die angezeigten wirdGenutzt-ids schickt die Oberfläche mit der Freigabe zurück
@@ -8514,6 +8653,9 @@ export function erzeugeRequestHandler(optionen = {}) {
         arbeitsordner: baueArbeitsordnerProjektion(workflowId, version.daten),
         // F45 B2a-2 (F-1071): additiv — Einrichtung durch Stefan aus dem Auftrag (null: der Auftrag trägt keine Liste).
         einrichtung: leseEinrichtungProjektion(version.daten.auftrag_id),
+        // F45 B2b-1b-2b: additiv — Plan/Advisor an der Freigabe der Plan-Stufe (sonst null) und „Advisor wiederholen“.
+        planFreigabe,
+        prueferWiederholbar,
       })
       return
     }
