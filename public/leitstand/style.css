@@ -7629,8 +7629,15 @@ th {
 
 /* F45 B2b-3d (design-guardian 1): Notizen als direkte Kinder der Flex-Spalte „entscheidbar“ ohne eigenen Rand — der
    Abstand kommt allein aus gap (18 px), wie bei den Karten; .v10-seite .note setzt sonst 20 px, die in Flex nicht zusammenfallen. */
-.workflow-seite .entscheiden-inhalt > .note {
+/* F45 B2b-3e-2 (F-1123 (15)): ebenso die graue Zeile „nicht bestimmbar“ (p.abnahme-umfang ohne .note). */
+.workflow-seite .entscheiden-inhalt > .note,
+.workflow-seite .entscheiden-inhalt > p.abnahme-umfang {
   margin: 0;
+}
+
+/* F45 B2b-3e-2 (F-1123 (14)): lange Bereiche in „Vereinbart: …“ brechen um statt die Spalte zu sprengen. */
+.workflow-seite .abnahme-umfang p {
+  overflow-wrap: anywhere;
 }
 
 .workflow-seite .wf-reparatur-editor .note ul,

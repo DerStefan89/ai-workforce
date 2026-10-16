@@ -76,17 +76,22 @@ function liegtInnerhalb(pfad: string, praefixe: readonly string[]): boolean {
  * @param dateien - `dateien` der Änderungsübersicht (pfad, bei Umbenennung alter_pfad)
  * @param bereiche - `bereiche` des Auftrags (oder undefined)
  * @returns null ohne Bereiche (kein Abgleich), sonst Bereiche und Dateien außerhalb; Ausnahme-Pfade (istAusnahmePfad)
- *   zählen nie als außerhalb, bei einer Umbenennung genügt ein Pfad außerhalb (gemeldet wird der neue)
+ *   zählen nie als außerhalb, bei einer Umbenennung genügt ein Pfad außerhalb (gemeldet wird der neue; liegt der neue unter
+ *   einer Ausnahme, der alte aber außerhalb, der alte — wie ein Löschen, F45 B2b-3e-2, F-1123 (13))
  */
 export function gleicheUmfangAb(dateien: readonly UmfangDatei[], bereiche: readonly string[] | undefined): UmfangErgebnis | null {
   if (bereiche === undefined || bereiche.length === 0) return null
   const praefixe = bereiche.map(normalisiereBereich)
   const ausserhalb = new Set<string>()
+  const liegtAusserhalb = (p: string) => !istAusnahmePfad(p) && !liegtInnerhalb(p, praefixe)
   for (const datei of dateien) {
-    const pfade = [datei.pfad, ...(datei.alter_pfad !== undefined ? [datei.alter_pfad] : [])].map(normalisierePfad)
-    // Gemeldet wird der neue Pfad — liegt er selbst unter einer Ausnahme, wird nichts gemeldet (code-reviewer 9).
-    if (istAusnahmePfad(pfade[0])) continue
-    if (pfade.some((p) => !istAusnahmePfad(p) && !liegtInnerhalb(p, praefixe))) ausserhalb.add(normalisierePfad(datei.pfad))
+    const neu = normalisierePfad(datei.pfad)
+    const alt = datei.alter_pfad !== undefined ? normalisierePfad(datei.alter_pfad) : undefined
+    // Gemeldet wird der neue Pfad (code-reviewer 9); liegt er unter einer Ausnahme, verschwand die Datei von ihrem alten Ort —
+    // liegt der außerhalb, wird er gemeldet, sonst bliebe eine Umbenennung in den Kontrollzustand still (F-1123 (13)).
+    if (istAusnahmePfad(neu)) {
+      if (alt !== undefined && liegtAusserhalb(alt)) ausserhalb.add(alt)
+    } else if (liegtAusserhalb(neu) || (alt !== undefined && liegtAusserhalb(alt))) ausserhalb.add(neu)
   }
   return { bereiche: [...bereiche], ausserhalb: [...ausserhalb].sort() }
 }

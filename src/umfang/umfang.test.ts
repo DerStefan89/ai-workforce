@@ -79,6 +79,9 @@ test('gleicheUmfangAb (Korrekturrunde): ./, .\\, *, ** und ./** bedeuten „das 
   }
 })
 
-test('gleicheUmfangAb (Korrekturrunde): Umbenennung in einen Ausnahme-Pfad wird nicht gemeldet', () => {
-  assert.deepEqual(gleicheUmfangAb([datei('kontrollzustand/y.json', 'docs/x.md')], ['src/'])?.ausserhalb, [])
+test('gleicheUmfangAb (F45 B2b-3e-2, F-1123 (13)): Umbenennung von außerhalb in einen Ausnahme-Pfad meldet den alten Pfad (wie ein Löschen)', () => {
+  assert.deepEqual(gleicheUmfangAb([datei('kontrollzustand/y.json', 'docs/x.md')], ['src/'])?.ausserhalb, ['docs/x.md'])
+  assert.deepEqual(gleicheUmfangAb([datei('kontrollzustand/y.json', 'src/x.md')], ['src/'])?.ausserhalb, [], 'alter Pfad innerhalb ⇒ nichts')
+  assert.deepEqual(gleicheUmfangAb([datei('kontrollzustand/y.json', 'kontrollzustand/x.json')], ['src/'])?.ausserhalb, [], 'beide Ausnahme ⇒ nichts')
+  assert.deepEqual(gleicheUmfangAb([datei('kontrollzustand/y.json')], ['src/'])?.ausserhalb, [], 'ohne Umbenennung ⇒ nichts')
 })
