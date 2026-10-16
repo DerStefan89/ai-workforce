@@ -54,19 +54,19 @@ test('validiereRueckfrageProtokoll: Rotfälle', () => {
 })
 
 test('neutralisiereText: Arbeitsordner vor Temp vor Home, roh, mit / und JSON-escaped; win32 ohne Groß/klein; kein Kappen', () => {
-  const orte = { arbeitsordner: 'C:\\Users\\stefan\\AppData\\Local\\Temp\\wf\\abc', temp: 'C:\\Users\\stefan\\AppData\\Local\\Temp', home: 'C:\\Users\\stefan', plattform: 'win32' as const }
-  assert.equal(neutralisiereText('cat C:\\Users\\stefan\\AppData\\Local\\Temp\\wf\\abc\\x.txt', orte), 'cat <ARBEITSORDNER>\\x.txt')
-  assert.equal(neutralisiereText('ls C:/Users/stefan/AppData/Local/Temp/andere', orte), 'ls <TEMP>/andere')
-  assert.equal(neutralisiereText('{"p":"C:\\\\Users\\\\stefan\\\\.ssh"}', orte), '{"p":"<HOME>\\\\.ssh"}')
-  assert.equal(neutralisiereText('type c:\\users\\STEFAN\\notiz', orte), 'type <HOME>\\notiz')
+  const orte = { arbeitsordner: 'C:\\Users\\nutzer\\AppData\\Local\\Temp\\wf\\abc', temp: 'C:\\Users\\nutzer\\AppData\\Local\\Temp', home: 'C:\\Users\\nutzer', plattform: 'win32' as const }
+  assert.equal(neutralisiereText('cat C:\\Users\\nutzer\\AppData\\Local\\Temp\\wf\\abc\\x.txt', orte), 'cat <ARBEITSORDNER>\\x.txt')
+  assert.equal(neutralisiereText('ls C:/Users/nutzer/AppData/Local/Temp/andere', orte), 'ls <TEMP>/andere')
+  assert.equal(neutralisiereText('{"p":"C:\\\\Users\\\\nutzer\\\\.ssh"}', orte), '{"p":"<HOME>\\\\.ssh"}')
+  assert.equal(neutralisiereText('type c:\\users\\NUTZER\\notiz', orte), 'type <HOME>\\notiz')
   const lang = 'x'.repeat(5000)
   assert.equal(neutralisiereText(lang, orte), lang)
   assert.equal(neutralisiereText('nichts', { arbeitsordner: '', temp: '', home: '' }), 'nichts')
 })
 
 test('neutralisiereText: posix mit Groß/klein', () => {
-  const orte = { arbeitsordner: '/home/stefan/wf', temp: '/tmp', home: '/home/stefan', plattform: 'posix' as const }
-  assert.equal(neutralisiereText('cat /home/stefan/wf/a /tmp/b /home/stefan/c /HOME/stefan/d', orte), 'cat <ARBEITSORDNER>/a <TEMP>/b <HOME>/c /HOME/stefan/d')
+  const orte = { arbeitsordner: '/home/nutzer/wf', temp: '/tmp', home: '/home/nutzer', plattform: 'posix' as const }
+  assert.equal(neutralisiereText('cat /home/nutzer/wf/a /tmp/b /home/nutzer/c /HOME/nutzer/d', orte), 'cat <ARBEITSORDNER>/a <TEMP>/b <HOME>/c /HOME/nutzer/d')
 })
 
 test('gleicheAblehnungenAb: nur Stefan ⇒ nur_stefan mit Anzahl (eine und zwei Ablehnungen, andere Einträge daneben)', () => {

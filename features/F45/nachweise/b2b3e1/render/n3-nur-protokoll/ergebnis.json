@@ -1,0 +1,10 @@
+{
+  "hinweis": "Der Pfad C:\\Users\\anna\\… ist erfunden (kein echter Nutzer) und nur im Browser eingeschleust.",
+  "exitCode": 1,
+  "meldung": "Error: Pfadprobe (F-1125): persönlicher Pfad in protokoll.md — „…d“ geladen | true | C:\\Users\\anna\\AppData\\Local\\…“; „…rue | C:\\Users\\anna\\AppData\\Local\\Temp\\f45-erfu…“. Kein Bild/Protokoll geschrieben.",
+  "ortGenannt": true,
+  "fundstelleGenannt": true,
+  "bildVorhanden": false,
+  "protokollVorhanden": false,
+  "abbruchBelegt": true
+}

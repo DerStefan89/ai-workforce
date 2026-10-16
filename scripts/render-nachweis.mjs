@@ -114,6 +114,15 @@
  * entfernt navigator.clipboard vor jedem Laden (Rückfallweg ohne Clipboard-API). In 'texte' liest
  * "eigenschaft" (z. B. "value") statt eines Attributs die DOM-Eigenschaft (Inhalt eines Eingabefelds).
  *
+ * F45 B2b-3e-1 (F-1125, Pfadprobe): vor JEDEM Screenshot liest eine DOM-Probe den sichtbaren Text der Seite
+ * (innerText plus Wert und Platzhalter sichtbarer Felder, scripts/render-pfadprobe.mjs) und bricht bei einem persönlichen
+ * Pfad (`C:\Users\<echter Name>`, `AppData`, `/Users/…`, `/home/…`, `C--Users-…`) ab — kein Bild. Vor dem Schreiben prüft
+ * sie ebenso protokoll.md/protokoll.json (Spalten 'texte', 'Zwischenablage'). Spalte „Pfadprobe“ je Schritt: „sauber“ bei
+ * geprüftem Bild, sonst „–“. Die Probe liest die ganze Seite, auch bei einem Ausschnitt (streng, aber sicher). Bricht sie in
+ * Schritt k ab, bleiben die Bilder der Schritte davor im Ordner, aber ohne protokoll.*; gleichnamige Bilder eines älteren
+ * Laufs entfernt dieses Skript nicht (der Aufrufer leert seinen Ordner). Neutrale
+ * Pfade liefert die Instanz (scripts/neutrale-umgebung-starten.mjs) — dieses Skript importiert sie bewusst nicht.
+ *
  * Aufruf: node scripts/render-nachweis.mjs <klickfolge.json> <ausgabeVerzeichnis>
  * NICHT Teil von `npm run check` (braucht eine laufende Server-Instanz UND
  * einen echten Browser) — eigenes Skript `npm run render-nachweis`.
@@ -122,6 +131,7 @@
 import { chromium } from 'playwright'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { pruefeAufPersoenlichePfade, sammleSichtbarenText } from './render-pfadprobe.mjs'
 
 /**
  * Liest den Beobachtungszustand der Seite gemäß der 'beobachtete'-Konfiguration.
@@ -263,6 +273,8 @@ async function main() {
       const bildlauf = vollseite === true ? await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY })) : { x: 0, y: 0 }
       optionen = { fullPage: vollseite === true, clip: { x: box.x + bildlauf.x, y: box.y + bildlauf.y, width: box.width, height: ausschnitt.hoehe ?? box.height } }
     }
+    // F-1125: erst die Pfadprobe über den sichtbaren Text — bei einem persönlichen Pfad entsteht kein Bild.
+    pruefeAufPersoenlichePfade(await page.evaluate(sammleSichtbarenText), `Screenshot ${dateiname}`)
     const png = await page.screenshot({ ...optionen, type: 'png' })
     writeFileSync(join(ausgabeVerzeichnis, dateiname), dateiname.endsWith('.webp') ? await alsWebp(png) : png)
   }
@@ -358,6 +370,8 @@ async function main() {
       }
       protokoll.push({ label: schritt.label, ...zustand, ...(angehalten === undefined ? {} : { 'Animationen angehalten': angehalten }) })
       if (schritt.screenshot) await knappesScreenshot(schritt.screenshot, schritt.screenshotVollseite ?? klickfolge.screenshotVollseite, schritt.ohneAusschnitt === true)
+      // F-1125: der Eintrag steht schon im Protokoll — die Spalte erst nach der bestandenen Probe setzen.
+      protokoll[protokoll.length - 1].Pfadprobe = schritt.screenshot ? 'sauber' : '–'
     }
   } finally {
     await browser.close()
@@ -369,9 +383,13 @@ async function main() {
   const trenner = `| ${spalten.map(() => '---').join(' | ')} |`
   const zeilen = protokoll.map((eintrag) => `| ${[eintrag.label, ...spalten.slice(1).map((s) => String(eintrag[s] ?? '–'))].join(' | ')} |`)
   const markdown = [kopf, trenner, ...zeilen].join('\n')
+  const json = JSON.stringify(protokoll, null, 2)
 
+  // F-1125 (Advisor A7): auch das Protokoll — 'texte' und 'Zwischenablage' lesen Werte, die nicht im Bild stehen müssen.
+  pruefeAufPersoenlichePfade(markdown, 'protokoll.md')
+  pruefeAufPersoenlichePfade(json, 'protokoll.json')
   writeFileSync(join(ausgabeVerzeichnis, 'protokoll.md'), `${markdown}\n`, 'utf-8')
-  writeFileSync(join(ausgabeVerzeichnis, 'protokoll.json'), `${JSON.stringify(protokoll, null, 2)}\n`, 'utf-8')
+  writeFileSync(join(ausgabeVerzeichnis, 'protokoll.json'), `${json}\n`, 'utf-8')
 
   console.log(markdown)
   console.log(`\nScreenshots + protokoll.md/protokoll.json in ${ausgabeVerzeichnis}`)
