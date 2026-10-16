@@ -1,0 +1,107 @@
+{
+  "url": "http://127.0.0.1:4405/#/projekt",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/code",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Users\\anna\\AppData\\Local\\Temp\\f45-erfunden\\projekt",
+        "arbeitsverzeichnis": {
+          "status": "ok",
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "render",
+          "losgeloest": false,
+          "commit": "50173e8"
+        },
+        "basis": {
+          "status": "fehler",
+          "grund": "weder origin/main noch main vorhanden"
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": null,
+          "origin": false
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [],
+          "anzahl": 0,
+          "gekappt": false
+        },
+        "verlauf": {
+          "status": "fehler",
+          "grund": "weder origin/main noch main vorhanden"
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": false,
+          "hooks": 0,
+          "agents": 0
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlage.json",
+          "profilPfad": "profiles/ai-workforce.json",
+          "modell": "claude-sonnet-5",
+          "worker": [
+            "claude-code",
+            "codex"
+          ],
+          "werkzeugsaetze": [
+            "lesend",
+            "schreibend",
+            "recherchierend"
+          ],
+          "pruefbefehl": null,
+          "zeitgrenzeMs": 1800000,
+          "pruefZeitgrenzeMs": 900000,
+          "budget": {
+            "maxElemente": 20,
+            "maxBytes": 200000
+          }
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Projektordner",
+        "selector": ".umgebung-pfad"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Formular",
+        "selector": "#auftrag-formular"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/projekt, „Wo gearbeitet wird“ geladen",
+      "warteAufSelector": {
+        "selector": ".umgebung-pfad",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-eingeschleust.webp"
+    }
+  ]
+}

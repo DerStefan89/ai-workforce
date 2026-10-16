@@ -101,7 +101,7 @@ gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 `docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
-(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gemergt #349; B2b-3b-1b (Auswertung) gebaut, nicht gemergt; es folgen B2b-3e (Budget-Feld), B2b-3b-2 (Einschalten), B2b-4; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gemergt #349; B2b-3b-1b (Auswertung) gemergt #350; B2b-3e-1 (keine persönlichen Pfade in Render-Screenshots, F-1125) gebaut, nicht gemergt; es folgen B2b-3e-2 (Budget-Feld, eine Regel für Bereiche), B2b-3b-2 (Einschalten), B2b-4; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 16.10.2026).
 
 ## Offene P1-Findings
@@ -155,3 +155,4 @@ Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 - F-791 · HARNESS_IMPROVEMENT · Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste wird bei jedem Update still undicht.
 - F-1018 · BUG · Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor ≈ 5–10.
 - F-1049 · HARNESS_IMPROVEMENT · Eingriffsprotokoll fehlt (Challenger K15).
+- F-1128 · TECH_DEBT · Restpunkte von F45 B2b-3b-1b (Rückfrage-Auswertung) — Pflichtpunkte vor dem Einschalten (B2b-3b-2) und Schulden.
