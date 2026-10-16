@@ -453,14 +453,14 @@
  */
 
 import { createServer } from 'node:http'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { fuehreGitSync } from '../src/git-starter/index.ts'
 import { homedir } from 'node:os'
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { readFile as readFileAsync, readdir as readdirAsync, stat as statAsync } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, listeVersionen, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { entscheideStale, importiereAntwort } from '../src/human-transport/index.ts'
@@ -544,6 +544,8 @@ import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitsta
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
 import { baueUmfangProjektion, ermittleUmfangFuerUebersicht, leseUmfangsZeile } from './leitstand/umfang-stand.mjs'
+import { ergaenzeRueckfrageAufruf, RUECKFRAGE_SERVER, werkzeugNamenAus } from '../src/rueckfrage/index.ts'
+import { erzeugeRueckfrageVermittlung } from './leitstand/rueckfrage-vermittlung.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
@@ -2341,6 +2343,10 @@ export function pruefeStartauftrag(body) {
   if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'jsonSchema' in body.aufrufEingaben) {
     return { ok: false, grund: "'aufrufEingaben.jsonSchema' wird ausschließlich serverseitig aus dem output_schema des Workflow-Schritts gesetzt (F45 B2b-1b) und ist im Body nicht erlaubt" }
   }
+  // F45 B2b-3b-1a: 'permissionPromptTool' (--permission-prompt-tool) setzt ausschließlich der Rückfrage-Kanal (ergaenzeRueckfrageAufruf).
+  if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'permissionPromptTool' in body.aufrufEingaben) {
+    return { ok: false, grund: "'aufrufEingaben.permissionPromptTool' wird ausschließlich serverseitig vom Rückfrage-Kanal gesetzt (F45 B2b-3b-1a) und ist im Body nicht erlaubt" }
+  }
   if (!Array.isArray(body.anfragen)) {
     return { ok: false, grund: "'anfragen' muss ein Array sein" }
   }
@@ -3049,6 +3055,9 @@ export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leits
  *   Eingaben (Laufakte projektkarte, beide Worker)
  *   review (F45 B2a-3a): { policy_version } der Review-Policy im Auftrag (nur code-reviewer) — geht unverändert in die
  *   Eingaben (Laufakte review, beide Worker)
+ *   rueckfrage (F45 B2b-3b-1a): RueckfrageKanal { url, token, skriptPfad, nodePfad, warteGrenzeMs } — nur aus starteWorkflowSchritt bei
+ *   eingeschalteter Handler-Option; nur für ausfuehrung/schreibend/claude-code (sonst und bei jeder Unstimmigkeit ok:false), ergänzt
+ *   die fertigen Aufruf-Eingaben (ergaenzeRueckfrageAufruf) und liefert eingaben.rueckfrageKanal
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund, konflikt? (F45 F-2a: Anzeige veraltet → 409 im Workflow) }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
@@ -3450,13 +3459,30 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     anfragenMitInhalt.push({ ...anfrage, inhalt })
   }
 
+  let aufrufEingaben = { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, ...skillZusatz, ...pruefZusatz, ...schemaZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } }
+  // F45 B2b-3b-1a (features/F45/plan-b2b3b1a-v2.md §5, Delta-Pass B3): Rückfrage-Kanal — optionen.rueckfrage setzt nur
+  // starteWorkflowSchritt bei eingeschalteter Handler-Option (bis B2b-3b-2 nie im Produktpfad). Auf den fertig zusammengesetzten
+  // Aufruf-Eingaben; ohne Option bleiben sie unverändert (Argv bitgleich). Jede Unstimmigkeit lehnt im normalen Weg ab (A1).
+  let rueckfrageKanal
+  if (optionen.rueckfrage !== undefined) {
+    if (!erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, werkzeugsatz.art) || worker !== 'claude-code') return { ok: false, grund: 'Rückfrage-Kanal abgelehnt: nur für die Ausführung mit schreibendem Werkzeugsatz und Worker claude-code' }
+    const ergaenzt = ergaenzeRueckfrageAufruf(aufrufEingaben, optionen.rueckfrage)
+    if (!ergaenzt.ok) return { ok: false, grund: `Rückfrage-Kanal abgelehnt: ${ergaenzt.grund}` }
+    aufrufEingaben = ergaenzt.aufrufEingaben
+    rueckfrageKanal = { token: optionen.rueckfrage.token, arbeitsordner: repoWurzel, werkzeugNamen: werkzeugNamenAus(aufrufEingaben.werkzeugsatz.erlaubte_werkzeuge) }
+    // Init-Gate (nur mit ortBLauf): der Rückfrage-Server gilt als übergeben.
+    if (ortBLauf !== undefined) ortBLauf = { ...ortBLauf, mcpServer: [...ortBLauf.mcpServer, RUECKFRAGE_SERVER] }
+  }
+
   return {
     ok: true,
     eingaben: {
       rolle: eingabenRoh.rolle,
       anfragen: anfragenMitInhalt,
       budget: eingabenRoh.budget,
-      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, ...skillZusatz, ...pruefZusatz, ...schemaZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
+      aufrufEingaben,
+      // F45 B2b-3b-1a: Token, Arbeitsordner und Werkzeugnamen für die Vermittlung (starteLaufUndVergiss → oeffneLauf); nur mit Kanal.
+      ...(rueckfrageKanal !== undefined ? { rueckfrageKanal } : {}),
       werkzeugStartziel,
       werkzeugVersionDeklariert,
       berechtigungskontext,
@@ -5768,6 +5794,38 @@ function beschreibeAblehnung(ergebnis) {
   return `F6a-Ablehnung: ${ergebnis.grund}`
 }
 
+/** F45 B2b-3b-1a: Höchstgröße eines Bodys der Rückfrage-Routen (leseBody hat keine Grenze; Advisor-Hinweis). */
+export const RUECKFRAGE_BODY_MAX_BYTES = 64 * 1024
+
+/**
+ * F45 B2b-3b-1a: liest einen JSON-Body mit Größengrenze — für die Rückfrage-Routen, die ein Laufprozess erreicht.
+ * @param req - eingehende Anfrage
+ * @param maxBytes - Grenze in Bytes
+ * @returns Promise<{ ok: true, daten } | { ok: false, status: 400 | 413, grund }>
+ */
+function leseJsonBegrenzt(req, maxBytes) {
+  return new Promise((resolve) => {
+    const teile = []
+    let groesse = 0
+    let zuGross = false
+    req.on('data', (stueck) => {
+      groesse += stueck.length
+      if (groesse > maxBytes) zuGross = true
+      else teile.push(stueck)
+    })
+    req.on('end', () => {
+      if (zuGross) return resolve({ ok: false, status: 413, grund: `Body größer als ${maxBytes} Bytes` })
+      const text = Buffer.concat(teile).toString('utf8')
+      try {
+        resolve({ ok: true, daten: text.trim() === '' ? {} : JSON.parse(text) })
+      } catch (fehler) {
+        resolve({ ok: false, status: 400, grund: `Body ist kein gültiges JSON: ${fehler.message}` })
+      }
+    })
+    req.on('error', (fehler) => resolve({ ok: false, status: 400, grund: `Body nicht lesbar: ${fehler.message}` }))
+  })
+}
+
 /** Sammelt den Request-Body eines eingehenden Requests als Text. @param req - eingehender Request @returns Body als Text */
 function leseBody(req) {
   return new Promise((resolve, reject) => {
@@ -5955,7 +6013,17 @@ export function erzeugeRequestHandler(optionen = {}) {
     // undefined = der eigene der Startvorlage dieser Instanz (Gates/Tests); null = „Werkzeugsatz unbekannt“ (F-1094 (9): kein Rückfall,
     // Agents nicht übernommen, Fakt sichtbar). Die Prüfung gegen den Werkzeugsatz des Laufs folgt mit F-3b-2.
     pluginWerkzeugsatz = undefined,
+    // F45 B2b-3b-1a (features/F45/plan-b2b3b1a-v2.md §4/§5): Rückfrage-Kanal { an, url, skriptPfad?, warteGrenzeMs?, pollFensterMs? }.
+    // undefined bzw. an !== true = AUS: kein Lauf bekommt --permission-prompt-tool, das Argv bleibt bitgleich. Bis B2b-3b-2 setzen
+    // weder der CLI-Bindeblock noch baueProjektHandlerMap die Option — nur das Gate (Gate f45-b2b3b1 (f)).
+    rueckfrage = undefined,
+    // F45 B2b-3b-1a: Vermittlung (Token, Warteschlange) — undefined = eigene je Instanz; injizierbar für Tests.
+    rueckfrageVermittlung = erzeugeRueckfrageVermittlung({ warteGrenzeMs: rueckfrage?.warteGrenzeMs, pollFensterMs: rueckfrage?.pollFensterMs }),
   } = optionen
+  /** F45 B2b-3b-1a: Kanal eingeschaltet (nur mit der Handler-Option, Standard aus). */
+  const rueckfrageAn = rueckfrage?.an === true
+  /** F45 B2b-3b-1a (Delta-Pass B2): MCP-Server-Skript der Installation als Dateipfad (nicht als file://-URL). */
+  const rueckfrageSkriptPfad = rueckfrage?.skriptPfad ?? fileURLToPath(new URL('./leitstand/rueckfrage-mcp.mjs', import.meta.url))
 
   /**
    * F45 F-2a, herausgezogen in B2a-1: gemeinsame Grundlage der Fähigkeiten-Routen und der Projektkarte — Katalog
@@ -6771,8 +6839,21 @@ export function erzeugeRequestHandler(optionen = {}) {
     // append-only, kein Überschreiben eines persistierten Artefakts, ARCHITECTURE.md §7).
     // F46 D5: der Ringpuffer beginnt mit jedem Laufstart leer (D13: genau ein aktiver Lauf, ein Puffer).
     laufAktivitaet.starte(laufId)
+    // F45 B2b-3b-1a: Rückfrage-Kanal nur mit eingaben.rueckfrageKanal (eingeschaltet, loeseAusfuehrungsEingabenAuf) — das Token gilt ab
+    // hier bis zum Lauf-Ende. oeffneLauf wirft nicht (nur ein Map-Eintrag).
+    if (eingaben.rueckfrageKanal !== undefined) {
+      try {
+        rueckfrageVermittlung.oeffneLauf(laufId, eingaben.rueckfrageKanal)
+      } catch (fehler) {
+        // Ein Wurf hier liefe an .catch vorbei und ließe die D13-Sperre stehen (code-reviewer 6). Ohne offenen Lauf lehnt das Skript ab.
+        console.error(`[leitstand] Rückfrage-Kanal für Lauf '${laufId}' nicht geöffnet:`, fehler)
+      }
+    }
     fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, laufOptionen)
       .then(async (ergebnis) => {
+        // F45 B2b-3b-1a: Lauf-Ende (regulär, Zeitgrenze, Abbruch, Ablehnung) — offene Rückfragen abgelehnt, Token ungültig. Vor der
+        // D13-Marke, synchron; ohne geöffneten Lauf ein No-op.
+        rueckfrageVermittlung.beendeLauf(laufId)
         // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b). F-652 (löst state/findings.md
         // F-652, D13-Bauauftrag Punkt 3): der Reset von laufAktiv/globalerLaufZustand steht jetzt
         // HINTER einem etwaigen Prüfschritt weiter unten statt an dieser Stelle — vorher setzte
@@ -6932,6 +7013,12 @@ export function erzeugeRequestHandler(optionen = {}) {
         globalerLaufZustand.laufId = null
         globalerLaufZustand.abortController = null
         angenommeneLaufIds.delete(laufId)
+        // F45 B2b-3b-1a: nach dem D13-Reset (code-reviewer 6) — offene Rückfragen ablehnen, Token ungültig.
+        try {
+          rueckfrageVermittlung.beendeLauf(laufId)
+        } catch (beendeFehler) {
+          console.error(`[leitstand] Rückfrage-Kanal von Lauf '${laufId}' nicht geschlossen:`, beendeFehler)
+        }
         const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: String(fehler?.message ?? fehler) }
         startfehlerListe.push(eintrag)
         console.error(`[leitstand] Lauf '${laufId}' fehlgeschlagen:`, fehler)
@@ -7404,6 +7491,18 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (projektkarteMeta !== undefined) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, projektkarte: projektkarteMeta }
     // F45 B2a-3a: Version der Review-Policy für die Laufakte — aus demselben Grund erst hier.
     if (reviewMeta !== undefined) ausfuehrungsOptionen = { ...ausfuehrungsOptionen, review: reviewMeta }
+    // F45 B2b-3b-1a (Plan v2 §5, A2/A3, Delta-Pass B1): Rückfrage-Kanal nur bei eingeschalteter Handler-Option, nur für die
+    // Ausführung mit schreibendem Werkzeugsatz im eigenen Arbeitsordner mit Worker claude-code (qa 3). Fehlt dann die url, wird der Start im normalen Weg abgelehnt
+    // (vor Fortschreibung und D13-Belegung); bei ausgeschaltetem Kanal wird hier nichts gelesen.
+    if (rueckfrageAn && schritt.rolle === 'ausfuehrung' && werkzeugsatzArtVon(schritt.werkzeugsatz) === 'schreibend' && laufort.arbeitsordner !== null && (schritt.worker ?? 'claude-code') === 'claude-code') {
+      if (typeof rueckfrage.url !== 'string' || rueckfrage.url.length === 0) {
+        return { ok: false, art: 'ungueltig', grund: 'Rückfrage-Kanal eingeschaltet, aber die Adresse des Leitstands fehlt (rueckfrage.url) — Start abgelehnt' }
+      }
+      ausfuehrungsOptionen = {
+        ...ausfuehrungsOptionen,
+        rueckfrage: { url: rueckfrage.url, token: randomBytes(32).toString('hex'), skriptPfad: rueckfrageSkriptPfad, nodePfad: process.execPath, warteGrenzeMs: rueckfrageVermittlung.warteGrenzeMs },
+      }
+    }
     const eingabenErgebnis = loeseSchrittEingabenAuf(
       schritt,
       workflowDaten,
@@ -8234,6 +8333,63 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
     const pfad = angefragteUrl.pathname
+
+    // F45 B2b-3b-1a (features/F45/plan-b2b3b1a-v2.md §4, A8): Rückfrage-Kanal, exakte Pfade. '/api/rueckfrage/' (mit Schrägstrich)
+    // ist kein Präfix von '/api/rueckfragen'. Token-Routen (nur das MCP-Skript des Laufs): nur fragen und warten, mit
+    // 'Authorization: Bearer <token>' eines offenen Laufs — eine Antwort-Route gibt es hier nicht (ERZWUNGEN: Token gibt kein
+    // Antwortrecht). Host und CSRF prüfen die zentralen Haken oben.
+    if (pfad.startsWith('/api/rueckfrage/')) {
+      const istAnfrage = pfad === '/api/rueckfrage/anfrage'
+      const warten = /^\/api\/rueckfrage\/anfrage\/([0-9a-f-]{36})\/warten$/.exec(pfad)
+      if (req.method !== 'POST' || (!istAnfrage && warten === null)) {
+        sendeJson(res, 404, { grund: `Route '${pfad}' unbekannt` })
+        return
+      }
+      const kopf = req.headers.authorization
+      const laufIdDesTokens = rueckfrageVermittlung.laufZuToken(typeof kopf === 'string' && kopf.startsWith('Bearer ') ? kopf.slice('Bearer '.length) : null)
+      if (laufIdDesTokens === null) {
+        sendeJson(res, 403, { grund: 'Token ungültig oder Lauf nicht aktiv' })
+        return
+      }
+      const body = await leseJsonBegrenzt(req, RUECKFRAGE_BODY_MAX_BYTES)
+      if (!body.ok) {
+        sendeJson(res, body.status, { grund: body.grund })
+        return
+      }
+      const ergebnis = istAnfrage ? rueckfrageVermittlung.stelle(laufIdDesTokens, body.daten) : await rueckfrageVermittlung.warte(laufIdDesTokens, warten[1])
+      if (!ergebnis.ok) sendeJson(res, ergebnis.status, { grund: ergebnis.grund })
+      else if ('id' in ergebnis) sendeJson(res, 202, { id: ergebnis.id })
+      else if ('offen' in ergebnis) sendeJson(res, 200, { offen: true })
+      else sendeJson(res, 200, { entscheidung: ergebnis.entscheidung })
+      return
+    }
+    // F45 B2b-3b-1a: Browser-Routen — GET offene Rückfragen (Befehl wörtlich, E-B2b-3-1 = A), POST Antwort Stefans. Abweichung von
+    // F-1061 (rechtegebende Route während eines Laufs), eng begrenzt: nur diese Route, nur offene Rückfragen offener Läufe, jede ID
+    // genau einmal (ARCHITECTURE §3). Mit Token-Kopf abgelehnt — „mit dem Token kann man nur fragen“.
+    if (pfad === '/api/rueckfragen' || pfad.startsWith('/api/rueckfragen/')) {
+      if (pfad === '/api/rueckfragen' && req.method === 'GET') {
+        sendeJson(res, 200, { rueckfragen: rueckfrageVermittlung.offene() })
+        return
+      }
+      const antwortWeg = /^\/api\/rueckfragen\/([0-9a-f-]{36})\/antwort$/.exec(pfad)
+      if (antwortWeg === null || req.method !== 'POST') {
+        sendeJson(res, 404, { grund: `Route '${pfad}' unbekannt` })
+        return
+      }
+      if (req.headers.authorization !== undefined) {
+        sendeJson(res, 403, { grund: 'Antwort mit Token-Kopf abgelehnt — mit dem Token kann man nur fragen' })
+        return
+      }
+      const body = await leseJsonBegrenzt(req, RUECKFRAGE_BODY_MAX_BYTES)
+      if (!body.ok) {
+        sendeJson(res, body.status, { grund: body.grund })
+        return
+      }
+      const ergebnis = rueckfrageVermittlung.beantworte(antwortWeg[1], body.daten)
+      if (!ergebnis.ok) sendeJson(res, ergebnis.status, { grund: ergebnis.grund })
+      else sendeJson(res, 200, { ok: true })
+      return
+    }
 
     // Detailendpunkt (AK2) VOR dem Listenendpunkt geprüft — längeres, spezielleres
     // Präfix zuerst. laufId wird nach decodeURIComponent gegen dieselbe Zeichenregel
