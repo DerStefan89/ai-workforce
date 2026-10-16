@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Abnahme mit Verbrauch über dem Budget — de-1440",
+    "Notiz amber": false,
+    "Reparatur-Notiz": false,
+    "Knopf Budget erhöhen (Hauptknopf)": false,
+    "Blick amber (überschritten)": true,
+    "Kachel Nachweise amber": true,
+    "Abnehmen": true,
+    "Freigabe-Spalte": false,
+    "Budget-Notiz": "(fehlt)",
+    "Verbrauch im Blick": "Review-UrteilBereitVerbrauch2.150.000 von 2.000.000 TokensDeine AbnahmeNoch offen",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]

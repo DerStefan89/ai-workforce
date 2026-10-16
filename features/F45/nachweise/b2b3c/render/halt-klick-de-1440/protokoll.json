@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Budget-Halt mit Knopf",
+    "Notiz amber": true,
+    "Reparatur-Notiz": false,
+    "Knopf Budget erhöhen (Hauptknopf)": true,
+    "Blick amber (überschritten)": true,
+    "Kachel Nachweise amber": false,
+    "Abnehmen": false,
+    "Freigabe-Spalte": false,
+    "Budget-Notiz": "Budget erreicht Der Ablauf hat 2.412.345 von 2.000.000 Tokens verbraucht. Er setzt erst fort, wenn du das Budget erhöhst",
+    "Verbrauch im Blick": "Verbrauch2.412.345 von 2.000.000 TokensDeine AbnahmeNoch offen",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick „Budget erhöhen“ → Review läuft → Abnahme",
+    "Notiz amber": false,
+    "Reparatur-Notiz": false,
+    "Knopf Budget erhöhen (Hauptknopf)": false,
+    "Blick amber (überschritten)": false,
+    "Kachel Nachweise amber": false,
+    "Abnehmen": true,
+    "Freigabe-Spalte": false,
+    "Budget-Notiz": "(fehlt)",
+    "Verbrauch im Blick": "Review-UrteilBereitVerbrauch2.712.345 von 4.412.345 TokensDeine AbnahmeNoch offen",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]

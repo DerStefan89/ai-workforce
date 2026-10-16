@@ -33,6 +33,7 @@
  */
 
 import {
+  erhoeheBudget,
   holeAbnahme,
   holeHarnessAbgleich,
   holeLaufDetail,
@@ -51,7 +52,7 @@ import {
 } from '../api.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
-import { t, tHtml } from '../i18n.js'
+import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
@@ -59,7 +60,7 @@ import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzei
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDialog } from './arbeitsordner-anzeige.js'
 import { bedienZustand } from './entscheidung-panel.js'
-import { abnahmeLage, ausfuehrungGelaufen, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung } from './workflow-abnahme.js'
+import { abnahmeLage, ausfuehrungGelaufen, budgetKennung, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung } from './workflow-abnahme.js'
 import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
 import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen } from './workflow-eingriffe.js'
 import { entscheidungsModus, FREIGABE_OPTIONEN, renderFreigabePanel, renderFreigabeSeite, seitenKopf } from './workflow-entscheiden.js'
@@ -147,7 +148,7 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   const e = abnahme.entscheidung ?? {}
   // F45 B2a-3b (qa 1): die Review-Hinweise (u. a. „Review veraltet“, das der Poll ohne Statuswechsel liefert) gehören ins
   // Kennzeichen — sonst zeigte „Auf einen Blick“ den Hinweis, die Review-Kachel aber nicht.
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}|${abnahme.qaErgebnis?.status ?? 'null'}|${abnahme.qaErgebnis?.laufId ?? '-'}|${abnahme.qaErgebnis?.halt === true}|${qaHinweisKennung(abnahme.qaErgebnis)}|${abnahme.qaWiederholbar === true}`
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}|${abnahme.qaErgebnis?.status ?? 'null'}|${abnahme.qaErgebnis?.laufId ?? '-'}|${abnahme.qaErgebnis?.halt === true}|${qaHinweisKennung(abnahme.qaErgebnis)}|${abnahme.qaWiederholbar === true}|${budgetKennung(abnahme.budget)}`
   if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) {
     zeichneEntscheiden()
     return
@@ -384,7 +385,7 @@ function heileSpalte(modusJetzt) {
     if (modusJetzt === 'freigabe') {
       const d = aktuellesDetail
       bedienungsKennzeichen = null
-      aktualisiereWorkflowBedienung(d.workflowId, d.daten.status ?? null, d.naechster, d.ungueltig, d.architekturEntscheidung, d.empfehlung, d.sichtung, d.arbeitsordner ?? null, d.prueferWiederholbar === true)
+      aktualisiereWorkflowBedienung(d.workflowId, d.daten.status ?? null, d.naechster, d.ungueltig, d.architekturEntscheidung, d.empfehlung, d.sichtung, d.arbeitsordner ?? null, d.prueferWiederholbar === true, d.budget ?? null)
       document.getElementById('workflow-entscheidung').hidden = panelArt !== 'freigabe'
     } else if (letzteAbnahme !== null) {
       abnahmeKennzeichen = null
@@ -772,11 +773,11 @@ let bedienungsKennzeichen = null
  * oder der Aktionszeile, geht er auf deren erste Aktion bzw. die Seitenüberschrift.
  * @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param ungueltig - true bei ungültiger Fassung @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null @param arbeitsordner - F45 B1a-1: detail.arbeitsordner, oder null @param prueferWiederholbar - F45 B2b-1b-2b: „Advisor wiederholen“ angeboten (Teil des Kennzeichens)
  */
-function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null, arbeitsordner = null, prueferWiederholbar = false) {
+function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null, arbeitsordner = null, prueferWiederholbar = false, budget = null) {
   // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung schneidet am letzten '|'); sie steht kodiert (encodeURIComponent) darin, damit ein '|' in einem Katalogtext den Schnitt nicht verschiebt (F46 D2, qa 8).
   // F45 B1a-1: die Lage des Arbeitsordners (Status, Vorbereitung, Ordner vorhanden, Grund) steht kodiert davor.
   const ordnerLage = encodeURIComponent(`${arbeitsordner?.status ?? 'null'}:${arbeitsordner?.vorbereitungLaeuft === true}:${arbeitsordner?.ordnerVorhanden !== false}:${arbeitsordner?.grund ?? ''}:${istAbnahmeOffen(status)}`)
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${ordnerLage}|${prueferWiederholbar === true}|${encodeURIComponent(JSON.stringify(empfehlung))}`
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${ordnerLage}|${prueferWiederholbar === true}|${budgetKennung(budget)}|${encodeURIComponent(JSON.stringify(empfehlung))}`
   if (kennzeichen === bedienungsKennzeichen) return
   // Während einer laufenden Dialog-Bedienung schließt der Dialog erst mit ihrer Antwort (sendeWorkflowBedienung).
   const dialogVeraltet = offenerDialog !== null && laufendeDialogBedienung === null && dialogUeberholt(offenerDialog, kennzeichen)
@@ -789,7 +790,7 @@ function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig 
   const freigabeSpalte = naechster?.art === 'haltFreigabe' && !ungueltig
   setzePanel('freigabe', freigabeSpalte ? renderFreigabePanel({ workflowId, empfehlung }) : '', ohneEmpfehlung(kennzeichen))
   for (const [id, html] of [
-    ['workflow-bedienung', renderEingriffe(workflowId, status, ungueltig, architekturEntscheidung, sichtung, prueferWiederholbar)],
+    ['workflow-bedienung', renderEingriffe(workflowId, status, ungueltig, architekturEntscheidung, sichtung, prueferWiederholbar, budget)],
     ['workflow-aktionen', renderAktionen(workflowId, status, naechster, ungueltig, { hauptknopf: !freigabeSpalte }) + renderArbeitsordnerAktion(workflowId, status, arbeitsordner, istAbnahmeOffen(status))],
   ]) {
     const container = document.getElementById(id)
@@ -1053,8 +1054,8 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
     // F45 B2b-1b-2b: planFreigabe (Karten der Freigabe-Seite) und prueferWiederholbar („Advisor wiederholen“) aus dem Detail.
     const prueferWiederholbar = detail.prueferWiederholbar === true
-    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null, planFreigabe: detail.planFreigabe ?? null, prueferWiederholbar }
-    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null, prueferWiederholbar)
+    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null, planFreigabe: detail.planFreigabe ?? null, prueferWiederholbar, budget: detail.budget ?? null }
+    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null, prueferWiederholbar, detail.budget ?? null)
     pruefeAusstehendeVorbereitung(workflowId, detail)
     // F46 D2: Kopf, Freigabe-Teil und Lage der Bereiche je Modus (Freigabe, Abnahme oder heutige Ablaufseite).
     zeichneEntscheiden()
@@ -1180,7 +1181,7 @@ async function fuehreWorkflowAktionAus(button) {
       const zurueck = await wiederholePruefer(workflowId)
       if (!zurueck.ok) return zurueck
       const inhalt = await zurueck.json().catch(() => ({}))
-      if (inhalt.status !== 'LAEUFT') return new Response(JSON.stringify({ hinweis: inhalt.status === 'WARTET_FREIGABE' ? t('eingriff.advisor.nachFreigabe') : '' }), { status: 200 })
+      if (inhalt.status !== 'LAEUFT') return new Response(JSON.stringify({ hinweis: inhalt.status === 'WARTET_FREIGABE' ? t('eingriff.advisor.nachFreigabe') : (inhalt.grund ?? '') }), { status: 200 })
       const start = await starteWorkflowSchritt(workflowId)
       if (start.ok) {
         const gestartet = await start.json().catch(() => ({}))
@@ -1193,6 +1194,27 @@ async function fuehreWorkflowAktionAus(button) {
       return new Response(JSON.stringify({ grund: t('eingriff.advisor.ohneStart', { grund: fehler.grund ?? t('ablauf.fehler.unbekannt') }) }), { status: start.status })
     }
     await sendeWorkflowBedienung(anfrage, button, t('eingriff.advisor.zurueckgesetzt'))
+    return
+  }
+
+  // F45 B2b-3c (F-981): „Budget erhöhen“ — POST …/budget erhöht das Budget des Arbeitspakets (startet nichts). Würde der Automat
+  // danach starten, folgt POST …/starten (Muster „Advisor wiederholen“); wartet der nächste Schritt auf eine Freigabe, erscheint
+  // sie nach dem Neuladen (Verdikt wieder „Freigabe“). Scheitert der Start, bleibt das Budget erhöht; Fehler mit dem Servergrund.
+  if (aktion === 'budget-erhoehen') {
+    const anfrage = async () => {
+      const erhoeht = await erhoeheBudget(workflowId)
+      if (!erhoeht.ok) return erhoeht
+      const inhalt = await erhoeht.json().catch(() => ({}))
+      const budget = Number.isFinite(inhalt.budget?.tokens) ? formatiereZahl(inhalt.budget.tokens) : '–'
+      if (inhalt.naechster !== 'starte') {
+        return new Response(JSON.stringify({ hinweis: t(inhalt.naechster === 'haltFreigabe' ? 'abnahme.budget.erfolgFreigabe' : 'abnahme.budget.erfolg', { budget }) }), { status: 200 })
+      }
+      const start = await starteWorkflowSchritt(workflowId)
+      if (start.ok) return new Response(JSON.stringify({ hinweis: t('abnahme.budget.erfolgStart', { budget }) }), { status: 200 })
+      const fehler = await start.json().catch(() => ({}))
+      return new Response(JSON.stringify({ grund: t('abnahme.budget.ohneStart', { budget, grund: fehler.grund ?? t('ablauf.fehler.unbekannt') }) }), { status: start.status })
+    }
+    await sendeWorkflowBedienung(anfrage, button, t('abnahme.budget.erhoeht'))
     return
   }
 

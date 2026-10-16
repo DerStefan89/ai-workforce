@@ -529,6 +529,7 @@ import {
 } from '../src/arbeitsordner/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueQaAuftragstext, validiereErgebnisQa } from '../src/qa/index.ts'
+import { baueBudgetHaltGrund, erhoehtesBudget, istBudgetHaltGrund, wendeBudgetAn } from '../src/budget/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { baueReviewPolicyBlock, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION, zaehleSchwereBeiBereit } from '../src/review-policy/index.ts'
 import { leseGeprueftenStandAsync, leseGeprueftenStandSync, standIstVeraltet } from '../src/review-stand/index.ts'
@@ -541,6 +542,7 @@ import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
 import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitstand/startvorlage-wahl.mjs'
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
+import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
@@ -1439,6 +1441,9 @@ export function leseWorkitemReferenz(auftragstext) {
 
 const WORKFLOW_VERZEICHNIS_PRAEFIX = 'lineage-workflow-'
 
+/** F45 B2b-3c: Status, in denen der Automat fortsetzen könnte — nur dort lesen die Kopfdaten den Budget-Stand (Poll-Last). */
+const BUDGET_FORTSETZBARE_STATUS = new Set(['OFFEN', 'WARTET_FREIGABE', 'KLAERUNG_ERFORDERLICH'])
+
 /**
  * Das Verdikt des Schritt-Automaten zu EINEM Workflow, als Projektion für die
  * Ansicht (F15 WS-3b, löst F-253).
@@ -1455,7 +1460,9 @@ const WORKFLOW_VERZEICHNIS_PRAEFIX = 'lineage-workflow-'
  * dieselbe Funktion und derselbe Aufruf, den POST /api/workflows/<id>/starten
  * und POST /api/workflows/<id>/freigabe für ihre Entscheidung benutzen. Was
  * die Ansicht anbietet, kann deshalb nicht auseinanderlaufen mit dem, was der
- * Endpunkt annimmt.
+ * Endpunkt annimmt. Seit F45 B2b-3c dazu wendeBudgetAn mit dem Budget-Stand —
+ * dieselbe Regel, mit der Starten und Freigabe im überschrittenen Budget 409
+ * antworten; Liste (Kopfdaten) und Detail rufen beide hierüber.
  *
  * AUFLAGE, bitte stehen lassen: 'naechster' ist eine PROJEKTION, kein Feld von
  * WORKFLOW_V0. Es wird nirgends persistiert, steht in keinem Schema und darf
@@ -1471,11 +1478,14 @@ const WORKFLOW_VERZEICHNIS_PRAEFIX = 'lineage-workflow-'
  * warum.
  * @param daten - WORKFLOW_V0-Datensatz einer geladenen Artefaktversion
  * @param verstoesse - bereits ermitteltes validiereWorkflowDaten-Ergebnis, wenn der Aufrufer es ohnehin hat
+ * @param budgetStand - F45 B2b-3c: { summe, tokens, ueberschritten } oder null (kein Budget-Abgleich, bitgleich wie bisher)
  * @returns { art, schrittId, grund } oder null, wenn die Fassung nicht validiert
  */
-function baueNaechsterProjektion(daten, verstoesse = undefined) {
+function baueNaechsterProjektion(daten, verstoesse = undefined, budgetStand = null) {
   if ((verstoesse ?? validiereWorkflowDaten(daten)).length > 0) return null
-  const ausgang = ermittleNaechstenSchritt(daten)
+  // F45 B2b-3c (code-reviewer 1/2): im überschrittenen Budget dieselbe Regel wie im Nachlauf (wendeBudgetAn) — Liste und Detail
+  // zeigen den Budget-Halt statt 'starte'/'haltFreigabe'; ohne Budget-Stand bitgleich wie bisher.
+  const ausgang = wendeBudgetAn(ermittleNaechstenSchritt(daten), budgetStand)
   // Nur zwei der sechs Ausgänge FÜHREN einen Schritt in einem eigenen Feld: 'starte' den ganzen
   // Schritt, 'haltFreigabe' die Kennung. Die übrigen vier tragen `schrittId` nicht — das heißt
   // aber NICHT, dass kein Schritt gemeint wäre (Reviewer-/QA-Pass 10.09.2026): 'haltKlaerung'
@@ -1522,10 +1532,17 @@ function baueWerkzeugsatzDurchsetzungProjektion(daten) {
  * @param workflowId - Kennung aus dem Verzeichnisnamen
  * @param version - geladene Artefaktversion (ladeArtefaktVersion)
  * @param abnahmeVersion - geladene Abnahme-Entscheidung (abnahmeEntscheidungsId), oder null (F46 D2)
+ * @param ladeOptionen - { basisVerzeichnis, schreiber } für den Budget-Stand (F45 B2b-3c), oder null (kein Budget-Abgleich)
  * @returns Kopfdaten-Objekt für die Liste
  */
-function baueWorkflowKopfdaten(workflowId, version, abnahmeVersion) {
+function baueWorkflowKopfdaten(workflowId, version, abnahmeVersion, ladeOptionen = null) {
   const daten = version.daten ?? {}
+  // F45 B2b-3c (qa Q1): im überschrittenen Budget zeigt auch die Liste den Budget-Halt — sonst fehlte der Ablauf in „Wartet auf
+  // dich“ (roh 'starte') oder stünde dort als Freigabe ohne Freigabe-Karte (roh 'haltFreigabe'). Gelesen wird nur in den
+  // fortsetzbaren Status; die Kopfdaten sind je Stempel zwischengespeichert. „Budget erhöhen“ schreibt keine Workflow-Version
+  // und verwirft deshalb den Cache-Eintrag selbst (POST …/budget) — sonst zeigte die Liste weiter den Halt.
+  const budgetStand = ladeOptionen !== null && BUDGET_FORTSETZBARE_STATUS.has(daten.status) ? ermittleBudgetStand(workflowId, daten, ladeOptionen) : null
+  const naechster = baueNaechsterProjektion(daten, undefined, budgetStand)
   // F46 D2 (abgleich-f46.md §4.4, löst F-972): der Abnahmestand gehört in die Kopfdaten, damit
   // „Deine Entscheidungen“ offene Abnahmen aus dem einen Poll zeigt — dieselbe Regel wie
   // GET …/abnahme (ermittleAbnahmeStand), kein zweiter Endpunkt und kein zweiter Poll.
@@ -1543,7 +1560,7 @@ function baueWorkflowKopfdaten(workflowId, version, abnahmeVersion) {
     // die Daten sind ohnehin geladen, es ist reine Rechnung ohne zusätzliches
     // I/O. Wie grund ist das Verdikt ein Kopfdatum, kein Inhalt: es sagt, wo
     // der Workflow steht, nicht was in ihm steht.
-    naechster: baueNaechsterProjektion(daten),
+    naechster,
     schritteAnzahl: Array.isArray(daten.schritte) ? daten.schritte.length : 0,
     versionSequenz: version.versionSequenz,
     abnahme: { offen: abnahmeStand.offen, status: abnahmeStand.status },
@@ -1588,7 +1605,7 @@ function baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis, stempel) {
 
   const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
   const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
-  const kopfdaten = version === null ? null : baueWorkflowKopfdaten(workflowId, version, ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen))
+  const kopfdaten = version === null ? null : baueWorkflowKopfdaten(workflowId, version, ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen), ladeOptionen)
   workflowKopfdatenCache.set(schluessel, { stempel, kopfdaten })
   return kopfdaten
 }
@@ -4541,7 +4558,8 @@ function leseQaBefunde(laufId, ladeOptionen) {
 function baueQaAbnahmeProjektion(workflowDaten, abnahmeVersion, ladeOptionen) {
   const qaSchritt = findeQaSchritt(workflowDaten)
   if (qaSchritt === null) return { projektion: { status: 'kein_qa_schritt', halt: false }, vorgelesen: null }
-  const halt = workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === qaSchritt.schritt_id
+  // F45 B2b-3c: ein Budget-Halt mit Cursor auf dem qa ist kein Halt des qa (Muster reviewHaltGrund in GET …/abnahme).
+  const halt = workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === qaSchritt.schritt_id && !istBudgetHaltGrund(workflowDaten.grund)
   // F-1119 (1): beim Halt am qa, ob der Review davor beanstandet hat — dieselbe Regel wie der Aufschub und Regel 1q
   // (istReviewBeanstandet über ermittlePrueferBefund, AK-Verstöße auch bei BLOCKIERT); gelesen nur beim Halt (Poll).
   const reviewBefund = halt ? ermittlePrueferBefund(findeReviewVorQa(workflowDaten, qaSchritt), workflowDaten.auftrag_id, ladeOptionen, null, true) : {}
@@ -5345,6 +5363,9 @@ function wendeAutomatischeAnpassungAn(workflowId, begruendung, erzeuger, profilR
     return { ok: false, grund: `Abnahme-Entscheidung konnte nicht festgehalten werden: ${fehler.message}` }
   }
 
+  // F45 B2b-3c (F-981): auch die Korrekturrunde (Kern wie Mensch) prüft das Budget — überschritten ⇒ Halt mit Budget-Grund am
+  // Neubau statt Freigabe-Frage (wendeBudgetAn). Die Summe ändert der Rücksetzer nicht, deshalb vor dem Schreiben gelesen.
+  const budgetStand = ermittleBudgetStand(workflowId, workflowDaten, ladeOptionen)
   let naechster = null
   const eingabenMitEntscheidung = ausfuehrungSchritt.eingaben.includes(`artefakt:${artefaktId}`) ? ausfuehrungSchritt.eingaben : [...ausfuehrungSchritt.eingaben, `artefakt:${artefaktId}`]
   const angepasst = schreibeWorkflowFortschritt(
@@ -5363,7 +5384,7 @@ function wendeAutomatischeAnpassungAn(workflowId, begruendung, erzeuger, profilR
         }
         return s
       })
-      naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, status: 'OFFEN', schritte: neueSchritte, aktiver_schritt_id: ausfuehrungSchritt.schritt_id })
+      naechster = wendeBudgetAn(ermittleNaechstenSchritt({ ...datenMitSchritt, status: 'OFFEN', schritte: neueSchritte, aktiver_schritt_id: ausfuehrungSchritt.schritt_id }), budgetStand)
       return {
         schritte: neueSchritte,
         status: workflowStatusZuAusgang(naechster),
@@ -5692,6 +5713,8 @@ function setzePrueferZurueck(workflowId, profilReferenz, ladeOptionen) {
   const vorbedingung = pruefschrittWiederholbar({ workflowStatus: daten.status, schritt, befund: ermittlePrueferBefund(schritt, daten.auftrag_id, ladeOptionen) })
   if (!vorbedingung.wiederholbar) return { ok: false, http: 409, grund: vorbedingung.grund }
 
+  // F45 B2b-3c (Advisor B2): im überschrittenen Budget wird zurückgesetzt, aber nicht gestartet — Budget-Halt am Prüfer.
+  const budgetStand = ermittleBudgetStand(workflowId, daten, ladeOptionen)
   let naechster = null
   const zurueckgesetzt = schreibeWorkflowFortschritt(
     workflowId,
@@ -5703,7 +5726,7 @@ function setzePrueferZurueck(workflowId, profilReferenz, ladeOptionen) {
         const { freigabe_erteilt: _verworfen, ...rest } = s
         return { ...rest, status: 'OFFEN', lauf_id: null }
       })
-      naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, schritte: neueSchritte, aktiver_schritt_id: schritt.schritt_id })
+      naechster = wendeBudgetAn(ermittleNaechstenSchritt({ ...datenMitSchritt, schritte: neueSchritte, aktiver_schritt_id: schritt.schritt_id }), budgetStand)
       return {
         schritte: neueSchritte,
         status: workflowStatusZuAusgang(naechster),
@@ -5716,7 +5739,7 @@ function setzePrueferZurueck(workflowId, profilReferenz, ladeOptionen) {
   )
   if (!zurueckgesetzt.ok) return { ok: false, http: 500, grund: zurueckgesetzt.grund }
   if (zurueckgesetzt.eingefroren) return { ok: false, http: 409, grund: `Workflow '${workflowId}' ist GESTOPPT — der Prüfer wurde nicht zurückgesetzt` }
-  return { ok: true, schrittId: schritt.schritt_id, status: workflowStatusZuAusgang(naechster) }
+  return { ok: true, schrittId: schritt.schritt_id, status: workflowStatusZuAusgang(naechster), ...(naechster.art === 'starte' ? {} : { grund: beschreibeAutomatAusgang(naechster) }) }
 }
 
 /**
@@ -7056,6 +7079,12 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (auftragVersion === null) {
       return { ok: false, art: 'ungueltig', grund: `Auftrag '${workflowDaten.auftrag_id}' nicht gefunden` }
     }
+    // F45 B2b-3c (F-981, Advisor B7): Rückfallsicherung des Budgets an der einen Stelle, die jeder Startweg durchläuft — vor der
+    // Einrichtungsprüfung und vor jeder Zustandsänderung, rein lesend und synchron. Der reguläre Halt entsteht im Nachlauf.
+    const budgetVorStart = ermittleBudgetStand(workflowId, workflowDaten, ladeOptionen)
+    if (budgetVorStart?.ueberschritten === true) {
+      return { ok: false, art: 'konflikt', grund: baueBudgetHaltGrund(budgetVorStart.summe, budgetVorStart.tokens) }
+    }
     // F45 B2a-2 (F-1071): ein Ausführungsschritt startet erst, wenn die Einrichtung „vor dem Bau“ erledigt ist — hier, an
     // der einen Stelle, die jeder Startweg durchläuft. Der Abgleich kann eine neue Auftragsversion schreiben; danach gilt
     // die frisch geladene Version (Advisor H4).
@@ -7889,8 +7918,15 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Ein zweiter Aufruf von ermittleNaechstenSchritt auf einem selbst zusammengebauten
       // Datensatz wäre die zweite Fassung derselben Entscheidung.
       let naechster = null
+      // F45 B2b-3c (F-981, Advisor B1): der Ausgang VOR der Budget-Prüfung — die Korrekturautomatik und der Rückweg-Satz lesen
+      // ihn, damit ein Budget-Halt nach einem aufgeschobenen Review (roh 'starte' qa) keine Korrekturrunde auslöst.
+      let naechsterRoh = null
       // F45 B2b-1b-2a: Ergebnis von ermittlePlanRueckweg im Updater (nur nach einem gültigen Advisor-Ergebnis), für den Grund.
       let planEntscheid = null
+      // F45 B2b-3c (F-981): Prüfung NACH dem Schritt — Summe aller Läufe des Ablaufs (dieser eingeschlossen) gegen das Budget;
+      // würde der Automat weiterlaufen oder eine Freigabe erfragen, wird daraus der Budget-Halt (wendeBudgetAn). Nicht bei einer
+      // Heilung (es lief nichts); nicht bestimmbar ⇒ null ⇒ kein Halt.
+      const budgetStand = heilbar ? null : ermittleBudgetStand(workflowId, workflowDaten, ladeOptionen)
 
       const nachlauf = schreibeWorkflowFortschritt(
         workflowId,
@@ -7917,7 +7953,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           }
           if (planEntscheid?.ausloesen === true) {
             const schritte = baueSchritteFuerPlanRueckweg(datenMitSchritt.schritte, { architektSchrittId: planEntscheid.architektSchrittId, advisorSchrittId: schritt.schritt_id })
-            naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, schritte, aktiver_schritt_id: planEntscheid.architektSchrittId })
+            naechster = wendeBudgetAn(ermittleNaechstenSchritt({ ...datenMitSchritt, schritte, aktiver_schritt_id: planEntscheid.architektSchrittId }), budgetStand)
             return {
               schritte,
               status: workflowStatusZuAusgang(naechster),
@@ -7925,7 +7961,7 @@ export function erzeugeRequestHandler(optionen = {}) {
               grund: naechster.art === 'starte' ? null : mitPlanStufenSatz(beschreibeAutomatAusgang(naechster), naechster, { schritte }, schritt.schritt_id, planEntscheid),
             }
           }
-          naechster =
+          naechsterRoh =
             hintergrundHalt ??
             verweigertHalt ??
             ermittleNaechstenSchritt(datenMitSchritt, {
@@ -7953,6 +7989,7 @@ export function erzeugeRequestHandler(optionen = {}) {
               stackArchitekturFehlt,
               pruefketteVeraendert,
             })
+          naechster = wendeBudgetAn(naechsterRoh, budgetStand)
           return {
             status: workflowStatusZuAusgang(naechster),
             aktiver_schritt_id: naechster.aktiverSchrittId,
@@ -7968,7 +8005,9 @@ export function erzeugeRequestHandler(optionen = {}) {
             // F45 B2b-1a: hält der Review an und folgt KEIN Rückweg, weil die Grenze erreicht ist oder dieselben
             // Befunde wiederkehren, sagt der Grund das dazu (nur bei diesen beiden Ablehnungen, Advisor B10).
             // F45 B2b-1b-2a: bei einem Freigabe-Halt dazu der Satz der Plan-Stufe (Plan v2 entfällt mit Grund, oder Plan v2 liegt vor).
-            grund: naechster.art === 'starte' ? null : mitPlanStufenSatz(mitRueckwegGrund(beschreibeAutomatAusgang(naechster), naechster, rueckwegEntscheid), naechster, datenMitSchritt, schritt.schritt_id, planEntscheid),
+            // F45 B2b-3c (Advisor B1): der Rückweg-Satz hängt am Roh-Ausgang — beim Budget-Halt nach einem aufgeschobenen Review
+            // gibt es keinen Klärungshalt des Reviews, also auch keinen Satz zu Grenze oder Wiederholung.
+            grund: naechster.art === 'starte' ? null : mitPlanStufenSatz(mitRueckwegGrund(beschreibeAutomatAusgang(naechster), naechsterRoh, rueckwegEntscheid), naechster, datenMitSchritt, schritt.schritt_id, planEntscheid),
           }
         },
         profilReferenz,
@@ -8057,7 +8096,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // F45 B2b-1a: die Entscheidung (Grenze aus max_replans, Wiederholung) ist oben vor dem Schreiben gefallen.
       // F45 B2b-2b-1 (Delta D1): ausgelöst wird nur bei einem Klärungshalt — ein aufgeschobener Review (die Kette läuft zum qa)
       // trifft hier auf 'starte' und entscheidet nicht; aus dem Ausgang abgeleitet, nicht aus einer zweiten Prädikatsauswertung.
-      if (rueckwegEntscheid !== null && naechster?.art === 'haltKlaerung' && !laufAktiv && !globalerLaufZustand.aktiv) {
+      // F45 B2b-3c (Advisor B1): entschieden wird am Roh-Ausgang (vor der Budget-Prüfung); beim Neubau hält dann die Budget-Prüfung
+      // in wendeAutomatischeAnpassungAn an, statt eine Freigabe zu erfragen.
+      if (rueckwegEntscheid !== null && naechsterRoh?.art === 'haltKlaerung' && !laufAktiv && !globalerLaufZustand.aktiv) {
         if (rueckwegEntscheid.ausloesen) {
           const begruendung =
             qaErgebnis !== null
@@ -8103,6 +8144,38 @@ export function erzeugeRequestHandler(optionen = {}) {
     }, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art, undefined, { wurzel: laufWurzel, arbeitsordner: laufort.arbeitsordner, loeschliste: schritt.rolle === 'ausfuehrung' })
 
     return { ok: true, schrittId: schritt.schritt_id, laufId }
+  }
+
+  /**
+   * F45 B2b-3c (F-981, features/F45/plan-b2b3c-v2.md): Budget-Projektion für GET …/abnahme und GET /api/workflows/<id>.
+   * erhoehbar folgt der Lage, nicht dem Status (Advisor B2): überschritten, kein Lauf aktiv und der Automat würde ohne das
+   * Budget weiterlaufen oder eine Freigabe erfragen — dieselbe Vorbedingung wie POST …/budget. Synchron, wirft nie.
+   * @param workflowId - Kennung des Ablaufs
+   * @param daten - geladene Workflow-Daten
+   * @param versionSequenz - ihre Version (Zwischenspeicher der Summe, nur für die GET-Anzeigen); undefined = frisch lesen —
+   *   Pflicht auf jedem durchsetzenden Weg (Delta-Advisor D1: eine vor dem Lauf gespeicherte Summe kennt den Lauf nicht)
+   * @param ladeOptionen - { basisVerzeichnis, schreiber }
+   * Korrekturrunde (qa Q4, design-guardian 2): `halt` = überschritten und der Automat würde fortsetzen — unabhängig von der
+   * Laufsperre (die Anzeige zeigt den Halt dann mit gesperrtem Knopf); `neu` = Budget nach „Budget erhöhen“; `grundVeraltet` =
+   * der gespeicherte Grund nennt noch den Budget-Halt, das Budget ist aber nicht mehr überschritten (nach der Erhöhung, bis zum
+   * nächsten Schreiben) — die Anzeige zeigt dann keine Reparatur-Notiz.
+   * @returns { status: 'ok', summe, tokens, quelle, gemessen, ohneMessung, ueberschritten, halt, erhoehbar, neu, grundVeraltet } | { status: 'nicht_bestimmbar' }
+   */
+  function baueBudgetProjektion(workflowId, daten, versionSequenz, ladeOptionen) {
+    const stand = ermittleBudgetStand(workflowId, daten, ladeOptionen, versionSequenz)
+    if (stand === null) return { status: 'nicht_bestimmbar' }
+    let fortsetzbar = false
+    try {
+      const art = validiereWorkflowDaten(daten).length === 0 ? ermittleNaechstenSchritt(daten).art : null
+      fortsetzbar = art === 'starte' || art === 'haltFreigabe'
+    } catch (fehler) {
+      console.error(`[leitstand] Budget-Lage für Ablauf '${workflowId}' nicht bestimmbar:`, fehler)
+    }
+    const laufGesperrt = laufAktiv || aufrufAktiv || globalerLaufZustand.aktiv
+    const { summe, tokens, quelle, gemessen, ohneMessung, ueberschritten } = stand
+    const halt = ueberschritten && fortsetzbar
+    const grundVeraltet = !ueberschritten && daten.status === 'KLAERUNG_ERFORDERLICH' && istBudgetHaltGrund(daten.grund)
+    return { status: 'ok', summe, tokens, quelle, gemessen, ohneMessung, ueberschritten, halt, erhoehbar: halt && !laufGesperrt, neu: erhoehtesBudget(summe, tokens), grundVeraltet }
   }
 
   return async function requestHandler(req, res) {
@@ -8551,7 +8624,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Die Abnahme-Entscheidung (Erläuterung unten bei entscheidungProjektion) — hier geladen, weil der geprüfte Stand des
       // Reviews nur bei offener Abnahme neu berechnet wird (F45 B2a-3b).
       const abnahmeVersion = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen)
-      const reviewHaltGrund = reviewSchritt !== null && workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === reviewSchritt.schritt_id ? (workflowDaten.grund ?? null) : null
+      // F45 B2b-3c: ein Budget-Halt steht auf dem Schritt, der laufen würde — er gehört nicht dem Review (die Abnahme zeigt ihn
+      // als Budget-Notiz), sonst stünde „Review nicht gelaufen: Budget erreicht …“ unter den Hinweisen zum Review.
+      const reviewHaltGrund =
+        reviewSchritt !== null && workflowDaten.status === 'KLAERUNG_ERFORDERLICH' && workflowDaten.aktiver_schritt_id === reviewSchritt.schritt_id && !istBudgetHaltGrund(workflowDaten.grund) ? (workflowDaten.grund ?? null) : null
       let urteilProjektion
       // F45 B2b-1a: die hier gelesene Review-Laufakte geht an ermittlePrueferBefund (reviewWiederholbar unten), kein zweites Lesen je Poll.
       let reviewVorgelesen = null
@@ -8718,6 +8794,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         // F45 B2b-2b-2: additiv — Prüfung aus Nutzersicht (qa) und ob sie allein wiederholt werden kann.
         qaErgebnis: qa.projektion,
         qaWiederholbar,
+        // F45 B2b-3c (F-981): additiv — Verbrauch gegen Budget und ob „Budget erhöhen“ angeboten wird.
+        budget: baueBudgetProjektion(workflowId, workflowDaten, workflowVersion.versionSequenz, ladeOptionen),
       })
       return
     }
@@ -8829,7 +8907,10 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       // verstoesse wird durchgereicht statt ein zweites Mal berechnet: dieselbe Prüfung auf
       // demselben Datensatz im selben Request (Reviewer-Pass 10.09.2026).
-      const naechster = baueNaechsterProjektion(version.daten, verstoesse)
+      // F45 B2b-3c (Advisor B4): im überschrittenen Budget zeigt das Verdikt den Budget-Halt — keine Freigabe-Karte, kein Start;
+      // nach „Budget erhöhen“ wieder das Verdikt des Automaten (z. B. die Freigabe des Neubaus).
+      const budget = baueBudgetProjektion(workflowId, version.daten, version.versionSequenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const naechster = baueNaechsterProjektion(version.daten, verstoesse, budget.status === 'ok' ? budget : null)
 
       // F45 B2b-1b-2b (F-1106, F-1108): Plan und Advisor-Befunde an der Freigabe der Plan-Stufe (bauePlanFreigabeProjektion).
       const detailLadeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
@@ -8879,6 +8960,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         // F45 B2b-1b-2b: additiv — Plan/Advisor an der Freigabe der Plan-Stufe (sonst null) und „Advisor wiederholen“.
         planFreigabe,
         prueferWiederholbar,
+        // F45 B2b-3c (F-981): additiv — Verbrauch gegen Budget.
+        budget,
       })
       return
     }
@@ -10916,6 +10999,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       // geschrieben werden konnte oder der Workflow zwischen (1) und hier verschwunden wäre
       // (art 'nichtLadbar' — in diesem Handler unerreichbar, weil dazwischen kein await liegt;
       // die Auto-Fortsetzung erreicht ihn sehr wohl).
+      // F45 B2b-3c (F-981): im überschrittenen Budget startet nichts und keine Vorbereitung beginnt — erst „Budget erhöhen“.
+      const budgetVorStart = ermittleBudgetStand(workflowId, workflowDaten, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (budgetVorStart?.ueberschritten === true) {
+        sendeJson(res, 409, { grund: baueBudgetHaltGrund(budgetVorStart.summe, budgetVorStart.tokens), art: 'budgetErreicht' })
+        return
+      }
       // F45 B1a-1 (Plan v3 B2): eigener Arbeitsordner noch nicht bereit → Vorbereitung anstoßen, nichts starten (202).
       const arbeitsordnerHalt = arbeitsordnerVorStart(workflowId, workflowDaten, workflowVersion.versionSequenz)
       if (arbeitsordnerHalt !== null) {
@@ -11074,20 +11163,25 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
+      // F45 B2b-3c (Advisor B2): nach der Entscheidung fragt der Automat ggf. eine Freigabe — im überschrittenen Budget hält er an.
+      const budgetStandEntscheidung = ermittleBudgetStand(workflowId, workflowDaten, ladeOptionen)
       let naechster = null
       const fortschritt = schreibeWorkflowFortschritt(
         workflowId,
         formular.schrittId,
         {},
         (datenMitSchritt) => {
-          naechster = ermittleNaechstenSchritt(datenMitSchritt, {
-            schrittId: formular.schrittId,
-            ergebnis: 'ERFOLGREICH',
-            laufId: architektSchritt.lauf_id,
-            architekturVerstoesse: [],
-            architekturEntscheidungAusstehend: false,
-            architekturAnzahlFragen: architekturErgebnis.entscheidungenMensch.length,
-          })
+          naechster = wendeBudgetAn(
+            ermittleNaechstenSchritt(datenMitSchritt, {
+              schrittId: formular.schrittId,
+              ergebnis: 'ERFOLGREICH',
+              laufId: architektSchritt.lauf_id,
+              architekturVerstoesse: [],
+              architekturEntscheidungAusstehend: false,
+              architekturAnzahlFragen: architekturErgebnis.entscheidungenMensch.length,
+            }),
+            budgetStandEntscheidung
+          )
           return {
             status: workflowStatusZuAusgang(naechster),
             aktiver_schritt_id: naechster.aktiverSchrittId,
@@ -11153,6 +11247,73 @@ export function erzeugeRequestHandler(optionen = {}) {
         status: 'LAEUFT',
         laufId: gestartet.laufId,
       })
+      return
+    }
+
+    // ─── POST /api/workflows/<id>/budget (F45 B2b-3c, F-981, features/F45/plan-b2b3c-v2.md) ──────────
+    // „Budget erhöhen“: neues Budget = bisherige Summe + aktuelles Budget (Advisor B12), als neue Auftragsversion über
+    // registriereAuftrag (Muster …/einrichtung, kein zweiter Schreibweg, kein Workflow-Schreiber — F-228). Das Budget gehört zum
+    // Arbeitspaket und gilt damit für jede weitere Fassung desselben Auftrags; die Version trägt weder Begründung noch
+    // Ablaufbezug (die Lineage-Zeit ist die Spur). Der Ablauf selbst bleibt unberührt und zählt keinen Rückweg; fortgesetzt
+    // wird über die bestehenden Wege (…/starten bzw. die Freigabe), die Antwort nennt den nächsten Ausgang des Automaten.
+    // Vorbedingung wie die Projektion (erhoehbar): überschritten, kein Lauf aktiv, der Automat würde fortsetzen.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/budget')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/budget'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      if (body === null || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 || body.aktion !== 'erhoehen') {
+        sendeJson(res, 400, { grund: "Body muss { aktion: 'erhoehen' } sein" })
+        return
+      }
+      if (laufAktiv || aufrufAktiv || globalerLaufZustand.aktiv) {
+        sendeJson(res, 409, { grund: 'Während ein Lauf aktiv ist, kann das Budget nicht erhöht werden — nach seinem Ende erneut versuchen.' })
+        return
+      }
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const auftragId = workflowVersion.daten.auftrag_id
+      const auftrag = typeof auftragId === 'string' && !LAUFID_UNZULAESSIGE_ZEICHEN.test(auftragId) ? ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, ladeOptionen) : null
+      if (auftrag === null) {
+        sendeJson(res, 404, { grund: `Auftrag des Workflows '${workflowId}' nicht gefunden` })
+        return
+      }
+      const vorher = baueBudgetProjektion(workflowId, workflowVersion.daten, undefined, ladeOptionen)
+      if (vorher.status !== 'ok') {
+        sendeJson(res, 409, { grund: 'Der Verbrauch des Ablaufs ist nicht bestimmbar — das Budget wird nicht erhöht.' })
+        return
+      }
+      if (!vorher.erhoehbar) {
+        sendeJson(res, 409, { grund: vorher.ueberschritten ? 'Der Ablauf setzt gerade nicht fort (abgeschlossen, gestoppt oder an einem anderen Halt) — das Budget wird nicht erhöht.' : 'Das Budget ist nicht erreicht — nichts zu erhöhen.' })
+        return
+      }
+      const neu = erhoehtesBudget(vorher.summe, vorher.tokens)
+      try {
+        registriereAuftrag(auftragId, profilReferenz, auftrag.daten.titel, auftrag.daten.auftragstext, { ...optionenAusAuftrag(auftrag.daten), budget_tokens: neu, basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      } catch (fehler) {
+        console.error(`[leitstand] Budget für Auftrag '${auftragId}' nicht gespeichert:`, fehler)
+        sendeJson(res, 500, { grund: `Budget nicht gespeichert: ${fehler.message}` })
+        return
+      }
+      // Die Kopfdaten der Liste hängen am Stempel der Workflow- und Abnahme-Kette, die Erhöhung ändert keinen davon (code-reviewer-
+      // Nachpass 1): Eintrag verwerfen, damit Liste und „Wartet auf dich“ sofort dasselbe Verdikt zeigen wie das Detail.
+      workflowKopfdatenCache.delete(`${basisVerzeichnis}::${workflowId}`)
+      const naechster = ermittleNaechstenSchritt(workflowVersion.daten)
+      sendeJson(res, 200, { workflowId, budget: baueBudgetProjektion(workflowId, workflowVersion.daten, undefined, ladeOptionen), naechster: naechster.art })
       return
     }
 
@@ -11438,6 +11599,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       // die Freigabe NICHT festgehalten — die Vorbereitung beginnt, die Antwort ist 202 mit vorbereitung: true, und
       // die Oberfläche reicht dieselbe Freigabe ein, sobald der Arbeitsordner BEREIT ist.
       if (body.entscheidung === 'FREIGEGEBEN') {
+        // F45 B2b-3c (F-981): im überschrittenen Budget wird nichts festgehalten (Muster Einrichtung) — erst „Budget erhöhen“.
+        const budgetVorFreigabe = ermittleBudgetStand(workflowId, workflowDaten, ladeOptionen)
+        if (budgetVorFreigabe?.ueberschritten === true) {
+          sendeJson(res, 409, { grund: `${baueBudgetHaltGrund(budgetVorFreigabe.summe, budgetVorFreigabe.tokens)}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}`, art: 'budgetErreicht' })
+          return
+        }
         // F45 B2a-2 (F-1071): Bau mit offener Einrichtung „vor dem Bau“ → nichts festhalten, 409 mit Grund; nach dem Abhaken
         // gilt dieselbe Freigabe. Dieselbe Prüfung wie in starteWorkflowSchritt (dort verbindlich für jeden Startweg).
         if (freizugebenderSchritt?.rolle === 'ausfuehrung') {
@@ -11663,7 +11830,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, zurueck.http, { grund: zurueck.grund })
         return
       }
-      sendeJson(res, 200, { workflowId, schrittId: zurueck.schrittId, status: zurueck.status })
+      sendeJson(res, 200, { workflowId, schrittId: zurueck.schrittId, status: zurueck.status, ...(zurueck.grund !== undefined ? { grund: zurueck.grund } : {}) })
       return
     }
 
@@ -11799,14 +11966,19 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 500, { grund: `Workflow '${workflowId}' ist nach der wiederholten Prüfung nicht mehr ladbar` })
         return
       }
-      const naechster = ermittleNaechstenSchritt(workflowNachPruefung.daten, {
-        schrittId: schritt.schritt_id,
-        ergebnis: 'ERFOLGREICH',
-        laufId,
-        pruefergebnis: pruefDaten.ergebnis,
-        pruefergebnisExitCode: pruefDaten.exit_code,
-        pruefergebnisAusgabeEnde: letzteZeilen(pruefDaten.ausgabe_ende, 40),
-      })
+      // F45 B2b-3c (Advisor B3): GRÜN im überschrittenen Budget ⇒ Budget-Halt mit Cursor auf dem Folgeschritt (der Halt-Schreiber
+      // unten), statt eines gescheiterten Starts mit Cursor auf der Ausführung.
+      const naechster = wendeBudgetAn(
+        ermittleNaechstenSchritt(workflowNachPruefung.daten, {
+          schrittId: schritt.schritt_id,
+          ergebnis: 'ERFOLGREICH',
+          laufId,
+          pruefergebnis: pruefDaten.ergebnis,
+          pruefergebnisExitCode: pruefDaten.exit_code,
+          pruefergebnisAusgabeEnde: letzteZeilen(pruefDaten.ausgabe_ende, 40),
+        }),
+        ermittleBudgetStand(workflowId, workflowNachPruefung.daten, ladeOptionen)
+      )
 
       if (naechster.art !== 'starte') {
         const halt = schreibeWorkflowFortschritt(

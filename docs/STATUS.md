@@ -100,7 +100,7 @@ gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 `docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
-(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gebaut, nicht gemergt; B2b-3d (Umfangs-Abgleich) folgt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 15.10.2026).
 
 ## Erledigt
@@ -686,7 +686,11 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Gate f45-b2b2-pruefer (v1)–(v7), Render-Nachweis `features/F45/nachweise/b2b2b2/` (F-820, F-1117
   erledigt) — damit ist B2b-2 abgeschlossen. Rest F-1118 (3), F-1119 (2)–(14) (zweite Runde: F-1118 (1)(2), F-1119 (1) erledigt).
   F-648 geschlossen (umgesetzt, geprüft gegen B2b-2a).
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1120. Nach F46, vor F30
+  B2b-3c „Budget je Arbeitspaket“ gebaut (15.10.2026, `features/F45/plan-b2b3c-v2.md`): Tokens je Arbeitspaket über alle
+  Läufe eines Ablaufs, Defaults aus realen Laufakten (standard/hoch 14,7 Mio., fast-lane 5,3 Mio.), Halt nach dem Schritt mit
+  „Budget erhöhen“ oder Ablehnen, Anzeige in Abnahme und Ablauf-Seite; Gate f45-b2b3c-budget, Render-Nachweis
+  `features/F45/nachweise/b2b3c/` (F-981 erledigt). Umfangs-Abgleich als B2b-3d abgetrennt (F-978).
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1122. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
