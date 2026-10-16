@@ -101,7 +101,7 @@ gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 `docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
-(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gemergt #349; B2b-3b-1b (Auswertung) gemergt #350; B2b-3e-1 (keine persönlichen Pfade in Render-Screenshots, F-1125) gemergt #351; B2b-3e-2 (Budget-Feld, eine Regel für Bereiche, Formular-Reste F-1123) gebaut, nicht gemergt; es folgen W1 (Wachstumsbremse leitstand-server.mjs), B2b-3e-3 (Aufräumen alter Laufordner, F-1125-Restpunkte), B2b-3b-2 (Einschalten), B2b-4; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gemergt #349; B2b-3b-1b (Auswertung) gemergt #350; B2b-3e-1 (keine persönlichen Pfade in Render-Screenshots, F-1125) gemergt #351; B2b-3e-2 (Budget-Feld, eine Regel für Bereiche, Formular-Reste F-1123) gemergt #352; W1 (Wachstumsbremse leitstand-server.mjs, Gate mit straffer Ratsche, E-WART-1 = A) mit B2b-3e-3 (Aufräumen alter Laufordner, F-1125) und F-1123 (18) gebaut, nicht gemergt; es folgen B2b-3b-2 (Einschalten), B2b-4, Fähigkeit bauen, B5a/B5b, B3, W2 (Aufräumpaket: Server in Module); danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 16.10.2026).
 
 ## Offene P1-Findings
@@ -138,6 +138,7 @@ Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 - F-304 · TECH_DEBT · Der Vorgabe-Lesebereich der Windows-Sandbox ist maschinenweit.
 - F-308 · TECH_DEBT · Bei `--output-schema` ist nur die LETZTE `agent_message`
 - F-326 · PROCESS_IMPROVEMENT · Der Leitstand startet ohne `LEITSTAND_STARTVORLAGE_PFAD` gegen
+- F-371 · TECH_DEBT · scripts/leitstand-server.mjs ist eine 252-KB-Monolithdatei; F22/F23/
 - F-402 · TECH_DEBT · Kein projektlokaler Ort für Fähigkeiten.
 - F-426 · HARNESS_IMPROVEMENT · `git diff` über die Bridge hinterließ ein reales `.git/index.lock`
 - F-432 · PROCESS_IMPROVEMENT · Feature-Freigabe trotz offenem P1-BUG auf demselben Feature.

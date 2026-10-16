@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # Volle Historie mit origin/main: das Gate check-wachstumsbremse-server prüft (a2)/(b2) gegen die merge-base mit main (F45 W1).
+          fetch-depth: 0
 
       - name: Node einrichten
         uses: actions/setup-node@v5

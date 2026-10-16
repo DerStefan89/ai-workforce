@@ -27,6 +27,8 @@
  *      haltFreigabe) — am Review (b1) und am Neubau (b9).
  * (b10) Summe genau gleich Budget ⇒ kein Halt, der Review läuft. (b11) Lauf ohne verbrauch ⇒ ohneMessung, nicht in der Summe.
  * (b12) POST …/budget auf unbekanntem Ablauf ⇒ 404.
+ * (b13) F45 W1, F-1123 (18): Altauftrag mit nach B2b-3e-2 ungültigen bereiche ⇒ POST …/budget 200 (Bestandsschutz in
+ *       registriereAuftrag), neue Version mit erhöhtem Budget und unveränderten bereiche.
  * (f)  Quelltext: starteWorkflowSchritt( 6×, Workflow-Schreiber 14 / .eingefroren 13 (F-228 unverändert).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
@@ -579,6 +581,28 @@ try {
   {
     const antwort = await erhoehe(`gibt-es-nicht-${randomUUID()}`)
     pruefe(antwort.status === 404, '(b12) POST …/budget auf unbekanntem Ablauf ⇒ 404.', `(b12) — ${antwort.status}`)
+  }
+
+  // ── (b13) F-1123 (18), F45 W1: Altauftrag mit nach B2b-3e-2 ungültigen bereiche ⇒ Erhöhung 200 statt 500 ─────────
+  {
+    const a = await legeAn('b13', { budget: 1000, reviews: [BEREIT], tokens: { bau: [1500] } })
+    if (a) {
+      const { workflowId: id, auftragId } = a
+      // Altversion am Prüfer vorbei (wie vor B2b-3e-2 über die API gesetzt): Muster und absoluter Pfad.
+      const alt = { ...ladeAuftrag(auftragId), bereiche: ['src/*.ts', '/etc/'] }
+      registriereKernArtefakt(`auftrag-${auftragId}`, profilReferenz, { quelle: 'auftrag' }, alt, [], ladeOptionen)
+      const daten = await gibFreiUndWarte('b13', id)
+      if (daten) {
+        const antwort = await erhoehe(id)
+        const koerper = await antwort.json().catch(() => ({}))
+        const auftrag = ladeAuftrag(auftragId)
+        pruefe(
+          antwort.status === 200 && auftrag?.budget_tokens === 2500 && JSON.stringify(auftrag?.bereiche) === JSON.stringify(['src/*.ts', '/etc/']),
+          '(b13) F-1123 (18): Altauftrag mit ungültigen bereiche ⇒ POST …/budget 200, neue Version mit Budget 2500 und unveränderten bereiche.',
+          `(b13) — ${antwort.status} ${JSON.stringify(koerper)}; Auftrag ${JSON.stringify({ budget_tokens: auftrag?.budget_tokens, bereiche: auftrag?.bereiche })}`
+        )
+      }
+    }
   }
 
   // ── (f) Quelltext-Invarianten ───────────────────────────────────────────────────────────
