@@ -47,6 +47,11 @@
  * sobald der Rohstrom einen angenommenen Hintergrund-Aufruf trägt (ermittleHintergrundAufrufe: tool_use_result.
  * backgroundTaskId oder run_in_background ohne Fehler). Der Workflow hält dann (KLAERUNG_ERFORDERLICH).
  *
+ * F45 B2b-3b-1b (ARCHITECTURE §4): mit eingaben.rueckfragen (Protokoll des Rückfrage-Kanals, nur bei eingeschaltetem
+ * Kanal vom Controller gelesen) wird ein Lauf, dessen Ablehnungen ALLE allein von Stefan stammen (Abgleich A6 in
+ * src/rueckfrage/protokoll.ts) und der keinen Umgehungsverdacht trägt, ERFOLGREICH mit daten.abgelehnt_durch_stefan
+ * statt VERWEIGERT. Fehlt das Feld, ist es null oder ungültig, bleibt die Klassifikation bitgleich zu vorher.
+ *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens, seit F45 B2b-3b-1a in
  * src/invocation-policy neben pruefeAufrufparameter, damit die Vorentscheidung des
  * Rückfrage-Kanals dieselbe Regel nutzt) ist
@@ -67,12 +72,13 @@ import { leseCodexEreignisse } from '../codex-gateway/index.ts'
 import { ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAufrufparameter, toolInputZuTokens } from '../invocation-policy/index.ts'
+import { gleicheAblehnungenAb } from '../rueckfrage/protokoll.ts'
 import type { KlassifikationsEingaben, KlassifikationsErgebnis, KlassifikationsOptionen } from './types.ts'
 
 type ErgebnisOhneWirkungsmarke =
   | { ergebnis: 'FEHLGESCHLAGEN'; grund: string; daten?: Record<string, unknown> }
   | { ergebnis: 'VERWEIGERT'; bypass_verdacht_anzahl: number; is_error?: unknown; non_execution_kind?: unknown }
-  | { ergebnis: 'ERFOLGREICH'; is_error?: unknown; non_execution_kind?: unknown }
+  | { ergebnis: 'ERFOLGREICH'; is_error?: unknown; non_execution_kind?: unknown; abgelehnt_durch_stefan?: number }
 
 /**
  * F36 WS-5b: zählt die permission_denials des Ergebnisobjekts mit Verbotswert (dieselbe Regel wie der
@@ -257,7 +263,12 @@ function ermittleErgebnisCodex(rohInhalt: string): ErgebnisOhneWirkungsmarke {
  * von klassifiziereLauf, damit die Prüfreihenfolge (SCOPE.2) an einer Stelle
  * steht und der Schreibaufruf in allen drei Ausgängen identisch bleibt.
  */
-function ermittleErgebnis(laufakte: LaufakteV0Daten, claudeAenderungen: readonly string[] | undefined): ErgebnisOhneWirkungsmarke & { daten?: Record<string, unknown> } {
+function ermittleErgebnis(
+  laufId: string,
+  laufakte: LaufakteV0Daten,
+  claudeAenderungen: readonly string[] | undefined,
+  rueckfragen: unknown
+): ErgebnisOhneWirkungsmarke & { daten?: Record<string, unknown> } {
   let rohInhalt: string
   try {
     rohInhalt = readFileSync(laufakte.rohstrom_referenz.pfad, 'utf8')
@@ -349,6 +360,18 @@ function ermittleErgebnis(laufakte: LaufakteV0Daten, claudeAenderungen: readonly
     return { ergebnis: 'ERFOLGREICH', ...zusatzFelder }
   }
 
+  // F45 B2b-3b-1b (ARCHITECTURE §4, DEKLARIERT): eine Ablehnung allein durch Stefan über den Rückfrage-Kanal ist sein
+  // Entscheid, keine Verweigerung — nur mit Protokoll (rueckfragen gesetzt; der Controller setzt es nur bei eingeschaltetem
+  // Kanal), ohne Umgehungsverdacht (E-186 bleibt, Plan O5) und bei vollständigem Abgleich A6 (src/rueckfrage/protokoll.ts).
+  // Fehlt das Protokoll oder passt eine Ablehnung nicht, läuft der VERWEIGERT-Zweig unverändert.
+  // Ungefiltert (qa 5): ein Eintrag, der kein Objekt ist, kippt den Abgleich (fail closed), statt herausgefiltert zu werden.
+  if (rueckfragen !== undefined && bypassVerdachtAnzahl === 0) {
+    const abgleich = gleicheAblehnungenAb(denialsRaw as unknown[], rueckfragen, laufId)
+    if (abgleich.art === 'nur_stefan') {
+      return { ergebnis: 'ERFOLGREICH', ...zusatzFelder, abgelehnt_durch_stefan: abgleich.anzahl, daten: { abgelehnt_durch_stefan: abgleich.anzahl } }
+    }
+  }
+
   return { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: bypassVerdachtAnzahl, ...zusatzFelder }
 }
 
@@ -358,8 +381,8 @@ export function klassifiziereLauf(
   eingaben: KlassifikationsEingaben,
   optionen: KlassifikationsOptionen = {}
 ): KlassifikationsErgebnis {
-  // F36 WS-5b: daten (init_gate_verstoss/claude_ordner_veraendert) gehen unverändert in die Terminalmarke.
-  const { daten: teilDaten, ...teilergebnis } = ermittleErgebnis(eingaben.laufakte, eingaben.claudeAenderungen)
+  // F36 WS-5b: daten (init_gate_verstoss/claude_ordner_veraendert; F45 B2b-3b-1b: abgelehnt_durch_stefan) gehen unverändert in die Terminalmarke.
+  const { daten: teilDaten, ...teilergebnis } = ermittleErgebnis(laufId, eingaben.laufakte, eingaben.claudeAenderungen, eingaben.rueckfragen)
 
   let zusatzDaten: { daten?: unknown } = teilDaten !== undefined ? { daten: teilDaten } : {}
   if (teilergebnis.ergebnis === 'VERWEIGERT') {

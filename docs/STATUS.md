@@ -100,7 +100,7 @@ gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 `docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
-(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gebaut, nicht gemergt; es folgen B2b-3b-1b (Auswertung), B2b-3e (Budget-Feld), B2b-3b-2 (Einschalten), B2b-4; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gemergt #349; B2b-3b-1b (Auswertung) gebaut, nicht gemergt; es folgen B2b-3e (Budget-Feld), B2b-3b-2 (Einschalten), B2b-4; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 16.10.2026).
 
 ## Erledigt
@@ -699,7 +699,13 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   (`src/rueckfrage`), MCP-Skript `scripts/leitstand/rueckfrage-mcp.mjs`, Vermittlung mit Token je Lauf, Warteschlange,
   Wartegrenze und Aufräumen beim Lauf-Ende, Routen `/api/rueckfrage/…` (nur fragen) und `/api/rueckfragen…` (Browser),
   Argv-Baustein hinter der Handler-Option `rueckfrage` (Standard aus, Argv bitgleich); Gate f45-b2b3b1-rueckfrage.
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1126. Nach F46, vor F30
+  Gemergt #349. B2b-3b-1b „Auswertung“ gebaut (16.10.2026, `features/F45/plan-b2b3b1b-v2.md`, Advisor-Pass
+  FREIGEGEBEN MIT AUFLAGEN A1–A3): Protokoll je Lauf als Kern-Artefakt `rueckfragen-<laufId>` (Schema
+  `schemas/kontrollzustand-rueckfragen-payload.schema.json`, neutralisiert und maskiert, Liste in der Vermittlung,
+  Schreiber `scripts/leitstand/rueckfrage-protokoll.mjs`), Abgleich A6 in `src/rueckfrage/protokoll.ts`, Result
+  Evaluator: Ablehnung allein durch Stefan ⇒ ERFOLGREICH mit `daten.abgelehnt_durch_stefan` (DEKLARIERT, ARCHITECTURE §4),
+  Controller liest das Protokoll nur bei eingeschaltetem Kanal; Kanal weiter aus. Gate f45-b2b3b1b-auswertung.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1128. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

@@ -36,7 +36,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../claude-code-gateway/prozessstart.ts'
 import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
-import { ladeGueltigeCheckpoints, ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
+import { kanonischesJson, ladeGueltigeCheckpoints, ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { klassifiziereLauf } from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
@@ -1092,5 +1092,106 @@ test('F45 B1b-1 (Advisor A1): automatisch verschobener Befehl ohne run_in_backgr
     assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'hintergrund_ausfuehrung')
   } finally {
     raeumeKette(laufId)
+  }
+})
+
+// ─── F45 B2b-3b-1b: Ablehnung allein durch Stefan (Rückfrage-Protokoll, Abgleich A6) ──
+
+/** Rohstrom mit Ergebnisobjekt und den gegebenen permission_denials. */
+function ablehnungsStdout(denials: unknown[]): string {
+  return JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'fertig', permission_denials: denials })
+}
+const STEFAN_DENIAL = { tool_name: 'Bash', tool_use_id: 'toolu_s', tool_input: { command: 'npm publish' } }
+/** Protokoll-Artefaktdaten mit einem Eintrag der Art `art` passend zu STEFAN_DENIAL. */
+function stefanProtokoll(laufId: string, art = 'stefan_abgelehnt'): Record<string, unknown> {
+  return {
+    rueckfragen_schema: 'v0',
+    lauf_id: laufId,
+    eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(STEFAN_DENIAL.tool_input)), art, grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'npm publish' }],
+  }
+}
+/** Payload der Terminalmarke eines Laufs (ergebnis + daten). */
+function terminalPayload(laufId: string, selbstHash: string): { ergebnis?: string; daten?: Record<string, unknown> } | undefined {
+  return ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS }).find((e) => e.payload.selbst_hash === selbstHash)?.payload as { ergebnis?: string; daten?: Record<string, unknown> } | undefined
+}
+
+test('F45 B2b-3b-1b (e1): Ablehnung allein durch Stefan ⇒ ERFOLGREICH mit daten.abgelehnt_durch_stefan', () => {
+  const laufId = neueLaufId('stefan-nur')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: ablehnungsStdout([STEFAN_DENIAL]), stderr: '', exitCode: 0 })
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true), rueckfragen: stefanProtokoll(laufId) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'ERFOLGREICH')
+    assert.equal(ergebnis.ergebnis === 'ERFOLGREICH' && ergebnis.abgelehnt_durch_stefan, 1)
+    const payload = terminalPayload(laufId, ergebnis.wirkungsmarke.selbstHash)
+    assert.equal(payload?.ergebnis, 'ERFOLGREICH')
+    assert.deepEqual(payload?.daten, { abgelehnt_durch_stefan: 1 })
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F45 B2b-3b-1b (e2/e3): gemischt, auto_deny, Zeitüberschreitung, Werkzeugsatz-Sperre ohne Eintrag ⇒ VERWEIGERT', () => {
+  const faelle: [string, unknown[], (laufId: string) => unknown][] = [
+    ['gemischt', [STEFAN_DENIAL, { tool_name: 'Bash', tool_use_id: 'toolu_x', tool_input: { command: 'ls' } }], (l) => stefanProtokoll(l)],
+    ['auto_deny', [STEFAN_DENIAL], (l) => stefanProtokoll(l, 'auto_deny')],
+    ['zeitueberschreitung', [STEFAN_DENIAL], (l) => stefanProtokoll(l, 'zeitueberschreitung')],
+    ['Werkzeugsatz-Sperre ohne Eintrag', [{ tool_name: 'Write', tool_use_id: 'toolu_w', tool_input: { file_path: 'x' } }], (l) => stefanProtokoll(l)],
+    ['Nicht-Objekt neben Stefan-Ablehnung (qa 5)', ['x', STEFAN_DENIAL], (l) => stefanProtokoll(l)],
+    ['stefan_erlaubt zur Ablehnungs-ID', [STEFAN_DENIAL], (l) => stefanProtokoll(l, 'stefan_erlaubt')],
+  ]
+  for (const [name, denials, protokoll] of faelle) {
+    const laufId = neueLaufId('stefan-rot')
+    try {
+      const rohstromReferenz = schreibeRohstrom(laufId, { stdout: ablehnungsStdout(denials), stderr: '', exitCode: 0 })
+      const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true), rueckfragen: protokoll(laufId) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+      assert.equal(ergebnis.ergebnis, 'VERWEIGERT', name)
+    } finally {
+      raeumeKette(laufId)
+    }
+  }
+})
+
+test('F45 B2b-3b-1b (O5, E-186): Stefan-Ablehnung mit Verbotswert ⇒ VERWEIGERT mit Umgehungsverdacht', () => {
+  const laufId = neueLaufId('stefan-bypass')
+  try {
+    const denial = { tool_name: 'Bash', tool_use_id: 'toolu_s', tool_input: { command: 'npm run test --dangerously-skip-permissions' } }
+    const protokoll = stefanProtokoll(laufId)
+    ;(protokoll.eintraege as Record<string, unknown>[])[0].input_hash = sha256Hex(kanonischesJson(denial.tool_input))
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: ablehnungsStdout([denial]), stderr: '', exitCode: 0 })
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true), rueckfragen: protokoll }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'VERWEIGERT' && ergebnis.bypass_verdacht_anzahl, 1)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F45 B2b-3b-1b (e4): ohne Protokoll (Feld fehlt, null, ungültig, fremder Lauf) ⇒ Ergebnis und Terminalmarke gleich', () => {
+  const stroeme: [string, string][] = [
+    ['keine Ablehnung', ablehnungsStdout([])],
+    ['Stefan-förmige Ablehnung', ablehnungsStdout([STEFAN_DENIAL])],
+    ['mit Verbotswert', ablehnungsStdout([{ tool_name: 'Bash', tool_use_id: 'b', tool_input: { command: 'npm run test --dangerously-skip-permissions' } }])],
+    ['is_error/non_execution_kind', JSON.stringify({ type: 'result', is_error: true, non_execution_kind: 'x', permission_denials: [STEFAN_DENIAL] })],
+    ['kein Ergebnisobjekt', ''],
+  ]
+  const varianten: [string, ((l: string) => unknown) | undefined][] = [
+    ['fehlt', undefined],
+    ['null', () => null],
+    ['ungültig', (l) => ({ ...stefanProtokoll(l), rueckfragen_schema: 'v9' })],
+    ['fremder Lauf', () => stefanProtokoll('anderer-lauf')],
+  ]
+  for (const [name, stdout] of stroeme) {
+    const ausgaben = varianten.map(([, protokoll]) => {
+      const laufId = neueLaufId('bitgleich')
+      try {
+        const rohstromReferenz = schreibeRohstrom(laufId, { stdout, stderr: '', exitCode: 0 })
+        const eingaben = { laufakte: baueLaufakte(laufId, rohstromReferenz, true), ...(protokoll !== undefined ? { rueckfragen: protokoll(laufId) } : {}) }
+        const { wirkungsmarke, ...rest } = klassifiziereLauf(laufId, PROFIL_REFERENZ, eingaben, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+        const payload = terminalPayload(laufId, wirkungsmarke.selbstHash)
+        return JSON.stringify({ rest, ergebnis: payload?.ergebnis, daten: payload?.daten })
+      } finally {
+        raeumeKette(laufId)
+      }
+    })
+    for (let i = 1; i < ausgaben.length; i++) assert.equal(ausgaben[i], ausgaben[0], `${name}: ${varianten[i][0]}`)
   }
 })

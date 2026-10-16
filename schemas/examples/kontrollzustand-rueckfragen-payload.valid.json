@@ -1,0 +1,33 @@
+{
+  "rueckfragen_schema": "v0",
+  "lauf_id": "beispiel-lauf",
+  "eintraege": [
+    {
+      "tool_use_id": "toolu_01Ta4gWze6JDjWi6vemvdgvo",
+      "tool_name": "Write",
+      "input_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "art": "auto_deny",
+      "grund": "Pfad außerhalb des Arbeitsordners",
+      "zeit": "2026-10-16T10:00:00.000Z"
+    },
+    {
+      "tool_use_id": "toolu_01FPSb6SaAVkNSi1muRaygW3",
+      "tool_name": "Bash",
+      "input_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "art": "stefan_abgelehnt",
+      "grund": "Stefan hat abgelehnt",
+      "zeit": "2026-10-16T10:01:00.000Z",
+      "befehl": "npm publish --registry <ARBEITSORDNER>/x"
+    },
+    {
+      "tool_use_id": null,
+      "tool_name": "frage_stefan",
+      "input_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "art": "frage_beantwortet",
+      "grund": "Stefan hat geantwortet",
+      "zeit": "2026-10-16T10:02:00.000Z",
+      "frage": "Welcher Port?",
+      "antwort": "4711"
+    }
+  ]
+}

@@ -23,6 +23,12 @@ export interface KlassifikationsEingaben {
    * 'claude_ordner_veraendert'. Fehlt das Feld, bleibt die Klassifikation unverändert.
    */
   claudeAenderungen?: string[]
+  /**
+   * F45 B2b-3b-1b: daten der letzten Version des Kern-Artefakts `rueckfragen-<laufId>` (Rückfrage-Protokoll) oder null —
+   * vom Execution Controller nur bei eingeschaltetem Kanal gesetzt. Ungültig oder null zählt wie fehlend. Fehlt das Feld,
+   * bleibt die Klassifikation unverändert.
+   */
+  rueckfragen?: unknown
 }
 
 export interface KlassifikationsOptionen {
@@ -43,5 +49,7 @@ export type KlassifikationsErgebnis =
       ergebnis: 'ERFOLGREICH'
       is_error?: unknown
       non_execution_kind?: unknown
+      /** F45 B2b-3b-1b: Anzahl der Ablehnungen allein durch Stefan (nur gesetzt, wenn es welche gab; steht auch in daten der Terminalmarke). */
+      abgelehnt_durch_stefan?: number
       wirkungsmarke: { pfad: string; selbstHash: string }
     }
