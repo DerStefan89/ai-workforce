@@ -14,10 +14,13 @@
  * Wichtig: Entfernt wird synchron im `exit`-Handler; Strg+C (SIGINT), SIGTERM, SIGHUP (Konsolenfenster geschlossen) und
  * unter Windows SIGBREAK beenden über process.exit(130) — „durch Signal beendet“ (der Leitstand-CLI-Block beendet dagegen
  * bewusst mit 0, leitstand-server.mjs; hier zählt nur, dass `exit` aufräumt). Ein hart beendeter Prozess
- * (`taskkill /F`) hinterlässt den Laufordner — dann `C:\aiw-nachweis\lauf-*` von Hand löschen.
+ * (`taskkill /F`) hinterlässt den Laufordner; seit F45 B2b-3e-3 räumt ihn der nächste Start (pid-Datei, nur ESRCH = tot;
+ * ohne gültige pid erst nach 24 h). Markieren und Aufräumen laufen erst nach dem `exit`-Handler und in `try` — ein Wurf dort
+ * lässt den eigenen Laufordner nicht liegen (plan-w1-v2 §2, Advisor L3; Reihenfolge prüft neutrale-umgebung.test.mjs am Text).
  */
 
-import { richteNeutraleUmgebungEin } from './neutrale-umgebung.mjs'
+import { dirname } from 'node:path'
+import { markiereLauf, raeumeAlteLaeufeAuf, richteNeutraleUmgebungEin } from './neutrale-umgebung.mjs'
 
 const { laufordner, entferne } = richteNeutraleUmgebungEin()
 process.once('exit', entferne)
@@ -25,3 +28,9 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', ...(process.platform === 'w
   process.once(signal, () => process.exit(130))
 }
 console.log(`Neutrale Umgebung: ${laufordner} (wird beim Beenden entfernt)`)
+try {
+  markiereLauf(laufordner)
+  for (const ordner of raeumeAlteLaeufeAuf({ wurzel: dirname(laufordner), eigener: laufordner })) console.log(`Neutrale Umgebung: alter Laufordner ${ordner} entfernt`)
+} catch (fehler) {
+  console.warn(`Neutrale Umgebung: Aufräumen alter Laufordner übersprungen (${fehler instanceof Error ? fehler.message : String(fehler)}).`)
+}

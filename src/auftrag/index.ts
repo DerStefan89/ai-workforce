@@ -21,9 +21,14 @@
  * F45 B2b-3e-2 (F-1123 (5), Entscheidung A2 = Zwilling): pruefeBereich und pruefeBudgetTokens sind die eine Regel für
  * `bereiche` und `budget_tokens`; ihre Kopie für den Browser liegt in public/leitstand/arbeitspaket-felder.js (keine
  * Abhängigkeit src → public), das Gate scripts/check-f45-b2b3e2-formular.mjs lässt beide über dieselbe Fall-Tabelle urteilen.
+ *
+ * F45 W1 (F-1123 (18)): Bestandsschutz — registriereAuftrag liest die letzte Version; ein unverändert übernommener Wert von
+ * `bereiche`/`budget_tokens` wird nur noch strukturell geprüft, damit ein vor B2b-3e-2 gespeicherter Altwert keine neue Version
+ * (Budget erhöhen, Einrichtung) mit 500 scheitern lässt. Neue oder geänderte Werte prüft die volle Regel.
  */
 
-import { registriereKernArtefakt } from '../lineage-registry/index.ts'
+import { isDeepStrictEqual } from 'node:util'
+import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import type { AuftragV0Daten, Einrichtungsschritt, Ereignis, Optionen } from './types.ts'
 
@@ -106,7 +111,11 @@ export function registriereAuftrag(
     // F45 B2b-3c (F-981): Budget des Arbeitspakets, dasselbe additive Muster.
     ...(optionen.budget_tokens !== undefined ? { budget_tokens: optionen.budget_tokens } : {}),
   }
-  const verstoesse = validiereAuftragDaten(daten)
+  // F45 W1 (F-1123 (18)): die letzte Version ist der Bestand, gegen den unveränderte Altwerte geschützt sind.
+  const letzte = ladeArtefaktVersion(auftragArtefaktId(auftragId), undefined, lineageOptionen)?.daten
+  // Nur ein Objekt taugt als Bestand (code-reviewer 10): sonst würfe `'bereiche' in bestand` — und es gäbe wieder 500.
+  const bestand = typeof letzte === 'object' && letzte !== null && !Array.isArray(letzte) ? (letzte as ArbeitspaketBestand) : undefined
+  const verstoesse = validiereAuftragDaten(daten, bestand)
   if (verstoesse.length > 0) throw new Error(`Auftrag '${auftragId}' verstößt gegen schemas/kontrollzustand-auftrag-payload.schema.json: ${verstoesse.join('; ')}`)
 
   const { pfad, versionSequenz, inhaltsHash } = registriereKernArtefakt(
@@ -319,19 +328,39 @@ export function validiereAuftragPflichtfelder(herkunftArt: unknown, akzeptanzkri
   return Array.isArray(akzeptanzkriterien) && akzeptanzkriterien.length > 0 ? [] : [`ein Auftrag mit herkunft.art '${herkunftArt}' braucht mindestens ein Akzeptanzkriterium`]
 }
 
+/** Bestand für den Bestandsschutz (F45 W1, F-1123 (18)): die geschützten Felder der letzten gespeicherten Version. */
+type ArbeitspaketBestand = Partial<Record<'bereiche' | 'budget_tokens', unknown>>
+
+/**
+ * Reine Funktion: Strukturregel für einen bestandsgeschützten `bereiche`-Altwert (F45 W1, F-1123 (18)) — das Schema ohne die
+ * Eintragsregel pruefeBereich: Array mit mindestens einem nicht-leeren String.
+ * @param wert - der zu prüfende Wert
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+function validiereBereicheStruktur(wert: unknown): string[] {
+  if (!Array.isArray(wert) || wert.length === 0) return ["'bereiche' muss ein nicht-leeres Array sein"]
+  return wert.every((eintrag) => typeof eintrag === 'string' && eintrag.length > 0) ? [] : ["'bereiche' darf nur nicht-leere Strings enthalten"]
+}
+
 /**
  * Reine Funktion: prüft die Arbeitspaket-Felder (bereiche, risiko, feature_ref, einrichtung, seit F45 B2b-3c budget_tokens), soweit vorhanden — für
  * validiereAuftragDaten und das POST-Formular (eine Regel).
  * @param obj - Objekt mit den optionalen Feldern
+ * @param bestand - letzte gespeicherte Version (F45 W1, F-1123 (18)): ist `bereiche` bzw. `budget_tokens` deep-gleich dem Wert
+ *   dort, gilt nur die Strukturregel (Array nicht-leerer Strings bzw. ganze Zahl ≥ 1) statt pruefeBereich/pruefeBudgetTokens
  * @returns Liste der Regelverletzungen; leer = gültig
  */
-export function validiereArbeitspaketFelder(obj: Record<string, unknown>): string[] {
+export function validiereArbeitspaketFelder(obj: Record<string, unknown>, bestand?: ArbeitspaketBestand): string[] {
   const verstoesse: string[] = []
-  if ('bereiche' in obj) verstoesse.push(...validiereAuftragBereiche(obj.bereiche))
+  if ('bereiche' in obj) {
+    const geschuetzt = bestand !== undefined && 'bereiche' in bestand && isDeepStrictEqual(obj.bereiche, bestand.bereiche)
+    verstoesse.push(...(geschuetzt ? validiereBereicheStruktur(obj.bereiche) : validiereAuftragBereiche(obj.bereiche)))
+  }
   if ('risiko' in obj && (typeof obj.risiko !== 'string' || !RISIKEN.has(obj.risiko))) verstoesse.push("'risiko' muss 'niedrig', 'mittel' oder 'hoch' sein")
   if ('feature_ref' in obj && (typeof obj.feature_ref !== 'string' || !FEATURE_REF_MUSTER.test(obj.feature_ref))) verstoesse.push("'feature_ref' muss dem Muster ^F[0-9]+[A-Za-z]?$ entsprechen")
   if ('einrichtung' in obj) verstoesse.push(...validiereAuftragEinrichtung(obj.einrichtung))
-  if ('budget_tokens' in obj && !pruefeBudgetTokens(obj.budget_tokens)) verstoesse.push(`'budget_tokens' muss eine ganze Zahl von 1 bis ${Number.MAX_SAFE_INTEGER} sein`)
+  const budgetGeschuetzt = bestand !== undefined && obj.budget_tokens === bestand.budget_tokens && typeof obj.budget_tokens === 'number' && Number.isInteger(obj.budget_tokens) && obj.budget_tokens >= 1
+  if ('budget_tokens' in obj && !budgetGeschuetzt && !pruefeBudgetTokens(obj.budget_tokens)) verstoesse.push(`'budget_tokens' muss eine ganze Zahl von 1 bis ${Number.MAX_SAFE_INTEGER} sein`)
   return verstoesse
 }
 
@@ -365,8 +394,13 @@ export function offeneEinrichtungVorDemBau(daten: Pick<AuftragV0Daten, 'einricht
   return (daten?.einrichtung ?? []).filter((e) => e.wann === 'vor_dem_bau' && e.status === 'offen')
 }
 
-/** Reine Funktion: prüft ein geparstes Objekt gegen schemas/kontrollzustand-auftrag-payload.schema.json. */
-export function validiereAuftragDaten(daten: unknown): string[] {
+/**
+ * Reine Funktion: prüft ein geparstes Objekt gegen schemas/kontrollzustand-auftrag-payload.schema.json.
+ * @param daten - zu prüfende Daten
+ * @param bestand - optional die letzte gespeicherte Version (Bestandsschutz, siehe validiereArbeitspaketFelder)
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+export function validiereAuftragDaten(daten: unknown, bestand?: ArbeitspaketBestand): string[] {
   if (typeof daten !== 'object' || daten === null || Array.isArray(daten)) {
     return ['Wurzel ist kein Objekt']
   }
@@ -387,7 +421,7 @@ export function validiereAuftragDaten(daten: unknown): string[] {
   if ('akzeptanzkriterien' in obj) verstoesse.push(...validiereAuftragAkzeptanzkriterien(obj.akzeptanzkriterien))
   if ('nicht_ziele' in obj) verstoesse.push(...validiereAuftragNichtZiele(obj.nicht_ziele))
   // F45 B2a-2: Arbeitspaket-Felder additiv/optional; Pflicht-AK je Herkunft.
-  verstoesse.push(...validiereArbeitspaketFelder(obj))
+  verstoesse.push(...validiereArbeitspaketFelder(obj, bestand))
   const herkunftArt = typeof obj.herkunft === 'object' && obj.herkunft !== null ? (obj.herkunft as Record<string, unknown>).art : undefined
   verstoesse.push(...validiereAuftragPflichtfelder(herkunftArt, obj.akzeptanzkriterien))
   return verstoesse

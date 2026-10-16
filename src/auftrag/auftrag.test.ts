@@ -13,7 +13,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, pruefeBereich, pruefeBudgetTokens, registriereAuftrag, traegtArbeitspaket, validiereArbeitspaketFelder, validiereAuftragAkzeptanzkriterien, validiereAuftragBereiche, validiereAuftragDaten, validiereAuftragNichtZiele } from './index.ts'
 import type { AuftragV0Daten } from './types.ts'
-import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
+import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -218,4 +218,49 @@ test('F45 B2b-3e-2: pruefeBudgetTokens — ganze Zahl von 1 bis MAX_SAFE_INTEGER
   for (const wert of [1, Number.MAX_SAFE_INTEGER]) assert.strictEqual(pruefeBudgetTokens(wert), true, String(wert))
   for (const wert of [0, 1.5, '5', Number.NaN, Number.MAX_SAFE_INTEGER + 1, 1e300]) assert.strictEqual(pruefeBudgetTokens(wert), false, String(wert))
   assert.match(validiereArbeitspaketFelder({ budget_tokens: 1e300 }).join(), /'budget_tokens' muss eine ganze Zahl von 1 bis 9007199254740991 sein/)
+})
+
+// ─── F45 W1 (F-1123 (18)): Bestandsschutz für Altwerte ─────────────────────────────────────
+
+test('F45 W1 (F-1123 (18)): unveränderte Altwerte von bereiche/budget_tokens blockieren keine neue Version; geänderte werden voll geprüft', () => {
+  const auftragId = `test-auftrag-${randomUUID()}`
+  const optionen = { basisVerzeichnis: BASIS, schreiber: stillerSchreiber }
+  try {
+    // Altauftrag vor B2b-3e-2: Einträge, die die heutige Regel abweist, direkt über F2 geschrieben (am Prüfer vorbei).
+    const alt: AuftragV0Daten = { ...ALT, auftrag_id: auftragId, bereiche: ['src/*.ts', '/etc/'], budget_tokens: 1e300 }
+    registriereKernArtefakt(`auftrag-${auftragId}`, PROFIL_REFERENZ, { quelle: 'auftrag' }, alt, [], { basisVerzeichnis: BASIS, schreiber: stillerSchreiber })
+
+    // „Budget erhöhen“: neue Version mit neuem Budget, bereiche unverändert ⇒ kein Wurf, bereiche bleiben.
+    const ergebnis = registriereAuftrag(auftragId, PROFIL_REFERENZ, alt.titel, alt.auftragstext, { ...optionenAusAuftrag(alt), budget_tokens: 5000, ...optionen })
+    assert.strictEqual(ergebnis.versionSequenz, 2)
+    const version = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, optionen)
+    assert.deepStrictEqual((version?.daten as AuftragV0Daten).bereiche, ['src/*.ts', '/etc/'])
+    assert.strictEqual((version?.daten as AuftragV0Daten).budget_tokens, 5000)
+
+    // Einrichtung abhaken mit unverändertem Alt-Budget über MAX_SAFE (Version 3 auf einer Version mit 1e300).
+    registriereKernArtefakt(`auftrag-${auftragId}`, PROFIL_REFERENZ, { quelle: 'auftrag' }, alt, [], { basisVerzeichnis: BASIS, schreiber: stillerSchreiber })
+    assert.doesNotThrow(() => registriereAuftrag(auftragId, PROFIL_REFERENZ, alt.titel, alt.auftragstext, { ...optionenAusAuftrag(alt), einrichtung: [], ...optionen }))
+
+    // Geändert ⇒ voll geprüft: ein neuer ungültiger Eintrag, dieselben Einträge in anderer Reihenfolge, ein neues ungültiges Budget.
+    assert.throws(() => registriereAuftrag(auftragId, PROFIL_REFERENZ, alt.titel, alt.auftragstext, { ...optionenAusAuftrag(alt), bereiche: ['src/*.ts', '/etc/', 'neu/*.ts'], ...optionen }), /'bereiche\[0\]'.*ist ein Muster/)
+    assert.throws(() => registriereAuftrag(auftragId, PROFIL_REFERENZ, alt.titel, alt.auftragstext, { ...optionenAusAuftrag(alt), bereiche: ['/etc/', 'src/*.ts'], ...optionen }), /ist absolut/)
+    assert.throws(() => registriereAuftrag(auftragId, PROFIL_REFERENZ, alt.titel, alt.auftragstext, { ...optionenAusAuftrag(alt), budget_tokens: 2e300, ...optionen }), /'budget_tokens' muss/)
+  } finally {
+    raeumeAuf(auftragId)
+  }
+})
+
+test('F45 W1 (F-1123 (18)): ohne Vorgänger und ohne Bestand prüft die Regel wie bisher voll', () => {
+  const auftragId = `test-auftrag-${randomUUID()}`
+  try {
+    assert.throws(() => registriereAuftrag(auftragId, PROFIL_REFERENZ, 'T', 'A', { basisVerzeichnis: BASIS, schreiber: stillerSchreiber, bereiche: ['src/*.ts'] }), /ist ein Muster/)
+    assert.notStrictEqual(validiereAuftragDaten({ ...ALT, bereiche: ['src/*.ts'] }).length, 0)
+    // Strukturregeln gelten auch für Altwerte: ein leeres oder kein Array bleibt ein Verstoß.
+    assert.notStrictEqual(validiereAuftragDaten({ ...ALT, bereiche: [] }, { bereiche: [] }).length, 0)
+    assert.notStrictEqual(validiereAuftragDaten({ ...ALT, bereiche: [''] }, { bereiche: [''] }).length, 0)
+    assert.notStrictEqual(validiereAuftragDaten({ ...ALT, budget_tokens: 0 }, { budget_tokens: 0 }).length, 0)
+    assert.deepStrictEqual(validiereAuftragDaten({ ...ALT, bereiche: ['src/*.ts'], budget_tokens: 1e300 }, { bereiche: ['src/*.ts'], budget_tokens: 1e300 }), [])
+  } finally {
+    raeumeAuf(auftragId)
+  }
 })
