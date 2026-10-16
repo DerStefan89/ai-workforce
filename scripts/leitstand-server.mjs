@@ -467,7 +467,7 @@ import { entscheideStale, importiereAntwort } from '../src/human-transport/index
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
-import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, registriereAuftrag, traegtArbeitspaket, validiereAuftragAkzeptanzkriterien, validiereAuftragHerkunft, validiereAuftragPflichtfelder } from '../src/auftrag/index.ts'
+import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, registriereAuftrag, traegtArbeitspaket, validiereArbeitspaketFelder, validiereAuftragAkzeptanzkriterien, validiereAuftragHerkunft, validiereAuftragPflichtfelder } from '../src/auftrag/index.ts'
 import { CLAUDE_CODE_AUSGABESCHEMAS, ermittleNaechstenSchritt, istReviewBeanstandet, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { baueBeobachtungsBlock, baueClaudeJsonSchema, leseErgebnisobjekt, pruefeStartordner, pruefeWerkzeugkonfigurationVorab } from '../src/claude-code-gateway/index.ts'
 import { arbeitsverzeichnisseGleich } from '../src/invocation-policy/index.ts'
@@ -543,6 +543,7 @@ import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstan
 import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitstand/startvorlage-wahl.mjs'
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
+import { baueUmfangProjektion, ermittleUmfangFuerUebersicht, leseUmfangsZeile } from './leitstand/umfang-stand.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
@@ -1799,7 +1800,7 @@ async function sammleWorkitems(repoWurzel, filter = {}) {
   }
 }
 
-/** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Pflichtfelder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). F39 WS-2a: optionales 'herkunft' (validiereAuftragHerkunft, src/auftrag/index.ts — eine Quelle, kein zweiter Regelsatz), unbekannte 'herkunft.art' → 400. F45 B2a-2 (E3): 'akzeptanzkriterien' nur mit herkunft.art 'finding' und dort Pflicht (≥ 1). @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext und nur die gesetzten Felder herkunft/akzeptanzkriterien, sonst grund der Ablehnung */
+/** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Pflichtfelder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). F39 WS-2a: optionales 'herkunft' (validiereAuftragHerkunft, src/auftrag/index.ts — eine Quelle, kein zweiter Regelsatz), unbekannte 'herkunft.art' → 400. F45 B2a-2 (E3): 'akzeptanzkriterien' nur mit herkunft.art 'finding' und dort Pflicht (≥ 1). F45 B2b-3d (F-978, F-1083 (1)): optionale Arbeitspaket-Felder 'bereiche' und 'budget_tokens' für jede Herkunft (validiereArbeitspaketFelder — eine Regel mit validiereAuftragDaten). @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext und nur die gesetzten Felder herkunft/akzeptanzkriterien/bereiche/budget_tokens, sonst grund der Ablehnung */
 export function pruefeAuftragsformular(body) {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return { ok: false, grund: 'Body muss ein JSON-Objekt sein' }
@@ -1829,6 +1830,10 @@ export function pruefeAuftragsformular(body) {
   }
   const akVerstoesse = [...('akzeptanzkriterien' in body ? validiereAuftragAkzeptanzkriterien(body.akzeptanzkriterien) : []), ...validiereAuftragPflichtfelder(herkunftArt, body.akzeptanzkriterien)]
   if (akVerstoesse.length > 0) return { ok: false, grund: akVerstoesse.join('; ') }
+  // F45 B2b-3d: nur genau diese beiden Arbeitspaket-Felder (Advisor A10) — risiko/einrichtung/feature_ref setzt das Formular nicht.
+  const paketFelder = { ...('bereiche' in body ? { bereiche: body.bereiche } : {}), ...('budget_tokens' in body ? { budget_tokens: body.budget_tokens } : {}) }
+  const paketVerstoesse = validiereArbeitspaketFelder(paketFelder)
+  if (paketVerstoesse.length > 0) return { ok: false, grund: paketVerstoesse.join('; ') }
   // Nur gesetzte Felder zurückgeben — kein Schlüssel mit undefined (check-f39-architekt (d)).
   return {
     ok: true,
@@ -1836,6 +1841,7 @@ export function pruefeAuftragsformular(body) {
     auftragstext: body.auftragstext,
     ...('herkunft' in body ? { herkunft: body.herkunft } : {}),
     ...('akzeptanzkriterien' in body ? { akzeptanzkriterien: body.akzeptanzkriterien } : {}),
+    ...paketFelder,
   }
 }
 
@@ -2206,7 +2212,7 @@ function ermittleFreigabeAbschwaechungen(vorherigeSchritte, neueSchritte) {
 }
 
 /** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). F39 WS-2a: 'herkunft' additiv/optional. F45 B2a-2 (E3): 'akzeptanzkriterien' nur zusammen mit herkunft.art 'finding' (pruefeAuftragsformular) — sonst bleibt das Formular für AK zu (F35 AK2). */
-const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext', 'herkunft', 'akzeptanzkriterien'])
+const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext', 'herkunft', 'akzeptanzkriterien', 'bereiche', 'budget_tokens'])
 
 /**
  * F-265: POST .../freigabe und POST .../stoppen liegen im selben Bedienfeld wie D13s
@@ -6688,11 +6694,12 @@ export function erzeugeRequestHandler(optionen = {}) {
    *   eine Änderungsübersicht registriert wird. undefined (Router-Lauf, immer 'lesend') registriert nie eine.
    * @param zeitmessungMarke - F31 WS-3: optionaler (marke) => void-Rückruf, unverändert an AusfuehrungsOptionen.zeitmessung
    *   durchgereicht (Muster abbruchSignal) — undefined bei LEITSTAND_ZEITMESSUNG!=1 oder für jeden Aufrufer ohne Zeitmessung.
-   * @param laufort - F45 B1a-1: { wurzel, arbeitsordner, loeschliste } aus ermittleLaufort (starteWorkflowSchritt) — undefined
+   * @param laufort - F45 B1a-1: { wurzel, arbeitsordner, loeschliste, bereiche } aus ermittleLaufort (starteWorkflowSchritt) — undefined
    *   für jeden anderen Aufrufer (Projektordner, bitgenau wie bisher). Mit arbeitsordner !== null laufen Kindprozess (cwd),
    *   E-183-Messung (settingsPfad), Löschliste, Änderungsübersicht und Prüfschritt im Arbeitsordner. Bewusst KEIN
-   *   Optionen-Objekt (Muster zeitgrenzeMsUeberschreibung): nur diese beiden Felder werden gesetzt, basisVerzeichnis,
-   *   Autorisierung und Rohstrom bleiben beim Serverprozess.
+   *   Optionen-Objekt (Muster zeitgrenzeMsUeberschreibung): nur diese Felder werden gesetzt, basisVerzeichnis,
+   *   Autorisierung und Rohstrom bleiben beim Serverprozess. F45 B2b-3d: bereiche (nur Ausführung, sonst undefined) — der
+   *   Umfangs-Abgleich wird als Feld der Änderungsübersicht festgehalten, unabhängig vom Arbeitsordner (Advisor E2).
    */
   function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined, werkzeugsatzArt = undefined, zeitmessungMarke = undefined, laufort = undefined) {
     const laufImArbeitsordner = laufort !== undefined && laufort.arbeitsordner !== null
@@ -6842,9 +6849,11 @@ export function erzeugeRequestHandler(optionen = {}) {
             // ganze Zahl für budget_bytes. Ein Number.POSITIVE_INFINITY-Fallback ließ die Registrierung
             // dadurch für JEDE Startvorlage ohne standardBudget.maxBytes (optional, src/startvorlage/
             // types.ts) an der eigenen Schemaprüfung scheitern (Reviewer-Pass 14.09.2026, Befund 1).
+            const erzeugt = erzeugeAenderungsuebersichtDaten(laufId, nachlaufWurzel, vorlage.standardBudget?.maxBytes ?? STANDARD_MAX_BYTES)
             const uebersichtDaten = {
-              ...erzeugeAenderungsuebersichtDaten(laufId, nachlaufWurzel, vorlage.standardBudget?.maxBytes ?? STANDARD_MAX_BYTES),
+              ...erzeugt,
               ...(loeschliste !== undefined ? { loeschliste } : {}),
+              ...ermittleUmfangFuerUebersicht(laufId, erzeugt, laufort?.bereiche),
             }
             const uebersichtVerstoesse = validiereAenderungsuebersichtDaten(uebersichtDaten)
             if (uebersichtVerstoesse.length > 0) {
@@ -7334,6 +7343,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       reviewMeta = { policy_version: REVIEW_POLICY_VERSION, geprueft_stand: stand.stand, ...(stand.stand === null ? { stand_grund: stand.grund } : {}) }
     }
 
+    // F45 B2b-3d (F-978): Review und qa (Claude und Codex gleich) bekommen eine Zeile mit den Dateien außerhalb der vereinbarten
+    // Bereiche — aus dem in der Änderungsübersicht des Ausführungslaufs festgehaltenen Abgleich, beim Review hinter dem
+    // Policy-Block (der Auftrag vor der Karte bleibt bitgleich). Ohne Bereiche oder ohne Treffer kein Text. Nur ein Hinweis.
+    if (schritt.rolle === 'code-reviewer' || istQaSchritt) {
+      const umfangsZeile = leseUmfangsZeile(findeAusfuehrungsSchritt(workflowDaten)?.lauf_id, ladeOptionen)
+      if (umfangsZeile !== '') auftragstext = `${auftragstext}\n\n${umfangsZeile}`
+    }
+
     // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
     // diesen zeigt und der real gelaufen ist. Beim ERSTEN Schritt gibt es keinen — dann bleibt
     // vorgaengerLaufId weg. Kein neuer Mechanismus, nur die bestehende Verweisbildung aus
@@ -7528,6 +7545,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // weil nur 'art' (lesend/schreibend) über die Änderungsübersicht entscheidet und
     // AusfuehrungsEingaben dieses Feld nicht führt (D5, kein zweiter Regelsatz über den
     // WERT von 'art', nur ein zweiter LOOKUP desselben Namens).
+    // F45 B2b-3d (F-978): laufort.bereiche (nur Ausführung) — der Nachlauf hält den Umfangs-Abgleich in der
+    // Änderungsübersicht fest, im Projekt- wie im Arbeitsordner (anders als die Löschliste).
     starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben, schritt.zeitgrenze_ms, (ergebnis, fehler) => {
       // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b)
       //
@@ -8141,7 +8160,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // D13-Belegung), die Invariante bleibt unberührt.
         schreibeStartfehlerHalt(workflowId, naechster.schritt.schritt_id, naechster.aktiverSchrittId, laufId, anlassDerFortsetzung, ladeOptionen)
       }
-    }, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art, undefined, { wurzel: laufWurzel, arbeitsordner: laufort.arbeitsordner, loeschliste: schritt.rolle === 'ausfuehrung' })
+    }, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art, undefined, { wurzel: laufWurzel, arbeitsordner: laufort.arbeitsordner, loeschliste: schritt.rolle === 'ausfuehrung', bereiche: schritt.rolle === 'ausfuehrung' ? auftragVersion.daten.bereiche : undefined })
 
     return { ok: true, schrittId: schritt.schritt_id, laufId }
   }
@@ -8695,6 +8714,14 @@ export function erzeugeRequestHandler(optionen = {}) {
             : { status: 'ok', laufId: ausfuehrungSchritt.lauf_id, daten: uebersichtVersion.daten }
       }
 
+      // F45 B2b-3d (F-978): Umfangs-Abgleich gegen die Bereiche des Arbeitspakets — aus dem nach der Ausführung festgehaltenen
+      // Feld der Übersicht; Bereiche frisch aus der neuesten Auftragsversion (nur für „kein Abgleich“/„nicht bestimmbar“).
+      const umfangProjektion = baueUmfangProjektion(
+        ladeArtefaktVersion(`auftrag-${workflowDaten.auftrag_id}`, undefined, ladeOptionen)?.daten?.bereiche,
+        typeof ausfuehrungSchritt?.lauf_id === 'string' && ausfuehrungSchritt.status !== 'LAEUFT',
+        aenderungsuebersichtProjektion.status === 'ok' ? aenderungsuebersichtProjektion.daten : null
+      )
+
       // Nacharbeit 15.09.2026 (F-384, korrigierte Maßnahme): die zuletzt geschriebene
       // Abnahme-Entscheidung ist NICHT automatisch die zu DIESEM BAU-ERGEBNIS gehörige. Der
       // Bezug einer Abnahme hängt am beurteilten Bau (ausfuehrung_lauf_id), NICHT an der
@@ -8796,6 +8823,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         qaWiederholbar,
         // F45 B2b-3c (F-981): additiv — Verbrauch gegen Budget und ob „Budget erhöhen“ angeboten wird.
         budget: baueBudgetProjektion(workflowId, workflowDaten, workflowVersion.versionSequenz, ladeOptionen),
+        // F45 B2b-3d (F-978): additiv — Dateien außerhalb der vereinbarten Bereiche (nur ein Hinweis).
+        umfang: umfangProjektion,
       })
       return
     }
@@ -9460,7 +9489,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // ist eine async function, deren Promise niemand awaitet — ein ungefangener Wurf würde zur
       // unhandled promise rejection und (Node 24) zum Prozessabsturz führen, Reviewer-Pass F12 WS-2.
       try {
-        registriereAuftrag(auftragId, profilReferenz, pruefung.titel, pruefung.auftragstext, { basisVerzeichnis, herkunft: pruefung.herkunft, akzeptanzkriterien: pruefung.akzeptanzkriterien })
+        registriereAuftrag(auftragId, profilReferenz, pruefung.titel, pruefung.auftragstext, { basisVerzeichnis, herkunft: pruefung.herkunft, akzeptanzkriterien: pruefung.akzeptanzkriterien, bereiche: pruefung.bereiche, budget_tokens: pruefung.budget_tokens })
       } catch (fehler) {
         console.error(`[leitstand] Auftrag '${auftragId}' konnte nicht registriert werden:`, fehler)
         sendeJson(res, 500, { grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` })

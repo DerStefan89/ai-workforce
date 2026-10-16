@@ -1,0 +1,3 @@
+| Aktion | Hinweis amber | Abnehmen | Bereiche aufgeklappt | Fehlerzeile sichtbar | Umfangs-Hinweis | Feld Bereiche (Bereich) | Fehlerzeile | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Abnahme mit Umfangs-Hinweis — ru-390-hell | true | true | false | false | Изменено вне согласованных областейТолько подсказка — процесс не остановлен. Проверь, были ли эти изменения задуманы.REA | Согласованные области · необязательно Области Одна папка или один файл на строку, относительно проекта. Пусто — без свер |  | false | 390/390 | true |

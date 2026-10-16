@@ -479,6 +479,41 @@ function renderQaKarte(qa) {
   return `<section class="entscheiden-karte abnahme-qa-karte" aria-labelledby="abnahme-qa-titel">${kopf}${inhalt}</section>`
 }
 
+/** Höchstzahl der Dateien im Umfangs-Hinweis (wie die Zeile für Review und qa, src/umfang MAX_ZEILEN_DATEIEN). */
+const UMFANG_MAX_DATEIEN = 50
+
+/**
+ * F45 B2b-3d (F-978): Hinweis „Außerhalb der vereinbarten Bereiche geändert“ mit der Dateiliste (Pfade sind Inhalt, keine
+ * Kennungen; höchstens 50, dann „… und n weitere“). Nur ein Hinweis (amber), der Ablauf wurde nicht angehalten. Bei
+ * „nicht bestimmbar“ (Bereiche gesetzt, aber kein festgehaltener Abgleich) eine graue Zeile; ohne Treffer, ohne Bereiche,
+ * vor dem Bau oder bei einem alten Server nichts. Darunter die vereinbarten Bereiche — ein Tippfehler dort (`scr/`) erklärt sonst
+ * nicht, warum jede Datei „außerhalb“ steht (Korrekturrunde, qa 1).
+ * @param umfang - abnahme.umfang oder undefined
+ * @returns HTML oder ''
+ */
+export function renderUmfangHinweis(umfang) {
+  if (umfang?.status === 'nicht_bestimmbar') return `<p class="subtle abnahme-umfang">${tHtml('abnahme.umfang.nichtBestimmbar')}</p>`
+  if (umfang?.status !== 'ok' || !Array.isArray(umfang.ausserhalb) || umfang.ausserhalb.length === 0) return ''
+  const punkte = umfang.ausserhalb
+    .slice(0, UMFANG_MAX_DATEIEN)
+    .map((pfad) => `<li><code>${escapeHtml(String(pfad))}</code></li>`)
+    .join('')
+  const rest = umfang.ausserhalb.length - UMFANG_MAX_DATEIEN
+  const weitere = rest > 0 ? `<p>${tHtml('abnahme.umfang.weitere', { anzahl: rest })}</p>` : ''
+  const vereinbart = Array.isArray(umfang.bereiche) && umfang.bereiche.length > 0 ? `<p>${tHtml('abnahme.umfang.vereinbart', {}, { bereiche: umfang.bereiche.map((b) => `<code>${escapeHtml(String(b))}</code>`).join(', ') })}</p>` : ''
+  return `<div class="note amber abnahme-umfang" role="note"><p><strong>${tHtml('abnahme.umfang.titel')}</strong></p><p>${tHtml('abnahme.umfang.text')}</p><ul>${punkte}</ul>${weitere}${vereinbart}</div>`
+}
+
+/**
+ * Teil des Kennzeichens für das Neuzeichnen beim Poll (Muster budgetKennung).
+ * @param umfang - abnahme.umfang oder undefined
+ * @returns kurzer Text
+ */
+export function umfangKennung(umfang) {
+  if (umfang === null || typeof umfang !== 'object') return '-'
+  return `${umfang.status}:${Array.isArray(umfang.ausserhalb) ? umfang.ausserhalb.join('|') : ''}`
+}
+
 /**
  * Die Änderungsübersicht (heutige Tabelle) für „Geänderte Dateien“.
  * @param projektion - abnahme.aenderungsuebersicht
@@ -700,6 +735,7 @@ export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harness
     <section class="entscheiden-kacheln" aria-label="${tHtml('entscheiden.abnahme.kachelnLabel')}">
       ${renderPruefungKachel(workflowId, abnahme)}${renderReviewKachel(urteil)}${renderNachweiseKachel(abnahme, harnessAbgleich)}
     </section>
+    ${renderUmfangHinweis(abnahme.umfang)}
     ${renderQaKarte(abnahme.qaErgebnis)}
     ${renderSelbstAusprobieren(urteil, vorschau)}
     <section id="abnahme-nachweise" class="entscheiden-karte" aria-labelledby="abnahme-nachweise-titel">
@@ -774,6 +810,7 @@ function renderVorab(workflowId, abnahme, harnessAbgleich) {
     <p class="subtle">${gelaufen ? tHtml('abnahme.vorab.textErgebnis') : tHtml('abnahme.vorab.text')}</p>
     ${renderReviewHinweise(abnahme.urteil, workflowId, abnahme.reviewWiederholbar === true)}
     ${renderQaNotiz(abnahme.qaErgebnis, workflowId, abnahme.qaWiederholbar === true, true, abnahme.urteil)}
+    ${gelaufen ? renderUmfangHinweis(abnahme.umfang) : ''}
     ${renderFruehereEntscheidung(abnahme.entscheidung)}
     ${ergebnis}
     <label class="field" for="wf-abnahme-begruendung">${tHtml('abnahme.entscheidung.begruendung')}</label>

@@ -524,3 +524,33 @@ test('auftrag-vorbereitung.js: Kontext-Anhang, Aggregat-Treffer und Escaping', (
   assert.match(renderVorbereitung({ phase: 'bereit', auftragId: 'a', workflowId: 'router-a/b' }), /href="#\/workflows\/router-a%2Fb"/)
   assert.equal(renderVorbereitung({ phase: 'unbekannt' }), '')
 })
+
+test('F45 B2b-3d: „Vereinbarte Bereiche“ gehen getrimmt mit POST …/auftraege; leer ⇒ kein Feld im Körper', async () => {
+  await ausgangslage()
+  el('auftrag-bereiche').value = ' src/export/ \n\n docs/'
+  antworten.set('POST /api/auftraege', [{ status: 400, json: { grund: 'Gate' } }])
+  absenden()
+  await warte()
+  assert.deepEqual(schreibend[0].koerper, { titel: 'Login reparieren', auftragstext: 'Login geht wieder', bereiche: ['src/export/', 'docs/'] })
+  await ausgangslage()
+  el('auftrag-bereiche').value = ''
+  antworten.set('POST /api/auftraege', [{ status: 400, json: { grund: 'Gate' } }])
+  absenden()
+  await warte()
+  assert.equal('bereiche' in schreibend[0].koerper, false)
+})
+
+test('F45 B2b-3d: abgewiesener Bereich (absolut) ⇒ kein POST, Fehlerzeile mit Fokus, Feld aufgeklappt, Text bleibt', async () => {
+  await ausgangslage()
+  el('auftrag-bereiche-bereich').open = false
+  el('auftrag-bereiche').value = 'src/\n/etc/'
+  absenden()
+  await warte()
+  assert.equal(anzahl('POST', '/auftraege'), 0)
+  assert.equal(el('auftrag-anlegen-fehler').hidden, false)
+  assert.match(el('auftrag-anlegen-fehler').textContent, /„\/etc\/“ ist kein Pfad relativ zum Projekt/)
+  assert.equal(document.activeElement?.id, 'auftrag-anlegen-fehler')
+  assert.equal(el('auftrag-bereiche-bereich').open, true)
+  assert.equal(el('auftrag-bereiche').value, 'src/\n/etc/')
+  el('auftrag-bereiche').value = ''
+})

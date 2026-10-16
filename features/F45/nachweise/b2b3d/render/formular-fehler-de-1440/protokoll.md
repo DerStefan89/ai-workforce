@@ -1,0 +1,6 @@
+| Aktion | Hinweis amber | Abnehmen | Bereiche aufgeklappt | Fehlerzeile sichtbar | Umfangs-Hinweis | Feld Bereiche (Bereich) | Fehlerzeile | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Titel und Ergebnis | false | false | false | false | (fehlt) | Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich. |  | false | 1440/1440 | true |
+| Ergebnis | false | false | false | false | (fehlt) | Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich. |  | false | 1440/1440 | true |
+| Bereiche aufklappen | false | false | true | false | (fehlt) | Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich. |  | false | 1440/1440 | true |
+| Absoluter Pfad, „Ablauf vorbereiten“ ⇒ Fehlerzeile | false | false | true | true | (fehlt) | Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich. | „/etc/“ ist kein Pfad relativ zum Projekt — bitte ohne Laufwerk, führenden Schrägstrich oder „..“. | false | 1440/1440 | true |

@@ -7627,8 +7627,15 @@ th {
   border-bottom: 1px solid var(--line);
 }
 
+/* F45 B2b-3d (design-guardian 1): Notizen als direkte Kinder der Flex-Spalte „entscheidbar“ ohne eigenen Rand — der
+   Abstand kommt allein aus gap (18 px), wie bei den Karten; .v10-seite .note setzt sonst 20 px, die in Flex nicht zusammenfallen. */
+.workflow-seite .entscheiden-inhalt > .note {
+  margin: 0;
+}
+
 .workflow-seite .wf-reparatur-editor .note ul,
-.workflow-seite .abnahme-review-hinweise ul {
+.workflow-seite .abnahme-review-hinweise ul,
+.workflow-seite .abnahme-umfang ul {
   margin: 8px 0 0;
   padding-left: 18px;
   overflow-wrap: anywhere;

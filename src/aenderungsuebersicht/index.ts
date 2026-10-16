@@ -86,6 +86,22 @@ function validiereLoeschliste(wert: unknown): string[] {
   return verstoesse
 }
 
+/**
+ * F45 B2b-3d (F-978): prüft das optionale Feld 'umfang' — { bereiche: string[≥ 1], ausserhalb: string[] }, das Ergebnis des
+ * Umfangs-Abgleichs (src/umfang) gegen die Bereiche des Arbeitspakets. Exportiert, damit der Nachlauf das Feld VOR dem
+ * Zusammensetzen der Übersicht prüft und bei einem Verstoß nur das Feld weglässt (ein Hinweis darf keinen Halt auslösen).
+ * @param wert - Feldwert
+ * @returns Verstöße
+ */
+export function validiereUmfang(wert: unknown): string[] {
+  if (!istObjekt(wert)) return ["'umfang' muss ein Objekt sein"]
+  const verstoesse: string[] = []
+  for (const feld of Object.keys(wert)) if (feld !== 'bereiche' && feld !== 'ausserhalb') verstoesse.push(`unbekanntes Feld 'umfang.${feld}'`)
+  if (!Array.isArray(wert.bereiche) || wert.bereiche.length === 0 || !wert.bereiche.every(istNichtLeererString)) verstoesse.push("'umfang.bereiche' muss eine nicht-leere Liste nicht-leerer Strings sein")
+  if (!Array.isArray(wert.ausserhalb) || !wert.ausserhalb.every(istNichtLeererString)) verstoesse.push("'umfang.ausserhalb' muss eine Liste nicht-leerer Strings sein")
+  return verstoesse
+}
+
 function istGanzzahlOderNull(wert: unknown): wert is number | null {
   return wert === null || (typeof wert === 'number' && Number.isInteger(wert) && wert >= 0)
 }
@@ -105,10 +121,12 @@ export function validiereAenderungsuebersichtDaten(daten: unknown): string[] {
   const verstoesse: string[] = []
 
   for (const feld of Object.keys(daten)) {
-    if (!AENDERUNGSUEBERSICHT_FELDER.has(feld) && feld !== 'loeschliste') verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
+    if (!AENDERUNGSUEBERSICHT_FELDER.has(feld) && feld !== 'loeschliste' && feld !== 'umfang') verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
   // F45 B1a-1 (F-715): optional und additiv — Ergebnis der geprüften Löschliste eines Laufs im Arbeitsordner.
   if ('loeschliste' in daten) verstoesse.push(...validiereLoeschliste(daten.loeschliste))
+  // F45 B2b-3d (F-978): optional und additiv — Umfangs-Abgleich gegen die Bereiche des Arbeitspakets (nur ein Hinweis).
+  if ('umfang' in daten) verstoesse.push(...validiereUmfang(daten.umfang))
   for (const feld of AENDERUNGSUEBERSICHT_FELDER) {
     if (!(feld in daten)) verstoesse.push(`Pflichtfeld '${feld}' fehlt`)
   }

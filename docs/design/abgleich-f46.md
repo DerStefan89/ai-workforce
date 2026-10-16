@@ -228,6 +228,7 @@ Umsetzung D2 (Abweichungen, begründet):
 - „Jarvis empfiehlt“ in der Spalte: K (keine Quelle). Kacheln Desktop/Mobil/Hell entfallen, solange keine Nachweisdateien vorliegen.
 - Im Entscheidungsmodus ist „Der Weg zum Ergebnis“ (Timeline, Auf einen Blick, Aktionen mit Stoppen) zugeklappt; der Status steht als Zeile im Kopf. Die Seitenleiste markiert „Entscheidungen“, der Rückweg heißt „← Deine Entscheidungen“.
 - F45 B2b-2b-2 (F-1117 (7)): das Urteil des qa steht nicht als Zeile in der Review-Kachel, sondern als eigene Karte „Prüfung aus Nutzersicht“ unter den Kacheln (Urteil, Empfehlung, Hinweis, Befunde; Testfälle aufklappbar mit Zahlenzeile) — Stefan soll die qa-Befunde vor der Abnahme sehen, eine Zeile trüge sie nicht. In der Review-Kachel bleibt „Weitere Claude-Prüfer · kommt“.
+- F45 B2b-3d (F-978): Dateien außerhalb der vereinbarten Bereiche stehen als amber Notiz „Außerhalb der vereinbarten Bereiche geändert“ unter den Kacheln (Seite „entscheidbar“) bzw. im Block „vorab“ nach dem Bau — Satz „Nur ein Hinweis …“, Dateiliste (höchstens 50, „… und n weitere“), darunter „Vereinbart: …“; „nicht bestimmbar“ als graue Zeile. Quelle `abnahme.umfang` (festgehalten in der Änderungsübersicht). Nur ein Hinweis, Abnehmen bleibt möglich. Keine Zeile in „Auf einen Blick“ (Folgepunkt).
 
 
 ### 4.6 Eintrag im Detail: Feature — `#/workboard/<id>` (07-eintrag-detail--Main) · D3
@@ -395,6 +396,7 @@ Hauptaufgabe: Auftrag schreiben und „Ablauf vorbereiten“.
 |---|---|---|
 | Schrittleiste Auftrag · Ablauf prüfen · Freigeben | U | Anzeige |
 | Formular Titel, Gewünschtes Ergebnis, Kontext optional, „Ablauf vorbereiten →“ | U | F44 WS-5b |
+| Formular „Vereinbarte Bereiche · optional“ (aufklappbar wie Kontext, ein Eintrag je Zeile; absolute Pfade, `..` und `*` mitten im Eintrag abgewiesen) | U | `bereiche` des Arbeitspakets über POST …/auftraege (F45 B2b-3d, F-978) |
 | Direktstart einzelner Arbeitsschritt (aufklappbar) | U | bestehend |
 | Bereit zum Start?: Titel/Ergebnis, Kontext, Prüfbefehl hinterlegt, Kein anderer Lauf aktiv | U | Formular, Startvorlage, `aktiverLauf` |
 | Bereit zum Start?: Arbeitsverzeichnis gefunden, Git-Stand, Harness vorhanden | S | Leseroute D4 |

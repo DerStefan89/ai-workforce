@@ -181,6 +181,13 @@
               <textarea id="auftrag-kontext" rows="4" aria-describedby="auftrag-kontext-hinweis"></textarea>
               <small id="auftrag-kontext-hinweis" data-i18n="auftrag.kontext.hinweis">Wird als eigener Absatz „Kontext:“ an das gewünschte Ergebnis angehängt. Hier werden keine Dateien hochgeladen.</small>
             </details>
+            <!-- F45 B2b-3d (F-978): Bereiche des Arbeitspakets — gegen sie gleicht der Leitstand die geänderten Dateien ab (nur ein Hinweis). -->
+            <details id="auftrag-bereiche-bereich" class="auftrag-kontext">
+              <summary data-i18n="auftrag.bereiche.zusammenfassung">Vereinbarte Bereiche · optional</summary>
+              <label class="field" for="auftrag-bereiche" data-i18n="auftrag.bereiche.feld">Bereiche</label>
+              <textarea id="auftrag-bereiche" rows="3" spellcheck="false" aria-describedby="auftrag-bereiche-hinweis"></textarea>
+              <small id="auftrag-bereiche-hinweis" data-i18n="auftrag.bereiche.hinweis">Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich. Ändert der Bau Dateien außerhalb, siehst du das bei der Abnahme — angehalten wird nichts.</small>
+            </details>
             <div class="note" data-i18n="auftrag.notiz">Rolle und Arbeitsweise werden aus dem Projektkontext vorgeschlagen. Du prüfst den Ablauf, bevor etwas startet.</div>
             <p id="auftrag-anlegen-fehler" class="fehler" tabindex="-1" hidden></p>
             <div id="auftrag-aktionen" class="action-row">
@@ -195,7 +202,7 @@
 
             <div class="direktstart-anlegen">
               <button type="button" id="auftrag-anlegen" class="button" data-i18n="direktstart.anlegen">Auftrag ohne Ablauf anlegen</button>
-              <small data-i18n="direktstart.anlegen.hinweis">Nimmt Titel, Ergebnis und Kontext von oben und legt nur den Auftrag an.</small>
+              <small data-i18n="direktstart.anlegen.hinweis">Nimmt Titel, Ergebnis, Kontext und Bereiche von oben und legt nur den Auftrag an.</small>
               <small id="direktstart-anlegen-gesperrt" data-i18n="direktstart.anlegen.gesperrt" hidden>Während ein Ablauf vorbereitet wird, nicht verfügbar — zuerst „Neuen Auftrag beschreiben“.</small>
             </div>
 

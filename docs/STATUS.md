@@ -100,7 +100,7 @@ gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 `docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
-(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gebaut, nicht gemergt; B2b-3d (Umfangs-Abgleich) folgt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gebaut, nicht gemergt; B2b-3e (Budget-Feld) folgt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
 22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 15.10.2026).
 
 ## Erledigt
@@ -689,8 +689,12 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   B2b-3c „Budget je Arbeitspaket“ gebaut (15.10.2026, `features/F45/plan-b2b3c-v2.md`): Tokens je Arbeitspaket über alle
   Läufe eines Ablaufs, Defaults aus realen Laufakten (standard/hoch 14,7 Mio., fast-lane 5,3 Mio.), Halt nach dem Schritt mit
   „Budget erhöhen“ oder Ablehnen, Anzeige in Abnahme und Ablauf-Seite; Gate f45-b2b3c-budget, Render-Nachweis
-  `features/F45/nachweise/b2b3c/` (F-981 erledigt). Umfangs-Abgleich als B2b-3d abgetrennt (F-978).
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1122. Nach F46, vor F30
+  `features/F45/nachweise/b2b3c/` (F-981 erledigt), gemergt #347.
+  B2b-3d „Umfangs-Abgleich“ gebaut (16.10.2026, `features/F45/plan-b2b3d-v2.md`): Feld „Vereinbarte Bereiche“ in
+  „Auftrag & Start“, Präfix-Abgleich der berührten Dateien nach der Ausführung (festgehalten in der Änderungsübersicht),
+  Hinweis in der Abnahme und Zeile im Auftrag von Review und qa, kein Halt; Gate f45-b2b3d-umfang, Render-Nachweis
+  `features/F45/nachweise/b2b3d/` (F-978 erledigt). Budget-Eingabefeld folgt als B2b-3e (F-1122 (1)).
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1123. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

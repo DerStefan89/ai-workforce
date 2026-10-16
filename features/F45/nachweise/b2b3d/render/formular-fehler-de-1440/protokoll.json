@@ -1,0 +1,54 @@
+[
+  {
+    "label": "Titel und Ergebnis",
+    "Hinweis amber": false,
+    "Abnehmen": false,
+    "Bereiche aufgeklappt": false,
+    "Fehlerzeile sichtbar": false,
+    "Umfangs-Hinweis": "(fehlt)",
+    "Feld Bereiche (Bereich)": "Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich.",
+    "Fehlerzeile": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  },
+  {
+    "label": "Ergebnis",
+    "Hinweis amber": false,
+    "Abnehmen": false,
+    "Bereiche aufgeklappt": false,
+    "Fehlerzeile sichtbar": false,
+    "Umfangs-Hinweis": "(fehlt)",
+    "Feld Bereiche (Bereich)": "Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich.",
+    "Fehlerzeile": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  },
+  {
+    "label": "Bereiche aufklappen",
+    "Hinweis amber": false,
+    "Abnehmen": false,
+    "Bereiche aufgeklappt": true,
+    "Fehlerzeile sichtbar": false,
+    "Umfangs-Hinweis": "(fehlt)",
+    "Feld Bereiche (Bereich)": "Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich.",
+    "Fehlerzeile": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  },
+  {
+    "label": "Absoluter Pfad, „Ablauf vorbereiten“ ⇒ Fehlerzeile",
+    "Hinweis amber": false,
+    "Abnehmen": false,
+    "Bereiche aufgeklappt": true,
+    "Fehlerzeile sichtbar": true,
+    "Umfangs-Hinweis": "(fehlt)",
+    "Feld Bereiche (Bereich)": "Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich.",
+    "Fehlerzeile": "„/etc/“ ist kein Pfad relativ zum Projekt — bitte ohne Laufwerk, führenden Schrägstrich oder „..“.",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]

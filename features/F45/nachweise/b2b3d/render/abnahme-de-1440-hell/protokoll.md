@@ -1,0 +1,3 @@
+| Aktion | Hinweis amber | Abnehmen | Bereiche aufgeklappt | Fehlerzeile sichtbar | Umfangs-Hinweis | Feld Bereiche (Bereich) | Fehlerzeile | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Abnahme mit Umfangs-Hinweis — de-1440-hell | true | true | false | false | Außerhalb der vereinbarten Bereiche geändertNur ein Hinweis — der Ablauf wurde nicht angehalten. Prüfe, ob diese Änderun | Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich. |  | false | 1440/1440 | true |

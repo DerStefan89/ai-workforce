@@ -28,6 +28,8 @@
  * - Projektwechsel (F-860): eine laufende Vorbereitung des alten Projekts wird verworfen (späte
  *   Antworten und Aggregat-Treffer gehen ins Leere); Titel, Ergebnis und Kontext bleiben stehen
  *   (Text gehört dem Menschen, F-885).
+ * - F45 B2b-3d (F-978): „Vereinbarte Bereiche“ (aufklappbar wie der Kontext, arbeitspaket-felder.js) gehen als `bereiche`
+ *   des Arbeitspakets mit POST …/auftraege; ein abgewiesener Eintrag erscheint in der Fehlerzeile, nichts wird angelegt.
  * - Keine eigene Live-Region: Fehler und Schritt 2 bekommen den Fokus.
  * - Die Kette „anlegen → routen → warten“ existiert auch in views/workboard.js (Click-to-Work);
  *   Zusammenlegen ist F-943 (beim Schnitt F-928).
@@ -44,6 +46,7 @@ import { navigiere } from '../router.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
 import { entwurfFuerCoach } from '../chat-anzeige.js'
 import { abonniere } from '../zustand.js'
+import { leseBereiche } from '../arbeitspaket-felder.js'
 import { baueAuftragstext, pruefeAggregat, renderVorbereitung, workflowIdFuer } from './auftrag-vorbereitung.js'
 
 /** Präfix der synthetischen Kontextpaket-Elemente, die der Server selbst voranstellt (execution-controller/index.ts) — keine vom Nutzer benannten Evidenzdateien, werden bei der Vorbelegung herausgefiltert. */
@@ -204,17 +207,18 @@ async function ladeWerkzeugsaetze() {
 
 // ─── Auftrag anlegen (beide Wege) ───────────────────────────────────────────
 
-/** Felder des Auftragsformulars: Titel, gewünschtes Ergebnis, Kontext. @returns die drei Eingabeelemente */
+/** Felder des Auftragsformulars: Titel, gewünschtes Ergebnis, Kontext, seit F45 B2b-3d die vereinbarten Bereiche. @returns die vier Eingabeelemente */
 function auftragsFelder() {
-  return { titel: document.getElementById('auftrag-titel'), ergebnis: document.getElementById('auftrag-auftragstext'), kontext: document.getElementById('auftrag-kontext') }
+  return { titel: document.getElementById('auftrag-titel'), ergebnis: document.getElementById('auftrag-auftragstext'), kontext: document.getElementById('auftrag-kontext'), bereiche: document.getElementById('auftrag-bereiche') }
 }
 
-/** Leert Titel, Ergebnis und Kontext — nur nach einem Erfolg (der Text ist dann beim Server). */
+/** Leert Titel, Ergebnis, Kontext und Bereiche — nur nach einem Erfolg (der Text ist dann beim Server). */
 function leereAuftragsFelder() {
   const felder = auftragsFelder()
   felder.titel.value = ''
   felder.ergebnis.value = ''
   felder.kontext.value = ''
+  felder.bereiche.value = ''
 }
 
 /** true, solange ein POST …/auftraege läuft — sperrt beide Anlege-Knöpfe gemeinsam (genau ein POST je Klick). */
@@ -240,7 +244,7 @@ function aktualisiereAnlegeKnoepfe() {
 }
 
 /**
- * POST …/auftraege mit Titel und Auftragstext (Ergebnis plus Kontext-Absatz). Zeigt nichts an — der
+ * POST …/auftraege mit Titel und Auftragstext (Ergebnis plus Kontext-Absatz) und, falls gesetzt, den Bereichen (F45 B2b-3d). Zeigt nichts an — der
  * Aufrufer entscheidet nach seinem Überholschutz, ob der Fehler an die Fehlerzeile geht; die
  * Eingaben bleiben in jedem Fehlerfall stehen.
  * @returns { auftragId, meldung }: bei 201 die auftragId (meldung null), sonst auftragId null und der Fehlertext
@@ -248,9 +252,15 @@ function aktualisiereAnlegeKnoepfe() {
 async function legeAuftragAusFormularAn() {
   const felder = auftragsFelder()
   zeigeAuftragAnlegenFehler('')
+  // F45 B2b-3d: ein abgewiesener Bereich (absolut oder mit ..) geht nicht an den Server — das Feld klappt auf, der Text bleibt.
+  const bereiche = leseBereiche(felder.bereiche.value)
+  if (!bereiche.ok) {
+    document.getElementById('auftrag-bereiche-bereich').open = true
+    return { auftragId: null, meldung: t('auftrag.bereiche.fehler', { eintrag: bereiche.eintrag }) }
+  }
   let antwort
   try {
-    antwort = await legeAuftragAn({ titel: felder.titel.value, auftragstext: baueAuftragstext(felder.ergebnis.value, felder.kontext.value) })
+    antwort = await legeAuftragAn({ titel: felder.titel.value, auftragstext: baueAuftragstext(felder.ergebnis.value, felder.kontext.value), ...(bereiche.bereiche !== undefined ? { bereiche: bereiche.bereiche } : {}) })
   } catch (fehler) {
     console.error('[projekt] POST …/auftraege fehlgeschlagen:', fehler)
     return { auftragId: null, meldung: t('auftrag.fehler.anfrage', { meldung: meldungVon(fehler) }) }
@@ -459,6 +469,7 @@ function initAuftragFormular() {
   felder.titel.placeholder = t('auftrag.feld.titel.platzhalter')
   felder.ergebnis.placeholder = t('auftrag.feld.ergebnis.platzhalter')
   felder.kontext.placeholder = t('auftrag.kontext.platzhalter')
+  felder.bereiche.placeholder = t('auftrag.bereiche.platzhalter')
   // Vorlage: sekundär „Lieber mit dem Coach besprechen“ — seit WS-8b öffnet es das Dock im Coach.
   document.getElementById('auftrag-aktionen').insertAdjacentHTML('beforeend', `<button type="button" id="auftrag-coach" class="button">${escapeHtml(t('auftrag.coach'))}</button>`)
   const coachKnopf = document.getElementById('auftrag-coach')

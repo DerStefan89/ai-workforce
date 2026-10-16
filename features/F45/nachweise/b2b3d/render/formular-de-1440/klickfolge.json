@@ -1,0 +1,54 @@
+{
+  "url": "http://127.0.0.1:4404/#/projekt",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Umfangs-Hinweis",
+        "selector": ".abnahme-umfang"
+      },
+      {
+        "name": "Feld Bereiche (Bereich)",
+        "selector": "#auftrag-bereiche-bereich"
+      },
+      {
+        "name": "Fehlerzeile",
+        "selector": "#auftrag-anlegen-fehler"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-umfang.note.amber"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      },
+      {
+        "name": "Bereiche aufgeklappt",
+        "selector": "#auftrag-bereiche-bereich[open]"
+      },
+      {
+        "name": "Fehlerzeile sichtbar",
+        "selector": "#auftrag-anlegen-fehler:not([hidden])"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Formular, „Vereinbarte Bereiche“ aufgeklappt — de-1440",
+      "warteAufSelector": {
+        "selector": "#auftrag-bereiche-bereich > summary",
+        "timeoutMs": 10000
+      },
+      "klick": "#auftrag-bereiche-bereich > summary",
+      "screenshot": "01-de-1440.webp"
+    }
+  ]
+}

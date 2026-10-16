@@ -34,4 +34,6 @@ export interface AenderungsuebersichtV0Daten {
   budget_bytes: number
   /** F45 B1a-1 (F-715), optional: geprüfte Löschliste eines Laufs im Arbeitsordner (gelöscht / abgelehnt mit Grund). */
   loeschliste?: { geloescht: string[]; abgelehnt: { pfad: string; grund: string }[] }
+  /** F45 B2b-3d (F-978), optional: Umfangs-Abgleich gegen die Bereiche des Arbeitspakets (src/umfang) — nur ein Hinweis. */
+  umfang?: { bereiche: string[]; ausserhalb: string[] }
 }

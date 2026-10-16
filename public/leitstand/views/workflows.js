@@ -60,7 +60,7 @@ import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzei
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDialog } from './arbeitsordner-anzeige.js'
 import { bedienZustand } from './entscheidung-panel.js'
-import { abnahmeLage, ausfuehrungGelaufen, budgetKennung, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung } from './workflow-abnahme.js'
+import { abnahmeLage, ausfuehrungGelaufen, budgetKennung, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung, umfangKennung } from './workflow-abnahme.js'
 import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
 import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen } from './workflow-eingriffe.js'
 import { entscheidungsModus, FREIGABE_OPTIONEN, renderFreigabePanel, renderFreigabeSeite, seitenKopf } from './workflow-entscheiden.js'
@@ -148,7 +148,7 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   const e = abnahme.entscheidung ?? {}
   // F45 B2a-3b (qa 1): die Review-Hinweise (u. a. „Review veraltet“, das der Poll ohne Statuswechsel liefert) gehören ins
   // Kennzeichen — sonst zeigte „Auf einen Blick“ den Hinweis, die Review-Kachel aber nicht.
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}|${abnahme.qaErgebnis?.status ?? 'null'}|${abnahme.qaErgebnis?.laufId ?? '-'}|${abnahme.qaErgebnis?.halt === true}|${qaHinweisKennung(abnahme.qaErgebnis)}|${abnahme.qaWiederholbar === true}|${budgetKennung(abnahme.budget)}`
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}|${abnahme.qaErgebnis?.status ?? 'null'}|${abnahme.qaErgebnis?.laufId ?? '-'}|${abnahme.qaErgebnis?.halt === true}|${qaHinweisKennung(abnahme.qaErgebnis)}|${abnahme.qaWiederholbar === true}|${budgetKennung(abnahme.budget)}|${umfangKennung(abnahme.umfang)}`
   if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) {
     zeichneEntscheiden()
     return
