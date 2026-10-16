@@ -456,7 +456,7 @@ import { createServer } from 'node:http'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { fuehreGitSync } from '../src/git-starter/index.ts'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { readFile as readFileAsync, readdir as readdirAsync, stat as statAsync } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
@@ -545,6 +545,7 @@ import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
 import { baueUmfangProjektion, ermittleUmfangFuerUebersicht, leseUmfangsZeile } from './leitstand/umfang-stand.mjs'
 import { ergaenzeRueckfrageAufruf, RUECKFRAGE_SERVER, werkzeugNamenAus } from '../src/rueckfrage/index.ts'
+import { erzeugeRueckfrageProtokollSchreiber } from './leitstand/rueckfrage-protokoll.mjs'
 import { erzeugeRueckfrageVermittlung } from './leitstand/rueckfrage-vermittlung.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
@@ -6017,8 +6018,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     // undefined bzw. an !== true = AUS: kein Lauf bekommt --permission-prompt-tool, das Argv bleibt bitgleich. Bis B2b-3b-2 setzen
     // weder der CLI-Bindeblock noch baueProjektHandlerMap die Option — nur das Gate (Gate f45-b2b3b1 (f)).
     rueckfrage = undefined,
-    // F45 B2b-3b-1a: Vermittlung (Token, Warteschlange) — undefined = eigene je Instanz; injizierbar für Tests.
-    rueckfrageVermittlung = erzeugeRueckfrageVermittlung({ warteGrenzeMs: rueckfrage?.warteGrenzeMs, pollFensterMs: rueckfrage?.pollFensterMs }),
+    // F45 B2b-3b-1a: Vermittlung (Token, Warteschlange) — undefined = eigene je Instanz (erzeugt nach profilReferenz, 3b-1b:
+    // mit dem Protokoll-Schreiber); injizierbar für Tests.
+    rueckfrageVermittlung: rueckfrageVermittlungOption = undefined,
   } = optionen
   /** F45 B2b-3b-1a: Kanal eingeschaltet (nur mit der Handler-Option, Standard aus). */
   const rueckfrageAn = rueckfrage?.an === true
@@ -6352,6 +6354,16 @@ export function erzeugeRequestHandler(optionen = {}) {
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const profilReferenz = leiteProfilReferenzAb(vorlage)
+  // F45 B2b-3b-1b (Plan v2 A2): Standard-Vermittlung mit dem Protokoll-Schreiber — jede Entscheidung wird als neue Version von
+  // rueckfragen-<laufId> im Kontrollzustand dieses Handlers registriert (dieselbe Wurzel, aus der der Controller liest:
+  // laufOptionen übernimmt basisVerzeichnis). Ohne eingeschalteten Kanal öffnet kein Lauf, also schreibt auch nichts.
+  const rueckfrageVermittlung =
+    rueckfrageVermittlungOption ??
+    erzeugeRueckfrageVermittlung({
+      warteGrenzeMs: rueckfrage?.warteGrenzeMs,
+      pollFensterMs: rueckfrage?.pollFensterMs,
+      protokolliere: erzeugeRueckfrageProtokollSchreiber({ profilReferenz, basisVerzeichnis, home: homedir(), temp: tmpdir() }),
+    })
   // F-1094 (9): nur undefined (Option nicht gesetzt: Gates/Tests) nimmt die eigene Startvorlage. Ein gesetztes null heißt „Werkzeugsatz
   // unbekannt“ — kein Rückfall auf die Vorlage dieser Instanz (sonst liefen kopie_hash und Freigabe je Projekt auseinander).
   const kopieWerkzeugsatz = pluginWerkzeugsatz !== undefined ? pluginWerkzeugsatz : (vorlage.werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? null)

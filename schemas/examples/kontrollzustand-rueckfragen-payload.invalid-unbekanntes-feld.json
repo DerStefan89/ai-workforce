@@ -1,0 +1,15 @@
+{
+  "rueckfragen_schema": "v0",
+  "lauf_id": "beispiel-lauf",
+  "eintraege": [
+    {
+      "tool_use_id": "toolu_x",
+      "tool_name": "Bash",
+      "input_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "art": "stefan_abgelehnt",
+      "grund": "Stefan hat abgelehnt",
+      "zeit": "2026-10-16T10:01:00.000Z",
+      "werkzeug": "Bash"
+    }
+  ]
+}

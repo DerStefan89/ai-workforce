@@ -1,0 +1,14 @@
+{
+  "rueckfragen_schema": "v0",
+  "lauf_id": "beispiel-lauf",
+  "eintraege": [
+    {
+      "tool_use_id": "toolu_x",
+      "tool_name": "Bash",
+      "input_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "art": "stefan_immer_erlaubt",
+      "grund": "gibt es nicht",
+      "zeit": "2026-10-16T10:01:00.000Z"
+    }
+  ]
+}

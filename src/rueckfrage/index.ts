@@ -12,7 +12,8 @@
  * - `ergaenzeRueckfrageAufruf`: Argv-Baustein — ohne Kanal dasselbe Objekt (Argv bitgleich), mit Kanal Server `rueckfrage` in
  *   der mcp-config, `frage_stefan` im Werkzeugsatz und `permissionPromptTool`. Wirft nie (A1: der Aufrufer liegt vor der
  *   D13-Belegung im normalen Ablehnungsweg).
- * Einziges I/O: realpath (injizierbar).
+ * Einziges I/O: realpath (injizierbar). Das Protokoll (Schema-Prüfung, Neutralisierung, Abgleich A6 für den Result
+ * Evaluator) liegt seit B2b-3b-1b daneben in `protokoll.ts`.
  *
  * Grenzen der Pfadregel (Vorsorge, heute ohne Wirkung auf eine Entscheidung — Regel 5 lehnt jedes Nicht-Bash-Werkzeug ab;
  * vor einer Regel, die ein Datei-Werkzeug an Stefan gibt, zu schärfen, F-1126): `..` wird textuell aufgelöst, bevor realpath

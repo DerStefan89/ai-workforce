@@ -110,6 +110,11 @@
  * bei klassifiziereLauf (eingaben.claudeAenderungen), der Controller urteilt nicht selbst. Seit F-832
  * kommt ein Dateisystem-Vergleich von <projekt>/.claude vor/nach dem Lauf hinzu (erfasseClaudeOrdner,
  * vergleicheClaudeOrdner), der auch git-ignorierte Dateien sieht.
+ *
+ * F45 B2b-3b-1b: nur bei eingaben.rueckfrageKanal (Rückfrage-Kanal eingeschaltet, vom Server gesetzt) liest der Controller
+ * nach dem Gateway die letzte Version des Protokolls `rueckfragen-<laufId>` und reicht ihre daten (oder null) als
+ * eingaben.rueckfragen an klassifiziereLauf — das Urteil (Ablehnung allein durch Stefan ⇒ ERFOLGREICH) bleibt beim
+ * Evaluator. Ohne Kanal kein Lesen, Eingaben unverändert.
  */
 
 import { createHash, randomUUID } from 'node:crypto'
@@ -251,6 +256,23 @@ function bauePromptAusKontextpaket(paket: KontextpaketV0Daten, anfragen: Anfrage
     return `Pfad: ${anfrage.pfad}\nFrage: ${anfrage.frage}\nBegründung: ${anfrage.begruendung}\nInhalt:\n${anfrage.inhalt}`
   })
   return abschnitte.join('\n\n---\n\n')
+}
+
+/**
+ * F45 B2b-3b-1b: liest die daten der letzten Version von `rueckfragen-<laufId>` — fail closed: fehlt sie oder wirft das
+ * Lesen, null (der Evaluator behandelt null wie ein fehlendes Protokoll ⇒ VERWEIGERT). Wirft nie, damit die Klassifikation
+ * eines schon gelaufenen Laufs nicht ausfällt.
+ * @param laufId - Lauf
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel (dieselbe, in die der Server schreibt)
+ * @returns daten oder null
+ */
+export function leseRueckfrageProtokoll(laufId: string, basisVerzeichnis: string | undefined): unknown {
+  try {
+    return ladeArtefaktVersion(`rueckfragen-${laufId}`, undefined, { basisVerzeichnis, schreiber: () => {} })?.daten ?? null
+  } catch (fehler) {
+    console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht lesbar — gilt als fehlend (VERWEIGERT):`, fehler)
+    return null
+  }
 }
 
 /**
@@ -540,11 +562,16 @@ export async function fuehreAufgabeDurch(
   // zwischen "Werkzeugprozess fertig" und "Lauf terminal". Ohne diese beiden Marken war die
   // Nachbereitungsdauer nur aus (run_prepared→terminal) minus duration_ms ableitbar — eine
   // Rechnung, die CLI-Start/-Ende fälschlich der Nachbereitung zuschlägt.
+  // F45 B2b-3b-1b: Protokoll des Rückfrage-Kanals — nur bei eingeschaltetem Kanal; synchron direkt vor der Klassifikation
+  // (die Vermittlung schreibt jede Entscheidung vor ihrer Auslieferung, Advisor-Befund 1). Fehlt es oder wirft das Lesen
+  // (z. B. EBUSY/EPERM unter OneDrive): null — wie fehlend, also VERWEIGERT; die Terminalmarke wird trotzdem geschrieben.
+  const rueckfragen = eingaben.rueckfrageKanal !== undefined ? leseRueckfrageProtokoll(laufId, optionen.basisVerzeichnis) : undefined
+
   optionen.zeitmessung?.('klassifikation_begonnen')
   const klassifikation = klassifiziereLauf(
     laufId,
     profilReferenz,
-    { laufakte: gatewayErgebnis.laufakte, ...(claudeAenderungen !== undefined ? { claudeAenderungen } : {}) },
+    { laufakte: gatewayErgebnis.laufakte, ...(claudeAenderungen !== undefined ? { claudeAenderungen } : {}), ...(rueckfragen !== undefined ? { rueckfragen } : {}) },
     { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: optionen.schreiber }
   )
   optionen.zeitmessung?.('terminal_checkpoint_geschrieben')

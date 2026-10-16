@@ -128,7 +128,7 @@ import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { registriereAuftrag } from '../auftrag/index.ts'
-import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, vergleicheClaudeOrdner } from './index.ts'
+import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, leseRueckfrageProtokoll, vergleicheClaudeOrdner } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -1661,4 +1661,40 @@ test('F45 F-3b-2: ortBLauf.plugins erreicht das Init-Gate (kraft@inline läuft d
     raeumeVerzeichnis(wurzel)
     raeumeVerzeichnis(projekt)
   }
+})
+
+// ─── F45 B2b-3b-1b: Controller liest das Rückfrage-Protokoll nur bei eingeschaltetem Kanal ──
+
+test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufId> (Stefan-Ablehnung ⇒ ERFOLGREICH); ohne Kanal nicht (VERWEIGERT)', async () => {
+  const denial = { tool_name: 'Bash', tool_use_id: 'toolu_s', tool_input: { command: 'npm publish' } }
+  const starter: Starter = async () => ({ stdout: JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: [denial] }), stderr: '', exitCode: 0, startfehler: null, beendigungsart: null })
+  // [Kanal an, Protokoll vorhanden, erwartet]: nur Kanal + Protokoll ⇒ ERFOLGREICH; Kanal an ohne Artefakt ⇒ VERWEIGERT (qa).
+  for (const [mitKanal, mitProtokoll, erwartet] of [
+    [true, true, 'ERFOLGREICH'],
+    [false, true, 'VERWEIGERT'],
+    [true, false, 'VERWEIGERT'],
+  ] as const) {
+    const laufId = neueLaufId(`rf${mitKanal ? 'a' : 'o'}${mitProtokoll ? 'p' : 'n'}`)
+    try {
+      const protokoll = {
+        rueckfragen_schema: 'v0',
+        lauf_id: laufId,
+        eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(denial.tool_input)), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: new Date().toISOString(), befehl: 'npm publish' }],
+      }
+      if (mitProtokoll) registriereKernArtefakt(`rueckfragen-${laufId}`, PROFIL_REFERENZ, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, protokoll, [], { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+      const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), ...(mitKanal ? { rueckfrageKanal: { token: 'a'.repeat(64), arbeitsordner: process.cwd(), werkzeugNamen: ['Bash'] } } : {}) }
+      const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {} })
+      assert.ok(ergebnis.ok)
+      assert.equal(ergebnis.klassifikation.ergebnis, erwartet, `Kanal ${mitKanal}, Protokoll ${mitProtokoll}`)
+      if (erwartet === 'ERFOLGREICH') assert.equal(ergebnis.klassifikation.ergebnis === 'ERFOLGREICH' && ergebnis.klassifikation.abgelehnt_durch_stefan, 1)
+    } finally {
+      raeumeKette(laufId)
+      raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-rueckfragen-${laufId}`))
+    }
+  }
+})
+
+test('F45 B2b-3b-1b (qa 1): leseRueckfrageProtokoll wirft nie — fehlendes Artefakt bzw. unlesbare Ablage ⇒ null', () => {
+  assert.equal(leseRueckfrageProtokoll(neueLaufId('rfx'), KONTROLLZUSTAND_BASIS), null)
+  assert.equal(leseRueckfrageProtokoll('x', 'ungültig\u0000ablage'), null)
 })

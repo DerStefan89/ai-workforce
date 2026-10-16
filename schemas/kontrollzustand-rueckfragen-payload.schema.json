@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-rueckfragen-payload.schema.json",
+  "title": "Rückfrage-Protokoll-Payload",
+  "description": "Beschreibt daten.daten des Kern-Artefakts 'rueckfragen-<laufId>' (F45 B2b-3b-1b, features/F45/plan-b2b3b1b-v2.md): das Protokoll des Rückfrage-Kanals eines Laufs, eine neue Version je Entscheidung mit allen Einträgen bis dahin. Geschrieben von scripts/leitstand/rueckfrage-protokoll.mjs, geprüft von validiereRueckfrageProtokoll (src/rueckfrage/protokoll.ts, handgeschrieben — beide Stellen synchron halten), ausgewertet vom Result Evaluator (Abgleich A6: eine Ablehnung allein durch Stefan ergibt ERFOLGREICH). Texte sind neutralisiert (<ARBEITSORDNER>, <TEMP>, <HOME>), maskiert und gekappt.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rueckfragen_schema", "lauf_id", "eintraege"],
+  "properties": {
+    "rueckfragen_schema": { "const": "v0" },
+    "lauf_id": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "eintraege": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tool_use_id", "tool_name", "input_hash", "art", "grund", "zeit"],
+        "properties": {
+          "tool_use_id": { "type": ["string", "null"], "minLength": 1, "maxLength": 200, "description": "ID des Werkzeugaufrufs der CLI; null, wenn die Anfrage keine trug." },
+          "tool_name": { "type": "string", "maxLength": 200, "description": "Werkzeugname wörtlich; länger als 200 Zeichen ⇒ Platzhalter '<zu lang>' (passt nie zu einer Ablehnung)." },
+          "input_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 über kanonisches JSON der Eingabe (input ?? null)." },
+          "art": { "enum": ["auto_deny", "stefan_erlaubt", "stefan_abgelehnt", "zeitueberschreitung", "lauf_beendet", "frage_beantwortet", "frage_ohne_antwort"] },
+          "grund": { "type": "string", "maxLength": 500 },
+          "zeit": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "befehl": { "type": "string", "maxLength": 2000, "description": "Bash-Befehl, neutralisiert und maskiert." },
+          "frage": { "type": "string", "maxLength": 2000 },
+          "antwort": { "type": "string", "maxLength": 2000 }
+        }
+      }
+    }
+  }
+}

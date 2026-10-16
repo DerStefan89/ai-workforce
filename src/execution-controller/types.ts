@@ -155,6 +155,12 @@ export interface AusfuehrungsEingaben {
   projektkarte?: ProjektkarteV0
   /** F45 B2a-3a: Review-Metadaten (Policy-Version) — der Controller reicht sie an beide Gateways (Laufakte review). */
   review?: ReviewV0
+  /**
+   * F45 B2b-3b-1a/-1b: nur bei eingeschaltetem Rückfrage-Kanal gesetzt (loeseAusfuehrungsEingabenAuf in
+   * scripts/leitstand-server.mjs; der Server öffnet damit den Kanal). Der Controller liest nur die Anwesenheit: dann
+   * lädt er das Protokoll `rueckfragen-<laufId>` für die Klassifikation. Fehlt das Feld, kein Lesen.
+   */
+  rueckfrageKanal?: { token: string; arbeitsordner: string; werkzeugNamen: string[] }
 }
 
 /** Diskriminierte Union über die drei möglichen Ausgänge der Kette (Abbruch bei F5, Abbruch bei F6a, vollständiger Durchlauf). */

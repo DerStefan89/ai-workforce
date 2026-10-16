@@ -177,3 +177,45 @@ test('oeffneLauf mit ungültigem Token öffnet nichts; laufZuToken wirft nie (an
   assert.equal(v.laufZuToken(TOKEN), 'l2')
   assert.equal(v.warteGrenzeMs, 600000)
 })
+
+test('F45 B2b-3b-1b (A2): protokolliere bekommt Arbeitsordner und die vollständige Eintragsliste des Laufs — auch beim Lauf-Ende', () => {
+  const aufrufe = []
+  const v = erzeugeRueckfrageVermittlung({ pfadOptionen: PFAD, protokolliere: (laufId, eintrag, kontext) => aufrufe.push({ laufId, eintrag, kontext }) })
+  v.oeffneLauf('l1', KANAL)
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 't1' })
+  const offen = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'ls' }, tool_use_id: 't2' })
+  v.beantworte(offen.id, { entscheidung: 'ablehnen' })
+  v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'pwd' }, tool_use_id: 't3' })
+  v.beendeLauf('l1')
+  assert.deepEqual(aufrufe.map((a) => a.kontext.eintraege.map((e) => e.art)), [['auto_deny'], ['auto_deny', 'stefan_abgelehnt'], ['auto_deny', 'stefan_abgelehnt', 'lauf_beendet']])
+  assert.ok(aufrufe.every((a) => a.laufId === 'l1' && a.kontext.arbeitsordner === ORDNER && a.kontext.eintraege.at(-1) === a.eintrag))
+  // Die Liste ist eine Kopie: ein späterer Eintrag ändert eine schon übergebene Liste nicht.
+  assert.equal(aufrufe[0].kontext.eintraege.length, 1)
+})
+
+test('F45 B2b-3b-1b: PROTOKOLL_ARTEN kommt aus der einzigen Quelle src/rueckfrage/protokoll.ts', async () => {
+  const { PROTOKOLL_ARTEN } = await import('./rueckfrage-vermittlung.mjs')
+  const { RUECKFRAGE_PROTOKOLL_ARTEN } = await import('../../src/rueckfrage/protokoll.ts')
+  assert.equal(PROTOKOLL_ARTEN, RUECKFRAGE_PROTOKOLL_ARTEN)
+})
+
+test('F45 B2b-3b-1b (A2, qa): ein Wurf des Rückrufs bei Entscheidung N wird mit N+1 nachgeholt (volle Liste)', () => {
+  const listen = []
+  let erster = true
+  const v = erzeugeRueckfrageVermittlung({
+    pfadOptionen: PFAD,
+    protokolliere: (_l, _e, kontext) => {
+      if (erster) {
+        erster = false
+        throw new Error('Platte voll')
+      }
+      listen.push(kontext.eintraege.map((e) => e.tool_use_id))
+    },
+  })
+  v.oeffneLauf('l1', KANAL)
+  const a = v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 't1' })
+  const b = v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../y', content: 'y' }, tool_use_id: 't2' })
+  assert.equal(a.entscheidung.behavior, 'deny')
+  assert.equal(b.entscheidung.behavior, 'deny')
+  assert.deepEqual(listen, [['t1', 't2']])
+})
