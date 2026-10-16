@@ -7,7 +7,8 @@
  * unberührt. Diese Datei enthält:
  * - die reinen Regeln: Pfad/Branch ableiten (eigene Whitelist für die workflowId als Pfad- und
  *   Branch-Segment), Bedarf und Bestand eines Workflows, Payload-Validator des Kern-Artefakts
- *   'arbeitsordner-<workflowId>', Löschblock im Ergebnistext der Ausführung lesen;
+ *   'arbeitsordner-<workflowId>', Löschblock im Ergebnistext der Ausführung lesen und ausführen (fuehreLoeschlisteAus, seit
+ *   F45 B2b-3b-2a ausgesetzt nach einer Ablehnung durch Stefan, F-1128 (2));
  * - die Git-Abläufe über den Git-Starter (src/git-starter, asynchron): Vorbereiten (idempotent —
  *   Wiederaufnahme statt Abbruch) und Entfernen (git worktree remove, git branch -d, nie -D);
  * - die Vorbedingung eines schreibenden Schritts im Worktree (synchron, Branch exakt wf/<id>).
@@ -34,8 +35,8 @@ import { fuehreGitAsync, fuehreGitSync } from '../git-starter/index.ts'
 import { arbeitsverzeichnisseGleich } from '../invocation-policy/index.ts'
 import { baueAusgabeEnde, entferneLeitstandUmgebungsvariablen } from '../pruefschritt/index.ts'
 import type { NpmRunner } from '../ressourcen/installation.ts'
-import { MAX_LOESCHPFADE } from './loeschliste.ts'
-import type { ArbeitsordnerStatus, ArbeitsordnerV0Daten, NpmCiErgebnis, PruefErgebnis, Vorbereitung } from './types.ts'
+import { loescheDateien, MAX_LOESCHPFADE } from './loeschliste.ts'
+import type { ArbeitsordnerStatus, ArbeitsordnerV0Daten, LoeschErgebnis, NpmCiErgebnis, PruefErgebnis, Vorbereitung } from './types.ts'
 
 export { loescheDateien, pruefeLoeschpfadText } from './loeschliste.ts'
 export type { ArbeitsordnerV0Daten, LoeschErgebnis } from './types.ts'
@@ -211,6 +212,26 @@ export function leseLoeschliste(text: string | null): { status: 'keine' } | { st
   if (!Array.isArray(pfade)) return { status: 'ungueltig', grund: "'zu_loeschen' muss eine Liste sein" }
   if (pfade.length > MAX_LOESCHPFADE) return { status: 'ungueltig', grund: `'zu_loeschen' trägt mehr als ${MAX_LOESCHPFADE} Pfade` }
   return { status: 'ok', pfade }
+}
+
+/** F45 B2b-3b-2a (F-1128 (2)): Grund je Pfad, wenn die Löschliste nach einer Ablehnung durch Stefan nur als Hinweis steht. */
+export const LOESCHLISTE_AUSGESETZT = 'nicht gelöscht: Stefan hat im Lauf einen Befehl abgelehnt — Löschliste nur als Hinweis (F-1128)'
+
+/**
+ * Führt die Löschliste eines Ausführungslaufs aus (Server-Nachlauf nach ERFOLGREICH): Block lesen, dann löschen. Hat Stefan im
+ * Lauf einen Befehl abgelehnt (abgelehnt_durch_stefan > 0), wird nichts gelöscht — ein abgelehntes `rm …` darf nicht über den
+ * zu_loeschen-Block doch wirken; die Pfade stehen dann mit LOESCHLISTE_AUSGESETZT unter `abgelehnt` (Hinweis in der Übersicht).
+ * @param arbeitsordner - absoluter Pfad des Arbeitsordners (Worktree)
+ * @param ergebnistext - Ergebnistext des Laufs oder null
+ * @param stefanAbgelehnt - true, wenn die Klassifikation abgelehnt_durch_stefan > 0 trägt
+ * @returns undefined (kein Block) oder gelöschte und abgelehnte Pfade
+ */
+export function fuehreLoeschlisteAus(arbeitsordner: string, ergebnistext: string | null, stefanAbgelehnt: boolean): LoeschErgebnis | undefined {
+  const gelesen = leseLoeschliste(ergebnistext)
+  if (gelesen.status === 'keine') return undefined
+  if (gelesen.status === 'ungueltig') return { geloescht: [], abgelehnt: [{ pfad: '(zu_loeschen-Block)', grund: gelesen.grund }] }
+  if (stefanAbgelehnt) return { geloescht: [], abgelehnt: gelesen.pfade.map((pfad) => ({ pfad: String(pfad), grund: LOESCHLISTE_AUSGESETZT })) }
+  return loescheDateien(arbeitsordner, gelesen.pfade)
 }
 
 /** Satz für die Ausführungs-Instruktion (starteWorkflowSchritt) — nennt Feld, Form und Grenzen der Löschliste. */

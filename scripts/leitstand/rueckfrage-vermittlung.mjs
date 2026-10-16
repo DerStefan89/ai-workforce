@@ -19,15 +19,19 @@
  * - Bash nur „einmal erlauben“ oder „ablehnen“ (kein „immer“, E-B2b-3-1 = A). Jede Rückfrage genau einmal beantwortbar.
  * - Wartegrenze je Rückfrage (Standard 10 min) ⇒ automatische Ablehnung; beim Lauf-Ende werden offene abgelehnt.
  * - Eine Entscheidung bleibt bis `beendeLauf` erhalten: ein Long-Poll nach der Antwort bekommt sie noch (A7).
+ * - B2b-3b-2a: `eintraegeVon` ist der Speicherstand des Protokolls und damit die Quelle der Wahrheit für die Auswertung (F-1128
+ *   (1)); je Lauf höchstens MAX_OFFENE_JE_LAUF unentschiedene Rückfragen und MAX_PROTOKOLL_JE_LAUF Einträge (F-1126 (2),
+ *   F-1128 (5)). Menge im schlimmsten Fall: 200 Einträge ⇒ 20 100 Eintragskopien über alle Versionen der Datei.
  *
- * Wird aufgerufen von: scripts/leitstand-server.mjs (Routen /api/rueckfrage/…, /api/rueckfragen…, starteLaufUndVergiss),
- * scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/leitstand/rueckfrage-vermittlung.test.mjs.
+ * Wird aufgerufen von: scripts/leitstand-server.mjs (Routen /api/rueckfrage/…, /api/rueckfragen…, starteLaufUndVergiss,
+ * laufOptionen.rueckfrageSpeicher), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
+ * scripts/leitstand/rueckfrage-vermittlung.test.mjs.
  */
 
 import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { kanonischesJson, sha256Hex } from '../../src/checkpoint-store/index.ts'
 import { vorentscheidung } from '../../src/rueckfrage/index.ts'
-import { RUECKFRAGE_PROTOKOLL_ARTEN } from '../../src/rueckfrage/protokoll.ts'
+import { RUECKFRAGE_PROTOKOLL_ARTEN, toolNameFuerProtokoll } from '../../src/rueckfrage/protokoll.ts'
 
 /** Wartegrenze je Rückfrage (Auftrag: 10 min). */
 export const WARTE_GRENZE_MS = 600000
@@ -42,6 +46,13 @@ export const OPTIONEN_MAX = 10
 export const OPTION_MAX_ZEICHEN = 500
 /** Höchstlänge einer tool_use_id. */
 const ID_MAX_ZEICHEN = 200
+/** F45 B2b-3b-2a (F-1126 (2)): höchstens so viele gleichzeitig offene (unentschiedene) Rückfragen je Lauf. */
+export const MAX_OFFENE_JE_LAUF = 20
+/**
+ * F45 B2b-3b-2a (F-1128 (5)): höchstens so viele Protokolleinträge je Lauf, auch auto_deny. Jede offene Rückfrage hält einen
+ * Platz für ihre Entscheidung frei (Invariante: Einträge + offene ≤ Grenze); darüber wird ohne Eintrag abgelehnt.
+ */
+export const MAX_PROTOKOLL_JE_LAUF = 200
 
 /** Protokoll-Arten (A5: eigene Arten für Fragen) — einzige Quelle src/rueckfrage/protokoll.ts (3b-1b). */
 export const PROTOKOLL_ARTEN = RUECKFRAGE_PROTOKOLL_ARTEN
@@ -60,14 +71,14 @@ const istText = (wert) => typeof wert === 'string'
  * @param {object} [optionen.pfadOptionen] - an vorentscheidung durchgereicht (nur Tests)
  * @param {() => Date} [optionen.jetzt] - Uhr (nur Tests)
  * @returns Vermittlung { warteGrenzeMs (einzige Quelle auch für Skript-Frist und CLI-timeout), oeffneLauf, laufZuToken, stelle, warte,
- *   offene, beantworte, beendeLauf }
+ *   offene, beantworte, beendeLauf, eintraegeVon }
  */
 export function erzeugeRueckfrageVermittlung(optionen = {}) {
   const warteGrenzeMs = optionen.warteGrenzeMs ?? WARTE_GRENZE_MS
   const pollFensterMs = optionen.pollFensterMs ?? POLL_FENSTER_MS
   const protokolliere = optionen.protokolliere ?? (() => {})
   const jetzt = optionen.jetzt ?? (() => new Date())
-  /** laufId → { token, arbeitsordner, werkzeugNamen, eintraege: Map<id, Eintrag>, bekannteIds: Set<string>, protokoll: object[] } */
+  /** laufId → { token, arbeitsordner, werkzeugNamen, eintraege: Map<id, Eintrag>, bekannteIds: Set<string>, protokoll: object[], grenzeGemeldet: boolean } */
   const laeufe = new Map()
 
   /**
@@ -115,6 +126,9 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     eintrag.warter.clear()
   }
 
+  /** B2b-3b-2a (Advisor B2): offen = unentschieden; entschiedene Einträge bleiben bis beendeLauf in der Map (A7). */
+  const anzahlOffen = (lauf) => [...lauf.eintraege.values()].filter((e) => e.entscheidung === null).length
+
   /** Ablehnung bzw. „keine Antwort“ je Art eines Eintrags. */
   const ablehnungFuer = (eintrag, message) => (eintrag.art === 'frage' ? { antwort: KEINE_ANTWORT } : { behavior: 'deny', message })
 
@@ -130,7 +144,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
       return
     }
     if (laeufe.has(laufId)) beendeLauf(laufId)
-    laeufe.set(laufId, { token: kanal.token, arbeitsordner: kanal.arbeitsordner, werkzeugNamen: [...kanal.werkzeugNamen], eintraege: new Map(), bekannteIds: new Set(), protokoll: [] })
+    laeufe.set(laufId, { token: kanal.token, arbeitsordner: kanal.arbeitsordner, werkzeugNamen: [...kanal.werkzeugNamen], eintraege: new Map(), bekannteIds: new Set(), protokoll: [], grenzeGemeldet: false })
   }
 
   /**
@@ -184,6 +198,15 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     const geprueft = pruefeAnfrage(roh)
     if (!geprueft.ok) return { ok: false, status: 400, grund: geprueft.grund }
     const anfrage = geprueft.anfrage
+    // B2b-3b-2a (F-1128 (5)): über der Protokollgrenze (offene zählen mit, ihr Platz ist reserviert) ⇒ ablehnen ohne Eintrag;
+    // eine Ablehnung ohne Eintrag bleibt im Abgleich A6 VERWEIGERT (sichere Richtung).
+    const offen = anzahlOffen(lauf)
+    if (lauf.protokoll.length + offen >= MAX_PROTOKOLL_JE_LAUF) {
+      const grund = `Obergrenze der Protokolleinträge je Lauf erreicht (${MAX_PROTOKOLL_JE_LAUF})`
+      if (!lauf.grenzeGemeldet) console.error(`[leitstand] Rückfrage-Kanal Lauf '${laufId}': ${grund} — weitere Anfragen ohne Protokolleintrag abgelehnt`)
+      lauf.grenzeGemeldet = true
+      return { ok: true, entscheidung: anfrage.art === 'frage' ? { antwort: KEINE_ANTWORT } : { behavior: 'deny', message: `Automatisch abgelehnt: ${grund}` } }
+    }
     // H5: jede tool_use_id genau einmal je Lauf — auch auto_deny-Fälle werden gemerkt.
     if (anfrage.tool_use_id !== null) {
       if (lauf.bekannteIds.has(anfrage.tool_use_id)) {
@@ -199,6 +222,12 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
         schreibeProtokoll(laufId, lauf, { ...protokollBasis(anfrage), art: 'auto_deny', grund: vor.grund })
         return { ok: true, entscheidung: { behavior: 'deny', message: `Automatisch abgelehnt: ${vor.grund}` } }
       }
+    }
+    // B2b-3b-2a (F-1126 (2)): höchstens MAX_OFFENE_JE_LAUF unentschiedene Rückfragen — darüber automatisch, mit Eintrag.
+    if (offen >= MAX_OFFENE_JE_LAUF) {
+      const grund = `zu viele offene Rückfragen je Lauf (${MAX_OFFENE_JE_LAUF})`
+      schreibeProtokoll(laufId, lauf, { ...protokollBasis(anfrage), art: anfrage.art === 'frage' ? 'frage_ohne_antwort' : 'auto_deny', grund })
+      return { ok: true, entscheidung: anfrage.art === 'frage' ? { antwort: KEINE_ANTWORT } : { behavior: 'deny', message: `Automatisch abgelehnt: ${grund}` } }
     }
     const seit = jetzt()
     const eintrag = { id: randomUUID(), lauf_id: laufId, ...anfrage, seit, frist: new Date(seit.getTime() + warteGrenzeMs), entscheidung: null, warter: new Set(), timer: null }
@@ -299,5 +328,23 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     }
   }
 
-  return { warteGrenzeMs, oeffneLauf, laufZuToken, stelle, warte, offene, beantworte, beendeLauf }
+  /**
+   * B2b-3b-2a (F-1128 (1)): Speicherstand des Protokolls eines offenen Laufs — Quelle der Wahrheit für den Controller
+   * (ermittleRueckfrageProtokoll, gleicher Prozess), die Datei ist das Audit. Nur die vier Vergleichsfelder als neue Objekte
+   * (Advisor B10: kein Rohtext, keine geteilten Referenzen); ein Werkzeugname über 200 Zeichen wie im Schreiber als '<zu lang>'.
+   * @param laufId - Lauf
+   * @returns Liste { tool_use_id, tool_name, input_hash, art } oder null (Lauf nicht offen, beendet, nach Neustart)
+   */
+  function eintraegeVon(laufId) {
+    const lauf = laeufe.get(laufId)
+    if (lauf === undefined) return null
+    return lauf.protokoll.map((e) => ({
+      tool_use_id: e.tool_use_id ?? null,
+      tool_name: toolNameFuerProtokoll(e.tool_name),
+      input_hash: e.input_hash,
+      art: e.art,
+    }))
+  }
+
+  return { warteGrenzeMs, oeffneLauf, laufZuToken, stelle, warte, offene, beantworte, beendeLauf, eintraegeVon }
 }

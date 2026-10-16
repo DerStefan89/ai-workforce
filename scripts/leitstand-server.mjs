@@ -522,8 +522,7 @@ import {
   brauchtArbeitsordner,
   leiteArbeitsordnerAb,
   leseArbeitsordnerVorbedingung,
-  leseLoeschliste,
-  loescheDateien,
+  fuehreLoeschlisteAus,
   schreibenderSchrittGelaufen,
   validiereArbeitsordnerDaten,
 } from '../src/arbeitsordner/index.ts'
@@ -1997,6 +1996,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'zeitmessung',
   // F40 WS-1: ebenso — serverseitiger Fortschritts-Rückruf je Lauf, kommt nie über den Body.
   'beiWerkzeugaufruf',
+  // F45 B2b-3b-2a: ebenso — Speicherstand der Rückfrage-Vermittlung (F-1128 (1)), kommt nie über den Body.
+  'rueckfrageSpeicher',
 ])
 
 /**
@@ -6825,6 +6826,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: zielAnzeige }
         laufAktivitaet.melde(laufId, aufruf, zielAnzeige)
       },
+      // F45 B2b-3b-2a (F-1128 (1)): Speicherstand der Vermittlung — Quelle der Wahrheit für die Auswertung, die Datei ist Audit.
+      rueckfrageSpeicher: (id) => rueckfrageVermittlung.eintraegeVon(id),
     }
 
     /** Ruft nachLauf auf, ohne dass ein Wurf daraus zur unhandled rejection wird. @param ergebnis - AusfuehrungsErgebnis oder null @param fehler - Wurf oder null */
@@ -6919,17 +6922,14 @@ export function erzeugeRequestHandler(optionen = {}) {
           // Fehlschlag hier ist Nachbereitung, kein Laufergebnis: er wird wie ein Wurf aus nachLauf
           // abgefangen und in der Startfehlerliste protokolliert, der bereits geschriebene, terminale
           // Laufstatus bleibt unverändert.
-          // F45 B1a-1 (F-715, Plan v3 B7): Löschliste nur nach ERFOLGREICH, nur im Arbeitsordner, nur wenn der Aufrufer
-          // sie verlangt (Rolle 'ausfuehrung'); VOR der Änderungsübersicht, damit Übersicht, Regel 1j und Prüfschritt
-          // die Löschungen sehen. Eigener try: ein Fehler hier nimmt der Übersicht nichts.
+          // F45 B1a-1 (F-715): Löschliste nur nach ERFOLGREICH, im Arbeitsordner, Rolle 'ausfuehrung', VOR der Übersicht; eigener try.
+          // B2b-3b-2a (F-1128 (2)): nach einer Ablehnung durch Stefan nichts löschen, nur Hinweis (fuehreLoeschlisteAus).
           let loeschliste
           if (laufErfolgreich && laufImArbeitsordner && laufort.loeschliste === true) {
             try {
               const laufakteFuerLoeschliste = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
               const textErgebnis = laufakteFuerLoeschliste !== null ? leseErgebnistextAusRohstrom(laufakteFuerLoeschliste.daten) : { ok: false }
-              const gelesen = leseLoeschliste(textErgebnis.ok ? textErgebnis.text : null)
-              if (gelesen.status === 'ok') loeschliste = loescheDateien(laufort.wurzel, gelesen.pfade)
-              else if (gelesen.status === 'ungueltig') loeschliste = { geloescht: [], abgelehnt: [{ pfad: '(zu_loeschen-Block)', grund: gelesen.grund }] }
+              loeschliste = fuehreLoeschlisteAus(laufort.wurzel, textErgebnis.ok ? textErgebnis.text : null, (ergebnis.klassifikation?.abgelehnt_durch_stefan ?? 0) > 0)
               if (loeschliste !== undefined) console.log(`[leitstand] Löschliste Lauf '${laufId}': ${loeschliste.geloescht.length} gelöscht, ${loeschliste.abgelehnt.length} abgelehnt`)
             } catch (loeschFehler) {
               const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Löschliste konnte nicht ausgeführt werden: ${String(loeschFehler?.message ?? loeschFehler)}` }

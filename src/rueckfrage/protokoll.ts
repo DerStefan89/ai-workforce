@@ -3,7 +3,7 @@
  *
  * Zweck: Reine Regel des Rückfrage-Protokolls (F45 B2b-3b-1b, features/F45/plan-b2b3b1b-v2.md). Das Protokoll eines Laufs ist
  * das Kern-Artefakt `rueckfragen-<laufId>` im Kontrollzustand (eine Version je Entscheidung, alle Einträge bis dahin; Schema
- * schemas/kontrollzustand-rueckfragen-payload.schema.json). Drei Teile:
+ * schemas/kontrollzustand-rueckfragen-payload.schema.json). Vier Teile:
  * - `RUECKFRAGE_PROTOKOLL_ARTEN` + `validiereRueckfrageProtokoll`: einzige Quelle der Arten (A5: eigene für Fragen) und der
  *   handgeschriebene Validator (Muster validiereAenderungsuebersichtDaten, kein ajv).
  * - `neutralisiereText`: Arbeitsordner, Temp und Home in Befehl/Frage/Antwort durch Platzhalter ersetzen (roh, mit `/`,
@@ -13,14 +13,17 @@
  *   `stefan_abgelehnt`, gleichem `tool_name` und gleichem Input-Hash. Alles andere ⇒ `nicht_nur_stefan` (fail closed;
  *   ungültiges Protokoll gilt als fehlend). Der Abgleich selbst vergleicht nur mit `===`, Set und Map — kein Textmuster
  *   über Ablehnungsdaten (Gate f7 (a) sinngemäß, H4); der einzige Regex (64 Hex-Zeichen) steht im Validator.
+ * - `bestaetigeProtokoll` (B2b-3b-2a, F-1128 (1)): die Datei gilt nur, wenn sie zum Speicherstand der Vermittlung passt (vier
+ *   Felder je Eintrag) — der Speicher ist die Quelle der Wahrheit, die Datei das Audit.
  * Rein, kein I/O.
  *
- * Grenze (ARCHITECTURE §4, DEKLARIERT): der Abgleich glaubt dem Protokoll, dass „stefan_abgelehnt“ von Stefan kommt — die
- * Antwort-Route ist für jeden lokalen Prozess erreichbar (§3 „Nur Stefan antwortet — DEKLARIERT“), und die Protokoll-Datei
- * im Kontrollzustand ist für lokal ausgeführten Code schreibbar (keine Signatur). Pflichtpunkt vor dem Einschalten: F-1128.
+ * Grenze (ARCHITECTURE §4, DEKLARIERT): der Abgleich glaubt dem Speicher der Vermittlung, dass „stefan_abgelehnt“ von Stefan
+ * kommt — die Antwort-Route ist für jeden lokalen Prozess erreichbar (§3 „Nur Stefan antwortet — DEKLARIERT“). Eine gefälschte
+ * Protokoll-Datei allein reicht seit B2b-3b-2a nicht mehr (bestaetigeProtokoll, F-1128 (1)).
  *
- * Wird aufgerufen von: src/result-evaluator/index.ts (Abgleich), scripts/leitstand/rueckfrage-protokoll.mjs (Schreiben),
- * scripts/leitstand/rueckfrage-vermittlung.mjs (Arten), scripts/check-f45-b2b3b1b-auswertung.mjs, src/rueckfrage/protokoll.test.ts.
+ * Wird aufgerufen von: src/result-evaluator/index.ts (Abgleich), src/execution-controller/index.ts (bestaetigeProtokoll),
+ * scripts/leitstand/rueckfrage-protokoll.mjs (Schreiben), scripts/leitstand/rueckfrage-vermittlung.mjs (Arten, Grenzen),
+ * scripts/check-f45-b2b3b1b-auswertung.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs, src/rueckfrage/protokoll.test.ts.
  */
 
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
@@ -38,6 +41,19 @@ export const RUECKFRAGE_PROTOKOLL_ARTEN = Object.freeze([
 
 /** Feldgrenzen (Zeichen) — dieselben wie im Schema. */
 export const PROTOKOLL_GRENZEN = Object.freeze({ id: 200, toolName: 200, grund: 500, text: 2000 })
+
+/** Platzhalter für einen Werkzeugnamen über PROTOKOLL_GRENZEN.toolName — Schreiber und Speicherstand der Vermittlung gleich (B2b-3b-2a). */
+export const TOOL_NAME_ZU_LANG = '<zu lang>'
+
+/**
+ * Werkzeugname, wie er im Protokoll und im Speicherstand der Vermittlung steht: über PROTOKOLL_GRENZEN.toolName (oder kein Text)
+ * ⇒ TOOL_NAME_ZU_LANG, nie gekürzt (passt dann nie zu einer Ablehnung ⇒ VERWEIGERT). Einzige Quelle für Schreiber und Vermittlung.
+ * @param name - tool_name der Anfrage
+ * @returns Name oder Platzhalter
+ */
+export function toolNameFuerProtokoll(name: unknown): string {
+  return typeof name === 'string' && name.length <= PROTOKOLL_GRENZEN.toolName ? name : TOOL_NAME_ZU_LANG
+}
 
 /** Felder eines Eintrags (additionalProperties: false). */
 const EINTRAG_PFLICHT = ['tool_use_id', 'tool_name', 'input_hash', 'art', 'grund', 'zeit'] as const
@@ -179,4 +195,38 @@ export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unk
     if (treffer.eintrag.input_hash !== sha256Hex(kanonischesJson(denial.tool_input ?? null))) return NICHT_NUR_STEFAN
   }
   return { art: 'nur_stefan', anzahl: denials.length }
+}
+
+/** Ergebnis von bestaetigeProtokoll: die Datei (bestätigt) oder ein Grund; `leer` = Lauf ohne Rückfrage (kein Befund). */
+export type BestaetigungErgebnis = { ok: true; daten: unknown } | { ok: false; grund: string; leer?: true }
+
+/** Die vier Felder, die Speicher und Datei je Eintrag gleich tragen müssen (alles andere ist in der Datei aufbereitet, A3). */
+const VERGLEICHS_FELDER = ['tool_use_id', 'tool_name', 'input_hash', 'art'] as const
+
+/**
+ * F45 B2b-3b-2a (F-1128 (1)): bestätigt die Protokoll-Datei gegen den Speicherstand der Vermittlung (`eintraegeVon`, gleicher
+ * Prozess) — der Speicher ist die Quelle der Wahrheit, die Datei das Audit. Nur bei gleicher Länge und je Index gleichen
+ * `tool_use_id`, `tool_name`, `input_hash`, `art` (`===`) gilt die Datei; alles andere ⇒ ok:false mit Grund (fail closed). Schema
+ * und `lauf_id` prüft danach der Abgleich A6 (`gleicheAblehnungenAb`). Wirft nie, auch nicht an einer manipulierten Datei
+ * (Delta D1).
+ * @param datei - daten der letzten Version von `rueckfragen-<laufId>` (oder null)
+ * @param speicher - Projektion der Vermittlung (oder null/undefined: Lauf nicht offen, Neustart)
+ * @returns { ok: true, daten: datei } oder { ok: false, grund, leer? }
+ */
+export function bestaetigeProtokoll(datei: unknown, speicher: unknown): BestaetigungErgebnis {
+  if (!Array.isArray(speicher)) return { ok: false, grund: 'Speicher fehlt (Lauf nicht offen)' }
+  if (!istObjekt(datei) || !Array.isArray(datei.eintraege)) {
+    // Nur eine wirklich fehlende Datei bei leerem Speicher ist der Normalfall (Delta D2); eine kaputte Datei wird gemeldet.
+    return speicher.length === 0 && (datei === null || datei === undefined) ? { ok: false, grund: 'keine Rückfrage im Lauf', leer: true } : { ok: false, grund: 'Datei fehlt oder ist kein Protokoll' }
+  }
+  const eintraege: unknown[] = datei.eintraege
+  if (eintraege.length !== speicher.length) return { ok: false, grund: `Länge abweichend (Speicher ${speicher.length}, Datei ${eintraege.length})` }
+  for (let i = 0; i < speicher.length; i++) {
+    const s: unknown = speicher[i]
+    const d = eintraege[i]
+    if (!istObjekt(s) || !istObjekt(d)) return { ok: false, grund: `Eintrag ${i} ist kein Objekt` }
+    const feld = VERGLEICHS_FELDER.find((f) => s[f] !== d[f])
+    if (feld !== undefined) return { ok: false, grund: `Eintrag ${i} weicht ab (${feld})` }
+  }
+  return { ok: true, daten: datei }
 }

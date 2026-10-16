@@ -20,7 +20,9 @@
  * (p2) Schema und Validator: Beispiele gültig/ungültig, Arten = Schema-Enum = PROTOKOLL_ARTEN der Vermittlung (eine Quelle).
  * (p3) Schreiber am echten Server (Kanal an, Standard-Vermittlung): auto_deny + Stefan-Ablehnung ⇒ zwei Versionen von
  *      rueckfragen-<laufId>, die letzte mit beiden Einträgen, gültig; Befehl ohne Arbeitsordner-Pfad (<ARBEITSORDNER>),
- *      Geheimnis maskiert; gelesen über laufOptionen.basisVerzeichnis (wie der Controller) ⇒ Klassifikation ERFOLGREICH (H3).
+ *      Geheimnis maskiert; gelesen über laufOptionen.basisVerzeichnis (dieselbe Ablage wie der Controller) ⇒ Klassifikation
+ *      ERFOLGREICH (H3). Prüft den Evaluator mit der Datei; seit B2b-3b-2a braucht der Controller zusätzlich den passenden
+ *      Speicherstand der Vermittlung — dieser Pfad ist scripts/check-f45-b2b3b2a-absicherung.mjs (a2).
  * (p4) F-1126 (1): Body über 64 KiB auf der Token-Route ⇒ 413, keine neue Protokoll-Version (Ablehnung ohne Eintrag ⇒ VERWEIGERT, e3).
  * (f)  Quelltext: starteWorkflowSchritt( in leitstand-server.mjs 6×; ARCHITECTURE §4 nennt die Regel mit Durchsetzungsgrad.
  *

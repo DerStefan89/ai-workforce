@@ -53,7 +53,7 @@ import type { Anfrage, Budget, KontextpaketErgebnis } from '../context-builder/t
 import type { LaufStatus } from '../checkpoint-store/types.ts'
 import type { KlassifikationsErgebnis } from '../result-evaluator/types.ts'
 
-/** Durchreichung an F5/F6a/F7/F1B — kein Feld wird vom Controller selbst gelesen oder ausgewertet (D5). Jedes Feld hier muss auch in scripts/leitstand-server.mjs' VERBOTENE_OPTIONEN_FELDER stehen (F10 AK3, Options-Sperre) — sonst kann ein Startauftrag-Body dieses Feld künftig unbemerkt durchreichen. */
+/** Durchreichung an F5/F6a/F7/F1B — kein Feld wird vom Controller selbst gelesen oder ausgewertet (D5; Ausnahmen: zeitmessung, rueckfrageSpeicher). Jedes Feld hier muss auch in scripts/leitstand-server.mjs' VERBOTENE_OPTIONEN_FELDER stehen (F10 AK3, Options-Sperre) — sonst kann ein Startauftrag-Body dieses Feld künftig unbemerkt durchreichen. */
 export interface AusfuehrungsOptionen {
   schreiber?: () => void
   basisVerzeichnis?: string
@@ -79,6 +79,12 @@ export interface AusfuehrungsOptionen {
   zeitmessung?: (marke: string) => void
   /** F40 WS-1: nur für F6as starteGateway — Rückruf je live erkanntem Werkzeugaufruf (Fortschrittsanzeige), reine Durchreichung (Muster zeitmessung), vom Controller selbst nicht gelesen. */
   beiWerkzeugaufruf?: (aufruf: Werkzeugaufruf) => void
+  /**
+   * F45 B2b-3b-2a (F-1128 (1)): Speicherstand der Rückfrage-Vermittlung (eintraegeVon, gleicher Prozess) — Quelle der Wahrheit für
+   * die Auswertung bei eingeschaltetem Kanal. Ausnahme von D5 wie zeitmessung: der Controller ruft diesen Rückruf selbst
+   * (ermittleRueckfrageProtokoll). Fehlt er oder liefert er null ⇒ VERWEIGERT.
+   */
+  rueckfrageSpeicher?: (laufId: string) => unknown
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */

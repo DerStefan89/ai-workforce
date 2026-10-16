@@ -4,13 +4,14 @@
  * Zweck: node:test-Fälle für das Rückfrage-Protokoll (F45 B2b-3b-1b, features/F45/plan-b2b3b1b-v2.md): Validator des
  * Kern-Artefakts `rueckfragen-<laufId>` (Schema v0, additionalProperties: false), Neutralisierung von Pfaden (Arbeitsordner
  * vor Temp vor Home, roh, `/` und JSON-escaped, ohne Kappen) und der Abgleich A6 zwischen `permission_denials` und Protokoll
- * (fail closed: nur eindeutige, vollständig passende `stefan_abgelehnt`-Einträge ⇒ nur_stefan).
+ * (fail closed: nur eindeutige, vollständig passende `stefan_abgelehnt`-Einträge ⇒ nur_stefan). Seit F45 B2b-3b-2a
+ * `bestaetigeProtokoll` (Speicher der Vermittlung = Quelle der Wahrheit, Datei = Audit; F-1128 (1)).
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
-import { gleicheAblehnungenAb, neutralisiereText, RUECKFRAGE_PROTOKOLL_ARTEN, validiereRueckfrageProtokoll } from './protokoll.ts'
+import { bestaetigeProtokoll, gleicheAblehnungenAb, neutralisiereText, RUECKFRAGE_PROTOKOLL_ARTEN, validiereRueckfrageProtokoll } from './protokoll.ts'
 
 const hashVon = (input: unknown) => sha256Hex(kanonischesJson(input ?? null))
 const LAUF = 'lauf-1'
@@ -102,4 +103,60 @@ test('gleicheAblehnungenAb: Rotfälle ⇒ nicht_nur_stefan (A6, fail closed)', (
     ['Ablehnung kein Objekt', ['x'], protokoll([eintrag()])],
   ]
   for (const [name, denials, daten] of faelle) assert.deepEqual(gleicheAblehnungenAb(denials, daten, LAUF), nein, name)
+})
+
+// ─── F45 B2b-3b-2a: Datei gegen den Speicher der Vermittlung (F-1128 (1)) ──────────────────────────────────────────────
+
+/** Speicherform (Projektion von eintraegeVon) zu einem Eintrag. */
+const speicherVon = (e: unknown) => {
+  const { tool_use_id, tool_name, input_hash, art } = e as Record<string, unknown>
+  return { tool_use_id, tool_name, input_hash, art }
+}
+
+test('bestaetigeProtokoll: gleiche vier Felder je Index ⇒ ok mit der Datei', () => {
+  const datei = protokoll([eintrag(), eintrag({ tool_use_id: null, art: 'auto_deny' })])
+  assert.deepEqual(bestaetigeProtokoll(datei, datei.eintraege.map(speicherVon)), { ok: true, daten: datei })
+})
+
+test('bestaetigeProtokoll: gefälschte Art, fremde ID, anderer Hash/Werkzeug, Länge ⇒ ok:false mit Grund', () => {
+  const speicher = [eintrag({ art: 'auto_deny' })].map(speicherVon)
+  const faelle: [string, unknown, RegExp][] = [
+    ['Art gefälscht', protokoll([eintrag({ art: 'stefan_abgelehnt' })]), /Eintrag 0 weicht ab \(art\)/],
+    ['ID', protokoll([eintrag({ art: 'auto_deny', tool_use_id: 'toolu_x' })]), /Eintrag 0 weicht ab \(tool_use_id\)/],
+    ['Hash', protokoll([eintrag({ art: 'auto_deny', input_hash: 'f'.repeat(64) })]), /Eintrag 0 weicht ab \(input_hash\)/],
+    ['Werkzeug', protokoll([eintrag({ art: 'auto_deny', tool_name: 'PowerShell' })]), /Eintrag 0 weicht ab \(tool_name\)/],
+    ['länger', protokoll([eintrag({ art: 'auto_deny' }), eintrag()]), /Länge abweichend \(Speicher 1, Datei 2\)/],
+    ['kürzer', protokoll([]), /Länge abweichend \(Speicher 1, Datei 0\)/],
+  ]
+  for (const [name, datei, grund] of faelle) {
+    const ergebnis = bestaetigeProtokoll(datei, speicher)
+    assert.equal(ergebnis.ok, false, name)
+    if (!ergebnis.ok) assert.match(ergebnis.grund, grund, name)
+  }
+})
+
+test('bestaetigeProtokoll: Speicher fehlt, Datei fehlt/kein Objekt/eintraege keine Liste, Eintrag kein Objekt ⇒ ok:false, wirft nie (Delta D1)', () => {
+  const datei = protokoll([eintrag()])
+  const speicher = datei.eintraege.map(speicherVon)
+  const faelle: [unknown, unknown, RegExp][] = [
+    [datei, null, /Speicher fehlt/],
+    [datei, undefined, /Speicher fehlt/],
+    [datei, 'x', /Speicher fehlt/],
+    [null, speicher, /Datei fehlt/],
+    ['x', speicher, /Datei fehlt/],
+    [{ ...datei, eintraege: 'x' }, speicher, /Datei fehlt/],
+    [protokoll([null]), speicher, /Eintrag 0 ist kein Objekt/],
+    [datei, [null], /Eintrag 0 ist kein Objekt/],
+  ]
+  for (const [d, s, grund] of faelle) {
+    const ergebnis = bestaetigeProtokoll(d, s)
+    assert.equal(ergebnis.ok, false)
+    if (!ergebnis.ok) assert.match(ergebnis.grund, grund)
+  }
+})
+
+test('bestaetigeProtokoll: Speicher leer und Datei fehlt ⇒ ok:false mit leer: true (Normalfall ohne Rückfrage, Delta D2)', () => {
+  assert.deepEqual(bestaetigeProtokoll(null, []), { ok: false, grund: 'keine Rückfrage im Lauf', leer: true })
+  assert.equal(bestaetigeProtokoll(protokoll([]), []).ok, true)
+  assert.deepEqual(bestaetigeProtokoll({ eintraege: 'x' }, []), { ok: false, grund: 'Datei fehlt oder ist kein Protokoll' }, 'kaputte Datei bei leerem Speicher wird gemeldet (code-reviewer 7)')
 })

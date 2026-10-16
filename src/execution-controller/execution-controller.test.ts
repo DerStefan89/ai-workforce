@@ -128,7 +128,7 @@ import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { registriereAuftrag } from '../auftrag/index.ts'
-import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, leseRueckfrageProtokoll, vergleicheClaudeOrdner } from './index.ts'
+import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, ermittleRueckfrageProtokoll, leseRueckfrageProtokoll, vergleicheClaudeOrdner } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -1668,11 +1668,14 @@ test('F45 F-3b-2: ortBLauf.plugins erreicht das Init-Gate (kraft@inline läuft d
 test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufId> (Stefan-Ablehnung ⇒ ERFOLGREICH); ohne Kanal nicht (VERWEIGERT)', async () => {
   const denial = { tool_name: 'Bash', tool_use_id: 'toolu_s', tool_input: { command: 'npm publish' } }
   const starter: Starter = async () => ({ stdout: JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: [denial] }), stderr: '', exitCode: 0, startfehler: null, beendigungsart: null })
-  // [Kanal an, Protokoll vorhanden, erwartet]: nur Kanal + Protokoll ⇒ ERFOLGREICH; Kanal an ohne Artefakt ⇒ VERWEIGERT (qa).
-  for (const [mitKanal, mitProtokoll, erwartet] of [
-    [true, true, 'ERFOLGREICH'],
-    [false, true, 'VERWEIGERT'],
-    [true, false, 'VERWEIGERT'],
+  // [Kanal an, Protokoll vorhanden, Speicher der Vermittlung, erwartet]: nur Kanal + Protokoll + gleicher Speicherstand ⇒ ERFOLGREICH;
+  // Kanal an ohne Artefakt ⇒ VERWEIGERT (qa); F45 B2b-3b-2a (F-1128 (1)): Speicher fehlt bzw. weicht ab (auto_deny) ⇒ VERWEIGERT.
+  for (const [mitKanal, mitProtokoll, speicher, erwartet] of [
+    [true, true, 'gleich', 'ERFOLGREICH'],
+    [false, true, 'gleich', 'VERWEIGERT'],
+    [true, false, 'gleich', 'VERWEIGERT'],
+    [true, true, 'fehlt', 'VERWEIGERT'],
+    [true, true, 'auto_deny', 'VERWEIGERT'],
   ] as const) {
     const laufId = neueLaufId(`rf${mitKanal ? 'a' : 'o'}${mitProtokoll ? 'p' : 'n'}`)
     try {
@@ -1683,14 +1686,35 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
       }
       if (mitProtokoll) registriereKernArtefakt(`rueckfragen-${laufId}`, PROFIL_REFERENZ, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, protokoll, [], { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
       const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), ...(mitKanal ? { rueckfrageKanal: { token: 'a'.repeat(64), arbeitsordner: process.cwd(), werkzeugNamen: ['Bash'] } } : {}) }
-      const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {} })
+      const projektion = protokoll.eintraege.map(({ tool_use_id, tool_name, input_hash, art }) => ({ tool_use_id, tool_name, input_hash, art: speicher === 'auto_deny' ? 'auto_deny' : art }))
+      const rueckfrageSpeicher = speicher === 'fehlt' ? undefined : (id: string) => (id === laufId ? projektion : null)
+      const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {}, ...(rueckfrageSpeicher !== undefined ? { rueckfrageSpeicher } : {}) })
       assert.ok(ergebnis.ok)
-      assert.equal(ergebnis.klassifikation.ergebnis, erwartet, `Kanal ${mitKanal}, Protokoll ${mitProtokoll}`)
+      assert.equal(ergebnis.klassifikation.ergebnis, erwartet, `Kanal ${mitKanal}, Protokoll ${mitProtokoll}, Speicher ${speicher}`)
       if (erwartet === 'ERFOLGREICH') assert.equal(ergebnis.klassifikation.ergebnis === 'ERFOLGREICH' && ergebnis.klassifikation.abgelehnt_durch_stefan, 1)
     } finally {
       raeumeKette(laufId)
       raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-rueckfragen-${laufId}`))
     }
+  }
+})
+
+test('F45 B2b-3b-2a (Delta D1/D2): ermittleRueckfrageProtokoll wirft nie — werfender Leser, kaputte Datei, kein Lauf ⇒ null', () => {
+  const laufId = neueLaufId('rfe')
+  try {
+    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, undefined), null)
+    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, () => []), null, 'Speicher leer, Datei fehlt')
+    assert.equal(
+      ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, () => {
+        throw new Error('kaputt')
+      }),
+      null
+    )
+    registriereKernArtefakt(`rueckfragen-${laufId}`, PROFIL_REFERENZ, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, { rueckfragen_schema: 'v0', lauf_id: laufId, eintraege: [null] }, [], { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, () => [{ tool_use_id: 't', tool_name: 'Bash', input_hash: 'a'.repeat(64), art: 'stefan_abgelehnt' }]), null)
+  } finally {
+    raeumeKette(laufId)
+    raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-rueckfragen-${laufId}`))
   }
 })
 

@@ -136,6 +136,16 @@ test('vorentscheidung: Rotfälle ⇒ auto_deny mit Grund', () => {
   }
 })
 
+test('vorentscheidung (F45 B2b-3b-2a, F-1126 (3)): Steuer-/Formatzeichen im Befehl ⇒ auto_deny; \\n und \\t bleiben erlaubt', () => {
+  const rot = ['echo a\rrm -rf x', 'echo \u001b[31mrot', 'echo \u009b31m', 'echo \u202Etxt.exe', 'echo \u2066x\u2069', 'echo \u0007', 'echo a\u200Bb', 'echo a\u2028b', 'echo \uD800', 'echo \u00AD', 'echo \uFEFF', 'a\r\nb', 'echo \uD83D\uDC68\u200D\uD83D\uDCBB', 'echo \u200Ex']
+  for (const command of rot) {
+    const ergebnis = vor('Bash', { command })
+    assert.equal(ergebnis.art, 'auto_deny', JSON.stringify(command))
+    assert.match((ergebnis as { grund: string }).grund, /Steuer- oder Formatzeichen/, JSON.stringify(command))
+  }
+  for (const command of ['echo a\necho b', 'printf "a\tb"', 'echo ä ö 😀 漢字']) assert.deepEqual(vor('Bash', { command }), { art: 'frage_stefan' }, JSON.stringify(command))
+})
+
 test('werkzeugNamenAus: Regel von --tools (Name vor der Klammer, eindeutig, stabile Reihenfolge)', () => {
   assert.deepEqual(werkzeugNamenAus(['Read', 'Bash(npm ci)', 'Bash(npm run check:*)', 'Edit(./**)', FRAGE_WERKZEUG]), ['Read', 'Bash', 'Edit', FRAGE_WERKZEUG])
 })
