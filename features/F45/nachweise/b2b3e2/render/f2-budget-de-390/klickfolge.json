@@ -1,0 +1,86 @@
+{
+  "url": "http://127.0.0.1:4406/#/projekt",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3600
+  },
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#auftrag-formular"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweis Budget",
+        "selector": "#auftrag-budget-hinweis"
+      },
+      {
+        "name": "Fehlerzeile",
+        "selector": "#auftrag-anlegen-fehler"
+      },
+      {
+        "name": "Projektordner",
+        "selector": ".umgebung-pfad"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Bereiche aufgeklappt",
+        "selector": "#auftrag-bereiche-bereich[open]"
+      },
+      {
+        "name": "Budget aufgeklappt",
+        "selector": "#auftrag-budget-bereich[open]"
+      },
+      {
+        "name": "Fehlerzeile sichtbar",
+        "selector": "#auftrag-anlegen-fehler:not([hidden])"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Formular geladen",
+      "warteAufSelector": {
+        "selector": "#auftrag-budget-bereich > summary",
+        "timeoutMs": 10000
+      },
+      "tippen": {
+        "selector": "#auftrag-titel",
+        "text": "CSV-Export"
+      }
+    },
+    {
+      "label": "Ergebnis",
+      "tippen": {
+        "selector": "#auftrag-auftragstext",
+        "text": "Füge einen CSV-Export hinzu."
+      }
+    },
+    {
+      "label": "Bereiche aufklappen",
+      "klick": "#auftrag-bereiche-bereich > summary"
+    },
+    {
+      "label": "Budget aufklappen",
+      "klick": "#auftrag-budget-bereich > summary"
+    },
+    {
+      "label": "Budget 1,5",
+      "tippen": {
+        "selector": "#auftrag-budget",
+        "text": "1,5"
+      }
+    },
+    {
+      "label": "„Ablauf vorbereiten“ ⇒ Fehlerzeile Budget — de-390",
+      "klick": "#auftrag-ablauf-vorbereiten",
+      "warteAufSelector": {
+        "selector": "#auftrag-anlegen-fehler:not([hidden])",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-de-390.webp"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, registriereAuftrag, traegtArbeitspaket, validiereAuftragAkzeptanzkriterien, validiereAuftragDaten, validiereAuftragNichtZiele } from './index.ts'
+import { baueArbeitspaketBlock, gleicheEinrichtungslisteAb, offeneEinrichtungVorDemBau, optionenAusAuftrag, pruefeBereich, pruefeBudgetTokens, registriereAuftrag, traegtArbeitspaket, validiereArbeitspaketFelder, validiereAuftragAkzeptanzkriterien, validiereAuftragBereiche, validiereAuftragDaten, validiereAuftragNichtZiele } from './index.ts'
 import type { AuftragV0Daten } from './types.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
@@ -181,4 +181,41 @@ test('F45 B2b-3c (F-981): budget_tokens additiv — ganze Zahl ≥ 1, neue Versi
   } finally {
     raeumeAuf(auftragId)
   }
+})
+
+test('F45 B2b-3e-2 (F-1123 (5)(9)): pruefeBereich — dieselbe Regel wie das Formular, Grund je Eintrag, getrimmt', () => {
+  for (const [eintrag, grund] of [
+    ['', 'leer'],
+    ['a\u0007b', 'steuerzeichen'],
+    [' /etc/', 'absolut'],
+    ['C:\\x', 'absolut'],
+    ['a/../b', 'eltern'],
+    ['src/./', 'punkt'],
+    ['src/*.ts', 'muster'],
+    ['src/**/', null],
+    ['src\\**\\', null],
+    ['*', null],
+    ['Src/', null],
+  ] as const) {
+    assert.strictEqual(pruefeBereich(eintrag), grund, JSON.stringify(eintrag))
+  }
+})
+
+test('F45 B2b-3e-2 (F-1123 (5)): validiereAuftragBereiche meldet den Grund je Eintrag; Doppelte nach getrimmtem Text, Groß/klein unterschieden', () => {
+  assert.deepStrictEqual(validiereAuftragBereiche(['src/**/', 'Src/', 'src/']), [])
+  const meldung = (wert: unknown[]) => validiereAuftragBereiche(wert).join(' | ')
+  assert.match(meldung(['src/', 'src/*.ts']), /'bereiche\[1\]' \('src\/\*\.ts'\) ist ein Muster/)
+  assert.match(meldung([' /etc/']), /'bereiche\[0\]' \(' \/etc\/'\) ist absolut/)
+  assert.match(meldung(['a/../b']), /enthält '\.\.'/)
+  assert.match(meldung(['src/./x']), /enthält ein Segment '\.'/)
+  assert.match(meldung(['a\tb']), /enthält Steuerzeichen/)
+  assert.match(meldung(['  ']), /'bereiche\[0\]' muss ein nicht-leerer String sein/)
+  assert.match(meldung(['src/', ' src/ ']), /'bereiche\[1\]' \(' src\/ '\) ist doppelt/)
+  assert.notStrictEqual(validiereAuftragDaten({ ...ALT, bereiche: ['src/*.ts'] }).length, 0)
+})
+
+test('F45 B2b-3e-2: pruefeBudgetTokens — ganze Zahl von 1 bis MAX_SAFE_INTEGER; validiereArbeitspaketFelder nutzt sie', () => {
+  for (const wert of [1, Number.MAX_SAFE_INTEGER]) assert.strictEqual(pruefeBudgetTokens(wert), true, String(wert))
+  for (const wert of [0, 1.5, '5', Number.NaN, Number.MAX_SAFE_INTEGER + 1, 1e300]) assert.strictEqual(pruefeBudgetTokens(wert), false, String(wert))
+  assert.match(validiereArbeitspaketFelder({ budget_tokens: 1e300 }).join(), /'budget_tokens' muss eine ganze Zahl von 1 bis 9007199254740991 sein/)
 })

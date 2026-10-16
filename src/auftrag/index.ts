@@ -17,6 +17,10 @@
  * Arbeitspaket-Blocks für Architekt und Ausführung, gleicheEinrichtungslisteAb für die Übernahme der Einrichtung aus dem
  * Architekt-Ergebnis. Aufgerufen außerdem von scripts/leitstand-server.mjs, scripts/leitstand/routen-f35.mjs und
  * scripts/check-f45-b2a2-arbeitspaket.mjs.
+ *
+ * F45 B2b-3e-2 (F-1123 (5), Entscheidung A2 = Zwilling): pruefeBereich und pruefeBudgetTokens sind die eine Regel für
+ * `bereiche` und `budget_tokens`; ihre Kopie für den Browser liegt in public/leitstand/arbeitspaket-felder.js (keine
+ * Abhängigkeit src → public), das Gate scripts/check-f45-b2b3e2-formular.mjs lässt beide über dieselbe Fall-Tabelle urteilen.
  */
 
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
@@ -203,9 +207,58 @@ export function validiereAuftragNichtZiele(wert: unknown): string[] {
   return verstoesse
 }
 
+/** Grund, aus dem pruefeBereich einen Eintrag abweist (F45 B2b-3e-2) — Codes, die Texte wählt jede Seite selbst. */
+export type BereichGrund = 'leer' | 'steuerzeichen' | 'absolut' | 'eltern' | 'punkt' | 'muster'
+
 /**
- * Reine Funktion: prüft ein optionales bereiche-Array (F45 B2a-2) — mindestens ein Eintrag, je ein nicht-leerer,
- * eindeutiger String (betroffene Ordner/Module).
+ * Reine Funktion: die eine Regel je Eintrag von `bereiche` (F45 B2b-3e-2, F-1123 (5)(9)). ZWILLING von `pruefeBereich` in
+ * public/leitstand/arbeitspaket-felder.js (der Browser lädt kein .ts) — Gleichheit über eine Fall-Tabelle im Gate
+ * f45-b2b3e2 (r1)/(r2); eine Änderung hier gehört wörtlich auch dorthin. Getrimmt vor allen Prüfungen (Advisor A3), Trenner
+ * `/` und `\` gleich. Abgewiesen wird, was im Umfangs-Abgleich (src/umfang, normalisiereBereich) still nichts träfe: absolute
+ * Pfade, `..`, ein Segment `.` außer am Anfang (`./`), `*` mitten im Eintrag (`src/*.ts` — der Abgleich kennt Präfixe, keine
+ * Muster). `*`/`**` als ganzer Eintrag oder als Endung (`src/**`, `src/**` + Trenner, `src\**`) bleiben erlaubt.
+ * Groß-/Kleinschreibung wird nicht angeglichen: `Src/` und `src/` sind zwei gültige Einträge (git ist case-sensitiv).
+ * @param eintrag - ein Eintrag aus `bereiche`
+ * @returns null, wenn gültig, sonst der Grund
+ */
+export function pruefeBereich(eintrag: string): BereichGrund | null {
+  const e = eintrag.trim()
+  if (e === '') return 'leer'
+  if (/[\u0000-\u001f\u007f]/.test(e)) return 'steuerzeichen'
+  if (/^(?:[\\/]|[A-Za-z]:)/.test(e)) return 'absolut'
+  const segmente = e.split(/[\\/]/).filter((s) => s !== '')
+  if (segmente.includes('..')) return 'eltern'
+  const ersterInhalt = segmente.findIndex((s) => s !== '.')
+  if (ersterInhalt >= 0 && segmente.slice(ersterInhalt).includes('.')) return 'punkt'
+  let rest = e
+  for (let vorher = ''; vorher !== rest; ) {
+    vorher = rest
+    rest = rest.replace(/[\\/](?:\*\*?)?$/, '')
+  }
+  return rest !== '*' && rest !== '**' && rest.includes('*') ? 'muster' : null
+}
+
+/**
+ * Reine Funktion: die eine Regel für `budget_tokens` (F45 B2b-3e-2) — eine ganze Zahl von 1 bis Number.MAX_SAFE_INTEGER.
+ * ZWILLING von `pruefeBudgetTokens` in public/leitstand/arbeitspaket-felder.js (Gate f45-b2b3e2 (b1)).
+ * @param wert - der zu prüfende Wert
+ * @returns true, wenn gültig
+ */
+export function pruefeBudgetTokens(wert: unknown): boolean {
+  return typeof wert === 'number' && Number.isSafeInteger(wert) && wert >= 1
+}
+
+/** Meldung je Grund für validiereAuftragBereiche (Server, deutsch wie die übrigen Verstöße). */
+const BEREICH_MELDUNG: Readonly<Record<Exclude<BereichGrund, 'leer' | 'steuerzeichen'>, string>> = {
+  absolut: 'ist absolut — erlaubt sind Pfade relativ zum Projekt, ohne Laufwerk oder führenden Schrägstrich',
+  eltern: "enthält '..' — erlaubt sind Pfade innerhalb des Projekts",
+  punkt: "enthält ein Segment '.' — erlaubt nur am Anfang (./)",
+  muster: "ist ein Muster — '*' nur als ganzer Eintrag oder am Ende (src/**)",
+}
+
+/**
+ * Reine Funktion: prüft ein optionales bereiche-Array (F45 B2a-2) — mindestens ein Eintrag, je ein eindeutiger String, der
+ * pruefeBereich besteht (seit F45 B2b-3e-2 dieselbe Regel wie das Formular). Doppelte nach getrimmtem Text.
  * @param wert - der zu prüfende Wert
  * @returns Liste der Regelverletzungen; leer = gültig
  */
@@ -215,9 +268,12 @@ export function validiereAuftragBereiche(wert: unknown): string[] {
   const verstoesse: string[] = []
   const gesehen = new Set<string>()
   wert.forEach((eintrag, index) => {
-    if (typeof eintrag !== 'string' || eintrag.trim().length === 0) verstoesse.push(`'bereiche[${index}]' muss ein nicht-leerer String sein`)
-    else if (gesehen.has(eintrag)) verstoesse.push(`'bereiche[${index}]' ('${eintrag}') ist doppelt`)
-    else gesehen.add(eintrag)
+    const grund = typeof eintrag === 'string' ? pruefeBereich(eintrag) : 'leer'
+    if (grund === 'leer') verstoesse.push(`'bereiche[${index}]' muss ein nicht-leerer String sein`)
+    else if (grund === 'steuerzeichen') verstoesse.push(`'bereiche[${index}]' enthält Steuerzeichen`)
+    else if (grund !== null) verstoesse.push(`'bereiche[${index}]' ('${eintrag}') ${BEREICH_MELDUNG[grund]}`)
+    else if (gesehen.has(eintrag.trim())) verstoesse.push(`'bereiche[${index}]' ('${eintrag}') ist doppelt`)
+    else gesehen.add(eintrag.trim())
   })
   return verstoesse
 }
@@ -275,9 +331,7 @@ export function validiereArbeitspaketFelder(obj: Record<string, unknown>): strin
   if ('risiko' in obj && (typeof obj.risiko !== 'string' || !RISIKEN.has(obj.risiko))) verstoesse.push("'risiko' muss 'niedrig', 'mittel' oder 'hoch' sein")
   if ('feature_ref' in obj && (typeof obj.feature_ref !== 'string' || !FEATURE_REF_MUSTER.test(obj.feature_ref))) verstoesse.push("'feature_ref' muss dem Muster ^F[0-9]+[A-Za-z]?$ entsprechen")
   if ('einrichtung' in obj) verstoesse.push(...validiereAuftragEinrichtung(obj.einrichtung))
-  if ('budget_tokens' in obj && !(typeof obj.budget_tokens === 'number' && Number.isInteger(obj.budget_tokens) && obj.budget_tokens >= 1)) {
-    verstoesse.push("'budget_tokens' muss eine ganze Zahl ≥ 1 sein")
-  }
+  if ('budget_tokens' in obj && !pruefeBudgetTokens(obj.budget_tokens)) verstoesse.push(`'budget_tokens' muss eine ganze Zahl von 1 bis ${Number.MAX_SAFE_INTEGER} sein`)
   return verstoesse
 }
 

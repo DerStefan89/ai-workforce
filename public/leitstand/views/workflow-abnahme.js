@@ -482,6 +482,23 @@ function renderQaKarte(qa) {
 /** Höchstzahl der Dateien im Umfangs-Hinweis (wie die Zeile für Review und qa, src/umfang MAX_ZEILEN_DATEIEN). */
 const UMFANG_MAX_DATEIEN = 50
 
+/** Höchstzahl der Bereiche in „Vereinbart: …“ (F45 B2b-3e-2, F-1123 (14)) — der Rest wird gezählt. */
+const UMFANG_MAX_BEREICHE = 10
+
+/**
+ * Die vereinbarten Bereiche als `<code>`-Liste, höchstens UMFANG_MAX_BEREICHE, dann „… und n weitere“.
+ * @param bereiche - umfang.bereiche (nicht leer)
+ * @returns HTML
+ */
+function vereinbarteBereicheHtml(bereiche) {
+  const gezeigt = bereiche
+    .slice(0, UMFANG_MAX_BEREICHE)
+    .map((b) => `<code>${escapeHtml(String(b))}</code>`)
+    .join(', ')
+  const rest = bereiche.length - UMFANG_MAX_BEREICHE
+  return rest > 0 ? `${gezeigt} ${tHtml('abnahme.umfang.vereinbartWeitere', { anzahl: rest })}` : gezeigt
+}
+
 /**
  * F45 B2b-3d (F-978): Hinweis „Außerhalb der vereinbarten Bereiche geändert“ mit der Dateiliste (Pfade sind Inhalt, keine
  * Kennungen; höchstens 50, dann „… und n weitere“). Nur ein Hinweis (amber), der Ablauf wurde nicht angehalten. Bei
@@ -500,7 +517,7 @@ export function renderUmfangHinweis(umfang) {
     .join('')
   const rest = umfang.ausserhalb.length - UMFANG_MAX_DATEIEN
   const weitere = rest > 0 ? `<p>${tHtml('abnahme.umfang.weitere', { anzahl: rest })}</p>` : ''
-  const vereinbart = Array.isArray(umfang.bereiche) && umfang.bereiche.length > 0 ? `<p>${tHtml('abnahme.umfang.vereinbart', {}, { bereiche: umfang.bereiche.map((b) => `<code>${escapeHtml(String(b))}</code>`).join(', ') })}</p>` : ''
+  const vereinbart = Array.isArray(umfang.bereiche) && umfang.bereiche.length > 0 ? `<p>${tHtml('abnahme.umfang.vereinbart', {}, { bereiche: vereinbarteBereicheHtml(umfang.bereiche) })}</p>` : ''
   return `<div class="note amber abnahme-umfang" role="note"><p><strong>${tHtml('abnahme.umfang.titel')}</strong></p><p>${tHtml('abnahme.umfang.text')}</p><ul>${punkte}</ul>${weitere}${vereinbart}</div>`
 }
 
@@ -511,7 +528,8 @@ export function renderUmfangHinweis(umfang) {
  */
 export function umfangKennung(umfang) {
   if (umfang === null || typeof umfang !== 'object') return '-'
-  return `${umfang.status}:${Array.isArray(umfang.ausserhalb) ? umfang.ausserhalb.join('|') : ''}`
+  // F45 B2b-3e-2 (F-1123 (12)): die Bereiche gehören dazu — sonst zeichnet der Poll „Vereinbart: …“ nicht neu.
+  return `${umfang.status}:${Array.isArray(umfang.ausserhalb) ? umfang.ausserhalb.join('|') : ''}:${Array.isArray(umfang.bereiche) ? umfang.bereiche.join('|') : '-'}`
 }
 
 /**

@@ -188,6 +188,13 @@
               <textarea id="auftrag-bereiche" rows="3" spellcheck="false" aria-describedby="auftrag-bereiche-hinweis"></textarea>
               <small id="auftrag-bereiche-hinweis" data-i18n="auftrag.bereiche.hinweis">Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich. Ändert der Bau Dateien außerhalb, siehst du das bei der Abnahme — angehalten wird nichts.</small>
             </details>
+            <!-- F45 B2b-3e-2 (F-1122 (1)): Token-Budget je Ablauf des Auftrags (budget_tokens) — leer = Standard der Kontrolltiefe. Der Hinweis nennt die Standards; projekt.js setzt ihn mit den Zahlen (darum ohne data-i18n). -->
+            <details id="auftrag-budget-bereich" class="auftrag-kontext">
+              <summary data-i18n="auftrag.budget.zusammenfassung">Token-Budget · optional</summary>
+              <label class="field" for="auftrag-budget" data-i18n="auftrag.budget.feld">Token-Budget je Ablauf</label>
+              <input type="text" id="auftrag-budget" inputmode="numeric" autocomplete="off" spellcheck="false" aria-describedby="auftrag-budget-hinweis" />
+              <small id="auftrag-budget-hinweis"></small>
+            </details>
             <div class="note" data-i18n="auftrag.notiz">Rolle und Arbeitsweise werden aus dem Projektkontext vorgeschlagen. Du prüfst den Ablauf, bevor etwas startet.</div>
             <p id="auftrag-anlegen-fehler" class="fehler" tabindex="-1" hidden></p>
             <div id="auftrag-aktionen" class="action-row">

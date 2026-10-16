@@ -638,6 +638,21 @@ test('F45 B2b-3d: Umfangs-Hinweis kappt bei 50 Dateien mit „… und n weitere 
   assert.match(renderUmfangHinweis({ status: 'ok', ausserhalb: viele.slice(0, 51) }), /… und 1 weitere Datei</)
 })
 
+test('F45 B2b-3e-2 (F-1123 (14)): „Vereinbart: …“ zeigt höchstens 10 Bereiche, dann „… und n weitere“', () => {
+  const bereiche = Array.from({ length: 12 }, (_, i) => `b${i}/`)
+  const html = renderUmfangHinweis({ status: 'ok', ausserhalb: ['x.md'], bereiche })
+  assert.equal((html.match(/<code>b\d+\/<\/code>/g) ?? []).length, 10)
+  assert.match(html, /<code>b9\/<\/code> … und 2 weitere Bereiche</)
+  assert.match(renderUmfangHinweis({ status: 'ok', ausserhalb: ['x.md'], bereiche: bereiche.slice(0, 11) }), /… und 1 weiterer Bereich</)
+  assert.doesNotMatch(renderUmfangHinweis({ status: 'ok', ausserhalb: ['x.md'], bereiche: bereiche.slice(0, 10) }), /weitere/)
+})
+
+test('F45 B2b-3e-2 (F-1123 (12)): umfangKennung ändert sich mit den Bereichen', () => {
+  const basis = { status: 'ok', ausserhalb: ['x.md'], bereiche: ['src/'] }
+  assert.notEqual(umfangKennung(basis), umfangKennung({ ...basis, bereiche: ['scr/'] }))
+  assert.notEqual(umfangKennung(basis), umfangKennung({ ...basis, bereiche: undefined }))
+})
+
 test('F45 B2b-3d: Umfangs-Hinweis auf der Seite „entscheidbar“ und im Block „vorab“ nach dem Bau; umfangKennung für das Neuzeichnen', () => {
   const umfang = { status: 'ok', ausserhalb: ['docs/x.md'] }
   assert.match(renderAbnahme('wf-1', abnahme({ umfang })).oben, /abnahme-umfang/)

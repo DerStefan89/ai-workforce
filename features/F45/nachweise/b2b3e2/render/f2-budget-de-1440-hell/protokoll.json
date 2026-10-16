@@ -1,0 +1,80 @@
+[
+  {
+    "label": "Formular geladen",
+    "Bereiche aufgeklappt": false,
+    "Budget aufgeklappt": false,
+    "Fehlerzeile sichtbar": false,
+    "Hinweis Budget": "Leer = Standard der Kontrolltiefe: Fast-Lane 5.300.000, Standard 14.700.000, Hoch 14.700.000. Das Budget gilt je Ablauf ",
+    "Fehlerzeile": "",
+    "Projektordner": "C:\\aiw-nachweis\\lauf-cP9QRj\\temp\\f45-b2b3e2-render-0KZbYN\\projekt",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Ergebnis",
+    "Bereiche aufgeklappt": false,
+    "Budget aufgeklappt": false,
+    "Fehlerzeile sichtbar": false,
+    "Hinweis Budget": "Leer = Standard der Kontrolltiefe: Fast-Lane 5.300.000, Standard 14.700.000, Hoch 14.700.000. Das Budget gilt je Ablauf ",
+    "Fehlerzeile": "",
+    "Projektordner": "C:\\aiw-nachweis\\lauf-cP9QRj\\temp\\f45-b2b3e2-render-0KZbYN\\projekt",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Bereiche aufklappen",
+    "Bereiche aufgeklappt": true,
+    "Budget aufgeklappt": false,
+    "Fehlerzeile sichtbar": false,
+    "Hinweis Budget": "Leer = Standard der Kontrolltiefe: Fast-Lane 5.300.000, Standard 14.700.000, Hoch 14.700.000. Das Budget gilt je Ablauf ",
+    "Fehlerzeile": "",
+    "Projektordner": "C:\\aiw-nachweis\\lauf-cP9QRj\\temp\\f45-b2b3e2-render-0KZbYN\\projekt",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Budget aufklappen",
+    "Bereiche aufgeklappt": true,
+    "Budget aufgeklappt": true,
+    "Fehlerzeile sichtbar": false,
+    "Hinweis Budget": "Leer = Standard der Kontrolltiefe: Fast-Lane 5.300.000, Standard 14.700.000, Hoch 14.700.000. Das Budget gilt je Ablauf ",
+    "Fehlerzeile": "",
+    "Projektordner": "C:\\aiw-nachweis\\lauf-cP9QRj\\temp\\f45-b2b3e2-render-0KZbYN\\projekt",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Budget 1,5",
+    "Bereiche aufgeklappt": true,
+    "Budget aufgeklappt": true,
+    "Fehlerzeile sichtbar": false,
+    "Hinweis Budget": "Leer = Standard der Kontrolltiefe: Fast-Lane 5.300.000, Standard 14.700.000, Hoch 14.700.000. Das Budget gilt je Ablauf ",
+    "Fehlerzeile": "",
+    "Projektordner": "C:\\aiw-nachweis\\lauf-cP9QRj\\temp\\f45-b2b3e2-render-0KZbYN\\projekt",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "„Ablauf vorbereiten“ ⇒ Fehlerzeile Budget — de-1440-hell",
+    "Bereiche aufgeklappt": true,
+    "Budget aufgeklappt": true,
+    "Fehlerzeile sichtbar": true,
+    "Hinweis Budget": "Leer = Standard der Kontrolltiefe: Fast-Lane 5.300.000, Standard 14.700.000, Hoch 14.700.000. Das Budget gilt je Ablauf ",
+    "Fehlerzeile": "„1,5“ ist keine gültige Token-Zahl — bitte eine ganze Zahl ab 1, zum Beispiel 2000000 oder 2.000.000.",
+    "Projektordner": "C:\\aiw-nachweis\\lauf-cP9QRj\\temp\\f45-b2b3e2-render-0KZbYN\\projekt",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

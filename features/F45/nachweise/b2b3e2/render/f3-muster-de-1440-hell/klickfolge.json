@@ -1,0 +1,87 @@
+{
+  "url": "http://127.0.0.1:4406/#/projekt",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#auftrag-formular"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweis Budget",
+        "selector": "#auftrag-budget-hinweis"
+      },
+      {
+        "name": "Fehlerzeile",
+        "selector": "#auftrag-anlegen-fehler"
+      },
+      {
+        "name": "Projektordner",
+        "selector": ".umgebung-pfad"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Bereiche aufgeklappt",
+        "selector": "#auftrag-bereiche-bereich[open]"
+      },
+      {
+        "name": "Budget aufgeklappt",
+        "selector": "#auftrag-budget-bereich[open]"
+      },
+      {
+        "name": "Fehlerzeile sichtbar",
+        "selector": "#auftrag-anlegen-fehler:not([hidden])"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Formular geladen",
+      "warteAufSelector": {
+        "selector": "#auftrag-budget-bereich > summary",
+        "timeoutMs": 10000
+      },
+      "tippen": {
+        "selector": "#auftrag-titel",
+        "text": "CSV-Export"
+      }
+    },
+    {
+      "label": "Ergebnis",
+      "tippen": {
+        "selector": "#auftrag-auftragstext",
+        "text": "Füge einen CSV-Export hinzu."
+      }
+    },
+    {
+      "label": "Bereiche aufklappen",
+      "klick": "#auftrag-bereiche-bereich > summary"
+    },
+    {
+      "label": "Budget aufklappen",
+      "klick": "#auftrag-budget-bereich > summary"
+    },
+    {
+      "label": "Bereich src/*.ts",
+      "tippen": {
+        "selector": "#auftrag-bereiche",
+        "text": "src/*.ts"
+      }
+    },
+    {
+      "label": "„Ablauf vorbereiten“ ⇒ Fehlerzeile Muster — de-1440-hell",
+      "klick": "#auftrag-ablauf-vorbereiten",
+      "warteAufSelector": {
+        "selector": "#auftrag-anlegen-fehler:not([hidden])",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-de-1440-hell.webp"
+    }
+  ]
+}

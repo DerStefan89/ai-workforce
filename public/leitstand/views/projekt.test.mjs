@@ -148,6 +148,9 @@ async function ausgangslage({ titel = 'Login reparieren', ergebnis = 'Login geht
   el('auftrag-titel').value = titel
   el('auftrag-auftragstext').value = ergebnis
   el('auftrag-kontext').value = kontext
+  // F45 B2b-3e-2 (F-1123 (11)): ein stehengebliebener Bereich oder ein Budget eines früheren Tests verfälscht sonst den Körper.
+  el('auftrag-bereiche').value = ''
+  el('auftrag-budget').value = ''
   aggregat = { laeufe: [], startfehler: [], workflows: [], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
   schreibend.length = 0
   netzfehler.clear()
@@ -553,4 +556,93 @@ test('F45 B2b-3d: abgewiesener Bereich (absolut) ⇒ kein POST, Fehlerzeile mit 
   assert.equal(el('auftrag-bereiche-bereich').open, true)
   assert.equal(el('auftrag-bereiche').value, 'src/\n/etc/')
   el('auftrag-bereiche').value = ''
+})
+
+test('F45 B2b-3e-2 (F-1123 (9)): Muster mitten im Eintrag (src/*.ts) ⇒ eigener Grund, kein POST; src/**/ geht an den Server', async () => {
+  await ausgangslage()
+  el('auftrag-bereiche-bereich').open = false
+  el('auftrag-bereiche').value = 'src/*.ts'
+  absenden()
+  await warte()
+  assert.equal(anzahl('POST', '/auftraege'), 0)
+  assert.match(el('auftrag-anlegen-fehler').textContent, /„src\/\*\.ts“ ist ein Muster — „\*“ ist nur als ganzer Eintrag oder am Ende erlaubt/)
+  assert.doesNotMatch(el('auftrag-anlegen-fehler').textContent, /kein Pfad relativ/)
+  assert.equal(el('auftrag-bereiche-bereich').open, true)
+  await ausgangslage()
+  el('auftrag-bereiche').value = 'src/**/'
+  antworten.set('POST /api/auftraege', [{ status: 400, json: { grund: 'Gate' } }])
+  absenden()
+  await warte()
+  assert.deepEqual(schreibend[0].koerper.bereiche, ['src/**/'])
+})
+
+test('F45 B2b-3e-2 (F-1123 (11)): ausgangslage leert Bereiche und Budget', async () => {
+  el('auftrag-bereiche').value = 'x/'
+  el('auftrag-budget').value = '5'
+  await ausgangslage()
+  assert.equal(el('auftrag-bereiche').value, '')
+  assert.equal(el('auftrag-budget').value, '')
+})
+
+test('F45 B2b-3e-2 (F-1122 (1)): Budget geht als budget_tokens mit POST …/auftraege (Tausendertrenner erlaubt); leer ⇒ kein Feld', async () => {
+  await ausgangslage()
+  el('auftrag-budget').value = ' 2 000 000 '
+  antworten.set('POST /api/auftraege', [{ status: 400, json: { grund: 'Gate' } }])
+  absenden()
+  await warte()
+  assert.deepEqual(schreibend[0].koerper, { titel: 'Login reparieren', auftragstext: 'Login geht wieder', budget_tokens: 2000000 })
+  await ausgangslage()
+  antworten.set('POST /api/auftraege', [{ status: 400, json: { grund: 'Gate' } }])
+  absenden()
+  await warte()
+  assert.equal('budget_tokens' in schreibend[0].koerper, false)
+})
+
+test('F45 B2b-3e-2 (F-1122 (1)): ungültiges Budget ⇒ kein POST, Fehlerzeile mit Fokus, Feld aufgeklappt, Text bleibt', async () => {
+  await ausgangslage()
+  el('auftrag-budget-bereich').open = false
+  el('auftrag-budget').value = '1,5'
+  absenden()
+  await warte()
+  assert.equal(anzahl('POST', '/auftraege'), 0)
+  assert.match(el('auftrag-anlegen-fehler').textContent, /„1,5“ ist keine gültige Token-Zahl — bitte eine ganze Zahl ab 1/)
+  assert.equal(document.activeElement?.id, 'auftrag-anlegen-fehler')
+  assert.equal(el('auftrag-budget-bereich').open, true)
+  assert.equal(el('auftrag-budget').value, '1,5')
+})
+
+test('F45 B2b-3e-2: nach einem Erfolg sind Bereiche und Budget leer', async () => {
+  await ausgangslage({ titel: 'Nur anlegen', ergebnis: 'Text' })
+  el('auftrag-bereiche').value = 'src/'
+  el('auftrag-budget').value = '7'
+  antworten.set('POST /api/auftraege', [{ status: 201, json: { auftragId: 'neu-1' } }])
+  el('auftrag-anlegen').handler.click()
+  await warte()
+  assert.deepEqual(schreibend[0].koerper, { titel: 'Nur anlegen', auftragstext: 'Text', bereiche: ['src/'], budget_tokens: 7 })
+  assert.equal(el('auftrag-bereiche').value, '')
+  assert.equal(el('auftrag-budget').value, '')
+})
+
+test('F45 B2b-3e-2: Hinweis zum Budget nennt die Standards der drei Kontrolltiefen (Zahlen aus BUDGET_STANDARD)', () => {
+  const hinweis = el('auftrag-budget-hinweis').textContent
+  // Korrekturrunde (design-guardian 5): die Kernaussage „Leer = Standard …“ steht vorn.
+  assert.match(hinweis, /^Leer = Standard der Kontrolltiefe: Fast-Lane 5\.300\.000, Standard 14\.700\.000, Hoch 14\.700\.000\./)
+  assert.match(hinweis, /Das Budget gilt je Ablauf dieses Auftrags/)
+  assert.equal(el('auftrag-budget').placeholder, 'Leer lassen = Standard')
+})
+
+test('F45 B2b-3e-2 (Korrekturrunde, qa): Meldung je Grund auch für punkt, eltern und steuerzeichen; Bereich vor Budget', async () => {
+  for (const [eintrag, text] of [
+    ['src/./x', /„src\/\.\/x“ enthält „\.“ als Ordner/],
+    ['a/../b', /„a\/\.\.\/b“ führt mit „\.\.“ aus dem Projekt hinaus/],
+    ['a\tb', /enthält ein Steuerzeichen/],
+  ]) {
+    await ausgangslage()
+    el('auftrag-bereiche').value = eintrag
+    el('auftrag-budget').value = 'abc'
+    absenden()
+    await warte()
+    assert.equal(anzahl('POST', '/auftraege'), 0)
+    assert.match(el('auftrag-anlegen-fehler').textContent, text)
+  }
 })

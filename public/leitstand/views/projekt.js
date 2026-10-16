@@ -30,6 +30,8 @@
  *   (Text gehört dem Menschen, F-885).
  * - F45 B2b-3d (F-978): „Vereinbarte Bereiche“ (aufklappbar wie der Kontext, arbeitspaket-felder.js) gehen als `bereiche`
  *   des Arbeitspakets mit POST …/auftraege; ein abgewiesener Eintrag erscheint in der Fehlerzeile, nichts wird angelegt.
+ * - F45 B2b-3e-2 (F-1122 (1)): „Token-Budget“ (aufklappbar, leer = Standard der Kontrolltiefe) geht als `budget_tokens`;
+ *   der Hinweis nennt die Standards aus BUDGET_STANDARD (Zwilling von src/budget), die Fehlerzeile nennt je Bereich den Grund.
  * - Keine eigene Live-Region: Fehler und Schritt 2 bekommen den Fokus.
  * - Die Kette „anlegen → routen → warten“ existiert auch in views/workboard.js (Click-to-Work);
  *   Zusammenlegen ist F-943 (beim Schnitt F-928).
@@ -39,14 +41,14 @@
  */
 
 import { holeAuftraege, holeWerkzeugsaetze, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
-import { t } from '../i18n.js'
+import { formatiereZahl, t } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { navigiere } from '../router.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
 import { entwurfFuerCoach } from '../chat-anzeige.js'
 import { abonniere } from '../zustand.js'
-import { leseBereiche } from '../arbeitspaket-felder.js'
+import { BUDGET_STANDARD, leseBereiche, leseBudget } from '../arbeitspaket-felder.js'
 import { baueAuftragstext, pruefeAggregat, renderVorbereitung, workflowIdFuer } from './auftrag-vorbereitung.js'
 
 /** Präfix der synthetischen Kontextpaket-Elemente, die der Server selbst voranstellt (execution-controller/index.ts) — keine vom Nutzer benannten Evidenzdateien, werden bei der Vorbelegung herausgefiltert. */
@@ -207,18 +209,25 @@ async function ladeWerkzeugsaetze() {
 
 // ─── Auftrag anlegen (beide Wege) ───────────────────────────────────────────
 
-/** Felder des Auftragsformulars: Titel, gewünschtes Ergebnis, Kontext, seit F45 B2b-3d die vereinbarten Bereiche. @returns die vier Eingabeelemente */
+/** Felder des Auftragsformulars: Titel, gewünschtes Ergebnis, Kontext, seit F45 B2b-3d die vereinbarten Bereiche, seit B2b-3e-2 das Token-Budget. @returns die fünf Eingabeelemente */
 function auftragsFelder() {
-  return { titel: document.getElementById('auftrag-titel'), ergebnis: document.getElementById('auftrag-auftragstext'), kontext: document.getElementById('auftrag-kontext'), bereiche: document.getElementById('auftrag-bereiche') }
+  return {
+    titel: document.getElementById('auftrag-titel'),
+    ergebnis: document.getElementById('auftrag-auftragstext'),
+    kontext: document.getElementById('auftrag-kontext'),
+    bereiche: document.getElementById('auftrag-bereiche'),
+    budget: document.getElementById('auftrag-budget'),
+  }
 }
 
-/** Leert Titel, Ergebnis, Kontext und Bereiche — nur nach einem Erfolg (der Text ist dann beim Server). */
+/** Leert Titel, Ergebnis, Kontext, Bereiche und Budget — nur nach einem Erfolg (der Text ist dann beim Server). */
 function leereAuftragsFelder() {
   const felder = auftragsFelder()
   felder.titel.value = ''
   felder.ergebnis.value = ''
   felder.kontext.value = ''
   felder.bereiche.value = ''
+  felder.budget.value = ''
 }
 
 /** true, solange ein POST …/auftraege läuft — sperrt beide Anlege-Knöpfe gemeinsam (genau ein POST je Klick). */
@@ -244,7 +253,8 @@ function aktualisiereAnlegeKnoepfe() {
 }
 
 /**
- * POST …/auftraege mit Titel und Auftragstext (Ergebnis plus Kontext-Absatz) und, falls gesetzt, den Bereichen (F45 B2b-3d). Zeigt nichts an — der
+ * POST …/auftraege mit Titel und Auftragstext (Ergebnis plus Kontext-Absatz) und, falls gesetzt, den Bereichen (F45 B2b-3d)
+ * und dem Token-Budget (F45 B2b-3e-2). Zeigt nichts an — der
  * Aufrufer entscheidet nach seinem Überholschutz, ob der Fehler an die Fehlerzeile geht; die
  * Eingaben bleiben in jedem Fehlerfall stehen.
  * @returns { auftragId, meldung }: bei 201 die auftragId (meldung null), sonst auftragId null und der Fehlertext
@@ -252,15 +262,26 @@ function aktualisiereAnlegeKnoepfe() {
 async function legeAuftragAusFormularAn() {
   const felder = auftragsFelder()
   zeigeAuftragAnlegenFehler('')
-  // F45 B2b-3d: ein abgewiesener Bereich (absolut oder mit ..) geht nicht an den Server — das Feld klappt auf, der Text bleibt.
+  // F45 B2b-3d/3e-2: ein abgewiesener Bereich (absolut, mit .., mit . als Ordner, Steuerzeichen oder * mitten im Eintrag wie
+  // src/*.ts) oder ein ungültiges Budget geht nicht an den Server — das Feld klappt auf, die Meldung nennt den Grund, der Text bleibt.
   const bereiche = leseBereiche(felder.bereiche.value)
   if (!bereiche.ok) {
     document.getElementById('auftrag-bereiche-bereich').open = true
-    return { auftragId: null, meldung: t('auftrag.bereiche.fehler', { eintrag: bereiche.eintrag }) }
+    return { auftragId: null, meldung: t(`auftrag.bereiche.fehler.${bereiche.grund}`, { eintrag: bereiche.eintrag }) }
+  }
+  const budget = leseBudget(felder.budget.value)
+  if (!budget.ok) {
+    document.getElementById('auftrag-budget-bereich').open = true
+    return { auftragId: null, meldung: t('auftrag.budget.fehler', { eintrag: budget.eintrag }) }
   }
   let antwort
   try {
-    antwort = await legeAuftragAn({ titel: felder.titel.value, auftragstext: baueAuftragstext(felder.ergebnis.value, felder.kontext.value), ...(bereiche.bereiche !== undefined ? { bereiche: bereiche.bereiche } : {}) })
+    antwort = await legeAuftragAn({
+      titel: felder.titel.value,
+      auftragstext: baueAuftragstext(felder.ergebnis.value, felder.kontext.value),
+      ...(bereiche.bereiche !== undefined ? { bereiche: bereiche.bereiche } : {}),
+      ...(budget.budget !== undefined ? { budget_tokens: budget.budget } : {}),
+    })
   } catch (fehler) {
     console.error('[projekt] POST …/auftraege fehlgeschlagen:', fehler)
     return { auftragId: null, meldung: t('auftrag.fehler.anfrage', { meldung: meldungVon(fehler) }) }
@@ -470,6 +491,13 @@ function initAuftragFormular() {
   felder.ergebnis.placeholder = t('auftrag.feld.ergebnis.platzhalter')
   felder.kontext.placeholder = t('auftrag.kontext.platzhalter')
   felder.bereiche.placeholder = t('auftrag.bereiche.platzhalter')
+  // F45 B2b-3e-2: die Zahlen stehen im Hinweis, nicht im Platzhalter (bei 390 px abgeschnitten, Advisor 8); ein Sprachwechsel lädt neu.
+  felder.budget.placeholder = t('auftrag.budget.platzhalter')
+  document.getElementById('auftrag-budget-hinweis').textContent = t('auftrag.budget.hinweis', {
+    fastLane: formatiereZahl(BUDGET_STANDARD['fast-lane']),
+    standard: formatiereZahl(BUDGET_STANDARD.standard),
+    hoch: formatiereZahl(BUDGET_STANDARD.hoch),
+  })
   // Vorlage: sekundär „Lieber mit dem Coach besprechen“ — seit WS-8b öffnet es das Dock im Coach.
   document.getElementById('auftrag-aktionen').insertAdjacentHTML('beforeend', `<button type="button" id="auftrag-coach" class="button">${escapeHtml(t('auftrag.coach'))}</button>`)
   const coachKnopf = document.getElementById('auftrag-coach')
