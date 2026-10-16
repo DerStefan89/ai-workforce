@@ -833,6 +833,8 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     ...(eingaben.pluginDirs ?? []).flatMap((dir) => ['--plugin-dir', dir]),
     // F45 B2b-1b (F-1105): Ausgabeschema, unmittelbar vor -p; der Prompt geht trotzdem über stdin (Spike Versuch 3).
     ...(eingaben.jsonSchema !== undefined ? ['--json-schema', eingaben.jsonSchema] : []),
+    // F45 B2b-3b-1a: Rückfrage-Kanal (Spike b2b3a: vor -p wirksam); ohne Feld bitgleich.
+    ...(eingaben.permissionPromptTool !== undefined ? ['--permission-prompt-tool', eingaben.permissionPromptTool] : []),
     '-p',
     eingaben.prompt,
   ]

@@ -48,7 +48,7 @@ import type {
   WirksamkeitsnachweisReferenz,
 } from './types.ts'
 
-export { pruefeAufrufparameter } from './verbotene-aufrufparameter.ts'
+export { pruefeAufrufparameter, toolInputZuTokens } from './verbotene-aufrufparameter.ts'
 export { VERBOTENE_AUFRUFPARAMETER } from './verbotene-aufrufparameter.ts'
 
 // Von Stefan bestätigter externer Pfad (identisch zu F3 — plan-v1 SCOPE.1,

@@ -13842,3 +13842,30 @@ Auswirkung: Gering — nichts hält still an oder läuft still weiter; (2)(4)(5)
 Maßnahme: (9)(10)(11)(12)(14)(15) mit B2b-3e (berührt dasselbe Formular, je eine Zeile plus Test); (1)(2)(4)(7)(8) mit dem UX-Durchgang (F-1107) bzw. B5a; (5) mit B2b-3e oder eigener kleiner Fix (Regel aus `leseBereiche` in `validiereAuftragBereiche`); (3) beobachten, ggf. `-uall` nur für den Abgleich; (6)(16) mit dem nächsten Render-Nachweis an der Abnahme; (13)(17) bei der nächsten Berührung.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-3d (Advisor-Pass, code-reviewer, qa, design-guardian; Erst- und Nachpass), 16.10.2026.
+
+**F-1124** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Ausführung begann vor dem Advisor-Urteil.
+Beschreibung: In F45 B2b-3d wurde `src/umfang` gebaut, während der Advisor-Pass zum Plan noch lief. Ein Advisor-Urteil, das einen Schnitt oder eine Überarbeitung verlangt, hätte gebauten Code entwertet oder — schlimmer — gegen schon geschriebenen Code „angepasst“ werden müssen; der Advisor prüft dann faktisch den Code, nicht den Plan.
+Fundstelle: Ablauf der Bauaufträge (Plan → Advisor-Pass → Bau), F45 B2b-3d (`src/umfang/`, `features/F45/plan-b2b3d.md`).
+Auswirkung: Mittel — der Advisor-Pass verliert seine Wirkung als Bremse vor dem Bau.
+Maßnahme: Code erst nach dem Advisor-Urteil; bis dahin nur lesen und den Plan schreiben. Verlangt der Advisor einen Schnitt, anhalten und berichten. In F45 B2b-3b-1 bereits so gehandhabt (Advisor ZU GROSS → Halt, Schnitt durch Stefan, Delta-Pass, dann Bau).
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-3d (Challenger, 16.10.2026).
+
+**F-1125** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Persönliche Pfade in Render-Screenshots.
+Beschreibung: Challenger-OCR (16.10.2026): alle 11 Screenshots in `features/F45/nachweise/b2b3d/render/` und ältere auf main (z. B. b0, b1a1, f2b2c) zeigen `C:\Users\<name>\AppData\Local\Temp\…` im Panel „Wo gearbeitet wird“ und im PowerShell-Befehl. Die Pfadprüfung der Nachweise wirkt nur auf Text (JSON, Markdown), nicht auf Bilder.
+Fundstelle: Render-Helfer (`npm run render-nachweis`, `scripts/render-nachweis.mjs`), Testinstanzen `features/F45/nachweise/*/instanz.mjs`, Screenshots unter `features/F45/nachweise/*/render/`.
+Auswirkung: Mittel — persönliche Pfade gelangen in versionierte Nachweise.
+Maßnahme: Testinstanz der Render-Helfer mit neutralem HOME/TEMP starten oder die Pfade vor dem Screenshot maskieren; neue Screenshots per OCR auf persönliche Pfade prüfen. Die Historie wird nicht bereinigt. Geplant mit B2b-3e.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-3d (Challenger-OCR der Render-Nachweise), 16.10.2026.
+
+**F-1126** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) aus code-reviewer und qa.
+Beschreibung: (1) qa 2: Ablehnungen der Token-Routen mit 400/413 (Formfehler, Body über 64 KiB) erzeugen keine Protokollzeile — für den Abgleich tool_use_id ↔ `permission_denials` in 3b-1b entscheiden (protokollieren oder bewusst als VERWEIGERT ohne Eintrag). (2) qa 7: keine Obergrenze offener Rückfragen je Lauf — wer das Token aus dem Argv des CLI-Prozesses liest, kann GET /api/rueckfragen fluten; vor 3b-2 eine Grenze (z. B. 20 offene je Lauf) mit Test. (3) qa 8: „wörtlich angezeigt“ kann täuschen (Steuerzeichen, `\r`, ANSI-Folgen, Bidi-Overrides U+202E) — vor 3b-2 entweder `auto_deny` in `vorentscheidung` oder sichtbare Kennzeichnung in der Anzeige, mit Test. (4) qa 10 / code-reviewer 8: Pfadregel ist Vorsorge — `..` textuell vor realpath (posix löst `link/..` physisch auf), Groß/klein über toLowerCase statt NTFS-Regeln, `\??\`-Pfade und DOS-Gerätenamen (CON, NUL, COM1) nicht eigens erkannt; zu schärfen, bevor ein Datei-Werkzeug je an Stefan geht (Grenze im Kopf von `src/rueckfrage/index.ts`). (5) qa 12: mit Kanal an ungetestet: Katalog-Kollision über den echten Start (nur direkt geprüft) und automatische Fortsetzung ohne url ⇒ Startfehler-Halt. (6) qa 14: unbekannte Bash-Felder werden abgelehnt (fail closed) — ergänzt die CLI ein Feld, wird jeder Bash-Aufruf abgelehnt; im echten Lauf in 3b-2 belegen. Mehrprojekt: Vermittlung je Instanz, GET zeigt nur die eigene (3b-2). (7) code-reviewer 2: das Protokoll heißt jetzt `tool_name`; 3b-1b baut darauf auf (Plan v2 CONTEXT).
+Fundstelle: `scripts/leitstand/rueckfrage-vermittlung.mjs`, `scripts/leitstand-server.mjs` (Routen /api/rueckfrage/…), `src/rueckfrage/index.ts`, `scripts/check-f45-b2b3b1-rueckfrage.mjs`.
+Auswirkung: Gering, solange der Kanal aus ist; (2)(3)(6) sind vor dem Einschalten (B2b-3b-2) Pflicht, (1) vor 3b-1b.
+Maßnahme: (1) mit B2b-3b-1b; (2)(3)(5)(6) mit B2b-3b-2; (4) vor jeder Regel, die ein Datei-Werkzeug an Stefan gibt.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-3b-1a (code-reviewer, qa), 16.10.2026.

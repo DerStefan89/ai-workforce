@@ -64,6 +64,13 @@ export interface AufrufEingaben {
    * Body ab). Fehlt es, bleibt das Argv bitgleich.
    */
   jsonSchema?: string
+  /**
+   * F45 B2b-3b-1a (E-B2b-3-1 = A, Spike features/F45/nachweise/b2b3a/spike.md): Ziel von `--permission-prompt-tool` — das
+   * MCP-Werkzeug des Rückfrage-Kanals (mcp__rueckfrage__rechte_pruefen), nach `--json-schema`, vor `-p`. Nur serverseitig über
+   * ergaenzeRueckfrageAufruf (src/rueckfrage) gesetzt, solange der Kanal eingeschaltet ist (bis B2b-3b-2 nie im Produktpfad);
+   * pruefeStartauftrag lehnt das Feld im Body ab. Fehlt es, bleibt das Argv bitgleich.
+   */
+  permissionPromptTool?: string
 }
 
 /** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. beendigungsart unterscheidet additiv (F14 WS-1, AK3) einen durch zeitgrenzeMs oder abbruchSignal beendeten Prozess von einem regulären Ende oder einem Startfehler — null in beiden letzteren Fällen, bestehende Felder ändern ihre Bedeutung nicht. */

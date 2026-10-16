@@ -1583,6 +1583,17 @@ test('F45 B2b-1b baueAufruf: ohne jsonSchema bitgleich; mit jsonSchema --json-sc
   assert.equal(mit.at(-1), basis.prompt)
 })
 
+test('F45 B2b-3b-1a baueAufruf: ohne permissionPromptTool bitgleich; mit --permission-prompt-tool <wert> nach --json-schema, vor -p', () => {
+  const basis = gueltigeEingaben()
+  const ohne = baueAufruf(basis)
+  assert.deepEqual(baueAufruf({ ...basis, permissionPromptTool: undefined }), ohne)
+  assert.ok(!ohne.includes('--permission-prompt-tool'))
+  const mit = baueAufruf({ ...basis, jsonSchema: '{"type":"object"}', permissionPromptTool: 'mcp__rueckfrage__rechte_pruefen' })
+  const p = mit.indexOf('-p')
+  assert.deepEqual(mit.slice(p - 4, p), ['--json-schema', '{"type":"object"}', '--permission-prompt-tool', 'mcp__rueckfrage__rechte_pruefen'])
+  assert.equal(mit.at(-1), basis.prompt)
+})
+
 test('F45 B2b-1b baueClaudeJsonSchema: entfernt $schema und $id (CLI kennt Draft 2020-12 nicht, Spike Versuch 1), Rest unverändert und kompakt', () => {
   const roh = readFileSync('schemas/ergebnis-architecture-advisor.schema.json', 'utf-8')
   const text = baueClaudeJsonSchema(roh)

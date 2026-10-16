@@ -47,7 +47,9 @@
  * sobald der Rohstrom einen angenommenen Hintergrund-Aufruf trägt (ermittleHintergrundAufrufe: tool_use_result.
  * backgroundTaskId oder run_in_background ohne Fehler). Der Workflow hält dann (KLAERUNG_ERFORDERLICH).
  *
- * Der tool_input→Tokens-Adapter (toolInputZuTokens/tokenisiereCommand) ist
+ * Der tool_input→Tokens-Adapter (toolInputZuTokens, seit F45 B2b-3b-1a in
+ * src/invocation-policy neben pruefeAufrufparameter, damit die Vorentscheidung des
+ * Rückfrage-Kanals dieselbe Regel nutzt) ist
  * neuer Code (Design-Entscheidung 5): pruefeAufrufparameter (F4) erwartet ein
  * Tokens-Array, tool_input ist ein werkzeugabhängiges Objekt (`{"command":…}`,
  * `{"query":…}`, state/tp-nachtrag.md TP-03d Messfall 1-3). `command` wird am
@@ -64,36 +66,13 @@ import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
 import { leseCodexEreignisse } from '../codex-gateway/index.ts'
 import { ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
-import { pruefeAufrufparameter } from '../invocation-policy/index.ts'
+import { pruefeAufrufparameter, toolInputZuTokens } from '../invocation-policy/index.ts'
 import type { KlassifikationsEingaben, KlassifikationsErgebnis, KlassifikationsOptionen } from './types.ts'
 
 type ErgebnisOhneWirkungsmarke =
   | { ergebnis: 'FEHLGESCHLAGEN'; grund: string; daten?: Record<string, unknown> }
   | { ergebnis: 'VERWEIGERT'; bypass_verdacht_anzahl: number; is_error?: unknown; non_execution_kind?: unknown }
   | { ergebnis: 'ERFOLGREICH'; is_error?: unknown; non_execution_kind?: unknown }
-
-/** Entfernt ein einzelnes führendes/abschließendes Anführungszeichen (', ") von einem Token — deckt einen in Shell-Quoting eingebetteten Verbotswert ab (plan-v1 Abschnitt 8.4), ohne einen vollständigen Shell-Parser nachzubauen. */
-function saeubereToken(token: string): string {
-  return token.replace(/^['"]+|['"]+$/g, '')
-}
-
-function tokenisiereCommand(command: string): string[] {
-  return command
-    .split(/\s+/)
-    .filter((token) => token.length > 0)
-    .map(saeubereToken)
-}
-
-/** Übersetzt ein tool_input-Objekt (Form variiert je Werkzeugtyp) in ein Tokens-Array für pruefeAufrufparameter (F4) — neuer Adapter, kein reiner Aufruf (Design-Entscheidung 5). Nur der Feldname 'command' wird tokenisiert, andere String-Felder (z. B. 'query') bleiben ein einzelnes Token. */
-function toolInputZuTokens(toolInput: unknown): string[] {
-  if (typeof toolInput !== 'object' || toolInput === null || Array.isArray(toolInput)) return []
-  const tokens: string[] = []
-  for (const [feld, wert] of Object.entries(toolInput as Record<string, unknown>)) {
-    if (typeof wert !== 'string') continue
-    tokens.push(...(feld === 'command' ? tokenisiereCommand(wert) : [saeubereToken(wert)]))
-  }
-  return tokens
-}
 
 /**
  * F36 WS-5b: zählt die permission_denials des Ergebnisobjekts mit Verbotswert (dieselbe Regel wie der

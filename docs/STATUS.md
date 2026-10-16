@@ -100,8 +100,8 @@ gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
 `docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
-(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gebaut, nicht gemergt; B2b-3e (Budget-Feld) folgt; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
-22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 15.10.2026).
+(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gebaut, nicht gemergt; es folgen B2b-3b-1b (Auswertung), B2b-3e (Budget-Feld), B2b-3b-2 (Einschalten), B2b-4; danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 16.10.2026).
 
 ## Erledigt
 
@@ -693,8 +693,13 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   B2b-3d „Umfangs-Abgleich“ gebaut (16.10.2026, `features/F45/plan-b2b3d-v2.md`): Feld „Vereinbarte Bereiche“ in
   „Auftrag & Start“, Präfix-Abgleich der berührten Dateien nach der Ausführung (festgehalten in der Änderungsübersicht),
   Hinweis in der Abnahme und Zeile im Auftrag von Review und qa, kein Halt; Gate f45-b2b3d-umfang, Render-Nachweis
-  `features/F45/nachweise/b2b3d/` (F-978 erledigt). Budget-Eingabefeld folgt als B2b-3e (F-1122 (1)).
-  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1123. Nach F46, vor F30
+  `features/F45/nachweise/b2b3d/` (F-978 erledigt). Budget-Eingabefeld folgt als B2b-3e (F-1122 (1)). Gemergt #348.
+  B2b-3b-1a „Rückfrage-Kanal, ausgeschaltet“ gebaut (16.10.2026, `features/F45/plan-b2b3b1a-v2.md`; B2b-3b-1 nach dem
+  Advisor-Pass geteilt in 3b-1a „Kanal“ und 3b-1b „Auswertung“, E-B2b-3-1 = A): Vorentscheidung mit Pfadgrenze
+  (`src/rueckfrage`), MCP-Skript `scripts/leitstand/rueckfrage-mcp.mjs`, Vermittlung mit Token je Lauf, Warteschlange,
+  Wartegrenze und Aufräumen beim Lauf-Ende, Routen `/api/rueckfrage/…` (nur fragen) und `/api/rueckfragen…` (Browser),
+  Argv-Baustein hinter der Handler-Option `rueckfrage` (Standard aus, Argv bitgleich); Gate f45-b2b3b1-rueckfrage.
+  Offene Entscheidungen E-F45-2, E-F45-4. Findings bis F-1126. Nach F46, vor F30
   (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
