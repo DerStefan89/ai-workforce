@@ -26,7 +26,8 @@
  * Durchreichung) — baueAufruf bekommt ein neu zusammengesetztes Objekt.
  *
  * Wird aufgerufen von:
- * - (noch niemand — WS-1/WS-2a ist der erste Aufrufer dieser Kette)
+ * - scripts/leitstand-server.mjs (fuehreAufgabeDurch, Standard von fuehreAufgabeDurchFn) und Gates
+ * - scripts/check-f45-b2b3b2a-absicherung.mjs (ermittleRueckfrageProtokoll, Fall (a2))
  *
  * Wichtig:
  * Kein eigener Aufruf von schreibeWirkungsmarke für die Haupt-laufId (D5)
@@ -114,7 +115,8 @@
  * F45 B2b-3b-1b: nur bei eingaben.rueckfrageKanal (Rückfrage-Kanal eingeschaltet, vom Server gesetzt) liest der Controller
  * nach dem Gateway die letzte Version des Protokolls `rueckfragen-<laufId>` und reicht ihre daten (oder null) als
  * eingaben.rueckfragen an klassifiziereLauf — das Urteil (Ablehnung allein durch Stefan ⇒ ERFOLGREICH) bleibt beim
- * Evaluator. Ohne Kanal kein Lesen, Eingaben unverändert.
+ * Evaluator. Ohne Kanal kein Lesen, Eingaben unverändert. Seit B2b-3b-2a (F-1128 (1)) gilt die Datei nur, wenn sie zum
+ * Speicherstand der Vermittlung passt (optionen.rueckfrageSpeicher, ermittleRueckfrageProtokoll) — sonst null.
  */
 
 import { createHash, randomUUID } from 'node:crypto'
@@ -132,6 +134,7 @@ import { erfassePluginDatenordner, vergleicheLaufKopie, vergleichePluginDatenord
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
+import { bestaetigeProtokoll } from '../rueckfrage/protokoll.ts'
 import type { AusfuehrungsEingaben, AusfuehrungsErgebnis, AusfuehrungsOptionen } from './types.ts'
 
 /** F45 F-3b-2: höchstens so viele Abweichungen des Plugin-Datenordners in der Laufakte (Rest als „… und n weitere“). */
@@ -271,6 +274,35 @@ export function leseRueckfrageProtokoll(laufId: string, basisVerzeichnis: string
     return ladeArtefaktVersion(`rueckfragen-${laufId}`, undefined, { basisVerzeichnis, schreiber: () => {} })?.daten ?? null
   } catch (fehler) {
     console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht lesbar — gilt als fehlend (VERWEIGERT):`, fehler)
+    return null
+  }
+}
+
+/**
+ * F45 B2b-3b-2a (F-1128 (1)): Protokoll für die Klassifikation — der Speicherstand der Vermittlung (gleicher Prozess) ist die
+ * Quelle der Wahrheit, die Datei `rueckfragen-<laufId>` das Audit. Erst den Speicher, direkt danach (synchron) die Datei lesen;
+ * nur eine zum Speicher passende Datei geht weiter (bestaetigeProtokoll), sonst null ⇒ wie fehlend ⇒ VERWEIGERT (fail closed:
+ * gefälschte Datei, Schreibfehler, Lauf nicht offen, Neustart). Eine Abweichung wird mit Grund gemeldet (Fälschung oder
+ * Schreibfehler); ein Lauf ohne Rückfrage (Speicher leer, keine Datei) nicht. Wirft nie (Delta D1).
+ * @param laufId - Lauf
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel (dieselbe, in die der Server schreibt)
+ * @param speicherLeser - optionen.rueckfrageSpeicher (Projektion der Vermittlung) oder undefined
+ * @returns daten der Datei oder null
+ */
+export function ermittleRueckfrageProtokoll(laufId: string, basisVerzeichnis: string | undefined, speicherLeser: ((laufId: string) => unknown) | undefined): unknown {
+  try {
+    let speicher: unknown = null
+    try {
+      speicher = speicherLeser?.(laufId) ?? null
+    } catch (fehler) {
+      console.error(`[execution-controller] Speicherstand des Rückfrage-Kanals von Lauf '${laufId}' nicht lesbar:`, fehler)
+    }
+    const bestaetigt = bestaetigeProtokoll(leseRueckfrageProtokoll(laufId, basisVerzeichnis), speicher)
+    if (bestaetigt.ok) return bestaetigt.daten
+    if (bestaetigt.leer !== true) console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht bestätigt (${bestaetigt.grund}) — gilt als fehlend (VERWEIGERT)`)
+    return null
+  } catch (fehler) {
+    console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht auswertbar — gilt als fehlend (VERWEIGERT):`, fehler)
     return null
   }
 }
@@ -565,7 +597,8 @@ export async function fuehreAufgabeDurch(
   // F45 B2b-3b-1b: Protokoll des Rückfrage-Kanals — nur bei eingeschaltetem Kanal; synchron direkt vor der Klassifikation
   // (die Vermittlung schreibt jede Entscheidung vor ihrer Auslieferung, Advisor-Befund 1). Fehlt es oder wirft das Lesen
   // (z. B. EBUSY/EPERM unter OneDrive): null — wie fehlend, also VERWEIGERT; die Terminalmarke wird trotzdem geschrieben.
-  const rueckfragen = eingaben.rueckfrageKanal !== undefined ? leseRueckfrageProtokoll(laufId, optionen.basisVerzeichnis) : undefined
+  // B2b-3b-2a (F-1128 (1)): die Datei gilt nur passend zum Speicherstand der Vermittlung (ermittleRueckfrageProtokoll).
+  const rueckfragen = eingaben.rueckfrageKanal !== undefined ? ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageSpeicher) : undefined
 
   optionen.zeitmessung?.('klassifikation_begonnen')
   const klassifikation = klassifiziereLauf(

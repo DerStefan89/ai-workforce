@@ -19,11 +19,11 @@
  */
 
 import { registriereKernArtefakt } from '../../src/lineage-registry/index.ts'
-import { neutralisiereText, PROTOKOLL_GRENZEN, validiereRueckfrageProtokoll } from '../../src/rueckfrage/protokoll.ts'
+import { neutralisiereText, PROTOKOLL_GRENZEN, TOOL_NAME_ZU_LANG, toolNameFuerProtokoll, validiereRueckfrageProtokoll } from '../../src/rueckfrage/protokoll.ts'
 import { maskiereGeheimnisse } from './geheimnisse-maskieren.mjs'
 
-/** Platzhalter für einen Werkzeugnamen über der Grenze. */
-export const TOOL_NAME_ZU_LANG = '<zu lang>'
+/** Platzhalter für einen Werkzeugnamen über der Grenze (einzige Quelle src/rueckfrage/protokoll.ts). */
+export { TOOL_NAME_ZU_LANG }
 
 /** Artefakt-ID des Protokolls eines Laufs. */
 export const rueckfragenArtefaktId = (laufId) => `rueckfragen-${laufId}`
@@ -46,10 +46,9 @@ function bereiteText(text, orte, grenze) {
  * @returns Protokolleintrag
  */
 function baueEintrag(eintrag, orte) {
-  const toolName = typeof eintrag.tool_name === 'string' && eintrag.tool_name.length <= PROTOKOLL_GRENZEN.toolName ? eintrag.tool_name : TOOL_NAME_ZU_LANG
   return {
     tool_use_id: eintrag.tool_use_id ?? null,
-    tool_name: toolName,
+    tool_name: toolNameFuerProtokoll(eintrag.tool_name),
     input_hash: eintrag.input_hash,
     art: eintrag.art,
     grund: bereiteText(eintrag.grund ?? '', orte, PROTOKOLL_GRENZEN.grund),

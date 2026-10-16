@@ -3,7 +3,7 @@
  *
  * Zweck: Tests des Arbeitsordners je Ablauf (F45 B1a-1, E-F45-3 = A): Pfad/Branch-Ableitung, Löschpfad-Prüfung
  * und Löschen (F-715: erlaubt, außerhalb, .git, .claude, kontrollzustand, Verzeichnis, Junction/Symlink nach
- * außen), Löschblock im Ergebnistext, Artefakt-Validator gegen die Schema-Beispiele, Vorbereitung gegen echte
+ * außen), Löschblock im Ergebnistext, Ausführen bzw. Aussetzen der Löschliste nach einer Stefan-Ablehnung (F45 B2b-3b-2a), Artefakt-Validator gegen die Schema-Beispiele, Vorbereitung gegen echte
  * Wegwerf-Repos (Grün, kein Repo, kein Commit, Wiederaufnahme, fremder Pfad, npm ci, E-183-Vorprüfung),
  * E-183 gegen die Settings DES WORKTREES (Grün gleicher Commit, Rot geänderter Hook im Branch), Aufräumen
  * (gemergt, nicht gemergt, offene Änderungen ohne/mit Verwerfen) und die Vorbedingung im Worktree.
@@ -26,6 +26,8 @@ import {
   bereiteArbeitsordnerVor,
   brauchtArbeitsordner,
   entferneArbeitsordner,
+  fuehreLoeschlisteAus,
+  LOESCHLISTE_AUSGESETZT,
   leiteArbeitsordnerAb,
   leseArbeitsordnerVorbedingung,
   leseLoeschliste,
@@ -155,6 +157,27 @@ describe('pruefeLoeschpfadText', () => {
       42,
     ]
     for (const pfad of rot) assert.equal(pruefeLoeschpfadText(pfad).ok, false, String(pfad))
+  })
+})
+
+describe('fuehreLoeschlisteAus (F45 B2b-3b-2a, F-1128 (2))', () => {
+  it('kein Block ⇒ undefined; ungültiger Block ⇒ Block-Ablehnung; gültig ⇒ löschen; nach Stefan-Ablehnung ⇒ nichts löschen, nur Hinweis', () => {
+    const { basis, projekt } = neueWurzel()
+    try {
+      const block = (pfade: unknown) => `Fertig.\n\n\`\`\`zu_loeschen\n${JSON.stringify({ zu_loeschen: pfade })}\n\`\`\`\n`
+      writeFileSync(join(projekt, 'alt.txt'), 'x')
+      assert.equal(fuehreLoeschlisteAus(projekt, null, false), undefined)
+      assert.equal(fuehreLoeschlisteAus(projekt, 'Fertig.', true), undefined)
+      assert.deepEqual(fuehreLoeschlisteAus(projekt, '```zu_loeschen\nkaputt\n```', true)?.abgelehnt[0].pfad, '(zu_loeschen-Block)')
+      const ausgesetzt = fuehreLoeschlisteAus(projekt, block(['alt.txt', 7]), true)
+      assert.deepEqual(ausgesetzt, { geloescht: [], abgelehnt: [{ pfad: 'alt.txt', grund: LOESCHLISTE_AUSGESETZT }, { pfad: '7', grund: LOESCHLISTE_AUSGESETZT }] })
+      assert.equal(existsSync(join(projekt, 'alt.txt')), true, 'nach einer Stefan-Ablehnung wird nichts gelöscht')
+      assert.match(LOESCHLISTE_AUSGESETZT, /Stefan/)
+      assert.deepEqual(fuehreLoeschlisteAus(projekt, block(['alt.txt']), false), { geloescht: ['alt.txt'], abgelehnt: [] })
+      assert.equal(existsSync(join(projekt, 'alt.txt')), false)
+    } finally {
+      raeumeVerzeichnis(basis)
+    }
   })
 })
 

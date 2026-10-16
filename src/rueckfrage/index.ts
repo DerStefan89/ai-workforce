@@ -6,6 +6,7 @@
  * - `vorentscheidung`: entscheidet über eine Rechte-Anfrage der CLI (`--permission-prompt-tool`), bevor jemand gefragt wird.
  *   Nur ein Bash-Befehl geht an Stefan; alles andere — auch ein Datei-Werkzeug außerhalb des Arbeitsordners — wird
  *   automatisch abgelehnt (Spike Frage 3: mit „allow“ gingen Write und Bash außerhalb durch, die Grenze muss hier liegen).
+ *   Seit B2b-3b-2a auch ein Befehl mit Steuer- oder Formatzeichen (TAEUSCHENDE_ZEICHEN, F-1126 (3)).
  * - `liegtImArbeitsordner`: Pfadgrenze, fail closed (relativ gegen den Arbeitsordner, `..`, `/` und `\`, Groß/klein unter
  *   Windows, Laufwerk, UNC, Gerätepfade, Datenströme, Symlink/Junction-Auflösung des längsten existierenden Präfixes).
  *   Bei der heutigen Regel (nur Bash an Stefan) ändert sie keine Entscheidung, nur den Grund — Vorsorge (Delta-Pass).
@@ -21,7 +22,7 @@
  * toLowerCase statt NTFS-Regeln; reservierte Gerätenamen (CON, NUL, COM1 …) und `??`-Pfade werden nicht eigens erkannt.
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (loeseAusfuehrungsEingabenAuf), scripts/leitstand/rueckfrage-vermittlung.mjs,
- * scripts/check-f45-b2b3b1-rueckfrage.mjs, src/rueckfrage/rueckfrage.test.ts.
+ * scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs (z1), src/rueckfrage/rueckfrage.test.ts.
  */
 
 import { realpathSync } from 'node:fs'
@@ -47,6 +48,16 @@ const SCHREIB_WERKZEUGE = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']
 const PFAD_FELDER = ['file_path', 'notebook_path', 'path'] as const
 /** Erlaubte Eingabefelder eines Bash-Aufrufs (A9: alles andere, z. B. dangerouslyDisableSandbox, ⇒ auto_deny). */
 const BASH_FELDER = new Set(['command', 'description', 'timeout', 'run_in_background'])
+
+/**
+ * F45 B2b-3b-2a (F-1126 (3)): Zeichen, die einen wörtlich angezeigten Befehl täuschen können — Steuerzeichen (Cc: `\r`, ESC
+ * und C1 der ANSI-Folgen), Formatzeichen (Cf: Bidi-Overrides U+202A–E/U+2066–9, Null-Breiten, U+FEFF, U+00AD, Tag-Zeichen),
+ * einzelne Surrogate (Cs) und Zeilen-/Absatztrenner (Zl/Zp). `\t` und `\n` sind vorher entfernt (mehrzeilige Befehle bleiben
+ * vorlegbar; CRLF-Zeilen dagegen nicht, `\r` bleibt stehen). Bewusst mit abgelehnt (sichere Richtung, Lauf wird VERWEIGERT):
+ * Emoji-Sequenzen mit Zero-Width-Joiner U+200D, LRM/RLM U+200E/U+200F, Flaggen mit Tag-Zeichen. Nicht erfasst:
+ * Variationsselektoren, NBSP und andere Leerzeichen, Homoglyphen.
+ */
+const TAEUSCHENDE_ZEICHEN = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u
 
 /** Einfaches Objekt (kein Array, nicht null). */
 const istObjekt = (wert: unknown): wert is Record<string, unknown> => typeof wert === 'object' && wert !== null && !Array.isArray(wert)
@@ -204,6 +215,7 @@ export function vorentscheidung(toolName: unknown, input: unknown, arbeitsordner
     const fremd = Object.keys(input).filter((feld) => !BASH_FELDER.has(feld))
     if (fremd.length > 0) return ablehnen(`unbekanntes Eingabefeld: ${fremd.join(', ')}`)
     if (typeof input.command !== 'string' || input.command.trim().length === 0) return ablehnen('Befehl fehlt')
+    if (TAEUSCHENDE_ZEICHEN.test(input.command.replace(/[\t\n]/g, ''))) return ablehnen('Befehl mit Steuer- oder Formatzeichen (\\r, ANSI, Bidi …) wird nicht vorgelegt')
     if (input.run_in_background === true) return ablehnen('Hintergrund-Ausführung wird nicht vorgelegt')
     if ('run_in_background' in input && input.run_in_background !== false) return ablehnen('Eingabe ungültig (run_in_background)')
     if ('description' in input && typeof input.description !== 'string') return ablehnen('Eingabe ungültig (description)')
