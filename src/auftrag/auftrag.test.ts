@@ -163,3 +163,22 @@ test('F45 B2a-2 (F-1071): Abgleich der Einrichtung — Status zählt nicht, Repl
   assert.deepStrictEqual(offeneEinrichtungVorDemBau({ einrichtung: [...alt, { id: 'E3', schritt: 'C', wann: 'vor_dem_bau', status: 'offen' }] }).map((e) => e.id), ['E3'])
   assert.deepStrictEqual(offeneEinrichtungVorDemBau(undefined), [])
 })
+
+test('F45 B2b-3c (F-981): budget_tokens additiv — ganze Zahl ≥ 1, neue Version behält es, löst keinen Arbeitspaket-Block aus', () => {
+  assert.deepStrictEqual(validiereAuftragDaten({ ...ALT, budget_tokens: 2_000_000 }), [])
+  for (const wert of [0, -1, 1.5, '100', null]) {
+    assert.notStrictEqual(validiereAuftragDaten({ ...ALT, budget_tokens: wert }).length, 0, `budget_tokens: ${JSON.stringify(wert)}`)
+  }
+  assert.strictEqual(traegtArbeitspaket({ ...(ALT as AuftragV0Daten), budget_tokens: 5 }), false)
+  const auftragId = `test-auftrag-${randomUUID()}`
+  try {
+    registriereAuftrag(auftragId, PROFIL_REFERENZ, 'T', 'A', { basisVerzeichnis: BASIS, schreiber: stillerSchreiber, budget_tokens: 7 })
+    const daten1 = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis: BASIS, schreiber: stillerSchreiber })?.daten as AuftragV0Daten
+    assert.strictEqual(daten1.budget_tokens, 7)
+    registriereAuftrag(auftragId, PROFIL_REFERENZ, daten1.titel, daten1.auftragstext, { ...optionenAusAuftrag(daten1), basisVerzeichnis: BASIS, schreiber: stillerSchreiber })
+    const daten2 = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis: BASIS, schreiber: stillerSchreiber })?.daten as AuftragV0Daten
+    assert.deepStrictEqual(daten2, daten1)
+  } finally {
+    raeumeAuf(auftragId)
+  }
+})

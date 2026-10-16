@@ -25,6 +25,9 @@
  * den Kacheln (Urteil, Befunde, Testfälle, Hinweis bei schweren Befunden trotz „bereit“), im Vorab-Block bei einem Halt die
  * Ursache, der Ausweg in einem Satz und „Prüfung aus Nutzersicht wiederholen“ bzw. die qa-Befunde, im Blick Urteil und Zahl;
  * eine Quelle qaHinweise. Den Server-Grund des Halts zeigt die Abnahme nicht (er trägt Kennungen, F-1116 (5)).
+ * F45 B2b-3c (F-981): Verbrauch gegen Budget (GET …/abnahme budget) — Zeile „Verbrauch“ im Blick (amber über dem Budget), in
+ * der Kachel Nachweise der Seite „entscheidbar“. Die Notiz „Budget erreicht“ mit „Budget erhöhen“ steht oben bei den Eingriffen
+ * (views/workflow-eingriffe.js, design-guardian 1), nicht hier.
  *
  * Reine Render-Funktionen: kein fetch, kein DOM, kein Import schreibender api.js-Funktionen; in Node
  * ohne DOM importierbar. Laden, Kennzeichen und alle POSTs bleiben in views/workflows.js.
@@ -50,7 +53,7 @@
  */
 
 import { renderHarnessImLauf, zaehlZeileText } from '../harness-abgleich-anzeige.js'
-import { formatiereDatum, t, tHtml } from '../i18n.js'
+import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
 import { renderEntscheidungsPanel } from './entscheidung-panel.js'
@@ -433,6 +436,26 @@ function renderQaNotiz(qa, workflowId = '', wiederholbar = false, mitBefunden = 
   return `<div class="note ${rot ? 'red' : 'amber'} abnahme-qa-hinweise" role="note"><p><strong>${tHtml(mitBefunden ? 'abnahme.qa.titel' : 'abnahme.qa.hinweiseTitel')}</strong></p>${urteil}<ul>${punkte}</ul>${weiter}${befunde}${reviewBefunde}</div>`
 }
 
+/** true, wenn die Budget-Projektion lesbar ist (alter Server oder „nicht bestimmbar“: keine Anzeige). @param budget - abnahme.budget @returns true/false */
+function budgetLesbar(budget) {
+  return budget !== null && typeof budget === 'object' && budget.status === 'ok' && Number.isFinite(budget.summe) && Number.isFinite(budget.tokens)
+}
+
+/** „X von Y Tokens“ mit Zahlen nach Sprache. @param budget - lesbare Budget-Projektion @returns Text (unescaped) */
+function budgetText(budget) {
+  return t('abnahme.budget.zeile', { summe: formatiereZahl(budget.summe), budget: formatiereZahl(budget.tokens) })
+}
+
+/**
+ * F45 B2b-3c: Kennzeichen der Budget-Projektion für das Neuzeichnen beim Poll (views/workflows.js).
+ * @param budget - abnahme.budget oder undefined
+ * @returns Kennzeichen
+ */
+export function budgetKennung(budget) {
+  if (!budgetLesbar(budget)) return '-'
+  return `${budget.summe}:${budget.tokens}:${budget.ueberschritten === true}:${budget.halt === true}:${budget.erhoehbar === true}:${budget.grundVeraltet === true}:${budget.ohneMessung ?? 0}`
+}
+
 /**
  * Karte „Prüfung aus Nutzersicht“ der Lage „entscheidbar“ (unter der Kachelreihe): Urteil, wer prüfte, Empfehlung, Hinweis,
  * Befunde und Testfälle. Ohne qa-Schritt (fast-lane, Bestand, alte Projektion) keine Karte.
@@ -620,8 +643,12 @@ function renderNachweiseKachel(abnahme, harnessAbgleich) {
       : escapeHtml(wertText(PROJEKTION_STATUS, 'abnahme.dateien.status', aenderung.status))
   const befunde = abnahme.urteil?.status === 'ok' && Array.isArray(abnahme.urteil.befunde) ? `<p>${tHtml('entscheiden.abnahme.befunde', { anzahl: abnahme.urteil.befunde.length })}</p>` : ''
   const harness = harnessAbgleich?.daten?.bestanden === false ? `<p>${escapeHtml(zaehlZeileText(harnessAbgleich.daten))} <span class="ablauf-status fehler">${tHtml('harnessAbgleich.bestanden.nein')}</span></p>` : ''
+  // F45 B2b-3c: Verbrauch des Ablaufs gegen das Budget (amber darüber — am Ende der Kette kein Halt).
+  const budget = budgetLesbar(abnahme.budget)
+    ? `<p>${tHtml('abnahme.budget.titel')}: ${abnahme.budget.ueberschritten === true ? `<span class="ablauf-status warten">${escapeHtml(budgetText(abnahme.budget))}</span>` : escapeHtml(budgetText(abnahme.budget))}</p>`
+    : ''
   return `<div class="entscheiden-kachel"><span class="eyebrow">${tHtml('entscheiden.abnahme.nachweise')}</span>
-    <p>${dateien}</p>${befunde}${harness}
+    <p>${dateien}</p>${befunde}${budget}${harness}
     <button type="button" class="text-link-knopf abnahme-nachweise-zeigen" aria-controls="abnahme-nachweise">${tHtml('entscheiden.abnahme.alleNachweise')}</button></div>`
 }
 
@@ -812,8 +839,14 @@ export function renderAbnahmeBlick(abnahme) {
     qaListe.length > 0
       ? `<dt>${tHtml('abnahme.qa.hinweiseTitel')}</dt><dd><span class="ablauf-status ${qa.halt === true ? 'fehler' : 'warten'}" data-qa-hinweise-anzahl="${qaListe.length}">${tHtml('abnahme.qa.blickHinweise', { anzahl: qaListe.length })}</span></dd>`
       : ''
+  // F45 B2b-3c (F-981): Verbrauch gegen Budget — amber über dem Budget; Läufe ohne Messung nur, wenn es welche gibt.
+  const budget = abnahme.budget
+  const ohneMessung = budgetLesbar(budget) && budget.ohneMessung > 0 ? ` · ${tHtml('abnahme.budget.ohneMessung', { anzahl: budget.ohneMessung })}` : ''
+  const budgetZeile = budgetLesbar(budget)
+    ? `<dt>${tHtml('abnahme.budget.titel')}</dt><dd>${budget.ueberschritten === true ? `<span class="ablauf-status warten" data-budget-ueberschritten="true">${escapeHtml(budgetText(budget))}</span>` : escapeHtml(budgetText(budget))}${ohneMessung}</dd>`
+    : ''
   const entscheidung = abnahme.entscheidung
   const abnahmeText = entscheidung?.status === 'ok' ? escapeHtml(ergebnisText(entscheidung.ergebnis)) : tHtml('abnahme.blick.offen')
-  return `<dl class="abnahme-blick">${urteilZeile}${hinweisZeile}${qaZeile}${qaHinweisZeile}<dt>${tHtml('abnahme.blick.abnahme')}</dt><dd>${abnahmeText}</dd></dl>
+  return `<dl class="abnahme-blick">${urteilZeile}${hinweisZeile}${qaZeile}${qaHinweisZeile}${budgetZeile}<dt>${tHtml('abnahme.blick.abnahme')}</dt><dd>${abnahmeText}</dd></dl>
     <div class="note abnahme-blick-hinweis"><p>${tHtml('abnahme.blick.hinweis')}</p></div>`
 }

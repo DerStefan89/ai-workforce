@@ -38,6 +38,8 @@ export interface Optionen {
   risiko?: AuftragRisiko
   feature_ref?: string
   einrichtung?: Einrichtungsschritt[]
+  /** F45 B2b-3c (F-981): Budget des Arbeitspakets in Tokens (überschreibt den Default der Kontrolltiefe, src/budget). */
+  budget_tokens?: number
   /** erstellt_am der ersten Version — eine neue Version desselben Auftrags behält ihn; ohne: jetzt */
   erstelltAm?: string
 }
@@ -80,6 +82,8 @@ export interface AuftragV0Daten {
   risiko?: AuftragRisiko
   feature_ref?: string
   einrichtung?: Einrichtungsschritt[]
+  /** F45 B2b-3c (F-981): Budget in Tokens; überschreibt den Default der Kontrolltiefe, „Budget erhöhen“ schreibt eine neue Version. */
+  budget_tokens?: number
 }
 
 export type Ereignisname = 'auftrag_registriert'

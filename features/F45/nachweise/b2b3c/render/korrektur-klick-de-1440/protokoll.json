@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Budget-Halt am Neubau nach der Korrekturrunde",
+    "Notiz amber": true,
+    "Reparatur-Notiz": false,
+    "Knopf Budget erhöhen (Hauptknopf)": true,
+    "Blick amber (überschritten)": true,
+    "Kachel Nachweise amber": false,
+    "Abnehmen": false,
+    "Freigabe-Spalte": false,
+    "Budget-Notiz": "Budget erreicht Der Ablauf hat 2.100.000 von 2.000.000 Tokens verbraucht. Er setzt erst fort, wenn du das Budget erhöhst",
+    "Verbrauch im Blick": "Verbrauch2.100.000 von 2.000.000 TokensDeine AbnahmeNoch offen",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick „Budget erhöhen“ → Freigabe des Neubaus",
+    "Notiz amber": false,
+    "Reparatur-Notiz": false,
+    "Knopf Budget erhöhen (Hauptknopf)": false,
+    "Blick amber (überschritten)": false,
+    "Kachel Nachweise amber": false,
+    "Abnehmen": false,
+    "Freigabe-Spalte": true,
+    "Budget-Notiz": "(fehlt)",
+    "Verbrauch im Blick": "Verbrauch2.100.000 von 4.100.000 TokensDeine AbnahmeNoch offen",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true
+  }
+]

@@ -1,0 +1,3 @@
+| Aktion | Notiz amber | Reparatur-Notiz | Knopf Budget erhöhen (Hauptknopf) | Blick amber (überschritten) | Kachel Nachweise amber | Abnehmen | Freigabe-Spalte | Budget-Notiz | Verbrauch im Blick | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Budget-Halt nach dem Bau, Notiz mit Knopf — ru-390-hell | true | false | true | true | false | false | false | Бюджет исчерпан Процесс израсходовал 2 412 345 из 2 000 000 токенов. Он продолжится только после увеличения бюджета — ес | Расход2 412 345 из 2 000 000 токеновТвоя приёмкаЕщё открыто |  | false | 390/390 | true |

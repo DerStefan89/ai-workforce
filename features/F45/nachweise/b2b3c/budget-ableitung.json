@@ -1,0 +1,151 @@
+{
+  "wurzeln": [
+    "ai-workforce/kontrollzustand",
+    "haushaltsbuch2/kontrollzustand",
+    "haushaltsbuch/kontrollzustand",
+    "aiw-f725-ws1a/kontrollzustand",
+    "aiw-main-ansicht/kontrollzustand"
+  ],
+  "faktor": 3,
+  "rundung": 100000,
+  "ergebnis": {
+    "fast-lane": {
+      "anzahl": 0,
+      "summen": [],
+      "median": null,
+      "vorschlag": null
+    },
+    "standard": {
+      "anzahl": 4,
+      "summen": [
+        628379,
+        4382221,
+        5405895,
+        6008388
+      ],
+      "median": 4894058,
+      "vorschlag": 14700000
+    },
+    "hoch": {
+      "anzahl": 5,
+      "summen": [
+        579784,
+        2122674,
+        4753252,
+        10453182,
+        28745473
+      ],
+      "median": 4753252,
+      "vorschlag": 14300000
+    }
+  },
+  "ausfuehrung": {
+    "anzahl": 19,
+    "tokens": [
+      96742,
+      186914,
+      216455,
+      311788,
+      464906,
+      626957,
+      1132707,
+      1216457,
+      1586418,
+      1759131,
+      1885219,
+      2207859,
+      2661683,
+      2705318,
+      3411227,
+      5806048,
+      6250584,
+      8659626,
+      14654371
+    ],
+    "median": 1759131,
+    "vorschlag": 5300000
+  },
+  "gemessen": [
+    {
+      "wurzel": "ai-workforce/kontrollzustand",
+      "ablauf": "workflow-b1a1-nachweis-325d2a8f",
+      "tiefe": "standard",
+      "quelle": "rollen",
+      "laeufe": 4,
+      "gemessen": 4,
+      "summe": 628379
+    },
+    {
+      "wurzel": "ai-workforce/kontrollzustand",
+      "ablauf": "workflow-router-8780892f-b6d6-4eb3-bf96-2ca0cab5dd0f",
+      "tiefe": "hoch",
+      "quelle": "router",
+      "laeufe": 5,
+      "gemessen": 3,
+      "summe": 2122674
+    },
+    {
+      "wurzel": "ai-workforce/kontrollzustand",
+      "ablauf": "workflow-router-9d5fedcb-dead-417f-a61f-c374a167ba73",
+      "tiefe": "standard",
+      "quelle": "router",
+      "laeufe": 4,
+      "gemessen": 4,
+      "summe": 5405895
+    },
+    {
+      "wurzel": "ai-workforce/kontrollzustand",
+      "ablauf": "workflow-router-a0d04470-d4eb-4204-aec4-ad3ee21e2b91",
+      "tiefe": "standard",
+      "quelle": "router",
+      "laeufe": 6,
+      "gemessen": 6,
+      "summe": 6008388
+    },
+    {
+      "wurzel": "haushaltsbuch2/kontrollzustand",
+      "ablauf": "workflow-router-4f11b37d-dad9-460a-8771-5e27960f36fa",
+      "tiefe": "hoch",
+      "quelle": "router",
+      "laeufe": 5,
+      "gemessen": 5,
+      "summe": 4753252
+    },
+    {
+      "wurzel": "haushaltsbuch2/kontrollzustand",
+      "ablauf": "workflow-router-59f6cbd8-f051-4171-9684-16fa48b5e46c",
+      "tiefe": "hoch",
+      "quelle": "router",
+      "laeufe": 6,
+      "gemessen": 6,
+      "summe": 10453182
+    },
+    {
+      "wurzel": "haushaltsbuch2/kontrollzustand",
+      "ablauf": "workflow-router-8b138eac-36a8-4266-998f-ff79fd41a159",
+      "tiefe": "hoch",
+      "quelle": "router",
+      "laeufe": 9,
+      "gemessen": 9,
+      "summe": 28745473
+    },
+    {
+      "wurzel": "haushaltsbuch2/kontrollzustand",
+      "ablauf": "workflow-router-8f1b8883-14b0-486e-982d-c4b05cf9eb59",
+      "tiefe": "standard",
+      "quelle": "router",
+      "laeufe": 4,
+      "gemessen": 4,
+      "summe": 4382221
+    },
+    {
+      "wurzel": "haushaltsbuch/kontrollzustand",
+      "ablauf": "workflow-router-1c82e21f-dd90-43bb-8338-78c9a750b002",
+      "tiefe": "hoch",
+      "quelle": "router",
+      "laeufe": 5,
+      "gemessen": 4,
+      "summe": 579784
+    }
+  ]
+}

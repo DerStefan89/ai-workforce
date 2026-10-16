@@ -99,6 +99,8 @@ export function registriereAuftrag(
     ...(optionen.risiko !== undefined ? { risiko: optionen.risiko } : {}),
     ...(optionen.feature_ref !== undefined ? { feature_ref: optionen.feature_ref } : {}),
     ...(optionen.einrichtung !== undefined ? { einrichtung: optionen.einrichtung } : {}),
+    // F45 B2b-3c (F-981): Budget des Arbeitspakets, dasselbe additive Muster.
+    ...(optionen.budget_tokens !== undefined ? { budget_tokens: optionen.budget_tokens } : {}),
   }
   const verstoesse = validiereAuftragDaten(daten)
   if (verstoesse.length > 0) throw new Error(`Auftrag '${auftragId}' verstößt gegen schemas/kontrollzustand-auftrag-payload.schema.json: ${verstoesse.join('; ')}`)
@@ -262,7 +264,7 @@ export function validiereAuftragPflichtfelder(herkunftArt: unknown, akzeptanzkri
 }
 
 /**
- * Reine Funktion: prüft die Arbeitspaket-Felder (bereiche, risiko, feature_ref, einrichtung), soweit vorhanden — für
+ * Reine Funktion: prüft die Arbeitspaket-Felder (bereiche, risiko, feature_ref, einrichtung, seit F45 B2b-3c budget_tokens), soweit vorhanden — für
  * validiereAuftragDaten und das POST-Formular (eine Regel).
  * @param obj - Objekt mit den optionalen Feldern
  * @returns Liste der Regelverletzungen; leer = gültig
@@ -273,6 +275,9 @@ export function validiereArbeitspaketFelder(obj: Record<string, unknown>): strin
   if ('risiko' in obj && (typeof obj.risiko !== 'string' || !RISIKEN.has(obj.risiko))) verstoesse.push("'risiko' muss 'niedrig', 'mittel' oder 'hoch' sein")
   if ('feature_ref' in obj && (typeof obj.feature_ref !== 'string' || !FEATURE_REF_MUSTER.test(obj.feature_ref))) verstoesse.push("'feature_ref' muss dem Muster ^F[0-9]+[A-Za-z]?$ entsprechen")
   if ('einrichtung' in obj) verstoesse.push(...validiereAuftragEinrichtung(obj.einrichtung))
+  if ('budget_tokens' in obj && !(typeof obj.budget_tokens === 'number' && Number.isInteger(obj.budget_tokens) && obj.budget_tokens >= 1)) {
+    verstoesse.push("'budget_tokens' muss eine ganze Zahl ≥ 1 sein")
+  }
   return verstoesse
 }
 
@@ -283,7 +288,7 @@ export function validiereArbeitspaketFelder(obj: Record<string, unknown>): strin
  * @returns Optionen ohne basisVerzeichnis/schreiber, mit erstelltAm
  */
 export function optionenAusAuftrag(daten: AuftragV0Daten): Optionen {
-  const { herkunft, akzeptanzkriterien, nicht_ziele, bereiche, risiko, feature_ref, einrichtung } = daten
+  const { herkunft, akzeptanzkriterien, nicht_ziele, bereiche, risiko, feature_ref, einrichtung, budget_tokens } = daten
   return {
     erstelltAm: daten.erstellt_am,
     ...(herkunft !== undefined ? { herkunft } : {}),
@@ -293,6 +298,7 @@ export function optionenAusAuftrag(daten: AuftragV0Daten): Optionen {
     ...(risiko !== undefined ? { risiko } : {}),
     ...(feature_ref !== undefined ? { feature_ref } : {}),
     ...(einrichtung !== undefined ? { einrichtung } : {}),
+    ...(budget_tokens !== undefined ? { budget_tokens } : {}),
   }
 }
 
@@ -312,7 +318,7 @@ export function validiereAuftragDaten(daten: unknown): string[] {
   }
   const obj = daten as Record<string, unknown>
   const verstoesse: string[] = []
-  const erlaubt = new Set(['auftrag_schema', 'auftrag_id', 'titel', 'auftragstext', 'erstellt_am', 'herkunft', 'akzeptanzkriterien', 'nicht_ziele', 'bereiche', 'risiko', 'feature_ref', 'einrichtung'])
+  const erlaubt = new Set(['auftrag_schema', 'auftrag_id', 'titel', 'auftragstext', 'erstellt_am', 'herkunft', 'akzeptanzkriterien', 'nicht_ziele', 'bereiche', 'risiko', 'feature_ref', 'einrichtung', 'budget_tokens'])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }

@@ -1,0 +1,4 @@
+| Aktion | Notiz amber | Reparatur-Notiz | Knopf Budget erhöhen (Hauptknopf) | Blick amber (überschritten) | Kachel Nachweise amber | Abnehmen | Freigabe-Spalte | Budget-Notiz | Verbrauch im Blick | Meldung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Budget-Halt am Neubau nach der Korrekturrunde | true | false | true | true | false | false | false | Budget erreicht Der Ablauf hat 2.100.000 von 2.000.000 Tokens verbraucht. Er setzt erst fort, wenn du das Budget erhöhst | Verbrauch2.100.000 von 2.000.000 TokensDeine AbnahmeNoch offen |  | false | 1440/1440 | true |
+| Klick „Budget erhöhen“ → Freigabe des Neubaus | false | false | false | false | false | false | true | (fehlt) | Verbrauch2.100.000 von 4.100.000 TokensDeine AbnahmeNoch offen |  | false | 1440/1440 | true |

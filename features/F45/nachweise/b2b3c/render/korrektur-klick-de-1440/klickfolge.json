@@ -1,0 +1,74 @@
+{
+  "url": "http://127.0.0.1:4403/#/workflows/wf-b2b3c-korrektur-1792089306235",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Budget-Notiz",
+        "selector": ".wf-budget-halt"
+      },
+      {
+        "name": "Verbrauch im Blick",
+        "selector": ".abnahme-blick"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Notiz amber",
+        "selector": ".wf-budget-halt.amber"
+      },
+      {
+        "name": "Reparatur-Notiz",
+        "selector": ".wf-reparatur-notiz"
+      },
+      {
+        "name": "Knopf Budget erhöhen (Hauptknopf)",
+        "selector": ".wf-budget-erhoehen.primary"
+      },
+      {
+        "name": "Blick amber (überschritten)",
+        "selector": "[data-budget-ueberschritten=\"true\"]"
+      },
+      {
+        "name": "Kachel Nachweise amber",
+        "selector": ".entscheiden-kacheln .ablauf-status.warten"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      },
+      {
+        "name": "Freigabe-Spalte",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"freigeben\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Budget-Halt am Neubau nach der Korrekturrunde",
+      "warteAufSelector": {
+        "selector": ".wf-budget-erhoehen",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-vorher.webp"
+    },
+    {
+      "label": "Klick „Budget erhöhen“ → Freigabe des Neubaus",
+      "klick": ".wf-budget-erhoehen",
+      "warteAufSelector": {
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"freigeben\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-nachher.webp"
+    }
+  ]
+}

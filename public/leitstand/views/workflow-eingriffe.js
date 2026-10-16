@@ -5,7 +5,8 @@
  * F6, F8, F9): die Notizen über der Timeline — „Jarvis braucht deine Entscheidung.“ (Rückfrage des
  * Architekten, F39), „Abgelehnte Befehle sichten“ (F-768) und „Der Ablauf steht.“ bzw. „Dieser Ablauf
  * ist nicht gültig.“ (Reparatur, F-240/F-247), seit F45 B2b-1b-2b „Der Advisor hat kein verwertbares Ergebnis
- * geliefert.“ (Advisor wiederholen) —, die Dialoginhalte für Rückfrage und Sichtung, der
+ * geliefert.“ (Advisor wiederholen), seit F45 B2b-3c „Budget erreicht“ (Budget erhöhen) —, die Dialoginhalte für
+ * Rückfrage und Sichtung, der
  * Reparatureditor samt Warnungen und die reinen Funktionen des Reparaturzugs (baueReparaturEntwurf,
  * ermittleAbgeschwaechteFreigabenAnzeige, ermittleReparaturWarnungen).
  *
@@ -21,8 +22,8 @@
  *
  * Wichtig:
  * - Angeboten wird nur, was der Server ausweist (D5): architekturEntscheidung (Regel 1c), sichtung
- *   (istSichtungsHaltAnzeige, F-760-Halt), prueferWiederholbar (Advisor, F45 B2b-1b-2b), status bzw. eine
- *   ungültige Fassung für die Reparatur.
+ *   (istSichtungsHaltAnzeige, F-760-Halt), prueferWiederholbar (Advisor, F45 B2b-1b-2b), budget (halt, erhoehbar,
+ *   grundVeraltet; F45 B2b-3c), status bzw. eine ungültige Fassung für die Reparatur.
  * - Servertexte (Fragen, Optionen, Vor- und Nachteile, Begründungen, grund, IDs) bleiben roh und
  *   werden escaped; alle übrigen Texte über t()/tHtml().
  * - IDs bleiben: wf-architektur-frage-<i>, wf-architektur-begruendung-<i>, wf-sichtung-begruendung,
@@ -31,7 +32,7 @@
  */
 
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
-import { t, tHtml } from '../i18n.js'
+import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { escapeHtml } from '../render.js'
 import { rollenName } from '../rollen-anzeige.js'
 
@@ -128,6 +129,29 @@ export function renderAdvisorWiederholenNotiz(workflowId) {
 }
 
 /**
+ * F45 B2b-3c (F-981; design-guardian 1, qa Q4/Q5): amber „Budget erreicht“ — Verbrauch, Ausweg in einem Satz, was die
+ * Erhöhung bewirkt (neues Budget), Hauptknopf „Budget erhöhen“ (data-aktion budget-erhoehen → POST …/budget, danach ggf.
+ * …/starten, views/workflows.js). Läuft gerade ein anderer Lauf (erhoehbar false), ist der Knopf gesperrt und ein Satz sagt
+ * warum. „Ablauf reparieren“ bleibt nachrangig, wenn der Status eine Reparatur erlaubt. Nur bei budget.halt.
+ * @param workflowId - Kennung des Workflows
+ * @param budget - GET /api/workflows/<id> budget (status 'ok', halt true)
+ * @param reparierbar - true, wenn der Status eine Reparaturfassung erlaubt (REPARIERBARE_WORKFLOW_STATUS)
+ * @returns HTML
+ */
+export function renderBudgetHaltNotiz(workflowId, budget, reparierbar) {
+  const werte = { summe: formatiereZahl(budget.summe), budget: formatiereZahl(budget.tokens), neu: formatiereZahl(budget.neu) }
+  const gesperrt = budget.erhoehbar !== true
+  const id = escapeHtml(workflowId)
+  return `<div class="note amber wf-budget-halt" role="note">
+    <strong>${tHtml('abnahme.budget.haltTitel')}</strong>
+    <p>${tHtml(reparierbar ? 'abnahme.budget.haltText' : 'abnahme.budget.haltTextStopp', werte)}</p>
+    <p class="subtle">${tHtml('abnahme.budget.erhoehenInfo', werte)}</p>
+    ${gesperrt ? `<p class="subtle">${tHtml('abnahme.budget.gesperrt')}</p>` : ''}
+    <div class="action-row"><button type="button" class="button primary wf-aktion wf-budget-erhoehen" data-aktion="budget-erhoehen" data-workflow-id="${id}"${gesperrt ? ' disabled' : ''}>${tHtml('abnahme.budget.erhoehen')}</button>${reparierbar ? `<button type="button" class="button wf-aktion" data-aktion="reparatur" data-workflow-id="${id}">${tHtml('eingriff.reparatur.knopf')}</button>` : ''}</div>
+  </div>`
+}
+
+/**
  * Die Notizen eines Workflows in der Reihenfolge Rückfrage, Sichtung, Advisor wiederholen, Reparatur. Angeboten wird
  * nur, was der Server ausweist; ohne fälligen Eingriff ''.
  * @param workflowId - Kennung des Workflows
@@ -136,16 +160,22 @@ export function renderAdvisorWiederholenNotiz(workflowId) {
  * @param architekturEntscheidung - { schrittId, fragen } oder null (Regel 1c, F39 WS-2b)
  * @param sichtung - istSichtungsHaltAnzeige oder null (F-768)
  * @param prueferWiederholbar - F45 B2b-1b-2b: GET /api/workflows/<id> prueferWiederholbar (Advisor)
+ * @param budget - F45 B2b-3c: GET /api/workflows/<id> budget oder null — beim Budget-Halt die Budget-Notiz statt der
+ *   Reparatur-Notiz; nach der Erhöhung (grundVeraltet) keine Reparatur-Notiz, das Verdikt (Freigabe/Start) führt weiter
  * @returns HTML
  */
-export function renderEingriffe(workflowId, status, ungueltig = false, architekturEntscheidung = null, sichtung = null, prueferWiederholbar = false) {
+export function renderEingriffe(workflowId, status, ungueltig = false, architekturEntscheidung = null, sichtung = null, prueferWiederholbar = false, budget = null) {
   const notizen = []
   // Ohne lesbare Frage gibt es nichts zu beantworten (der Halt bleibt über die Reparatur-Notiz bedienbar).
   if (architekturEntscheidung !== null && architekturEntscheidung.fragen?.length > 0) notizen.push(renderKlaerungNotiz(workflowId, architekturEntscheidung))
   // F-768: nur beim reinen F-760-Halt; mit Zusatzgründen bleibt allein die Reparaturfassung.
   if (sichtung !== null && !ungueltig) notizen.push(renderSichtungNotiz(workflowId, sichtung))
   if (prueferWiederholbar === true && !ungueltig) notizen.push(renderAdvisorWiederholenNotiz(workflowId))
-  if (REPARIERBARE_WORKFLOW_STATUS.includes(status) || ungueltig) notizen.push(renderReparaturNotiz(workflowId, ungueltig))
+  const reparierbar = REPARIERBARE_WORKFLOW_STATUS.includes(status)
+  if (budget?.status === 'ok' && budget.halt === true && !ungueltig) notizen.push(renderBudgetHaltNotiz(workflowId, budget, reparierbar))
+  else if (budget?.status === 'ok' && budget.grundVeraltet === true && !ungueltig) {
+    // Nach „Budget erhöhen“ steht der gespeicherte Status noch auf Klärung — der Weg ist jetzt Freigabe bzw. Start, nicht die Reparatur.
+  } else if (REPARIERBARE_WORKFLOW_STATUS.includes(status) || ungueltig) notizen.push(renderReparaturNotiz(workflowId, ungueltig))
   return notizen.join('')
 }
 

@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Budget-Halt nach dem Bau, Notiz mit Knopf — de-390",
+    "Notiz amber": true,
+    "Reparatur-Notiz": false,
+    "Knopf Budget erhöhen (Hauptknopf)": true,
+    "Blick amber (überschritten)": true,
+    "Kachel Nachweise amber": false,
+    "Abnehmen": false,
+    "Freigabe-Spalte": false,
+    "Budget-Notiz": "Budget erreicht Der Ablauf hat 2.412.345 von 2.000.000 Tokens verbraucht. Er setzt erst fort, wenn du das Budget erhöhst",
+    "Verbrauch im Blick": "Verbrauch2.412.345 von 2.000.000 TokensDeine AbnahmeNoch offen",
+    "Meldung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true
+  }
+]

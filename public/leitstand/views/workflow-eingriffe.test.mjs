@@ -145,3 +145,37 @@ test('F45 B2b-1b-2b (F-1104 (4)): „Advisor wiederholen“ nur, wenn der Server
   assert.doesNotMatch(renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH', false, null, null, false), /wf-advisor-wiederholen/)
   assert.doesNotMatch(renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH'), /wf-advisor-wiederholen/)
 })
+
+// ─── F45 B2b-3c (F-981): Budget-Halt bei den Eingriffen ─────────────────────────────────────────────────────────────────
+
+const BUDGET_HALT = { status: 'ok', summe: 2412345, tokens: 2000000, quelle: 'arbeitspaket', gemessen: 1, ohneMessung: 0, ueberschritten: true, halt: true, erhoehbar: true, neu: 4412345, grundVeraltet: false }
+
+test('F45 B2b-3c: Budget-Halt ⇒ Notiz „Budget erreicht“ oben mit Zahlen, neuem Budget und Hauptknopf; Reparatur nachrangig; keine Kennung', () => {
+  const html = renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH', false, null, null, false, BUDGET_HALT)
+  assert.match(html, /class="note amber wf-budget-halt"/)
+  assert.match(html, /Budget erreicht/)
+  assert.match(html, /2\.412\.345 von 2\.000\.000 Tokens/)
+  assert.match(html, /neues Budget: 4\.412\.345/)
+  assert.match(html, /lehne ihn unten ab oder stoppe ihn/)
+  assert.match(html, /class="button primary wf-aktion wf-budget-erhoehen" data-aktion="budget-erhoehen" data-workflow-id="w-1">/)
+  assert.match(html, /class="button wf-aktion" data-aktion="reparatur"/)
+  assert.doesNotMatch(html, /Der Ablauf steht\.|workflow_id|budget_tokens|erhoehbar/)
+  assert.equal(html.match(/button primary/g)?.length, 1, 'genau ein Hauptknopf')
+})
+
+test('F45 B2b-3c: anderer Lauf aktiv ⇒ Notiz bleibt, Knopf gesperrt mit Satz; ohne Reparaturstatus (WARTET_FREIGABE) nur „stoppe ihn“', () => {
+  const gesperrt = renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH', false, null, null, false, { ...BUDGET_HALT, erhoehbar: false })
+  assert.match(gesperrt, /data-aktion="budget-erhoehen" data-workflow-id="w-1" disabled>/)
+  assert.match(gesperrt, /Gerade läuft ein anderer Lauf/)
+  const freigabe = renderEingriffe('w-1', 'WARTET_FREIGABE', false, null, null, false, BUDGET_HALT)
+  assert.match(freigabe, /stoppe ihn\./)
+  assert.doesNotMatch(freigabe, /lehne ihn|data-aktion="reparatur"/)
+})
+
+test('F45 B2b-3c: nach der Erhöhung (grundVeraltet) keine Reparatur-Notiz; ohne Budget unverändert', () => {
+  assert.equal(renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH', false, null, null, false, { ...BUDGET_HALT, ueberschritten: false, halt: false, erhoehbar: false, grundVeraltet: true }), '')
+  const ohne = renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH')
+  assert.match(ohne, /Der Ablauf steht\./)
+  assert.doesNotMatch(ohne, /Budget/)
+  assert.match(renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH', false, null, null, false, { status: 'nicht_bestimmbar' }), /Der Ablauf steht\./)
+})

@@ -12451,7 +12451,10 @@ Beschreibung: Die vom Lauf berührten Dateien werden nicht gegen das Arbeitspake
 Fundstelle: Laufausführung (Server, Ausführungsschritt); Arbeitspaket gibt es als Datenobjekt noch nicht (F-976).
 Auswirkung: Mittel — eine Ausweitung des Umfangs fällt erst im Review auf.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2.
-Status: offen.
+Status: offen. Nachtrag F45 B2b-3c (15.10.2026): nach dem Advisor-Pass zu Plan B2b-3c als eigener Bau **B2b-3d** abgetrennt
+(`features/F45/plan-b2b3c-v2.md`): kein Produktionsweg setzt heute `bereiche` (F-1083 (1)) — der Abgleich ergäbe in jedem
+echten Ablauf „kein Abgleich“. B2b-3d baut ihn zusammen mit einer Quelle für `bereiche` (Präfix-Abgleich gegen die
+Änderungsübersicht, Ausnahme-Pfade wie `istAusnahmePfad`, Hinweis in Abnahme und Review-Auftrag, kein Halt).
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-979** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -12472,13 +12475,22 @@ Maßnahme: Fixpaket-Challenge.
 Status: offen.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
-**F-981** · `HARNESS_IMPROVEMENT` · P2 · teilweise
+**F-981** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: Verbrauch je Lauf ist nicht begrenzt.
 Beschreibung: Ein Lauf hat weder ein Token- oder Kostenbudget noch eine Rundengrenze. Das `budget` des Startauftrags ist das Kontextpaket-Budget (`standardBudget`: maxElemente, maxBytes) und begrenzt nur den mitgegebenen Kontext; `{}` steht nur in Gate-Attrappen (`check-f10`, `check-f11`). Das Gateway misst den Verbrauch (`usage`), setzt aber keine Grenze. Präzisiert gegenüber dem Auftragswortlaut „budget wird als {} gesendet“.
 Fundstelle: `src/claude-code-gateway/index.ts` (Verbrauch nur gemessen); `startvorlagen/ai-workforce.json` (standardBudget).
 Auswirkung: Mittel — mit dem automatischen Rückweg aus dem Fixpaket kann Verbrauch ohne Halt entstehen.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2: Budget je Arbeitspaket, höchstens ein Rückweg je Stufe, Halt bei zweimal denselben Befunden.
 Status: teilweise (F45 B2b-1a, 14.10.2026): Halt-Regeln erledigt — höchstens ein automatischer Rückweg je Stufe, Gesamtgrenze `grenzen.max_replans`, sofortiger Halt, wenn der Review nach der Korrektur dieselben Befunde meldet (Schwere + Datei), Gate `scripts/check-f45-b2b1-rueckweg.mjs` (a)/(a0)/(b). Offen: Budget je Arbeitspaket und Verbrauchsgrenze je Lauf → B2b-3.
+Nachtrag F45 B2b-3c (15.10.2026, `features/F45/plan-b2b3c-v2.md`): erledigt — Budget je Arbeitspaket in Tokens (input +
+output + cache_read + cache_write über alle Läufe eines Ablaufs inkl. Korrekturrunde; kein Geldbetrag), `src/budget`,
+Default je Kontrolltiefe aus realen Laufakten (standard 14,7 Mio., hoch 14,7 Mio., fast-lane 5,3 Mio. fest — F-1121),
+optionales `budget_tokens` im Arbeitspaket; Prüfung nach jedem Schritt (Nachlauf, Korrekturrunde, Prüfer/Prüfung
+wiederholen, Entscheidung; Rückfallsicherung in `starteWorkflowSchritt`, Vorprüfung in Start und Freigabe), Halt
+KLAERUNG_ERFORDERLICH „Budget erreicht: X von Y Tokens“, „Budget erhöhen“ (POST …/budget, neue Auftragsversion, zählt
+nicht als Rückweg) oder Ablehnen; Anzeige in Abnahme und Ablauf-Seite; Gate `scripts/check-f45-b2b3c-budget.mjs`.
+Durchsetzungsgrad DEKLARIERT (fail-open, nach dem Schritt — Überschreitung um bis zu einen Schritt möglich). Eine
+Verbrauchsgrenze mitten im Lauf bleibt bewusst aus (Auftrag: kein Abbruch mitten im Lauf).
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-982** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -13795,3 +13807,21 @@ Auswirkung: Mittel — ein roter Gate-Befund erscheint erst vor dem Merge und ko
 Maßnahme: Skript `check:gates` in `package.json` (dieselbe Gate-Kette wie `check`, ohne `npm run test`) als Rückfallebene in den Bauaufträgen: bricht `npm run check` wegen Speicher ab, läuft `check:gates` und die betroffenen Unit-Tests einzeln. Optional (P3): AK1 ignoriert Bezeichner, auf die ein Typ folgt (`name: string`), oder prüft nur Objektliterale. Das Skript wird nicht in F45 B2b-2b-2 angelegt (Auftrag).
 Status: erledigt (F45 B2b-3a, 15.10.2026): Skript `check:gates` in `package.json` — die Gate-Kette von `check` ohne `npm run test` und ohne den Nachlauf; `check` ruft jetzt `npm run check:gates && npm run test && node scripts/aufraeumen-nachlauf.mjs` (eine Quelle, keine Kopie). Rückfallebene zentral in `docs/harness/HARNESS-OVERVIEW.md` (Arbeitsweise, Punkt 5) beschrieben statt in jedem Bauauftrag (bewusste Abweichung von der Maßnahme). Der optionale P3-Teil (AK1-Heuristik in `scripts/check-f17-rollenvertrag.mjs`) ist nicht umgesetzt.
 Feature/Run: Entdeckt: F45 B2b-2b-2 (Cloud-Prüfung vor dem Merge, check-f17 AK1), 15.10.2026.
+
+**F-1121** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Budget-Defaults aus einer kleinen Stichprobe — fast-lane ohne eigene Messung, Läufe vor „qa live“.
+Beschreibung: Die Defaults je Kontrolltiefe (`src/budget`, `BUDGET_DEFAULTS`) stammen aus 4 standard- und 5 hoch-Abläufen mit gemessenem `verbrauch` (dieses Repo, haushaltsbuch, haushaltsbuch2; Worktree-Kopien als Duplikate einmal gezählt), Median × 3, aufgerundet auf 100 000: standard 14,7 Mio., hoch gemessen 14,3 Mio. und auf standard angehoben (hoch enthält alle Schritte von standard). fast-lane hat keinen gemessenen Ablauf — fester Wert 5,3 Mio. aus dem Median der 19 Ausführungsläufe × 3. Die gemessenen Abläufe stammen von vor „qa live“ (#345, ein Claude-Schritt mehr je Runde in standard/hoch). `cache_read` dominiert die Summen (Entscheidung: alle vier Felder zählen).
+Fundstelle: `src/budget/index.ts` (`BUDGET_DEFAULTS`), `features/F45/nachweise/b2b3c/budget-ableitung.mjs` / `.json`, `features/F45/plan-b2b3c.md` §1.
+Auswirkung: Gering — ein zu enger Default führt zu einem Budget-Halt mit „Budget erhöhen“ (ein Klick), ein zu weiter lässt mehr Verbrauch zu; nichts läuft still weiter.
+Maßnahme: Mit demselben Skript neu kalibrieren, sobald ≥ 3 fast-lane-Abläufe und ≥ 5 standard-/hoch-Abläufe mit qa-Schritt gemessen sind (spätestens nach R); Werte in `BUDGET_DEFAULTS` und Gate (b4) nachziehen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-3c (Ableitung der Defaults, Advisor-Pass B10/B11), 15.10.2026.
+
+**F-1122** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B2b-3c (Budget je Arbeitspaket) aus Prüfpass und Korrekturrunde.
+Beschreibung: (1) qa Q6: `budget_tokens` (Arbeitspaket-Budget) hat keinen Eingabeweg — gesetzt wird es nur durch „Budget erhöhen“ (Muster F-1083 (1) für `bereiche`); bis dahin gilt immer der Default der Kontrolltiefe. (2) qa-Hinweis / Advisor Frage 1 (E-B2b-3c-1): die Erhöhung gilt für das ganze Arbeitspaket — ein weiterer Ablauf desselben Auftrags erbt ein Budget, das aus dem Verbrauch des ersten errechnet wurde. (3) qa Q9: „Lauf-Detail“ ist als Ablauf-Seite `#/workflows/<id>` umgesetzt (Blick, Kachel, Notiz), nicht auf der Laufseite `#/runs/<id>`. (4) code-reviewer 6: GET /api/workflows/<id> und POST …/budget rechnen `ermittleNaechstenSchritt` bzw. die Projektion doppelt (gering). (5) code-reviewer 9: der Zwischenspeicher in `scripts/leitstand/budget-stand.mjs` hat keinen eigenen Unit-Test (nur über das Gate: (b1) GET vor dem Lauf, (b11)). (6) qa (fehlende Fälle): kein Gate-Fall für POST …/entscheidung im überschrittenen Budget (nur hoch), für POST …/budget bei aktivem Lauf (409) und für einen Schreibfehler (500); kein View-Test für die Bedienung „Budget erhöhen“ (Zweige Start/Freigabe/Startfehler). (7) qa Q2 (niedrig): im Budget-Halt am Neubau nennt der Vorab-Block „Korrekturrunde 1 · Start erfordert deine Freigabe“, obwohl zuerst das Budget erhöht werden muss. (8) Liste (Kopfdaten) bleibt nach „Budget erhöhen“ bis zum nächsten Workflow-Schreiben beim Budget-Halt (Stempel-Cache; sichere Richtung). (9) Durchsetzungsgrad DEKLARIERT: fail-open (Stand nicht bestimmbar ⇒ kein Halt), Überschreitung um bis zu einen Schritt.
+Fundstelle: `src/auftrag` (kein Formularfeld), `scripts/leitstand-server.mjs` (POST …/budget, GET /api/workflows/<id>, `baueWorkflowKopfdaten`), `scripts/leitstand/budget-stand.mjs`, `scripts/check-f45-b2b3c-budget.mjs`, `public/leitstand/views/workflow-abnahme.js` (Vorab-Block), `public/leitstand/views/workflows.js`.
+Auswirkung: Gering — kein Punkt lässt einen Ablauf still weiterlaufen; (1)(2) betreffen die Bedienbarkeit des Budgets.
+Maßnahme: (1) mit B2b-3d (Quelle für die Arbeitspaket-Felder, F-1083 (1)) ein Feld „Budget“ anbieten; (2) Entscheidung Stefan E-B2b-3c-1; (3) bei Bedarf Zeile im Lauf-Detail; (4)(5)(6) bei der nächsten Berührung; (7) mit dem UX-Durchgang (F-1107); (8)(9) bewusst so.
+Status: offen. Nachtrag Nachpass (15.10.2026; code-reviewer, qa, design-guardian je „freigegeben mit Hinweisen“; nach der einen Korrekturrunde nicht mehr im Bau, außer dem Rest des HOCH-Befunds): (8) erledigt — POST …/budget verwirft den Kopfdaten-Cache des Ablaufs, Liste und Detail melden nach der Erhöhung dasselbe Verdikt (Gate (k)). Neu: (10) qa-Nachpass 1: die Render-Klicktabelle liest die Meldung aus `#workflow-abnahme-meldung`, die Budget-Meldung steht in `#workflow-bedienung-meldung` — die Spalte „Meldung“ ist leer, belegt ist die Meldung nur im Bild; die Screenshots zeigen noch „Er setzt erst fort“ (Text danach geglättet: „Er läuft erst weiter“, design-guardian-Nachpass 1). (11) qa-Nachpass 2: nach „Budget erhöhen“ mit Start steht die Bestätigung weit unten (bestehendes Muster der Bedienmeldung, F-1107). (12) qa-Nachpass 3: der Server-Grund (`baueBudgetHaltGrund`) ist deutsch, sagt immer „ablehnen“ und erscheint roh in „Deine Entscheidungen“, Technik-Tabelle und 409-Antworten. (13) qa-Nachpass 4: ein nur errechneter Budget-Halt (gespeichert WARTET_FREIGABE/OFFEN) heißt in „Deine Entscheidungen“ „Rückfrage“ (`attention-daten.js`). (14) code-reviewer-Nachpass 2/3: JSDoc von `aktualisiereWorkflowBedienung` ohne `@param budget`, Reihenfolge-Satz in `renderEingriffe` ohne „Budget“, leerer `else if`-Zweig für `grundVeraltet`. (15) code-reviewer-Nachpass 4: Kopfdaten lesen den Budget-Stand auch bei echten Klärungs-Halts (nur bei Cache-Fehltreffer) und ohne Summen-Zwischenspeicher. (16) code-reviewer-Nachpass 5: der Fokus kann auf dem gesperrten Knopf landen (`.wf-aktion` statt `.wf-aktion:not([disabled])`). (17) code-reviewer-Nachpass 6: `grundVeraltet` setzt `fortsetzbar` nicht voraus (defensiv). (18) code-reviewer-Nachpass 7: Start mit 202 (Arbeitsordner wird vorbereitet) meldet „läuft weiter“. (19) design-guardian-Nachpass: nach dem Klick kein Fokus auf die Meldung (wie „Advisor wiederholen“). Maßnahme (10)–(19): bei der nächsten Berührung bzw. mit dem UX-Durchgang (F-1107); (12)(13) zusammen.
+Feature/Run: Entdeckt: F45 B2b-3c (code-reviewer, qa, design-guardian; Advisor-Pass), 15.10.2026.

@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweise, reviewHinweisKennung, zaehleAkUrteile } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, budgetKennung, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweise, reviewHinweisKennung, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -578,4 +578,38 @@ test('F-1119 (1): Halt am qa nach einer Beanstandung des Reviews ⇒ der Vorab-B
   assert.match(mit, /abnahme-qa-hinweise[\s\S]*<h4>Befunde des Reviews<\/h4>[\s\S]*<code>src\/review.ts:4<\/code>[\s\S]*Review-Befund &lt;x&gt;/)
   const ohne = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', urteil, qaErgebnis: { ...qa, reviewBeanstandet: false } })).unten
   assert.doesNotMatch(ohne, /Befunde des Reviews/, 'nur, wenn der Server die Beanstandung meldet (keine zweite Regel in der Oberfläche)')
+})
+
+
+// ─── F45 B2b-3c (F-981): Verbrauch gegen Budget in Blick und Kachel; die Halt-Notiz steht bei den Eingriffen ──────────────
+
+const BUDGET_HALT = { status: 'ok', summe: 15234567, tokens: 14700000, quelle: 'default', gemessen: 3, ohneMessung: 0, ueberschritten: true, halt: true, erhoehbar: true, neu: 29934567, grundVeraltet: false }
+
+test('F45 B2b-3c: Blick zeigt „Verbrauch“ — amber nur bei Überschreitung; Läufe ohne Messung nur, wenn es welche gibt (ru-Plural)', () => {
+  const unter = renderAbnahmeBlick(abnahme({ budget: { ...BUDGET_HALT, summe: 1200, ueberschritten: false, halt: false, erhoehbar: false } }))
+  assert.match(unter, /<dt>Verbrauch<\/dt><dd>1\.200 von 14\.700\.000 Tokens<\/dd>/)
+  assert.doesNotMatch(unter, /ohne Messung/)
+  const ueber = renderAbnahmeBlick(abnahme({ budget: { ...BUDGET_HALT, ohneMessung: 2 } }))
+  assert.match(ueber, /ablauf-status warten" data-budget-ueberschritten="true">15\.234\.567 von 14\.700\.000 Tokens/)
+  assert.match(ueber, /2 Läufe ohne Messung/)
+  assert.match(renderAbnahmeBlick(abnahme({ budget: { ...BUDGET_HALT, ohneMessung: 1 } })), /1 Lauf ohne Messung/)
+  assert.doesNotMatch(renderAbnahmeBlick(abnahme()), /Verbrauch/, 'ohne Projektion (alter Server) keine Zeile')
+  assert.doesNotMatch(renderAbnahmeBlick(abnahme({ budget: { status: 'nicht_bestimmbar' } })), /Verbrauch/)
+})
+
+test('F45 B2b-3c: die Abnahme trägt keine zweite Budget-Notiz; die Seite „entscheidbar“ nennt den Verbrauch in der Kachel Nachweise', () => {
+  const vorab = renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', budget: BUDGET_HALT }))
+  assert.equal(vorab.lage, 'vorab')
+  assert.doesNotMatch(vorab.unten, /wf-budget-erhoehen|Budget erreicht/)
+  const seite = renderAbnahme('wf-1', abnahme({ budget: { ...BUDGET_HALT, halt: false, erhoehbar: false } }))
+  assert.match(seite.oben, /Verbrauch: <span class="ablauf-status warten">15\.234\.567 von 14\.700\.000 Tokens/)
+  assert.doesNotMatch(seite.oben, /wf-budget-erhoehen/)
+})
+
+test('F45 B2b-3c: budgetKennung ändert sich mit Summe, Budget, Halt, Erhöhbarkeit und veraltetem Grund (Neuzeichnen beim Poll)', () => {
+  assert.notEqual(budgetKennung(BUDGET_HALT), budgetKennung({ ...BUDGET_HALT, erhoehbar: false }))
+  assert.notEqual(budgetKennung(BUDGET_HALT), budgetKennung({ ...BUDGET_HALT, tokens: 1 }))
+  assert.notEqual(budgetKennung(BUDGET_HALT), budgetKennung({ ...BUDGET_HALT, halt: false }))
+  assert.notEqual(budgetKennung(BUDGET_HALT), budgetKennung({ ...BUDGET_HALT, grundVeraltet: true }))
+  assert.equal(budgetKennung(undefined), '-')
 })
