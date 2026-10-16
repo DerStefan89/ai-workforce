@@ -53,6 +53,16 @@
           }
         }
       }
+    },
+    "umfang": {
+      "type": "object",
+      "description": "F45 B2b-3d (F-978), optional und additiv: Umfangs-Abgleich der berührten Dateien eines Ausführungsschritts gegen die 'bereiche' des Arbeitspakets (Auftrag v0; src/umfang, Präfix-Abgleich). Nur gesetzt, wenn der Auftrag Bereiche trägt und die Übersicht nicht degradiert ist. Dateien außerhalb sind ein Hinweis (Abnahme, Auftrag von Review und qa), kein Halt.",
+      "additionalProperties": false,
+      "required": ["bereiche", "ausserhalb"],
+      "properties": {
+        "bereiche": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "ausserhalb": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
     }
   }
 }

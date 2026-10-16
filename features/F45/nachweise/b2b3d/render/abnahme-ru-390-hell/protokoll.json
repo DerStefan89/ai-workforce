@@ -1,0 +1,15 @@
+[
+  {
+    "label": "Abnahme mit Umfangs-Hinweis — ru-390-hell",
+    "Hinweis amber": true,
+    "Abnehmen": true,
+    "Bereiche aufgeklappt": false,
+    "Fehlerzeile sichtbar": false,
+    "Umfangs-Hinweis": "Изменено вне согласованных областейТолько подсказка — процесс не остановлен. Проверь, были ли эти изменения задуманы.REA",
+    "Feld Bereiche (Bereich)": "Согласованные области · необязательно Области Одна папка или один файл на строку, относительно проекта. Пусто — без свер",
+    "Fehlerzeile": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "aenderungsuebersicht_schema": "v0",
+  "lauf_id": "beispiel-umfang-2026-10-16",
+  "erzeugt_am": "2026-10-16T09:00:00.000Z",
+  "basis_ref": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+  "dateien": [
+    { "pfad": "src/export/csv.ts", "status": "GEAENDERT", "plus": 12, "minus": 3 },
+    { "pfad": "docs/export.md", "status": "NEU", "plus": null, "minus": null }
+  ],
+  "stat_text": " src/export/csv.ts | 15 ++++++---\n1 file changed, 12 insertions(+), 3 deletions(-)",
+  "patch": "diff --git a/src/export/csv.ts b/src/export/csv.ts\n...",
+  "gekuerzt": false,
+  "budget_bytes": 200000,
+  "umfang": { "bereiche": ["src/export/"], "ausserhalb": ["docs/export.md"] }
+}

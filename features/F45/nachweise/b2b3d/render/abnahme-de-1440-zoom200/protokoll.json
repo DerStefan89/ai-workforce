@@ -1,0 +1,15 @@
+[
+  {
+    "label": "Abnahme mit Umfangs-Hinweis — de-1440-zoom200",
+    "Hinweis amber": true,
+    "Abnehmen": true,
+    "Bereiche aufgeklappt": false,
+    "Fehlerzeile sichtbar": false,
+    "Umfangs-Hinweis": "Außerhalb der vereinbarten Bereiche geändertNur ein Hinweis — der Ablauf wurde nicht angehalten. Prüfe, ob diese Änderun",
+    "Feld Bereiche (Bereich)": "Vereinbarte Bereiche · optional Bereiche Ein Ordner oder eine Datei je Zeile, relativ zum Projekt. Leer = kein Abgleich.",
+    "Fehlerzeile": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "720/720",
+    "Seite geladen": true
+  }
+]

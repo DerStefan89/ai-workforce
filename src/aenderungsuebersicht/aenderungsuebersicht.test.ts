@@ -22,6 +22,7 @@ import {
   istAenderungsuebersichtDegradiert,
   leseScriptsStand,
   validiereAenderungsuebersichtDaten,
+  validiereUmfang,
   wirksamePruefkettenMuster,
 } from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
@@ -296,4 +297,16 @@ test('istAenderungsuebersichtDegradiert: ein Artefakt ohne Git-Repo ist degradie
   const ohneRepo = erzeugeAenderungsuebersichtDaten('lauf-degradiert', join(tmpdir(), `kein-repo-${randomUUID()}`), 1000)
   assert.equal(istAenderungsuebersichtDegradiert(ohneRepo), true)
   assert.equal(istAenderungsuebersichtDegradiert({ ...ohneRepo, stat_text: '' }), false)
+})
+
+test('F45 B2b-3d: optionales Feld umfang — gültig mit Bereichen, ungültige Formen einzeln gemeldet, ohne Feld unverändert', () => {
+  const basis = { aenderungsuebersicht_schema: 'v0', lauf_id: 'l', erzeugt_am: '2026-10-16T00:00:00.000Z', basis_ref: null, dateien: [], stat_text: '', patch: '', gekuerzt: false, budget_bytes: 1 }
+  assert.deepStrictEqual(validiereAenderungsuebersichtDaten(basis), [])
+  assert.deepStrictEqual(validiereAenderungsuebersichtDaten({ ...basis, umfang: { bereiche: ['src/'], ausserhalb: ['docs/x.md'] } }), [])
+  assert.deepStrictEqual(validiereUmfang({ bereiche: ['src/'], ausserhalb: [] }), [])
+  assert.equal(validiereUmfang(null).length, 1)
+  assert.equal(validiereUmfang({ bereiche: [], ausserhalb: [] }).length, 1)
+  assert.equal(validiereUmfang({ bereiche: ['src/'], ausserhalb: [''] }).length, 1)
+  assert.equal(validiereUmfang({ bereiche: ['src/'], ausserhalb: [], extra: 1 }).length, 1)
+  assert.equal(validiereAenderungsuebersichtDaten({ ...basis, umfang: { bereiche: ['src/'] } }).length, 1)
 })

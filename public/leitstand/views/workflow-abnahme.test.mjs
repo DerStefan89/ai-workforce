@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeEinleitung, abnahmeLage, budgetKennung, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweise, reviewHinweisKennung, zaehleAkUrteile } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, budgetKennung, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweise, renderUmfangHinweis, reviewHinweisKennung, umfangKennung, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -612,4 +612,38 @@ test('F45 B2b-3c: budgetKennung ändert sich mit Summe, Budget, Halt, Erhöhbark
   assert.notEqual(budgetKennung(BUDGET_HALT), budgetKennung({ ...BUDGET_HALT, halt: false }))
   assert.notEqual(budgetKennung(BUDGET_HALT), budgetKennung({ ...BUDGET_HALT, grundVeraltet: true }))
   assert.equal(budgetKennung(undefined), '-')
+})
+
+test('F45 B2b-3d: Umfangs-Hinweis — Dateien außerhalb als Liste ohne Kennungen; ohne Treffer, ohne Abgleich oder alter Server nichts', () => {
+  const html = renderUmfangHinweis({ status: 'ok', ausserhalb: ['docs/<x>.md', 'lib/y.ts'] })
+  assert.match(html, /Außerhalb der vereinbarten Bereiche geändert/)
+  assert.match(html, /Nur ein Hinweis — der Ablauf wurde nicht angehalten/)
+  assert.match(html, /<li><code>docs\/&lt;x&gt;\.md<\/code><\/li><li><code>lib\/y\.ts<\/code><\/li>/)
+  assert.doesNotMatch(html.replace(/<[^>]*>/g, ''), /umfang|ausserhalb|bereiche/, 'keine Feldnamen im sichtbaren Text')
+  assert.equal(renderUmfangHinweis({ status: 'ok', ausserhalb: [] }), '')
+  // Korrekturrunde (qa 1): die vereinbarten Bereiche stehen darunter, escaped.
+  assert.match(renderUmfangHinweis({ status: 'ok', ausserhalb: ['docs/x.md'], bereiche: ['scr/', 'a<b'] }), /Vereinbart: <code>scr\/<\/code>, <code>a&lt;b<\/code>/)
+  assert.doesNotMatch(html, /Vereinbart/, 'ohne Bereiche in der Projektion (alter Server) keine Zeile')
+  assert.equal(renderUmfangHinweis({ status: 'kein_abgleich', ausserhalb: [] }), '')
+  assert.equal(renderUmfangHinweis({ status: 'noch_nicht_gelaufen', ausserhalb: [] }), '')
+  assert.equal(renderUmfangHinweis(undefined), '')
+  assert.match(renderUmfangHinweis({ status: 'nicht_bestimmbar', ausserhalb: [] }), /class="subtle[^"]*">Ob Dateien außerhalb der vereinbarten Bereiche liegen, ist nicht bestimmbar\./)
+})
+
+test('F45 B2b-3d: Umfangs-Hinweis kappt bei 50 Dateien mit „… und n weitere Dateien“', () => {
+  const viele = Array.from({ length: 53 }, (_, i) => `d/${i}.md`)
+  const html = renderUmfangHinweis({ status: 'ok', ausserhalb: viele })
+  assert.equal((html.match(/<li>/g) ?? []).length, 50)
+  assert.match(html, /… und 3 weitere Dateien/)
+  assert.match(renderUmfangHinweis({ status: 'ok', ausserhalb: viele.slice(0, 51) }), /… und 1 weitere Datei</)
+})
+
+test('F45 B2b-3d: Umfangs-Hinweis auf der Seite „entscheidbar“ und im Block „vorab“ nach dem Bau; umfangKennung für das Neuzeichnen', () => {
+  const umfang = { status: 'ok', ausserhalb: ['docs/x.md'] }
+  assert.match(renderAbnahme('wf-1', abnahme({ umfang })).oben, /abnahme-umfang/)
+  assert.match(renderAbnahme('wf-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH', umfang })).unten, /abnahme-umfang/)
+  assert.doesNotMatch(renderAbnahme('wf-1', abnahme()).oben, /abnahme-umfang/)
+  assert.notEqual(umfangKennung(umfang), umfangKennung({ status: 'ok', ausserhalb: [] }))
+  assert.notEqual(umfangKennung(umfang), umfangKennung({ status: 'nicht_bestimmbar', ausserhalb: [] }))
+  assert.equal(umfangKennung(undefined), '-')
 })
