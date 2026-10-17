@@ -8379,12 +8379,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       else sendeJson(res, 200, { entscheidung: ergebnis.entscheidung })
       return
     }
-    // F45 B2b-3b-1a: Browser-Routen — GET offene Rückfragen (Befehl wörtlich, E-B2b-3-1 = A), POST Antwort Stefans. Abweichung von
+    // F45 B2b-3b-1a: Browser-Routen — GET offene Rückfragen (Befehl wörtlich, E-B2b-3-1 = A; 2a-2: + entschieden), POST Antwort Stefans. Abweichung von
     // F-1061 (rechtegebende Route während eines Laufs), eng begrenzt: nur diese Route, nur offene Rückfragen offener Läufe, jede ID
     // genau einmal (ARCHITECTURE §3). Mit Token-Kopf abgelehnt — „mit dem Token kann man nur fragen“.
     if (pfad === '/api/rueckfragen' || pfad.startsWith('/api/rueckfragen/')) {
       if (pfad === '/api/rueckfragen' && req.method === 'GET') {
-        sendeJson(res, 200, { rueckfragen: rueckfrageVermittlung.offene() })
+        sendeJson(res, 200, { rueckfragen: rueckfrageVermittlung.offene(), entschieden: rueckfrageVermittlung.entschiedene() })
         return
       }
       const antwortWeg = /^\/api\/rueckfragen\/([0-9a-f-]{36})\/antwort$/.exec(pfad)
@@ -9203,9 +9203,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // F45 B0 (F-986 a): lesender Start-Hinweis (Leitstand aus falschem Ordner, E-188) — der Server bleibt
       // Durchsetzungsort, Senden bleibt möglich. Option startHinweis nur für Tests.
       const startHinweisWert = startHinweis !== undefined ? startHinweis : prozessStartHinweis
-      // F45 B1b-2 (F-1044): CLI-Version weicht von der Startvorlage ab — aus dem Speicher, keine Datei-Lesung im Poll.
+      // F45 B1b-2 (F-1044): CLI-Version weicht von der Startvorlage ab — aus dem Speicher, keine Datei-Lesung im Poll. 2a-2 (F-1132 (3)): rueckfrageStatus = Kanalstand.
       const cliHinweisWert = cliHinweis !== undefined ? cliHinweis : prozessCliHinweis
-      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert, cliHinweis: cliHinweisWert })
+      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert, cliHinweis: cliHinweisWert, rueckfrageStatus: rueckfrageAn ? { an: true, warteGrenzeMs: rueckfrageVermittlung.warteGrenzeMs } : { an: false } })
       // F45 P (Teil 1 Punkt 2): Gesamtdauer inkl. Serialisierung — nur bei LEITSTAND_ZEITMESSUNG=1 wirksam.
       erfasseQuellenDauer('gesamt', performance.now() - zustandStart)
       return

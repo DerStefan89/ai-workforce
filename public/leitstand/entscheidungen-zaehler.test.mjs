@@ -33,3 +33,12 @@ test('verborgen bei 0, vor dem ersten Tick und bei defekter Quelle', () => {
   assert.equal(zaehlerAnzeige(null), null)
   assert.equal(zaehlerAnzeige({ workflows: null, laeufe: [], startfehler: [] }), null)
 })
+
+test('F45 B2b-3b-2b-2a-2 (Advisor V4, qa 2): offene Kanal-Rückfragen zählen mit — auch ohne Poll-Stand; ohne beides verborgen', () => {
+  const leer = { workflows: [], laeufe: [], startfehler: [] }
+  assert.equal(zaehlerAnzeige(leer), null)
+  assert.equal(zaehlerAnzeige(leer, 2).anzahl, 2)
+  assert.equal(zaehlerAnzeige(leer, -1), null)
+  assert.equal(zaehlerAnzeige(null, 3).anzahl, 3)
+  assert.equal(zaehlerAnzeige(null, 0), null)
+})

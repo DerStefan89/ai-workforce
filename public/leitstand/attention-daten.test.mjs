@@ -223,3 +223,38 @@ test('F46 D3 (F-996): haltKlaerung eines laufenden Workflows ist keine Rückfrag
   assert.equal(eintraege.length, 1)
   assert.equal(zaehleOffeneEntscheidungen({ workflows: [laufend], laeufe: [], startfehler: [] }), 0, 'Zähler in der Seitenleiste: ein laufender Ablauf wartet nicht auf Stefan')
 })
+
+test('F45 B2b-3b-2b-2a-2 (Advisor V1): ohne optionen.kanal bitgleich — keine Gruppe kanal, Zähler, Filter und Leerzustand wie bisher', () => {
+  const alt = baueEntscheidungen(ZUSTAND, WORKITEMS)
+  const mitLeerenOptionen = baueEntscheidungen(ZUSTAND, WORKITEMS, null, {})
+  assert.deepEqual(mitLeerenOptionen, alt)
+  assert.equal(Object.hasOwn(alt.gruppen, 'kanal'), false)
+  assert.equal(Object.hasOwn(alt.zaehler, 'kanal'), false)
+  assert.equal(zaehleJeFilter(alt).get('rueckfrage'), 1)
+  const leer = baueEntscheidungen({ workflows: [], laeufe: [], startfehler: [] }, [])
+  assert.equal(leer.alleLeer, true)
+})
+
+test('F45 B2b-3b-2b-2a-2 (Advisor V1): Kanal-Gruppe zuerst; wartende Rückfrage verhindert „alles geklärt“; lädt/defekt wie andere Quellen', () => {
+  const kanalEintrag = { art: 'kanal', id: 'r1', titel: 'Bash', satz: null, hash: null, eintragHash: null }
+  const leererZustand = { workflows: [], laeufe: [], startfehler: [] }
+  const mit = baueEntscheidungen(leererZustand, [], null, { kanal: [kanalEintrag] })
+  assert.deepEqual(mit.eintraege.map((e) => e.art), ['kanal'])
+  assert.equal(mit.alleLeer, false)
+  assert.equal(mit.zaehler.kanal, 1)
+  assert.equal(zaehleJeFilter(mit).get('rueckfrage'), 1, 'Filter „Rückfragen“ zeigt auch die Kanal-Art')
+  assert.equal(zaehleJeFilter(mit).get('alle'), 1)
+  assert.equal(passtZuFilter(kanalEintrag, 'rueckfrage'), true)
+  assert.equal(passtZuFilter(kanalEintrag, 'freigabe'), false)
+  const reihenfolge = baueEntscheidungen(ZUSTAND, WORKITEMS, null, { kanal: [kanalEintrag] })
+  assert.equal(reihenfolge.eintraege[0].art, 'kanal')
+  const anAberLeer = baueEntscheidungen(leererZustand, [], null, { kanal: [] })
+  assert.equal(anAberLeer.alleLeer, true, 'Kanal an ohne Rückfrage: echt leer')
+  const laedt = baueEntscheidungen(leererZustand, [], null, { kanal: undefined })
+  assert.equal(laedt.alleLeer, false)
+  assert.equal(zaehleJeFilter(laedt).get('rueckfrage'), undefined)
+  const defekt = baueEntscheidungen(leererZustand, [], null, { kanal: null })
+  assert.equal(defekt.defekt, true)
+  assert.equal(zaehleJeFilter(defekt).get('rueckfrage'), null)
+  assert.equal(zaehleJeFilter(defekt).get('freigabe'), 0, 'andere Filter bleiben gezählt')
+})

@@ -122,6 +122,9 @@
       <!-- F45 B0 (F-986 a): Leitstand aus falschem Ordner gestartet — Läufe werden verweigert (E-188). Text aus
            GET /api/zustand (startHinweis) über start-hinweis.js; keine Live-Region. -->
       <div id="start-hinweis" class="note red" hidden></div>
+      <!-- F45 B2b-3b-2b-2a-2 (F-1132 (3), Advisor V4): Rückfrage-Kanal an — mit wartenden Rückfragen Anzahl, nächste Frist und Link nach
+           #/attention; Text aus rueckfrage-kanal.js (nur textContent); keine Live-Region. -->
+      <div id="rueckfrage-kanal-hinweis" class="note amber rueckfrage-band" hidden></div>
 
       <div id="shell-koerper">
       <main id="shell-hauptbereich">
@@ -856,6 +859,14 @@
 
               <div id="attention-liste" class="entscheidungs-liste">
                 <p id="attention-filter-leer" class="subtle" data-i18n="attention.filter.leer" hidden>Keine offenen Einträge dieser Art.</p>
+                <!-- F45 B2b-3b-2b-2a-2: Rückfragen des Rückfrage-Kanals — Karten schreibt allein rueckfrage-kanal.js (stabil je id, Advisor V2/V3),
+                     Sichtbarkeit und #attention-kanal-status setzt views/attention.js. -->
+                <section id="attention-abschnitt-kanal" class="attention-abschnitt" aria-labelledby="attention-gruppe-kanal" hidden>
+                  <h2 id="attention-gruppe-kanal" class="sr-only" data-i18n="attention.quelle.kanal">Rückfragen des Laufs</h2>
+                  <p id="attention-kanal-status" class="subtle" hidden></p>
+                  <div id="attention-kanal"></div>
+                </section>
+
                 <section id="attention-abschnitt-workflows" class="attention-abschnitt" aria-labelledby="attention-gruppe-workflows" hidden>
                   <h2 id="attention-gruppe-workflows" class="sr-only" data-i18n="attention.quelle.workflows">Wartende Abläufe</h2>
                   <div id="attention-workflows"></div>
@@ -882,9 +893,13 @@
                 </section>
               </div>
 
-              <section class="entscheidungen-zuletzt" aria-labelledby="attention-zuletzt-titel" aria-disabled="true">
-                <h2 id="attention-zuletzt-titel"><span data-i18n="attention.zuletzt.titel">Zuletzt entschieden</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
-                <p class="subtle" data-i18n="attention.zuletzt.text">Deine letzten Entscheidungen mit Begründung erscheinen hier, sobald es eine Leseroute über die Entscheidungsartefakte gibt.</p>
+              <!-- F45 B2b-3b-2b-2a-2 (design-guardian 2): nur der Platzhalter der Entscheidungsartefakte ist „kommt“ und deaktiviert; der
+                   Kanal-Block darunter ist echt. -->
+              <section class="entscheidungen-zuletzt" aria-labelledby="attention-zuletzt-titel">
+                <h2 id="attention-zuletzt-titel"><span data-i18n="attention.zuletzt.titel">Zuletzt entschieden</span></h2>
+                <p class="subtle" aria-disabled="true"><span data-i18n="attention.zuletzt.text">Deine letzten Entscheidungen mit Begründung erscheinen hier, sobald es eine Leseroute über die Entscheidungsartefakte gibt.</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></p>
+                <!-- F45 B2b-3b-2b-2a-2 (Advisor M3/M5): zuletzt entschiedene Rückfragen des Kanals (rueckfrage-kanal.js), nur mit Einträgen. -->
+                <div id="attention-kanal-zuletzt" class="rueckfrage-zuletzt-block" hidden></div>
               </section>
             </div>
 

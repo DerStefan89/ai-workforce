@@ -1,0 +1,79 @@
+{
+  "url": "http://127.0.0.1:4407/#/dashboard",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 4200
+  },
+  "localStorageSetzen": {
+    "leitstand-sprache": "tr"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Band",
+        "selector": "#rueckfrage-kanal-hinweis"
+      },
+      {
+        "name": "Restzeit erste Karte",
+        "selector": "#attention-kanal [data-kanal-restzeit]"
+      },
+      {
+        "name": "Umfang erster Befehl",
+        "selector": "#attention-kanal .rueckfrage-umfang"
+      },
+      {
+        "name": "Zuletzt entschieden (erster Eintrag)",
+        "selector": "#attention-kanal-zuletzt .rueckfrage-zuletzt-kopf"
+      },
+      {
+        "name": "Zahl am Navigationspunkt",
+        "selector": "#nav-entscheidungen-zaehler"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Kanal-Karte",
+        "selector": "#attention-kanal [data-kanal-id]"
+      },
+      {
+        "name": "Maske sichtbar",
+        "selector": "#attention-kanal .rueckfrage-maske"
+      },
+      {
+        "name": "leere Option gesperrt",
+        "selector": "#attention-kanal .rueckfrage-option[disabled]"
+      },
+      {
+        "name": "„nicht aus dem Browser“",
+        "selector": "#attention-kanal-zuletzt .nicht-browser .badge.fehler"
+      },
+      {
+        "name": "<img> aus dem Befehl gerendert (soll false)",
+        "selector": "#attention-kanal img"
+      },
+      {
+        "name": "Freitext noch da",
+        "selector": "#attention-kanal textarea:not(:placeholder-shown)"
+      },
+      {
+        "name": "Fehlermeldung an Karte",
+        "selector": "#attention-kanal .rueckfrage-meldung.fehler:not([hidden])"
+      },
+      {
+        "name": "Fokus in der Kanal-Liste",
+        "selector": "#attention-kanal :focus"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Übersicht: Band mit Anzahl und Link — tr-390",
+      "warteAufSelector": {
+        "selector": "#rueckfrage-kanal-hinweis:not([hidden]) a",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-tr-390.webp"
+    }
+  ]
+}

@@ -181,7 +181,8 @@ Hauptaufgabe: die nächste Entscheidung finden und öffnen.
 | Art „Sichern & mergen“ | K | kein Zustand (Fixpaket) |
 | „Wenn du nichts tust“ | K | keine Quelle |
 | Geprüfte Quellen mit Zahl, Defekt-Hinweis statt Entwarnung | U | wie heute; „Offene Abnahmen“ S, „Bereit zum Sichern“ K |
-| Zuletzt entschieden | K | keine Leseroute über Entscheidungsartefakte |
+| Zuletzt entschieden | K | keine Leseroute über Entscheidungsartefakte; Teil „Rückfrage-Kanal“ U (F45 B2b-3b-2b-2a-2: letzte Kanal-Entscheidungen aus dem Speicher mit Herkunft) |
+| Art „Rückfrage des Laufs“ (Rückfrage-Kanal) | U | F45 B2b-3b-2b-2a-2: eigene Gruppe zuerst, nur mit eingeschaltetem Kanal; Chip-Farbe `--art-rueckfrage` |
 
 Umsetzung D2 (Abweichungen, begründet):
 - Katalog-Empfehlung auf Freigabe-Karten: K — sie steht nur im Workflow-Detail, nicht in den Kopfdaten (kein zweiter Abruf je Karte). „blockiert“ und „Jarvis empfiehlt“ stehen einmal über der Liste als „kommt“, nicht auf jeder Karte.
@@ -189,6 +190,12 @@ Umsetzung D2 (Abweichungen, begründet):
 - Reihenfolge der Gruppen: Freigaben, Rückfragen, Abnahmen, Fehler, Startprobleme, Befunde — Freigaben und Rückfragen teilen sich die feste Sektion `attention-abschnitt-workflows` (Gate f21-ws2).
 - Zahl an „Entscheidungen“: nur Quellen aus dem Poll (ohne Befunde P0/P1, die ein eigener Abruf sind).
 - „Zum Eintrag“ nur, wenn der Auftrag eine Workitem-Referenz trägt; Startprobleme ohne Knopf (keine Detailroute).
+
+Umsetzung F45 B2b-3b-2b-2a-2 (Rückfrage-Kanal, Abweichungen, begründet):
+- Rückfragen des Laufs werden in der Karte entschieden (Einmal erlauben / Ablehnen bzw. Antwort) statt „finden und öffnen“ — sie warten mit Frist, ein Umweg kostet Zeit. Einziger Schreiber ist `rueckfrage-kanal.js` (Gate f21-ws2 (f-kanal)).
+- Kein Hauptknopf auf Kanal-Karten („Einmal erlauben“ nie primär); steht eine Kanal-Karte oben, trägt auch keine andere Karte den gefüllten Knopf.
+- Zahl an „Entscheidungen“: Poll-Quellen plus offene Rückfragen des Kanals (aus dessen Abruf je Takt); ist eine Poll-Quelle defekt, steht die Kanal-Zahl allein (Untergrenze).
+- Band unter dem Kopf (amber) bei eingeschaltetem Kanal: Anzahl und nächste Frist mit Link (nicht auf `#/attention` selbst), sonst eine schlanke Zeile; Abruf defekt ⇒ eigener Text.
 
 ### 4.5 Entscheiden — `#/workflows/<id>` (09-entscheidungen--Entscheiden, --Entscheiden-Abnahme) · D2
 Zweck: eine Entscheidung mit allem, was sie braucht, auf einer Seite.

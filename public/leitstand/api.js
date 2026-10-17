@@ -31,6 +31,8 @@
  *   holeProjektOffeneWorkitems mit expliziter id)
  * - public/leitstand/views/chat.js (F26 WS-2a)
  * - public/leitstand/projekt-kontext.js (F25 WS-2a, setzeAktivesProjektPraefix)
+ * - public/leitstand/rueckfrage-kanal.js (F45 B2b-3b-2b-2a-2: holeProjekteBegrenzt, holeRueckfragen, sendeRueckfrageAntwort —
+ *   einziger Aufrufer der Antwort, Gate f21-ws2 (f))
  *
  * Wichtig: Kein Fehler-Handling hier (kein try/catch) — das bleibt Sache der
  * aufrufenden View, die weiß, wie sie einen Fehlschlag anzeigt (Muster
@@ -190,6 +192,14 @@ export const sendeChatZusammenfassung = () => fetch(mitPraefix('/chat/zusammenfa
 // bestehenden defaultHandler (scripts/leitstand-server.mjs). Ein Präfix hier würde bei
 // aktivem Nicht-Standard-Projekt fälschlich /api/projekte/<id>/projekte ansprechen.
 export const holeProjekte = () => holeJsonOderWirf('/api/projekte')
+// F45 B2b-3b-2b-2a-2 (Advisor V6): dasselbe Register mit Zeitlimit — der Rückfrage-Kanal fragt es aus dem Poll-Takt ab
+// (Instanz des aktiven Laufs); ein hängender Abruf hielte den Kanal sonst dauerhaft auf „lädt“ (Muster F-561).
+export const holeProjekteBegrenzt = () => holeJsonOderWirf('/api/projekte', { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+// F45 B2b-3b-2b-2a-2: Rückfrage-Kanal der Instanz des aktiven Laufs — EXPLIZITES Präfix ('/api' bzw. '/api/projekte/<id>'),
+// nie mitPraefix (der Lauf kann in einem anderen als dem angezeigten Projekt laufen). Bestehende Routen (F-1131, keine neue):
+// GET …/rueckfragen ({ rueckfragen, entschieden }) und POST …/rueckfragen/<id>/antwort (rohe Response, Status wertet der Aufrufer aus).
+export const holeRueckfragen = (praefix) => holeJsonOderWirf(`${praefix}/rueckfragen`, { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+export const sendeRueckfrageAntwort = (praefix, id, koerper) => fetch(`${praefix}/rueckfragen/${encodeURIComponent(id)}/antwort`, { method: 'POST', body: JSON.stringify(koerper), signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
 // F41 WS-2: legt ein neues, leeres Projekt an (Byte-Kopie der Harness-Baseline, F41 WS-1) — wie
 // holeProjekte bewusst NICHT über mitPraefix, derselbe unpräfigierte Registerendpunkt. Liefert die

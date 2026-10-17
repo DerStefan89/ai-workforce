@@ -13,7 +13,7 @@
  *
  * Aufbau (Bild 09-Main): Kopf, Hinweis bei defekter Quelle mit „Erneut laden“, Filter-Chips
  * Alle · Freigaben · Abnahmen · Sichern („kommt“) · Rückfragen · Fehler · Befunde P0/P1 mit Anzahl,
- * eine Liste aus Karten in fünf aufeinanderfolgenden Gruppen (Sektionen attention-abschnitt-*,
+ * eine Liste aus Karten in fünf aufeinanderfolgenden Gruppen (F45 B2b-3b-2b-2a-2: davor, nur mit Kanal, die Gruppe „kanal“) (Sektionen attention-abschnitt-*,
  * Gate f21-ws2), darunter „Zuletzt entschieden“ („kommt“). Rechte Spalte: „Wenn du nichts tust“
  * („kommt“) und „Geprüfte Quellen“ mit Zahl je Quelle.
  *
@@ -34,6 +34,9 @@
  * - Keine Schreibaktion: Jeder Knopf ist ein Link (Freigabe, Rückfrage, Abnahme →
  *   #/workflows/<id>, Lauf → #/runs/<id>, Befund → #/workboard/<id>). Entschieden wird in
  *   #/workflows/<id>. Startprobleme haben keine Detailroute und bleiben ohne Knopf.
+ *   Benannte Ausnahme (F45 B2b-3b-2b-2a-2, Advisor V3): die Gruppe „kanal“ (Rückfragen des Rückfrage-Kanals, wartend mit Frist)
+ *   wird direkt beantwortet — Karten, Klicks und POST gehören allein public/leitstand/rueckfrage-kanal.js; diese View liest nur dessen
+ *   Stand (kanalStand, abonniereKanal) und schaltet Sektion und Status. Gate f21-ws2 (f) prüft beides.
  * - Der Filter ist eine Anzeige über bereits ausgewählte Einträge (passtZuFilter), keine eigene
  *   Auswahlregel. Er gilt bis zum Projektwechsel. Chips, Gruppen und Quellen werden nur bei
  *   geändertem Inhalt neu geschrieben, damit der Poll-Tick den Tastaturfokus nicht zerstört.
@@ -54,6 +57,7 @@ import { artChip } from '../typ-chip.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { registriere } from '../router.js'
+import { abonniereKanal, kanalStand } from '../rueckfrage-kanal.js'
 import { abonniere } from '../zustand.js'
 // Gate f21-ws2 (e): Auswahl und Filterregel kommen aus attention-daten.js (baueEntscheidungen
 // wendet filtereAttentionWorkflows/filtereOffeneAbnahmen/filtereAttentionLaeufe intern an),
@@ -79,7 +83,7 @@ const GRUPPE_MAX = 5
 const IMMER_VOLLSTAENDIG = new Set(['workflows', 'abnahmen'])
 
 /** Zeilen von „Geprüfte Quellen“ (Bild 09-Main): Gruppe aus baueEntscheidungen, oder 'sichern' („kommt“). */
-const QUELLEN = ['workflows', 'abnahmen', 'sichern', 'laeufe', 'startfehler', 'workitems']
+const QUELLEN = ['kanal', 'workflows', 'abnahmen', 'sichern', 'laeufe', 'startfehler', 'workitems']
 
 /** Aufgeklappte begrenzte Gruppen (Name aus GRUPPEN), bis zum Projektwechsel. */
 const aufgeklappt = new Set()
@@ -187,7 +191,7 @@ function gruppenKarten(name, liste) {
  * @returns true, wenn die Gruppe zum Filter gehört
  */
 function gruppeImFilter(name) {
-  const arten = { workflows: ['freigabe', 'rueckfrage'], abnahmen: ['abnahme'], laeufe: ['lauf'], startfehler: ['startproblem'], workitems: ['befund'] }[name]
+  const arten = { kanal: ['kanal'], workflows: ['freigabe', 'rueckfrage'], abnahmen: ['abnahme'], laeufe: ['lauf'], startfehler: ['startproblem'], workitems: ['befund'] }[name]
   return arten.some((art) => passtZuFilter({ art }, filter))
 }
 
@@ -209,6 +213,26 @@ function renderGruppe(name, liste) {
     else html = gruppenKarten(name, sichtbar)
   }
   schreibe(`attention-${name}`, html)
+}
+
+/**
+ * F45 B2b-3b-2b-2a-2: Sektion der Kanal-Gruppe — nur sichtbar, wenn die Gruppe vorhanden ist (Kanal an), zum Filter gehört und nicht
+ * leer ist; „nicht verfügbar“ bzw. „Lädt…“ in #attention-kanal-status. Die Karten schreibt rueckfrage-kanal.js (Advisor V2/V3).
+ * @param gruppen - baueEntscheidungen().gruppen
+ */
+function renderKanalAbschnitt(gruppen) {
+  const vorhanden = Object.hasOwn(gruppen, 'kanal')
+  const liste = gruppen.kanal
+  document.getElementById('attention-abschnitt-kanal').hidden = !vorhanden || !gruppeImFilter('kanal') || (Array.isArray(liste) && liste.length === 0)
+  const text = !vorhanden ? '' : liste === null ? t('attention.nichtVerfuegbar.kanal') : liste === undefined ? t('attention.laedt') : ''
+  const status = document.getElementById('attention-kanal-status')
+  if (status.textContent !== text) status.textContent = text
+  status.hidden = text === ''
+  // Korrekturrunde (design-guardian 10): „nicht verfügbar“ wie die übrigen Gruppen (amber Karte), „Lädt…“ dezent.
+  status.className = liste === null ? 'entscheidung-karte entscheidung-unbekannt' : 'subtle'
+  // Nachpass (code-reviewer 1, qa 1): nur „lädt“ verbirgt die Liste — bei defektem Abruf bleiben vorhandene Karten (Freitext, Fokus)
+  // sichtbar und bedienbar, „nicht verfügbar“ steht darüber.
+  document.getElementById('attention-kanal').hidden = liste === undefined
 }
 
 /**
@@ -245,6 +269,7 @@ function renderFilter(anzahlJeFilter) {
  */
 function renderQuellen(zaehler) {
   const zeilen = QUELLEN.map((name) => {
+    if (name !== 'sichern' && !Object.hasOwn(zaehler, name)) return ''
     if (name === 'sichern') return `<li class="quelle-zeile" aria-disabled="true"><span class="quelle-punkt quelle-punkt-kommt" aria-hidden="true"></span><span class="quelle-name">${tHtml('attention.quelle.sichern')}</span>${kommtBadge()}</li>`
     const anzahl = zaehler[name]
     const lage = anzahl === null ? 'defekt' : anzahl === undefined ? 'laedt' : 'geprueft'
@@ -258,7 +283,8 @@ function render() {
   document.getElementById('attention-laedt').hidden = true
 
   const workitems = workitemsAntwort === null ? undefined : workitemsAntwort.workitems
-  const ergebnis = baueEntscheidungen(letzterZustand, workitems, baueReferenzJeAuftrag(auftraege))
+  const kanal = kanalStand()
+  const ergebnis = baueEntscheidungen(letzterZustand, workitems, baueReferenzJeAuftrag(auftraege), kanal.an ? { kanal: kanal.offene } : {})
   const { gruppen, zaehler, defekt, alleLeer } = ergebnis
   const anzahlJeFilter = zaehleJeFilter(ergebnis)
 
@@ -268,7 +294,11 @@ function render() {
   document.getElementById('attention-filter').hidden = alleLeer
   document.getElementById('attention-kommt').hidden = alleLeer
   renderFilter(anzahlJeFilter)
-  hauptEintrag = ergebnis.eintraege.find((eintrag) => eintrag.hash !== null && passtZuFilter(eintrag, filter)) ?? null
+  // Korrekturrunde (design-guardian 1): steht eine Kanal-Rückfrage oben, trägt keine andere Karte den gefüllten Knopf — die Kanal-Karte
+  // selbst hat bewusst keinen (Einmal erlauben ist nie primär), ein Hauptknopf weiter unten widerspräche „nur auf der obersten Karte“.
+  const obersterMitZiel = ergebnis.eintraege.find((eintrag) => (eintrag.art === 'kanal' || eintrag.hash !== null) && passtZuFilter(eintrag, filter)) ?? null
+  hauptEintrag = obersterMitZiel?.art === 'kanal' ? null : obersterMitZiel
+  renderKanalAbschnitt(gruppen)
   for (const name of GRUPPEN) renderGruppe(name, gruppen[name])
   // Ein gewählter Filter ohne Einträge (alle seine Quellen geladen) sagt das, statt leer zu bleiben.
   document.getElementById('attention-filter-leer').hidden = alleLeer || anzahlJeFilter.get(filter) !== 0
@@ -350,4 +380,7 @@ export function initAttentionView() {
     letzterZustand = zustand
     render()
   })
+
+  // F45 B2b-3b-2b-2a-2: der Kanal antwortet nach dem Poll-Takt (eigener Abruf) — dann Zahlen, Leerzustand und Sektion neu.
+  abonniereKanal(() => render())
 }
