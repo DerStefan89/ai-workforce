@@ -1105,8 +1105,9 @@ const STEFAN_DENIAL = { tool_name: 'Bash', tool_use_id: 'toolu_s', tool_input: {
 /** Protokoll-Artefaktdaten mit einem Eintrag der Art `art` passend zu STEFAN_DENIAL. */
 function stefanProtokoll(laufId: string, art = 'stefan_abgelehnt'): Record<string, unknown> {
   return {
-    rueckfragen_schema: 'v0',
+    rueckfragen_schema: 'v1',
     lauf_id: laufId,
+    ab: 0,
     eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(STEFAN_DENIAL.tool_input)), art, grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'npm publish' }],
   }
 }

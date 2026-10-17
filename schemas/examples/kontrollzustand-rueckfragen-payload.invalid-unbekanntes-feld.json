@@ -1,6 +1,7 @@
 {
-  "rueckfragen_schema": "v0",
+  "rueckfragen_schema": "v1",
   "lauf_id": "beispiel-lauf",
+  "ab": 0,
   "eintraege": [
     {
       "tool_use_id": "toolu_x",

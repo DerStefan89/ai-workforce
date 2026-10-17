@@ -7,11 +7,13 @@
  * Bash-Befehl in die Warteschlange; Stefan antwortet über den Browser.
  *
  * Grenzen:
- * - Nur Speicher, kein I/O. Das Protokoll geht über den Rückruf `protokolliere(laufId, eintrag, { arbeitsordner, eintraege })`
- *   an den Server; seit 3b-1b (Plan v2 A2) führt die Vermittlung je Lauf die vollständige Eintragsliste und übergibt sie
- *   jedes Mal ganz — der Schreiber (scripts/leitstand/rueckfrage-protokoll.mjs) registriert daraus die nächste Version des
- *   Kern-Artefakts, ohne zu laden; ein fehlgeschlagener Schreibvorgang wird mit der nächsten Entscheidung nachgeholt.
- *   Ein Wurf des Rückrufs ändert keine Entscheidung.
+ * - Nur Speicher, kein I/O. Das Protokoll geht über den Rückruf `protokolliere(laufId, eintrag, { arbeitsordner, ab, eintraege })`
+ *   an den Server; die Vermittlung führt je Lauf die vollständige Eintragsliste und übergibt seit B2b-3b-2b-1a nur die noch
+ *   nicht geschriebenen Einträge ab Index `ab` — der Schreiber (scripts/leitstand/rueckfrage-protokoll.mjs) registriert daraus die
+ *   nächste Version des Kern-Artefakts (Schema v1, nur Zuwachs), ohne zu laden; ein fehlgeschlagener Schreibvorgang wird mit der
+ *   nächsten Entscheidung nachgeholt. Ein Wurf des Rückrufs ändert keine Entscheidung. Grenze (Advisor B10/D13): wirft der
+ *   Rückruf erst nach dem Schreiben, oder wird dieselbe laufId neu geöffnet, entsteht eine Lücke ⇒ die Auswertung verwirft das
+ *   Protokoll (VERWEIGERT, über R3 sichtbar).
  * - Token: nur zum Fragen (`stelle`, `warte`), nie zum Antworten — `beantworte` kennt kein Token (ERZWUNGEN über die Routen).
  *   Gültig nur zwischen `oeffneLauf` und `beendeLauf`.
  * - auto_deny entsteht ohne Warteschlangeneintrag; jede `tool_use_id` eines Laufs wird gemerkt, eine zweite Anfrage mit
@@ -21,17 +23,20 @@
  * - Eine Entscheidung bleibt bis `beendeLauf` erhalten: ein Long-Poll nach der Antwort bekommt sie noch (A7).
  * - B2b-3b-2a: `eintraegeVon` ist der Speicherstand des Protokolls und damit die Quelle der Wahrheit für die Auswertung (F-1128
  *   (1)); je Lauf höchstens MAX_OFFENE_JE_LAUF unentschiedene Rückfragen und MAX_PROTOKOLL_JE_LAUF Einträge (F-1126 (2),
- *   F-1128 (5)). Menge im schlimmsten Fall: 200 Einträge ⇒ 20 100 Eintragskopien über alle Versionen der Datei.
+ *   F-1128 (5)). Seit B2b-3b-2b-1a schreibt jede Version nur ihren Zuwachs (200 Einträge ⇒ 200 Eintragskopien statt 20 100).
+ * - B2b-3b-2b-1a: `zugang(laufId, melde)` bündelt für den Controller Speicherstand und Meldung einer Abweichung (R3, Startfehlerliste
+ *   des Servers); `beendeLauf` liefert die Zahl der Ablehnungen durch Stefan (R2, Löschliste); `beantworte` merkt je Antwort die
+ *   Herkunft (E-B7, `herkunftDerAntwort`) — Hinweis, kein Schutz: jeder lokale Prozess kann antworten (DEKLARIERT).
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (Routen /api/rueckfrage/…, /api/rueckfragen…, starteLaufUndVergiss,
- * laufOptionen.rueckfrageSpeicher), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
- * scripts/leitstand/rueckfrage-vermittlung.test.mjs.
+ * laufOptionen.rueckfrageZugang), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
+ * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/leitstand/rueckfrage-vermittlung.test.mjs.
  */
 
 import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { kanonischesJson, sha256Hex } from '../../src/checkpoint-store/index.ts'
 import { vorentscheidung } from '../../src/rueckfrage/index.ts'
-import { RUECKFRAGE_PROTOKOLL_ARTEN, toolNameFuerProtokoll } from '../../src/rueckfrage/protokoll.ts'
+import { RUECKFRAGE_HERKUENFTE, RUECKFRAGE_PROTOKOLL_ARTEN, toolNameFuerProtokoll } from '../../src/rueckfrage/protokoll.ts'
 
 /** Wartegrenze je Rückfrage (Auftrag: 10 min). */
 export const WARTE_GRENZE_MS = 600000
@@ -63,27 +68,47 @@ export const RECHTE_ANTWORTEN = Object.freeze(['einmal_erlauben', 'ablehnen'])
 const istText = (wert) => typeof wert === 'string'
 
 /**
+ * E-B7 (B2b-3b-2b-1a): Herkunft einer Antwort aus ihren Kopfzeilen — 'browser', wenn Sec-Fetch-Site 'same-origin' ist oder ein
+ * Origin-Kopf zum Host-Kopf passt; sonst 'nicht_browser' (auch 'none', fremder oder ungültiger Origin). Eigener kleiner Vergleich
+ * statt istFremdeBrowserAnfrage (f813 (4)); fremde Browser-Anfragen weist der zentrale CSRF-Haken vorher ab. Header sind
+ * fälschbar — Hinweis, kein Schutz. Wirft nie.
+ * @param headers - req.headers (oder ein Objekt mit kleingeschriebenen Kopfnamen)
+ * @returns 'browser' | 'nicht_browser'
+ */
+export function herkunftDerAntwort(headers) {
+  if (headers?.['sec-fetch-site'] === 'same-origin') return 'browser'
+  const origin = headers?.origin
+  if (!istText(origin) || !istText(headers?.host)) return 'nicht_browser'
+  try {
+    return new URL(origin).host === headers.host ? 'browser' : 'nicht_browser'
+  } catch {
+    return 'nicht_browser'
+  }
+}
+
+/**
  * @param {object} [optionen]
  * @param {number} [optionen.warteGrenzeMs] - Wartegrenze je Rückfrage (Standard WARTE_GRENZE_MS; Gate verkürzt)
  * @param {number} [optionen.pollFensterMs] - Long-Poll-Fenster (Standard POLL_FENSTER_MS)
- * @param {(laufId: string, eintrag: object, kontext: { arbeitsordner: string, eintraege: object[] }) => void} [optionen.protokolliere] -
- *   Rückruf je Entscheidung, VOR der Auslieferung; `kontext.eintraege` ist eine Kopie aller Einträge des Laufs bis hier
+ * @param {(laufId: string, eintrag: object, kontext: { arbeitsordner: string, ab: number, eintraege: object[] }) => void} [optionen.protokolliere] -
+ *   Rückruf je Entscheidung, VOR der Auslieferung; `kontext.eintraege` sind die noch nicht geschriebenen Einträge ab Index `ab`
  * @param {object} [optionen.pfadOptionen] - an vorentscheidung durchgereicht (nur Tests)
  * @param {() => Date} [optionen.jetzt] - Uhr (nur Tests)
  * @returns Vermittlung { warteGrenzeMs (einzige Quelle auch für Skript-Frist und CLI-timeout), oeffneLauf, laufZuToken, stelle, warte,
- *   offene, beantworte, beendeLauf, eintraegeVon }
+ *   offene, beantworte, beendeLauf, eintraegeVon, zugang }
  */
 export function erzeugeRueckfrageVermittlung(optionen = {}) {
   const warteGrenzeMs = optionen.warteGrenzeMs ?? WARTE_GRENZE_MS
   const pollFensterMs = optionen.pollFensterMs ?? POLL_FENSTER_MS
   const protokolliere = optionen.protokolliere ?? (() => {})
   const jetzt = optionen.jetzt ?? (() => new Date())
-  /** laufId → { token, arbeitsordner, werkzeugNamen, eintraege: Map<id, Eintrag>, bekannteIds: Set<string>, protokoll: object[], grenzeGemeldet: boolean } */
+  /** laufId → { token, arbeitsordner, werkzeugNamen, eintraege: Map<id, Eintrag>, bekannteIds: Set<string>, protokoll: object[], geschrieben: number, grenzeGemeldet: boolean } */
   const laeufe = new Map()
 
   /**
-   * Protokolliert eine Entscheidung: an die Eintragsliste des Laufs anhängen, dann den Rückruf mit der ganzen Liste (A2).
-   * Ein Wurf des Rückrufs ändert die Entscheidung nicht.
+   * Protokolliert eine Entscheidung: an die Eintragsliste des Laufs anhängen, dann den Rückruf mit den noch nicht geschriebenen
+   * Einträgen ab `lauf.geschrieben` (B2b-3b-2b-1a: nur Zuwachs); ohne Wurf gelten sie als geschrieben. Ein Wurf des Rückrufs
+   * ändert die Entscheidung nicht, die Einträge gehen mit der nächsten Entscheidung erneut mit.
    * @param laufId - Lauf
    * @param lauf - Lauf-Zustand (auch nach dem Entfernen aus der Map in beendeLauf)
    * @param eintrag - Protokollfelder ohne Zeit
@@ -92,7 +117,8 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     const vollstaendig = { ...eintrag, zeit: jetzt().toISOString() }
     lauf.protokoll.push(vollstaendig)
     try {
-      protokolliere(laufId, vollstaendig, { arbeitsordner: lauf.arbeitsordner, eintraege: [...lauf.protokoll] })
+      protokolliere(laufId, vollstaendig, { arbeitsordner: lauf.arbeitsordner, ab: lauf.geschrieben, eintraege: lauf.protokoll.slice(lauf.geschrieben) })
+      lauf.geschrieben = lauf.protokoll.length
     } catch (fehler) {
       console.error(`[leitstand] Rückfrage-Protokoll für Lauf '${laufId}' fehlgeschlagen:`, fehler)
     }
@@ -144,7 +170,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
       return
     }
     if (laeufe.has(laufId)) beendeLauf(laufId)
-    laeufe.set(laufId, { token: kanal.token, arbeitsordner: kanal.arbeitsordner, werkzeugNamen: [...kanal.werkzeugNamen], eintraege: new Map(), bekannteIds: new Set(), protokoll: [], grenzeGemeldet: false })
+    laeufe.set(laufId, { token: kanal.token, arbeitsordner: kanal.arbeitsordner, werkzeugNamen: [...kanal.werkzeugNamen], eintraege: new Map(), bekannteIds: new Set(), protokoll: [], geschrieben: 0, grenzeGemeldet: false })
   }
 
   /**
@@ -291,9 +317,11 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
    * Antwort Stefans (Browser). Nur eine offene Rückfrage eines offenen Laufs, genau einmal.
    * @param id - Rückfrage-ID
    * @param antwort - Body: { entscheidung: 'einmal_erlauben' | 'ablehnen' } (Rechte) bzw. { antwort: string } (Frage)
+   * @param herkunft - E-B7: 'browser' | 'nicht_browser' (herkunftDerAntwort); jeder andere Wert gilt als 'nicht_browser'
    * @returns { ok: true } | { ok: false, status, grund }
    */
-  function beantworte(id, antwort) {
+  function beantworte(id, antwort, herkunft = 'nicht_browser') {
+    const quelle = RUECKFRAGE_HERKUENFTE.includes(herkunft) ? herkunft : 'nicht_browser'
     let gefunden = null
     for (const [laufId, lauf] of laeufe) {
       const e = lauf.eintraege.get(id)
@@ -305,12 +333,12 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     if (typeof antwort !== 'object' || antwort === null || Array.isArray(antwort)) return { ok: false, status: 400, grund: 'Antwort ist kein Objekt' }
     if (eintrag.art === 'rechte') {
       if (!RECHTE_ANTWORTEN.includes(antwort.entscheidung)) return { ok: false, status: 400, grund: `entscheidung muss ${RECHTE_ANTWORTEN.join(' oder ')} sein` }
-      if (antwort.entscheidung === 'einmal_erlauben') entscheide(laufId, lauf, eintrag, { behavior: 'allow' }, { art: 'stefan_erlaubt', grund: 'Stefan hat einmal erlaubt' })
-      else entscheide(laufId, lauf, eintrag, { behavior: 'deny', message: 'Stefan hat den Befehl abgelehnt.' }, { art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt' })
+      if (antwort.entscheidung === 'einmal_erlauben') entscheide(laufId, lauf, eintrag, { behavior: 'allow' }, { art: 'stefan_erlaubt', grund: 'Stefan hat einmal erlaubt', herkunft: quelle })
+      else entscheide(laufId, lauf, eintrag, { behavior: 'deny', message: 'Stefan hat den Befehl abgelehnt.' }, { art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', herkunft: quelle })
       return { ok: true }
     }
     if (!istText(antwort.antwort) || antwort.antwort.trim().length === 0 || antwort.antwort.length > TEXT_MAX_ZEICHEN) return { ok: false, status: 400, grund: `antwort muss ein Text mit 1–${TEXT_MAX_ZEICHEN} Zeichen sein` }
-    entscheide(laufId, lauf, eintrag, { antwort: antwort.antwort }, { art: 'frage_beantwortet', grund: 'Stefan hat geantwortet', antwort: antwort.antwort })
+    entscheide(laufId, lauf, eintrag, { antwort: antwort.antwort }, { art: 'frage_beantwortet', grund: 'Stefan hat geantwortet', antwort: antwort.antwort, herkunft: quelle })
     return { ok: true }
   }
 
@@ -318,14 +346,17 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
    * Lauf-Ende (regulär, Zeitgrenze, Abbruch, Startfehler): offene Rückfragen ablehnen, Token ungültig, Lauf entfernen.
    * Idempotent; ein nicht geöffneter Lauf ist ein No-op.
    * @param laufId - Lauf
+   * @returns B2b-3b-2b-1a (F-1128 R2): Zahl der Ablehnungen durch Stefan im Lauf (jede `stefan_abgelehnt`, auch eine, die die
+   *   Auswertung verwirft — sichere Richtung für die Löschliste); 0, wenn der Lauf nicht offen war
    */
   function beendeLauf(laufId) {
     const lauf = laeufe.get(laufId)
-    if (lauf === undefined) return
+    if (lauf === undefined) return 0
     laeufe.delete(laufId)
     for (const e of lauf.eintraege.values()) {
       entscheide(laufId, lauf, e, ablehnungFuer(e, 'Lauf beendet — abgelehnt.'), { art: e.art === 'frage' ? 'frage_ohne_antwort' : 'lauf_beendet', grund: 'Lauf beendet' })
     }
+    return lauf.protokoll.filter((e) => e.art === 'stefan_abgelehnt').length
   }
 
   /**
@@ -346,5 +377,25 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     }))
   }
 
-  return { warteGrenzeMs, oeffneLauf, laufZuToken, stelle, warte, offene, beantworte, beendeLauf, eintraegeVon }
+  /**
+   * B2b-3b-2b-1a (F-1128 R3): Zugang des Controllers zu einem Lauf (laufOptionen.rueckfrageZugang). Wird für jeden Lauf gebaut,
+   * auch ohne Kanal und vor `oeffneLauf` (Advisor B6/D9) — deshalb schlägt `speicher()` den Lauf erst beim Aufruf nach. Wirft nie.
+   * @param laufId - Lauf
+   * @param melde - (fehler: string) => void, z. B. Eintrag in die Startfehlerliste des Servers; ein Wurf wird geloggt
+   * @returns { speicher: () => Projektion | null, meldeAbweichung: (grund: string) => void }
+   */
+  function zugang(laufId, melde) {
+    return {
+      speicher: () => eintraegeVon(laufId),
+      meldeAbweichung: (grund) => {
+        try {
+          melde(`Rückfrage-Protokoll von Lauf '${laufId}' nicht bestätigt — Ablehnungen durch Stefan zählen nicht: ${grund}`)
+        } catch (fehler) {
+          console.error(`[leitstand] Abweichung des Rückfrage-Protokolls von Lauf '${laufId}' nicht gemeldet:`, fehler)
+        }
+      },
+    }
+  }
+
+  return { warteGrenzeMs, oeffneLauf, laufZuToken, stelle, warte, offene, beantworte, beendeLauf, eintraegeVon, zugang }
 }

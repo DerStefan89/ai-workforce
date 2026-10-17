@@ -1680,15 +1680,20 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
     const laufId = neueLaufId(`rf${mitKanal ? 'a' : 'o'}${mitProtokoll ? 'p' : 'n'}`)
     try {
       const protokoll = {
-        rueckfragen_schema: 'v0',
+        rueckfragen_schema: 'v1',
         lauf_id: laufId,
+        ab: 0,
         eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(denial.tool_input)), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: new Date().toISOString(), befehl: 'npm publish' }],
       }
       if (mitProtokoll) registriereKernArtefakt(`rueckfragen-${laufId}`, PROFIL_REFERENZ, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, protokoll, [], { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
       const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), ...(mitKanal ? { rueckfrageKanal: { token: 'a'.repeat(64), arbeitsordner: process.cwd(), werkzeugNamen: ['Bash'] } } : {}) }
       const projektion = protokoll.eintraege.map(({ tool_use_id, tool_name, input_hash, art }) => ({ tool_use_id, tool_name, input_hash, art: speicher === 'auto_deny' ? 'auto_deny' : art }))
-      const rueckfrageSpeicher = speicher === 'fehlt' ? undefined : (id: string) => (id === laufId ? projektion : null)
-      const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {}, ...(rueckfrageSpeicher !== undefined ? { rueckfrageSpeicher } : {}) })
+      const gemeldet: string[] = []
+      const rueckfrageZugang = speicher === 'fehlt' ? undefined : { speicher: () => projektion, meldeAbweichung: (grund: string) => gemeldet.push(grund) }
+      const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {}, ...(rueckfrageZugang !== undefined ? { rueckfrageZugang } : {}) })
+      // B2b-3b-2b-1a (R3): eine Abweichung Speicher/Datei geht über den Zugang (Server: Startfehlerliste).
+      // Gemeldet wird jede Abweichung: abweichende Art, oder Speicher mit Eintrag ohne Datei.
+      assert.equal(gemeldet.length, mitKanal && (speicher === 'auto_deny' || !mitProtokoll) ? 1 : 0, `Meldungen: ${gemeldet.join('; ')}`)
       assert.ok(ergebnis.ok)
       assert.equal(ergebnis.klassifikation.ergebnis, erwartet, `Kanal ${mitKanal}, Protokoll ${mitProtokoll}, Speicher ${speicher}`)
       if (erwartet === 'ERFOLGREICH') assert.equal(ergebnis.klassifikation.ergebnis === 'ERFOLGREICH' && ergebnis.klassifikation.abgelehnt_durch_stefan, 1)
@@ -1701,17 +1706,39 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
 
 test('F45 B2b-3b-2a (Delta D1/D2): ermittleRueckfrageProtokoll wirft nie — werfender Leser, kaputte Datei, kein Lauf ⇒ null', () => {
   const laufId = neueLaufId('rfe')
+  const gemeldet: string[] = []
+  const zugang = (speicher: () => unknown) => ({ speicher, meldeAbweichung: (grund: string) => gemeldet.push(grund) })
   try {
     assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, undefined), null)
-    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, () => []), null, 'Speicher leer, Datei fehlt')
+    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, zugang(() => [])), null, 'Speicher leer, Datei fehlt')
+    assert.deepEqual(gemeldet, [], 'Lauf ohne Rückfrage ⇒ keine Meldung')
     assert.equal(
-      ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, () => {
-        throw new Error('kaputt')
+      ermittleRueckfrageProtokoll(
+        laufId,
+        KONTROLLZUSTAND_BASIS,
+        zugang(() => {
+          throw new Error('kaputt')
+        })
+      ),
+      null
+    )
+    // B2b-3b-2b-1a: ein werfender Meldeweg ändert nichts.
+    assert.equal(
+      ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, {
+        speicher: () => null,
+        meldeAbweichung: () => {
+          throw new Error('melde kaputt')
+        },
       }),
       null
     )
-    registriereKernArtefakt(`rueckfragen-${laufId}`, PROFIL_REFERENZ, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, { rueckfragen_schema: 'v0', lauf_id: laufId, eintraege: [null] }, [], { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
-    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, () => [{ tool_use_id: 't', tool_name: 'Bash', input_hash: 'a'.repeat(64), art: 'stefan_abgelehnt' }]), null)
+    registriereKernArtefakt(`rueckfragen-${laufId}`, PROFIL_REFERENZ, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, { rueckfragen_schema: 'v1', lauf_id: laufId, ab: 0, eintraege: [null] }, [], { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    gemeldet.length = 0
+    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, zugang(() => [{ tool_use_id: 't', tool_name: 'Bash', input_hash: 'a'.repeat(64), art: 'stefan_abgelehnt' }])), null)
+    // Delta D5: eine nicht zusammensetzbare Datei wird auch bei leerem Speicher gemeldet, mit Grund.
+    assert.equal(ermittleRueckfrageProtokoll(laufId, KONTROLLZUSTAND_BASIS, zugang(() => [])), null)
+    assert.equal(gemeldet.length, 2, gemeldet.join('; '))
+    assert.match(gemeldet[1], /nicht zusammensetzbar \(Version 1 ungültig/)
   } finally {
     raeumeKette(laufId)
     raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-rueckfragen-${laufId}`))

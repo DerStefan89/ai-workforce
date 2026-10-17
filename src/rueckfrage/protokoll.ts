@@ -2,8 +2,8 @@
  * Datei: src/rueckfrage/protokoll.ts
  *
  * Zweck: Reine Regel des Rückfrage-Protokolls (F45 B2b-3b-1b, features/F45/plan-b2b3b1b-v2.md). Das Protokoll eines Laufs ist
- * das Kern-Artefakt `rueckfragen-<laufId>` im Kontrollzustand (eine Version je Entscheidung, alle Einträge bis dahin; Schema
- * schemas/kontrollzustand-rueckfragen-payload.schema.json). Vier Teile:
+ * das Kern-Artefakt `rueckfragen-<laufId>` im Kontrollzustand (seit B2b-3b-2b-1a Schema v1: eine Version je Entscheidung mit nur
+ * den neuen Einträgen ab Index `ab`; Schema schemas/kontrollzustand-rueckfragen-payload.schema.json). Fünf Teile:
  * - `RUECKFRAGE_PROTOKOLL_ARTEN` + `validiereRueckfrageProtokoll`: einzige Quelle der Arten (A5: eigene für Fragen) und der
  *   handgeschriebene Validator (Muster validiereAenderungsuebersichtDaten, kein ajv).
  * - `neutralisiereText`: Arbeitsordner, Temp und Home in Befehl/Frage/Antwort durch Platzhalter ersetzen (roh, mit `/`,
@@ -15,6 +15,8 @@
  *   über Ablehnungsdaten (Gate f7 (a) sinngemäß, H4); der einzige Regex (64 Hex-Zeichen) steht im Validator.
  * - `bestaetigeProtokoll` (B2b-3b-2a, F-1128 (1)): die Datei gilt nur, wenn sie zum Speicherstand der Vermittlung passt (vier
  *   Felder je Eintrag) — der Speicher ist die Quelle der Wahrheit, die Datei das Audit.
+ * - `setzeProtokollZusammen` (B2b-3b-2b-1a): fügt die Versionen (je nur der Zuwachs) lückenlos zu einem Protokoll mit `ab: 0`
+ *   zusammen; Lücke, fremde lauf_id oder ungültige Version ⇒ ok:false (fail closed).
  * Rein, kein I/O.
  *
  * Grenze (ARCHITECTURE §4, DEKLARIERT): der Abgleich glaubt dem Speicher der Vermittlung, dass „stefan_abgelehnt“ von Stefan
@@ -23,7 +25,8 @@
  *
  * Wird aufgerufen von: src/result-evaluator/index.ts (Abgleich), src/execution-controller/index.ts (bestaetigeProtokoll),
  * scripts/leitstand/rueckfrage-protokoll.mjs (Schreiben), scripts/leitstand/rueckfrage-vermittlung.mjs (Arten, Grenzen),
- * scripts/check-f45-b2b3b1b-auswertung.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs, src/rueckfrage/protokoll.test.ts.
+ * src/execution-controller/index.ts (setzeProtokollZusammen), scripts/check-f45-b2b3b1b-auswertung.mjs,
+ * scripts/check-f45-b2b3b2a-absicherung.mjs, scripts/check-f45-b2b3b2b1a-rest.mjs, src/rueckfrage/protokoll.test.ts.
  */
 
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
@@ -55,11 +58,17 @@ export function toolNameFuerProtokoll(name: unknown): string {
   return typeof name === 'string' && name.length <= PROTOKOLL_GRENZEN.toolName ? name : TOOL_NAME_ZU_LANG
 }
 
+/** E-B7 (B2b-3b-2b-1a): Herkunft einer Antwort — aus dem Browser (Sec-Fetch-Site same-origin bzw. passender Origin) oder nicht. Hinweis, kein Schutz. */
+export const RUECKFRAGE_HERKUENFTE = Object.freeze(['browser', 'nicht_browser'] as const)
+/** Arten, die eine Antwort sind und deshalb `herkunft` tragen dürfen (nur im Validator geprüft, im Schema als Beschreibung). */
+const ANTWORT_ARTEN = new Set<string>(['stefan_erlaubt', 'stefan_abgelehnt', 'frage_beantwortet'])
+const HERKUENFTE = new Set<string>(RUECKFRAGE_HERKUENFTE)
+
 /** Felder eines Eintrags (additionalProperties: false). */
 const EINTRAG_PFLICHT = ['tool_use_id', 'tool_name', 'input_hash', 'art', 'grund', 'zeit'] as const
 const EINTRAG_TEXTE = ['befehl', 'frage', 'antwort'] as const
-const EINTRAG_FELDER = new Set<string>([...EINTRAG_PFLICHT, ...EINTRAG_TEXTE])
-const OBEN_FELDER = new Set(['rueckfragen_schema', 'lauf_id', 'eintraege'])
+const EINTRAG_FELDER = new Set<string>([...EINTRAG_PFLICHT, ...EINTRAG_TEXTE, 'herkunft'])
+const OBEN_FELDER = new Set(['rueckfragen_schema', 'lauf_id', 'ab', 'eintraege'])
 const ARTEN = new Set<string>(RUECKFRAGE_PROTOKOLL_ARTEN)
 const HEX64 = /^[0-9a-f]{64}$/
 
@@ -94,6 +103,10 @@ function validiereEintrag(eintrag: unknown, stelle: number): string[] {
   for (const feld of EINTRAG_TEXTE) {
     if (feld in eintrag && !istText(eintrag[feld], 0, PROTOKOLL_GRENZEN.text)) verstoesse.push(`${vor}: '${feld}' muss ein Text mit höchstens ${PROTOKOLL_GRENZEN.text} Zeichen sein`)
   }
+  if ('herkunft' in eintrag) {
+    if (!(typeof eintrag.herkunft === 'string' && HERKUENFTE.has(eintrag.herkunft))) verstoesse.push(`${vor}: 'herkunft' muss eine von ${RUECKFRAGE_HERKUENFTE.join(', ')} sein`)
+    if (!(typeof eintrag.art === 'string' && ANTWORT_ARTEN.has(eintrag.art))) verstoesse.push(`${vor}: 'herkunft' nur an einer Antwort (${[...ANTWORT_ARTEN].join(', ')})`)
+  }
   return verstoesse
 }
 
@@ -109,8 +122,9 @@ export function validiereRueckfrageProtokoll(daten: unknown): string[] {
   for (const feld of Object.keys(daten)) {
     if (!OBEN_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
-  if (daten.rueckfragen_schema !== 'v0') verstoesse.push("'rueckfragen_schema' muss 'v0' sein")
+  if (daten.rueckfragen_schema !== 'v1') verstoesse.push("'rueckfragen_schema' muss 'v1' sein")
   if (!istText(daten.lauf_id, 1, 500)) verstoesse.push("'lauf_id' muss ein nicht leerer Text sein")
+  if (!(Number.isSafeInteger(daten.ab) && (daten.ab as number) >= 0)) verstoesse.push("'ab' muss eine ganze Zahl ≥ 0 sein")
   if (!Array.isArray(daten.eintraege)) verstoesse.push("'eintraege' muss eine Liste sein")
   else daten.eintraege.forEach((eintrag, i) => verstoesse.push(...validiereEintrag(eintrag, i)))
   return verstoesse
@@ -169,14 +183,15 @@ const NICHT_NUR_STEFAN: AbgleichErgebnis = Object.freeze({ art: 'nicht_nur_stefa
 /**
  * Abgleich A6: sind ALLE Ablehnungen eines Laufs allein von Stefan abgelehnt? Fail closed.
  * @param denials - permission_denials des Ergebnisobjekts ({ tool_name, tool_use_id, tool_input })
- * @param protokoll - daten der letzten Version von `rueckfragen-<laufId>` (oder null/ungültig = fehlend)
+ * @param protokoll - zusammengesetztes Protokoll von `rueckfragen-<laufId>` (`ab: 0`; oder null/ungültig = fehlend)
  * @param laufId - Lauf, zu dem das Protokoll gehören muss (H2)
  * @returns nur_stefan mit Anzahl oder nicht_nur_stefan
  */
 export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unknown, laufId: string): AbgleichErgebnis {
   if (validiereRueckfrageProtokoll(protokoll).length > 0) return NICHT_NUR_STEFAN
-  const geprueft = protokoll as { lauf_id: string; eintraege: { tool_use_id: string | null; tool_name: string; input_hash: string; art: string }[] }
-  if (geprueft.lauf_id !== laufId || denials.length === 0) return NICHT_NUR_STEFAN
+  const geprueft = protokoll as { lauf_id: string; ab: number; eintraege: { tool_use_id: string | null; tool_name: string; input_hash: string; art: string }[] }
+  // B2b-3b-2b-1a: ein einzelner Zuwachs (ab > 0) ist nie ein ganzes Protokoll.
+  if (geprueft.lauf_id !== laufId || geprueft.ab !== 0 || denials.length === 0) return NICHT_NUR_STEFAN
   const jeId = new Map<string, { anzahl: number; eintrag: (typeof geprueft.eintraege)[number] }>()
   for (const eintrag of geprueft.eintraege) {
     if (eintrag.tool_use_id === null) continue
@@ -209,12 +224,14 @@ const VERGLEICHS_FELDER = ['tool_use_id', 'tool_name', 'input_hash', 'art'] as c
  * `tool_use_id`, `tool_name`, `input_hash`, `art` (`===`) gilt die Datei; alles andere ⇒ ok:false mit Grund (fail closed). Schema
  * und `lauf_id` prüft danach der Abgleich A6 (`gleicheAblehnungenAb`). Wirft nie, auch nicht an einer manipulierten Datei
  * (Delta D1).
- * @param datei - daten der letzten Version von `rueckfragen-<laufId>` (oder null)
+ * @param datei - zusammengesetztes Protokoll (setzeProtokollZusammen), null (keine Datei) oder { ungueltig: grund } (nicht
+ *   zusammensetzbar; B2b-3b-2b-1a, Delta D5 — wird auch bei leerem Speicher gemeldet)
  * @param speicher - Projektion der Vermittlung (oder null/undefined: Lauf nicht offen, Neustart)
  * @returns { ok: true, daten: datei } oder { ok: false, grund, leer? }
  */
 export function bestaetigeProtokoll(datei: unknown, speicher: unknown): BestaetigungErgebnis {
   if (!Array.isArray(speicher)) return { ok: false, grund: 'Speicher fehlt (Lauf nicht offen)' }
+  if (istObjekt(datei) && typeof datei.ungueltig === 'string') return { ok: false, grund: `Datei nicht zusammensetzbar (${datei.ungueltig})` }
   if (!istObjekt(datei) || !Array.isArray(datei.eintraege)) {
     // Nur eine wirklich fehlende Datei bei leerem Speicher ist der Normalfall (Delta D2); eine kaputte Datei wird gemeldet.
     return speicher.length === 0 && (datei === null || datei === undefined) ? { ok: false, grund: 'keine Rückfrage im Lauf', leer: true } : { ok: false, grund: 'Datei fehlt oder ist kein Protokoll' }
@@ -229,4 +246,31 @@ export function bestaetigeProtokoll(datei: unknown, speicher: unknown): Bestaeti
     if (feld !== undefined) return { ok: false, grund: `Eintrag ${i} weicht ab (${feld})` }
   }
   return { ok: true, daten: datei }
+}
+
+/** Ergebnis von setzeProtokollZusammen: das ganze Protokoll (`ab: 0`), null ohne Version, oder ein Grund. */
+export type ZusammensetzungErgebnis = { ok: true; daten: unknown } | { ok: false; grund: string }
+
+/**
+ * F45 B2b-3b-2b-1a (Speichergröße): setzt die Versionen von `rueckfragen-<laufId>` — je Version nur die neuen Einträge ab Index
+ * `ab` — zu einem Protokoll `{ rueckfragen_schema: 'v1', lauf_id, ab: 0, eintraege }` zusammen. Jede Version muss gültig sein
+ * (Schema v1), zum Lauf gehören und lückenlos anschließen (`ab` = bisherige Länge); sonst ok:false mit Grund (fail closed).
+ * Keine Version ⇒ ok mit null (Lauf ohne Rückfrage). Wirft nie.
+ * @param versionen - Versionen aufsteigend (listeVersionen), je mit `daten` und `versionSequenz`
+ * @param laufId - Lauf, zu dem jede Version gehören muss
+ * @returns { ok: true, daten } oder { ok: false, grund }
+ */
+export function setzeProtokollZusammen(versionen: readonly { versionSequenz?: number; daten?: unknown }[], laufId: string): ZusammensetzungErgebnis {
+  if (versionen.length === 0) return { ok: true, daten: null }
+  const eintraege: unknown[] = []
+  for (const version of versionen) {
+    const nr = version.versionSequenz ?? '?'
+    const verstoesse = validiereRueckfrageProtokoll(version.daten)
+    if (verstoesse.length > 0) return { ok: false, grund: `Version ${nr} ungültig: ${verstoesse[0]}` }
+    const daten = version.daten as { lauf_id: string; ab: number; eintraege: unknown[] }
+    if (daten.lauf_id !== laufId) return { ok: false, grund: `Version ${nr} gehört zu einem anderen Lauf` }
+    if (daten.ab !== eintraege.length) return { ok: false, grund: `Version ${nr} lückenhaft (ab ${daten.ab}, erwartet ${eintraege.length})` }
+    eintraege.push(...daten.eintraege)
+  }
+  return { ok: true, daten: { rueckfragen_schema: 'v1', lauf_id: laufId, ab: 0, eintraege } }
 }

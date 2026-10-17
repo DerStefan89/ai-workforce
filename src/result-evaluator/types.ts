@@ -24,8 +24,9 @@ export interface KlassifikationsEingaben {
    */
   claudeAenderungen?: string[]
   /**
-   * F45 B2b-3b-1b: daten der letzten Version des Kern-Artefakts `rueckfragen-<laufId>` (Rückfrage-Protokoll) oder null —
-   * vom Execution Controller nur bei eingeschaltetem Kanal gesetzt. Ungültig oder null zählt wie fehlend. Fehlt das Feld,
+   * F45 B2b-3b-1b: Rückfrage-Protokoll `rueckfragen-<laufId>` oder null — seit B2b-3b-2b-1a zusammengesetzt aus allen
+   * Zuwachs-Versionen (`ab: 0`) und gegen den Speicherstand der Vermittlung bestätigt; vom Execution Controller nur bei
+   * eingeschaltetem Kanal gesetzt. Ungültig oder null zählt wie fehlend. Fehlt das Feld,
    * bleibt die Klassifikation unverändert.
    */
   rueckfragen?: unknown

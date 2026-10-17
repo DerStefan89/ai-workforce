@@ -3,9 +3,10 @@
  *
  * Zweck: Schreiber des Rückfrage-Protokolls (F45 B2b-3b-1b, features/F45/plan-b2b3b1b-v2.md A2/A3). Rückruf `protokolliere`
  * der Vermittlung: registriert je Entscheidung die nächste Version des Kern-Artefakts `rueckfragen-<laufId>` im
- * Kontrollzustand (Hash-Kette, nicht im Arbeitsordner) mit ALLEN Einträgen des Laufs bis hier — die Liste führt die
- * Vermittlung, der Schreiber lädt nichts (A2: kein Lesen je Entscheidung; ein fehlgeschlagener Schreibvorgang wird mit der
- * nächsten Entscheidung nachgeholt).
+ * Kontrollzustand (Hash-Kette, nicht im Arbeitsordner). Seit B2b-3b-2b-1a (Schema v1) trägt jede Version nur den Zuwachs:
+ * die noch nicht geschriebenen Einträge ab Index `ab`, die die Vermittlung übergibt (vorher alle Einträge je Version ⇒ 43 MB im
+ * schlimmsten Fall). Der Schreiber lädt nichts (A2: kein Lesen je Entscheidung; ein fehlgeschlagener Schreibvorgang wird mit
+ * der nächsten Entscheidung nachgeholt). Zusammengesetzt wird beim Lesen (setzeProtokollZusammen, src/rueckfrage/protokoll.ts).
  *
  * Je Textfeld (A3): erst neutralisieren (Arbeitsordner, Temp, Home ⇒ Platzhalter), dann maskieren (bekannte Geheimnis-Muster),
  * dann auf die Feldgrenze kappen (grund 500, befehl/frage/antwort 2000) — so bleibt kein Geheimnis an der Schnittkante halb
@@ -15,7 +16,7 @@
  * (sichere Richtung).
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (erzeugeRequestHandler, Standard-Vermittlung; darüber indirekt
- * scripts/check-f45-b2b3b1b-auswertung.mjs (p3)), scripts/leitstand/rueckfrage-protokoll.test.mjs.
+ * scripts/check-f45-b2b3b1b-auswertung.mjs (p3)), scripts/check-f45-b2b3b2b1a-rest.mjs (g), scripts/leitstand/rueckfrage-protokoll.test.mjs.
  */
 
 import { registriereKernArtefakt } from '../../src/lineage-registry/index.ts'
@@ -41,7 +42,7 @@ function bereiteText(text, orte, grenze) {
 
 /**
  * Ein Eintrag der Vermittlung als Protokolleintrag (nur Schemafelder).
- * @param eintrag - { tool_use_id, tool_name, input_hash, art, grund, zeit, befehl?, frage?, antwort? }
+ * @param eintrag - { tool_use_id, tool_name, input_hash, art, grund, zeit, befehl?, frage?, antwort?, herkunft? }
  * @param orte - Neutralisier-Orte
  * @returns Protokolleintrag
  */
@@ -56,6 +57,7 @@ function baueEintrag(eintrag, orte) {
     ...(eintrag.befehl !== undefined ? { befehl: bereiteText(eintrag.befehl, orte, PROTOKOLL_GRENZEN.text) } : {}),
     ...(eintrag.frage !== undefined ? { frage: bereiteText(eintrag.frage, orte, PROTOKOLL_GRENZEN.text) } : {}),
     ...(eintrag.antwort !== undefined ? { antwort: bereiteText(eintrag.antwort, orte, PROTOKOLL_GRENZEN.text) } : {}),
+    ...(eintrag.herkunft !== undefined ? { herkunft: eintrag.herkunft } : {}),
   }
 }
 
@@ -67,12 +69,12 @@ function baueEintrag(eintrag, orte) {
  * @param {string} optionen.home - Home-Verzeichnis (Neutralisierung)
  * @param {string} optionen.temp - Temp-Verzeichnis (Neutralisierung)
  * @param {(ereignis: object) => void} [optionen.schreiber] - Ereignis-Schreiber der Lineage (Standard still)
- * @returns (laufId, eintrag, { arbeitsordner, eintraege }) => void — wirft bei ungültigem Protokoll oder Schreibfehler
+ * @returns (laufId, eintrag, { arbeitsordner, ab, eintraege }) => void — wirft bei ungültigem Protokoll oder Schreibfehler
  */
 export function erzeugeRueckfrageProtokollSchreiber({ profilReferenz, basisVerzeichnis, home, temp, schreiber = () => {} }) {
   return (laufId, _eintrag, kontext) => {
     const orte = { arbeitsordner: kontext?.arbeitsordner ?? '', temp, home }
-    const daten = { rueckfragen_schema: 'v0', lauf_id: laufId, eintraege: (kontext?.eintraege ?? []).map((e) => baueEintrag(e, orte)) }
+    const daten = { rueckfragen_schema: 'v1', lauf_id: laufId, ab: kontext?.ab, eintraege: (kontext?.eintraege ?? []).map((e) => baueEintrag(e, orte)) }
     const verstoesse = validiereRueckfrageProtokoll(daten)
     if (verstoesse.length > 0) throw new Error(`Rückfrage-Protokoll verstößt gegen schemas/kontrollzustand-rueckfragen-payload.schema.json: ${verstoesse.join('; ')}`)
     registriereKernArtefakt(rueckfragenArtefaktId(laufId), profilReferenz, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, daten, [], { basisVerzeichnis, schreiber })

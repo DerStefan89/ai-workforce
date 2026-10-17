@@ -545,7 +545,7 @@ import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
 import { baueUmfangProjektion, ermittleUmfangFuerUebersicht, leseUmfangsZeile } from './leitstand/umfang-stand.mjs'
 import { ergaenzeRueckfrageAufruf, RUECKFRAGE_SERVER, werkzeugNamenAus } from '../src/rueckfrage/index.ts'
 import { erzeugeRueckfrageProtokollSchreiber } from './leitstand/rueckfrage-protokoll.mjs'
-import { erzeugeRueckfrageVermittlung } from './leitstand/rueckfrage-vermittlung.mjs'
+import { erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './leitstand/rueckfrage-vermittlung.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
@@ -1996,8 +1996,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'zeitmessung',
   // F40 WS-1: ebenso — serverseitiger Fortschritts-Rückruf je Lauf, kommt nie über den Body.
   'beiWerkzeugaufruf',
-  // F45 B2b-3b-2a: ebenso — Speicherstand der Rückfrage-Vermittlung (F-1128 (1)), kommt nie über den Body.
-  'rueckfrageSpeicher',
+  // F45 B2b-3b-2a/2b-1a: ebenso — Zugang zur Rückfrage-Vermittlung (Speicherstand, Meldung einer Abweichung), kommt nie über den Body.
+  'rueckfrageZugang',
 ])
 
 /**
@@ -6826,8 +6826,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: zielAnzeige }
         laufAktivitaet.melde(laufId, aufruf, zielAnzeige)
       },
-      // F45 B2b-3b-2a (F-1128 (1)): Speicherstand der Vermittlung — Quelle der Wahrheit für die Auswertung, die Datei ist Audit.
-      rueckfrageSpeicher: (id) => rueckfrageVermittlung.eintraegeVon(id),
+      // F45 B2b-3b-2a/2b-1a (F-1128 (1), R3): Speicherstand der Vermittlung (Quelle der Wahrheit); Abweichung ⇒ Startfehlerliste.
+      rueckfrageZugang: rueckfrageVermittlung.zugang(laufId, (fehler) => startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler })),
     }
 
     /** Ruft nachLauf auf, ohne dass ein Wurf daraus zur unhandled rejection wird. @param ergebnis - AusfuehrungsErgebnis oder null @param fehler - Wurf oder null */
@@ -6868,7 +6868,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       .then(async (ergebnis) => {
         // F45 B2b-3b-1a: Lauf-Ende (regulär, Zeitgrenze, Abbruch, Ablehnung) — offene Rückfragen abgelehnt, Token ungültig. Vor der
         // D13-Marke, synchron; ohne geöffneten Lauf ein No-op.
-        rueckfrageVermittlung.beendeLauf(laufId)
+        const stefanAbgelehntImLauf = rueckfrageVermittlung.beendeLauf(laufId)
         // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b). F-652 (löst state/findings.md
         // F-652, D13-Bauauftrag Punkt 3): der Reset von laufAktiv/globalerLaufZustand steht jetzt
         // HINTER einem etwaigen Prüfschritt weiter unten statt an dieser Stelle — vorher setzte
@@ -6923,13 +6923,13 @@ export function erzeugeRequestHandler(optionen = {}) {
           // abgefangen und in der Startfehlerliste protokolliert, der bereits geschriebene, terminale
           // Laufstatus bleibt unverändert.
           // F45 B1a-1 (F-715): Löschliste nur nach ERFOLGREICH, im Arbeitsordner, Rolle 'ausfuehrung', VOR der Übersicht; eigener try.
-          // B2b-3b-2a (F-1128 (2)): nach einer Ablehnung durch Stefan nichts löschen, nur Hinweis (fuehreLoeschlisteAus).
+          // B2b-3b-2a/2b-1a (F-1128 (2), R2): nach einer Ablehnung durch Stefan (Speicher der Vermittlung) nichts löschen, nur Hinweis.
           let loeschliste
           if (laufErfolgreich && laufImArbeitsordner && laufort.loeschliste === true) {
             try {
               const laufakteFuerLoeschliste = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
               const textErgebnis = laufakteFuerLoeschliste !== null ? leseErgebnistextAusRohstrom(laufakteFuerLoeschliste.daten) : { ok: false }
-              loeschliste = fuehreLoeschlisteAus(laufort.wurzel, textErgebnis.ok ? textErgebnis.text : null, (ergebnis.klassifikation?.abgelehnt_durch_stefan ?? 0) > 0)
+              loeschliste = fuehreLoeschlisteAus(laufort.wurzel, textErgebnis.ok ? textErgebnis.text : null, (ergebnis.klassifikation?.abgelehnt_durch_stefan ?? 0) > 0 || stefanAbgelehntImLauf > 0)
               if (loeschliste !== undefined) console.log(`[leitstand] Löschliste Lauf '${laufId}': ${loeschliste.geloescht.length} gelöscht, ${loeschliste.abgelehnt.length} abgelehnt`)
             } catch (loeschFehler) {
               const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Löschliste konnte nicht ausgeführt werden: ${String(loeschFehler?.message ?? loeschFehler)}` }
@@ -8397,7 +8397,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, body.status, { grund: body.grund })
         return
       }
-      const ergebnis = rueckfrageVermittlung.beantworte(antwortWeg[1], body.daten)
+      const ergebnis = rueckfrageVermittlung.beantworte(antwortWeg[1], body.daten, herkunftDerAntwort(req.headers))
       if (!ergebnis.ok) sendeJson(res, ergebnis.status, { grund: ergebnis.grund })
       else sendeJson(res, 200, { ok: true })
       return

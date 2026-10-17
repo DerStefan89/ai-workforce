@@ -2,16 +2,17 @@
  * Datei: src/rueckfrage/protokoll.test.ts
  *
  * Zweck: node:test-Fälle für das Rückfrage-Protokoll (F45 B2b-3b-1b, features/F45/plan-b2b3b1b-v2.md): Validator des
- * Kern-Artefakts `rueckfragen-<laufId>` (Schema v0, additionalProperties: false), Neutralisierung von Pfaden (Arbeitsordner
+ * Kern-Artefakts `rueckfragen-<laufId>` (Schema v1 seit B2b-3b-2b-1a: `ab`, `herkunft`; additionalProperties: false), Neutralisierung von Pfaden (Arbeitsordner
  * vor Temp vor Home, roh, `/` und JSON-escaped, ohne Kappen) und der Abgleich A6 zwischen `permission_denials` und Protokoll
  * (fail closed: nur eindeutige, vollständig passende `stefan_abgelehnt`-Einträge ⇒ nur_stefan). Seit F45 B2b-3b-2a
- * `bestaetigeProtokoll` (Speicher der Vermittlung = Quelle der Wahrheit, Datei = Audit; F-1128 (1)).
+ * `bestaetigeProtokoll` (Speicher der Vermittlung = Quelle der Wahrheit, Datei = Audit; F-1128 (1)); seit B2b-3b-2b-1a
+ * `setzeProtokollZusammen` (Zuwachs-Versionen lückenlos zusammensetzen).
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
-import { bestaetigeProtokoll, gleicheAblehnungenAb, neutralisiereText, RUECKFRAGE_PROTOKOLL_ARTEN, validiereRueckfrageProtokoll } from './protokoll.ts'
+import { bestaetigeProtokoll, gleicheAblehnungenAb, neutralisiereText, RUECKFRAGE_PROTOKOLL_ARTEN, setzeProtokollZusammen, validiereRueckfrageProtokoll } from './protokoll.ts'
 
 const hashVon = (input: unknown) => sha256Hex(kanonischesJson(input ?? null))
 const LAUF = 'lauf-1'
@@ -20,7 +21,7 @@ const LAUF = 'lauf-1'
 function eintrag(felder: Record<string, unknown> = {}): Record<string, unknown> {
   return { tool_use_id: 'toolu_a', tool_name: 'Bash', input_hash: hashVon({ command: 'git push' }), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'git push', ...felder }
 }
-const protokoll = (eintraege: unknown[], felder: Record<string, unknown> = {}) => ({ rueckfragen_schema: 'v0', lauf_id: LAUF, eintraege, ...felder })
+const protokoll = (eintraege: unknown[], felder: Record<string, unknown> = {}) => ({ rueckfragen_schema: 'v1', lauf_id: LAUF, ab: 0, eintraege, ...felder })
 const denial = (felder: Record<string, unknown> = {}) => ({ tool_name: 'Bash', tool_use_id: 'toolu_a', tool_input: { command: 'git push' }, ...felder })
 
 test('Arten: genau die sieben aus Plan v2 (A5: eigene für Fragen)', () => {
@@ -32,11 +33,20 @@ test('validiereRueckfrageProtokoll: gültig (mit und ohne Einträge, Frage mit A
   assert.deepEqual(validiereRueckfrageProtokoll(protokoll([eintrag(), eintrag({ tool_use_id: null, art: 'auto_deny' }), { ...eintrag({ tool_name: 'frage_stefan', art: 'frage_beantwortet', frage: 'Port?', antwort: '4711' }), befehl: undefined }].map((e) => JSON.parse(JSON.stringify(e))))), [])
 })
 
+test('validiereRueckfrageProtokoll (B2b-3b-2b-1a): herkunft an Antworten gültig, ab > 0 gültig', () => {
+  assert.deepEqual(validiereRueckfrageProtokoll(protokoll([eintrag({ herkunft: 'browser' }), eintrag({ art: 'stefan_erlaubt', herkunft: 'nicht_browser' })], { ab: 3 })), [])
+})
+
 test('validiereRueckfrageProtokoll: Rotfälle', () => {
   const faelle: [string, unknown][] = [
     ['kein Objekt', null],
     ['Array', []],
-    ['falsche Schemaversion', protokoll([], { rueckfragen_schema: 'v1' })],
+    ['falsche Schemaversion', protokoll([], { rueckfragen_schema: 'v0' })],
+    ['ab fehlt', JSON.parse(JSON.stringify(protokoll([], { ab: undefined })))],
+    ['ab negativ', protokoll([], { ab: -1 })],
+    ['ab keine ganze Zahl', protokoll([], { ab: 1.5 })],
+    ['herkunft unbekannt', protokoll([eintrag({ herkunft: 'curl' })])],
+    ['herkunft an auto_deny', protokoll([eintrag({ art: 'auto_deny', herkunft: 'browser' })])],
     ['lauf_id leer', protokoll([], { lauf_id: '' })],
     ['eintraege kein Array', protokoll([], { eintraege: {} })],
     ['unbekanntes Feld oben', protokoll([], { extra: 1 })],
@@ -159,4 +169,40 @@ test('bestaetigeProtokoll: Speicher leer und Datei fehlt ⇒ ok:false mit leer: 
   assert.deepEqual(bestaetigeProtokoll(null, []), { ok: false, grund: 'keine Rückfrage im Lauf', leer: true })
   assert.equal(bestaetigeProtokoll(protokoll([]), []).ok, true)
   assert.deepEqual(bestaetigeProtokoll({ eintraege: 'x' }, []), { ok: false, grund: 'Datei fehlt oder ist kein Protokoll' }, 'kaputte Datei bei leerem Speicher wird gemeldet (code-reviewer 7)')
+})
+
+test('gleicheAblehnungenAb (B2b-3b-2b-1a): ein einzelner Zuwachs (ab > 0) ist nie ein ganzes Protokoll', () => {
+  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()], { ab: 1 }), LAUF), { art: 'nicht_nur_stefan' })
+  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()]), LAUF), { art: 'nur_stefan', anzahl: 1 })
+})
+
+test('bestaetigeProtokoll (Delta D5): nicht zusammensetzbare Datei ⇒ ok:false mit Grund, auch bei leerem Speicher', () => {
+  assert.deepEqual(bestaetigeProtokoll({ ungueltig: 'Version 2 lückenhaft (ab 3, erwartet 1)' }, []), { ok: false, grund: 'Datei nicht zusammensetzbar (Version 2 lückenhaft (ab 3, erwartet 1))' })
+})
+
+test('setzeProtokollZusammen: Zuwachs-Versionen lückenlos ⇒ ganzes Protokoll mit ab 0; keine Version ⇒ null', () => {
+  const v = (nr: number, ab: number, eintraege: unknown[]) => ({ versionSequenz: nr, daten: protokoll(eintraege, { ab }) })
+  const a = eintrag({ tool_use_id: 'a', art: 'auto_deny' })
+  const b = eintrag({ tool_use_id: 'b' })
+  const c = eintrag({ tool_use_id: 'c', art: 'lauf_beendet' })
+  assert.deepEqual(setzeProtokollZusammen([], LAUF), { ok: true, daten: null })
+  assert.deepEqual(setzeProtokollZusammen([v(1, 0, [a]), v(2, 1, [b, c]), v(3, 3, [])], LAUF), { ok: true, daten: protokoll([a, b, c]) })
+})
+
+test('setzeProtokollZusammen: Lücke, Überlappung, erste Version ab ≠ 0, fremder Lauf, ungültige Version ⇒ ok:false mit Grund (fail closed)', () => {
+  const v = (nr: number, ab: number, eintraege: unknown[], felder: Record<string, unknown> = {}) => ({ versionSequenz: nr, daten: protokoll(eintraege, { ab, ...felder }) })
+  const e = eintrag()
+  const faelle: [string, { versionSequenz: number; daten: unknown }[], RegExp][] = [
+    ['Lücke', [v(1, 0, [e]), v(2, 2, [e])], /Version 2 lückenhaft \(ab 2, erwartet 1\)/],
+    ['Überlappung', [v(1, 0, [e]), v(2, 0, [e])], /Version 2 lückenhaft \(ab 0, erwartet 1\)/],
+    ['erste ab 1', [v(1, 1, [e])], /Version 1 lückenhaft/],
+    ['fremder Lauf', [v(1, 0, [e], { lauf_id: 'anderer' })], /anderen Lauf/],
+    ['ungültig', [{ versionSequenz: 1, daten: { rueckfragen_schema: 'v0', lauf_id: LAUF, eintraege: [] } }], /Version 1 ungültig/],
+    ['kein Objekt', [{ versionSequenz: 1, daten: null }], /Version 1 ungültig/],
+  ]
+  for (const [name, versionen, muster] of faelle) {
+    const ergebnis = setzeProtokollZusammen(versionen, LAUF)
+    assert.equal(ergebnis.ok, false, name)
+    if (!ergebnis.ok) assert.match(ergebnis.grund, muster, name)
+  }
 })
