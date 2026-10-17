@@ -43,6 +43,7 @@ import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
+import { renderRueckfrageAbnahme } from '../rueckfrage-abnahme.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { abbruchArt, initLive, letztesAggregat, raeumeLive, workflowZuLauf, zeichneLive, zeigeWartet } from './live.js'
 import {
@@ -255,6 +256,7 @@ function zeichneLaufDetail(laufId, detail, geladenAm) {
 
   const notiz = document.getElementById('lauf-notiz')
   const fokusAktion = notiz.contains(document.activeElement) ? document.activeElement?.dataset?.aktion : undefined
+  // F45 B2b-3b-2b-2a-3: unter der Notiz die Abnahme des Rückfrage-Kanals (R3-Meldung, Zählung; '' ohne Kanal).
   const notizNeu = setzeDetailHtml('lauf-notiz', renderLaufNotiz(lage, {
     laufStatus: detail.laufStatus,
     verweigertDaten: detail.verweigertDaten ?? null,
@@ -266,7 +268,8 @@ function zeichneLaufDetail(laufId, detail, geladenAm) {
     abbruchAngefordert: aktuellesDetail.abbruchAngefordert,
     // F46 D5: der Abbruch steht im Status-Block (zeichneLive), nicht ein zweites Mal in der Notiz.
     ohneAbbrechen: true,
-  }))
+    rueckfrageKanal: detail.rueckfrageKanal ?? null,
+  }) + renderRueckfrageAbnahme(detail.rueckfrageKanal ?? null))
   if (notizNeu && fokusAktion !== undefined) (notiz.querySelector(`.lauf-aktion[data-aktion="${fokusAktion}"]`) ?? document.getElementById('lauf-detail-titel')).focus()
   zeichneLive(laufId, detail, { abbrechenKnopf: () => abbrechenKnopf(laufId, aktiv, aktuellesDetail?.laufId === laufId && aktuellesDetail.abbruchAngefordert) })
 

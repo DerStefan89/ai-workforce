@@ -37,6 +37,8 @@ import { formatiereDatum, t, tHtml } from '../i18n.js'
 import { kommtBadge } from '../kommt.js'
 import { escapeHtml } from '../render.js'
 import { rollenName, workerName } from '../rollen-anzeige.js'
+import { kanalUrsacheHtml } from '../rueckfrage-abnahme.js'
+import { artChip } from '../typ-chip.js'
 
 /** Pfeil der Listenzeile (Vorlage icon('arrow')). */
 const PFEIL = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6" /></svg>'
@@ -223,9 +225,14 @@ export function renderStartfehlerListe(startfehler) {
     return `<div class="note red"><strong>${tHtml('ausfuehrung.startfehler.nichtVerfuegbar.titel')}</strong><p>${tHtml('ausfuehrung.startfehler.nichtVerfuegbar.text')}</p></div>`
   }
   if (startfehler.length === 0) return `<p class="subtle">${tHtml('ausfuehrung.startfehler.leer')}</p>`
+  // F45 B2b-3b-2b-2a-3 (Advisor V2): eine R3-Meldung (art 'rueckfrage_abweichung') ist kein Startproblem — eigene Marke und Link zum Lauf.
+  const abweichung = (e) =>
+    e.art === 'rueckfrage_abweichung' && typeof e.laufId === 'string' && e.laufId !== ''
+      ? `<p>${artChip('startproblem', { schluessel: 'attention.art.abweichung' })} ${tHtml('ausfuehrung.startfehler.abweichung')} <a class="text-link" href="#/runs/${escapeHtml(encodeURIComponent(e.laufId))}">${tHtml('attention.knopf.abweichung')} <span aria-hidden="true">→</span></a></p>`
+      : ''
   const zeilen = startfehler.map(
     (e) => `<div class="startfehler-zeile">
-      <p><code>${escapeHtml(e.laufId ?? '')}</code> <span class="lauf-zeit">${zeitHtml(e.zeitstempel)}</span></p>
+      <p><code>${escapeHtml(e.laufId ?? '')}</code> <span class="lauf-zeit">${zeitHtml(e.zeitstempel)}</span></p>${abweichung(e)}
       <p class="startfehler-text">${escapeHtml(e.fehler ?? '')}</p>
     </div>`
   )
@@ -272,10 +279,12 @@ function fehlerDaten(verweigertDaten, rohstrom) {
  * „Lauf abbrechen“ (G9) hängt wie bisher an aktiv, nicht an der Lage — also auch im Nachlauf des
  * Bypass-Falls; nach einem angeforderten Abbruch steht der Knopf gesperrt mit „Abbruch angefordert“.
  * F46 D5: ohneAbbrechen true lässt den Abbruch-Knopf weg — die Live-Seite trägt ihn im Status-Block.
- * @param kontext - { laufStatus, verweigertDaten, rohstrom, kenntnisgenommen, fortsetzung, geladenAm, aktiv, abbruchAngefordert, ohneAbbrechen }
+ * F45 B2b-3b-2b-2a-3: rueckfrageKanal (detail.rueckfrageKanal) — ist der Rückfrage-Kanal die Ursache einer Verweigerung, ersetzt sein
+ * Grund die Zeile „Ursache in Klartext“ (rueckfrage-abnahme.js kanalUrsacheHtml); ohne Kanal bitgleich.
+ * @param kontext - { laufStatus, verweigertDaten, rohstrom, kenntnisgenommen, fortsetzung, geladenAm, aktiv, abbruchAngefordert, ohneAbbrechen, rueckfrageKanal }
  * @returns HTML
  */
-export function renderLaufNotiz(lage, { laufStatus, verweigertDaten = null, rohstrom, kenntnisgenommen = false, fortsetzung = false, geladenAm = null, aktiv = lage === 'laeuft', abbruchAngefordert = false, ohneAbbrechen = false } = {}) {
+export function renderLaufNotiz(lage, { laufStatus, verweigertDaten = null, rohstrom, kenntnisgenommen = false, fortsetzung = false, geladenAm = null, aktiv = lage === 'laeuft', abbruchAngefordert = false, ohneAbbrechen = false, rueckfrageKanal = null } = {}) {
   const aktualisieren = aktionsKnopf('aktualisieren', 'lauf.aktion.aktualisieren')
   let abbrechen = ''
   if (ohneAbbrechen) abbrechen = ''
@@ -290,9 +299,11 @@ export function renderLaufNotiz(lage, { laufStatus, verweigertDaten = null, rohs
       ? `<p class="lauf-kenntnis-zeile">${tHtml('lauf.notiz.kenntnisGenommen')}</p>`
       : ''
     const knopfKenntnis = kenntnisgenommen ? '' : aktionsKnopf('kenntnisnahme-oeffnen', 'lauf.aktion.kenntnis', '', true)
+    // runs.js setzt die R3-Meldung direkt unter diese Notiz (renderRueckfrageAbnahme).
+    const kanalUrsache = ergebnis === 'VERWEIGERT' ? kanalUrsacheHtml(rueckfrageKanal, { r3Darunter: true }) : ''
     return `<div class="note red lauf-notiz-fehler">
       <strong>${tHtml(`lauf.notiz.fehler.${ergebnis}`)}</strong>
-      <p>${tHtml('lauf.notiz.ursache')} ${kommtBadge()}</p>
+      ${kanalUrsache || `<p>${tHtml('lauf.notiz.ursache')} ${kommtBadge()}</p>`}
       ${fehlerDaten(verweigertDaten, rohstrom)}
       ${kenntnis}
       ${zeile(knopfKenntnis, fortsetzen(true), aktualisieren)}

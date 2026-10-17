@@ -1,0 +1,23 @@
+[
+  {
+    "label": "R3-Meldung escaped mit Maske — tr-390",
+    "Block „Rückfrage-Kanal im Lauf“": true,
+    "R3-Meldung": true,
+    "Maske sichtbar": true,
+    "<img> gerendert (soll false)": false,
+    "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)": false,
+    "Sichtung mit Kanal-Grund": false,
+    "Startfehler mit Protokoll-Abweichung": false,
+    "Notiz": "Bu çalışma adımı reddedildi.",
+    "Kanal-Grund": "Soru kaydı kullanılamaz. Kanal kaydı geçersizdi, başka bir çalıştırmaya aitti ya da bellekteki durumdan farklıydı — redd",
+    "Was tun": "(fehlt)",
+    "R3-Titel": "Soru kaydı doğrulanmadı",
+    "Sichtungs-Satz": "(fehlt)",
+    "Chip R3": "(fehlt)",
+    "Knopf R3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

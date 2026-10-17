@@ -55,6 +55,7 @@
  * (ermittleToolErgebnisse, Hash-Vergleich, keine Textdeutung). Seit B2b-3b-2b-2a-1 (F-1128 (3)/R3) trägt ein Kanal-Lauf in daten der
  * Terminalmarke zusätzlich: bei VERWEIGERT `rueckfrage_abgleich` { art, grund }, bei ERFOLGREICH/VERWEIGERT `rueckfrage_zaehlung`
  * (Speicherstand, vom Controller), bei jedem Ergebnis mit verworfenem Protokoll `rueckfrage_abweichung` (gekappt). Ohne Kanal bitgleich.
+ * Seit B2b-3b-2b-2a-3 (F-1132 (1)) steht `rueckfrage_zaehlung` auch bei FEHLGESCHLAGEN (z. B. TIMEOUT während eine Rückfrage wartet).
  *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens, seit F45 B2b-3b-1a in
  * src/invocation-policy neben pruefeAufrufparameter, damit die Vorentscheidung des
@@ -451,7 +452,7 @@ export function klassifiziereLauf(
   // TIMEOUT/ABBRUCH setzen daten oben neu). Ohne Kanal kommt keines davon vor ⇒ daten bitgleich.
   const kanalDaten = {
     ...(rueckfrageAbgleich !== undefined ? { rueckfrage_abgleich: rueckfrageAbgleich } : {}),
-    ...(eingaben.rueckfrageZaehlung !== undefined && teilergebnis.ergebnis !== 'FEHLGESCHLAGEN' ? { rueckfrage_zaehlung: eingaben.rueckfrageZaehlung } : {}),
+    ...(eingaben.rueckfrageZaehlung !== undefined ? { rueckfrage_zaehlung: eingaben.rueckfrageZaehlung } : {}),
     ...(eingaben.rueckfrageAbweichung !== undefined ? { rueckfrage_abweichung: kappeGrund(eingaben.rueckfrageAbweichung) } : {}),
   }
   if (Object.keys(kanalDaten).length > 0) zusatzDaten = { daten: { ...((zusatzDaten.daten as Record<string, unknown> | undefined) ?? {}), ...kanalDaten } }

@@ -1242,7 +1242,7 @@ function klassifiziereMit(stdout: string, zusatz: (laufId: string) => Record<str
 }
 
 test('F45 B2b-3b-2b-2a-1: VERWEIGERT mit Kanal trägt rueckfrage_abgleich { art, grund } je Ursache; ohne Kanal nicht', () => {
-  const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 1, frage_beantwortet: 0, nicht_browser: 1 }
+  const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 1, frage_beantwortet: 0, nicht_browser: 1, abgelaufen: 0, lauf_ende: 0, automatisch: 0 }
   const statisch = 'Permission to use Bash with command npm publish has been denied.'
   const faelle: [string, string, (l: string) => Record<string, unknown>, unknown][] = [
     ['Text passt nicht', ablehnungsStdout([STEFAN_DENIAL], statisch), (l) => ({ rueckfragen: stefanProtokoll(l) }), { art: 'abgleich', grund: 'ablehnungstext_passt_nicht' }],
@@ -1264,7 +1264,7 @@ test('F45 B2b-3b-2b-2a-1: VERWEIGERT mit Kanal trägt rueckfrage_abgleich { art,
 })
 
 test('F45 B2b-3b-2b-2a-1: ERFOLGREICH mit Kanal ⇒ rueckfrage_zaehlung; R3 ⇒ rueckfrage_abweichung gekappt (500), auch bei ERFOLGREICH', () => {
-  const zaehlung = { stefan_erlaubt: 2, stefan_abgelehnt: 0, frage_beantwortet: 1, nicht_browser: 0 }
+  const zaehlung = { stefan_erlaubt: 2, stefan_abgelehnt: 0, frage_beantwortet: 1, nicht_browser: 0, abgelaufen: 1, lauf_ende: 0, automatisch: 2 }
   const ohneAblehnung = ablehnungsStdout([])
   assert.deepEqual(klassifiziereMit(ohneAblehnung, () => ({ rueckfragen: null, rueckfrageZaehlung: zaehlung })), { ergebnis: 'ERFOLGREICH', daten: { rueckfrage_zaehlung: zaehlung } })
   const lang = 'x'.repeat(900)
@@ -1276,8 +1276,8 @@ test('F45 B2b-3b-2b-2a-1: ERFOLGREICH mit Kanal ⇒ rueckfrage_zaehlung; R3 ⇒ 
   assert.deepEqual(klassifiziereMit(ohneAblehnung, () => ({})), { ergebnis: 'ERFOLGREICH', daten: undefined }, 'ohne Kanal bitgleich: keine daten')
 })
 
-test('F45 B2b-3b-2b-2a-1 (qa M1): TIMEOUT/ABBRUCH mit Kanal ⇒ rueckfrage_abweichung neben art/beendigungsart, keine Zählung', () => {
-  const zaehlung = { stefan_erlaubt: 1, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0 }
+test('F45 B2b-3b-2b-2a-1 (qa M1) / B2b-3b-2b-2a-3 (F-1132 (1)): TIMEOUT/ABBRUCH mit Kanal ⇒ rueckfrage_abweichung neben art/beendigungsart, Zählung auch bei FEHLGESCHLAGEN', () => {
+  const zaehlung = { stefan_erlaubt: 1, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: 1, automatisch: 0 }
   for (const [beendigungsart, art] of [
     ['TIMEOUT', 'TIMEOUT'],
     ['ABBRUCH', 'MANUELL'],
@@ -1290,7 +1290,18 @@ test('F45 B2b-3b-2b-2a-1 (qa M1): TIMEOUT/ABBRUCH mit Kanal ⇒ rueckfrage_abwei
       assert.equal(e.ergebnis, 'FEHLGESCHLAGEN', beendigungsart)
       assert.equal(daten?.art, art, `${beendigungsart}: art bleibt`)
       assert.equal(daten?.rueckfrage_abweichung, 'Länge abweichend (Speicher 2, Datei 1)', `${beendigungsart}: R3 geht nicht verloren`)
-      assert.equal(daten?.rueckfrage_zaehlung, undefined, `${beendigungsart}: keine Zählung bei FEHLGESCHLAGEN`)
+      // B2b-3b-2b-2a-3 (F-1132 (1)): beabsichtigt umgekehrt — vorher keine Zählung bei FEHLGESCHLAGEN.
+      assert.deepEqual(daten?.rueckfrage_zaehlung, zaehlung, `${beendigungsart}: Zählung auch bei FEHLGESCHLAGEN`)
+      // Negativkontrolle: ohne Kanal-Eingaben bleibt daten bei FEHLGESCHLAGEN ohne Kanal-Feld (bitgleich zu vorher).
+      const ohneId = neueLaufId(`ohne-kanal-${art}`)
+      try {
+        const ohneRef = schreibeRohstrom(ohneId, { stdout: '', stderr: '', exitCode: null, beendigungsart })
+        const ohne = klassifiziereLauf(ohneId, PROFIL_REFERENZ, { laufakte: baueLaufakte(ohneId, ohneRef, true) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+        const ohneDaten = terminalPayload(ohneId, ohne.wirkungsmarke.selbstHash)?.daten
+        assert.deepEqual(Object.keys(ohneDaten ?? {}).sort(), ['art', 'beendigungsart', 'grund', 'letzter_gueltiger_checkpoint'], `${beendigungsart}: ohne Kanal bitgleich`)
+      } finally {
+        raeumeKette(ohneId)
+      }
       assert.equal(daten?.rueckfrage_abgleich, undefined, `${beendigungsart}: kein Abgleich-Grund`)
     } finally {
       raeumeKette(laufId)

@@ -10,7 +10,8 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/dashboard.js (Arbeitsstand-Karten)
  * - public/leitstand/views/roadmap.js (Baum, Detailpanel, Legende, Entwicklungsstand)
- * - public/leitstand/views/attention.js (artChip, F46 D2)
+ * - public/leitstand/views/attention.js (artChip, F46 D2), public/leitstand/rueckfrage-anzeige.js (artChip 'kanal'),
+ *   public/leitstand/views/lauf-detail.js (artChip mit Option schluessel, Startfehler-Liste, F45 B2b-3b-2b-2a-3)
  * - public/leitstand/typ-chip.test.mjs (node:test)
  *
  * Wichtig: Import-sicher, kein DOM. Die Beschriftung kommt aus dem Wörterbuch (Schlüssel typ.<Typ>).
@@ -59,11 +60,14 @@ const FARBE_JE_ART = Object.freeze({ kanal: 'rueckfrage', freigabe: 'freigabe', 
  * Art-Chip einer Entscheidung (F46 D2, Bild 09-Main) — dieselbe Chip-Form wie die Typ-Chips, als
  * Umriss in der Farbe der Art (--art-*); der Text (attention.art.<art>) trägt die Bedeutung.
  * @param art - Art aus attention-daten.js ENTSCHEIDUNGS_ARTEN; eine unbekannte Art ergibt ''
- * @param optionen - { zusatz: Text hinter der Art, z. B. die Priorität eines Befunds, escaped }
+ * @param optionen - { zusatz: Text hinter der Art, z. B. die Priorität eines Befunds, escaped; schluessel: eigener i18n-Schlüssel des
+ *   Chip-Texts statt attention.art.<art> — F45 B2b-3b-2b-2a-3: die R3-Meldung bleibt Art „startproblem“ (Gruppe, Filter, Farbe), heißt aber
+ *   „Protokoll-Abweichung“ }
  * @returns HTML
  */
 export function artChip(art, optionen = {}) {
   if (!Object.hasOwn(FARBE_JE_ART, art)) return ''
   const zusatz = typeof optionen.zusatz === 'string' && optionen.zusatz !== '' ? ` · ${escapeHtml(optionen.zusatz)}` : ''
-  return `<span class="typ-chip art-chip art-chip-${FARBE_JE_ART[art]}">${escapeHtml(t(`attention.art.${art}`))}${zusatz}</span>`
+  const text = typeof optionen.schluessel === 'string' ? t(optionen.schluessel) : t(`attention.art.${art}`)
+  return `<span class="typ-chip art-chip art-chip-${FARBE_JE_ART[art]}">${escapeHtml(text)}${zusatz}</span>`
 }

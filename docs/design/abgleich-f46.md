@@ -186,10 +186,10 @@ Hauptaufgabe: die nächste Entscheidung finden und öffnen.
 
 Umsetzung D2 (Abweichungen, begründet):
 - Katalog-Empfehlung auf Freigabe-Karten: K — sie steht nur im Workflow-Detail, nicht in den Kopfdaten (kein zweiter Abruf je Karte). „blockiert“ und „Jarvis empfiehlt“ stehen einmal über der Liste als „kommt“, nicht auf jeder Karte.
-- Gefüllter Hauptknopf nur auf der obersten Karte im aktiven Filter (Leitprinzip: genau ein Hauptknopf); die übrigen Karten tragen einen einfachen Knopf.
+- Gefüllter Hauptknopf nur auf der obersten Karte im aktiven Filter (Leitprinzip: genau ein Hauptknopf); die übrigen Karten tragen einen einfachen Knopf. Ausnahme (E-Hauptknopf = A, Stefan 17.10.2026, F-1133 (10)): steht eine wartende Rückfrage des Laufs oben, gibt es keinen gefüllten Hauptknopf — „Einmal erlauben“ ist nie primär.
 - Reihenfolge der Gruppen: Freigaben, Rückfragen, Abnahmen, Fehler, Startprobleme, Befunde — Freigaben und Rückfragen teilen sich die feste Sektion `attention-abschnitt-workflows` (Gate f21-ws2).
 - Zahl an „Entscheidungen“: nur Quellen aus dem Poll (ohne Befunde P0/P1, die ein eigener Abruf sind).
-- „Zum Eintrag“ nur, wenn der Auftrag eine Workitem-Referenz trägt; Startprobleme ohne Knopf (keine Detailroute).
+- „Zum Eintrag“ nur, wenn der Auftrag eine Workitem-Referenz trägt; Startprobleme ohne Knopf (keine Detailroute). Ausnahme F45 B2b-3b-2b-2a-3: ein nicht bestätigtes Rückfrage-Protokoll (R3) bleibt in der Gruppe „Startprobleme“, trägt aber den Chip „Protokoll-Abweichung“ (Farbe `--art-fehler`) und den Knopf „Lauf ansehen“ zum Lauf-Detail.
 
 Umsetzung F45 B2b-3b-2b-2a-2 (Rückfrage-Kanal, Abweichungen, begründet):
 - Rückfragen des Laufs werden in der Karte entschieden (Einmal erlauben / Ablehnen bzw. Antwort) statt „finden und öffnen“ — sie warten mit Frist, ein Umweg kostet Zeit. Einziger Schreiber ist `rueckfrage-kanal.js` (Gate f21-ws2 (f-kanal)).

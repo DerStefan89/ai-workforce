@@ -1,0 +1,3 @@
+| Aktion | Block „Rückfrage-Kanal im Lauf“ | R3-Meldung | Maske sichtbar | <img> gerendert (soll false) | „Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false) | Sichtung mit Kanal-Grund | Startfehler mit Protokoll-Abweichung | Notiz | Kanal-Grund | Was tun | R3-Titel | Sichtungs-Satz | Chip R3 | Knopf R3 | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen | Pfadprobe |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| FEHLGESCHLAGEN (TIMEOUT) mit Zählung: „nicht ausgewertet“ — de-1440 | true | false | false | false | false | false | false | Dieser Arbeitsschritt ist fehlgeschlagen. | (fehlt) | (fehlt) | (fehlt) | (fehlt) | (fehlt) | (fehlt) | false | 1440/1440 | true | sauber |

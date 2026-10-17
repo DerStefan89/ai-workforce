@@ -1,0 +1,23 @@
+[
+  {
+    "label": "VERWEIGERT mit Kanal-Grund statt Standardsatz — de-1440-zoom200",
+    "Block „Rückfrage-Kanal im Lauf“": true,
+    "R3-Meldung": false,
+    "Maske sichtbar": false,
+    "<img> gerendert (soll false)": false,
+    "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)": false,
+    "Sichtung mit Kanal-Grund": false,
+    "Startfehler mit Protokoll-Abweichung": false,
+    "Notiz": "Dieser Arbeitsschritt wurde verweigert.",
+    "Kanal-Grund": "Deine Ablehnung nicht bestätigt. Mindestens eine Ablehnung ließ sich in der Auswertung nicht als deine bestätigen (z. B.",
+    "Was tun": "Was tun: Rohstrom des Laufs prüfen (die CLI kann ihr Format geändert haben) und den Lauf wiederholen; bleibt es, einen B",
+    "R3-Titel": "(fehlt)",
+    "Sichtungs-Satz": "(fehlt)",
+    "Chip R3": "(fehlt)",
+    "Knopf R3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "720/720",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

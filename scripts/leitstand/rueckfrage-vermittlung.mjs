@@ -35,7 +35,7 @@
  * laufOptionen.rueckfrageZugang), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
  * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, scripts/check-f45-b2b3b2b2a-einschalten.mjs (Dispatcher-Fall (d)),
  * scripts/leitstand/rueckfrage-vermittlung.test.mjs. Seit B2b-3b-2b-2a-1 liefert `zugang` zusätzlich `zaehlung()` und `abweichung()` (daten der
- * Terminalmarke über den Controller). Seit B2b-3b-2b-2a-2 (features/F45/plan-b2b3b2b2a2-v2.md, Advisor M3/M11) liefert `entschiedene()`
+ * Terminalmarke über den Controller); seit B2b-3b-2b-2a-3 zählt `zaehlung()` auch die unbeantworteten (F-1132 (1)). Seit B2b-3b-2b-2a-2 (features/F45/plan-b2b3b2b2a2-v2.md, Advisor M3/M11) liefert `entschiedene()`
  * die letzten ENTSCHIEDEN_MAX Entscheidungen von Warteschlangeneinträgen (auch beendeter Läufe, nur Speicher, nach Neustart leer) für
  * GET /api/rueckfragen (Feld `entschieden`, scripts/check-f45-b2b3b2b2a2-anzeige.mjs); Befehl und freie Antwort darin maskiert
  * (maskiereGeheimnisse) — ohne Token für jeden lokalen Prozess lesbar wie die offene Liste (DEKLARIERT, ARCHITECTURE §3).
@@ -69,6 +69,9 @@ export const MAX_OFFENE_JE_LAUF = 20
 export const MAX_PROTOKOLL_JE_LAUF = 200
 /** B2b-3b-2b-2a-2 (Advisor M3): so viele zuletzt entschiedene Rückfragen hält `entschiedene()` (alle Läufe zusammen, neueste zuerst). */
 export const ENTSCHIEDEN_MAX = 20
+/** B2b-3b-2b-2a-3 (F-1132 (1)): Grund einer Ablehnung durch die Wartegrenze bzw. beim Lauf-Ende — die Zählung unterscheidet danach. */
+const GRUND_WARTEGRENZE = 'Wartegrenze erreicht'
+const GRUND_LAUF_ENDE = 'Lauf beendet'
 
 /** Protokoll-Arten (A5: eigene Arten für Fragen) — einzige Quelle src/rueckfrage/protokoll.ts (3b-1b). */
 export const PROTOKOLL_ARTEN = RUECKFRAGE_PROTOKOLL_ARTEN
@@ -120,7 +123,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
   const pollFensterMs = optionen.pollFensterMs ?? POLL_FENSTER_MS
   const protokolliere = optionen.protokolliere ?? (() => {})
   const jetzt = optionen.jetzt ?? (() => new Date())
-  /** laufId → { token, arbeitsordner, werkzeugNamen, eintraege: Map<id, Eintrag>, bekannteIds: Set<string>, protokoll: object[], geschrieben: number, grenzeGemeldet: boolean } */
+  /** laufId → { token, arbeitsordner, werkzeugNamen, eintraege: Map<id, Eintrag>, bekannteIds: Set<string>, protokoll: object[], geschrieben: number, grenzeGemeldet: boolean, ohneEintrag: number } */
   const laeufe = new Map()
   /** B2b-3b-2b-2a-2: Ringpuffer der zuletzt entschiedenen Warteschlangeneinträge (neueste zuerst, höchstens ENTSCHIEDEN_MAX). */
   const zuletzt = []
@@ -213,7 +216,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
       return
     }
     if (laeufe.has(laufId)) beendeLauf(laufId)
-    laeufe.set(laufId, { token: kanal.token, arbeitsordner: kanal.arbeitsordner, werkzeugNamen: [...kanal.werkzeugNamen], eintraege: new Map(), bekannteIds: new Set(), protokoll: [], geschrieben: 0, grenzeGemeldet: false })
+    laeufe.set(laufId, { token: kanal.token, arbeitsordner: kanal.arbeitsordner, werkzeugNamen: [...kanal.werkzeugNamen], eintraege: new Map(), bekannteIds: new Set(), protokoll: [], geschrieben: 0, grenzeGemeldet: false, ohneEintrag: 0 })
   }
 
   /**
@@ -274,6 +277,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
       const grund = `Obergrenze der Protokolleinträge je Lauf erreicht (${MAX_PROTOKOLL_JE_LAUF})`
       if (!lauf.grenzeGemeldet) console.error(`[leitstand] Rückfrage-Kanal Lauf '${laufId}': ${grund} — weitere Anfragen ohne Protokolleintrag abgelehnt`)
       lauf.grenzeGemeldet = true
+      lauf.ohneEintrag++
       return { ok: true, entscheidung: anfrage.art === 'frage' ? { antwort: KEINE_ANTWORT } : { behavior: 'deny', message: `Automatisch abgelehnt: ${grund}` } }
     }
     // H5: jede tool_use_id genau einmal je Lauf — auch auto_deny-Fälle werden gemerkt.
@@ -301,7 +305,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     const seit = jetzt()
     const eintrag = { id: randomUUID(), lauf_id: laufId, ...anfrage, seit, frist: new Date(seit.getTime() + warteGrenzeMs), entscheidung: null, warter: new Set(), timer: null }
     eintrag.timer = setTimeout(() => {
-      entscheide(laufId, lauf, eintrag, ablehnungFuer(eintrag, 'Keine Antwort von Stefan innerhalb der Wartegrenze — abgelehnt.'), { art: eintrag.art === 'frage' ? 'frage_ohne_antwort' : 'zeitueberschreitung', grund: 'Wartegrenze erreicht' })
+      entscheide(laufId, lauf, eintrag, ablehnungFuer(eintrag, 'Keine Antwort von Stefan innerhalb der Wartegrenze — abgelehnt.'), { art: eintrag.art === 'frage' ? 'frage_ohne_antwort' : 'zeitueberschreitung', grund: GRUND_WARTEGRENZE })
     }, warteGrenzeMs)
     eintrag.timer.unref?.()
     lauf.eintraege.set(eintrag.id, eintrag)
@@ -409,7 +413,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     if (lauf === undefined) return 0
     laeufe.delete(laufId)
     for (const e of lauf.eintraege.values()) {
-      entscheide(laufId, lauf, e, ablehnungFuer(e, 'Lauf beendet — abgelehnt.'), { art: e.art === 'frage' ? 'frage_ohne_antwort' : 'lauf_beendet', grund: 'Lauf beendet' })
+      entscheide(laufId, lauf, e, ablehnungFuer(e, 'Lauf beendet — abgelehnt.'), { art: e.art === 'frage' ? 'frage_ohne_antwort' : 'lauf_beendet', grund: GRUND_LAUF_ENDE })
     }
     return lauf.protokoll.filter((e) => e.art === 'stefan_abgelehnt').length
   }
@@ -435,20 +439,26 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
   }
 
   /**
-   * B2b-3b-2b-2a-1 (F-1128 (3), E-B7, D13): Zählung der Antworten eines offenen Laufs je Art aus dem Speicherstand (nicht aus der
+   * B2b-3b-2b-2a-1 (F-1128 (3), E-B7, D13): Zählung der Rückfragen eines offenen Laufs je Art aus dem Speicherstand (nicht aus der
    * Datei) — für daten der Terminalmarke. `nicht_browser` zählt die Antworten der drei Arten mit Herkunft 'nicht_browser'. Enthält auch
    * Ablehnungen durch Stefan, die die Auswertung nicht bestätigt (Advisor B10, Beschriftung in der Anzeige).
+   * B2b-3b-2b-2a-3 (F-1132 (1)): dazu die unbeantworteten — `abgelaufen` (Wartegrenze), `lauf_ende` (beim Lauf-Ende abgelehnt und die beim
+   * Lesen noch offenen: der Controller liest nach dem Prozessende der CLI und erreicht `beendeLauf` ohne await, dort werden genau sie
+   * abgelehnt — Advisor M1) und `automatisch` (auto_deny, übrige Fragen ohne Antwort, Ablehnungen über der Protokollgrenze ohne Eintrag).
    * @param laufId - Lauf
-   * @returns { stefan_erlaubt, stefan_abgelehnt, frage_beantwortet, nicht_browser } oder null (Lauf nicht offen)
+   * @returns { stefan_erlaubt, stefan_abgelehnt, frage_beantwortet, nicht_browser, abgelaufen, lauf_ende, automatisch } oder null (Lauf nicht offen)
    */
   function zaehlungVon(laufId) {
     const lauf = laeufe.get(laufId)
     if (lauf === undefined) return null
-    const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0 }
+    const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: anzahlOffen(lauf), automatisch: lauf.ohneEintrag }
     for (const e of lauf.protokoll) {
-      if (e.art !== 'stefan_erlaubt' && e.art !== 'stefan_abgelehnt' && e.art !== 'frage_beantwortet') continue
-      zaehlung[e.art]++
-      if (e.herkunft !== 'browser') zaehlung.nicht_browser++
+      if (e.art === 'stefan_erlaubt' || e.art === 'stefan_abgelehnt' || e.art === 'frage_beantwortet') {
+        zaehlung[e.art]++
+        if (e.herkunft !== 'browser') zaehlung.nicht_browser++
+      } else if (e.art === 'zeitueberschreitung' || (e.art === 'frage_ohne_antwort' && e.grund === GRUND_WARTEGRENZE)) zaehlung.abgelaufen++
+      else if (e.art === 'lauf_beendet' || (e.art === 'frage_ohne_antwort' && e.grund === GRUND_LAUF_ENDE)) zaehlung.lauf_ende++
+      else zaehlung.automatisch++
     }
     return zaehlung
   }

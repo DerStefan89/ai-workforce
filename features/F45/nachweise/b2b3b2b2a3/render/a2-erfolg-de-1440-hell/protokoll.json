@@ -1,0 +1,23 @@
+[
+  {
+    "label": "ERFOLGREICH mit Zählung — de-1440-hell",
+    "Block „Rückfrage-Kanal im Lauf“": true,
+    "R3-Meldung": false,
+    "Maske sichtbar": false,
+    "<img> gerendert (soll false)": false,
+    "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)": false,
+    "Sichtung mit Kanal-Grund": false,
+    "Startfehler mit Protokoll-Abweichung": false,
+    "Notiz": "Dieser Arbeitsschritt ist erfolgreich abgeschlossen.",
+    "Kanal-Grund": "(fehlt)",
+    "Was tun": "(fehlt)",
+    "R3-Titel": "(fehlt)",
+    "Sichtungs-Satz": "(fehlt)",
+    "Chip R3": "(fehlt)",
+    "Knopf R3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

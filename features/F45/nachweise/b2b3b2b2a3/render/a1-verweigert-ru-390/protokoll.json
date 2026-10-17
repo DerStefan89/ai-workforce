@@ -1,0 +1,23 @@
+[
+  {
+    "label": "VERWEIGERT mit Kanal-Grund statt Standardsatz — ru-390",
+    "Block „Rückfrage-Kanal im Lauf“": true,
+    "R3-Meldung": false,
+    "Maske sichtbar": false,
+    "<img> gerendert (soll false)": false,
+    "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)": false,
+    "Sichtung mit Kanal-Grund": false,
+    "Startfehler mit Protokoll-Abweichung": false,
+    "Notiz": "Этот рабочий шаг был отклонён.",
+    "Kanal-Grund": "Твоё отклонение не подтверждено. Как минимум одно отклонение оценка не смогла подтвердить как твоё (например, не совпада",
+    "Was tun": "Что делать: Проверь сырой поток запуска (CLI мог изменить формат) и повтори запуск; если не пройдёт — сообщи о находке.",
+    "R3-Titel": "(fehlt)",
+    "Sichtungs-Satz": "(fehlt)",
+    "Chip R3": "(fehlt)",
+    "Knopf R3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]
