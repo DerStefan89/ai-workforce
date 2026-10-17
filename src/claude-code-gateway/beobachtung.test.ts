@@ -15,7 +15,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueBeobachtungsBlock, ermittleHintergrundAufrufe, leseBeobachtung, NAVIGATE_OHNE_URL, validiereLaufakteDaten, zaehleHintergrundAufrufe } from './index.ts'
+import { baueBeobachtungsBlock, ermittleHintergrundAufrufe, ermittleToolErgebnisse, leseBeobachtung, NAVIGATE_OHNE_URL, validiereLaufakteDaten, zaehleHintergrundAufrufe } from './index.ts'
 
 const INIT = JSON.stringify({
   type: 'system',
@@ -185,6 +185,18 @@ test('ermittleHintergrundAufrufe (F45 B1b-1, Advisor A1): automatisches Verschie
   // Ein leerer oder fehlender backgroundTaskId zählt nicht; Text im tool_result wird nicht gelesen.
   assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, BASH, toolResult('toolu_x2', false, { tool_use_result: { backgroundTaskId: '' } })]), [])
   assert.deepStrictEqual(ermittleHintergrundAufrufe([INIT, BASH, toolResult('toolu_x2', false)]), [])
+})
+
+test('ermittleToolErgebnisse (F45 B2b-3b-2b-1b, F-1128 R1): alle tool_result-Blöcke je ID mit is_error und String-content (reale Deny-Zeile)', () => {
+  // Gekürzt aus features/F45/nachweise/b2b3a/rohstrom-deny.ndjson:9 (Feldnamen und Verschachtelung unverändert).
+  const deny = JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'Stefan hat abgelehnt (Spike).', is_error: true, tool_use_id: 'toolu_01Ta4gWze6JDjWi6vemvdgvo' }] }, parent_tool_use_id: null, tool_use_result: 'Error: Stefan hat abgelehnt (Spike).' })
+  const arrayForm = JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_a', content: [{ type: 'text', text: 'x' }], is_error: true }] } })
+  const ergebnisse = ermittleToolErgebnisse([INIT, BASH, deny, toolResult('toolu_x2', false), toolResult('toolu_x2', true), arrayForm, 'kein json', RESULT])
+  assert.deepStrictEqual([...ergebnisse.keys()], ['toolu_01Ta4gWze6JDjWi6vemvdgvo', 'toolu_x2', 'toolu_a'])
+  assert.deepStrictEqual(ergebnisse.get('toolu_01Ta4gWze6JDjWi6vemvdgvo'), [{ fehler: true, text: 'Stefan hat abgelehnt (Spike).' }])
+  assert.deepStrictEqual(ergebnisse.get('toolu_x2'), [{ fehler: false, text: 'x' }, { fehler: true, text: 'x' }], 'doppelte Blöcke in Reihenfolge')
+  assert.deepStrictEqual(ergebnisse.get('toolu_a'), [{ fehler: true, text: null }], 'nur die belegte String-Form trägt einen Text (O6)')
+  assert.equal(ermittleToolErgebnisse([]).size, 0)
 })
 
 test('ermittleHintergrundAufrufe (F45 B1b-1, Advisor A2): abgelehnter Hintergrund-Versuch (is_error) zählt nicht, angenommener zählt', () => {

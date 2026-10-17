@@ -50,7 +50,9 @@
  * F45 B2b-3b-1b (ARCHITECTURE §4): mit eingaben.rueckfragen (Protokoll des Rückfrage-Kanals, nur bei eingeschaltetem
  * Kanal vom Controller gelesen) wird ein Lauf, dessen Ablehnungen ALLE allein von Stefan stammen (Abgleich A6 in
  * src/rueckfrage/protokoll.ts) und der keinen Umgehungsverdacht trägt, ERFOLGREICH mit daten.abgelehnt_durch_stefan
- * statt VERWEIGERT. Fehlt das Feld, ist es null oder ungültig, bleibt die Klassifikation bitgleich zu vorher.
+ * statt VERWEIGERT. Fehlt das Feld, ist es null oder ungültig, bleibt die Klassifikation bitgleich zu vorher. Seit B2b-3b-2b-1b
+ * (F-1128 R1) zählt eine Ablehnung nur, wenn jedes tool_result ihrer ID im Rohstrom genau den eindeutigen Ablehnungstext trägt
+ * (ermittleToolErgebnisse, Hash-Vergleich, keine Textdeutung).
  *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens, seit F45 B2b-3b-1a in
  * src/invocation-policy neben pruefeAufrufparameter, damit die Vorentscheidung des
@@ -66,7 +68,7 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { leseErgebnisobjekt, zaehleHintergrundAufrufe } from '../claude-code-gateway/index.ts'
+import { ermittleToolErgebnisse, leseErgebnisobjekt, zaehleHintergrundAufrufe } from '../claude-code-gateway/index.ts'
 import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
 import { leseCodexEreignisse } from '../codex-gateway/index.ts'
 import { ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
@@ -365,8 +367,11 @@ function ermittleErgebnis(
   // Kanal), ohne Umgehungsverdacht (E-186 bleibt, Plan O5) und bei vollständigem Abgleich A6 (src/rueckfrage/protokoll.ts).
   // Fehlt das Protokoll oder passt eine Ablehnung nicht, läuft der VERWEIGERT-Zweig unverändert.
   // Ungefiltert (qa 5): ein Eintrag, der kein Objekt ist, kippt den Abgleich (fail closed), statt herausgefiltert zu werden.
-  if (rueckfragen !== undefined && bypassVerdachtAnzahl === 0) {
-    const abgleich = gleicheAblehnungenAb(denialsRaw as unknown[], rueckfragen, laufId)
+  // B2b-3b-2b-1b (F-1128 R1): dazu die tool_result-Blöcke des hash-geprüften Rohstroms — eine Ablehnung zählt nur, wenn die CLI
+  // genau Stefans eindeutigen Ablehnungstext zurückgegeben hat.
+  if (rueckfragen !== undefined && rueckfragen !== null && bypassVerdachtAnzahl === 0) {
+    const ergebnisse = ermittleToolErgebnisse(typeof rohstrom.stdout === 'string' ? rohstrom.stdout.split('\n') : [])
+    const abgleich = gleicheAblehnungenAb(denialsRaw as unknown[], rueckfragen, laufId, ergebnisse)
     if (abgleich.art === 'nur_stefan') {
       return { ergebnis: 'ERFOLGREICH', ...zusatzFelder, abgelehnt_durch_stefan: abgleich.anzahl, daten: { abgelehnt_durch_stefan: abgleich.anzahl } }
     }

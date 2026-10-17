@@ -19,7 +19,8 @@
       "grund": "Stefan hat abgelehnt",
       "zeit": "2026-10-16T10:01:00.000Z",
       "befehl": "npm publish --registry <ARBEITSORDNER>/x",
-      "herkunft": "browser"
+      "herkunft": "browser",
+      "ablehnung_hash": "b049f01a00244a9f81eb4237947dfa7bfb68adc852c210f16afde483de27bef4"
     },
     {
       "tool_use_id": null,

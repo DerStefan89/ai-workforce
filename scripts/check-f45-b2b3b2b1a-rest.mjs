@@ -23,6 +23,11 @@
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
+ * Nachgezogen in B2b-3b-2b-1b (F-1128 R1, features/F45/plan-b2b3b2b1b-v2.md): eine Ablehnung durch Stefan zählt nur noch, wenn
+ * das tool_result ihrer ID genau den eindeutigen Ablehnungstext trägt — (g) und die (r3)-Gegenprobe schreiben deshalb passende
+ * tool_result-Zeilen in den Rohstrom (Text aus dem Long-Poll), die Fälschung t3 trägt einen gültigen ablehnung_hash (sonst scheiterte
+ * sie am Validator statt an der Länge).
+ *
  * Wichtig: (f) erkennt die Option `rueckfrage` nur als Literal in der Argumentliste von erzeugeRequestHandler( (DEKLARIERT, Muster
  * Gate b2b3b2a (f)). (g) misst die Bytes vor jeder Exportprüfung, damit der Größenbefund auch gegen main erscheint.
  *
@@ -102,10 +107,12 @@ aufraeumen.push(KLASS_BASIS)
  * @param laufId - Lauf (der Abgleich prüft lauf_id)
  * @param denials - permission_denials
  * @param rueckfragen - daten oder null
+ * @param texte - B2b-3b-2b-1b: Map tool_use_id → Text des tool_result (is_error), vor der result-Zeile im Rohstrom
  * @returns Ergebnis von klassifiziereLauf ohne Wirkungsmarke
  */
-function klassifiziere(laufId, denials, rueckfragen) {
-  const roh = { stdout: JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: denials }), stderr: '', exitCode: 0 }
+function klassifiziere(laufId, denials, rueckfragen, texte = new Map()) {
+  const ergebnisZeilen = [...texte].map(([id, text]) => JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, content: text, is_error: true }] } }))
+  const roh = { stdout: [...ergebnisZeilen, JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: denials })].join('\n'), stderr: '', exitCode: 0 }
   const rohPfad = join(KLASS_BASIS, 'roh', `${laufId}-${randomUUID().slice(0, 8)}.json`)
   mkdirSync(join(KLASS_BASIS, 'roh'), { recursive: true })
   const inhalt = JSON.stringify(roh)
@@ -116,6 +123,8 @@ function klassifiziere(laufId, denials, rueckfragen) {
 }
 
 const denial = (id, input, toolName = 'Bash') => ({ tool_name: toolName, tool_use_id: id, tool_input: input })
+/** Ablehnungstext der gefälschten Version t3 (B2b-3b-2b-1b: gültiger Hash, damit die Fälschung an der Länge scheitert). */
+const TEXT_T3 = 'Stefan hat den Befehl abgelehnt. (Ref t3)'
 
 try {
   // ── (g) Speichergröße: nur Zuwachs je Version ──────────────────────────────────────────────────────────────────────────
@@ -127,11 +136,13 @@ try {
     const v = vermittlungModul.erzeugeRueckfrageVermittlung({ protokolliere: erzeugeRueckfrageProtokollSchreiber({ profilReferenz: PROFIL, basisVerzeichnis: basis, home: homedir(), temp: tmpdir() }) })
     v.oeffneLauf(laufId, { token: 'c'.repeat(64), arbeitsordner: join(basis, 'arbeit'), werkzeugNamen: ['Bash'] })
     const inputs = []
+    const texte = new Map()
     for (let i = 0; i < 200; i++) {
       const input = { command: `npm run x${i} -- ${'abcdefghij'.repeat(189)}` }
       inputs.push(input)
       const gestellt = v.stelle(laufId, { art: 'rechte', tool_name: 'Bash', input, tool_use_id: `g${i}` })
       v.beantworte(gestellt.id, { entscheidung: 'ablehnen' })
+      texte.set(`g${i}`, (await v.warte(laufId, gestellt.id)).entscheidung?.message)
     }
     const mb = bytesUnter(basis) / 1e6
     const fehlt = [typeof controllerModul.leseRueckfrageProtokoll !== 'function' ? 'leseRueckfrageProtokoll' : null, typeof protokollModul.bestaetigeProtokoll !== 'function' ? 'bestaetigeProtokoll' : null, typeof v.zugang !== 'function' ? 'Vermittlung.zugang' : null].filter(Boolean)
@@ -143,7 +154,8 @@ try {
       ergebnis = klassifiziere(
         laufId,
         inputs.map((input, i) => denial(`g${i}`, input)),
-        bestaetigt.ok ? bestaetigt.daten : null
+        bestaetigt.ok ? bestaetigt.daten : null,
+        texte
       ).ergebnis
     }
     v.beendeLauf(laufId)
@@ -315,6 +327,8 @@ try {
         const stelle = async (id, command) => (await (await fetch(`${basisUrl}/api/rueckfrage/anfrage`, { method: 'POST', headers: tokenKopf, body: JSON.stringify({ art: 'rechte', tool_name: 'Bash', input: { command }, tool_use_id: id }) })).json()).id
         const t1 = await stelle('t1', 'npm publish')
         a.t1 = (await fetch(`${basisUrl}/api/rueckfragen/${t1}/antwort`, { method: 'POST', headers: { 'sec-fetch-site': 'same-origin' }, body: JSON.stringify({ entscheidung: 'ablehnen' }) })).status
+        // B2b-3b-2b-1b: Text der Ablehnung, wie ihn das MCP-Skript per Long-Poll holt (für die Gegenprobe alter Pfad).
+        a.textT1 = (await (await fetch(`${basisUrl}/api/rueckfrage/anfrage/${t1}/warten`, { method: 'POST', headers: tokenKopf, body: '{}' })).json()).entscheidung?.message
         const t2 = await stelle('t2', 'npm test')
         a.t2 = (await fetch(`${basisUrl}/api/rueckfragen/${t2}/antwort`, { method: 'POST', body: JSON.stringify({ entscheidung: 'einmal_erlauben' }) })).status
         const lese = typeof controllerModul.leseRueckfrageProtokoll === 'function' ? controllerModul.leseRueckfrageProtokoll : () => null
@@ -325,7 +339,7 @@ try {
           return
         }
         // Fälschung: angehängte Version mit ab = aktuelle Länge und stefan_abgelehnt für t3 (lief nie über den Kanal).
-        const t3 = { tool_use_id: 't3', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson({ command: 'rm -rf x' })), art: 'stefan_abgelehnt', grund: 'gefälscht', zeit: '2026-10-16T10:00:00.000Z' }
+        const t3 = { tool_use_id: 't3', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson({ command: 'rm -rf x' })), art: 'stefan_abgelehnt', grund: 'gefälscht', zeit: '2026-10-16T10:00:00.000Z', ablehnung_hash: sha256Hex(TEXT_T3) }
         registriereKernArtefakt(`rueckfragen-${laufId}`, profil, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, { rueckfragen_schema: 'v1', lauf_id: laufId, ab: echt?.eintraege?.length ?? 0, eintraege: [t3] }, [], { basisVerzeichnis: optionen.basisVerzeichnis, ...STILL })
         a.ermittelt = controllerModul.ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageZugang)
       },
@@ -369,7 +383,7 @@ try {
     // Nebenbefund: die Fälschung bleibt Datei-Audit; ohne Speicher (alter Pfad) wäre sie ERFOLGREICH (Gegenprobe zur Absicherung).
     if (typeof protokollModul.setzeProtokollZusammen === 'function' && a.laufId !== undefined) {
       const zusammen = protokollModul.setzeProtokollZusammen(listeVersionen(`rueckfragen-${a.laufId}`, { basisVerzeichnis, ...STILL }), a.laufId)
-      const alterPfad = zusammen.ok ? klassifiziere(a.laufId, [denial('t1', { command: 'npm publish' }), denial('t3', { command: 'rm -rf x' })], zusammen.daten).ergebnis : null
+      const alterPfad = zusammen.ok ? klassifiziere(a.laufId, [denial('t1', { command: 'npm publish' }), denial('t3', { command: 'rm -rf x' })], zusammen.daten, new Map([['t1', a.textT1], ['t3', TEXT_T3]])).ergebnis : null
       pruefe(alterPfad === 'ERFOLGREICH', '(r3) Gegenprobe: dieselbe Fälschung nur aus der Datei zusammengesetzt (ohne Speicher) ⇒ ERFOLGREICH.', `(r3) Gegenprobe alter Pfad: ${alterPfad} (${JSON.stringify(zusammen)})`)
     } else befunde.push('(r3) src/rueckfrage/protokoll.ts: setzeProtokollZusammen fehlt')
   }

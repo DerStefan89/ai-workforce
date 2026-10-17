@@ -24,8 +24,14 @@
  *      Geheimnis maskiert; gelesen über laufOptionen.basisVerzeichnis (dieselbe Ablage wie der Controller) ⇒ Klassifikation
  *      ERFOLGREICH (H3). Prüft den Evaluator mit der Datei; seit B2b-3b-2a braucht der Controller zusätzlich den passenden
  *      Speicherstand der Vermittlung — dieser Pfad ist scripts/check-f45-b2b3b2a-absicherung.mjs (a2).
+ *      Seit B2b-3b-2b-1b (F-1128 R1) trägt der Rohstrom das tool_result mit dem Text, den das echte MCP-Skript zurückbekam.
  * (p4) F-1126 (1): Body über 64 KiB auf der Token-Route ⇒ 413, keine neue Protokoll-Version (Ablehnung ohne Eintrag ⇒ VERWEIGERT, e3).
  * (f)  Quelltext: starteWorkflowSchritt( in leitstand-server.mjs 6×; ARCHITECTURE §4 nennt die Regel mit Durchsetzungsgrad.
+ *
+ * Nachgezogen in B2b-3b-2b-1b (F-1128 R1, features/F45/plan-b2b3b2b1b-v2.md): eine Ablehnung durch Stefan zählt nur noch, wenn das
+ * tool_result ihrer ID genau den eindeutigen Ablehnungstext trägt — `klassifiziere` schreibt deshalb je Ablehnung ein passendes
+ * tool_result (Standard: die CLI gab Stefans Text zurück) und jeder Eintrag stefan_abgelehnt trägt ablehnung_hash; so scheitern
+ * die Rotfälle (e2), (e3), (p1) an ihrer eigenen Regel, nicht am fehlenden Text (Advisor B7). (p2) kennt das Beispiel ohne Hash.
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -93,7 +99,9 @@ aufraeumen.push(KLASS_BASIS)
  */
 function klassifiziere(denials, protokoll, zusatz = {}) {
   const laufId = `kl-${randomUUID()}`
-  const roh = { stdout: denials === null ? '' : JSON.stringify({ type: 'result', is_error: false, result: 'fertig', ...zusatz, permission_denials: denials }), stderr: '', exitCode: 0 }
+  // B2b-3b-2b-1b: je Ablehnung mit ID das tool_result mit Stefans Text (TEXT), vor der result-Zeile.
+  const ergebnisZeilen = Array.isArray(denials) ? denials.filter((d) => typeof d?.tool_use_id === 'string').map((d) => JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: d.tool_use_id, content: TEXT(d.tool_use_id), is_error: true }] } })) : []
+  const roh = { stdout: denials === null ? '' : [...ergebnisZeilen, JSON.stringify({ type: 'result', is_error: false, result: 'fertig', ...zusatz, permission_denials: denials })].join('\n'), stderr: '', exitCode: 0 }
   const rohPfad = join(KLASS_BASIS, 'roh', `${laufId}.json`)
   mkdirSync(join(KLASS_BASIS, 'roh'), { recursive: true })
   const inhalt = JSON.stringify(roh)
@@ -107,7 +115,9 @@ function klassifiziere(denials, protokoll, zusatz = {}) {
 }
 
 const denial = (id, input = { command: 'npm publish' }, toolName = 'Bash') => ({ tool_name: toolName, tool_use_id: id, tool_input: input })
-const eintrag = (id, art = 'stefan_abgelehnt', input = { command: 'npm publish' }, toolName = 'Bash') => ({ tool_use_id: id, tool_name: toolName, input_hash: hashVon(input), art, grund: 'Gate', zeit: '2026-10-16T10:00:00.000Z' })
+/** B2b-3b-2b-1b (F-1128 R1): eindeutiger Ablehnungstext je ID (Gate-Fixture). */
+const TEXT = (id) => `Stefan hat den Befehl abgelehnt. (Ref ${id})`
+const eintrag = (id, art = 'stefan_abgelehnt', input = { command: 'npm publish' }, toolName = 'Bash') => ({ tool_use_id: id, tool_name: toolName, input_hash: hashVon(input), art, grund: 'Gate', zeit: '2026-10-16T10:00:00.000Z', ...(art === 'stefan_abgelehnt' ? { ablehnung_hash: sha256Hex(TEXT(id)) } : {}) })
 const protokollMit = (...eintraege) => (laufId) => ({ rueckfragen_schema: 'v1', lauf_id: laufId, ab: 0, eintraege })
 
 try {
@@ -193,6 +203,7 @@ try {
         ['schemas/examples/kontrollzustand-rueckfragen-payload.invalid-unbekannte-art.json', false],
         ['schemas/examples/kontrollzustand-rueckfragen-payload.invalid-unbekanntes-feld.json', false],
         ['schemas/examples/kontrollzustand-rueckfragen-payload.invalid-ab-fehlt.json', false],
+        ['schemas/examples/kontrollzustand-rueckfragen-payload.invalid-ablehnung-ohne-hash.json', false],
       ]
       const falsch = beispiele.filter(([pfad, gueltig]) => !existsSync(pfad) || (protokollModul.validiereRueckfrageProtokoll(JSON.parse(readFileSync(pfad, 'utf8'))).length === 0) !== gueltig).map(([p]) => p)
       const schemaArten = schema.properties.eintraege.items.properties.art.enum
@@ -354,7 +365,9 @@ try {
       // Klassifiziert unter der echten laufId (der Abgleich prüft lauf_id, H2); Terminalmarke in der Wegwerf-Ablage.
       const echt = (() => {
         const rohPfad = join(KLASS_BASIS, 'roh', `${lauf.laufId}.json`)
-        const inhalt = JSON.stringify({ stdout: JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: [denial('toolu_p3b', bashInput)] }), stderr: '', exitCode: 0 })
+        // B2b-3b-2b-1b: die CLI gibt die Ablehnungsnachricht des echten MCP-Skripts wörtlich als tool_result zurück.
+        const ergebnisZeile = JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_p3b', content: antwort.message, is_error: true }] } })
+        const inhalt = JSON.stringify({ stdout: `${ergebnisZeile}\n${JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: [denial('toolu_p3b', bashInput)] })}`, stderr: '', exitCode: 0 })
         writeFileSync(rohPfad, inhalt)
         const laufakte = { laufakte_schema: 'v0', lauf_id: lauf.laufId, werkzeug_version_deklariert: '2.1.241', berechtigungskontext: 'profil-standard', arbeitsverzeichnis_pfad: lauf.cwd, modell_beobachtet: null, beobachtungsbasis_vollstaendig: true, rohstrom_referenz: { pfad: rohPfad, inhalts_hash: sha256Hex(inhalt) }, erstellt_am: '2026-10-16T00:00:00.000Z' }
         return klassifiziereLauf(lauf.laufId, PROFIL, { laufakte, rueckfragen: gelesen }, { basisVerzeichnis: join(KLASS_BASIS, 'kz'), schreiber: () => {} })

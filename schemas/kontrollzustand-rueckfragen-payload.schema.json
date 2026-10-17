@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/kontrollzustand-rueckfragen-payload.schema.json",
   "title": "Rückfrage-Protokoll-Payload",
-  "description": "Beschreibt daten.daten einer Version des Kern-Artefakts 'rueckfragen-<laufId>' (F45 B2b-3b-1b; Schema v1 seit B2b-3b-2b-1a, features/F45/plan-b2b3b2b1a-v2.md): das Protokoll des Rückfrage-Kanals eines Laufs. Je Entscheidung eine neue Version mit nur den neuen Einträgen ab Index ab; lückenlos zusammengesetzt (setzeProtokollZusammen, ab 0) ergibt sich das ganze Protokoll in derselben Form. Geschrieben von scripts/leitstand/rueckfrage-protokoll.mjs, geprüft von validiereRueckfrageProtokoll (src/rueckfrage/protokoll.ts, handgeschrieben — beide Stellen synchron halten; nur dort geprüft: herkunft steht nur an den Antwort-Arten stefan_erlaubt, stefan_abgelehnt, frage_beantwortet), ausgewertet vom Result Evaluator (Abgleich A6: eine Ablehnung allein durch Stefan ergibt ERFOLGREICH; nur ein ganzes Protokoll mit ab 0). Texte sind neutralisiert (<ARBEITSORDNER>, <TEMP>, <HOME>), maskiert und gekappt.",
+  "description": "Beschreibt daten.daten einer Version des Kern-Artefakts 'rueckfragen-<laufId>' (F45 B2b-3b-1b; Schema v1 seit B2b-3b-2b-1a, features/F45/plan-b2b3b2b1a-v2.md): das Protokoll des Rückfrage-Kanals eines Laufs. Je Entscheidung eine neue Version mit nur den neuen Einträgen ab Index ab; lückenlos zusammengesetzt (setzeProtokollZusammen, ab 0) ergibt sich das ganze Protokoll in derselben Form. Geschrieben von scripts/leitstand/rueckfrage-protokoll.mjs, geprüft von validiereRueckfrageProtokoll (src/rueckfrage/protokoll.ts, handgeschrieben — beide Stellen synchron halten; nur dort geprüft: herkunft steht nur an den Antwort-Arten stefan_erlaubt, stefan_abgelehnt, frage_beantwortet; ablehnung_hash steht genau an stefan_abgelehnt, seit B2b-3b-2b-1b), ausgewertet vom Result Evaluator (Abgleich A6: eine Ablehnung allein durch Stefan ergibt ERFOLGREICH; nur ein ganzes Protokoll mit ab 0). Texte sind neutralisiert (<ARBEITSORDNER>, <TEMP>, <HOME>), maskiert und gekappt.",
   "type": "object",
   "additionalProperties": false,
   "required": ["rueckfragen_schema", "lauf_id", "ab", "eintraege"],
@@ -26,7 +26,8 @@
           "befehl": { "type": "string", "maxLength": 2000, "description": "Bash-Befehl, neutralisiert und maskiert." },
           "frage": { "type": "string", "maxLength": 2000 },
           "antwort": { "type": "string", "maxLength": 2000 },
-          "herkunft": { "enum": ["browser", "nicht_browser"], "description": "E-B7: Herkunft einer Antwort — browser (Sec-Fetch-Site same-origin bzw. Origin passend zum Host) oder nicht_browser. Header fälschbar: Hinweis, kein Schutz. Nur an Antwort-Arten (Validator)." }
+          "herkunft": { "enum": ["browser", "nicht_browser"], "description": "E-B7: Herkunft einer Antwort — browser (Sec-Fetch-Site same-origin bzw. Origin passend zum Host) oder nicht_browser. Header fälschbar: Hinweis, kein Schutz. Nur an Antwort-Arten (Validator)." },
+          "ablehnung_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "F45 B2b-3b-2b-1b (F-1128 R1): sha256 des eindeutigen Ablehnungstexts, den die Vermittlung bei einer Ablehnung durch Stefan an die CLI gibt. Die Ablehnung zählt im Abgleich nur, wenn jedes tool_result ihrer ID diesen Text trägt. An stefan_abgelehnt Pflicht, an jeder anderen Art verboten (Validator)." }
         }
       }
     }
