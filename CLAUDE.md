@@ -12,7 +12,12 @@ verbindlich. `docs/projekt/zielfassung.md`, wenn eine Anforderung, eine
 Rolle, eine Grenze oder ein Fassung-1-Scope zu klären ist.
 `docs/projekt/umsetzungsplan-fassung-1.md`, wenn die Reihenfolge oder die
 Zuordnung eines Features zu klären ist. `docs/STATUS.md` für den aktuellen
-Stand.
+Stand. Die Regeln stehen im Kern von `ARCHITECTURE.md`; `docs/architektur/`
+trägt den wörtlichen Detailtext (gleich verbindlich, bei Widerspruch gilt
+der Kern) und wird nur bei Bedarf gelesen — wenn eine Aufgabe das Thema
+einer Detaildatei berührt. `state/findings-archiv.md` (erledigte Findings)
+nur bei Bedarf: eine erledigte Kennung nachschlagen; die nächste freie ID
+ergibt `state/findings.md` allein.
 
 ---
 

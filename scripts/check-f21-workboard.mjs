@@ -21,6 +21,10 @@
  * P4-Einträgen (Scan 23.09.2026) ist per Allowlist grandfathered statt massenhaft umgeschrieben, jede
  * NEUE P4-Vergabe ist ab jetzt ein Befund.
  *
+ * F45 K „Kontext-Diät“ (features/F45/plan-k-v2.md): erledigte Einträge stehen wörtlich in state/findings-archiv.md. (2) und (5)
+ * prüfen beide Dateien mit unveränderten Bedingungen; neu (6): Kennungen über beide Dateien eindeutig, jeder Archiv-Eintrag
+ * erfüllt die Archivregel (E-K-1), die höchste ID steht im Register (nächste freie ID aus state/findings.md allein). Das Workboard (GET /api/workitems) liest weiter nur state/findings.md — bekannte Grenze.
+ *
  * Wird aufgerufen von: npm run check.
  *
  * Aufruf: node scripts/check-f21-workboard.mjs
@@ -37,6 +41,35 @@ import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+
+/** Das Findings-Register und sein Archiv (F45 K): erledigte Einträge stehen wörtlich im Archiv. */
+const REGISTER_DATEIEN = ['state/findings.md', 'state/findings-archiv.md']
+/** Archivregel (E-K-1): Status (ohne `**`) beginnt mit einem ERLEDIGT-Wort des Workboard-Parsers (src/workboard/findings.ts). */
+const ARCHIVREGEL = /^(gelöst|behoben|erledigt|korrigiert)/i
+const KOPFZEILE = /^\*\*(F-\d+)\*\* · `[A-Z_]+` · P[0-4] · (.*)$/gm
+
+/**
+ * Prüft Register und Archiv gemeinsam (F45 K): keine Kennung doppelt über beide Dateien, jeder Archiv-Eintrag erfüllt die
+ * Archivregel, die höchste ID steht im Register.
+ * @param registerText - Inhalt von state/findings.md
+ * @param archivText - Inhalt von state/findings-archiv.md
+ * @returns Befunde; leer = grün
+ */
+function pruefeArchiv(registerText, archivText) {
+  const ergebnis = []
+  const gesehen = new Map()
+  for (const [text, pfad] of [[registerText, REGISTER_DATEIEN[0]], [archivText, REGISTER_DATEIEN[1]]]) {
+    for (const [, id, status] of text.matchAll(KOPFZEILE)) {
+      if (gesehen.has(id)) ergebnis.push(`(6) ${id} doppelt: ${gesehen.get(id)} und ${pfad} — nächste freie ID = höchste in ${REGISTER_DATEIEN[0]} + 1`)
+      else gesehen.set(id, pfad)
+      if (pfad === REGISTER_DATEIEN[1] && !ARCHIVREGEL.test(status.replace(/\*\*/g, '').trim())) ergebnis.push(`(6) ${id} im Archiv verletzt die Archivregel (Status '${status}') — zurück nach ${REGISTER_DATEIEN[0]}`)
+    }
+  }
+  // Die höchste ID bleibt im Register, damit state/findings.md allein die nächste freie ID ergibt.
+  const hoechste = (pfad) => Math.max(0, ...[...gesehen].filter(([, p]) => p === pfad).map(([id]) => Number(id.slice(2))))
+  if (hoechste(REGISTER_DATEIEN[1]) > hoechste(REGISTER_DATEIEN[0])) ergebnis.push(`(6) die höchste ID (F-${hoechste(REGISTER_DATEIEN[1])}) steht im Archiv — sie bleibt im Register (${REGISTER_DATEIEN[0]})`)
+  return ergebnis
+}
 
 const befunde = []
 console.log('\n=== F21-WS-1-Check (Workboard: Parser, GET /api/workitems, kenntnisgenommen) ===\n')
@@ -84,14 +117,19 @@ async function starteTestserver(optionen) {
 {
   const befundeVor2 = befunde.length
 
-  const findingsInhalt = readFileSync('state/findings.md', 'utf-8')
-  const { workitems: findingWorkitems, befunde: findingBefunde } = parseFindings(findingsInhalt)
-  if (findingBefunde.length > 0) {
-    befunde.push(`(2) state/findings.md hat reale Parser-Befunde (Regression zu F-367?): ${JSON.stringify(findingBefunde)}`)
-  }
-  const echteKopfzeilenzahl = (findingsInhalt.match(/^\*\*F-\d+\*\* · `[A-Z_]+` · P[0-4] · /gm) ?? []).length
-  if (findingWorkitems.length !== echteKopfzeilenzahl) {
-    befunde.push(`(2) AK1: Anzahl Workitems (${findingWorkitems.length}) weicht von der Anzahl gültiger Kopfzeilen in state/findings.md (${echteKopfzeilenzahl}) ab — Invariante, keine Stichtagszahl (F-368).`)
+  // F45 K: dieselben Bedingungen für das Register und sein Archiv (erledigte Einträge, wörtlich verschoben).
+  let findingWorkitemZahl = 0
+  for (const registerPfad of REGISTER_DATEIEN) {
+    const findingsInhalt = readFileSync(registerPfad, 'utf-8')
+    const { workitems: findingWorkitems, befunde: findingBefunde } = parseFindings(findingsInhalt)
+    findingWorkitemZahl += findingWorkitems.length
+    if (findingBefunde.length > 0) {
+      befunde.push(`(2) ${registerPfad} hat reale Parser-Befunde (Regression zu F-367?): ${JSON.stringify(findingBefunde)}`)
+    }
+    const echteKopfzeilenzahl = (findingsInhalt.match(/^\*\*F-\d+\*\* · `[A-Z_]+` · P[0-4] · /gm) ?? []).length
+    if (findingWorkitems.length !== echteKopfzeilenzahl) {
+      befunde.push(`(2) AK1: Anzahl Workitems (${findingWorkitems.length}) weicht von der Anzahl gültiger Kopfzeilen in ${registerPfad} (${echteKopfzeilenzahl}) ab — Invariante, keine Stichtagszahl (F-368).`)
+    }
   }
 
   const featuresDir = 'features'
@@ -110,7 +148,7 @@ async function starteTestserver(optionen) {
   }
 
   if (befunde.length === befundeVor2) {
-    console.log(`✓ (2) state/findings.md (${findingWorkitems.length} Workitems) und ${featureWorkitems.length} Feature-Akten parsen befundfrei (AK1/AK2, Regressionsschutz F-367).`)
+    console.log(`✓ (2) ${REGISTER_DATEIEN.join(' + ')} (${findingWorkitemZahl} Workitems) und ${featureWorkitems.length} Feature-Akten parsen befundfrei (AK1/AK2, Regressionsschutz F-367).`)
   }
 }
 
@@ -226,19 +264,45 @@ async function starteTestserver(optionen) {
     befunde.push(`(5) Vorbedingung: 'BUG' sollte als erlaubter Typ gelten — erhalten ${JSON.stringify(gruenTypWorkitems)}`)
   }
 
-  const findingsInhaltFuerTypPruefung = readFileSync('state/findings.md', 'utf-8')
-  const { workitems: realeWorkitems } = parseFindings(findingsInhaltFuerTypPruefung)
-  for (const w of realeWorkitems) {
-    if (!ERLAUBTE_TYPEN.has(w.typ)) {
-      befunde.push(`(5) ${w.id} (Zeile ${w.zeile}): Typ '${w.typ}' ist keiner der erlaubten Typen (${[...ERLAUBTE_TYPEN].join(', ')})`)
-    }
-    if (!ERLAUBTE_PRIORITAETEN.has(w.prioritaet) && !P4_ALT_ALLOWLIST.has(w.id)) {
-      befunde.push(`(5) ${w.id} (Zeile ${w.zeile}): Priorität '${w.prioritaet}' ist weder P0-P3 noch ein grandfathered Alt-Bestand-Eintrag (P4_ALT_ALLOWLIST) — neue P4-Vergabe ist nicht mehr erlaubt`)
+  // F45 K: Register und Archiv — ein archivierter Eintrag verliert die Typ-/Prioritätsprüfung nicht.
+  const realeWorkitems = []
+  for (const registerPfad of REGISTER_DATEIEN) {
+    for (const w of parseFindings(readFileSync(registerPfad, 'utf-8')).workitems) {
+      realeWorkitems.push(w)
+      if (!ERLAUBTE_TYPEN.has(w.typ)) {
+        befunde.push(`(5) ${w.id} (${registerPfad}, Zeile ${w.zeile}): Typ '${w.typ}' ist keiner der erlaubten Typen (${[...ERLAUBTE_TYPEN].join(', ')})`)
+      }
+      if (!ERLAUBTE_PRIORITAETEN.has(w.prioritaet) && !P4_ALT_ALLOWLIST.has(w.id)) {
+        befunde.push(`(5) ${w.id} (${registerPfad}, Zeile ${w.zeile}): Priorität '${w.prioritaet}' ist weder P0-P3 noch ein grandfathered Alt-Bestand-Eintrag (P4_ALT_ALLOWLIST) — neue P4-Vergabe ist nicht mehr erlaubt`)
+      }
     }
   }
 
   if (befunde.length === befundeVor5) {
-    console.log(`✓ (5) state/findings.md: alle ${realeWorkitems.length} Einträge tragen einen erlaubten Typ (BUG/HARNESS_IMPROVEMENT/TECH_DEBT/PROCESS_IMPROVEMENT); Priorität P0-P3 oder ein grandfathered Alt-Bestand-P4-Eintrag (${P4_ALT_ALLOWLIST.size} Einträge, Scan 23.09.2026) — löst F-630.`)
+    console.log(`✓ (5) ${REGISTER_DATEIEN.join(' + ')}: alle ${realeWorkitems.length} Einträge tragen einen erlaubten Typ (BUG/HARNESS_IMPROVEMENT/TECH_DEBT/PROCESS_IMPROVEMENT); Priorität P0-P3 oder ein grandfathered Alt-Bestand-P4-Eintrag (${P4_ALT_ALLOWLIST.size} Einträge, Scan 23.09.2026) — löst F-630.`)
+  }
+}
+
+// ─── (6) F45 K: Archiv des Registers (features/F45/plan-k-v2.md, E-K-1) ─────
+//
+// parseFindings meldet doppelte Kennungen nur je Datei — über Register und Archiv prüft das erst hier. Jeder Archiv-Eintrag
+// erfüllt die Archivregel (Status beginnt mit einem ERLEDIGT-Wort des Parsers); die höchste ID steht im Register. Rot-/Grünfall
+// zuerst gegen pruefeArchiv.
+{
+  const befundeVor6 = befunde.length
+  const rotDoppelt = pruefeArchiv('**F-001** · `BUG` · P2 · offen\nTitel: a.\n', '**F-001** · `BUG` · P2 · erledigt\nTitel: a.\n')
+  if (!rotDoppelt.some((b) => b.includes('F-001') && b.includes('doppelt'))) befunde.push(`(6) Rot-Kalibrierung: doppelte Kennung über Register und Archiv nicht gemeldet — erhalten ${JSON.stringify(rotDoppelt)}`)
+  const rotStatus = pruefeArchiv('', '**F-002** · `BUG` · P2 · offen (teilweise erledigt)\nTitel: b.\n')
+  if (!rotStatus.some((b) => b.includes('F-002') && b.includes('Archivregel'))) befunde.push(`(6) Rot-Kalibrierung: Archiv-Eintrag ohne erledigten Status nicht gemeldet — erhalten ${JSON.stringify(rotStatus)}`)
+  const rotHoechste = pruefeArchiv('**F-001** · `BUG` · P2 · offen\nTitel: a.\n', '**F-002** · `BUG` · P2 · erledigt\nTitel: b.\n')
+  if (!rotHoechste.some((b) => b.includes('F-2') && b.includes('höchste ID'))) befunde.push(`(6) Rot-Kalibrierung: höchste ID im Archiv nicht gemeldet — erhalten ${JSON.stringify(rotHoechste)}`)
+  const gruen = pruefeArchiv('**F-003** · `BUG` · P2 · offen\nTitel: c.\n', '**F-001** · `BUG` · P2 · **gelöst**\nTitel: a.\n\n**F-002** · `TECH_DEBT` · P3 · erledigt (#1)\nTitel: b.\n')
+  if (gruen.length > 0) befunde.push(`(6) Grün-Kalibrierung: gültiges Register mit Archiv meldet ${JSON.stringify(gruen)}`)
+
+  const real = pruefeArchiv(readFileSync(REGISTER_DATEIEN[0], 'utf-8'), readFileSync(REGISTER_DATEIEN[1], 'utf-8'))
+  befunde.push(...real)
+  if (befunde.length === befundeVor6) {
+    console.log(`✓ (6) ${REGISTER_DATEIEN.join(' + ')}: Kennungen über beide Dateien eindeutig, jeder Archiv-Eintrag erfüllt die Archivregel, höchste ID im Register (F45 K, Rot/Grün kalibriert).`)
   }
 }
 
