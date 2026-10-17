@@ -1,0 +1,289 @@
+{
+  "url": "http://127.0.0.1:4408/#/workflows/nw-sichtung-r3",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-kanal-erfolg",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "ERFOLGREICH",
+            "zeitpunkt": "2026-10-17T16:37:06.177Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-17T16:37:06.208Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3-lang",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-17T16:37:06.250Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-timeout",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "FEHLGESCHLAGEN",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": "2026-10-17T16:37:06.286Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-verweigert",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-17T16:37:06.145Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nw-sichtung-r3",
+            "auftragId": "nw-sichtung-r3-a",
+            "ziel": "Export-Funktion veröffentlichen",
+            "versionSequenz": 2,
+            "status": "KLAERUNG_ERFORDERLICH",
+            "aktiverSchrittId": "s1",
+            "grund": "Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: npm publish --access public — menschliche Sichtung vor Fortsetzung (F-760, Schritt 's1', Lauf 'lauf-kanal-r3')",
+            "schritteAnzahl": 2,
+            "naechster": {
+              "art": "haltKlaerung",
+              "grund": "F-760",
+              "schrittId": "s1"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": false,
+        "startHinweis": null,
+        "cliHinweis": null,
+        "rueckfrageStatus": {
+          "an": false
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-sichtung-r3",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-sichtung-r3",
+          "auftrag_id": "nw-sichtung-r3-a",
+          "version": 1,
+          "ziel": "Export-Funktion veröffentlichen",
+          "status": "KLAERUNG_ERFORDERLICH",
+          "aktiver_schritt_id": "s1",
+          "grund": "Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: npm publish --access public — menschliche Sichtung vor Fortsetzung (F-760, Schritt 's1', Lauf 'lauf-kanal-r3')",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "KEINE",
+              "status": "VERWEIGERT",
+              "nachfolger": "s2",
+              "lauf_id": "lauf-kanal-r3",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "claude-sonnet",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "grund": "F-760",
+          "schrittId": "s1"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-sichtung-r3/abnahme",
+      "json": {
+        "workflowStatus": "KLAERUNG_ERFORDERLICH",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "nicht_vorhanden"
+        },
+        "pruefergebnis": {
+          "status": "nicht_vorhanden"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      },
+      {
+        "name": "Hauptknopf",
+        "selector": "#workflow-dialog .dialog-actions .button.primary"
+      },
+      {
+        "name": "R3-Hinweis",
+        "selector": "#workflow-dialog .wf-sichtung-r3-hinweis"
+      },
+      {
+        "name": "Schritt 2",
+        "selector": "#wf-sichtung-r3-meldung > p strong"
+      },
+      {
+        "name": "R3-Titel",
+        "selector": "#wf-sichtung-r3-meldung .rueckfrage-abweichung > strong"
+      },
+      {
+        "name": "Begründung",
+        "selector": "#wf-sichtung-begruendung"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Bestätigung „sichtung“ im Dialog",
+        "selector": "#workflow-dialog [data-aktion=\"sichtung\"]"
+      },
+      {
+        "name": "Knopf „Protokoll-Abweichung ansehen“",
+        "selector": "#workflow-dialog [data-aktion=\"sichtung-r3\"]"
+      },
+      {
+        "name": "R3-Meldung in Schritt 2",
+        "selector": "#wf-sichtung-r3-meldung .rueckfrage-abweichung"
+      },
+      {
+        "name": "Maske sichtbar",
+        "selector": "#wf-sichtung-r3-meldung .rueckfrage-maske"
+      },
+      {
+        "name": "<img> gerendert (soll false)",
+        "selector": "#workflow-dialog img"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Sichtungs-Notiz geladen — de-390",
+      "warteAufSelector": {
+        "selector": "#workflow-bedienung .wf-sichtung [data-aktion=\"sichtung-oeffnen\"]",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Dialog geöffnet — de-390",
+      "klick": "#workflow-bedienung [data-aktion=\"sichtung-oeffnen\"]",
+      "warteAufSelector": {
+        "selector": "#wf-sichtung-begruendung",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Begründung getippt — de-390",
+      "tippen": {
+        "selector": "#wf-sichtung-begruendung",
+        "text": "Abgelehnte Befehle gesichtet."
+      },
+      "screenshot": "01-de-390.webp"
+    },
+    {
+      "label": "Schritt 2: R3-Meldung und Bestätigung — de-390",
+      "klick": "#workflow-dialog [data-aktion=\"sichtung-r3\"]",
+      "warteAufSelector": {
+        "selector": "#wf-sichtung-r3-meldung .rueckfrage-abweichung",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-de-390.webp"
+    },
+    {
+      "label": "nach mehr als zwei Poll-Takten: Schritt 2 und Begründung bleiben — de-390",
+      "warteAufSelector": {
+        "selector": "#gibt-es-nicht-b2b3b2b2b1",
+        "timeoutMs": 5000
+      },
+      "screenshot": "03-de-390.webp"
+    }
+  ]
+}

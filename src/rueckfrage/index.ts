@@ -22,6 +22,7 @@
  * toLowerCase statt NTFS-Regeln; reservierte Gerätenamen (CON, NUL, COM1 …) und `??`-Pfade werden nicht eigens erkannt.
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (loeseAusfuehrungsEingabenAuf), scripts/leitstand/rueckfrage-vermittlung.mjs,
+ * scripts/leitstand/nachweis-rueckfrage-auswerten.mjs (Konstanten, SCHREIB_WERKZEUGE, liegtImArbeitsordner für --aus),
  * scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs (z1), src/rueckfrage/rueckfrage.test.ts.
  */
 
@@ -57,8 +58,8 @@ export const RUECKFRAGE_REGEL: readonly string[] = Object.freeze([
   '- Lehnt Stefan ab, umgehe die Ablehnung nicht (kein anderer Befehl oder Weg zum selben Ziel); nenne sie im Ergebnis.',
 ])
 
-/** Werkzeuge, die immer einen Pfad tragen (ohne Pfad ⇒ nicht prüfbar). */
-const SCHREIB_WERKZEUGE = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
+/** Werkzeuge, die immer einen Pfad tragen (ohne Pfad ⇒ nicht prüfbar). Exportiert für das Nachweis-Werkzeug (P11, B2b-3b-2b-2b-1). */
+export const SCHREIB_WERKZEUGE = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
 /** Eingabefelder, die einen Pfad tragen — bei jedem Werkzeug geprüft. */
 const PFAD_FELDER = ['file_path', 'notebook_path', 'path'] as const
 /** Erlaubte Eingabefelder eines Bash-Aufrufs (A9: alles andere, z. B. dangerouslyDisableSandbox, ⇒ auto_deny). */

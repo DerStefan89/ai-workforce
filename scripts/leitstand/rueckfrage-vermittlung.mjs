@@ -34,7 +34,8 @@
  * Wird aufgerufen von: scripts/leitstand-server.mjs (Routen /api/rueckfrage/…, /api/rueckfragen…, starteLaufUndVergiss,
  * laufOptionen.rueckfrageZugang), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
  * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, scripts/check-f45-b2b3b2b2a-einschalten.mjs (Dispatcher-Fall (d)),
- * scripts/leitstand/rueckfrage-vermittlung.test.mjs. Seit B2b-3b-2b-2a-1 liefert `zugang` zusätzlich `zaehlung()` und `abweichung()` (daten der
+ * scripts/leitstand/rueckfrage-vermittlung.test.mjs; `zaehleProtokollEintraege` zusätzlich von scripts/leitstand/nachweis-rueckfrage-auswerten.mjs
+ * (B2b-3b-2b-2b-1), die Vermittlung als Fixture von scripts/check-f45-b2b3b2b2b1-nachweis.mjs (b). Seit B2b-3b-2b-2a-1 liefert `zugang` zusätzlich `zaehlung()` und `abweichung()` (daten der
  * Terminalmarke über den Controller); seit B2b-3b-2b-2a-3 zählt `zaehlung()` auch die unbeantworteten (F-1132 (1)). Seit B2b-3b-2b-2a-2 (features/F45/plan-b2b3b2b2a2-v2.md, Advisor M3/M11) liefert `entschiedene()`
  * die letzten ENTSCHIEDEN_MAX Entscheidungen von Warteschlangeneinträgen (auch beendeter Läufe, nur Speicher, nach Neustart leer) für
  * GET /api/rueckfragen (Feld `entschieden`, scripts/check-f45-b2b3b2b2a2-anzeige.mjs); Befehl und freie Antwort darin maskiert
@@ -72,6 +73,26 @@ export const ENTSCHIEDEN_MAX = 20
 /** B2b-3b-2b-2a-3 (F-1132 (1)): Grund einer Ablehnung durch die Wartegrenze bzw. beim Lauf-Ende — die Zählung unterscheidet danach. */
 const GRUND_WARTEGRENZE = 'Wartegrenze erreicht'
 const GRUND_LAUF_ENDE = 'Lauf beendet'
+
+/**
+ * B2b-3b-2b-2b-1 (Advisor M6): Zählregel der Rückfragen je Art aus Protokolleinträgen — einzige Quelle für `zaehlungVon` (Speicherstand) und das
+ * Nachweis-Werkzeug (scripts/leitstand/nachweis-rueckfrage-auswerten.mjs, Protokoll-Datei). Ohne die beim Lesen offenen Rückfragen und ohne
+ * Ablehnungen über der Protokollgrenze (die kennt nur der Speicher). Rein, wirft nie.
+ * @param eintraege - Einträge mit art, grund, herkunft (Speicher oder Datei)
+ * @returns { stefan_erlaubt, stefan_abgelehnt, frage_beantwortet, nicht_browser, abgelaufen, lauf_ende, automatisch }
+ */
+export function zaehleProtokollEintraege(eintraege) {
+  const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: 0, automatisch: 0 }
+  for (const e of Array.isArray(eintraege) ? eintraege : []) {
+    if (e?.art === 'stefan_erlaubt' || e?.art === 'stefan_abgelehnt' || e?.art === 'frage_beantwortet') {
+      zaehlung[e.art]++
+      if (e.herkunft !== 'browser') zaehlung.nicht_browser++
+    } else if (e?.art === 'zeitueberschreitung' || (e?.art === 'frage_ohne_antwort' && e.grund === GRUND_WARTEGRENZE)) zaehlung.abgelaufen++
+    else if (e?.art === 'lauf_beendet' || (e?.art === 'frage_ohne_antwort' && e.grund === GRUND_LAUF_ENDE)) zaehlung.lauf_ende++
+    else zaehlung.automatisch++
+  }
+  return zaehlung
+}
 
 /** Protokoll-Arten (A5: eigene Arten für Fragen) — einzige Quelle src/rueckfrage/protokoll.ts (3b-1b). */
 export const PROTOKOLL_ARTEN = RUECKFRAGE_PROTOKOLL_ARTEN
@@ -451,15 +472,9 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
   function zaehlungVon(laufId) {
     const lauf = laeufe.get(laufId)
     if (lauf === undefined) return null
-    const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: anzahlOffen(lauf), automatisch: lauf.ohneEintrag }
-    for (const e of lauf.protokoll) {
-      if (e.art === 'stefan_erlaubt' || e.art === 'stefan_abgelehnt' || e.art === 'frage_beantwortet') {
-        zaehlung[e.art]++
-        if (e.herkunft !== 'browser') zaehlung.nicht_browser++
-      } else if (e.art === 'zeitueberschreitung' || (e.art === 'frage_ohne_antwort' && e.grund === GRUND_WARTEGRENZE)) zaehlung.abgelaufen++
-      else if (e.art === 'lauf_beendet' || (e.art === 'frage_ohne_antwort' && e.grund === GRUND_LAUF_ENDE)) zaehlung.lauf_ende++
-      else zaehlung.automatisch++
-    }
+    const zaehlung = zaehleProtokollEintraege(lauf.protokoll)
+    zaehlung.lauf_ende += anzahlOffen(lauf)
+    zaehlung.automatisch += lauf.ohneEintrag
     return zaehlung
   }
 

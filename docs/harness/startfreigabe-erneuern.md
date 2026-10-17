@@ -1,6 +1,6 @@
 # Startfreigabe nach einem Claude-Code-Update erneuern
 
-Stand Startfreigabe-Erneuerung CLI 2.1.300 (15.10.2026). Zeigt der Leitstand beim Start das Band **„CLI-Version geändert — Startfreigabe neu erzeugen“**,
+Stand Startfreigabe-Erneuerung CLI 2.1.300 (15.10.2026), Abschnitt 8 (Rückfrage-Kanal) seit F45 B2b-3b-2b-2b-1 (17.10.2026). Zeigt der Leitstand beim Start das Band **„CLI-Version geändert — Startfreigabe neu erzeugen“**,
 weicht die installierte Claude-Code-Version von `werkzeugVersionDeklariert` in `startvorlagen/ai-workforce.json`
 ab. Die Belege der Startfreigabe (Rot-Fälle, Hook-Wirkung) gelten dann nur für die alte Version. Die Workforce
 erneuert die Freigabe nie selbst: Nachweise erzeugt ein Skript, den Commit im Autorisierungs-Repo und die
@@ -192,3 +192,35 @@ aus, nur `commit_hash` fehlt darin):
 Neue Projekte, die danach angelegt werden, bekommen die erneuerte Verweisdatei mit (E-F41-1). Projekte, die vorher
 angelegt wurden, tragen eine eigene Kopie der alten Verweisdatei; ob sie nachgezogen werden muss, zeigt ein lesender
 Lauf in diesem Projekt (Verweigerung mit E-183/E-188 = nachziehen).
+
+## 8 Mit Rückfrage-Kanal (vorbereitet in F45 B2b-3b-2b-2b-1, gilt ab 2b-2b-2)
+
+Solange der Kanal Opt-in ist (`LEITSTAND_RUECKFRAGE=1`, ARCHITECTURE.md §3), entfällt dieser Abschnitt. Sobald er standardmäßig an ist,
+tragen Ausführungsläufe zusätzliche Argv-Teile, und die Erneuerung braucht einen Beleg mit genau diesem Argv:
+
+- `--permission-prompt-tool mcp__rueckfrage__rechte_pruefen` — in `claude --help` **nicht** gelistet (Spike
+  `features/F45/nachweise/b2b3a/spike.md` Frage 1); ob die neue CLI-Version das Flag noch annimmt, zeigt nur ein echter Lauf.
+- `--strict-mcp-config --mcp-config '<JSON>'` mit dem Server `rueckfrage` neben den Katalog-MCPs des Laufs:
+  `{ "command": "<node.exe des Leitstands>", "args": ["<Installation>\scripts\leitstand\rueckfrage-mcp.mjs"], "env": {
+  "WORKFORCE_RUECKFRAGE_URL": "http://127.0.0.1:<Port>/api" bzw. "…/api/projekte/<id>", "WORKFORCE_RUECKFRAGE_TOKEN": "<64 Hex je Lauf>",
+  "WORKFORCE_RUECKFRAGE_FRIST_MS": "<Wartegrenze + 60000>" }, "timeout": <Wartegrenze + 120000> }` (Baustein `ergaenzeRueckfrageAufruf`,
+  `src/rueckfrage/index.ts`; Wartegrenze 600000 ms).
+- `mcp__rueckfrage__frage_stefan` zusätzlich in `--allowedTools`.
+
+Der Gültigkeitsschlüssel ändert sich dadurch nicht (Argv-Teile gehen nicht ein, Spike Frage 6) — Schritte 1–7 bleiben gleich. Zusätzlich
+nach Schritt 2:
+
+1. Den Nachweislauf nach `docs/harness/rueckfrage-nachweislauf.md` mit der neuen CLI-Version fahren (Lauf A und B) und auswerten.
+2. Soll: dieselben Ergebnisse je Prüfpunkt wie in der letzten Auswertung unter `features/F45/nachweise/b2b3b2b2b/`, insbesondere P4
+   (Ablehnungstext wörtlich), P7 (init-Zeile mit Server `rueckfrage`), P10 (Startfreigabe mit Kanal-Argv bestanden) und P11 (Write
+   außerhalb automatisch abgelehnt — der Rot-Fall-Beleg „Write außerhalb verweigert“ gilt mit Prompt-Werkzeug nur über diese Regel).
+   Weicht ein Punkt ab: hier anhalten, die Freigabe wird nicht erneuert.
+3. In Schritt 4 `$BELEG` um eine Zeile ergänzen, vor `=== Ende rot_fall_beleg ===` — direkt nach der Zuweisung in Schritt 4:
+
+   ```powershell
+   $BELEG = $BELEG.Replace("`n=== Ende rot_fall_beleg ===", "`nrueckfrage: features/F45/nachweise/b2b3b2b2b/<Auswertungsdateien>`n=== Ende rot_fall_beleg ===")
+   ```
+
+Zwei Grenzen: Der Nachweislauf läuft nach Schritt 2, also noch unter der **alten** Startfreigabe (gewollt — er prüft die neue CLI, nicht die
+neue Freigabe). Und er läuft im Projekt `haushaltsbuch2`: P10 belegt die Startfreigabe dieses **Projekts** mit Kanal-Argv, nicht die der
+Workforce-Installation — für die Workforce den optionalen Lauf in der Workforce-Instanz der Anleitung mitfahren.

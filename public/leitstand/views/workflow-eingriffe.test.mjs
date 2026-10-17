@@ -4,7 +4,8 @@
  * Zweck: node:test-Fälle für views/workflow-eingriffe.js (F44 WS-4b, Abgleich F-725 F6, F8, F9): die
  * Notizen über der Timeline (Rückfrage, Sichtung, Reparatur — rot bei ungültiger Fassung, sonst
  * bernstein), die Dialoginhalte, der Reparatureditor mit seinen IDs und die Reparaturwarnungen
- * F-219/223/226/240/384 mit unverändertem Inhalt; Escaping aller Serverwerte.
+ * F-219/223/226/240/384 mit unverändertem Inhalt; Escaping aller Serverwerte. F45 B2b-3b-2b-2b-1: Sichtung mit R3 in zwei Schritten,
+ * ohne R3 bitgleich zum Bestand.
  *
  * Wird aufgerufen von: `npm run test` (node --test). Das Modul ist rein: der Import läuft in Node
  * ohne DOM (in Node gilt de).
@@ -21,6 +22,9 @@ import {
   renderEingriffe,
   renderReparatur,
   renderReparaturWarnungen,
+  renderSichtungDialog,
+  renderSichtungR3Schritt,
+  sichtungsAbweichung,
 } from './workflow-eingriffe.js'
 
 const FRAGE = (frage, empfehlung = 'B') => ({ frage, auswirkung_bestand: 'nur <Anzeige>', begruendung: 'weil', empfehlung, optionen: [{ titel: 'A', vorteile: ['schnell'], nachteile: ['<riskant>'] }, { titel: 'B', vorteile: [], nachteile: [] }] })
@@ -178,4 +182,59 @@ test('F45 B2b-3c: nach der Erhöhung (grundVeraltet) keine Reparatur-Notiz; ohne
   assert.match(ohne, /Der Ablauf steht\./)
   assert.doesNotMatch(ohne, /Budget/)
   assert.match(renderEingriffe('w-1', 'KLAERUNG_ERFORDERLICH', false, null, null, false, { status: 'nicht_bestimmbar' }), /Der Ablauf steht\./)
+})
+
+/** Sichtungsdialog im Wortlaut vor F45 B2b-3b-2b-2b-1 (Bestand, für den Bitgleich-Vergleich). */
+const SICHTUNG_BESTAND = (w, schritt, lauf, nachfolger) => `<div class="dialog-heading"><h2 id="workflow-dialog-titel">Abgelehnte Befehle sichten</h2><button type="button" class="icon-button wf-dialog-abbrechen" aria-label="Dialog schließen"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" /></svg></button></div>
+    <p class="subtle">Der Halt-Grund wird danach nicht mehr angezeigt; die abgelehnten Befehle bleiben im Lauf-Detail <code>${lauf}</code> lesbar. Bestätigst du, geht es mit <code>${nachfolger}</code> weiter; <code>${schritt}</code> bleibt als VERWEIGERT festgehalten. Der nächste Schritt startet nicht von selbst — danach „Starten“ bzw. „Nächsten Schritt freigeben“.</p>
+    <label class="field" for="wf-sichtung-begruendung">Begründung der Sichtung (Pflicht)</label>
+    <textarea id="wf-sichtung-begruendung" rows="3" aria-required="true" aria-describedby="workflow-dialog-meldung"></textarea>
+    <div class="dialog-actions"><button type="button" class="button wf-dialog-abbrechen">Abbrechen</button><button type="button" class="button primary wf-aktion" data-aktion="sichtung" data-workflow-id="${w}">Sichtung bestätigt – weiter</button></div>
+    <p id="workflow-dialog-meldung" class="fehler" tabindex="-1" hidden></p>`
+
+test('Sichtung ohne R3 (kein Kanal, Kanal ohne Abweichung) bitgleich zum Bestand — ein Klick', () => {
+  const basis = { schrittId: 's2', laufId: 'l-2', nachfolger: 's3' }
+  const bestand = SICHTUNG_BESTAND('w-1', 's2', 'l-2', 's3')
+  assert.equal(renderSichtungDialog('w-1', basis), bestand)
+  assert.equal(renderSichtungDialog('w-1', { ...basis, kanal: null }), bestand)
+  assert.equal(renderSichtungDialog('w-1', { ...basis, kanal: { ergebnis: 'VERWEIGERT', abgleich: { art: 'abgleich', grund: 'nicht_von_stefan' }, abweichung: null } }), bestand)
+  assert.equal(renderSichtungDialog('w-1', { ...basis, kanal: { abweichung: '' } }), bestand)
+  assert.equal(sichtungsAbweichung({ ...basis, kanal: { abweichung: null } }), null)
+})
+
+test('Sichtung mit R3 (E-R3-Sichtung = B): Schritt 1 ohne Bestätigung, Schritt 2 mit R3-Text escaped und maskiert', () => {
+  const abweichung = `Länge abweichend <img src=x onerror=alert(1)> ${String.fromCodePoint(0x202e)}`
+  const sichtung = { schrittId: 's2', laufId: 'l-2', nachfolger: 's3', kanal: { ergebnis: 'VERWEIGERT', abgleich: { art: 'abweichung', grund: abweichung }, abweichung } }
+  const schritt1 = renderSichtungDialog('w-1', sichtung)
+  assert.doesNotMatch(schritt1, /data-aktion="sichtung"/, 'Schritt 1 darf nicht bestätigen')
+  assert.match(schritt1, /data-aktion="sichtung-r3" data-workflow-id="w-1">Protokoll-Abweichung ansehen</)
+  assert.ok(schritt1.includes('<div id="wf-sichtung-r3"></div>'))
+  assert.match(schritt1, /Protokoll-Abweichung vor/)
+  assert.match(schritt1, /<textarea id="wf-sichtung-begruendung"/)
+  assert.doesNotMatch(schritt1, /<img/, 'R3-Text steht erst in Schritt 2')
+  const schritt2 = renderSichtungR3Schritt('w-1', abweichung)
+  assert.match(schritt2.meldung, /id="wf-sichtung-r3-meldung" tabindex="-1"/)
+  assert.ok(schritt2.meldung.includes('&lt;img src=x onerror=alert(1)&gt;'))
+  assert.doesNotMatch(schritt2.meldung, /<img/)
+  assert.match(schritt2.meldung, /U\+202E/)
+  assert.ok(!schritt2.meldung.includes(String.fromCodePoint(0x202e)), 'Bidi-Override roh in der Meldung')
+  assert.equal(schritt2.knopf, '<button type="button" class="button primary wf-aktion" data-aktion="sichtung" data-workflow-id="w-1">Abweichung gesehen – Sichtung bestätigt – weiter</button>')
+  assert.match(renderSichtungR3Schritt('w"1', 'x').knopf, /data-workflow-id="w&quot;1"/)
+})
+
+test('Sichtung: R3-Hinweis vor dem Pflichtfeld und in aria-describedby; Schritt 2 als benannte Gruppe', () => {
+  const abweichung = 'Länge abweichend'
+  const html = renderSichtungDialog('w-1', { schrittId: 's2', laufId: 'l-2', nachfolger: 's3', kanal: { abweichung } })
+  assert.ok(html.indexOf('wf-sichtung-hinweis') < html.indexOf('<label class="field" for="wf-sichtung-begruendung">'))
+  assert.match(html, /aria-describedby="wf-sichtung-hinweis workflow-dialog-meldung"/)
+  assert.match(renderSichtungR3Schritt('w-1', abweichung).meldung, /role="group" aria-labelledby="wf-sichtung-r3-titel"[\s\S]*id="wf-sichtung-r3-titel"><strong>Protokoll-Abweichung gesehen\?/)
+})
+
+test('Sichtung bei nicht ladbarem Kanal-Stand (qa 7): Bestätigung gesperrt, kein Schreibweg — fail closed', () => {
+  const html = renderSichtungDialog('w-1', { schrittId: 's2', laufId: 'l-2', nachfolger: 's3', kanal: null, kanalUnbekannt: true })
+  assert.doesNotMatch(html, /data-aktion="sichtung/)
+  assert.match(html, /<button type="button" class="button primary" disabled>Sichtung bestätigt – weiter<\/button>/)
+  assert.match(html, /nicht ladbar/)
+  // Mit R3 gilt R3 (Schritt 1), auch wenn das Flag noch stünde.
+  assert.match(renderSichtungDialog('w-1', { schrittId: 's2', laufId: 'l-2', nachfolger: 's3', kanal: { abweichung: 'x' }, kanalUnbekannt: true }), /data-aktion="sichtung-r3"/)
 })
