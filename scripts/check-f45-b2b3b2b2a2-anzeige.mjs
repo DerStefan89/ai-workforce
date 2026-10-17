@@ -26,7 +26,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeMultiProjektDispatcher, erzeugeRequestHandler } from './leitstand-server.mjs'
+import { MASKE } from './leitstand/geheimnisse-maskieren.mjs'
 import { erzeugeRueckfrageVermittlung } from './leitstand/rueckfrage-vermittlung.mjs'
+
+/**
+ * Test-Attrappen, zur Laufzeit zusammengesetzt (Muster scripts/leitstand-abgelehnte-befehle.test.mjs): kein vollständiges,
+ * scanner-erkennbares Geheimnis steht im Quelltext (Secret-Scan der CI, gitleaks Regel curl-auth-header) — maskiereGeheimnisse sieht
+ * zur Laufzeit trotzdem den vollen Wert.
+ */
+const BEARER = ['test-abcd', 'efghijklmnop'].join('')
+const AUTH_KOPF = ['Authorization', `Bearer ${BEARER}`].join(': ')
+const PASSWORT = ['geheim', '123'].join('')
 
 const befunde = []
 console.log('\n=== F45-B2b-3b-2b-2a-2-Anzeige-Check (Rückfrage-Kanal: Warteschlange im Leitstand) ===\n')
@@ -67,7 +77,7 @@ try {
   const hole = async (pfad) => (await fetch(`${wurzel}${pfad}`)).json()
   const antworte = (pfad, id, koerper, kopf = {}) => fetch(`${wurzel}${pfad}/rueckfragen/${id}/antwort`, { method: 'POST', headers: kopf, body: JSON.stringify(koerper) })
 
-  const bash = vP.stelle('lauf-p', { art: 'rechte', tool_name: 'Bash', input: { command: 'curl -H "Authorization: Bearer abcdefghijklmnop" https://x\nnpm publish' }, tool_use_id: 'tp1' })
+  const bash = vP.stelle('lauf-p', { art: 'rechte', tool_name: 'Bash', input: { command: `curl -H "${AUTH_KOPF}" https://x\nnpm publish` }, tool_use_id: 'tp1' })
   const frage = vP.stelle('lauf-p', { art: 'frage', frage: 'Welche Datenbank?', optionen: ['SQLite', 'Postgres'], tool_use_id: 'tp2' })
   const offenP = await hole('/api/projekte/p1/rueckfragen')
   const offenW = await hole('/api/rueckfragen')
@@ -77,16 +87,16 @@ try {
     `(a) offen: ${JSON.stringify({ offenP, offenW })}`
   )
   const sBrowser = (await antworte('/api/projekte/p1', bash.id, { entscheidung: 'einmal_erlauben' }, { 'Sec-Fetch-Site': 'same-origin' })).status
-  const sAndere = (await antworte('/api/projekte/p1', frage.id, { antwort: 'SQLite, password=geheim123' })).status
+  const sAndere = (await antworte('/api/projekte/p1', frage.id, { antwort: `SQLite, password=${PASSWORT}` })).status
   const nachher = await hole('/api/projekte/p1/rueckfragen')
   const [neueste, aeltere] = nachher.entschieden ?? []
   pruefe(
-    sBrowser === 200 && sAndere === 200 && nachher.rueckfragen?.length === 0 && neueste?.id === frage.id && neueste?.herkunft === 'nicht_browser' && neueste?.antwort?.startsWith('SQLite, password=') && !neueste.antwort.includes('geheim123') && aeltere?.id === bash.id && aeltere?.herkunft === 'browser' && aeltere?.ergebnis === 'stefan_erlaubt',
+    sBrowser === 200 && sAndere === 200 && nachher.rueckfragen?.length === 0 && neueste?.id === frage.id && neueste?.herkunft === 'nicht_browser' && neueste?.antwort?.startsWith('SQLite, password=') && !neueste.antwort.includes(PASSWORT) && neueste.antwort.includes(MASKE) && aeltere?.id === bash.id && aeltere?.herkunft === 'browser' && aeltere?.ergebnis === 'stefan_erlaubt',
     '(a) Antwort über /api/projekte/p1: Sec-Fetch-Site same-origin ⇒ herkunft browser, ohne Kopf ⇒ nicht_browser; neueste zuerst; Geheimnis in der freien Antwort maskiert.',
     `(a) entschieden: ${JSON.stringify({ sBrowser, sAndere, nachher })}`
   )
   pruefe(
-    typeof aeltere?.befehl === 'string' && !aeltere.befehl.includes('abcdefghijklmnop') && aeltere.befehl.includes('npm publish'),
+    typeof aeltere?.befehl === 'string' && !aeltere.befehl.includes(BEARER) && aeltere.befehl.includes(MASKE) && aeltere.befehl.includes('npm publish'),
     '(a) Befehl in der Historie maskiert (maskiereGeheimnisse), Rest wörtlich (Advisor M11).',
     `(a) Maskierung: ${JSON.stringify(aeltere?.befehl)}`
   )

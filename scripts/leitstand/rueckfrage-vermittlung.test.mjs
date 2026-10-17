@@ -15,6 +15,16 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sha256Hex } from '../../src/checkpoint-store/index.ts'
 import { ENTSCHIEDEN_MAX, KEINE_ANTWORT, MAX_OFFENE_JE_LAUF, MAX_PROTOKOLL_JE_LAUF, ablehnungstextStefan, erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './rueckfrage-vermittlung.mjs'
+import { MASKE } from './geheimnisse-maskieren.mjs'
+
+/**
+ * Test-Attrappen, zur Laufzeit zusammengesetzt (Muster scripts/leitstand-abgelehnte-befehle.test.mjs): kein vollständiges,
+ * scanner-erkennbares Geheimnis steht im Quelltext (Secret-Scan der CI, gitleaks Regel curl-auth-header) — maskiereGeheimnisse sieht
+ * zur Laufzeit trotzdem den vollen Wert.
+ */
+const BEARER = ['test-abcd', 'efghijklmnop'].join('')
+const AUTH_KOPF = ['Authorization', `Bearer ${BEARER}`].join(': ')
+const PASSWORT = ['geheim', '123'].join('')
 
 const TOKEN = 'b'.repeat(64)
 const ORDNER = process.platform === 'win32' ? 'C:\\proj\\wf' : '/proj/wf'
@@ -468,16 +478,16 @@ test('F45 B2b-3b-2a (qa B8): nach der 20er-Grenze ist die ID gemerkt — die Wie
 test('F45 B2b-3b-2b-2a-2 (Advisor M3/M11): entschiedene — neueste zuerst, Herkunft, Antwort und Befehl maskiert, auch nach beendeLauf; offene nicht', async () => {
   const { v } = aufbau()
   assert.deepEqual(v.entschiedene(), [])
-  const a = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'curl -H "Authorization: Bearer abcdefghijklmnop" x' }, tool_use_id: 'a' })
+  const a = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: `curl -H "${AUTH_KOPF}" x` }, tool_use_id: 'a' })
   const b = v.stelle('l1', { art: 'frage', frage: 'Welche Datenbank?', optionen: ['A', 'B'], tool_use_id: 'b' })
   const c = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'ls' }, tool_use_id: 'c' })
   assert.deepEqual(v.entschiedene(), [], 'offene Rückfragen stehen nicht in entschieden')
   assert.deepEqual(v.beantworte(a.id, { entscheidung: 'einmal_erlauben' }, 'browser'), { ok: true })
-  assert.deepEqual(v.beantworte(b.id, { antwort: 'password=geheim123' }), { ok: true })
+  assert.deepEqual(v.beantworte(b.id, { antwort: `password=${PASSWORT}` }), { ok: true })
   const liste = v.entschiedene()
   assert.deepEqual(liste.map((e) => [e.id, e.ergebnis, e.herkunft]), [[b.id, 'frage_beantwortet', 'nicht_browser'], [a.id, 'stefan_erlaubt', 'browser']])
-  assert.doesNotMatch(liste[1].befehl, /abcdefghijklmnop/, 'Befehl in der Historie maskiert')
-  assert.doesNotMatch(liste[0].antwort, /geheim123/, 'freie Antwort in der Historie maskiert')
+  assert.ok(!liste[1].befehl.includes(BEARER) && liste[1].befehl.includes(MASKE), 'Befehl in der Historie maskiert')
+  assert.ok(!liste[0].antwort.includes(PASSWORT) && liste[0].antwort.includes(MASKE), 'freie Antwort in der Historie maskiert')
   assert.equal(liste[0].frage, 'Welche Datenbank?')
   assert.match(liste[0].entschieden_am, /^\d{4}-\d{2}-\d{2}T/)
   liste[0].ergebnis = 'verändert'

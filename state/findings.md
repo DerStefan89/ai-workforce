@@ -13933,3 +13933,12 @@ Auswirkung: Gering, solange der Kanal nicht für echte Läufe genutzt wird.
 Maßnahme: (1)(2) mit B2b-3b-2b-2b (echter Lauf); (5)(8)(9) bei der nächsten Berührung von rueckfrage-kanal.js; (10) Entscheidung Stefan; (3)(4)(6)(7) bewusst so.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-3b-2b-2a-2 (code-reviewer, qa, design-guardian), 17.10.2026.
+
+**F-1134** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Secret-Scan (gitleaks) läuft lokal ohne Docker/gitleaks nicht — Test-Attrappen mit Geheimnis-Form erst in der CI rot (B2b-3b-2b-2a-2).
+Beschreibung: Nach dem Commit von B2b-3b-2b-2a-2 war der CI-Schritt „Secret-Scan (gitleaks)“ rot, Regel curl-auth-header, zwei Funde: wörtliche Test-Attrappen `curl -H "Authorization: Bearer …"` in `scripts/check-f45-b2b3b2b2a2-anzeige.mjs` und `scripts/leitstand/rueckfrage-vermittlung.test.mjs` (Prüfung der Maskierung in `entschiedene()`). Lokal meldete `scripts/check-secrets.mjs` nur „Secret-Scan NICHT gelaufen: weder gitleaks noch Docker im PATH“ — der Lauf galt trotzdem als grün; weder code-reviewer noch qa sahen die Form als Risiko. Korrektur: Attrappen zur Laufzeit zusammengesetzt (Muster `scripts/leitstand-abgelehnte-befehle.test.mjs:23`; `BEARER`, `AUTH_KOPF`, `PASSWORT`), die Prüfungen verlangen jetzt zusätzlich die Maske (`MASKE`) im maskierten Wert; keine Allowlist, keine `.gitleaksignore`, CI unverändert.
+Fundstelle: `scripts/check-secrets.mjs` (lokaler Rückfall ohne Scanner), Test-Attrappen in `scripts/**/*.test.mjs` und `scripts/check-*.mjs`.
+Auswirkung: Gering bis mittel — ein Korrekturcommit je Vorfall; die Regel wirkt erst nach dem Push.
+Maßnahme: Attrappen mit Geheimnis-Form (Authorization/Bearer, `token=`, `api_key`, `password=`, Schlüssel-Präfixe) von Anfang an zur Laufzeit zusammensetzen; der Challenger nimmt Authorization/Bearer (und die übrigen Formen von `MUSTER` in `scripts/leitstand/geheimnisse-maskieren.mjs`) in seine Mustersuche über den Branch-Diff auf; optional ein lokaler Ersatz-Scan ohne Docker (Mustersuche über den Diff) in `check-secrets`.
+Status: offen.
+Feature/Run: Entdeckt: CI-Lauf nach Commit 0d4ee07 (F45 B2b-3b-2b-2a-2), 17.10.2026.
