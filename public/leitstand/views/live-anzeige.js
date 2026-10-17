@@ -406,7 +406,7 @@ export function renderAlsNaechstes(naechstes) {
   if (naechstes?.art === 'entscheidung') {
     const e = naechstes.eintrag
     return `${eyebrow}<h2 class="live-wartet-karte-titel">${escapeHtml(e.titel ?? '')}</h2>
-      <p>${tHtml(`live.naechstes.art.${e.art}`)}${e.satz ? ` — ${escapeHtml(e.satz)}` : ''}</p>
+      <p>${e.abweichung === true ? tHtml('live.naechstes.art.abweichung') : tHtml(`live.naechstes.art.${e.art}`)}${e.satz ? ` — ${escapeHtml(e.satz)}` : ''}</p>
       <div class="action-row"><a class="button primary" href="#/attention">${tHtml('live.naechstes.zuEntscheidungen')} <span aria-hidden="true">→</span></a></div>`
   }
   if (naechstes?.art === 'schritt') {

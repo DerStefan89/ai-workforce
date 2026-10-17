@@ -1,0 +1,85 @@
+{
+  "url": "http://127.0.0.1:4408/#/runs/lauf-kanal-erfolg",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 2400
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "ru"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Notiz",
+        "selector": "#lauf-notiz .lauf-notiz-fehler > strong, #lauf-notiz .lauf-notiz-erfolg > strong"
+      },
+      {
+        "name": "Kanal-Grund",
+        "selector": ".kanal-grund"
+      },
+      {
+        "name": "Was tun",
+        "selector": ".kanal-was-tun"
+      },
+      {
+        "name": "R3-Titel",
+        "selector": ".rueckfrage-abweichung > strong"
+      },
+      {
+        "name": "Sichtungs-Satz",
+        "selector": "#workflow-bedienung .wf-sichtung > p"
+      },
+      {
+        "name": "Chip R3",
+        "selector": ".entscheidung-karte.art-startproblem .art-chip"
+      },
+      {
+        "name": "Knopf R3",
+        "selector": ".entscheidung-karte.art-startproblem .entscheidung-karte-aktionen a"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Block „Rückfrage-Kanal im Lauf“",
+        "selector": "#lauf-notiz .rueckfrage-abnahme"
+      },
+      {
+        "name": "R3-Meldung",
+        "selector": "#lauf-notiz .rueckfrage-abweichung"
+      },
+      {
+        "name": "Maske sichtbar",
+        "selector": ".rueckfrage-abweichung .rueckfrage-maske"
+      },
+      {
+        "name": "<img> gerendert (soll false)",
+        "selector": "#lauf-notiz img, #attention-liste img"
+      },
+      {
+        "name": "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)",
+        "selector": "#lauf-notiz .lauf-notiz-fehler .kommt, #lauf-notiz .lauf-notiz-fehler .badge-kommt"
+      },
+      {
+        "name": "Sichtung mit Kanal-Grund",
+        "selector": "#workflow-bedienung .wf-sichtung .kanal-grund"
+      },
+      {
+        "name": "Startfehler mit Protokoll-Abweichung",
+        "selector": "#startfehler .startfehler-zeile .art-chip"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "ERFOLGREICH mit Zählung — ru-390",
+      "warteAufSelector": {
+        "selector": "#lauf-notiz .rueckfrage-abnahme",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-ru-390.webp"
+    }
+  ]
+}

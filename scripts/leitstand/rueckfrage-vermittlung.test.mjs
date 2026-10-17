@@ -321,7 +321,7 @@ test('F45 B2b-3b-2b-1a (R3, Advisor B6/D9): zugang vor oeffneLauf gebaut, danach
 test('F45 B2b-3b-2b-2a-1 (F-1128 (3), D13): zugang.zaehlung zählt Antworten je Art und nicht_browser aus dem Speicher; ohne offenen Lauf null', () => {
   const { v } = aufbau()
   const zugang = v.zugang('l1', () => {})
-  assert.deepEqual(zugang.zaehlung(), { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0 })
+  assert.deepEqual(zugang.zaehlung(), { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: 0, automatisch: 0 })
   const id = (tool_use_id, input) => v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input, tool_use_id }).id
   const frage = v.stelle('l1', { art: 'frage', frage: 'A oder B?', optionen: ['A', 'B'], tool_use_id: 'f1' }).id
   v.beantworte(id('b1', { command: 'npm publish' }), { entscheidung: 'einmal_erlauben' }, 'browser')
@@ -329,10 +329,35 @@ test('F45 B2b-3b-2b-2a-1 (F-1128 (3), D13): zugang.zaehlung zählt Antworten je 
   v.beantworte(id('b3', { command: 'rm -rf x' }), { entscheidung: 'ablehnen' }, 'browser')
   v.beantworte(frage, { antwort: 'A' }, 'nicht_browser')
   v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'w1' })
-  assert.deepEqual(zugang.zaehlung(), { stefan_erlaubt: 1, stefan_abgelehnt: 2, frage_beantwortet: 1, nicht_browser: 2 }, 'auto_deny zählt nicht')
+  // B2b-3b-2b-2a-3: auto_deny zählt nicht als Antwort, sondern unter `automatisch`.
+  assert.deepEqual(zugang.zaehlung(), { stefan_erlaubt: 1, stefan_abgelehnt: 2, frage_beantwortet: 1, nicht_browser: 2, abgelaufen: 0, lauf_ende: 0, automatisch: 1 }, 'auto_deny unter automatisch')
   assert.equal(v.zugang('unbekannt', () => {}).zaehlung(), null)
   v.beendeLauf('l1')
   assert.equal(zugang.zaehlung(), null, 'nach dem Lauf-Ende null')
+})
+
+test('F45 B2b-3b-2b-2a-3 (F-1132 (1)): Zählung der unbeantworteten — abgelaufen, beim Lesen offen ⇒ lauf_ende (= Lauf-Ende-Ablehnungen), automatisch inkl. Grenze ohne Eintrag', async () => {
+  const { v, protokoll } = aufbau({ warteGrenzeMs: 20 })
+  const zugang = v.zugang('l1', () => {})
+  v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'npm publish' }, tool_use_id: 'a1' })
+  v.stelle('l1', { art: 'frage', frage: 'A oder B?', tool_use_id: 'a2' })
+  await new Promise((r) => setTimeout(r, 60))
+  v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'git push' }, tool_use_id: 'o1' })
+  v.stelle('l1', { art: 'frage', frage: 'Noch offen?', tool_use_id: 'o2' })
+  v.stelle('l1', { art: 'frage', frage: 'Doppelt?', tool_use_id: 'o2' })
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'w1' })
+  const gelesen = zugang.zaehlung()
+  assert.deepEqual(gelesen, { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 2, lauf_ende: 2, automatisch: 2 })
+  v.beendeLauf('l1')
+  const laufEnde = protokoll.filter((e) => e.art === 'lauf_beendet' || (e.art === 'frage_ohne_antwort' && e.grund === 'Lauf beendet')).length
+  assert.equal(laufEnde, gelesen.lauf_ende, 'Advisor M1: die beim Lesen offenen sind genau die beim Lauf-Ende abgelehnten')
+  // Ablehnung über der Protokollgrenze ohne Eintrag zählt unter `automatisch`.
+  const g = erzeugeRueckfrageVermittlung({ pfadOptionen: PFAD })
+  g.oeffneLauf('l2', KANAL)
+  for (let i = 0; i < MAX_PROTOKOLL_JE_LAUF; i++) g.stelle('l2', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: String(i) }, tool_use_id: `w${i}` })
+  g.stelle('l2', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'drüber' }, tool_use_id: 'drueber' })
+  assert.deepEqual(g.zugang('l2', () => {}).zaehlung().automatisch, MAX_PROTOKOLL_JE_LAUF + 1)
+  g.beendeLauf('l2')
 })
 
 // ─── F45 B2b-3b-2b-1b (F-1128 R1): eindeutiger Ablehnungstext je Ablehnung durch Stefan ───────────────────────────────

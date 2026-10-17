@@ -13,7 +13,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
-import { FRAGE_WERKZEUG, RECHTE_WERKZEUG, RUECKFRAGE_SERVER, ergaenzeRueckfrageAufruf, liegtImArbeitsordner, vorentscheidung, werkzeugNamenAus } from './index.ts'
+import { readFileSync } from 'node:fs'
+import { FRAGE_WERKZEUG, RECHTE_WERKZEUG, RUECKFRAGE_REGEL, RUECKFRAGE_SERVER, ergaenzeRueckfrageAufruf, liegtImArbeitsordner, vorentscheidung, werkzeugNamenAus } from './index.ts'
 
 /** Textuelle Prüfung ohne Dateisystem: jeder Pfad „existiert“ und ist sein eigener realpath. */
 const WIN = { plattform: 'win32' as const, realpath: (p: string) => p }
@@ -199,4 +200,31 @@ test('ergaenzeRueckfrageAufruf: Kollision und kaputte Eingaben ⇒ ok:false, kei
     const ergebnis = ergaenzeRueckfrageAufruf(eingaben as typeof EINGABEN, kanal)
     assert.equal(ergebnis.ok, false, JSON.stringify(eingaben).slice(0, 80))
   }
+})
+
+// ─── F45 B2b-3b-2b-2a-3 (F-1132 (5)): Wortlaut der Regel ─────────────────────────────────────────────────────────────
+
+test('F45 B2b-3b-2b-2a-3 (F-1132 (5)): frage_stefan steht vor „- [x] Blockiert“ in derselben Zeile, „Zuerst“ wörtlich', () => {
+  const zeile = RUECKFRAGE_REGEL.find((z) => z.includes("'- [x] Blockiert'"))
+  assert.ok(zeile !== undefined, 'Blockiert-Hinweis fehlt')
+  assert.ok(zeile.includes(`Zuerst ${FRAGE_WERKZEUG};`), '„Zuerst frage_stefan“ wörtlich')
+  assert.ok(zeile.indexOf(FRAGE_WERKZEUG) < zeile.indexOf("'- [x] Blockiert'"), 'frage_stefan vor Blockiert')
+  // Keine Regelzeile darf selbst eine Blockiert-Zeile sein (SELBSTBLOCKADE_ZEILE, src/korrekturschleife/index.ts:151).
+  assert.ok(RUECKFRAGE_REGEL.every((z) => !/^-\s*\[[xX]\]\s*Blockiert\b/.test(z)))
+})
+
+test('F45 B2b-3b-2b-2a-3 (F-1132 (5)): „Frage ungültig“ ⇒ einmal korrigiert neu fragen, dann wie keine Antwort; Wortlaut und Grenzen an MCP-Skript und Vermittlung gekoppelt', () => {
+  const zeile = RUECKFRAGE_REGEL.find((z) => z.includes('Frage ungültig — nicht an Stefan gestellt'))
+  assert.ok(zeile !== undefined, 'Regelzeile „Frage ungültig“ fehlt')
+  assert.match(zeile, /einmal korrigiert neu/)
+  assert.match(zeile, /wie keine Antwort/)
+  // Grenzen aus dem Quelltext der Vermittlung (ein .mjs-Import hätte in tsc keinen Typ).
+  const vermittlung = readFileSync(new URL('../../scripts/leitstand/rueckfrage-vermittlung.mjs', import.meta.url), 'utf8')
+  const grenze = (name: string): string => new RegExp(`export const ${name} = (\\d+)`).exec(vermittlung)?.[1] ?? '?'
+  const [TEXT_MAX_ZEICHEN, OPTIONEN_MAX, OPTION_MAX_ZEICHEN] = ['TEXT_MAX_ZEICHEN', 'OPTIONEN_MAX', 'OPTION_MAX_ZEICHEN'].map(grenze)
+  assert.ok(zeile.includes(`höchstens ${TEXT_MAX_ZEICHEN} Zeichen`) && zeile.includes(`höchstens ${OPTIONEN_MAX} Optionen`) && zeile.includes(`höchstens ${OPTION_MAX_ZEICHEN} Zeichen`), 'Grenzen wie in der Vermittlung')
+  const mcp = readFileSync(new URL('../../scripts/leitstand/rueckfrage-mcp.mjs', import.meta.url), 'utf8')
+  assert.ok(mcp.includes('`Frage ungültig — nicht an Stefan gestellt: ${'), 'Meldung des MCP-Skripts wortgleich')
+  // Reihenfolge: die Zeile „Frage ungültig“ steht nach der Zeile mit „Zuerst frage_stefan“ (sie präzisiert „keine Antwort“).
+  assert.ok(RUECKFRAGE_REGEL.indexOf(zeile) > RUECKFRAGE_REGEL.findIndex((z) => z.includes(`Zuerst ${FRAGE_WERKZEUG}`)))
 })

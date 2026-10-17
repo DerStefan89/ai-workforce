@@ -370,8 +370,9 @@ try {
       if (a.fehlt !== undefined) befunde.push(`(r3) fehlt: ${a.fehlt}`)
       else
         pruefe(
-          a.ermittelt === null && eintrag !== undefined && /Länge abweichend/.test(eintrag.fehler),
-          '(r3) angehängte gefälschte Version ⇒ nicht bestätigt (null) und Eintrag in GET /api/startfehler mit Grund.',
+          // B2b-3b-2b-2a-3 (Advisor M10/V2): zusätzlich das Feld art des Eintrags (eigene Einordnung statt „Startproblem“); keine Bedingung entfällt.
+          a.ermittelt === null && eintrag !== undefined && /Länge abweichend/.test(eintrag.fehler) && eintrag.art === 'rueckfrage_abweichung',
+          '(r3) angehängte gefälschte Version ⇒ nicht bestätigt (null) und Eintrag in GET /api/startfehler mit Grund und art rueckfrage_abweichung.',
           `(r3) ermittelt ${JSON.stringify(a.ermittelt)}, Startfehler ${JSON.stringify(startfehler)}`
         )
     }

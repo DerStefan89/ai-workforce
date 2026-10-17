@@ -261,16 +261,22 @@ export function baueEntscheidungen(zustand, workitems, referenzJeAuftrag = null,
         }))
       : laeufeRoh,
     startfehler: Array.isArray(startfehlerRoh)
-      ? startfehlerRoh.map((s) => ({
-          art: 'startproblem',
-          id: s.laufId,
-          titel: s.laufId,
-          satz: null,
-          hash: null,
-          eintragHash: null,
-          zeitstempel: s.zeitstempel ?? null,
-          fehler: s.fehler ?? null,
-        }))
+      ? startfehlerRoh.map((s) => {
+          // F45 B2b-3b-2b-2a-3 (Advisor V2): R3 (Server art 'rueckfrage_abweichung') bleibt in Gruppe und Filter ein Startproblem, ist aber
+          // keins — Kennzeichen `abweichung` (eigener Chip, Frage, Knopf) und Link zum Lauf, dort die dauerhafte Meldung.
+          const abweichung = s.art === 'rueckfrage_abweichung' && typeof s.laufId === 'string' && s.laufId !== ''
+          return {
+            art: 'startproblem',
+            id: s.laufId,
+            titel: s.laufId,
+            satz: null,
+            hash: abweichung ? `#/runs/${encodeURIComponent(s.laufId)}` : null,
+            eintragHash: null,
+            zeitstempel: s.zeitstempel ?? null,
+            fehler: s.fehler ?? null,
+            ...(abweichung ? { abweichung: true } : {}),
+          }
+        })
       : startfehlerRoh,
     workitems: Array.isArray(workitems)
       ? workitems

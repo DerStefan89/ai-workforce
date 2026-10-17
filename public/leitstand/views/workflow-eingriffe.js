@@ -35,6 +35,7 @@ import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { escapeHtml } from '../render.js'
 import { rollenName } from '../rollen-anzeige.js'
+import { kanalUrsacheHtml } from '../rueckfrage-abnahme.js'
 
 /** Workflow-Status, aus denen heraus eine Reparaturfassung vorbereitet wird (F-240). */
 export const REPARIERBARE_WORKFLOW_STATUS = ['GESTOPPT', 'KLAERUNG_ERFORDERLICH']
@@ -85,13 +86,17 @@ export function renderKlaerungNotiz(workflowId, architekturEntscheidung) {
  * F9 (F-768): „Abgelehnte Befehle sichten“ — Schritt, Lauf und Nachfolger wie im bisherigen Satz, ein
  * Verweis auf das Lauf-Detail und der Knopf, der den Dialog der Art 'sichtung' öffnet.
  * @param workflowId - Kennung des Workflows
- * @param sichtung - Ergebnis von istSichtungsHaltAnzeige ({ schrittId, laufId, nachfolger })
+ * F45 B2b-3b-2b-2a-3: ist der Rückfrage-Kanal die Ursache (sichtung.kanal = rueckfrageKanal des Lauf-Details, von views/workflows.js
+ * nachgeladen), ersetzt sein Grund mit „was tun“ den Standardsatz; bei einer echten Verweigerung bleibt der Standardsatz.
+ * @param sichtung - Ergebnis von istSichtungsHaltAnzeige ({ schrittId, laufId, nachfolger }), optional mit kanal
  * @returns HTML
  */
 export function renderSichtungNotiz(workflowId, sichtung) {
+  const platz = { schritt: code(sichtung.schrittId), lauf: code(sichtung.laufId) }
+  const kanal = kanalUrsacheHtml(sichtung.kanal ?? null)
   return `<div class="note amber wf-sichtung">
     <strong>${tHtml('eingriff.sichtung.titel')}</strong>
-    <p>${tHtml('eingriff.sichtung.text', {}, { schritt: code(sichtung.schrittId), lauf: code(sichtung.laufId) })}</p>
+    ${kanal === '' ? `<p>${tHtml('eingriff.sichtung.text', {}, platz)}</p>` : `<p>${tHtml('eingriff.sichtung.textKanal', {}, platz)}</p>${kanal}`}
     <p><a class="text-link" href="#/runs/${escapeHtml(encodeURIComponent(sichtung.laufId ?? ''))}">${tHtml('eingriff.sichtung.lauf')} <span aria-hidden="true">→</span></a></p>
     <button type="button" class="button primary wf-aktion" data-aktion="sichtung-oeffnen" data-workflow-id="${escapeHtml(workflowId)}" aria-haspopup="dialog">${tHtml('eingriff.sichtung.knopf')}</button>
   </div>`

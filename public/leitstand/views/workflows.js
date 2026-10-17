@@ -106,6 +106,50 @@ async function ermittleAktiveLaufIds(eintraege) {
   return aktive
 }
 
+/** F45 B2b-3b-2b-2a-3 (Advisor M8): rueckfrageKanal je Lauf eines F-760-Halts — nur bei ABGESCHLOSSEN gemerkt (Terminalmarke fest). */
+const kanalJeLauf = new Map()
+/** Läufe, deren Abruf scheiterte ⇒ Zeitpunkt (ms), ab dem neu versucht wird (qa 4: kein schwerer Abruf je Takt). */
+const kanalFehlerBis = new Map()
+/** Rückzug nach einem gescheiterten Abruf. */
+const KANAL_RUECKZUG_MS = 30000
+/** Laufende Abrufe je Lauf (laufId → Promise). */
+const kanalAbrufe = new Map()
+
+/**
+ * rueckfrageKanal des Laufs eines F-760-Halts für die Sichtungs-Notiz: gemerkt ⇒ sofort; sonst GET /api/laeufe/<laufId> — der Aufrufer
+ * wartet darauf, bevor er die Bedienung zeichnet (code-reviewer 1: sonst änderte das Nachladen das Kennzeichen und schlösse einen offenen
+ * Sichtungs-Dialog). Fehler ⇒ null (Standardsatz) und 30 s Rückzug für diesen Lauf.
+ * @param laufId - Lauf des VERWEIGERT-Schritts
+ * @returns Promise<rueckfrageKanal | null>
+ */
+function kanalDerSichtung(laufId) {
+  if (kanalJeLauf.has(laufId)) return Promise.resolve(kanalJeLauf.get(laufId))
+  if ((kanalFehlerBis.get(laufId) ?? 0) > Date.now()) return Promise.resolve(null)
+  // code-reviewer Nachpass A(a): ein laufender Abruf je Lauf — weitere Takte warten auf denselben statt einen neuen zu starten.
+  if (!kanalAbrufe.has(laufId)) kanalAbrufe.set(laufId, holeKanalDerSichtung(laufId).finally(() => kanalAbrufe.delete(laufId)))
+  return kanalAbrufe.get(laufId)
+}
+
+/**
+ * Ein Abruf des Lauf-Details für kanalDerSichtung; wirft nie.
+ * @param laufId - Lauf
+ * @returns Promise<rueckfrageKanal | null>
+ */
+async function holeKanalDerSichtung(laufId) {
+  try {
+    const antwort = await holeLaufDetail(laufId)
+    if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`)
+    const detail = await antwort.json()
+    const kanal = detail?.rueckfrageKanal ?? null
+    if (detail?.laufStatus?.status === 'ABGESCHLOSSEN') kanalJeLauf.set(laufId, kanal)
+    return kanal
+  } catch (fehler) {
+    kanalFehlerBis.set(laufId, Date.now() + KANAL_RUECKZUG_MS)
+    console.error(`[leitstand] Rückfrage-Kanal von Lauf '${laufId}' nicht ladbar: ${fehler.message}`)
+    return null
+  }
+}
+
 // ─── Abnahme (F23 WS-2a/2b, F44 WS-4b; Rendern in ./workflow-abnahme.js) ─────
 
 /** Kennzeichen der zuletzt gerenderten Abnahme — nur bei ECHTER Änderung wird neu gebaut, sonst ginge eine angefangene Pflichtbegründung durch den 2-Sekunden-Poll verloren. */
@@ -777,7 +821,8 @@ function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig 
   // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung schneidet am letzten '|'); sie steht kodiert (encodeURIComponent) darin, damit ein '|' in einem Katalogtext den Schnitt nicht verschiebt (F46 D2, qa 8).
   // F45 B1a-1: die Lage des Arbeitsordners (Status, Vorbereitung, Ordner vorhanden, Grund) steht kodiert davor.
   const ordnerLage = encodeURIComponent(`${arbeitsordner?.status ?? 'null'}:${arbeitsordner?.vorbereitungLaeuft === true}:${arbeitsordner?.ordnerVorhanden !== false}:${arbeitsordner?.grund ?? ''}:${istAbnahmeOffen(status)}`)
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${ordnerLage}|${prueferWiederholbar === true}|${budgetKennung(budget)}|${encodeURIComponent(JSON.stringify(empfehlung))}`
+  // F45 B2b-3b-2b-2a-3: der nachgeladene Abgleich-Grund des Rückfrage-Kanals gehört zur Sichtungs-Notiz (kodiert, ohne '|').
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}:${encodeURIComponent(JSON.stringify(sichtung?.kanal?.abgleich ?? null))}|${ordnerLage}|${prueferWiederholbar === true}|${budgetKennung(budget)}|${encodeURIComponent(JSON.stringify(empfehlung))}`
   if (kennzeichen === bedienungsKennzeichen) return
   // Während einer laufenden Dialog-Bedienung schließt der Dialog erst mit ihrer Antwort (sendeWorkflowBedienung).
   const dialogVeraltet = offenerDialog !== null && laufendeDialogBedienung === null && dialogUeberholt(offenerDialog, kennzeichen)
@@ -1050,7 +1095,10 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const ungueltig = verstoesse.length > 0
     const architekturEntscheidung = detail.architekturEntscheidung ?? null
     // F-768: die Sichtung ist nur beim reinen F-760-Halt fällig (bei ungültiger Fassung allein die Reparatur).
-    const sichtung = ungueltig ? null : istSichtungsHaltAnzeige(daten)
+    const sichtungHalt = ungueltig ? null : istSichtungsHaltAnzeige(daten)
+    // F45 B2b-3b-2b-2a-3: dazu der Rückfrage-Kanal des Laufs (Abgleich-Grund statt Standardsatz), abgewartet und je Lauf gemerkt.
+    const sichtung = sichtungHalt === null ? null : { ...sichtungHalt, kanal: await kanalDerSichtung(sichtungHalt.laufId) }
+    if (istUeberholt()) return
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
     // F45 B2b-1b-2b: planFreigabe (Karten der Freigabe-Seite) und prueferWiederholbar („Advisor wiederholen“) aus dem Detail.
     const prueferWiederholbar = detail.prueferWiederholbar === true

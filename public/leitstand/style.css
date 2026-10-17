@@ -3547,7 +3547,8 @@ th {
   overflow-wrap: anywhere;
 }
 
-#view-attention .rueckfrage-maske {
+#view-attention .rueckfrage-maske,
+.lauf-seite .rueckfrage-abweichung .rueckfrage-maske {
   padding: 0 2px;
   border-radius: 4px;
   background: var(--color-danger-bg);
@@ -8275,6 +8276,13 @@ th {
   overflow-wrap: anywhere;
 }
 
+/* F45 B2b-3b-2b-2a-3: Grund-Code und R3-Freitext können lang und ohne Leerzeichen sein (bis 500 Zeichen). */
+.lauf-seite .kanal-grund code,
+.lauf-seite .rueckfrage-abweichung code,
+.wf-sichtung .kanal-grund code {
+  overflow-wrap: anywhere;
+}
+
 .lauf-seite .lauf-kenntnis-zeile {
   color: var(--ink);
 }
@@ -11640,7 +11648,8 @@ a.umgebung-werkzeug:not([aria-disabled='true']):hover {
    Beschriftungen ohne Bruch mitten im Wort, das Badge „kommt“ behält seine eigene Schreibweise. */
 .code-seite .text-link,
 #view-workboard .techdebt-tabelle .text-link,
-.auftrag-umgebung .text-link {
+.auftrag-umgebung .text-link,
+#startfehler .startfehler-zeile .text-link {
   gap: 4px;
   padding: 0;
   border-bottom: 1px solid currentColor;
@@ -11651,7 +11660,8 @@ a.umgebung-werkzeug:not([aria-disabled='true']):hover {
 
 .code-seite .text-link:hover,
 #view-workboard .techdebt-tabelle .text-link:hover,
-.auftrag-umgebung .text-link:hover {
+.auftrag-umgebung .text-link:hover,
+#startfehler .startfehler-zeile .text-link:hover {
   color: var(--ink);
 }
 

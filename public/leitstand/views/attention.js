@@ -146,7 +146,9 @@ function kontext(eintrag) {
  */
 function aktionen(eintrag) {
   const kontextName = `<span class="sr-only">: ${escapeHtml(eintrag.titel)}</span>`
-  const haupt = eintrag.hash === null ? `<p class="subtle entscheidung-karte-ohne">${tHtml('attention.ohneDetail')}</p>` : `<a class="button${eintrag === hauptEintrag ? ' primary' : ''}" href="${escapeHtml(eintrag.hash)}">${tHtml(`attention.knopf.${eintrag.art}`)}${kontextName}</a>`
+  // F45 B2b-3b-2b-2a-3: eine R3-Meldung (Startproblem mit `abweichung`) führt zum Lauf — eigener Knopftext.
+  const knopf = eintrag.abweichung === true ? tHtml('attention.knopf.abweichung') : tHtml(`attention.knopf.${eintrag.art}`)
+  const haupt = eintrag.hash === null ? `<p class="subtle entscheidung-karte-ohne">${tHtml('attention.ohneDetail')}</p>` : `<a class="button${eintrag === hauptEintrag ? ' primary' : ''}" href="${escapeHtml(eintrag.hash)}">${knopf}${kontextName}</a>`
   const zumEintrag = typeof eintrag.eintragHash === 'string' ? `<a class="text-link" href="${escapeHtml(eintrag.eintragHash)}">${tHtml('attention.zumEintrag')}${kontextName}</a>` : ''
   return `<div class="entscheidung-karte-aktionen">${haupt}${zumEintrag}</div>`
 }
@@ -158,10 +160,12 @@ function aktionen(eintrag) {
  * @returns HTML
  */
 function karte(eintrag) {
+  const abweichung = eintrag.abweichung === true
+  const chip = artChip(eintrag.art, { zusatz: eintrag.art === 'befund' ? eintrag.prioritaet : '', ...(abweichung ? { schluessel: 'attention.art.abweichung' } : {}) })
   return `<article class="entscheidung-karte art-${escapeHtml(eintrag.art)}">
       <div class="entscheidung-karte-text">
-        <div class="entscheidung-karte-kopf">${artChip(eintrag.art, { zusatz: eintrag.art === 'befund' ? eintrag.prioritaet : '' })}<span class="entscheidung-karte-eintrag">${escapeHtml(eintrag.titel)}</span>${seit(eintrag)}</div>
-        <h3>${tHtml(`attention.frage.${eintrag.art}`)}</h3>
+        <div class="entscheidung-karte-kopf">${chip}<span class="entscheidung-karte-eintrag">${escapeHtml(eintrag.titel)}</span>${seit(eintrag)}</div>
+        <h3>${abweichung ? tHtml('attention.frage.abweichung') : tHtml(`attention.frage.${eintrag.art}`)}</h3>
         <p class="entscheidung-karte-kontext">${kontext(eintrag)}</p>
       </div>
       ${aktionen(eintrag)}

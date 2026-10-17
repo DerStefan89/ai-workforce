@@ -1,0 +1,23 @@
+[
+  {
+    "label": "R3-Meldung escaped mit Maske — de-1440",
+    "Block „Rückfrage-Kanal im Lauf“": true,
+    "R3-Meldung": true,
+    "Maske sichtbar": true,
+    "<img> gerendert (soll false)": false,
+    "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)": false,
+    "Sichtung mit Kanal-Grund": false,
+    "Startfehler mit Protokoll-Abweichung": false,
+    "Notiz": "Dieser Arbeitsschritt wurde verweigert.",
+    "Kanal-Grund": "Rückfrage-Protokoll unbrauchbar. Das Protokoll des Kanals war ungültig, gehörte zu einem anderen Lauf oder wich vom Spei",
+    "Was tun": "(fehlt)",
+    "R3-Titel": "Rückfrage-Protokoll nicht bestätigt",
+    "Sichtungs-Satz": "(fehlt)",
+    "Chip R3": "(fehlt)",
+    "Knopf R3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

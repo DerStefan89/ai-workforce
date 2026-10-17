@@ -1693,7 +1693,7 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
       const projektion = protokoll.eintraege.map(({ tool_use_id, tool_name, input_hash, art, ablehnung_hash }) => (speicher === 'auto_deny' ? { tool_use_id, tool_name, input_hash, art: 'auto_deny' } : { tool_use_id, tool_name, input_hash, art, ablehnung_hash }))
       const gemeldet: string[] = []
       // B2b-3b-2b-2a-1: Zählung aus dem Speicherstand geht in daten der Terminalmarke, die Abweichung zusätzlich (R3).
-      const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 1, frage_beantwortet: 0, nicht_browser: 0 }
+      const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 1, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: 0, automatisch: 0 }
       const rueckfrageZugang = speicher === 'fehlt' ? undefined : { speicher: () => projektion, zaehlung: () => zaehlung, abweichung: () => gemeldet[0] ?? null, meldeAbweichung: (grund: string) => gemeldet.push(grund) }
       const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {}, ...(rueckfrageZugang !== undefined ? { rueckfrageZugang } : {}) })
       // B2b-3b-2b-1a (R3): eine Abweichung Speicher/Datei geht über den Zugang (Server: Startfehlerliste).
@@ -1760,8 +1760,11 @@ test('F45 B2b-3b-1b (qa 1): leseRueckfrageProtokoll wirft nie — fehlendes Arte
 
 test('F45 B2b-3b-2b-2a-1: leseRueckfrageZaehlung wirft nie — ohne Zugang, ohne zaehlung, Wurf, fremde Form ⇒ undefined', () => {
   const basis = { speicher: () => null, meldeAbweichung: () => {} }
-  const gut = { stefan_erlaubt: 1, stefan_abgelehnt: 2, frage_beantwortet: 3, nicht_browser: 4 }
+  // B2b-3b-2b-2a-3 (F-1132 (1)): sieben Felder; die alte Vier-Felder-Form gilt als fremd.
+  const gut = { stefan_erlaubt: 1, stefan_abgelehnt: 2, frage_beantwortet: 3, nicht_browser: 4, abgelaufen: 5, lauf_ende: 6, automatisch: 7 }
   assert.deepEqual(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => ({ ...gut, extra: 'x' }) }), gut)
+  assert.equal(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => ({ stefan_erlaubt: 1, stefan_abgelehnt: 2, frage_beantwortet: 3, nicht_browser: 4 }) }), undefined)
+  assert.equal(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => ({ ...gut, automatisch: 1.5 }) }), undefined)
   assert.equal(leseRueckfrageZaehlung('l', undefined), undefined)
   assert.equal(leseRueckfrageZaehlung('l', basis), undefined)
   assert.equal(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => null }), undefined)

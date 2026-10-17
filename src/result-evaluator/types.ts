@@ -39,12 +39,19 @@ export interface KlassifikationsEingaben {
   rueckfrageZaehlung?: RueckfrageZaehlung
 }
 
-/** Antworten eines Laufs über den Rückfrage-Kanal je Art; `nicht_browser` = davon nicht aus dem Browser (E-B7). */
+/**
+ * Rückfragen eines Laufs über den Rückfrage-Kanal je Art; `nicht_browser` = davon nicht aus dem Browser (E-B7). Seit B2b-3b-2b-2a-3
+ * (F-1132 (1)) auch die unbeantworteten: `abgelaufen` (Wartegrenze), `lauf_ende` (beim Lauf-Ende abgelehnt), `automatisch` (auto_deny,
+ * Grenzen, doppelte ID).
+ */
 export interface RueckfrageZaehlung {
   stefan_erlaubt: number
   stefan_abgelehnt: number
   frage_beantwortet: number
   nicht_browser: number
+  abgelaufen: number
+  lauf_ende: number
+  automatisch: number
 }
 
 export interface KlassifikationsOptionen {

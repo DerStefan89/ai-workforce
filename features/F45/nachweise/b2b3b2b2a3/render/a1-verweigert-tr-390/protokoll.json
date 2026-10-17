@@ -1,0 +1,23 @@
+[
+  {
+    "label": "VERWEIGERT mit Kanal-Grund statt Standardsatz — tr-390",
+    "Block „Rückfrage-Kanal im Lauf“": true,
+    "R3-Meldung": false,
+    "Maske sichtbar": false,
+    "<img> gerendert (soll false)": false,
+    "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)": false,
+    "Sichtung mit Kanal-Grund": false,
+    "Startfehler mit Protokoll-Abweichung": false,
+    "Notiz": "Bu çalışma adımı reddedildi.",
+    "Kanal-Grund": "Reddin doğrulanmadı. En az bir ret, değerlendirmede senin reddin olarak doğrulanamadı (ör. ret metni, araç ya da girdi u",
+    "Was tun": "Ne yapmalı: Çalıştırmanın ham akışını kontrol et (CLI biçimini değiştirmiş olabilir) ve çalıştırmayı tekrarla; sürerse b",
+    "R3-Titel": "(fehlt)",
+    "Sichtungs-Satz": "(fehlt)",
+    "Chip R3": "(fehlt)",
+    "Knopf R3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

@@ -345,11 +345,12 @@ export function leseRueckfrageAbweichung(laufId: string, zugang: RueckfrageZugan
 }
 
 /** Felder der Zählung (RueckfrageZaehlung) — eine andere Form gilt als „keine Zählung“. */
-const ZAEHLUNG_FELDER = ['stefan_erlaubt', 'stefan_abgelehnt', 'frage_beantwortet', 'nicht_browser'] as const
+const ZAEHLUNG_FELDER: readonly (keyof RueckfrageZaehlung)[] = ['stefan_erlaubt', 'stefan_abgelehnt', 'frage_beantwortet', 'nicht_browser', 'abgelaufen', 'lauf_ende', 'automatisch']
 
 /**
- * F45 B2b-3b-2b-2a-1 (F-1128 (3), D13): Zählung der Antworten aus dem Speicherstand der Vermittlung (`zugang.zaehlung`, gleicher
+ * F45 B2b-3b-2b-2a-1 (F-1128 (3), D13): Zählung der Rückfragen aus dem Speicherstand der Vermittlung (`zugang.zaehlung`, gleicher
  * Prozess). Wirft nie; ohne Zugang, ohne Zählung, bei Wurf oder fremder Form ⇒ undefined (daten der Terminalmarke bleiben dann ohne Feld).
+ * B2b-3b-2b-2a-3 (F-1132 (1)): sieben Felder, dazu die unbeantworteten (abgelaufen, lauf_ende, automatisch).
  * @param laufId - Lauf (nur für die Meldung)
  * @param zugang - optionen.rueckfrageZugang oder undefined
  * @returns Zählung oder undefined
@@ -360,7 +361,9 @@ export function leseRueckfrageZaehlung(laufId: string, zugang: RueckfrageZugang 
     if (typeof roh !== 'object' || roh === null) return undefined
     const werte = roh as Record<string, unknown>
     if (!ZAEHLUNG_FELDER.every((f) => Number.isInteger(werte[f]) && (werte[f] as number) >= 0)) return undefined
-    return { stefan_erlaubt: werte.stefan_erlaubt as number, stefan_abgelehnt: werte.stefan_abgelehnt as number, frage_beantwortet: werte.frage_beantwortet as number, nicht_browser: werte.nicht_browser as number }
+    // code-reviewer 3: ausdrücklich gebaut — fehlt im Typ ein Feld oder kommt eines hinzu, meldet tsc es hier.
+    const anzahl = (f: keyof RueckfrageZaehlung): number => werte[f] as number
+    return { stefan_erlaubt: anzahl('stefan_erlaubt'), stefan_abgelehnt: anzahl('stefan_abgelehnt'), frage_beantwortet: anzahl('frage_beantwortet'), nicht_browser: anzahl('nicht_browser'), abgelaufen: anzahl('abgelaufen'), lauf_ende: anzahl('lauf_ende'), automatisch: anzahl('automatisch') }
   } catch (fehler) {
     console.error(`[execution-controller] Zählung des Rückfrage-Kanals von Lauf '${laufId}' nicht lesbar:`, fehler)
     return undefined
@@ -661,6 +664,8 @@ export async function fuehreAufgabeDurch(
   const rueckfragen = eingaben.rueckfrageKanal !== undefined ? ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageZugang) : undefined
   // B2b-3b-2b-2a-1 (F-1128 R3/(3)): die gemeldete Abweichung (der Zugang merkt sie) und die Zählung aus dem Speicherstand (D13) —
   // beide nach ermittleRueckfrageProtokoll und vor beendeLauf gelesen; sie gehen in daten der Terminalmarke.
+  // B2b-3b-2b-2a-3 (Advisor M1, Invariante): von hier bis zur Rückgabe kein await — die beim Lesen offenen Rückfragen (Zählung
+  // `lauf_ende`) sind dann genau die, die beendeLauf im Server danach ablehnt; kein Timer und keine Antwort schiebt sich dazwischen.
   const rueckfrageAbweichung = eingaben.rueckfrageKanal !== undefined ? leseRueckfrageAbweichung(laufId, optionen.rueckfrageZugang) : undefined
   const rueckfrageZaehlung = eingaben.rueckfrageKanal !== undefined ? leseRueckfrageZaehlung(laufId, optionen.rueckfrageZugang) : undefined
 

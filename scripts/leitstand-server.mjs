@@ -549,6 +549,7 @@ import { loeseProjektPfade } from './leitstand/projekt-pfade.mjs'
 import { erzeugeRueckfrageProtokollSchreiber } from './leitstand/rueckfrage-protokoll.mjs'
 import { erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './leitstand/rueckfrage-vermittlung.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
+import { baueRueckfrageKanalProjektion, baueVerweigertDatenProjektion } from './leitstand/lauf-terminal-projektion.mjs'
 import { erfasseQuellenDauer, meldeSynchroneStrecke, starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper } from './leitstand/routen-arbeitsordner.mjs'
@@ -928,37 +929,6 @@ function baueScoutErgebnisProjektion(laufakteVersion) {
   if (laufakteVersion === null) return { status: 'nicht_vorhanden' }
   const gelesen = leseScoutErgebnisAusLaufakte(laufakteVersion.daten)
   return gelesen.ok ? { status: 'ok', ergebnis: gelesen.ergebnis } : { status: 'nicht_lesbar', grund: gelesen.grund }
-}
-
-/**
- * F13 WS-1 (AK2): bei ABGESCHLOSSEN/VERWEIGERT das daten-Feld der
- * terminalen Wirkungsmarke (bypass_verdacht_anzahl, is_error,
- * non_execution_kind — src/result-evaluator/index.ts, Schritt 0 dieser
- * Iteration) direkt aus der Checkpoint-Kette lesen. NICHT aus
- * baueLaufakteProjektion (die Felder liegen dort nicht, siehe oben) — ein
- * eigener, kleiner Projektionszweig (D5: kein neuer Endpunkt, GET
- * /api/laeufe/<laufId> bleibt der einzige Lieferant). Ein Bestandslauf vor
- * dieser Änderung trägt kein daten-Feld — 'unbekannt' je fehlendem Feld,
- * nie 0/false raten (Muster renderRohstrom "unbekannt (kein
- * Ergebnisobjekt)").
- * @param laufId - Lauf-Kennung
- * @param laufStatus - Ergebnis von stelleLaufstatusFest, unverändert übernommen
- * @param basisVerzeichnis - Kontrollzustand-Wurzel
- * @returns null außer bei ABGESCHLOSSEN/VERWEIGERT, sonst { bypassVerdachtAnzahl, isError, nonExecutionKind } (je 'unbekannt' bei fehlendem Feld)
- */
-function baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis) {
-  if (laufStatus.status !== 'ABGESCHLOSSEN' || laufStatus.ergebnis !== 'VERWEIGERT') return null
-
-  const kette = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-  const terminal = kette.find((eintrag) => eintrag.typ === 'wirkungsmarke' && eintrag.payload.sequenz === laufStatus.terminalSequenz)
-  const daten = terminal?.payload?.daten
-  const hatDaten = typeof daten === 'object' && daten !== null
-
-  return {
-    bypassVerdachtAnzahl: hatDaten && typeof daten.bypass_verdacht_anzahl === 'number' ? daten.bypass_verdacht_anzahl : 'unbekannt',
-    isError: hatDaten && 'is_error' in daten ? daten.is_error : 'unbekannt',
-    nonExecutionKind: hatDaten && 'non_execution_kind' in daten ? daten.non_execution_kind : 'unbekannt',
-  }
 }
 
 /**
@@ -6828,8 +6798,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: zielAnzeige }
         laufAktivitaet.melde(laufId, aufruf, zielAnzeige)
       },
-      // F45 B2b-3b-2a/2b-1a (F-1128 (1), R3): Speicherstand der Vermittlung (Quelle der Wahrheit); Abweichung ⇒ Startfehlerliste.
-      rueckfrageZugang: rueckfrageVermittlung.zugang(laufId, (fehler) => startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler })),
+      // F45 B2b-3b-2a/2b-1a (F-1128 (1), R3): Speicherstand der Vermittlung (Quelle der Wahrheit); Abweichung ⇒ Startfehlerliste mit art (2a-3).
+      rueckfrageZugang: rueckfrageVermittlung.zugang(laufId, (fehler) => startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler, art: 'rueckfrage_abweichung' })),
     }
 
     /** Ruft nachLauf auf, ohne dass ein Wurf daraus zur unhandled rejection wird. @param ergebnis - AusfuehrungsErgebnis oder null @param fehler - Wurf oder null */
@@ -8442,6 +8412,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // F46 D5 (löst F-977): die letzten 50 Aufrufe, Gesamtzahl und berührte Dateien — nur für den aktiven Lauf, sonst null.
         aktivitaet: laufAktiv && laufId === laufAktivLaufId ? laufAktivitaet.lese(laufId) : null,
         verweigertDaten: baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis),
+        rueckfrageKanal: baueRueckfrageKanalProjektion(laufId, laufStatus, basisVerzeichnis), // F45 B2b-3b-2b-2a-3: Abnahme, null ohne Kanal
         // F-986 (b): Grund eines nie gestarteten Laufs (lesend aus der Kette) und die Lauf-Zeitgrenze der
         // geladenen Startvorlage — der Chat hört damit auf zu warten statt ohne Ende abzufragen.
         nichtGestartet: baueNichtGestartetProjektion(laufId, laufStatus, basisVerzeichnis),

@@ -54,6 +54,6 @@ export function rueckfrageOptionFuer(basis, projektId) {
  * @returns {string}
  */
 export function rueckfrageStartzeile(stand) {
-  if (stand?.an === true) return `Rückfrage-Kanal: an (${RUECKFRAGE_SCHALTER}=1, ${stand.basis}) — Rückfragen unter „Deine Entscheidungen“; Auswertung im Lauf folgt mit B2b-3b-2b-2a-3, echter Lauf mit 2b-2b — noch nicht für echte Läufe nutzen`
+  if (stand?.an === true) return `Rückfrage-Kanal: an (${RUECKFRAGE_SCHALTER}=1, ${stand.basis}) — Rückfragen unter „Deine Entscheidungen“, Auswertung im Lauf-Detail; echter Lauf mit 2b-2b — noch nicht für echte Läufe nutzen`
   return `Rückfrage-Kanal: aus (${stand?.grund ?? 'unbekannt'})`
 }

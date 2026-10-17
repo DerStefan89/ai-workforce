@@ -45,11 +45,14 @@ export const CLI_TIMEOUT_ZUSATZ_MS = 120000
 /**
  * F45 B2b-3b-2b-2a-1 (Punkt 4): Regelzeilen für den Ausführungsauftrag, nur bei eingeschaltetem Kanal (scripts/leitstand-server.mjs,
  * starteWorkflowSchritt). Unversioniert wie `baueCdRegelZeile` (src/jarvis) — die Ausführung hat keine versionierte Policy. Vorrang vor
- * dem F-689-Hinweis „- [x] Blockiert“ wörtlich (Advisor B9).
+ * dem F-689-Hinweis „- [x] Blockiert“ wörtlich (Advisor B9). B2b-3b-2b-2a-3 (F-1132 (5), ARCHITECTURE §3): eine als ungültig
+ * zurückgewiesene Frage („Frage ungültig — nicht an Stefan gestellt“, scripts/leitstand/rueckfrage-mcp.mjs) wird einmal korrigiert neu
+ * gestellt; scheitert auch das, gilt es wie „keine Antwort“. Keine Zeile beginnt mit „- [x]“ (SELBSTBLOCKADE_ZEILE, src/korrekturschleife).
  */
 export const RUECKFRAGE_REGEL: readonly string[] = Object.freeze([
   'Rückfrage-Kanal zu Stefan:',
   `- Entscheidungen, die nur Stefan treffen kann, holst du über das Werkzeug ${FRAGE_WERKZEUG} ein — rate nicht. Zuerst ${FRAGE_WERKZEUG}; nur wenn keine Antwort kommt, gilt der Hinweis zu '- [x] Blockiert'.`,
+  `- Wird eine Frage mit „Frage ungültig — nicht an Stefan gestellt“ zurückgewiesen, stelle sie einmal korrigiert neu (Frage nicht leer, höchstens 2000 Zeichen; höchstens 10 Optionen mit je höchstens 500 Zeichen); wird auch sie zurückgewiesen, gilt das wie keine Antwort.`,
   '- Bash-Befehle, die nicht freigegeben sind, legt der Leitstand Stefan zur Entscheidung vor (einmal erlauben oder ablehnen).',
   '- Lehnt Stefan ab, umgehe die Ablehnung nicht (kein anderer Befehl oder Weg zum selben Ziel); nenne sie im Ergebnis.',
 ])

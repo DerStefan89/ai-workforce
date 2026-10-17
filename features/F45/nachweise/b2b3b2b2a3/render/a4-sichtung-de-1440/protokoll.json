@@ -1,0 +1,23 @@
+[
+  {
+    "label": "F-760-Sichtung mit Kanal-Grund (nach dem Nachladen des Lauf-Details) — de-1440",
+    "Block „Rückfrage-Kanal im Lauf“": false,
+    "R3-Meldung": false,
+    "Maske sichtbar": false,
+    "<img> gerendert (soll false)": false,
+    "„Ursache in Klartext“ (VERWEIGERT mit Kanal-Grund: false)": false,
+    "Sichtung mit Kanal-Grund": true,
+    "Startfehler mit Protokoll-Abweichung": false,
+    "Notiz": "(fehlt)",
+    "Kanal-Grund": "Deine Ablehnung nicht bestätigt. Mindestens eine Ablehnung ließ sich in der Auswertung nicht als deine bestätigen (z. B.",
+    "Was tun": "Was tun: Rohstrom des Laufs prüfen (die CLI kann ihr Format geändert haben) und den Lauf wiederholen; bleibt es, einen B",
+    "R3-Titel": "(fehlt)",
+    "Sichtungs-Satz": "Schritt s1 endete VERWEIGERT wegen des Rückfrage-Kanals (Lauf lauf-kanal-verweigert):",
+    "Chip R3": "(fehlt)",
+    "Knopf R3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]
