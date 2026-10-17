@@ -27,7 +27,9 @@
  *
  * Wird aufgerufen von:
  * - scripts/leitstand-server.mjs (fuehreAufgabeDurch, Standard von fuehreAufgabeDurchFn) und Gates
- * - scripts/check-f45-b2b3b2a-absicherung.mjs (ermittleRueckfrageProtokoll, Fall (a2))
+ * - scripts/check-f45-b2b3b2a-absicherung.mjs (ermittleRueckfrageProtokoll, leseRueckfrageProtokoll, Fall (a2))
+ * - scripts/check-f45-b2b3b2b1a-rest.mjs (ermittleRueckfrageProtokoll, leseRueckfrageProtokoll), scripts/check-f45-b2b3b1b-auswertung.mjs
+ *   (leseRueckfrageProtokoll, (p3)), scripts/leitstand/rueckfrage-protokoll.test.mjs (leseRueckfrageProtokoll)
  *
  * Wichtig:
  * Kein eigener Aufruf von schreibeWirkungsmarke für die Haupt-laufId (D5)
@@ -113,10 +115,11 @@
  * vergleicheClaudeOrdner), der auch git-ignorierte Dateien sieht.
  *
  * F45 B2b-3b-1b: nur bei eingaben.rueckfrageKanal (Rückfrage-Kanal eingeschaltet, vom Server gesetzt) liest der Controller
- * nach dem Gateway die letzte Version des Protokolls `rueckfragen-<laufId>` und reicht ihre daten (oder null) als
- * eingaben.rueckfragen an klassifiziereLauf — das Urteil (Ablehnung allein durch Stefan ⇒ ERFOLGREICH) bleibt beim
- * Evaluator. Ohne Kanal kein Lesen, Eingaben unverändert. Seit B2b-3b-2a (F-1128 (1)) gilt die Datei nur, wenn sie zum
- * Speicherstand der Vermittlung passt (optionen.rueckfrageSpeicher, ermittleRueckfrageProtokoll) — sonst null.
+ * nach dem Gateway das Protokoll `rueckfragen-<laufId>` (seit B2b-3b-2b-1a alle Zuwachs-Versionen, zusammengesetzt) und reicht
+ * es (oder null) als eingaben.rueckfragen an klassifiziereLauf — das Urteil (Ablehnung allein durch Stefan ⇒ ERFOLGREICH)
+ * bleibt beim Evaluator. Ohne Kanal kein Lesen, Eingaben unverändert. Seit B2b-3b-2a (F-1128 (1)) gilt die Datei nur, wenn sie
+ * zum Speicherstand der Vermittlung passt (optionen.rueckfrageZugang, ermittleRueckfrageProtokoll) — sonst null, und seit
+ * B2b-3b-2b-1a (R3) geht die Abweichung über den Zugang in die Startfehlerliste des Servers.
  */
 
 import { createHash, randomUUID } from 'node:crypto'
@@ -132,10 +135,10 @@ import { fuehreGitSync } from '../git-starter/index.ts'
 import { hashLokaleDatei, pruefeGegenMomentaufnahme } from '../faehigkeiten/index.ts'
 import { erfassePluginDatenordner, vergleicheLaufKopie, vergleichePluginDatenordner } from '../plugin-lauf/index.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
-import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
+import { ladeArtefaktVersion, listeVersionen } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
-import { bestaetigeProtokoll } from '../rueckfrage/protokoll.ts'
-import type { AusfuehrungsEingaben, AusfuehrungsErgebnis, AusfuehrungsOptionen } from './types.ts'
+import { bestaetigeProtokoll, setzeProtokollZusammen } from '../rueckfrage/protokoll.ts'
+import type { AusfuehrungsEingaben, AusfuehrungsErgebnis, AusfuehrungsOptionen, RueckfrageZugang } from './types.ts'
 
 /** F45 F-3b-2: höchstens so viele Abweichungen des Plugin-Datenordners in der Laufakte (Rest als „… und n weitere“). */
 const DATENORDNER_ANZEIGE = 50
@@ -262,18 +265,23 @@ function bauePromptAusKontextpaket(paket: KontextpaketV0Daten, anfragen: Anfrage
 }
 
 /**
- * F45 B2b-3b-1b: liest die daten der letzten Version von `rueckfragen-<laufId>` — fail closed: fehlt sie oder wirft das
- * Lesen, null (der Evaluator behandelt null wie ein fehlendes Protokoll ⇒ VERWEIGERT). Wirft nie, damit die Klassifikation
- * eines schon gelaufenen Laufs nicht ausfällt.
+ * F45 B2b-3b-1b: liest das Protokoll `rueckfragen-<laufId>` — seit B2b-3b-2b-1a alle Versionen (je nur der Zuwachs, Schema v1),
+ * lückenlos zusammengesetzt (setzeProtokollZusammen) zu einem Protokoll mit `ab: 0`. Fail closed: keine Version oder ein Wurf
+ * beim Lesen ⇒ null; nicht zusammensetzbar (Lücke, fremde lauf_id, ungültige Version) ⇒ `{ ungueltig: grund }` (Delta D5:
+ * bestaetigeProtokoll meldet das auch bei leerem Speicher). Der Evaluator bekommt nur bestätigte Daten. Wirft nie, damit die
+ * Klassifikation eines schon gelaufenen Laufs nicht ausfällt.
  * @param laufId - Lauf
  * @param basisVerzeichnis - Kontrollzustand-Wurzel (dieselbe, in die der Server schreibt)
- * @returns daten oder null
+ * @returns zusammengesetzte daten, null oder { ungueltig: grund }
  */
 export function leseRueckfrageProtokoll(laufId: string, basisVerzeichnis: string | undefined): unknown {
   try {
-    return ladeArtefaktVersion(`rueckfragen-${laufId}`, undefined, { basisVerzeichnis, schreiber: () => {} })?.daten ?? null
+    const zusammen = setzeProtokollZusammen(listeVersionen(`rueckfragen-${laufId}`, { basisVerzeichnis, schreiber: () => {} }), laufId)
+    if (zusammen.ok) return zusammen.daten
+    console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht zusammensetzbar (${zusammen.grund}) — gilt als fehlend (Ablehnungen durch Stefan zählen nicht)`)
+    return { ungueltig: zusammen.grund }
   } catch (fehler) {
-    console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht lesbar — gilt als fehlend (VERWEIGERT):`, fehler)
+    console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht lesbar — gilt als fehlend (Ablehnungen durch Stefan zählen nicht):`, fehler)
     return null
   }
 }
@@ -282,27 +290,35 @@ export function leseRueckfrageProtokoll(laufId: string, basisVerzeichnis: string
  * F45 B2b-3b-2a (F-1128 (1)): Protokoll für die Klassifikation — der Speicherstand der Vermittlung (gleicher Prozess) ist die
  * Quelle der Wahrheit, die Datei `rueckfragen-<laufId>` das Audit. Erst den Speicher, direkt danach (synchron) die Datei lesen;
  * nur eine zum Speicher passende Datei geht weiter (bestaetigeProtokoll), sonst null ⇒ wie fehlend ⇒ VERWEIGERT (fail closed:
- * gefälschte Datei, Schreibfehler, Lauf nicht offen, Neustart). Eine Abweichung wird mit Grund gemeldet (Fälschung oder
- * Schreibfehler); ein Lauf ohne Rückfrage (Speicher leer, keine Datei) nicht. Wirft nie (Delta D1).
+ * gefälschte Datei, Schreibfehler, Lauf nicht offen, Neustart). Eine Abweichung wird mit Grund gemeldet — seit B2b-3b-2b-1a
+ * (F-1128 R3) zusätzlich über `zugang.meldeAbweichung` (Server: Startfehlerliste); ein Lauf ohne Rückfrage (Speicher leer,
+ * keine Datei) nicht. Wirft nie (Delta D1).
  * @param laufId - Lauf
  * @param basisVerzeichnis - Kontrollzustand-Wurzel (dieselbe, in die der Server schreibt)
- * @param speicherLeser - optionen.rueckfrageSpeicher (Projektion der Vermittlung) oder undefined
+ * @param zugang - optionen.rueckfrageZugang (Speicherstand und Meldeweg der Vermittlung) oder undefined
  * @returns daten der Datei oder null
  */
-export function ermittleRueckfrageProtokoll(laufId: string, basisVerzeichnis: string | undefined, speicherLeser: ((laufId: string) => unknown) | undefined): unknown {
+export function ermittleRueckfrageProtokoll(laufId: string, basisVerzeichnis: string | undefined, zugang: RueckfrageZugang | undefined): unknown {
   try {
     let speicher: unknown = null
     try {
-      speicher = speicherLeser?.(laufId) ?? null
+      speicher = zugang?.speicher() ?? null
     } catch (fehler) {
       console.error(`[execution-controller] Speicherstand des Rückfrage-Kanals von Lauf '${laufId}' nicht lesbar:`, fehler)
     }
     const bestaetigt = bestaetigeProtokoll(leseRueckfrageProtokoll(laufId, basisVerzeichnis), speicher)
     if (bestaetigt.ok) return bestaetigt.daten
-    if (bestaetigt.leer !== true) console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht bestätigt (${bestaetigt.grund}) — gilt als fehlend (VERWEIGERT)`)
+    if (bestaetigt.leer !== true) {
+      console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht bestätigt (${bestaetigt.grund}) — gilt als fehlend (Ablehnungen durch Stefan zählen nicht)`)
+      try {
+        zugang?.meldeAbweichung(bestaetigt.grund)
+      } catch (fehler) {
+        console.error(`[execution-controller] Abweichung des Rückfrage-Protokolls von Lauf '${laufId}' nicht gemeldet:`, fehler)
+      }
+    }
     return null
   } catch (fehler) {
-    console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht auswertbar — gilt als fehlend (VERWEIGERT):`, fehler)
+    console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht auswertbar — gilt als fehlend (Ablehnungen durch Stefan zählen nicht):`, fehler)
     return null
   }
 }
@@ -598,7 +614,7 @@ export async function fuehreAufgabeDurch(
   // (die Vermittlung schreibt jede Entscheidung vor ihrer Auslieferung, Advisor-Befund 1). Fehlt es oder wirft das Lesen
   // (z. B. EBUSY/EPERM unter OneDrive): null — wie fehlend, also VERWEIGERT; die Terminalmarke wird trotzdem geschrieben.
   // B2b-3b-2a (F-1128 (1)): die Datei gilt nur passend zum Speicherstand der Vermittlung (ermittleRueckfrageProtokoll).
-  const rueckfragen = eingaben.rueckfrageKanal !== undefined ? ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageSpeicher) : undefined
+  const rueckfragen = eingaben.rueckfrageKanal !== undefined ? ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageZugang) : undefined
 
   optionen.zeitmessung?.('klassifikation_begonnen')
   const klassifikation = klassifiziereLauf(

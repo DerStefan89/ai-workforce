@@ -4,14 +4,15 @@
  * Zweck: Tests der Vermittlung des Rückfrage-Kanals (F45 B2b-3b-1a, features/F45/plan-b2b3b1a-v2.md §3): Token nur für
  * offene Läufe, auto_deny ohne Warteschlangeneintrag, doppelte tool_use_id, nur „einmal erlauben“/„ablehnen“, genau einmal
  * beantwortbar, Entscheidung zwischen zwei Polls bleibt erhalten (A7), Wartegrenze, Lauf-Ende, Protokoll vor Auslieferung; seit
- * F45 B2b-3b-2a eintraegeVon (Projektion) und die Obergrenzen je Lauf (20 offene, 200 Einträge, F-1128 (5), F-1126 (2)).
+ * F45 B2b-3b-2a eintraegeVon (Projektion) und die Obergrenzen je Lauf (20 offene, 200 Einträge, F-1128 (5), F-1126 (2)); seit
+ * B2b-3b-2b-1a Zuwachs je Protokollaufruf (`ab`), beendeLauf-Zahl (R2), herkunft (E-B7) und zugang (R3).
  *
  * Wird aufgerufen von: `npm run test` (node --test)
  */
 
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { KEINE_ANTWORT, MAX_OFFENE_JE_LAUF, MAX_PROTOKOLL_JE_LAUF, erzeugeRueckfrageVermittlung } from './rueckfrage-vermittlung.mjs'
+import { KEINE_ANTWORT, MAX_OFFENE_JE_LAUF, MAX_PROTOKOLL_JE_LAUF, erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './rueckfrage-vermittlung.mjs'
 
 const TOKEN = 'b'.repeat(64)
 const ORDNER = process.platform === 'win32' ? 'C:\\proj\\wf' : '/proj/wf'
@@ -179,7 +180,7 @@ test('oeffneLauf mit ungültigem Token öffnet nichts; laufZuToken wirft nie (an
   assert.equal(v.warteGrenzeMs, 600000)
 })
 
-test('F45 B2b-3b-1b (A2): protokolliere bekommt Arbeitsordner und die vollständige Eintragsliste des Laufs — auch beim Lauf-Ende', () => {
+test('F45 B2b-3b-1b (A2), seit B2b-3b-2b-1a: protokolliere bekommt Arbeitsordner und nur den Zuwachs ab Index ab — auch beim Lauf-Ende', () => {
   const aufrufe = []
   const v = erzeugeRueckfrageVermittlung({ pfadOptionen: PFAD, protokolliere: (laufId, eintrag, kontext) => aufrufe.push({ laufId, eintrag, kontext }) })
   v.oeffneLauf('l1', KANAL)
@@ -188,7 +189,8 @@ test('F45 B2b-3b-1b (A2): protokolliere bekommt Arbeitsordner und die vollständ
   v.beantworte(offen.id, { entscheidung: 'ablehnen' })
   v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'pwd' }, tool_use_id: 't3' })
   v.beendeLauf('l1')
-  assert.deepEqual(aufrufe.map((a) => a.kontext.eintraege.map((e) => e.art)), [['auto_deny'], ['auto_deny', 'stefan_abgelehnt'], ['auto_deny', 'stefan_abgelehnt', 'lauf_beendet']])
+  assert.deepEqual(aufrufe.map((a) => a.kontext.eintraege.map((e) => e.art)), [['auto_deny'], ['stefan_abgelehnt'], ['lauf_beendet']])
+  assert.deepEqual(aufrufe.map((a) => a.kontext.ab), [0, 1, 2])
   assert.ok(aufrufe.every((a) => a.laufId === 'l1' && a.kontext.arbeitsordner === ORDNER && a.kontext.eintraege.at(-1) === a.eintrag))
   // Die Liste ist eine Kopie: ein späterer Eintrag ändert eine schon übergebene Liste nicht.
   assert.equal(aufrufe[0].kontext.eintraege.length, 1)
@@ -200,8 +202,9 @@ test('F45 B2b-3b-1b: PROTOKOLL_ARTEN kommt aus der einzigen Quelle src/rueckfrag
   assert.equal(PROTOKOLL_ARTEN, RUECKFRAGE_PROTOKOLL_ARTEN)
 })
 
-test('F45 B2b-3b-1b (A2, qa): ein Wurf des Rückrufs bei Entscheidung N wird mit N+1 nachgeholt (volle Liste)', () => {
+test('F45 B2b-3b-1b (A2, qa): ein Wurf des Rückrufs bei Entscheidung N wird mit N+1 nachgeholt (Zuwachs ab dem letzten Erfolg)', () => {
   const listen = []
+  const abs = []
   let erster = true
   const v = erzeugeRueckfrageVermittlung({
     pfadOptionen: PFAD,
@@ -211,14 +214,94 @@ test('F45 B2b-3b-1b (A2, qa): ein Wurf des Rückrufs bei Entscheidung N wird mit
         throw new Error('Platte voll')
       }
       listen.push(kontext.eintraege.map((e) => e.tool_use_id))
+      abs.push(kontext.ab)
     },
   })
   v.oeffneLauf('l1', KANAL)
   const a = v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 't1' })
   const b = v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../y', content: 'y' }, tool_use_id: 't2' })
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../z', content: 'z' }, tool_use_id: 't3' })
   assert.equal(a.entscheidung.behavior, 'deny')
   assert.equal(b.entscheidung.behavior, 'deny')
-  assert.deepEqual(listen, [['t1', 't2']])
+  assert.deepEqual(listen, [['t1', 't2'], ['t3']])
+  assert.deepEqual(abs, [0, 2])
+})
+
+// ─── F45 B2b-3b-2b-1a ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+test('F45 B2b-3b-2b-1a (R2): beendeLauf liefert die Zahl der Ablehnungen durch Stefan; 0 ohne offenen Lauf', () => {
+  const v = erzeugeRueckfrageVermittlung({ pfadOptionen: PFAD })
+  assert.equal(v.beendeLauf('nie-offen'), 0)
+  v.oeffneLauf('l1', KANAL)
+  const a = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'ls' }, tool_use_id: 'r1' })
+  const b = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'pwd' }, tool_use_id: 'r2' })
+  v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'whoami' }, tool_use_id: 'r3' })
+  v.beantworte(a.id, { entscheidung: 'ablehnen' })
+  v.beantworte(b.id, { entscheidung: 'einmal_erlauben' })
+  assert.equal(v.beendeLauf('l1'), 1, 'r3 endet als lauf_beendet und zählt nicht')
+  assert.equal(v.beendeLauf('l1'), 0, 'idempotent')
+})
+
+test('F45 B2b-3b-2b-1a (R2, qa 4): auto_deny, zeitueberschreitung, frage_beantwortet, frage_ohne_antwort zählen nicht', async () => {
+  const v = erzeugeRueckfrageVermittlung({ pfadOptionen: PFAD, warteGrenzeMs: 20 })
+  v.oeffneLauf('l1', KANAL)
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'n1' })
+  v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'ls' }, tool_use_id: 'n2' })
+  const frage = v.stelle('l1', { art: 'frage', frage: 'Port?' })
+  v.beantworte(frage.id, { antwort: '4711' })
+  v.stelle('l1', { art: 'frage', frage: 'Pfad?' })
+  await new Promise((r) => setTimeout(r, 60))
+  assert.deepEqual(new Set(v.eintraegeVon('l1').map((e) => e.art)), new Set(['auto_deny', 'zeitueberschreitung', 'frage_beantwortet', 'frage_ohne_antwort']))
+  assert.equal(v.beendeLauf('l1'), 0)
+})
+
+test('F45 B2b-3b-2b-1a (E-B7): Antworten tragen herkunft im Protokoll; unbekannter Wert ⇒ nicht_browser; nicht im Speicherstand', () => {
+  const eintraege = []
+  const v = erzeugeRueckfrageVermittlung({ pfadOptionen: PFAD, protokolliere: (_l, e) => eintraege.push(e) })
+  v.oeffneLauf('l1', KANAL)
+  const a = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'ls' }, tool_use_id: 'h1' })
+  const b = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'pwd' }, tool_use_id: 'h2' })
+  const c = v.stelle('l1', { art: 'frage', frage: 'Port?' })
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'h3' })
+  v.beantworte(a.id, { entscheidung: 'ablehnen' }, 'browser')
+  v.beantworte(b.id, { entscheidung: 'einmal_erlauben' }, 'curl')
+  v.beantworte(c.id, { antwort: '4711' })
+  assert.deepEqual(
+    eintraege.map((e) => `${e.art}:${e.herkunft ?? '–'}`),
+    ['auto_deny:–', 'stefan_abgelehnt:browser', 'stefan_erlaubt:nicht_browser', 'frage_beantwortet:nicht_browser']
+  )
+  assert.ok(v.eintraegeVon('l1').every((e) => !('herkunft' in e)))
+  v.beendeLauf('l1')
+})
+
+test('F45 B2b-3b-2b-1a (E-B7): herkunftDerAntwort — same-origin bzw. passender Origin ⇒ browser, sonst nicht_browser; wirft nie', () => {
+  assert.equal(herkunftDerAntwort({ 'sec-fetch-site': 'same-origin' }), 'browser')
+  assert.equal(herkunftDerAntwort({ origin: 'http://127.0.0.1:4000', host: '127.0.0.1:4000' }), 'browser')
+  assert.equal(herkunftDerAntwort({ origin: 'http://127.0.0.1:4001', host: '127.0.0.1:4000' }), 'nicht_browser')
+  assert.equal(herkunftDerAntwort({ origin: 'nicht://[', host: '127.0.0.1:4000' }), 'nicht_browser')
+  assert.equal(herkunftDerAntwort({ 'sec-fetch-site': 'none' }), 'nicht_browser')
+  assert.equal(herkunftDerAntwort({}), 'nicht_browser')
+  assert.equal(herkunftDerAntwort(undefined), 'nicht_browser')
+})
+
+test('F45 B2b-3b-2b-1a (R3, Advisor B6/D9): zugang vor oeffneLauf gebaut, danach wirksam; unbekannter Lauf ⇒ null; Meldung mit laufId, Wurf geschluckt', () => {
+  const v = erzeugeRueckfrageVermittlung({ pfadOptionen: PFAD })
+  const gemeldet = []
+  const zugang = v.zugang('l1', (text) => gemeldet.push(text))
+  assert.equal(zugang.speicher(), null)
+  v.oeffneLauf('l1', KANAL)
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'z1' })
+  assert.deepEqual(zugang.speicher().map((e) => e.art), ['auto_deny'])
+  zugang.meldeAbweichung('Länge abweichend (Speicher 1, Datei 2)')
+  assert.equal(gemeldet.length, 1)
+  assert.match(gemeldet[0], /Lauf 'l1' nicht bestätigt — Ablehnungen durch Stefan zählen nicht: Länge abweichend/)
+  const fremd = v.zugang('unbekannt', () => {
+    throw new Error('kaputt')
+  })
+  assert.equal(fremd.speicher(), null)
+  assert.doesNotThrow(() => fremd.meldeAbweichung('x'))
+  v.beendeLauf('l1')
+  assert.equal(zugang.speicher(), null, 'nach dem Lauf-Ende kein Speicherstand mehr')
 })
 
 // ─── F45 B2b-3b-2a ─────────────────────────────────────────────────────────────────────────────────────────────────────

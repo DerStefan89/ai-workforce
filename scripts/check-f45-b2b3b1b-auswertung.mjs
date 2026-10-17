@@ -19,7 +19,8 @@
  *      Stefan-Ablehnung mit Verbotswert ⇒ VERWEIGERT.
  * (p2) Schema und Validator: Beispiele gültig/ungültig, Arten = Schema-Enum = PROTOKOLL_ARTEN der Vermittlung (eine Quelle).
  * (p3) Schreiber am echten Server (Kanal an, Standard-Vermittlung): auto_deny + Stefan-Ablehnung ⇒ zwei Versionen von
- *      rueckfragen-<laufId>, die letzte mit beiden Einträgen, gültig; Befehl ohne Arbeitsordner-Pfad (<ARBEITSORDNER>),
+ *      rueckfragen-<laufId>; seit B2b-3b-2b-1a (Schema v1) trägt jede Version nur ihren Zuwachs, gelesen wird wie im Controller
+ *      zusammengesetzt (leseRueckfrageProtokoll) ⇒ beide Einträge, gültig; Befehl ohne Arbeitsordner-Pfad (<ARBEITSORDNER>),
  *      Geheimnis maskiert; gelesen über laufOptionen.basisVerzeichnis (dieselbe Ablage wie der Controller) ⇒ Klassifikation
  *      ERFOLGREICH (H3). Prüft den Evaluator mit der Datei; seit B2b-3b-2a braucht der Controller zusätzlich den passenden
  *      Speicherstand der Vermittlung — dieser Pfad ist scripts/check-f45-b2b3b2a-absicherung.mjs (a2).
@@ -107,7 +108,7 @@ function klassifiziere(denials, protokoll, zusatz = {}) {
 
 const denial = (id, input = { command: 'npm publish' }, toolName = 'Bash') => ({ tool_name: toolName, tool_use_id: id, tool_input: input })
 const eintrag = (id, art = 'stefan_abgelehnt', input = { command: 'npm publish' }, toolName = 'Bash') => ({ tool_use_id: id, tool_name: toolName, input_hash: hashVon(input), art, grund: 'Gate', zeit: '2026-10-16T10:00:00.000Z' })
-const protokollMit = (...eintraege) => (laufId) => ({ rueckfragen_schema: 'v0', lauf_id: laufId, eintraege })
+const protokollMit = (...eintraege) => (laufId) => ({ rueckfragen_schema: 'v1', lauf_id: laufId, ab: 0, eintraege })
 
 try {
   // ── (e1) nur Stefan ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -191,6 +192,7 @@ try {
         ['schemas/examples/kontrollzustand-rueckfragen-payload.valid.json', true],
         ['schemas/examples/kontrollzustand-rueckfragen-payload.invalid-unbekannte-art.json', false],
         ['schemas/examples/kontrollzustand-rueckfragen-payload.invalid-unbekanntes-feld.json', false],
+        ['schemas/examples/kontrollzustand-rueckfragen-payload.invalid-ab-fehlt.json', false],
       ]
       const falsch = beispiele.filter(([pfad, gueltig]) => !existsSync(pfad) || (protokollModul.validiereRueckfrageProtokoll(JSON.parse(readFileSync(pfad, 'utf8'))).length === 0) !== gueltig).map(([p]) => p)
       const schemaArten = schema.properties.eintraege.items.properties.art.enum
@@ -331,15 +333,16 @@ try {
       const gross = await fetch(`${basisUrl}/api/rueckfrage/anfrage`, { method: 'POST', headers: { authorization: `Bearer ${server.env.WORKFORCE_RUECKFRAGE_TOKEN}` }, body: JSON.stringify({ art: 'rechte', tool_name: 'Bash', input: { command: 'x'.repeat(70 * 1024) }, tool_use_id: 'toolu_p4' }) })
       const nachGross = versionen()
 
-      // Lesen wie der Controller: letzte Version über laufOptionen.basisVerzeichnis (H3).
-      const gelesen = ladeArtefaktVersion(artefaktId, undefined, { basisVerzeichnis: lauf.basisVerzeichnis, schreiber: () => {} })?.daten ?? null
+      // Lesen wie der Controller: alle Zuwachs-Versionen zusammengesetzt über laufOptionen.basisVerzeichnis (H3, B2b-3b-2b-1a).
+      const controllerModul = await lade('../src/execution-controller/index.ts')
+      const gelesen = typeof controllerModul.leseRueckfrageProtokoll === 'function' ? controllerModul.leseRueckfrageProtokoll(lauf.laufId, lauf.basisVerzeichnis) : (ladeArtefaktVersion(artefaktId, undefined, { basisVerzeichnis: lauf.basisVerzeichnis, schreiber: () => {} })?.daten ?? null)
       const protokollModul = await lade('../src/rueckfrage/protokoll.ts')
       const gueltig = protokollModul.fehler === undefined && gelesen !== null && protokollModul.validiereRueckfrageProtokoll(gelesen).length === 0
       const letzter = gelesen?.eintraege?.at(-1)
       const textGesamt = JSON.stringify(gelesen ?? {})
       pruefe(
         aussen.behavior === 'deny' && antwort.behavior === 'deny' && nachEntscheidungen === 2 && gelesen?.eintraege?.map((e) => e.art).join(',') === 'auto_deny,stefan_abgelehnt' && gueltig,
-        '(p3) Schreiber: je Entscheidung eine Version von rueckfragen-<laufId>; die letzte trägt auto_deny und stefan_abgelehnt, gültig nach Schema.',
+        '(p3) Schreiber: je Entscheidung eine Version von rueckfragen-<laufId> (nur Zuwachs); zusammengesetzt auto_deny und stefan_abgelehnt, gültig nach Schema.',
         `(p3) Versionen ${nachEntscheidungen}, Arten ${JSON.stringify(gelesen?.eintraege?.map((e) => e.art) ?? null)}, gültig ${gueltig} ${protokollModul.fehler ?? ''}`
       )
       const ordnerVorwaerts = lauf.cwd.replaceAll('\\', '/')

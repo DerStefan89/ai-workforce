@@ -2,7 +2,8 @@
  * Datei: scripts/leitstand/rueckfrage-protokoll.test.mjs
  *
  * Zweck: Tests des Protokoll-Schreibers (F45 B2b-3b-1b, features/F45/plan-b2b3b1b-v2.md A2/A3; code-reviewer 2, qa):
- * je Aufruf eine neue Version von rueckfragen-<laufId> mit der übergebenen Liste, Arbeitsordner/Temp/Home neutralisiert,
+ * je Aufruf eine neue Version von rueckfragen-<laufId> mit der übergebenen Liste (seit B2b-3b-2b-1a nur der Zuwachs ab `ab`,
+ * Schema v1, gelesen zusammengesetzt wie im Controller; `herkunft` wird übernommen), Arbeitsordner/Temp/Home neutralisiert,
  * Geheimnis vor dem Kappen maskiert (auch an der Schnittkante), tool_name über der Grenze ⇒ '<zu lang>', ungültiger
  * Eintrag ⇒ Wurf ohne neue Version.
  *
@@ -15,7 +16,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { kanonischesJson, sha256Hex } from '../../src/checkpoint-store/index.ts'
-import { ladeArtefaktVersion, listeVersionen } from '../../src/lineage-registry/index.ts'
+import { leseRueckfrageProtokoll } from '../../src/execution-controller/index.ts'
+import { listeVersionen } from '../../src/lineage-registry/index.ts'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { erzeugeRueckfrageProtokollSchreiber, TOOL_NAME_ZU_LANG } from './rueckfrage-protokoll.mjs'
 
@@ -31,20 +33,21 @@ const roh = (felder = {}) => ({ tool_use_id: 'toolu_1', tool_name: 'Bash', input
 function aufbau() {
   const basisVerzeichnis = mkdtempSync(join(tmpdir(), 'rueckfrage-protokoll-test-'))
   const schreibe = erzeugeRueckfrageProtokollSchreiber({ profilReferenz: PROFIL, basisVerzeichnis, home: HOME, temp: TEMP })
-  const lies = (laufId) => ladeArtefaktVersion(`rueckfragen-${laufId}`, undefined, { basisVerzeichnis, schreiber: () => {} })?.daten ?? null
+  const lies = (laufId) => leseRueckfrageProtokoll(laufId, basisVerzeichnis)
   const versionen = (laufId) => listeVersionen(`rueckfragen-${laufId}`, { basisVerzeichnis, schreiber: () => {} }).length
   return { basisVerzeichnis, schreibe, lies, versionen }
 }
 
-test('je Aufruf eine neue Version mit der ganzen Liste; Arbeitsordner, Temp und Home neutralisiert', () => {
+test('je Aufruf eine neue Version mit dem Zuwachs (ab); zusammengesetzt alle Einträge; Arbeitsordner, Temp und Home neutralisiert', () => {
   const { basisVerzeichnis, schreibe, lies, versionen } = aufbau()
   try {
     const erster = roh({ art: 'auto_deny', grund: `Pfad außerhalb: ${HOME}${process.platform === 'win32' ? '\\' : '/'}x`, befehl: undefined })
-    schreibe('l1', erster, { arbeitsordner: ORDNER, eintraege: [erster] })
+    schreibe('l1', erster, { arbeitsordner: ORDNER, ab: 0, eintraege: [erster] })
     const zweiter = roh({ tool_use_id: 'toolu_2', befehl: `node ${ORDNER}${process.platform === 'win32' ? '\\' : '/'}a.mjs ${TEMP}${process.platform === 'win32' ? '\\' : '/'}b` })
-    schreibe('l1', zweiter, { arbeitsordner: ORDNER, eintraege: [erster, zweiter] })
+    schreibe('l1', zweiter, { arbeitsordner: ORDNER, ab: 1, eintraege: [zweiter] })
     const daten = lies('l1')
     assert.equal(versionen('l1'), 2)
+    assert.deepEqual(listeVersionen('rueckfragen-l1', { basisVerzeichnis, schreiber: () => {} }).map((v) => [v.daten.ab, v.daten.eintraege.length]), [[0, 1], [1, 1]])
     assert.equal(daten.lauf_id, 'l1')
     assert.deepEqual(daten.eintraege.map((e) => e.art), ['auto_deny', 'stefan_abgelehnt'])
     assert.match(daten.eintraege[0].grund, /^Pfad außerhalb: <HOME>/)
@@ -61,7 +64,7 @@ test('A3: Geheimnis wird vor dem Kappen maskiert — auch an der Schnittkante (b
   try {
     // Das Geheimnis beginnt 8 Zeichen vor der Grenze: ohne Maskieren vor dem Kappen bliebe „sk-ant-a“ stehen.
     const e = roh({ befehl: `${'x'.repeat(1991)} ${GEHEIMNIS}`, grund: `${'g'.repeat(491)} ${GEHEIMNIS}` })
-    schreibe('l2', e, { arbeitsordner: ORDNER, eintraege: [e] })
+    schreibe('l2', e, { arbeitsordner: ORDNER, ab: 0, eintraege: [e] })
     const [eintrag] = lies('l2').eintraege
     assert.equal(eintrag.befehl.length <= 2000 && eintrag.grund.length <= 500, true)
     assert.equal(eintrag.befehl.includes('ant-a') || eintrag.grund.includes('ant-a'), false)
@@ -75,11 +78,25 @@ test('tool_name über 200 Zeichen ⇒ Platzhalter; ungültiger Eintrag ⇒ Wurf 
   const { basisVerzeichnis, schreibe, lies, versionen } = aufbau()
   try {
     const lang = roh({ tool_name: 'T'.repeat(201) })
-    schreibe('l3', lang, { arbeitsordner: ORDNER, eintraege: [lang] })
+    schreibe('l3', lang, { arbeitsordner: ORDNER, ab: 0, eintraege: [lang] })
     assert.equal(lies('l3').eintraege[0].tool_name, TOOL_NAME_ZU_LANG)
     const kaputt = roh({ art: 'stefan_immer_erlaubt' })
-    assert.throws(() => schreibe('l3', kaputt, { arbeitsordner: ORDNER, eintraege: [lang, kaputt] }), /verstößt gegen schemas\/kontrollzustand-rueckfragen-payload/)
+    assert.throws(() => schreibe('l3', kaputt, { arbeitsordner: ORDNER, ab: 1, eintraege: [kaputt] }), /verstößt gegen schemas\/kontrollzustand-rueckfragen-payload/)
     assert.equal(versionen('l3'), 1)
+  } finally {
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+})
+
+test('B2b-3b-2b-1a (E-B7): herkunft einer Antwort wird übernommen; herkunft an auto_deny ⇒ Wurf ohne neue Version', () => {
+  const { basisVerzeichnis, schreibe, lies, versionen } = aufbau()
+  try {
+    const antwort = roh({ herkunft: 'browser' })
+    schreibe('l4', antwort, { arbeitsordner: ORDNER, ab: 0, eintraege: [antwort] })
+    assert.equal(lies('l4').eintraege[0].herkunft, 'browser')
+    const falsch = roh({ tool_use_id: 'toolu_2', art: 'auto_deny', herkunft: 'browser' })
+    assert.throws(() => schreibe('l4', falsch, { arbeitsordner: ORDNER, ab: 1, eintraege: [falsch] }), /herkunft' nur an einer Antwort/)
+    assert.equal(versionen('l4'), 1)
   } finally {
     raeumeVerzeichnis(basisVerzeichnis)
   }

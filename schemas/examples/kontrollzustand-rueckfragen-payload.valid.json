@@ -1,6 +1,7 @@
 {
-  "rueckfragen_schema": "v0",
+  "rueckfragen_schema": "v1",
   "lauf_id": "beispiel-lauf",
+  "ab": 0,
   "eintraege": [
     {
       "tool_use_id": "toolu_01Ta4gWze6JDjWi6vemvdgvo",
@@ -17,7 +18,8 @@
       "art": "stefan_abgelehnt",
       "grund": "Stefan hat abgelehnt",
       "zeit": "2026-10-16T10:01:00.000Z",
-      "befehl": "npm publish --registry <ARBEITSORDNER>/x"
+      "befehl": "npm publish --registry <ARBEITSORDNER>/x",
+      "herkunft": "browser"
     },
     {
       "tool_use_id": null,
@@ -27,7 +29,8 @@
       "grund": "Stefan hat geantwortet",
       "zeit": "2026-10-16T10:02:00.000Z",
       "frage": "Welcher Port?",
-      "antwort": "4711"
+      "antwort": "4711",
+      "herkunft": "nicht_browser"
     }
   ]
 }

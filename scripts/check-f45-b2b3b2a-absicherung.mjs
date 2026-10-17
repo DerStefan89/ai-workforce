@@ -11,13 +11,16 @@
  * (a1) F-1128 (1), rein: gefälschte Datei (stefan_abgelehnt für eine im Speicher auto_deny-ID), Speicher fehlt, Länge abweichend
  *      ⇒ VERWEIGERT; Datei = Speicher ⇒ ERFOLGREICH (Gegenprobe).
  * (a2) F-1128 (1), echter Server mit Kanal an: die Attrappe ruft die exportierte Controller-Funktion ermittleRueckfrageProtokoll
- *      mit den echten laufOptionen (basisVerzeichnis, rueckfrageSpeicher). Stefan lehnt t1 über die Antwort-Route ab ⇒
- *      ERFOLGREICH; auto_deny t2 über die Token-Route, dann gefälschte Dateiversion mit t2 stefan_abgelehnt ⇒ VERWEIGERT — und
+ *      mit den echten laufOptionen (basisVerzeichnis, seit B2b-3b-2b-1a rueckfrageZugang). Stefan lehnt t1 über die Antwort-Route ab ⇒
+ *      ERFOLGREICH; auto_deny t2 über die Token-Route, dann (seit B2b-3b-2b-1a, Delta D3: je Version nur Zuwachs) eine angehängte
+ *      gefälschte Version mit stefan_abgelehnt für t3, die nie über den Kanal lief ⇒ VERWEIGERT („Länge abweichend“) — und
  *      über den alten Pfad (nur Datei) ERFOLGREICH (Gegenprobe, Delta H5); ohne Leser bzw. nach dem Lauf-Ende ⇒ VERWEIGERT.
  *      Quelltext (Delta H4): die Klassifikation bildet `rueckfragen` aus ermittleRueckfrageProtokoll, leseRueckfrageProtokoll
  *      wird nur dort aufgerufen.
  * (l1) F-1128 (2), echter Server im Arbeitsordner: Lauf mit zu_loeschen-Block und abgelehnt_durch_stefan 1 ⇒ Datei bleibt,
- *      Löschliste nur als Hinweis (LOESCHLISTE_AUSGESETZT); Gegenprobe ohne Stefan-Ablehnung ⇒ gelöscht.
+ *      Löschliste nur als Hinweis (LOESCHLISTE_AUSGESETZT); Gegenprobe ohne Stefan-Ablehnung ⇒ gelöscht. Seit B2b-3b-2b-1a steht
+ *      t1 aus (a2) im selben Lauf auch im Speicher — (l1) belegt den Klassifikations-Teil des ODER deshalb nicht allein; den
+ *      Speicher-Teil prüft check-f45-b2b3b2b1a-rest (r2). Der Klassifikations-Teil ist bewusst redundante zweite Sicherung.
  * (o1) F-1126 (2) / F-1128 (5): 21. offene Rückfrage ⇒ auto_deny mit eigenem Grund; 201. Protokolleintrag ⇒ Ablehnung ohne
  *      Eintrag, offene behalten ihren Platz.
  * (z1) F-1126 (3): Befehl mit \r, ANSI (ESC, CSI), Bidi (U+202E, U+2066), BEL, U+200B, U+2028, einzelnem Surrogat ⇒ auto_deny;
@@ -130,7 +133,7 @@ try {
       const npm = { command: 'npm publish' }
       const aussen = { file_path: 'C:\\aussen.txt', content: 'x' }
       const echt = [eintrag('t1', 'stefan_abgelehnt', npm), eintrag('t2', 'auto_deny', aussen, 'Write')]
-      const gefaelscht = { rueckfragen_schema: 'v0', lauf_id: laufId, eintraege: [echt[0], { ...echt[1], art: 'stefan_abgelehnt' }] }
+      const gefaelscht = { rueckfragen_schema: 'v1', lauf_id: laufId, ab: 0, eintraege: [echt[0], { ...echt[1], art: 'stefan_abgelehnt' }] }
       const denials = [denial('t1', npm), denial('t2', aussen, 'Write')]
       const ueber = (datei, speicher) => {
         const b = protokollModul.bestaetigeProtokoll(datei, speicher)
@@ -307,8 +310,8 @@ try {
       stefanAbgelehnt: 1,
       pruefen: async (laufId, profil, eingaben, optionen) => {
         a2.vorbedingung = eingaben.rueckfrageKanal !== undefined
-        if (typeof controllerModul.ermittleRueckfrageProtokoll !== 'function' || typeof optionen.rueckfrageSpeicher !== 'function') {
-          a2.fehlt = [typeof controllerModul.ermittleRueckfrageProtokoll !== 'function' ? 'ermittleRueckfrageProtokoll (Controller)' : null, typeof optionen.rueckfrageSpeicher !== 'function' ? 'laufOptionen.rueckfrageSpeicher (Server)' : null].filter(Boolean)
+        if (typeof controllerModul.ermittleRueckfrageProtokoll !== 'function' || typeof optionen.rueckfrageZugang?.speicher !== 'function') {
+          a2.fehlt = [typeof controllerModul.ermittleRueckfrageProtokoll !== 'function' ? 'ermittleRueckfrageProtokoll (Controller)' : null, typeof optionen.rueckfrageZugang?.speicher !== 'function' ? 'laufOptionen.rueckfrageZugang (Server)' : null].filter(Boolean)
         }
         const tokenKopf = { authorization: `Bearer ${eingaben.rueckfrageKanal?.token}` }
         const npm = { command: 'npm publish' }
@@ -318,17 +321,19 @@ try {
         const antwort = await fetch(`${basisUrl}/api/rueckfragen/${gestellt.id}/antwort`, { method: 'POST', body: JSON.stringify({ entscheidung: 'ablehnen' }) })
         a2.stefan = antwort.status
         const ermittle = (leser) => (a2.fehlt === undefined ? controllerModul.ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, leser) : null)
-        a2.nurStefan = klassifiziere(laufId, [denial('t1', npm)], ermittle(optionen.rueckfrageSpeicher)).ergebnis
-        // t2: auto_deny über die Token-Route, dann gefälschte Datei mit t2 stefan_abgelehnt.
+        a2.nurStefan = klassifiziere(laufId, [denial('t1', npm)], ermittle(optionen.rueckfrageZugang)).ergebnis
+        // t2: auto_deny über die Token-Route, dann eine angehängte gefälschte Version mit t3 stefan_abgelehnt (Delta D3).
         const t2 = await (await fetch(`${basisUrl}/api/rueckfrage/anfrage`, { method: 'POST', headers: tokenKopf, body: JSON.stringify({ art: 'rechte', tool_name: 'Write', input: aussen, tool_use_id: 't2' }) })).json()
         a2.autoDeny = t2.entscheidung?.behavior
-        const echt = ladeArtefaktVersion(`rueckfragen-${laufId}`, undefined, { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: () => {} })?.daten
+        const echt = controllerModul.leseRueckfrageProtokoll(laufId, optionen.basisVerzeichnis)
         a2.echtArten = echt?.eintraege?.map((e) => e.art).join(',')
-        const gefaelscht = { ...echt, eintraege: echt.eintraege.map((e) => (e.tool_use_id === 't2' ? { ...e, art: 'stefan_abgelehnt' } : e)) }
-        registriereKernArtefakt(`rueckfragen-${laufId}`, profil, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, gefaelscht, [], { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: () => {} })
-        const beide = [denial('t1', npm), denial('t2', aussen, 'Write')]
-        a2.gefaelscht = klassifiziere(laufId, beide, ermittle(optionen.rueckfrageSpeicher)).ergebnis
-        const nurDatei = ladeArtefaktVersion(`rueckfragen-${laufId}`, undefined, { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: () => {} })?.daten ?? null
+        const rm = { command: 'rm -rf x' }
+        const t3 = { tool_use_id: 't3', tool_name: 'Bash', input_hash: hashVon(rm), art: 'stefan_abgelehnt', grund: 'gefälscht', zeit: '2026-10-16T10:00:00.000Z' }
+        registriereKernArtefakt(`rueckfragen-${laufId}`, profil, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, { rueckfragen_schema: 'v1', lauf_id: laufId, ab: echt?.eintraege?.length ?? 0, eintraege: [t3] }, [], { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: () => {} })
+        const beide = [denial('t1', npm), denial('t3', rm)]
+        a2.gefaelscht = klassifiziere(laufId, beide, ermittle(optionen.rueckfrageZugang)).ergebnis
+        // Alter Pfad: dieselbe Datei nur zusammengesetzt, ohne Speicher (der Angriff qa 3 aus F-1128 (1)).
+        const nurDatei = controllerModul.leseRueckfrageProtokoll(laufId, optionen.basisVerzeichnis)
         a2.alterPfad = klassifiziere(laufId, beide, nurDatei).ergebnis
         a2.ohneLeser = klassifiziere(laufId, [denial('t1', npm)], ermittle(undefined)).ergebnis
         a2.laufId = laufId
@@ -339,11 +344,11 @@ try {
     pruefe(lauf1.lauf && a2.vorbedingung, '(Vorbedingung) Ausführung im Arbeitsordner mit Rückfrage-Kanal gestartet.', `(Vorbedingung) Start ${lauf1.start.status}, Lauf ${Boolean(lauf1.lauf)}, Kanal ${a2.vorbedingung}`)
     if (a2.fehlt !== undefined) befunde.push(`(a2) fehlt: ${a2.fehlt.join(', ')}`)
     else if (lauf1.lauf) {
-      const nachEnde = a2.optionen.rueckfrageSpeicher(a2.laufId)
-      const nachEndeErgebnis = klassifiziere(a2.laufId, [denial('t1', { command: 'npm publish' })], controllerModul.ermittleRueckfrageProtokoll(a2.laufId, a2.optionen.basisVerzeichnis, a2.optionen.rueckfrageSpeicher)).ergebnis
+      const nachEnde = a2.optionen.rueckfrageZugang.speicher()
+      const nachEndeErgebnis = klassifiziere(a2.laufId, [denial('t1', { command: 'npm publish' })], controllerModul.ermittleRueckfrageProtokoll(a2.laufId, a2.optionen.basisVerzeichnis, a2.optionen.rueckfrageZugang)).ergebnis
       pruefe(
         a2.stefan === 200 && a2.nurStefan === 'ERFOLGREICH' && a2.autoDeny === 'deny' && a2.echtArten === 'stefan_abgelehnt,auto_deny' && a2.gefaelscht === 'VERWEIGERT' && a2.alterPfad === 'ERFOLGREICH' && a2.ohneLeser === 'VERWEIGERT' && nachEnde === null && nachEndeErgebnis === 'VERWEIGERT',
-        '(a2) echter Server: Stefan-Ablehnung ⇒ ERFOLGREICH; gefälschte Datei (t2 stefan_abgelehnt statt auto_deny) ⇒ VERWEIGERT, über den alten Pfad ERFOLGREICH (Gegenprobe); ohne Leser bzw. nach Lauf-Ende ⇒ VERWEIGERT.',
+        '(a2) echter Server: Stefan-Ablehnung ⇒ ERFOLGREICH; angehängte gefälschte Version (t3 stefan_abgelehnt, nie über den Kanal) ⇒ VERWEIGERT, über den alten Pfad ERFOLGREICH (Gegenprobe); ohne Leser bzw. nach Lauf-Ende ⇒ VERWEIGERT.',
         `(a2) ${JSON.stringify({ ...a2, optionen: undefined, nachEnde, nachEndeErgebnis })}`
       )
     }
@@ -354,13 +359,13 @@ try {
         .split('\n')
         .filter((z) => !/^\s*(\/\/|\*|\/\*)/.test(z))
         .join('\n')
-      const bildung = /const rueckfragen = eingaben\.rueckfrageKanal !== undefined \? ermittleRueckfrageProtokoll\(laufId, optionen\.basisVerzeichnis, optionen\.rueckfrageSpeicher\) : undefined/.test(code)
+      const bildung = /const rueckfragen = eingaben\.rueckfrageKanal !== undefined \? ermittleRueckfrageProtokoll\(laufId, optionen\.basisVerzeichnis, optionen\.rueckfrageZugang\) : undefined/.test(code)
       const aufrufe = [...code.matchAll(/(?<!function )leseRueckfrageProtokoll\(/g)].map((t) => t.index)
       const start = code.indexOf('export function ermittleRueckfrageProtokoll(')
       const ende = start >= 0 ? code.indexOf('\n}\n', start) : -1
       pruefe(
         bildung && aufrufe.length === 1 && start >= 0 && aufrufe[0] > start && aufrufe[0] < ende,
-        '(a2) Quelltext: Controller bildet rueckfragen aus ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageSpeicher); leseRueckfrageProtokoll nur darin.',
+        '(a2) Quelltext: Controller bildet rueckfragen aus ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageZugang); leseRueckfrageProtokoll nur darin.',
         `(a2) Quelltext: Bildung ${bildung}, leseRueckfrageProtokoll-Aufrufe ${aufrufe.length}, innerhalb ${start >= 0 && aufrufe.every((i) => i > start && i < ende)}`
       )
     }
