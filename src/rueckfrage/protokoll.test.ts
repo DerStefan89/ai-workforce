@@ -6,7 +6,9 @@
  * vor Temp vor Home, roh, `/` und JSON-escaped, ohne Kappen) und der Abgleich A6 zwischen `permission_denials` und Protokoll
  * (fail closed: nur eindeutige, vollständig passende `stefan_abgelehnt`-Einträge ⇒ nur_stefan). Seit F45 B2b-3b-2a
  * `bestaetigeProtokoll` (Speicher der Vermittlung = Quelle der Wahrheit, Datei = Audit; F-1128 (1)); seit B2b-3b-2b-1a
- * `setzeProtokollZusammen` (Zuwachs-Versionen lückenlos zusammensetzen).
+ * `setzeProtokollZusammen` (Zuwachs-Versionen lückenlos zusammensetzen). Seit B2b-3b-2b-1b (F-1128 R1) trägt jeder Standard-Eintrag
+ * `stefan_abgelehnt` einen gültigen `ablehnung_hash` und jeder Abgleich passende tool_result-Blöcke (`ERG`) — die Rotfälle
+ * scheitern so an ihrer eigenen Regel, nicht am Validator oder am fehlenden Text (Advisor B7).
  */
 
 import assert from 'node:assert/strict'
@@ -17,10 +19,22 @@ import { bestaetigeProtokoll, gleicheAblehnungenAb, neutralisiereText, RUECKFRAG
 const hashVon = (input: unknown) => sha256Hex(kanonischesJson(input ?? null))
 const LAUF = 'lauf-1'
 
-/** Ein gültiger Eintrag; Felder überschreibbar. */
+/** Eindeutige Ablehnungstexte (R1) und ihre Hashes. */
+const TEXT_A = 'Stefan hat den Befehl abgelehnt. (Ref a)'
+const TEXT_B = 'Stefan hat den Befehl abgelehnt. (Ref b)'
+const HASH_A = sha256Hex(TEXT_A)
+const HASH_B = sha256Hex(TEXT_B)
+
+/** Ein gültiger Eintrag; Felder überschreibbar. ablehnung_hash nur an stefan_abgelehnt (sonst entfernt, außer ausdrücklich gesetzt). */
 function eintrag(felder: Record<string, unknown> = {}): Record<string, unknown> {
-  return { tool_use_id: 'toolu_a', tool_name: 'Bash', input_hash: hashVon({ command: 'git push' }), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'git push', ...felder }
+  const e: Record<string, unknown> = { tool_use_id: 'toolu_a', tool_name: 'Bash', input_hash: hashVon({ command: 'git push' }), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'git push', ablehnung_hash: HASH_A, ...felder }
+  if (e.art !== 'stefan_abgelehnt' && !('ablehnung_hash' in felder)) delete e.ablehnung_hash
+  return e
 }
+/** tool_result-Blöcke (Form von ermittleToolErgebnisse): je ID ein Block mit is_error und Text. */
+const ergebnisse = (...paare: [string, string | null, boolean?][]) => new Map(paare.map(([id, text, fehler = true]) => [id, [{ fehler, text }]]))
+/** Standard: die CLI hat für toolu_a und toolu_b genau Stefans Text zurückgegeben. */
+const ERG = ergebnisse(['toolu_a', TEXT_A], ['toolu_b', TEXT_B])
 const protokoll = (eintraege: unknown[], felder: Record<string, unknown> = {}) => ({ rueckfragen_schema: 'v1', lauf_id: LAUF, ab: 0, eintraege, ...felder })
 const denial = (felder: Record<string, unknown> = {}) => ({ tool_name: 'Bash', tool_use_id: 'toolu_a', tool_input: { command: 'git push' }, ...felder })
 
@@ -58,10 +72,14 @@ test('validiereRueckfrageProtokoll: Rotfälle', () => {
     ['tool_name zu lang', protokoll([eintrag({ tool_name: 'x'.repeat(201) })])],
     ['grund zu lang', protokoll([eintrag({ grund: 'x'.repeat(501) })])],
     ['befehl zu lang', protokoll([eintrag({ befehl: 'x'.repeat(2001) })])],
+    ['stefan_abgelehnt ohne ablehnung_hash', protokoll([eintrag({ ablehnung_hash: undefined })].map((e) => JSON.parse(JSON.stringify(e))))],
+    ['ablehnung_hash kein Hex', protokoll([eintrag({ ablehnung_hash: 'xyz' })])],
+    ['ablehnung_hash an auto_deny', protokoll([eintrag({ art: 'auto_deny', ablehnung_hash: HASH_A })])],
     ['zeit fehlt', protokoll([{ ...eintrag(), zeit: undefined }].map((e) => JSON.parse(JSON.stringify(e))))],
     ['Eintrag kein Objekt', protokoll(['x'])],
   ]
   for (const [name, daten] of faelle) assert.ok(validiereRueckfrageProtokoll(daten).length > 0, name)
+  assert.deepEqual(validiereRueckfrageProtokoll(protokoll([eintrag()])), [], 'Positivkontrolle: Standard-Eintrag mit Hash gültig')
 })
 
 test('neutralisiereText: Arbeitsordner vor Temp vor Home, roh, mit / und JSON-escaped; win32 ohne Groß/klein; kein Kappen', () => {
@@ -81,11 +99,11 @@ test('neutralisiereText: posix mit Groß/klein', () => {
 })
 
 test('gleicheAblehnungenAb: nur Stefan ⇒ nur_stefan mit Anzahl (eine und zwei Ablehnungen, andere Einträge daneben)', () => {
-  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()]), LAUF), { art: 'nur_stefan', anzahl: 1 })
-  const zweite = eintrag({ tool_use_id: 'toolu_b', input_hash: hashVon({ command: 'npm publish' }), befehl: 'npm publish' })
+  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()]), LAUF, ERG), { art: 'nur_stefan', anzahl: 1 })
+  const zweite = eintrag({ tool_use_id: 'toolu_b', input_hash: hashVon({ command: 'npm publish' }), befehl: 'npm publish', ablehnung_hash: HASH_B })
   const erlaubt = eintrag({ tool_use_id: 'toolu_c', art: 'stefan_erlaubt' })
   const frage = eintrag({ tool_use_id: 'toolu_d', tool_name: 'frage_stefan', art: 'frage_beantwortet' })
-  assert.deepEqual(gleicheAblehnungenAb([denial(), denial({ tool_use_id: 'toolu_b', tool_input: { command: 'npm publish' } })], protokoll([eintrag(), zweite, erlaubt, frage]), LAUF), { art: 'nur_stefan', anzahl: 2 })
+  assert.deepEqual(gleicheAblehnungenAb([denial(), denial({ tool_use_id: 'toolu_b', tool_input: { command: 'npm publish' } })], protokoll([eintrag(), zweite, erlaubt, frage]), LAUF, ERG), { art: 'nur_stefan', anzahl: 2 })
 })
 
 test('gleicheAblehnungenAb: Rotfälle ⇒ nicht_nur_stefan (A6, fail closed)', () => {
@@ -112,20 +130,49 @@ test('gleicheAblehnungenAb: Rotfälle ⇒ nicht_nur_stefan (A6, fail closed)', (
     ['Ablehnung mit tool_use_id null', [denial({ tool_use_id: null })], protokoll([eintrag({ tool_use_id: null })])],
     ['Ablehnung kein Objekt', ['x'], protokoll([eintrag()])],
   ]
-  for (const [name, denials, daten] of faelle) assert.deepEqual(gleicheAblehnungenAb(denials, daten, LAUF), nein, name)
+  for (const [name, denials, daten] of faelle) assert.deepEqual(gleicheAblehnungenAb(denials, daten, LAUF, ERG), nein, name)
+})
+
+test('gleicheAblehnungenAb (B2b-3b-2b-1b, F-1128 R1): zählt nur, wenn jedes tool_result der ID is_error trägt und genau Stefans Text (String)', () => {
+  const d = [denial()]
+  const p = protokoll([eintrag()])
+  assert.deepEqual(gleicheAblehnungenAb(d, p, LAUF, ERG), { art: 'nur_stefan', anzahl: 1 }, 'Positivkontrolle')
+  const faelle: [string, unknown][] = [
+    ['ohne Ergebnisse', undefined],
+    ['keine Map', { toolu_a: [{ fehler: true, text: TEXT_A }] }],
+    ['kein tool_result', ergebnisse(['toolu_x', TEXT_A])],
+    ['leere Liste', new Map([['toolu_a', []]])],
+    ['is_error false', ergebnisse(['toolu_a', TEXT_A, false])],
+    ['statischer CLI-Text (gewaschen)', ergebnisse(['toolu_a', 'Permission to use Bash with command git push has been denied.'])],
+    ['Text einer anderen Ablehnung', ergebnisse(['toolu_a', TEXT_B])],
+    ['Text mit Zusatz', ergebnisse(['toolu_a', `${TEXT_A} `])],
+    ['keine String-Form (O6)', ergebnisse(['toolu_a', null])],
+    ['zweiter abweichender Block', new Map([['toolu_a', [{ fehler: true, text: TEXT_A }, { fehler: true, text: 'anders' }]]])],
+  ]
+  for (const [name, erg] of faelle) assert.deepEqual(gleicheAblehnungenAb(d, p, LAUF, erg as never), { art: 'nicht_nur_stefan' }, name)
+  assert.deepEqual(gleicheAblehnungenAb(d, p, LAUF, new Map([['toolu_a', [{ fehler: true, text: TEXT_A }, { fehler: true, text: TEXT_A }]]])), { art: 'nur_stefan', anzahl: 1 }, 'doppelt, beide passend')
 })
 
 // ─── F45 B2b-3b-2a: Datei gegen den Speicher der Vermittlung (F-1128 (1)) ──────────────────────────────────────────────
 
 /** Speicherform (Projektion von eintraegeVon) zu einem Eintrag. */
 const speicherVon = (e: unknown) => {
-  const { tool_use_id, tool_name, input_hash, art } = e as Record<string, unknown>
-  return { tool_use_id, tool_name, input_hash, art }
+  const { tool_use_id, tool_name, input_hash, art, ablehnung_hash } = e as Record<string, unknown>
+  return { tool_use_id, tool_name, input_hash, art, ...(ablehnung_hash !== undefined ? { ablehnung_hash } : {}) }
 }
 
-test('bestaetigeProtokoll: gleiche vier Felder je Index ⇒ ok mit der Datei', () => {
+test('bestaetigeProtokoll: gleiche Vergleichsfelder je Index ⇒ ok mit der Datei', () => {
   const datei = protokoll([eintrag(), eintrag({ tool_use_id: null, art: 'auto_deny' })])
   assert.deepEqual(bestaetigeProtokoll(datei, datei.eintraege.map(speicherVon)), { ok: true, daten: datei })
+})
+
+test('bestaetigeProtokoll (B2b-3b-2b-1b, R1): ablehnung_hash gehört zum Vergleich — Datei mit dem Hash des statischen CLI-Texts ⇒ ok:false', () => {
+  const echt = protokoll([eintrag()])
+  const speicher = echt.eintraege.map(speicherVon)
+  assert.equal(bestaetigeProtokoll(echt, speicher).ok, true, 'Positivkontrolle')
+  const gefaelscht = bestaetigeProtokoll(protokoll([eintrag({ ablehnung_hash: sha256Hex('Permission to use Bash with command git push has been denied.') })]), speicher)
+  assert.equal(gefaelscht.ok, false)
+  if (!gefaelscht.ok) assert.match(gefaelscht.grund, /Eintrag 0 weicht ab \(ablehnung_hash\)/)
 })
 
 test('bestaetigeProtokoll: gefälschte Art, fremde ID, anderer Hash/Werkzeug, Länge ⇒ ok:false mit Grund', () => {
@@ -172,8 +219,8 @@ test('bestaetigeProtokoll: Speicher leer und Datei fehlt ⇒ ok:false mit leer: 
 })
 
 test('gleicheAblehnungenAb (B2b-3b-2b-1a): ein einzelner Zuwachs (ab > 0) ist nie ein ganzes Protokoll', () => {
-  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()], { ab: 1 }), LAUF), { art: 'nicht_nur_stefan' })
-  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()]), LAUF), { art: 'nur_stefan', anzahl: 1 })
+  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()], { ab: 1 }), LAUF, ERG), { art: 'nicht_nur_stefan' })
+  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()]), LAUF, ERG), { art: 'nur_stefan', anzahl: 1 })
 })
 
 test('bestaetigeProtokoll (Delta D5): nicht zusammensetzbare Datei ⇒ ok:false mit Grund, auch bei leerem Speicher', () => {

@@ -12,7 +12,8 @@
 
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { KEINE_ANTWORT, MAX_OFFENE_JE_LAUF, MAX_PROTOKOLL_JE_LAUF, erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './rueckfrage-vermittlung.mjs'
+import { sha256Hex } from '../../src/checkpoint-store/index.ts'
+import { KEINE_ANTWORT, MAX_OFFENE_JE_LAUF, MAX_PROTOKOLL_JE_LAUF, ablehnungstextStefan, erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './rueckfrage-vermittlung.mjs'
 
 const TOKEN = 'b'.repeat(64)
 const ORDNER = process.platform === 'win32' ? 'C:\\proj\\wf' : '/proj/wf'
@@ -304,11 +305,39 @@ test('F45 B2b-3b-2b-1a (R3, Advisor B6/D9): zugang vor oeffneLauf gebaut, danach
   assert.equal(zugang.speicher(), null, 'nach dem Lauf-Ende kein Speicherstand mehr')
 })
 
+// ─── F45 B2b-3b-2b-1b (F-1128 R1): eindeutiger Ablehnungstext je Ablehnung durch Stefan ───────────────────────────────
+
+test('F45 B2b-3b-2b-1b (R1): jede Ablehnung durch Stefan hat einen eigenen ASCII-Text mit Ref; Protokoll und Speicher tragen nur dessen Hash', async () => {
+  const { v, protokoll } = aufbau()
+  const texte = []
+  for (const id of ['r1', 'r2']) {
+    const r = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: `npm run ${id}` }, tool_use_id: id })
+    assert.deepEqual(v.beantworte(r.id, { entscheidung: 'ablehnen' }), { ok: true })
+    const entscheidung = (await v.warte('l1', r.id)).entscheidung
+    assert.equal(entscheidung.behavior, 'deny')
+    texte.push(entscheidung.message)
+  }
+  for (const text of texte) assert.match(text, /^Stefan hat den Befehl abgelehnt\. \(Ref [0-9a-f-]{36}\)$/)
+  assert.notEqual(texte[0], texte[1])
+  assert.deepEqual(protokoll.map((e) => e.ablehnung_hash), texte.map((t) => sha256Hex(t)))
+  assert.deepEqual(v.eintraegeVon('l1').map((e) => e.ablehnung_hash), texte.map((t) => sha256Hex(t)))
+  assert.ok(!JSON.stringify(protokoll).includes('(Ref '), 'der Text selbst steht nicht im Protokoll')
+  // Erlaubt, auto_deny und Lauf-Ende tragen keinen Hash.
+  const e = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'npm run e' }, tool_use_id: 'e1' })
+  v.beantworte(e.id, { entscheidung: 'einmal_erlauben' })
+  const f = v.stelle('l1', { art: 'frage', frage: 'Welcher Port?', tool_use_id: 'f1' })
+  v.beantworte(f.id, { antwort: '4711' })
+  v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'npm run o' }, tool_use_id: 'o1' })
+  v.beendeLauf('l1')
+  assert.deepEqual(protokoll.filter((x) => x.art !== 'stefan_abgelehnt').map((x) => [x.art, 'ablehnung_hash' in x]), [['stefan_erlaubt', false], ['frage_beantwortet', false], ['lauf_beendet', false]])
+  assert.match(ablehnungstextStefan(), /^[\x20-\x7e]+$/, 'ASCII')
+})
+
 // ─── F45 B2b-3b-2a ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 const bash = (id, command = `echo ${id}`) => ({ art: 'rechte', tool_name: 'Bash', input: { command }, tool_use_id: id })
 
-test('F45 B2b-3b-2a (F-1128 (1), B10): eintraegeVon liefert nur die vier Vergleichsfelder als neue Objekte; null ohne offenen Lauf', () => {
+test('F45 B2b-3b-2a (F-1128 (1), B10): eintraegeVon liefert nur die Vergleichsfelder als neue Objekte (ablehnung_hash nur an stefan_abgelehnt); null ohne offenen Lauf', () => {
   const { v } = aufbau()
   assert.deepEqual(v.eintraegeVon('l1'), [])
   v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 't1' })
@@ -317,7 +346,7 @@ test('F45 B2b-3b-2a (F-1128 (1), B10): eintraegeVon liefert nur die vier Verglei
   const erste = v.eintraegeVon('l1')
   assert.deepEqual(
     erste.map((e) => Object.keys(e).sort().join(',')),
-    ['art,input_hash,tool_name,tool_use_id', 'art,input_hash,tool_name,tool_use_id']
+    ['art,input_hash,tool_name,tool_use_id', 'ablehnung_hash,art,input_hash,tool_name,tool_use_id']
   )
   assert.deepEqual(erste.map((e) => [e.tool_use_id, e.tool_name, e.art]), [['t1', 'Write', 'auto_deny'], ['t2', 'Bash', 'stefan_abgelehnt']])
   assert.ok(!JSON.stringify(erste).includes('geheim'), 'kein Rohtext im Speicherstand')

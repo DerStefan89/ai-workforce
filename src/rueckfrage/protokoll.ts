@@ -10,23 +10,25 @@
  *   JSON-escaped), bevor das Protokoll in den Kontrollzustand geht. Kappt nicht (A3: kappen erst nach dem Maskieren).
  * - `gleicheAblehnungenAb` (Abgleich A6): sind alle `permission_denials` eines Laufs allein von Stefan abgelehnt? Nur bei
  *   gültigem Protokoll desselben Laufs, eindeutiger `tool_use_id` je Ablehnung, genau einem Eintrag je ID mit Art
- *   `stefan_abgelehnt`, gleichem `tool_name` und gleichem Input-Hash. Alles andere ⇒ `nicht_nur_stefan` (fail closed;
+ *   `stefan_abgelehnt`, gleichem `tool_name` und gleichem Input-Hash, und (B2b-3b-2b-1b, F-1128 R1) jedes tool_result der ID im
+ *   Rohstrom trägt `is_error` und genau den eindeutigen Ablehnungstext (Hash `ablehnung_hash`). Alles andere ⇒ `nicht_nur_stefan` (fail closed;
  *   ungültiges Protokoll gilt als fehlend). Der Abgleich selbst vergleicht nur mit `===`, Set und Map — kein Textmuster
  *   über Ablehnungsdaten (Gate f7 (a) sinngemäß, H4); der einzige Regex (64 Hex-Zeichen) steht im Validator.
- * - `bestaetigeProtokoll` (B2b-3b-2a, F-1128 (1)): die Datei gilt nur, wenn sie zum Speicherstand der Vermittlung passt (vier
- *   Felder je Eintrag) — der Speicher ist die Quelle der Wahrheit, die Datei das Audit.
+ * - `bestaetigeProtokoll` (B2b-3b-2a, F-1128 (1)): die Datei gilt nur, wenn sie zum Speicherstand der Vermittlung passt (fünf
+ *   Felder je Eintrag, seit B2b-3b-2b-1b mit `ablehnung_hash`) — der Speicher ist die Quelle der Wahrheit, die Datei das Audit.
  * - `setzeProtokollZusammen` (B2b-3b-2b-1a): fügt die Versionen (je nur der Zuwachs) lückenlos zu einem Protokoll mit `ab: 0`
  *   zusammen; Lücke, fremde lauf_id oder ungültige Version ⇒ ok:false (fail closed).
  * Rein, kein I/O.
  *
  * Grenze (ARCHITECTURE §4, DEKLARIERT): der Abgleich glaubt dem Speicher der Vermittlung, dass „stefan_abgelehnt“ von Stefan
  * kommt — die Antwort-Route ist für jeden lokalen Prozess erreichbar (§3 „Nur Stefan antwortet — DEKLARIERT“). Eine gefälschte
- * Protokoll-Datei allein reicht seit B2b-3b-2a nicht mehr (bestaetigeProtokoll, F-1128 (1)).
+ * Protokoll-Datei allein reicht seit B2b-3b-2a nicht mehr (bestaetigeProtokoll, F-1128 (1)); eine statische Sperre „waschen“ (ID
+ * nachträglich stellen und ablehnen) seit B2b-3b-2b-1b nicht mehr (R1: deren tool_result schreibt die CLI mit eigenem Text).
  *
- * Wird aufgerufen von: src/result-evaluator/index.ts (Abgleich), src/execution-controller/index.ts (bestaetigeProtokoll),
- * scripts/leitstand/rueckfrage-protokoll.mjs (Schreiben), scripts/leitstand/rueckfrage-vermittlung.mjs (Arten, Grenzen),
- * src/execution-controller/index.ts (setzeProtokollZusammen), scripts/check-f45-b2b3b1b-auswertung.mjs,
- * scripts/check-f45-b2b3b2a-absicherung.mjs, scripts/check-f45-b2b3b2b1a-rest.mjs, src/rueckfrage/protokoll.test.ts.
+ * Wird aufgerufen von: src/result-evaluator/index.ts (Abgleich), src/execution-controller/index.ts (bestaetigeProtokoll,
+ * setzeProtokollZusammen), scripts/leitstand/rueckfrage-protokoll.mjs (Schreiben), scripts/leitstand/rueckfrage-vermittlung.mjs
+ * (Arten, Grenzen), scripts/check-f45-b2b3b1b-auswertung.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
+ * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, src/rueckfrage/protokoll.test.ts.
  */
 
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
@@ -67,7 +69,7 @@ const HERKUENFTE = new Set<string>(RUECKFRAGE_HERKUENFTE)
 /** Felder eines Eintrags (additionalProperties: false). */
 const EINTRAG_PFLICHT = ['tool_use_id', 'tool_name', 'input_hash', 'art', 'grund', 'zeit'] as const
 const EINTRAG_TEXTE = ['befehl', 'frage', 'antwort'] as const
-const EINTRAG_FELDER = new Set<string>([...EINTRAG_PFLICHT, ...EINTRAG_TEXTE, 'herkunft'])
+const EINTRAG_FELDER = new Set<string>([...EINTRAG_PFLICHT, ...EINTRAG_TEXTE, 'herkunft', 'ablehnung_hash'])
 const OBEN_FELDER = new Set(['rueckfragen_schema', 'lauf_id', 'ab', 'eintraege'])
 const ARTEN = new Set<string>(RUECKFRAGE_PROTOKOLL_ARTEN)
 const HEX64 = /^[0-9a-f]{64}$/
@@ -107,6 +109,9 @@ function validiereEintrag(eintrag: unknown, stelle: number): string[] {
     if (!(typeof eintrag.herkunft === 'string' && HERKUENFTE.has(eintrag.herkunft))) verstoesse.push(`${vor}: 'herkunft' muss eine von ${RUECKFRAGE_HERKUENFTE.join(', ')} sein`)
     if (!(typeof eintrag.art === 'string' && ANTWORT_ARTEN.has(eintrag.art))) verstoesse.push(`${vor}: 'herkunft' nur an einer Antwort (${[...ANTWORT_ARTEN].join(', ')})`)
   }
+  // B2b-3b-2b-1b (F-1128 R1): an stefan_abgelehnt Pflicht, an jeder anderen Art verboten.
+  if (eintrag.art === 'stefan_abgelehnt' && !(typeof eintrag.ablehnung_hash === 'string' && HEX64.test(eintrag.ablehnung_hash))) verstoesse.push(`${vor}: 'ablehnung_hash' (64 Hex-Zeichen) ist an stefan_abgelehnt Pflicht`)
+  if (eintrag.art !== 'stefan_abgelehnt' && 'ablehnung_hash' in eintrag) verstoesse.push(`${vor}: 'ablehnung_hash' nur an stefan_abgelehnt`)
   return verstoesse
 }
 
@@ -178,6 +183,23 @@ export function neutralisiereText(text: string, orte: NeutralisierOrte): string 
 /** Ergebnis des Abgleichs A6. */
 export type AbgleichErgebnis = { art: 'nur_stefan'; anzahl: number } | { art: 'nicht_nur_stefan' }
 
+/** tool_result-Blöcke des Rohstroms je tool_use_id (ermittleToolErgebnisse, src/claude-code-gateway). */
+export type ToolErgebnisse = ReadonlyMap<string, readonly { fehler: boolean; text: string | null }[]>
+
+/**
+ * B2b-3b-2b-1b (F-1128 R1): trägt JEDES tool_result der ID `is_error` und als String genau den Ablehnungstext, dessen Hash im
+ * Eintrag steht? Kein tool_result, keine Map, eine andere Form oder ein abweichender Block ⇒ false. Nur `===` auf dem Hash.
+ * @param ergebnisse - tool_result-Blöcke je ID (oder undefined)
+ * @param id - tool_use_id der Ablehnung
+ * @param ablehnungHash - ablehnung_hash des Eintrags
+ * @returns true, wenn die CLI genau Stefans Text zurückgegeben hat
+ */
+function traegtAblehnungstext(ergebnisse: ToolErgebnisse | undefined, id: string, ablehnungHash: unknown): boolean {
+  const liste = ergebnisse instanceof Map ? ergebnisse.get(id) : undefined
+  if (!Array.isArray(liste) || liste.length === 0 || typeof ablehnungHash !== 'string') return false
+  return liste.every((e) => e?.fehler === true && typeof e.text === 'string' && sha256Hex(e.text) === ablehnungHash)
+}
+
 const NICHT_NUR_STEFAN: AbgleichErgebnis = Object.freeze({ art: 'nicht_nur_stefan' })
 
 /**
@@ -185,11 +207,12 @@ const NICHT_NUR_STEFAN: AbgleichErgebnis = Object.freeze({ art: 'nicht_nur_stefa
  * @param denials - permission_denials des Ergebnisobjekts ({ tool_name, tool_use_id, tool_input })
  * @param protokoll - zusammengesetztes Protokoll von `rueckfragen-<laufId>` (`ab: 0`; oder null/ungültig = fehlend)
  * @param laufId - Lauf, zu dem das Protokoll gehören muss (H2)
+ * @param ergebnisse - B2b-3b-2b-1b (R1): tool_result-Blöcke des hash-geprüften Rohstroms je ID; fehlt er ⇒ wie „kein tool_result“
  * @returns nur_stefan mit Anzahl oder nicht_nur_stefan
  */
-export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unknown, laufId: string): AbgleichErgebnis {
+export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unknown, laufId: string, ergebnisse?: ToolErgebnisse): AbgleichErgebnis {
   if (validiereRueckfrageProtokoll(protokoll).length > 0) return NICHT_NUR_STEFAN
-  const geprueft = protokoll as { lauf_id: string; ab: number; eintraege: { tool_use_id: string | null; tool_name: string; input_hash: string; art: string }[] }
+  const geprueft = protokoll as { lauf_id: string; ab: number; eintraege: { tool_use_id: string | null; tool_name: string; input_hash: string; art: string; ablehnung_hash?: string }[] }
   // B2b-3b-2b-1a: ein einzelner Zuwachs (ab > 0) ist nie ein ganzes Protokoll.
   if (geprueft.lauf_id !== laufId || geprueft.ab !== 0 || denials.length === 0) return NICHT_NUR_STEFAN
   const jeId = new Map<string, { anzahl: number; eintrag: (typeof geprueft.eintraege)[number] }>()
@@ -208,6 +231,8 @@ export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unk
     if (treffer === undefined || treffer.anzahl !== 1) return NICHT_NUR_STEFAN
     if (treffer.eintrag.art !== 'stefan_abgelehnt' || treffer.eintrag.tool_name !== denial.tool_name) return NICHT_NUR_STEFAN
     if (treffer.eintrag.input_hash !== sha256Hex(kanonischesJson(denial.tool_input ?? null))) return NICHT_NUR_STEFAN
+    // R1: nur wenn die CLI genau Stefans eindeutigen Text zurückgegeben hat — schließt das „Waschen“ einer statischen Sperre.
+    if (!traegtAblehnungstext(ergebnisse, id, treffer.eintrag.ablehnung_hash)) return NICHT_NUR_STEFAN
   }
   return { art: 'nur_stefan', anzahl: denials.length }
 }
@@ -215,13 +240,17 @@ export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unk
 /** Ergebnis von bestaetigeProtokoll: die Datei (bestätigt) oder ein Grund; `leer` = Lauf ohne Rückfrage (kein Befund). */
 export type BestaetigungErgebnis = { ok: true; daten: unknown } | { ok: false; grund: string; leer?: true }
 
-/** Die vier Felder, die Speicher und Datei je Eintrag gleich tragen müssen (alles andere ist in der Datei aufbereitet, A3). */
-const VERGLEICHS_FELDER = ['tool_use_id', 'tool_name', 'input_hash', 'art'] as const
+/**
+ * Die Felder, die Speicher und Datei je Eintrag gleich tragen müssen (alles andere ist in der Datei aufbereitet, A3). Seit
+ * B2b-3b-2b-1b auch `ablehnung_hash` (nur an stefan_abgelehnt, sonst auf beiden Seiten undefined) — sonst könnte eine gefälschte
+ * Datei den nachrechenbaren Hash des statischen CLI-Texts eintragen.
+ */
+const VERGLEICHS_FELDER = ['tool_use_id', 'tool_name', 'input_hash', 'art', 'ablehnung_hash'] as const
 
 /**
  * F45 B2b-3b-2a (F-1128 (1)): bestätigt die Protokoll-Datei gegen den Speicherstand der Vermittlung (`eintraegeVon`, gleicher
  * Prozess) — der Speicher ist die Quelle der Wahrheit, die Datei das Audit. Nur bei gleicher Länge und je Index gleichen
- * `tool_use_id`, `tool_name`, `input_hash`, `art` (`===`) gilt die Datei; alles andere ⇒ ok:false mit Grund (fail closed). Schema
+ * `tool_use_id`, `tool_name`, `input_hash`, `art`, `ablehnung_hash` (`===`) gilt die Datei; alles andere ⇒ ok:false mit Grund (fail closed). Schema
  * und `lauf_id` prüft danach der Abgleich A6 (`gleicheAblehnungenAb`). Wirft nie, auch nicht an einer manipulierten Datei
  * (Delta D1).
  * @param datei - zusammengesetztes Protokoll (setzeProtokollZusammen), null (keine Datei) oder { ungueltig: grund } (nicht

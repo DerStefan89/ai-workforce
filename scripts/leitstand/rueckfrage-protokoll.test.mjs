@@ -27,8 +27,15 @@ const TEMP = process.platform === 'win32' ? 'C:\\Users\\nutzer\\AppData\\Local\\
 const ORDNER = process.platform === 'win32' ? `${TEMP}\\wf\\lauf` : '/tmp/wf/lauf'
 const GEHEIMNIS = 'sk-ant-api03-GEHEIMNISWERT1234567890'
 
-/** Roh-Eintrag wie aus der Vermittlung. */
-const roh = (felder = {}) => ({ tool_use_id: 'toolu_1', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson({ command: 'ls' })), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'ls', ...felder })
+/**
+ * Roh-Eintrag wie aus der Vermittlung. Seit B2b-3b-2b-1b (F-1128 R1) trägt stefan_abgelehnt einen ablehnung_hash; an anderen Arten
+ * wird er entfernt (außer ausdrücklich gesetzt).
+ */
+const roh = (felder = {}) => {
+  const e = { tool_use_id: 'toolu_1', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson({ command: 'ls' })), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'ls', ablehnung_hash: sha256Hex('Stefan hat den Befehl abgelehnt. (Ref 1)'), ...felder }
+  if (e.art !== 'stefan_abgelehnt' && !('ablehnung_hash' in felder)) delete e.ablehnung_hash
+  return e
+}
 
 function aufbau() {
   const basisVerzeichnis = mkdtempSync(join(tmpdir(), 'rueckfrage-protokoll-test-'))
@@ -54,6 +61,8 @@ test('je Aufruf eine neue Version mit dem Zuwachs (ab); zusammengesetzt alle Ein
     assert.match(daten.eintraege[1].befehl, /^node <ARBEITSORDNER>.a\.mjs <TEMP>.b$/)
     assert.equal(JSON.stringify(daten).includes('nutzer'), false)
     assert.equal(daten.eintraege[1].input_hash, zweiter.input_hash)
+    assert.equal(daten.eintraege[1].ablehnung_hash, zweiter.ablehnung_hash, 'B2b-3b-2b-1b: ablehnung_hash unverändert übernommen')
+    assert.equal('ablehnung_hash' in daten.eintraege[0], false)
   } finally {
     raeumeVerzeichnis(basisVerzeichnis)
   }

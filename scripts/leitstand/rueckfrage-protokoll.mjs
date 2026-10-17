@@ -16,7 +16,8 @@
  * (sichere Richtung).
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (erzeugeRequestHandler, Standard-Vermittlung; darüber indirekt
- * scripts/check-f45-b2b3b1b-auswertung.mjs (p3)), scripts/check-f45-b2b3b2b1a-rest.mjs (g), scripts/leitstand/rueckfrage-protokoll.test.mjs.
+ * scripts/check-f45-b2b3b1b-auswertung.mjs (p3)), scripts/check-f45-b2b3b2b1a-rest.mjs (g), scripts/check-f45-b2b3b2b1b-r1.mjs (r1t),
+ * scripts/leitstand/rueckfrage-protokoll.test.mjs.
  */
 
 import { registriereKernArtefakt } from '../../src/lineage-registry/index.ts'
@@ -42,7 +43,7 @@ function bereiteText(text, orte, grenze) {
 
 /**
  * Ein Eintrag der Vermittlung als Protokolleintrag (nur Schemafelder).
- * @param eintrag - { tool_use_id, tool_name, input_hash, art, grund, zeit, befehl?, frage?, antwort?, herkunft? }
+ * @param eintrag - { tool_use_id, tool_name, input_hash, art, grund, zeit, befehl?, frage?, antwort?, herkunft?, ablehnung_hash? }
  * @param orte - Neutralisier-Orte
  * @returns Protokolleintrag
  */
@@ -58,6 +59,8 @@ function baueEintrag(eintrag, orte) {
     ...(eintrag.frage !== undefined ? { frage: bereiteText(eintrag.frage, orte, PROTOKOLL_GRENZEN.text) } : {}),
     ...(eintrag.antwort !== undefined ? { antwort: bereiteText(eintrag.antwort, orte, PROTOKOLL_GRENZEN.text) } : {}),
     ...(eintrag.herkunft !== undefined ? { herkunft: eintrag.herkunft } : {}),
+    // B2b-3b-2b-1b (F-1128 R1): Hash des eindeutigen Ablehnungstexts (nur stefan_abgelehnt), unverändert.
+    ...(eintrag.ablehnung_hash !== undefined ? { ablehnung_hash: eintrag.ablehnung_hash } : {}),
   }
 }
 

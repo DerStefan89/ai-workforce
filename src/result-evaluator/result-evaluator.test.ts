@@ -1097,9 +1097,15 @@ test('F45 B1b-1 (Advisor A1): automatisch verschobener Befehl ohne run_in_backgr
 
 // ─── F45 B2b-3b-1b: Ablehnung allein durch Stefan (Rückfrage-Protokoll, Abgleich A6) ──
 
-/** Rohstrom mit Ergebnisobjekt und den gegebenen permission_denials. */
-function ablehnungsStdout(denials: unknown[]): string {
-  return JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'fertig', permission_denials: denials })
+/** F45 B2b-3b-2b-1b (F-1128 R1): eindeutiger Ablehnungstext, den die CLI für toolu_s als tool_result zurückgibt. */
+const STEFAN_TEXT = 'Stefan hat den Befehl abgelehnt. (Ref s)'
+/**
+ * Rohstrom mit Ergebnisobjekt und den gegebenen permission_denials; davor (B2b-3b-2b-1b) das tool_result zu toolu_s mit
+ * `textS` (Standard: Stefans Text) — damit scheitern die Rotfälle an ihrer eigenen Regel, nicht am fehlenden Text.
+ */
+function ablehnungsStdout(denials: unknown[], textS = STEFAN_TEXT): string {
+  const ergebnis = JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_s', content: textS, is_error: true }] } })
+  return `${ergebnis}\n${JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'fertig', permission_denials: denials })}`
 }
 const STEFAN_DENIAL = { tool_name: 'Bash', tool_use_id: 'toolu_s', tool_input: { command: 'npm publish' } }
 /** Protokoll-Artefaktdaten mit einem Eintrag der Art `art` passend zu STEFAN_DENIAL. */
@@ -1108,7 +1114,7 @@ function stefanProtokoll(laufId: string, art = 'stefan_abgelehnt'): Record<strin
     rueckfragen_schema: 'v1',
     lauf_id: laufId,
     ab: 0,
-    eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(STEFAN_DENIAL.tool_input)), art, grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'npm publish' }],
+    eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(STEFAN_DENIAL.tool_input)), art, grund: 'Stefan hat abgelehnt', zeit: '2026-10-16T10:00:00.000Z', befehl: 'npm publish', ...(art === 'stefan_abgelehnt' ? { ablehnung_hash: sha256Hex(STEFAN_TEXT) } : {}) }],
   }
 }
 /** Payload der Terminalmarke eines Laufs (ergebnis + daten). */
@@ -1128,6 +1134,26 @@ test('F45 B2b-3b-1b (e1): Ablehnung allein durch Stefan ⇒ ERFOLGREICH mit date
     assert.deepEqual(payload?.daten, { abgelehnt_durch_stefan: 1 })
   } finally {
     raeumeKette(laufId)
+  }
+})
+
+test('F45 B2b-3b-2b-1b (F-1128 R1): tool_result mit statischem CLI-Text, ohne is_error oder fehlend ⇒ VERWEIGERT; mit Stefans Text ⇒ ERFOLGREICH', () => {
+  const statisch = 'Permission to use Bash with command npm publish has been denied.'
+  const faelle: [string, string, string][] = [
+    ['Stefans Text (Positivkontrolle)', ablehnungsStdout([STEFAN_DENIAL]), 'ERFOLGREICH'],
+    ['statischer Text (gewaschen)', ablehnungsStdout([STEFAN_DENIAL], statisch), 'VERWEIGERT'],
+    ['kein tool_result', JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'fertig', permission_denials: [STEFAN_DENIAL] }), 'VERWEIGERT'],
+    ['is_error false', ablehnungsStdout([STEFAN_DENIAL]).replace('"is_error":true', '"is_error":false'), 'VERWEIGERT'],
+  ]
+  for (const [name, stdout, erwartet] of faelle) {
+    const laufId = neueLaufId('stefan-r1')
+    try {
+      const rohstromReferenz = schreibeRohstrom(laufId, { stdout, stderr: '', exitCode: 0 })
+      const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true), rueckfragen: stefanProtokoll(laufId) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+      assert.equal(ergebnis.ergebnis, erwartet, name)
+    } finally {
+      raeumeKette(laufId)
+    }
   }
 })
 

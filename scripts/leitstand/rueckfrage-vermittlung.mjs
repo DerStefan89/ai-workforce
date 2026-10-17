@@ -27,10 +27,13 @@
  * - B2b-3b-2b-1a: `zugang(laufId, melde)` bündelt für den Controller Speicherstand und Meldung einer Abweichung (R3, Startfehlerliste
  *   des Servers); `beendeLauf` liefert die Zahl der Ablehnungen durch Stefan (R2, Löschliste); `beantworte` merkt je Antwort die
  *   Herkunft (E-B7, `herkunftDerAntwort`) — Hinweis, kein Schutz: jeder lokale Prozess kann antworten (DEKLARIERT).
+ * - B2b-3b-2b-1b (F-1128 R1): jede Ablehnung durch Stefan bekommt einen eigenen Text (`ablehnungstextStefan`, mit Ref); er geht als
+ *   `message` an den Warter (MCP-Skript ⇒ CLI), Protokoll und Speicherstand tragen nur `ablehnung_hash`. Die Auswertung zählt die
+ *   Ablehnung nur, wenn das tool_result der CLI genau diesen Text trägt (src/rueckfrage/protokoll.ts).
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (Routen /api/rueckfrage/…, /api/rueckfragen…, starteLaufUndVergiss,
  * laufOptionen.rueckfrageZugang), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
- * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/leitstand/rueckfrage-vermittlung.test.mjs.
+ * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, scripts/leitstand/rueckfrage-vermittlung.test.mjs.
  */
 
 import { randomUUID, timingSafeEqual } from 'node:crypto'
@@ -66,6 +69,13 @@ export const PROTOKOLL_ARTEN = RUECKFRAGE_PROTOKOLL_ARTEN
 export const RECHTE_ANTWORTEN = Object.freeze(['einmal_erlauben', 'ablehnen'])
 
 const istText = (wert) => typeof wert === 'string'
+
+/**
+ * B2b-3b-2b-1b (F-1128 R1): eindeutiger Ablehnungstext einer Ablehnung durch Stefan. Die CLI gibt ihn wörtlich als tool_result
+ * zurück (features/F45/nachweise/b2b3a/rohstrom-deny.ndjson:9); der Abgleich zählt die Ablehnung nur dann. ASCII (Advisor B12).
+ * @returns `Stefan hat den Befehl abgelehnt. (Ref <uuid>)`
+ */
+export const ablehnungstextStefan = () => `Stefan hat den Befehl abgelehnt. (Ref ${randomUUID()})`
 
 /**
  * E-B7 (B2b-3b-2b-1a): Herkunft einer Antwort aus ihren Kopfzeilen — 'browser', wenn Sec-Fetch-Site 'same-origin' ist oder ein
@@ -141,7 +151,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
    * @param lauf - Lauf-Zustand (Eintragsliste des Protokolls)
    * @param eintrag - Warteschlangeneintrag
    * @param entscheidung - { behavior: 'allow' } | { behavior: 'deny', message } | { antwort }
-   * @param protokoll - { art, grund, antwort? }
+   * @param protokoll - { art, grund, antwort?, herkunft?, ablehnung_hash? }
    */
   function entscheide(laufId, lauf, eintrag, entscheidung, protokoll) {
     if (eintrag.entscheidung !== null) return
@@ -334,7 +344,11 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     if (eintrag.art === 'rechte') {
       if (!RECHTE_ANTWORTEN.includes(antwort.entscheidung)) return { ok: false, status: 400, grund: `entscheidung muss ${RECHTE_ANTWORTEN.join(' oder ')} sein` }
       if (antwort.entscheidung === 'einmal_erlauben') entscheide(laufId, lauf, eintrag, { behavior: 'allow' }, { art: 'stefan_erlaubt', grund: 'Stefan hat einmal erlaubt', herkunft: quelle })
-      else entscheide(laufId, lauf, eintrag, { behavior: 'deny', message: 'Stefan hat den Befehl abgelehnt.' }, { art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', herkunft: quelle })
+      else {
+        // B2b-3b-2b-1b (F-1128 R1): je Ablehnung ein eigener Text (ASCII, wörtlich als tool_result der CLI belegt); ins Protokoll nur sein Hash.
+        const message = ablehnungstextStefan()
+        entscheide(laufId, lauf, eintrag, { behavior: 'deny', message }, { art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', herkunft: quelle, ablehnung_hash: sha256Hex(message) })
+      }
       return { ok: true }
     }
     if (!istText(antwort.antwort) || antwort.antwort.trim().length === 0 || antwort.antwort.length > TEXT_MAX_ZEICHEN) return { ok: false, status: 400, grund: `antwort muss ein Text mit 1–${TEXT_MAX_ZEICHEN} Zeichen sein` }
@@ -361,10 +375,11 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
 
   /**
    * B2b-3b-2a (F-1128 (1)): Speicherstand des Protokolls eines offenen Laufs — Quelle der Wahrheit für den Controller
-   * (ermittleRueckfrageProtokoll, gleicher Prozess), die Datei ist das Audit. Nur die vier Vergleichsfelder als neue Objekte
+   * (ermittleRueckfrageProtokoll, gleicher Prozess), die Datei ist das Audit. Nur die Vergleichsfelder als neue Objekte
    * (Advisor B10: kein Rohtext, keine geteilten Referenzen); ein Werkzeugname über 200 Zeichen wie im Schreiber als '<zu lang>'.
+   * Seit B2b-3b-2b-1b (R1) an stefan_abgelehnt zusätzlich `ablehnung_hash` (nur wenn vorhanden).
    * @param laufId - Lauf
-   * @returns Liste { tool_use_id, tool_name, input_hash, art } oder null (Lauf nicht offen, beendet, nach Neustart)
+   * @returns Liste { tool_use_id, tool_name, input_hash, art, ablehnung_hash? } oder null (Lauf nicht offen, beendet, nach Neustart)
    */
   function eintraegeVon(laufId) {
     const lauf = laeufe.get(laufId)
@@ -374,6 +389,7 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
       tool_name: toolNameFuerProtokoll(e.tool_name),
       input_hash: e.input_hash,
       art: e.art,
+      ...(e.ablehnung_hash !== undefined ? { ablehnung_hash: e.ablehnung_hash } : {}),
     }))
   }
 

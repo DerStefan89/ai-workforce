@@ -1667,7 +1667,10 @@ test('F45 F-3b-2: ortBLauf.plugins erreicht das Init-Gate (kraft@inline läuft d
 
 test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufId> (Stefan-Ablehnung ⇒ ERFOLGREICH); ohne Kanal nicht (VERWEIGERT)', async () => {
   const denial = { tool_name: 'Bash', tool_use_id: 'toolu_s', tool_input: { command: 'npm publish' } }
-  const starter: Starter = async () => ({ stdout: JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: [denial] }), stderr: '', exitCode: 0, startfehler: null, beendigungsart: null })
+  // B2b-3b-2b-1b (F-1128 R1): die CLI gibt Stefans eindeutigen Ablehnungstext als tool_result zurück; Protokoll und Speicher tragen dessen Hash.
+  const text = 'Stefan hat den Befehl abgelehnt. (Ref s)'
+  const toolResult = JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_s', content: text, is_error: true }] } })
+  const starter: Starter = async () => ({ stdout: `${toolResult}\n${JSON.stringify({ type: 'result', is_error: false, result: 'fertig', permission_denials: [denial] })}`, stderr: '', exitCode: 0, startfehler: null, beendigungsart: null })
   // [Kanal an, Protokoll vorhanden, Speicher der Vermittlung, erwartet]: nur Kanal + Protokoll + gleicher Speicherstand ⇒ ERFOLGREICH;
   // Kanal an ohne Artefakt ⇒ VERWEIGERT (qa); F45 B2b-3b-2a (F-1128 (1)): Speicher fehlt bzw. weicht ab (auto_deny) ⇒ VERWEIGERT.
   for (const [mitKanal, mitProtokoll, speicher, erwartet] of [
@@ -1683,11 +1686,11 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
         rueckfragen_schema: 'v1',
         lauf_id: laufId,
         ab: 0,
-        eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(denial.tool_input)), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: new Date().toISOString(), befehl: 'npm publish' }],
+        eintraege: [{ tool_use_id: 'toolu_s', tool_name: 'Bash', input_hash: sha256Hex(kanonischesJson(denial.tool_input)), art: 'stefan_abgelehnt', grund: 'Stefan hat abgelehnt', zeit: new Date().toISOString(), befehl: 'npm publish', ablehnung_hash: sha256Hex(text) }],
       }
       if (mitProtokoll) registriereKernArtefakt(`rueckfragen-${laufId}`, PROFIL_REFERENZ, { erzeuger: 'kern', schritt: 'rueckfrage-protokoll' }, protokoll, [], { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
       const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), ...(mitKanal ? { rueckfrageKanal: { token: 'a'.repeat(64), arbeitsordner: process.cwd(), werkzeugNamen: ['Bash'] } } : {}) }
-      const projektion = protokoll.eintraege.map(({ tool_use_id, tool_name, input_hash, art }) => ({ tool_use_id, tool_name, input_hash, art: speicher === 'auto_deny' ? 'auto_deny' : art }))
+      const projektion = protokoll.eintraege.map(({ tool_use_id, tool_name, input_hash, art, ablehnung_hash }) => (speicher === 'auto_deny' ? { tool_use_id, tool_name, input_hash, art: 'auto_deny' } : { tool_use_id, tool_name, input_hash, art, ablehnung_hash }))
       const gemeldet: string[] = []
       const rueckfrageZugang = speicher === 'fehlt' ? undefined : { speicher: () => projektion, meldeAbweichung: (grund: string) => gemeldet.push(grund) }
       const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {}, ...(rueckfrageZugang !== undefined ? { rueckfrageZugang } : {}) })

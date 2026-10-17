@@ -535,10 +535,11 @@ export function leseBeobachtung(zeilen: string[]): BeobachtungV0 | null {
  * tool_use_result.backgroundTaskId trägt (bei mehreren tool_result-Blöcken in der Zeile gilt es für alle — fail-closed).
  * Belegte Form (Rohstrom af862c09, F-1026): automatisch verschobener Bash-Befehl → tool_use_result
  * { backgroundTaskId, timedOutAfterMs }. Jede andere Zeile liefert []; wirft nie.
+ * F45 B2b-3b-2b-1b (R1): zusätzlich `text` = `content`, wenn er ein String ist (belegte Form, rohstrom-deny.ndjson:9), sonst null.
  * @param zeile - eine geparste stream-json-Zeile
- * @returns je tool_result: toolUseId, fehler, hintergrundId
+ * @returns je tool_result: toolUseId, fehler, hintergrundId, text
  */
-function leseToolResultBloecke(zeile: Record<string, unknown>): Array<{ toolUseId: string; fehler: boolean; hintergrundId: boolean }> {
+function leseToolResultBloecke(zeile: Record<string, unknown>): Array<{ toolUseId: string; fehler: boolean; hintergrundId: boolean; text: string | null }> {
   if (zeile.type !== 'user') return []
   const message = zeile.message
   if (typeof message !== 'object' || message === null) return []
@@ -549,7 +550,28 @@ function leseToolResultBloecke(zeile: Record<string, unknown>): Array<{ toolUseI
   // Mehrere tool_result-Blöcke mit einem backgroundTaskId sind nicht zuzuordnen — dann gelten alle als verschoben (fail-closed).
   const traegtHintergrundId =
     typeof ergebnis === 'object' && ergebnis !== null && typeof (ergebnis as Record<string, unknown>).backgroundTaskId === 'string' && ((ergebnis as Record<string, unknown>).backgroundTaskId as string).length > 0
-  return bloecke.map((b) => ({ toolUseId: b.tool_use_id as string, fehler: b.is_error === true, hintergrundId: traegtHintergrundId }))
+  return bloecke.map((b) => ({ toolUseId: b.tool_use_id as string, fehler: b.is_error === true, hintergrundId: traegtHintergrundId, text: typeof b.content === 'string' ? b.content : null }))
+}
+
+/**
+ * F45 B2b-3b-2b-1b (F-1128 R1): alle tool_result-Blöcke des Rohstroms je tool_use_id (in Reihenfolge) mit Fehlerflag und Text
+ * (`content` als String, sonst null). Grundlage des Abgleichs „Ablehnung durch Stefan“ (src/rueckfrage/protokoll.ts): eine Ablehnung
+ * zählt nur, wenn jedes Ergebnis ihrer ID den eindeutigen Ablehnungstext trägt. Zeilen aus Subagenten zählen mit. Wirft nie.
+ * @param zeilen - NDJSON-Zeilen des stdout
+ * @returns Map tool_use_id → [{ fehler, text }]
+ */
+export function ermittleToolErgebnisse(zeilen: string[]): Map<string, { fehler: boolean; text: string | null }[]> {
+  const ergebnisse = new Map<string, { fehler: boolean; text: string | null }[]>()
+  for (const roh of zeilen) {
+    const zeile = parseObjekt(roh.trim())
+    if (zeile === null) continue
+    for (const { toolUseId, fehler, text } of leseToolResultBloecke(zeile)) {
+      const liste = ergebnisse.get(toolUseId)
+      if (liste === undefined) ergebnisse.set(toolUseId, [{ fehler, text }])
+      else liste.push({ fehler, text })
+    }
+  }
+  return ergebnisse
 }
 
 /**
