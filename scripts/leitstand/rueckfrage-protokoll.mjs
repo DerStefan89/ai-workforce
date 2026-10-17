@@ -15,7 +15,8 @@
  * Vermittlung fängt den Wurf, die Entscheidung bleibt, die Auswertung fällt für die betroffene Ablehnung auf VERWEIGERT
  * (sichere Richtung).
  *
- * Wird aufgerufen von: scripts/leitstand-server.mjs (erzeugeRequestHandler, Standard-Vermittlung; darüber indirekt
+ * Wird aufgerufen von: scripts/check-f45-b2b3b2b2b1-nachweis.mjs (b) (Fixture des Nachweis-Werkzeugs), scripts/leitstand-server.mjs
+ * (erzeugeRequestHandler, Standard-Vermittlung; darüber indirekt
  * scripts/check-f45-b2b3b1b-auswertung.mjs (p3)), scripts/check-f45-b2b3b2b1a-rest.mjs (g), scripts/check-f45-b2b3b2b1b-r1.mjs (r1t),
  * scripts/leitstand/rueckfrage-protokoll.test.mjs.
  */

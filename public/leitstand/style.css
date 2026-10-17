@@ -3548,7 +3548,8 @@ th {
 }
 
 #view-attention .rueckfrage-maske,
-.lauf-seite .rueckfrage-abweichung .rueckfrage-maske {
+.lauf-seite .rueckfrage-abweichung .rueckfrage-maske,
+.workflow-dialog .rueckfrage-abweichung .rueckfrage-maske {
   padding: 0 2px;
   border-radius: 4px;
   background: var(--color-danger-bg);

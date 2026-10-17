@@ -16,6 +16,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workflow-eingriffe.test.mjs (node:test)
+ * - scripts/check-f45-b2b3b2b2b1-nachweis.mjs (a): Sichtung bei R3 in zwei Schritten (renderSichtungDialog, renderSichtungR3Schritt)
  * - scripts/check-f42-projekt-harness.mjs (i) liest diese Datei: die Vorauswahl der Empfehlung im
  *   Formular der Rückfrage (F-711, renderArchitekturEntscheidung)
  * - scripts/check-f15-workflow-oberflaeche.mjs (h) liest diese Datei mit views/workflows.js zusammen
@@ -35,7 +36,7 @@ import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { escapeHtml } from '../render.js'
 import { rollenName } from '../rollen-anzeige.js'
-import { kanalUrsacheHtml } from '../rueckfrage-abnahme.js'
+import { kanalUrsacheHtml, renderRueckfrageAbweichung } from '../rueckfrage-abnahme.js'
 
 /** Workflow-Status, aus denen heraus eine Reparaturfassung vorbereitet wird (F-240). */
 export const REPARIERBARE_WORKFLOW_STATUS = ['GESTOPPT', 'KLAERUNG_ERFORDERLICH']
@@ -244,15 +245,60 @@ export function renderKlaerungDialog(workflowId, architekturEntscheidung) {
  * Inhalt des Dialogs „Abgelehnte Befehle sichten“ (Art 'sichtung'): was die Bestätigung bewirkt,
  * Pflichtbegründung und „Sichtung bestätigt – weiter“.
  * @param workflowId - Kennung des Workflows
- * @param sichtung - { schrittId, laufId, nachfolger }
+ * @param sichtung - { schrittId, laufId, nachfolger, kanal?, kanalUnbekannt? } (kanal = rueckfrageKanal des Lauf-Details)
  * @returns HTML
  */
 export function renderSichtungDialog(workflowId, sichtung) {
+  // F45 B2b-3b-2b-2b-1 (E-R3-Sichtung = B, Stefan 17.10.2026, F-1135 (7)): mit R3 erst „Protokoll-Abweichung ansehen“, die Bestätigung
+  // kommt in Schritt 2 (renderSichtungR3Schritt); der Hinweis steht vor dem Pflichtfeld (design-guardian 2). Ist der Kanal-Stand nicht
+  // ladbar (qa 7), ist die Bestätigung gesperrt, bis er geladen ist — fail closed. Ohne R3 und mit geladenem Stand bleibt der Dialog bitgleich.
+  const r3 = sichtungsAbweichung(sichtung)
+  const unbekannt = r3 === null && sichtung?.kanalUnbekannt === true
+  const kennung = escapeHtml(workflowId)
+  const hinweis = r3 !== null ? 'eingriff.sichtung.r3.hinweis' : unbekannt ? 'eingriff.sichtung.kanalUnbekannt' : null
+  const hauptaktion =
+    r3 !== null
+      ? `<button type="button" class="button primary wf-aktion" data-aktion="sichtung-r3" data-workflow-id="${kennung}">${tHtml('eingriff.sichtung.r3.ansehen')}</button>`
+      : unbekannt
+        ? `<button type="button" class="button primary" disabled>${tHtml('eingriff.sichtung.bestaetigen')}</button>`
+        : `<button type="button" class="button primary wf-aktion" data-aktion="sichtung" data-workflow-id="${kennung}">${tHtml('eingriff.sichtung.bestaetigen')}</button>`
+  const beschrieben = hinweis === null ? 'workflow-dialog-meldung' : 'wf-sichtung-hinweis workflow-dialog-meldung'
   return `${dialogKopf('eingriff.sichtung.titel')}
     <p class="subtle">${tHtml('eingriff.sichtung.folge', {}, { schritt: code(sichtung.schrittId), nachfolger: code(sichtung.nachfolger), lauf: code(sichtung.laufId) })}</p>
-    <label class="field" for="wf-sichtung-begruendung">${tHtml('eingriff.sichtung.begruendung')}</label>
-    <textarea id="wf-sichtung-begruendung" rows="3" aria-required="true" aria-describedby="workflow-dialog-meldung"></textarea>
-    ${dialogFuss(`<button type="button" class="button primary wf-aktion" data-aktion="sichtung" data-workflow-id="${escapeHtml(workflowId)}">${tHtml('eingriff.sichtung.bestaetigen')}</button>`)}`
+    ${hinweis === null ? '' : `<div class="note amber wf-sichtung-r3-hinweis" id="wf-sichtung-hinweis"><p>${tHtml(hinweis)}</p></div>
+    `}<label class="field" for="wf-sichtung-begruendung">${tHtml('eingriff.sichtung.begruendung')}</label>
+    <textarea id="wf-sichtung-begruendung" rows="3" aria-required="true" aria-describedby="${beschrieben}"></textarea>
+    ${r3 === null ? '' : `<div id="wf-sichtung-r3"></div>
+    `}${dialogFuss(hauptaktion)}`
+}
+
+/**
+ * R3-Text der Sichtung (rueckfrageKanal.abweichung des Lauf-Details), oder null ohne Kanal bzw. ohne Abweichung.
+ * @param sichtung - { schrittId, laufId, nachfolger, kanal? }
+ * @returns Text oder null
+ */
+export function sichtungsAbweichung(sichtung) {
+  const abweichung = sichtung?.kanal?.abweichung
+  return typeof abweichung === 'string' && abweichung.length > 0 ? abweichung : null
+}
+
+/**
+ * F45 B2b-3b-2b-2b-1 (E-R3-Sichtung = B): Schritt 2 der Sichtung bei R3 — die R3-Meldung (escaped, täuschende Zeichen maskiert,
+ * renderRueckfrageAbweichung) mit Fokusziel und die eigentliche Bestätigung (derselbe Schreibweg `data-aktion="sichtung"`).
+ * views/workflows.js setzt `meldung` in `#wf-sichtung-r3` und ersetzt mit `knopf` den Knopf aus Schritt 1 an derselben Stelle in
+ * `.dialog-actions`. Bedien-Hürde, DEKLARIERT (ARCHITECTURE §3).
+ * @param workflowId - Kennung des Workflows
+ * @param abweichung - R3-Text
+ * @returns { meldung, knopf } als HTML
+ */
+export function renderSichtungR3Schritt(workflowId, abweichung) {
+  return {
+    meldung: `<div class="wf-sichtung-r3-schritt" id="wf-sichtung-r3-meldung" tabindex="-1" role="group" aria-labelledby="wf-sichtung-r3-titel">
+      <p id="wf-sichtung-r3-titel"><strong>${tHtml('eingriff.sichtung.r3.schritt')}</strong></p>
+      ${renderRueckfrageAbweichung(abweichung)}
+    </div>`,
+    knopf: `<button type="button" class="button primary wf-aktion" data-aktion="sichtung" data-workflow-id="${escapeHtml(workflowId)}">${tHtml('eingriff.sichtung.r3.bestaetigen')}</button>`,
+  }
 }
 
 // ─── Dialoginhalte Freigabe und Stopp (F44 WS-4a: F3, F3b, F4, F5, F10) ───────

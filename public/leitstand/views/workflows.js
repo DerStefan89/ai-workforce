@@ -62,7 +62,7 @@ import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDi
 import { bedienZustand } from './entscheidung-panel.js'
 import { abnahmeLage, ausfuehrungGelaufen, budgetKennung, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung, umfangKennung } from './workflow-abnahme.js'
 import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
-import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen } from './workflow-eingriffe.js'
+import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen, renderSichtungR3Schritt, sichtungsAbweichung } from './workflow-eingriffe.js'
 import { entscheidungsModus, FREIGABE_OPTIONEN, renderFreigabePanel, renderFreigabeSeite, seitenKopf } from './workflow-entscheiden.js'
 
 /** HTML der zuletzt gerenderten Liste „Aufträge“ — ein Poll-Tick schreibt sie nur bei geändertem Inhalt neu, sonst ginge der Tastaturfokus einer Zeile alle zwei Sekunden verloren. */
@@ -112,19 +112,21 @@ const kanalJeLauf = new Map()
 const kanalFehlerBis = new Map()
 /** Rückzug nach einem gescheiterten Abruf. */
 const KANAL_RUECKZUG_MS = 30000
+/** F45 B2b-3b-2b-2b-1 (qa 7): Ergebnis von kanalDerSichtung, wenn das Lauf-Detail nicht ladbar ist — die Sichtung sperrt dann die Bestätigung (fail closed). */
+const KANAL_NICHT_LADBAR = Symbol('kanal-nicht-ladbar')
 /** Laufende Abrufe je Lauf (laufId → Promise). */
 const kanalAbrufe = new Map()
 
 /**
  * rueckfrageKanal des Laufs eines F-760-Halts für die Sichtungs-Notiz: gemerkt ⇒ sofort; sonst GET /api/laeufe/<laufId> — der Aufrufer
  * wartet darauf, bevor er die Bedienung zeichnet (code-reviewer 1: sonst änderte das Nachladen das Kennzeichen und schlösse einen offenen
- * Sichtungs-Dialog). Fehler ⇒ null (Standardsatz) und 30 s Rückzug für diesen Lauf.
+ * Sichtungs-Dialog). Fehler ⇒ KANAL_NICHT_LADBAR (Standardsatz, Bestätigung gesperrt) und 30 s Rückzug für diesen Lauf.
  * @param laufId - Lauf des VERWEIGERT-Schritts
- * @returns Promise<rueckfrageKanal | null>
+ * @returns Promise<rueckfrageKanal | null | KANAL_NICHT_LADBAR>
  */
 function kanalDerSichtung(laufId) {
   if (kanalJeLauf.has(laufId)) return Promise.resolve(kanalJeLauf.get(laufId))
-  if ((kanalFehlerBis.get(laufId) ?? 0) > Date.now()) return Promise.resolve(null)
+  if ((kanalFehlerBis.get(laufId) ?? 0) > Date.now()) return Promise.resolve(KANAL_NICHT_LADBAR)
   // code-reviewer Nachpass A(a): ein laufender Abruf je Lauf — weitere Takte warten auf denselben statt einen neuen zu starten.
   if (!kanalAbrufe.has(laufId)) kanalAbrufe.set(laufId, holeKanalDerSichtung(laufId).finally(() => kanalAbrufe.delete(laufId)))
   return kanalAbrufe.get(laufId)
@@ -133,7 +135,7 @@ function kanalDerSichtung(laufId) {
 /**
  * Ein Abruf des Lauf-Details für kanalDerSichtung; wirft nie.
  * @param laufId - Lauf
- * @returns Promise<rueckfrageKanal | null>
+ * @returns Promise<rueckfrageKanal | null | KANAL_NICHT_LADBAR>
  */
 async function holeKanalDerSichtung(laufId) {
   try {
@@ -146,7 +148,7 @@ async function holeKanalDerSichtung(laufId) {
   } catch (fehler) {
     kanalFehlerBis.set(laufId, Date.now() + KANAL_RUECKZUG_MS)
     console.error(`[leitstand] Rückfrage-Kanal von Lauf '${laufId}' nicht ladbar: ${fehler.message}`)
-    return null
+    return KANAL_NICHT_LADBAR
   }
 }
 
@@ -822,7 +824,9 @@ function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig 
   // F45 B1a-1: die Lage des Arbeitsordners (Status, Vorbereitung, Ordner vorhanden, Grund) steht kodiert davor.
   const ordnerLage = encodeURIComponent(`${arbeitsordner?.status ?? 'null'}:${arbeitsordner?.vorbereitungLaeuft === true}:${arbeitsordner?.ordnerVorhanden !== false}:${arbeitsordner?.grund ?? ''}:${istAbnahmeOffen(status)}`)
   // F45 B2b-3b-2b-2a-3: der nachgeladene Abgleich-Grund des Rückfrage-Kanals gehört zur Sichtungs-Notiz (kodiert, ohne '|').
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}:${encodeURIComponent(JSON.stringify(sichtung?.kanal?.abgleich ?? null))}|${ordnerLage}|${prueferWiederholbar === true}|${budgetKennung(budget)}|${encodeURIComponent(JSON.stringify(empfehlung))}`
+  // F45 B2b-3b-2b-2b-1: dazu, ob eine R3-Abweichung vorliegt (Sichtung dann in zwei Schritten; meist schon über abgleich erfasst) und ob der
+  // Kanal-Stand nicht ladbar war (Bestätigung gesperrt; kommt er, schließt ein offener Dialog und baut sich beim Öffnen neu).
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}:${encodeURIComponent(JSON.stringify(sichtung?.kanal?.abgleich ?? null))}:${sichtungsAbweichung(sichtung) !== null}:${sichtung?.kanalUnbekannt === true}|${ordnerLage}|${prueferWiederholbar === true}|${budgetKennung(budget)}|${encodeURIComponent(JSON.stringify(empfehlung))}`
   if (kennzeichen === bedienungsKennzeichen) return
   // Während einer laufenden Dialog-Bedienung schließt der Dialog erst mit ihrer Antwort (sendeWorkflowBedienung).
   const dialogVeraltet = offenerDialog !== null && laufendeDialogBedienung === null && dialogUeberholt(offenerDialog, kennzeichen)
@@ -1097,7 +1101,9 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     // F-768: die Sichtung ist nur beim reinen F-760-Halt fällig (bei ungültiger Fassung allein die Reparatur).
     const sichtungHalt = ungueltig ? null : istSichtungsHaltAnzeige(daten)
     // F45 B2b-3b-2b-2a-3: dazu der Rückfrage-Kanal des Laufs (Abgleich-Grund statt Standardsatz), abgewartet und je Lauf gemerkt.
-    const sichtung = sichtungHalt === null ? null : { ...sichtungHalt, kanal: await kanalDerSichtung(sichtungHalt.laufId) }
+    // F45 B2b-3b-2b-2b-1 (qa 7): nicht ladbar ⇒ kanal null (Standardsatz) und kanalUnbekannt — der Dialog sperrt die Bestätigung, bis er geladen ist.
+    const kanal = sichtungHalt === null ? null : await kanalDerSichtung(sichtungHalt.laufId)
+    const sichtung = sichtungHalt === null ? null : { ...sichtungHalt, kanal: kanal === KANAL_NICHT_LADBAR ? null : kanal, ...(kanal === KANAL_NICHT_LADBAR ? { kanalUnbekannt: true } : {}) }
     if (istUeberholt()) return
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
     // F45 B2b-1b-2b: planFreigabe (Karten der Freigabe-Seite) und prueferWiederholbar („Advisor wiederholen“) aus dem Detail.
@@ -1186,6 +1192,24 @@ function schliesseWorkflowDetail() {
 function fokussiereZeile(workflowId) {
   const zeile = [...document.getElementById('workflows').querySelectorAll('.workflow-zeile')].find((z) => z.dataset.workflowId === workflowId)
   ;(zeile ?? document.getElementById('runs-titel')).focus()
+}
+
+/**
+ * F45 B2b-3b-2b-2b-1 (E-R3-Sichtung = B): Schritt 2 der Sichtung bei R3 im offenen Dialog — R3-Meldung aus dem aktuellen Detail in
+ * `#wf-sichtung-r3`, der Knopf aus Schritt 1 wird durch die Bestätigung ersetzt, Fokus auf die Meldung. Ohne R3 im Detail oder ohne
+ * Container (Dialog schon neu gebaut) geschieht nichts.
+ * @param workflowId - Kennung des Workflows
+ * @param button - Knopf „Protokoll-Abweichung ansehen“
+ */
+function zeigeSichtungR3Schritt(workflowId, button) {
+  const abweichung = sichtungsAbweichung(aktuellesDetail?.sichtung)
+  const ziel = document.getElementById('wf-sichtung-r3')
+  if (abweichung === null || ziel === null || !button.isConnected) return
+  const schritt = renderSichtungR3Schritt(workflowId, abweichung)
+  ziel.innerHTML = schritt.meldung
+  button.outerHTML = schritt.knopf
+  document.querySelector('#workflow-dialog .wf-sichtung-r3-hinweis')?.remove()
+  document.getElementById('wf-sichtung-r3-meldung')?.focus()
 }
 
 /**
@@ -1327,6 +1351,13 @@ async function fuehreWorkflowAktionAus(button) {
     if (begruendung === null) return
     const verwerfen = document.getElementById('wf-aufraeumen-verwerfen')?.checked === true
     await sendeWorkflowBedienung(() => raeumeArbeitsordnerAuf(workflowId, { begruendung, verwerfen }), button, t('arbeitsordner.meldung.aufgeraeumt'), true)
+    return
+  }
+
+  // F45 B2b-3b-2b-2b-1 (E-R3-Sichtung = B): Schritt 2 — R3-Meldung in den Container, Bestätigung an die Stelle des Knopfs aus Schritt 1
+  // (kein Neuaufbau des Dialogs, die Begründung bleibt). Ein zweiter Klick findet den Knopf nicht mehr.
+  if (aktion === 'sichtung-r3') {
+    zeigeSichtungR3Schritt(workflowId, button)
     return
   }
 
