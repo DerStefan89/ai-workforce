@@ -126,9 +126,27 @@ API-Basis der Instanz — Workforce `http://<Loopback>:<PORT>/api`, Projekt `…
 Port 0 ⇒ Kanal aus. Jede Instanz hat ihre eigene Vermittlung, eine Rückfrage steht nur in der Liste ihrer Instanz; ein Token
 einer anderen Instanz ⇒ 403 ⇒ Ablehnung. Mit Kanal bekommt der Ausführungsauftrag die Regelzeilen `RUECKFRAGE_REGEL`
 (`src/rueckfrage`: Entscheidungen über `frage_stefan`, zuerst vor „- [x] Blockiert“; nicht freigegebene Bash-Befehle gehen an
-Stefan; eine Ablehnung nicht umgehen) — unversioniert wie die cd-Regel, ohne Kanal bleibt der Auftragstext bitgleich. Bis zur
-Anzeige im Leitstand (B2b-3b-2b-2a-2) wartet mit eingeschaltetem Kanal jeder vorgelegte Befehl bis zur Wartegrenze und wird
-dann abgelehnt — **noch nicht für echte Läufe nutzen**. Grenzen:
+Stefan; eine Ablehnung nicht umgehen) — unversioniert wie die cd-Regel, ohne Kanal bleibt der Auftragstext bitgleich.
+**Anzeige** (F45 B2b-3b-2b-2a-2, Teil A Warteschlange): `GET /api/zustand` trägt `rueckfrageStatus` (`{ an: true, warteGrenzeMs }`
+bzw. `{ an: false }`; den Ausschaltgrund nennt nur die Startzeile der Konsole); bei „an“ zeigt der Leitstand ein Band (mit wartenden
+Rückfragen Anzahl, nächste Frist, Link) und zählt offene Rückfragen am Navigationspunkt „Entscheidungen“ mit.
+`public/leitstand/rueckfrage-kanal.js` hängt am einen Poll (kein eigener Timer), fragt `GET …/rueckfragen` der Instanz des aktiven
+Laufs (Register `GET /api/projekte`, `laufAktiv`; ohne Treffer `/api` nur für diesen Takt) und zeigt die Rückfragen als eigene Art
+„kanal“ zuerst in „Deine Entscheidungen“ — getrennt von der Workflow-Rückfrage (F-689). Bash wörtlich und vollständig (je Zeile
+nummeriert, Zeilen- und Zeichenzahl, keine Höhenbegrenzung), nur „Einmal erlauben“/„Ablehnen“; Frage mit Optionen und freier Antwort;
+Restzeit bis zur Frist. Alles als Text (escaped); Steuer- und Formatzeichen (Cc, Cf, Cs, Zl, Zp) und die Markenzeichen ⟦ ⟧ selbst
+erscheinen als Marke ⟦U+XXXX⟧ (im Befehl bleiben `\n`/`\t`, in der Frage `\n`, in Optionen nichts); NBSP und andere Zs,
+Variationsselektoren und Homoglyphen bleiben unmaskiert, Emoji-Folgen mit Zero-Width-Joiner erscheinen dagegen mit Marke ⟦U+200D⟧
+(sichere Richtung); eine Befehlszeile steht in Speicher-Reihenfolge (`unicode-bidi: bidi-override`, rechts-nach-links-Schrift wird nicht
+umgeordnet), Frage und Optionen nicht (Grenze). Einziger Schreiber der Kanal-Gruppe ist rueckfrage-kanal.js
+(Gate f21-ws2 (f-kanal)). `GET /api/rueckfragen` trägt zusätzlich `entschieden` — die letzten 20 Entscheidungen von
+Warteschlangeneinträgen aller Läufe der Instanz (Ringpuffer im Speicher, nach Neustart leer, auch beendeter Läufe) mit `ergebnis`
+und `herkunft`; Befehl und freie Antwort darin über `maskiereGeheimnisse` — wie die offene Liste ohne Token für jeden lokalen Prozess
+lesbar (DEKLARIERT). „Zuletzt entschieden“ zeigt sie, `nicht_browser` als rote Marke „nicht aus dem Browser“; ohne aktiven Lauf
+fragt der Leitstand die zuletzt benutzte Instanz (nach dem Neuladen der Seite `/api`), die Historie eines Projektlaufs ist dann
+bis zum nächsten Lauf dort nicht sichtbar (Grenze). Keine neue Route
+(F-1131); Gate f45-b2b3b2b2a2-anzeige. Die Auswertung im Lauf (Zählung, eigener Grund bei VERWEIGERT, R3-Meldung) folgt mit
+B2b-3b-2b-2a-3, der echte Lauf mit 2b-2b — **noch nicht für echte Läufe nutzen**. Grenzen:
 - Die Vorentscheidung liegt im Leitstand (`src/rueckfrage`), nicht in der CLI: mit „allow“ führte die CLI im Spike Write
   und Bash auch außerhalb des Arbeitsordners aus. Nur ein Bash-Befehl geht an Stefan (wörtlich angezeigt, nur „einmal
   erlauben“ oder „ablehnen“); Datei-Werkzeuge, Werkzeuge außerhalb des Werkzeugsatzes, Hintergrund-Ausführung,
@@ -151,7 +169,7 @@ dann abgelehnt — **noch nicht für echte Läufe nutzen**. Grenzen:
   (`docs/adr/ausfuehrung-bash-allowlist.md`) — der Kanal ist eine Bedien-Grenze für das Modell, keine Sicherheitsgrenze
   gegen selbst ausgeführten Code. E-B7 = A (Stefan, 16.10.2026): das bleibt DEKLARIERT; die Vermittlung hält je Antwort die
   Herkunft im Protokoll fest (`herkunft`: `browser` bei Sec-Fetch-Site same-origin bzw. passendem Origin, sonst
-  `nicht_browser`) — ein Hinweis, kein Schutz (Kopfzeilen sind fälschbar); Anzeige mit B2b-3b-2b-2.
+  `nicht_browser`) — ein Hinweis, kein Schutz (Kopfzeilen sind fälschbar); angezeigt seit B2b-3b-2b-2a-2 („Zuletzt entschieden“).
 - Jede Rückfrage hat eine Wartegrenze (10 min) und endet spätestens mit dem Lauf (abgelehnt bzw. „keine Antwort von
   Stefan“); jeder Fehler im Skript endet als Ablehnung, nie als Erlaubnis.
 

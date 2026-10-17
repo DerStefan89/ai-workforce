@@ -47,6 +47,11 @@
  *     selbst schreibt weiter nur über die api.js-Bausteine
  *     von Click-to-Work. Kein Literal zieht um: alle IDs aus (a) bleiben in
  *     index.html, `holeWorkitems(filter)` bleibt in workboard.js.
+ *     F45 B2b-3b-2b-2a-2 (Advisor V3, benannte Ausnahme): die Gruppe „kanal“ in „Deine Entscheidungen“ wird
+ *     direkt beantwortet — einziger Schreiber ist public/leitstand/rueckfrage-kanal.js über sendeRueckfrageAntwort.
+ *     Zusätzlich daher: attention.js importiert aus api.js nur hole* (wie dashboard.js) und aus
+ *     rueckfrage-kanal.js nur kanalStand/abonniereKanal; sendeRueckfrageAntwort importiert in public/leitstand
+ *     nur rueckfrage-kanal.js (f-kanal, mit Rot-Kalibrierung). Keine bisherige Bedingung entfällt.
  * (g) Syntaxprüfung (node --check) auf allen neuen/geänderten Modulen (F44 WS-3b:
  *     zusätzlich views/workboard-detail.js und rollen-anzeige.js) —
  *     public/ liegt außerhalb von Biome/tsc (siehe check-f15-workflow-
@@ -67,7 +72,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 
 const befunde = []
 console.log('\n=== F21-WS-2-Check (Workboard-Ansicht, Attention-View, Dashboard-Zahlen) ===\n')
@@ -202,6 +207,8 @@ for (const [name, quelltext, erwartetRot] of [
 for (const [name, quelltext] of [
   ['views/dashboard.js', dashboardQuelltext],
   ['views/workboard-detail.js', workboardDetailQuelltext],
+  // F45 B2b-3b-2b-2a-2 (Advisor V3): auch die Attention-View — Schreiben der Kanal-Gruppe nur über rueckfrage-kanal.js.
+  ['views/attention.js', attentionQuelltext],
 ]) {
   const apiImport = quelltext.match(/import\s*\{([^}]*)\}\s*from\s*'\.\.\/api\.js'/)
   if (apiImport === null) continue
@@ -210,6 +217,50 @@ for (const [name, quelltext] of [
     .map((eintrag) => eintrag.trim())
     .filter((eintrag) => eintrag !== '' && !eintrag.startsWith('hole'))
   if (schreibend.length > 0) befunde.push(`(f) ${name} importiert aus api.js nicht nur lesende hole*-Funktionen: ${schreibend.join(', ')}`)
+}
+
+// ─── (f-kanal) F45 B2b-3b-2b-2a-2 (Advisor V3): einziger Schreiber der Kanal-Gruppe ──────────────
+/** Lesende Exporte von rueckfrage-kanal.js, die andere Module importieren dürfen. */
+const KANAL_LESEND = new Set(['kanalStand', 'abonniereKanal'])
+/**
+ * Befunde der Kanal-Schreibregel über Leitstand-Module.
+ * @param dateien - { pfad (relativ zu public/leitstand), text (ohne Kommentare) }[]
+ * @returns Befundtexte
+ */
+function pruefeKanalSchreiber(dateien) {
+  const ergebnis = []
+  for (const { pfad, text } of dateien) {
+    const istKanal = pfad === 'rueckfrage-kanal.js'
+    for (const treffer of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*'([^']*rueckfrage-kanal\.js)'/g)) {
+      // app.js startet den Kanal (initRueckfrageKanal) — ein Start ist kein Schreibweg.
+      const fremd = treffer[1]
+        .split(',')
+        .map((n) => n.trim())
+        .filter((n) => n !== '' && !KANAL_LESEND.has(n) && !(pfad === 'app.js' && n === 'initRueckfrageKanal'))
+      if (fremd.length > 0) ergebnis.push(`(f-kanal) ${pfad} importiert aus rueckfrage-kanal.js nicht nur lesend: ${fremd.join(', ')}`)
+    }
+    // code-reviewer 7: ein Namespace- oder dynamischer Import umginge die Namensliste oben.
+    if (/import\s*\*\s*as\s+\w+\s+from\s*'[^']*rueckfrage-kanal\.js'|import\(\s*['`][^'`]*rueckfrage-kanal\.js/.test(text)) ergebnis.push(`(f-kanal) ${pfad} importiert rueckfrage-kanal.js als Namespace bzw. dynamisch`)
+    if (!istKanal && pfad !== 'api.js' && /\bsendeRueckfrageAntwort\b/.test(text)) ergebnis.push(`(f-kanal) ${pfad} nennt sendeRueckfrageAntwort — einziger Schreiber der Kanal-Gruppe ist rueckfrage-kanal.js`)
+    if (!istKanal && pfad !== 'api.js' && /\/rueckfragen\b/.test(text) && /\/antwort\b/.test(text)) ergebnis.push(`(f-kanal) ${pfad} baut die Antwort-Route selbst`)
+  }
+  return ergebnis
+}
+const leitstandModule = readdirSync('public/leitstand', { recursive: true })
+  .map((pfad) => String(pfad).replaceAll('\\', '/'))
+  .filter((pfad) => pfad.endsWith('.js') && !pfad.startsWith('i18n/'))
+  .map((pfad) => ({ pfad, text: entferneKommentare(readFileSync(`public/leitstand/${pfad}`, 'utf8')) }))
+if (!leitstandModule.some((d) => d.pfad === 'rueckfrage-kanal.js' && /\bsendeRueckfrageAntwort\(/.test(d.text))) befunde.push('(f-kanal) rueckfrage-kanal.js ruft sendeRueckfrageAntwort nicht auf — Schreibweg der Kanal-Gruppe fehlt')
+befunde.push(...pruefeKanalSchreiber(leitstandModule))
+for (const [name, dateien, erwartetRot] of [
+  ['View importiert den Schreiber', [{ pfad: 'views/attention.js', text: "import { sendeRueckfrageAntwort } from '../api.js'" }], true],
+  ['View importiert Nicht-Lesendes aus dem Kanal', [{ pfad: 'views/attention.js', text: "import { kanalStand, initRueckfrageKanal } from '../rueckfrage-kanal.js'" }], true],
+  ['Namespace-Import des Kanals', [{ pfad: 'views/attention.js', text: "import * as kanal from '../rueckfrage-kanal.js'" }], true],
+  ['dynamischer Import des Kanals', [{ pfad: 'views/attention.js', text: "const k = await import('../rueckfrage-kanal.js')" }], true],
+  ['Modul baut die Antwort-Route selbst', [{ pfad: 'x.js', text: "fetch('/api/rueckfragen/' + id + '/antwort', { method: 'POST' })" }], true],
+  ['sauber', [{ pfad: 'views/attention.js', text: "import { abonniereKanal, kanalStand } from '../rueckfrage-kanal.js'" }, { pfad: 'rueckfrage-kanal.js', text: "import { sendeRueckfrageAntwort } from './api.js'" }], false],
+]) {
+  if ((pruefeKanalSchreiber(dateien).length > 0) !== erwartetRot) befunde.push(`(f-kanal-kal) Rot-Kalibrierung '${name}': erwartet ${erwartetRot ? 'rot' : 'grün'}, Gate urteilt anders`)
 }
 
 // ─── (h) Entwicklung-Board: „Braucht dich“ aus attention-daten.js, keine eigene Halt-Regel ──

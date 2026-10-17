@@ -35,13 +35,17 @@
  * laufOptionen.rueckfrageZugang), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
  * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, scripts/check-f45-b2b3b2b2a-einschalten.mjs (Dispatcher-Fall (d)),
  * scripts/leitstand/rueckfrage-vermittlung.test.mjs. Seit B2b-3b-2b-2a-1 liefert `zugang` zusätzlich `zaehlung()` und `abweichung()` (daten der
- * Terminalmarke über den Controller).
+ * Terminalmarke über den Controller). Seit B2b-3b-2b-2a-2 (features/F45/plan-b2b3b2b2a2-v2.md, Advisor M3/M11) liefert `entschiedene()`
+ * die letzten ENTSCHIEDEN_MAX Entscheidungen von Warteschlangeneinträgen (auch beendeter Läufe, nur Speicher, nach Neustart leer) für
+ * GET /api/rueckfragen (Feld `entschieden`, scripts/check-f45-b2b3b2b2a2-anzeige.mjs); Befehl und freie Antwort darin maskiert
+ * (maskiereGeheimnisse) — ohne Token für jeden lokalen Prozess lesbar wie die offene Liste (DEKLARIERT, ARCHITECTURE §3).
  */
 
 import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { kanonischesJson, sha256Hex } from '../../src/checkpoint-store/index.ts'
 import { vorentscheidung } from '../../src/rueckfrage/index.ts'
 import { RUECKFRAGE_HERKUENFTE, RUECKFRAGE_PROTOKOLL_ARTEN, toolNameFuerProtokoll } from '../../src/rueckfrage/protokoll.ts'
+import { maskiereGeheimnisse } from './geheimnisse-maskieren.mjs'
 
 /** Wartegrenze je Rückfrage (Auftrag: 10 min). */
 export const WARTE_GRENZE_MS = 600000
@@ -63,6 +67,8 @@ export const MAX_OFFENE_JE_LAUF = 20
  * Platz für ihre Entscheidung frei (Invariante: Einträge + offene ≤ Grenze); darüber wird ohne Eintrag abgelehnt.
  */
 export const MAX_PROTOKOLL_JE_LAUF = 200
+/** B2b-3b-2b-2a-2 (Advisor M3): so viele zuletzt entschiedene Rückfragen hält `entschiedene()` (alle Läufe zusammen, neueste zuerst). */
+export const ENTSCHIEDEN_MAX = 20
 
 /** Protokoll-Arten (A5: eigene Arten für Fragen) — einzige Quelle src/rueckfrage/protokoll.ts (3b-1b). */
 export const PROTOKOLL_ARTEN = RUECKFRAGE_PROTOKOLL_ARTEN
@@ -107,7 +113,7 @@ export function herkunftDerAntwort(headers) {
  * @param {object} [optionen.pfadOptionen] - an vorentscheidung durchgereicht (nur Tests)
  * @param {() => Date} [optionen.jetzt] - Uhr (nur Tests)
  * @returns Vermittlung { warteGrenzeMs (einzige Quelle auch für Skript-Frist und CLI-timeout), oeffneLauf, laufZuToken, stelle, warte,
- *   offene, beantworte, beendeLauf, eintraegeVon, zugang }
+ *   offene, entschiedene, beantworte, beendeLauf, eintraegeVon, zugang }
  */
 export function erzeugeRueckfrageVermittlung(optionen = {}) {
   const warteGrenzeMs = optionen.warteGrenzeMs ?? WARTE_GRENZE_MS
@@ -116,6 +122,8 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
   const jetzt = optionen.jetzt ?? (() => new Date())
   /** laufId → { token, arbeitsordner, werkzeugNamen, eintraege: Map<id, Eintrag>, bekannteIds: Set<string>, protokoll: object[], geschrieben: number, grenzeGemeldet: boolean } */
   const laeufe = new Map()
+  /** B2b-3b-2b-2a-2: Ringpuffer der zuletzt entschiedenen Warteschlangeneinträge (neueste zuerst, höchstens ENTSCHIEDEN_MAX). */
+  const zuletzt = []
 
   /**
    * Protokolliert eine Entscheidung: an die Eintragsliste des Laufs anhängen, dann den Rückruf mit den noch nicht geschriebenen
@@ -160,8 +168,31 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     clearTimeout(eintrag.timer)
     eintrag.entscheidung = entscheidung
     schreibeProtokoll(laufId, lauf, { ...protokollBasis(eintrag), ...protokoll })
+    merkeEntscheidung(eintrag, protokoll)
     for (const warter of eintrag.warter) warter(entscheidung)
     eintrag.warter.clear()
+  }
+
+  /**
+   * B2b-3b-2b-2a-2 (Advisor M3/M11): legt eine Entscheidung in den Ringpuffer — Befehl und freie Antwort maskiert, die Frage roh (die
+   * Anzeige maskiert Steuerzeichen). Neue Objekte, keine geteilten Referenzen.
+   * @param eintrag - entschiedener Warteschlangeneintrag
+   * @param protokoll - { art, herkunft?, antwort? } der Entscheidung
+   */
+  function merkeEntscheidung(eintrag, protokoll) {
+    zuletzt.unshift({
+      id: eintrag.id,
+      lauf_id: eintrag.lauf_id,
+      art: eintrag.art,
+      tool_name: eintrag.tool_name,
+      ...(eintrag.befehl !== undefined ? { befehl: maskiereGeheimnisse(eintrag.befehl) } : {}),
+      ...(eintrag.frage !== undefined ? { frage: eintrag.frage } : {}),
+      ergebnis: protokoll.art,
+      ...(protokoll.herkunft !== undefined ? { herkunft: protokoll.herkunft } : {}),
+      ...(protokoll.antwort !== undefined ? { antwort: maskiereGeheimnisse(protokoll.antwort) } : {}),
+      entschieden_am: jetzt().toISOString(),
+    })
+    zuletzt.length = Math.min(zuletzt.length, ENTSCHIEDEN_MAX)
   }
 
   /** B2b-3b-2a (Advisor B2): offen = unentschieden; entschiedene Einträge bleiben bis beendeLauf in der Map (A7). */
@@ -326,6 +357,14 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
   }
 
   /**
+   * B2b-3b-2b-2a-2: die zuletzt entschiedenen Rückfragen (Feld `entschieden` von GET /api/rueckfragen), auch beendeter Läufe.
+   * @returns Liste { id, lauf_id, art, tool_name, befehl?, frage?, ergebnis, herkunft?, antwort?, entschieden_am } (Kopien)
+   */
+  function entschiedene() {
+    return zuletzt.map((e) => ({ ...e }))
+  }
+
+  /**
    * Antwort Stefans (Browser). Nur eine offene Rückfrage eines offenen Laufs, genau einmal.
    * @param id - Rückfrage-ID
    * @param antwort - Body: { entscheidung: 'einmal_erlauben' | 'ablehnen' } (Rechte) bzw. { antwort: string } (Frage)
@@ -439,5 +478,5 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
     }
   }
 
-  return { warteGrenzeMs, oeffneLauf, laufZuToken, stelle, warte, offene, beantworte, beendeLauf, eintraegeVon, zugang }
+  return { warteGrenzeMs, oeffneLauf, laufZuToken, stelle, warte, offene, entschiedene, beantworte, beendeLauf, eintraegeVon, zugang }
 }

@@ -51,8 +51,9 @@ export function typChip(typ, optionen = {}) {
   return `<span class="${klasse}"><span class="typ-chip-punkt" aria-hidden="true"></span>${escapeHtml(t(`typ.${typ}`))}${zusatz}</span>`
 }
 
-/** Entscheidungsarten mit eigener Farbe (--art-*, F46 D2); Lauf-Fehler und Startprobleme teilen sich „fehler“. */
-const FARBE_JE_ART = Object.freeze({ freigabe: 'freigabe', abnahme: 'abnahme', rueckfrage: 'rueckfrage', lauf: 'fehler', startproblem: 'fehler', befund: 'befund' })
+/** Entscheidungsarten mit eigener Farbe (--art-*, F46 D2); Lauf-Fehler und Startprobleme teilen sich „fehler“; die Kanal-Rückfrage
+ * (F45 B2b-3b-2b-2a-2) teilt sich „rueckfrage“ (keine neue Farbe, Advisor M5). */
+const FARBE_JE_ART = Object.freeze({ kanal: 'rueckfrage', freigabe: 'freigabe', abnahme: 'abnahme', rueckfrage: 'rueckfrage', lauf: 'fehler', startproblem: 'fehler', befund: 'befund' })
 
 /**
  * Art-Chip einer Entscheidung (F46 D2, Bild 09-Main) — dieselbe Chip-Form wie die Typ-Chips, als

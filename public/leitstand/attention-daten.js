@@ -19,6 +19,11 @@
  * „Zum Eintrag“ über den Auftrag (baueReferenzJeAuftrag) und die Zahl am Navigationspunkt
  * (zaehleOffeneEntscheidungen, public/leitstand/entscheidungen-zaehler.js).
  *
+ * F45 B2b-3b-2b-2a-2 (features/F45/plan-b2b3b2b2a2-v2.md, Advisor V1): Art „kanal“ — offene Rückfragen des Rückfrage-Kanals
+ * (public/leitstand/rueckfrage-kanal.js), getrennt von der Workflow-Rückfrage „rueckfrage“ (F-689). Die Gruppe gibt es nur, wenn der
+ * Aufrufer sie übergibt (optionen.kanal); fehlt sie, bleibt alles bitgleich zu vorher. Vier Zustände je Gruppe: nicht vorhanden
+ * (Schlüssel fehlt), lädt (undefined), defekt (null), Liste.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/views/attention.js
  * - public/leitstand/views/dashboard.js
@@ -91,7 +96,7 @@ export function waehleP0P1(antwort) {
 }
 
 /** Arten eines Entscheidungseintrags (F44 WS-2a; F46 D2: 'abnahme'). */
-export const ENTSCHEIDUNGS_ARTEN = ['freigabe', 'rueckfrage', 'abnahme', 'lauf', 'startproblem', 'befund']
+export const ENTSCHEIDUNGS_ARTEN = ['kanal', 'freigabe', 'rueckfrage', 'abnahme', 'lauf', 'startproblem', 'befund']
 
 /**
  * Filter der Liste „Deine Entscheidungen“ (F46 D2, Bild 09-Main) in Chip-Reihenfolge, je mit den
@@ -103,17 +108,17 @@ export const ENTSCHEIDUNGS_FILTER = Object.freeze([
   { id: 'freigabe', arten: ['freigabe'] },
   { id: 'abnahme', arten: ['abnahme'] },
   { id: 'sichern', arten: [] },
-  { id: 'rueckfrage', arten: ['rueckfrage'] },
+  { id: 'rueckfrage', arten: ['rueckfrage', 'kanal'] },
   { id: 'fehler', arten: ['lauf', 'startproblem'] },
   { id: 'befund', arten: ['befund'] },
 ])
 
 /** Quelle (Gruppe in baueEntscheidungen) je Art — ein Filter ist unvollständig, solange eine seiner Quellen lädt oder defekt ist. */
-const GRUPPE_JE_ART = { freigabe: 'workflows', rueckfrage: 'workflows', abnahme: 'abnahmen', lauf: 'laeufe', startproblem: 'startfehler', befund: 'workitems' }
+const GRUPPE_JE_ART = { kanal: 'kanal', freigabe: 'workflows', rueckfrage: 'workflows', abnahme: 'abnahmen', lauf: 'laeufe', startproblem: 'startfehler', befund: 'workitems' }
 
 /**
  * Anzahl je Filter für die Chips (F46 D2). Ein Filter, dessen Quelle defekt ist, bekommt null, eine
- * noch ladende undefined — nie eine Zahl, die nach Entwarnung aussieht.
+ * noch ladende undefined — nie eine Zahl, die nach Entwarnung aussieht. Nicht vorhandene Gruppen (kanal ohne Übergabe) zählen nicht.
  * @param ergebnis - Rückgabe von baueEntscheidungen
  * @returns Map Filter-id → Zahl | null | undefined (für 'sichern' immer undefined: „kommt“)
  */
@@ -124,7 +129,7 @@ export function zaehleJeFilter(ergebnis) {
       anzahl.set(filter.id, undefined)
       continue
     }
-    const gruppen = [...new Set((filter.arten ?? ENTSCHEIDUNGS_ARTEN).map((art) => GRUPPE_JE_ART[art]))]
+    const gruppen = [...new Set((filter.arten ?? ENTSCHEIDUNGS_ARTEN).map((art) => GRUPPE_JE_ART[art]))].filter((name) => Object.hasOwn(ergebnis.gruppen, name))
     const zustaende = gruppen.map((name) => ergebnis.gruppen[name])
     if (zustaende.some((liste) => liste === null)) anzahl.set(filter.id, null)
     else if (zustaende.some((liste) => liste === undefined)) anzahl.set(filter.id, undefined)
@@ -194,7 +199,7 @@ function textOderNull(wert) {
  * dieselbe Auswahl, Reihenfolge und Beschriftung zeigen. Filterregeln wie oben
  * (filtereAttentionWorkflows/filtereOffeneAbnahmen/filtereAttentionLaeufe), keine zweite Regel.
  *
- * Reihenfolge: Freigaben (naechster.art haltFreigabe) → Rückfragen (haltKlaerung) → offene
+ * Reihenfolge: Kanal-Rückfragen (nur mit optionen.kanal; sie warten mit Frist) → Freigaben (naechster.art haltFreigabe) → Rückfragen (haltKlaerung) → offene
  * Abnahmen (F46 D2, Kopfdatum abnahme.offen) → unbestätigte fehlgeschlagene Läufe →
  * Startprobleme → Befunde (P0 vor P1). Innerhalb einer Art bleibt die Reihenfolge der Quelle.
  *
@@ -211,15 +216,18 @@ function textOderNull(wert) {
  * @param zustand - Aggregat aus dem Poll ({ workflows, laeufe, startfehler }, je null bei defekter Quelle), oder null vor dem ersten Tick
  * @param workitems - offene P0/P1-Workitems (holeOffeneP0P1Workitems().workitems), null bei defekter Quelle, undefined solange der Abruf läuft
  * @param referenzJeAuftrag - optional baueReferenzJeAuftrag(auftraege) für „Zum Eintrag“; ohne (null/undefined) ist eintragHash null
- * @returns { gruppen: { workflows, abnahmen, laeufe, startfehler, workitems } je Eintrag[] (null = defekt, undefined = lädt), eintraege: alle vorhandenen Einträge in Listenreihenfolge, zaehler: je Gruppe Anzahl oder null/undefined, defekt: mindestens eine Quelle null, alleLeer: alle Quellen geladen und leer }
+ * @param optionen - { kanal? } — F45 B2b-3b-2b-2a-2: Kanal-Einträge (rueckfrage-daten.js baueKanalEintraege), null (defekt) oder undefined
+ *   (lädt); ohne den Schlüssel gibt es keine Gruppe „kanal“ (Kanal aus, alle bisherigen Aufrufer)
+ * @returns { gruppen: { kanal?, workflows, abnahmen, laeufe, startfehler, workitems } je Eintrag[] (null = defekt, undefined = lädt), eintraege: alle vorhandenen Einträge in Listenreihenfolge, zaehler: je Gruppe Anzahl oder null/undefined, defekt: mindestens eine Quelle null, alleLeer: alle Quellen geladen und leer }
  */
-export function baueEntscheidungen(zustand, workitems, referenzJeAuftrag = null) {
+export function baueEntscheidungen(zustand, workitems, referenzJeAuftrag = null, optionen = {}) {
   const workflowsRoh = zustand === null ? undefined : filtereAttentionWorkflows(zustand.workflows ?? null)
   const abnahmenRoh = zustand === null ? undefined : filtereOffeneAbnahmen(zustand.workflows ?? null)
   const laeufeRoh = zustand === null ? undefined : filtereAttentionLaeufe(zustand.laeufe ?? null)
   const startfehlerRoh = zustand === null ? undefined : (zustand.startfehler ?? null)
 
   const gruppen = {
+    ...(Object.hasOwn(optionen, 'kanal') ? { kanal: optionen.kanal } : {}),
     workflows: Array.isArray(workflowsRoh)
       ? [...workflowsRoh.filter((w) => w.naechster?.art === 'haltFreigabe'), ...workflowsRoh.filter((w) => w.naechster?.art !== 'haltFreigabe')].map((w) => ({
           art: w.naechster?.art === 'haltFreigabe' ? 'freigabe' : 'rueckfrage',
@@ -280,7 +288,7 @@ export function baueEntscheidungen(zustand, workitems, referenzJeAuftrag = null)
       : workitems,
   }
 
-  const listen = [gruppen.workflows, gruppen.abnahmen, gruppen.laeufe, gruppen.startfehler, gruppen.workitems]
+  const listen = Object.values(gruppen)
   const zaehler = {}
   for (const [name, liste] of Object.entries(gruppen)) zaehler[name] = Array.isArray(liste) ? liste.length : liste
   return {

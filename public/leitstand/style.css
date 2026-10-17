@@ -869,6 +869,24 @@ svg.icon {
   overflow-wrap: anywhere;
 }
 
+/* F45 B2b-3b-2b-2a-2 (F-1132 (3), Advisor V4): Band des Rückfrage-Kanals (rueckfrage-kanal.js) — wie #start-hinweis, amber;
+   mit wartenden Rückfragen (data-art='wartend') kräftiger Rand und Text in der Grundfarbe. */
+#rueckfrage-kanal-hinweis {
+  margin: 16px 48px 0;
+  padding: 12px 20px;
+  border-left: 2px solid var(--amber);
+  background: var(--note-amber-bg);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#rueckfrage-kanal-hinweis[data-art='wartend'] {
+  border-left-width: 4px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
 #shell-koerper {
   display: flex;
   flex: 1;
@@ -966,6 +984,7 @@ svg.icon {
 :root[data-eingang='true'] #shell-kopf,
 :root[data-eingang='true'] #poll-fehler,
 :root[data-eingang='true'] #start-hinweis,
+:root[data-eingang='true'] #rueckfrage-kanal-hinweis,
 :root[data-eingang='true'] #shell-chat-spalte,
 :root[data-eingang='true'] #chat-blase {
   display: none !important;
@@ -999,7 +1018,8 @@ svg.icon {
   }
 
   #poll-fehler,
-  #start-hinweis {
+  #start-hinweis,
+  #rueckfrage-kanal-hinweis {
     margin: 16px 30px 0;
   }
 
@@ -1125,7 +1145,8 @@ svg.icon {
   }
 
   #poll-fehler,
-  #start-hinweis {
+  #start-hinweis,
+  #rueckfrage-kanal-hinweis {
     margin: 12px 16px 0;
   }
 
@@ -3372,7 +3393,7 @@ th {
   margin: 0;
 }
 
-#view-attention .attention-abschnitt > div {
+#view-attention .attention-abschnitt > div:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -3400,6 +3421,10 @@ th {
 }
 
 #view-attention .entscheidung-karte.art-rueckfrage {
+  --art-farbe: var(--art-rueckfrage);
+}
+
+#view-attention .entscheidung-karte.art-kanal {
   --art-farbe: var(--art-rueckfrage);
 }
 
@@ -3468,6 +3493,167 @@ th {
 
 #view-attention .entscheidung-karte-aktionen .text-link {
   font-size: 12px;
+}
+
+/* F45 B2b-3b-2b-2a-2: Karte des Rückfrage-Kanals (rueckfrage-anzeige.js) — eine Spalte, Befehl wörtlich und vollständig: keine
+   Höhenbegrenzung, kein waagrechtes Scrollen (pre-wrap, Umbruch überall), Zeilennummern über die Liste. Masken (⟦U+…⟧) als Marke. */
+#view-attention .rueckfrage-karte {
+  align-items: stretch;
+}
+
+#view-attention .rueckfrage-restzeit {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+#view-attention .rueckfrage-umfang {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-attention .rueckfrage-befehl {
+  margin: 0;
+  padding: 10px 12px 10px 3.2em;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--code-bg);
+  font: 12.5px/1.55 var(--font-family-mono);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+}
+
+/* qa 3: die Zeile in Speicher-Reihenfolge (links nach rechts) — rechts-nach-links-Schrift darf neutrale Zeichen nicht umordnen. */
+#view-attention .rueckfrage-befehl li {
+  min-height: 1.55em;
+  padding-left: 4px;
+  direction: ltr;
+  unicode-bidi: bidi-override;
+}
+
+#view-attention .rueckfrage-befehl li::marker {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+#view-attention .rueckfrage-frage {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#view-attention .rueckfrage-maske {
+  padding: 0 2px;
+  border-radius: 4px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  font-family: var(--font-family-mono);
+  white-space: nowrap;
+}
+
+#view-attention .rueckfrage-hinweis,
+#view-attention .rueckfrage-meldung {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-attention .rueckfrage-meldung.fehler {
+  color: var(--red);
+}
+
+#view-attention .rueckfrage-optionen,
+#view-attention .rueckfrage-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#view-attention .rueckfrage-optionen .button,
+#view-attention .rueckfrage-aktionen .button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+/* design-guardian 6: Feld nach dem Muster der Workflow-Seite (.workflow-seite label.field / textarea). */
+#view-attention .rueckfrage-karte label.field {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+#view-attention .rueckfrage-frei {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+  resize: vertical;
+}
+
+#view-attention .rueckfrage-frei:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+#view-attention .rueckfrage-zuletzt-block h3 {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+#view-attention .rueckfrage-zuletzt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#view-attention .rueckfrage-zuletzt-eintrag {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#view-attention .rueckfrage-zuletzt-eintrag.nicht-browser {
+  border-color: var(--danger-line);
+}
+
+#view-attention .rueckfrage-zuletzt-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#view-attention .rueckfrage-zuletzt-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+}
+
+#view-attention code.rueckfrage-zuletzt-text {
+  direction: ltr;
+  unicode-bidi: bidi-override;
 }
 
 #view-attention .entscheidung-karte-ohne {

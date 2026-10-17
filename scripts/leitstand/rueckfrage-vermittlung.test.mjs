@@ -5,7 +5,8 @@
  * offene Läufe, auto_deny ohne Warteschlangeneintrag, doppelte tool_use_id, nur „einmal erlauben“/„ablehnen“, genau einmal
  * beantwortbar, Entscheidung zwischen zwei Polls bleibt erhalten (A7), Wartegrenze, Lauf-Ende, Protokoll vor Auslieferung; seit
  * F45 B2b-3b-2a eintraegeVon (Projektion) und die Obergrenzen je Lauf (20 offene, 200 Einträge, F-1128 (5), F-1126 (2)); seit
- * B2b-3b-2b-1a Zuwachs je Protokollaufruf (`ab`), beendeLauf-Zahl (R2), herkunft (E-B7) und zugang (R3).
+ * B2b-3b-2b-1a Zuwachs je Protokollaufruf (`ab`), beendeLauf-Zahl (R2), herkunft (E-B7) und zugang (R3); seit B2b-3b-2b-2a-2
+ * entschiedene() (Ringpuffer, Maskierung, auch nach beendeLauf).
  *
  * Wird aufgerufen von: `npm run test` (node --test)
  */
@@ -13,7 +14,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { sha256Hex } from '../../src/checkpoint-store/index.ts'
-import { KEINE_ANTWORT, MAX_OFFENE_JE_LAUF, MAX_PROTOKOLL_JE_LAUF, ablehnungstextStefan, erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './rueckfrage-vermittlung.mjs'
+import { ENTSCHIEDEN_MAX, KEINE_ANTWORT, MAX_OFFENE_JE_LAUF, MAX_PROTOKOLL_JE_LAUF, ablehnungstextStefan, erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './rueckfrage-vermittlung.mjs'
 
 const TOKEN = 'b'.repeat(64)
 const ORDNER = process.platform === 'win32' ? 'C:\\proj\\wf' : '/proj/wf'
@@ -462,4 +463,42 @@ test('F45 B2b-3b-2a (qa B8): nach der 20er-Grenze ist die ID gemerkt — die Wie
   assert.match(v.stelle('l1', bash('x')).entscheidung.message, /zu viele offene/)
   assert.match(v.stelle('l1', bash('x')).entscheidung.message, /doppelt/)
   v.beendeLauf('l1')
+})
+
+test('F45 B2b-3b-2b-2a-2 (Advisor M3/M11): entschiedene — neueste zuerst, Herkunft, Antwort und Befehl maskiert, auch nach beendeLauf; offene nicht', async () => {
+  const { v } = aufbau()
+  assert.deepEqual(v.entschiedene(), [])
+  const a = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'curl -H "Authorization: Bearer abcdefghijklmnop" x' }, tool_use_id: 'a' })
+  const b = v.stelle('l1', { art: 'frage', frage: 'Welche Datenbank?', optionen: ['A', 'B'], tool_use_id: 'b' })
+  const c = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: 'ls' }, tool_use_id: 'c' })
+  assert.deepEqual(v.entschiedene(), [], 'offene Rückfragen stehen nicht in entschieden')
+  assert.deepEqual(v.beantworte(a.id, { entscheidung: 'einmal_erlauben' }, 'browser'), { ok: true })
+  assert.deepEqual(v.beantworte(b.id, { antwort: 'password=geheim123' }), { ok: true })
+  const liste = v.entschiedene()
+  assert.deepEqual(liste.map((e) => [e.id, e.ergebnis, e.herkunft]), [[b.id, 'frage_beantwortet', 'nicht_browser'], [a.id, 'stefan_erlaubt', 'browser']])
+  assert.doesNotMatch(liste[1].befehl, /abcdefghijklmnop/, 'Befehl in der Historie maskiert')
+  assert.doesNotMatch(liste[0].antwort, /geheim123/, 'freie Antwort in der Historie maskiert')
+  assert.equal(liste[0].frage, 'Welche Datenbank?')
+  assert.match(liste[0].entschieden_am, /^\d{4}-\d{2}-\d{2}T/)
+  liste[0].ergebnis = 'verändert'
+  assert.equal(v.entschiedene()[0].ergebnis, 'frage_beantwortet', 'Kopien, keine geteilten Objekte')
+  v.beendeLauf('l1')
+  const danach = v.entschiedene()
+  assert.equal(danach.length, 3, 'nach dem Lauf-Ende bleibt die Historie; die offene wird lauf_beendet')
+  assert.deepEqual([danach[0].id, danach[0].ergebnis, danach[0].herkunft], [c.id, 'lauf_beendet', undefined])
+})
+
+test('F45 B2b-3b-2b-2a-2: entschiedene hält höchstens ENTSCHIEDEN_MAX; auto_deny ohne Warteschlangeneintrag erscheint nicht', () => {
+  const { v } = aufbau()
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'w' })
+  const ids = []
+  for (let i = 0; i < ENTSCHIEDEN_MAX + 5; i++) {
+    const r = v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input: { command: `echo ${i}` }, tool_use_id: `t${i}` })
+    v.beantworte(r.id, { entscheidung: 'ablehnen' }, 'browser')
+    ids.push(r.id)
+  }
+  const liste = v.entschiedene()
+  assert.equal(liste.length, ENTSCHIEDEN_MAX)
+  assert.equal(liste[0].id, ids.at(-1))
+  assert.ok(liste.every((e) => e.ergebnis === 'stefan_abgelehnt'))
 })

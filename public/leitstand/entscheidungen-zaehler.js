@@ -19,20 +19,27 @@
  * - 0, vor dem ersten Tick oder bei defekter Quelle: verborgen — keine Zahl, die Entwarnung
  *   vortäuscht (die Seite selbst zeigt den Defekt).
  * - Geschrieben wird nur bei geänderter Zahl. Import-sicher: kein DOM beim Import.
+ * - F45 B2b-3b-2b-2a-2 (Advisor V4): dazu die offenen Rückfragen des Rückfrage-Kanals (rueckfrage-kanal.js, aus dessen Abruf je Takt —
+ *   kein zweiter Abruf hier); wer im Chat oder auf der Workflow-Seite ist, sieht so eine wartende Rückfrage.
  */
 
 import { zaehleOffeneEntscheidungen } from './attention-daten.js'
 import { formatiereZahl, t } from './i18n.js'
 import { escapeHtml } from './render.js'
+import { abonniereKanal, kanalStand } from './rueckfrage-kanal.js'
 import { abonniere } from './zustand.js'
 
 /**
  * Anzeige des Zählers aus dem Poll-Aggregat. Reine Funktion.
  * @param zustand - Aggregat aus GET …/zustand oder null
+ * @param kanalOffen - F45 B2b-3b-2b-2a-2: Zahl offener Kanal-Rückfragen (0 ohne Kanal bzw. solange unbekannt)
  * @returns null (verborgen) oder { anzahl, html } — html ist die escapte Ziffer plus Screenreader-Text
  */
-export function zaehlerAnzeige(zustand) {
-  const anzahl = zaehleOffeneEntscheidungen(zustand)
+export function zaehlerAnzeige(zustand, kanalOffen = 0) {
+  const poll = zaehleOffeneEntscheidungen(zustand)
+  const kanal = Number.isInteger(kanalOffen) && kanalOffen > 0 ? kanalOffen : 0
+  // Korrekturrunde (qa 2): bekannte Kanal-Rückfragen bleiben sichtbar, auch wenn eine Poll-Quelle fehlt — eine Untergrenze, keine Entwarnung.
+  const anzahl = poll === null ? (kanal > 0 ? kanal : null) : poll + kanal
   if (anzahl === null || anzahl === 0) return null
   const zahl = formatiereZahl(anzahl)
   return { anzahl, html: `<span aria-hidden="true">${escapeHtml(zahl)}</span><span class="sr-only">, ${escapeHtml(t('nav.entscheidungen.offen', { anzahl, zahl }))}</span>` }
@@ -43,12 +50,21 @@ export function initEntscheidungenZaehler() {
   const element = document.getElementById('nav-entscheidungen-zaehler')
   if (element === null) return
   let letzteAnzahl
-  abonniere((zustand) => {
-    const anzeige = zaehlerAnzeige(zustand)
+  let letzterZustand = null
+  const aktualisiere = () => {
+    const kanal = kanalStand()
+    // Nachpass (code-reviewer 3, qa 5): bei defektem Kanal-Abruf die letzte bekannte Zahl als Untergrenze.
+    const kanalOffen = !kanal.an ? 0 : Array.isArray(kanal.offene) ? kanal.offene.length : kanal.offene === null ? (kanal.bekannteOffene ?? 0) : 0
+    const anzeige = zaehlerAnzeige(letzterZustand, kanalOffen)
     const anzahl = anzeige === null ? null : anzeige.anzahl
     if (anzahl === letzteAnzahl) return
     letzteAnzahl = anzahl
     element.hidden = anzeige === null
     element.innerHTML = anzeige === null ? '' : anzeige.html
+  }
+  abonniere((zustand) => {
+    letzterZustand = zustand
+    aktualisiere()
   })
+  abonniereKanal(aktualisiere)
 }

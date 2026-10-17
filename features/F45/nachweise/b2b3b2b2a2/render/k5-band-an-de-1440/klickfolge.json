@@ -1,0 +1,99 @@
+{
+  "url": "http://127.0.0.1:4407/#/attention",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1800
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Band",
+        "selector": "#rueckfrage-kanal-hinweis"
+      },
+      {
+        "name": "Restzeit erste Karte",
+        "selector": "#attention-kanal [data-kanal-restzeit]"
+      },
+      {
+        "name": "Umfang erster Befehl",
+        "selector": "#attention-kanal .rueckfrage-umfang"
+      },
+      {
+        "name": "Zuletzt entschieden (erster Eintrag)",
+        "selector": "#attention-kanal-zuletzt .rueckfrage-zuletzt-kopf"
+      },
+      {
+        "name": "Zahl am Navigationspunkt",
+        "selector": "#nav-entscheidungen-zaehler"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Kanal-Karte",
+        "selector": "#attention-kanal [data-kanal-id]"
+      },
+      {
+        "name": "Maske sichtbar",
+        "selector": "#attention-kanal .rueckfrage-maske"
+      },
+      {
+        "name": "leere Option gesperrt",
+        "selector": "#attention-kanal .rueckfrage-option[disabled]"
+      },
+      {
+        "name": "„nicht aus dem Browser“",
+        "selector": "#attention-kanal-zuletzt .nicht-browser .badge.fehler"
+      },
+      {
+        "name": "<img> aus dem Befehl gerendert (soll false)",
+        "selector": "#attention-kanal img"
+      },
+      {
+        "name": "Freitext noch da",
+        "selector": "#attention-kanal textarea:not(:placeholder-shown)"
+      },
+      {
+        "name": "Fehlermeldung an Karte",
+        "selector": "#attention-kanal .rueckfrage-meldung.fehler:not([hidden])"
+      },
+      {
+        "name": "Fokus in der Kanal-Liste",
+        "selector": "#attention-kanal :focus"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Karten geladen",
+      "warteAufSelector": {
+        "selector": "#attention-kanal [data-kanal-id] [data-kanal-restzeit]:not(:empty)",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Befehl ablehnen",
+      "klick": "#attention-kanal [data-kanal-id] [data-entscheidung=\"ablehnen\"]"
+    },
+    {
+      "label": "nur noch die Frage",
+      "warteAufSelector": {
+        "selector": "#attention-kanal [data-kanal-id]:only-child [data-option-index=\"0\"]",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Frage: Option SQLite",
+      "klick": "#attention-kanal [data-option-index=\"0\"]"
+    },
+    {
+      "label": "Übersicht: Band „an“ ohne Wartende",
+      "navigiere": "#/dashboard",
+      "warteAufSelector": {
+        "selector": "#rueckfrage-kanal-hinweis[data-art='an']",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-de-1440.webp"
+    }
+  ]
+}
