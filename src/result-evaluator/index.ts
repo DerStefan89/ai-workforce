@@ -52,7 +52,9 @@
  * src/rueckfrage/protokoll.ts) und der keinen Umgehungsverdacht trägt, ERFOLGREICH mit daten.abgelehnt_durch_stefan
  * statt VERWEIGERT. Fehlt das Feld, ist es null oder ungültig, bleibt die Klassifikation bitgleich zu vorher. Seit B2b-3b-2b-1b
  * (F-1128 R1) zählt eine Ablehnung nur, wenn jedes tool_result ihrer ID im Rohstrom genau den eindeutigen Ablehnungstext trägt
- * (ermittleToolErgebnisse, Hash-Vergleich, keine Textdeutung).
+ * (ermittleToolErgebnisse, Hash-Vergleich, keine Textdeutung). Seit B2b-3b-2b-2a-1 (F-1128 (3)/R3) trägt ein Kanal-Lauf in daten der
+ * Terminalmarke zusätzlich: bei VERWEIGERT `rueckfrage_abgleich` { art, grund }, bei ERFOLGREICH/VERWEIGERT `rueckfrage_zaehlung`
+ * (Speicherstand, vom Controller), bei jedem Ergebnis mit verworfenem Protokoll `rueckfrage_abweichung` (gekappt). Ohne Kanal bitgleich.
  *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens, seit F45 B2b-3b-1a in
  * src/invocation-policy neben pruefeAufrufparameter, damit die Vorentscheidung des
@@ -74,12 +76,21 @@ import { leseCodexEreignisse } from '../codex-gateway/index.ts'
 import { ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAufrufparameter, toolInputZuTokens } from '../invocation-policy/index.ts'
-import { gleicheAblehnungenAb } from '../rueckfrage/protokoll.ts'
+import { gleicheAblehnungenAb, PROTOKOLL_GRENZEN } from '../rueckfrage/protokoll.ts'
 import type { KlassifikationsEingaben, KlassifikationsErgebnis, KlassifikationsOptionen } from './types.ts'
+
+/**
+ * F45 B2b-3b-2b-2a-1 (F-1128 (3)): warum ein Kanal-Lauf VERWEIGERT bleibt — `abgleich` (Grund aus ABGLEICH_GRUENDE), `abweichung`
+ * (R3, Protokoll verworfen), `kein_protokoll` (keine Rückfrage im Lauf bzw. nicht lesbar), `nicht_geprueft` (Umgehungsverdacht, E-186).
+ */
+type RueckfrageAbgleich = { art: 'abgleich' | 'abweichung' | 'kein_protokoll' | 'nicht_geprueft'; grund: string }
+
+/** Kappt einen R3-Grund (kann Text aus einer gefälschten Datei tragen, Advisor B10). */
+const kappeGrund = (grund: string): string => grund.slice(0, PROTOKOLL_GRENZEN.grund)
 
 type ErgebnisOhneWirkungsmarke =
   | { ergebnis: 'FEHLGESCHLAGEN'; grund: string; daten?: Record<string, unknown> }
-  | { ergebnis: 'VERWEIGERT'; bypass_verdacht_anzahl: number; is_error?: unknown; non_execution_kind?: unknown }
+  | { ergebnis: 'VERWEIGERT'; bypass_verdacht_anzahl: number; is_error?: unknown; non_execution_kind?: unknown; rueckfrage_abgleich?: RueckfrageAbgleich }
   | { ergebnis: 'ERFOLGREICH'; is_error?: unknown; non_execution_kind?: unknown; abgelehnt_durch_stefan?: number }
 
 /**
@@ -269,7 +280,8 @@ function ermittleErgebnis(
   laufId: string,
   laufakte: LaufakteV0Daten,
   claudeAenderungen: readonly string[] | undefined,
-  rueckfragen: unknown
+  rueckfragen: unknown,
+  rueckfrageAbweichung?: string
 ): ErgebnisOhneWirkungsmarke & { daten?: Record<string, unknown> } {
   let rohInhalt: string
   try {
@@ -369,15 +381,25 @@ function ermittleErgebnis(
   // Ungefiltert (qa 5): ein Eintrag, der kein Objekt ist, kippt den Abgleich (fail closed), statt herausgefiltert zu werden.
   // B2b-3b-2b-1b (F-1128 R1): dazu die tool_result-Blöcke des hash-geprüften Rohstroms — eine Ablehnung zählt nur, wenn die CLI
   // genau Stefans eindeutigen Ablehnungstext zurückgegeben hat.
+  // B2b-3b-2b-2a-1 (F-1128 (3)): mit Kanal trägt jedes VERWEIGERT den Grund des Abgleichs (rueckfrage_abgleich in daten).
+  let rueckfrageAbgleich: RueckfrageAbgleich | undefined
   if (rueckfragen !== undefined && rueckfragen !== null && bypassVerdachtAnzahl === 0) {
     const ergebnisse = ermittleToolErgebnisse(typeof rohstrom.stdout === 'string' ? rohstrom.stdout.split('\n') : [])
     const abgleich = gleicheAblehnungenAb(denialsRaw as unknown[], rueckfragen, laufId, ergebnisse)
     if (abgleich.art === 'nur_stefan') {
       return { ergebnis: 'ERFOLGREICH', ...zusatzFelder, abgelehnt_durch_stefan: abgleich.anzahl, daten: { abgelehnt_durch_stefan: abgleich.anzahl } }
     }
+    rueckfrageAbgleich = { art: 'abgleich', grund: abgleich.grund }
+  } else if (rueckfragen !== undefined) {
+    rueckfrageAbgleich =
+      bypassVerdachtAnzahl > 0
+        ? { art: 'nicht_geprueft', grund: 'umgehungsverdacht' }
+        : rueckfrageAbweichung !== undefined
+          ? { art: 'abweichung', grund: kappeGrund(rueckfrageAbweichung) }
+          : { art: 'kein_protokoll', grund: 'keine_rueckfrage_oder_nicht_lesbar' }
   }
 
-  return { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: bypassVerdachtAnzahl, ...zusatzFelder }
+  return { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: bypassVerdachtAnzahl, ...zusatzFelder, ...(rueckfrageAbgleich !== undefined ? { rueckfrage_abgleich: rueckfrageAbgleich } : {}) }
 }
 
 export function klassifiziereLauf(
@@ -387,7 +409,7 @@ export function klassifiziereLauf(
   optionen: KlassifikationsOptionen = {}
 ): KlassifikationsErgebnis {
   // F36 WS-5b: daten (init_gate_verstoss/claude_ordner_veraendert; F45 B2b-3b-1b: abgelehnt_durch_stefan) gehen unverändert in die Terminalmarke.
-  const { daten: teilDaten, ...teilergebnis } = ermittleErgebnis(laufId, eingaben.laufakte, eingaben.claudeAenderungen, eingaben.rueckfragen)
+  const { daten: teilDaten, rueckfrage_abgleich: rueckfrageAbgleich, ...teilergebnis } = ermittleErgebnis(laufId, eingaben.laufakte, eingaben.claudeAenderungen, eingaben.rueckfragen, eingaben.rueckfrageAbweichung) as ErgebnisOhneWirkungsmarke & { daten?: Record<string, unknown>; rueckfrage_abgleich?: RueckfrageAbgleich }
 
   let zusatzDaten: { daten?: unknown } = teilDaten !== undefined ? { daten: teilDaten } : {}
   if (teilergebnis.ergebnis === 'VERWEIGERT') {
@@ -424,6 +446,15 @@ export function klassifiziereLauf(
       },
     }
   }
+
+  // F45 B2b-3b-2b-2a-1 (Advisor B10): Felder des Rückfrage-Kanals erst nach allen Zweigen zusammenführen (VERWEIGERT und
+  // TIMEOUT/ABBRUCH setzen daten oben neu). Ohne Kanal kommt keines davon vor ⇒ daten bitgleich.
+  const kanalDaten = {
+    ...(rueckfrageAbgleich !== undefined ? { rueckfrage_abgleich: rueckfrageAbgleich } : {}),
+    ...(eingaben.rueckfrageZaehlung !== undefined && teilergebnis.ergebnis !== 'FEHLGESCHLAGEN' ? { rueckfrage_zaehlung: eingaben.rueckfrageZaehlung } : {}),
+    ...(eingaben.rueckfrageAbweichung !== undefined ? { rueckfrage_abweichung: kappeGrund(eingaben.rueckfrageAbweichung) } : {}),
+  }
+  if (Object.keys(kanalDaten).length > 0) zusatzDaten = { daten: { ...((zusatzDaten.daten as Record<string, unknown> | undefined) ?? {}), ...kanalDaten } }
 
   const { pfad, selbstHash } = schreibeWirkungsmarke(laufId, profilReferenz, 'terminal', { ergebnis: teilergebnis.ergebnis, ...zusatzDaten }, optionen)
   return { ...teilergebnis, wirkungsmarke: { pfad, selbstHash } }

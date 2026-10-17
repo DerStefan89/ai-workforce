@@ -1192,7 +1192,7 @@ test('F45 B2b-3b-1b (O5, E-186): Stefan-Ablehnung mit Verbotswert ⇒ VERWEIGERT
   }
 })
 
-test('F45 B2b-3b-1b (e4): ohne Protokoll (Feld fehlt, null, ungültig, fremder Lauf) ⇒ Ergebnis und Terminalmarke gleich', () => {
+test('F45 B2b-3b-1b (e4): ohne Protokoll (Feld fehlt, null, ungültig, fremder Lauf) ⇒ Ergebnis und Terminalmarke gleich (bis auf rueckfrage_abgleich, B2b-3b-2b-2a-1)', () => {
   const stroeme: [string, string][] = [
     ['keine Ablehnung', ablehnungsStdout([])],
     ['Stefan-förmige Ablehnung', ablehnungsStdout([STEFAN_DENIAL])],
@@ -1214,11 +1214,86 @@ test('F45 B2b-3b-1b (e4): ohne Protokoll (Feld fehlt, null, ungültig, fremder L
         const eingaben = { laufakte: baueLaufakte(laufId, rohstromReferenz, true), ...(protokoll !== undefined ? { rueckfragen: protokoll(laufId) } : {}) }
         const { wirkungsmarke, ...rest } = klassifiziereLauf(laufId, PROFIL_REFERENZ, eingaben, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
         const payload = terminalPayload(laufId, wirkungsmarke.selbstHash)
-        return JSON.stringify({ rest, ergebnis: payload?.ergebnis, daten: payload?.daten })
+        // B2b-3b-2b-2a-1: mit Kanal trägt VERWEIGERT zusätzlich rueckfrage_abgleich — der Rest bleibt gleich (unten getrennt geprüft).
+        const { rueckfrage_abgleich: abgleich, ...daten } = (payload?.daten ?? {}) as Record<string, unknown>
+        return { text: JSON.stringify({ rest, ergebnis: payload?.ergebnis, daten: payload?.daten === undefined ? undefined : daten }), abgleich, ergebnis: payload?.ergebnis }
       } finally {
         raeumeKette(laufId)
       }
     })
-    for (let i = 1; i < ausgaben.length; i++) assert.equal(ausgaben[i], ausgaben[0], `${name}: ${varianten[i][0]}`)
+    for (let i = 1; i < ausgaben.length; i++) assert.equal(ausgaben[i].text, ausgaben[0].text, `${name}: ${varianten[i][0]}`)
+    assert.equal(ausgaben[0].abgleich, undefined, `${name}: ohne Kanal kein rueckfrage_abgleich`)
+    for (let i = 1; i < ausgaben.length; i++) assert.equal(ausgaben[i].abgleich !== undefined, ausgaben[i].ergebnis === 'VERWEIGERT', `${name}: ${varianten[i][0]} — rueckfrage_abgleich genau bei VERWEIGERT`)
+  }
+})
+
+// ─── F45 B2b-3b-2b-2a-1 (F-1128 (3)/R3): Grund, Zählung und Abweichung in daten der Terminalmarke ──
+
+/** Klassifiziert einen Lauf mit stdout und Zusatz-Eingaben und liefert Ergebnis und daten der Terminalmarke. */
+function klassifiziereMit(stdout: string, zusatz: (laufId: string) => Record<string, unknown>): { ergebnis: string; daten: Record<string, unknown> | undefined } {
+  const laufId = neueLaufId('kanal-daten')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout, stderr: '', exitCode: 0 })
+    const e = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true), ...zusatz(laufId) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    return { ergebnis: e.ergebnis, daten: terminalPayload(laufId, e.wirkungsmarke.selbstHash)?.daten }
+  } finally {
+    raeumeKette(laufId)
+  }
+}
+
+test('F45 B2b-3b-2b-2a-1: VERWEIGERT mit Kanal trägt rueckfrage_abgleich { art, grund } je Ursache; ohne Kanal nicht', () => {
+  const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 1, frage_beantwortet: 0, nicht_browser: 1 }
+  const statisch = 'Permission to use Bash with command npm publish has been denied.'
+  const faelle: [string, string, (l: string) => Record<string, unknown>, unknown][] = [
+    ['Text passt nicht', ablehnungsStdout([STEFAN_DENIAL], statisch), (l) => ({ rueckfragen: stefanProtokoll(l) }), { art: 'abgleich', grund: 'ablehnungstext_passt_nicht' }],
+    ['auto_deny', ablehnungsStdout([STEFAN_DENIAL]), (l) => ({ rueckfragen: stefanProtokoll(l, 'auto_deny') }), { art: 'abgleich', grund: 'nicht_von_stefan' }],
+    ['Abweichung R3', ablehnungsStdout([STEFAN_DENIAL]), () => ({ rueckfragen: null, rueckfrageAbweichung: 'Länge abweichend (Speicher 1, Datei 2)' }), { art: 'abweichung', grund: 'Länge abweichend (Speicher 1, Datei 2)' }],
+    ['kein Protokoll', ablehnungsStdout([STEFAN_DENIAL]), () => ({ rueckfragen: null }), { art: 'kein_protokoll', grund: 'keine_rueckfrage_oder_nicht_lesbar' }],
+    ['Umgehungsverdacht', ablehnungsStdout([{ tool_name: 'Bash', tool_use_id: 'b', tool_input: { command: 'npm run test --dangerously-skip-permissions' } }]), (l) => ({ rueckfragen: stefanProtokoll(l) }), { art: 'nicht_geprueft', grund: 'umgehungsverdacht' }],
+  ]
+  for (const [name, stdout, zusatz, erwartet] of faelle) {
+    const mit = klassifiziereMit(stdout, (l) => ({ ...zusatz(l), rueckfrageZaehlung: zaehlung }))
+    assert.equal(mit.ergebnis, 'VERWEIGERT', name)
+    assert.deepEqual(mit.daten?.rueckfrage_abgleich, erwartet, name)
+    assert.deepEqual(mit.daten?.rueckfrage_zaehlung, zaehlung, `${name}: Zählung`)
+    const ohne = klassifiziereMit(stdout, () => ({}))
+    assert.equal(ohne.ergebnis, 'VERWEIGERT', `${name}: Negativkontrolle`)
+    assert.equal(ohne.daten?.rueckfrage_abgleich, undefined, `${name}: ohne Kanal kein Grund`)
+    assert.deepEqual(Object.keys(ohne.daten ?? {}).filter((k) => k.startsWith('rueckfrage_')), [], `${name}: ohne Kanal keine Kanal-Felder`)
+  }
+})
+
+test('F45 B2b-3b-2b-2a-1: ERFOLGREICH mit Kanal ⇒ rueckfrage_zaehlung; R3 ⇒ rueckfrage_abweichung gekappt (500), auch bei ERFOLGREICH', () => {
+  const zaehlung = { stefan_erlaubt: 2, stefan_abgelehnt: 0, frage_beantwortet: 1, nicht_browser: 0 }
+  const ohneAblehnung = ablehnungsStdout([])
+  assert.deepEqual(klassifiziereMit(ohneAblehnung, () => ({ rueckfragen: null, rueckfrageZaehlung: zaehlung })), { ergebnis: 'ERFOLGREICH', daten: { rueckfrage_zaehlung: zaehlung } })
+  const lang = 'x'.repeat(900)
+  const mitR3 = klassifiziereMit(ohneAblehnung, () => ({ rueckfragen: null, rueckfrageAbweichung: lang }))
+  assert.equal(mitR3.ergebnis, 'ERFOLGREICH')
+  assert.equal(mitR3.daten?.rueckfrage_abweichung, 'x'.repeat(500))
+  const stefan = klassifiziereMit(ablehnungsStdout([STEFAN_DENIAL]), (l) => ({ rueckfragen: stefanProtokoll(l), rueckfrageZaehlung: zaehlung }))
+  assert.deepEqual(stefan, { ergebnis: 'ERFOLGREICH', daten: { abgelehnt_durch_stefan: 1, rueckfrage_zaehlung: zaehlung } })
+  assert.deepEqual(klassifiziereMit(ohneAblehnung, () => ({})), { ergebnis: 'ERFOLGREICH', daten: undefined }, 'ohne Kanal bitgleich: keine daten')
+})
+
+test('F45 B2b-3b-2b-2a-1 (qa M1): TIMEOUT/ABBRUCH mit Kanal ⇒ rueckfrage_abweichung neben art/beendigungsart, keine Zählung', () => {
+  const zaehlung = { stefan_erlaubt: 1, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0 }
+  for (const [beendigungsart, art] of [
+    ['TIMEOUT', 'TIMEOUT'],
+    ['ABBRUCH', 'MANUELL'],
+  ] as const) {
+    const laufId = neueLaufId(`kanal-${art}`)
+    try {
+      const rohstromReferenz = schreibeRohstrom(laufId, { stdout: '', stderr: '', exitCode: null, beendigungsart })
+      const e = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, true), rueckfragen: null, rueckfrageAbweichung: 'Länge abweichend (Speicher 2, Datei 1)', rueckfrageZaehlung: zaehlung }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+      const daten = terminalPayload(laufId, e.wirkungsmarke.selbstHash)?.daten
+      assert.equal(e.ergebnis, 'FEHLGESCHLAGEN', beendigungsart)
+      assert.equal(daten?.art, art, `${beendigungsart}: art bleibt`)
+      assert.equal(daten?.rueckfrage_abweichung, 'Länge abweichend (Speicher 2, Datei 1)', `${beendigungsart}: R3 geht nicht verloren`)
+      assert.equal(daten?.rueckfrage_zaehlung, undefined, `${beendigungsart}: keine Zählung bei FEHLGESCHLAGEN`)
+      assert.equal(daten?.rueckfrage_abgleich, undefined, `${beendigungsart}: kein Abgleich-Grund`)
+    } finally {
+      raeumeKette(laufId)
+    }
   }
 })

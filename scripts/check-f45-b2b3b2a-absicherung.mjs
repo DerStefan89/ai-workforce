@@ -25,7 +25,7 @@
  *      Eintrag, offene behalten ihren Platz.
  * (z1) F-1126 (3): Befehl mit \r, ANSI (ESC, CSI), Bidi (U+202E, U+2066), BEL, U+200B, U+2028, einzelnem Surrogat ⇒ auto_deny;
  *      \n und \t ⇒ Stefan.
- * (f)  Grenzen: starteWorkflowSchritt( im Server 6×; kein Produktaufrufer übergibt `rueckfrage:` an erzeugeRequestHandler
+ * (f)  Grenzen: starteWorkflowSchritt( im Server 6×; seit B2b-3b-2b-2a-1 übergibt ein Produktaufrufer `rueckfrage` nur über rueckfrageOptionFuer an erzeugeRequestHandler
  *      (beide gegen main grün, Invarianten); ARCHITECTURE §1 nennt F-1131 bei der W1-Regel (gegen main rot).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
@@ -55,6 +55,7 @@ import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-reg
 import { klassifiziereLauf } from '../src/result-evaluator/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
+import { pruefeKanalNurUeberOptIn } from './_rueckfrage-aus-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 
@@ -284,7 +285,7 @@ try {
       arbeitsordnerNpm: async () => ({ code: 0, stdout: '', stderr: '', zeitueberschritten: false }),
       arbeitsordnerE183: () => ({ ok: true }),
       standCacheMs: 0,
-      rueckfrage: { an: true, url: basisUrl },
+      rueckfrage: { an: true, url: `${basisUrl}/api` },
     })
 
     /** Legt einen Ein-Schritt-Workflow 'ausfuehrung' an und startet ihn (mit Vorbereitung des Arbeitsordners). */
@@ -411,10 +412,12 @@ try {
     const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
     const aufrufe = server.split('starteWorkflowSchritt(').length - 1
     pruefe(aufrufe === 6, '(f) starteWorkflowSchritt( in leitstand-server.mjs 6× (unverändert).', `(f) starteWorkflowSchritt( ${aufrufe}×`)
-    // Produktaufrufer von erzeugeRequestHandler: Server-Start und Mehrprojekt-Dispatcher — keiner setzt die Option rueckfrage.
+    // Produktaufrufer von erzeugeRequestHandler: Server-Start und Mehrprojekt-Dispatcher — die Option rueckfrage nur über das Opt-in.
     const produkt = ['scripts/leitstand-server.mjs', ...readdirSync('scripts/leitstand').filter((n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')).map((n) => `scripts/leitstand/${n}`)]
-    const mitKanal = produkt.filter((p) => /erzeugeRequestHandler\([^)]*\brueckfrage\s*:/s.test(readFileSync(p, 'utf8')))
-    pruefe(mitKanal.length === 0, '(f) Kanal aus: kein Produktaufrufer übergibt die Option rueckfrage an erzeugeRequestHandler.', `(f) Option rueckfrage gesetzt in: ${mitKanal.join(', ')}`)
+    // B2b-3b-2b-2a-1 (Advisor B1/B2): „Kanal aus“ heißt seit dem Opt-in „nur über rueckfrageOptionFuer, also nur mit
+    // LEITSTAND_RUECKFRAGE=1“ — gemeinsame, gleich strenge Regel in scripts/_rueckfrage-aus-pruefung.mjs.
+    const optIn = pruefeKanalNurUeberOptIn(produkt.map((p) => ({ pfad: p, text: readFileSync(p, 'utf8') })))
+    pruefe(optIn.befunde.length === 0 && optIn.handlerAufrufe >= 2, '(f) Kanal nur über das Opt-in: kein Produktaufrufer setzt die Option rueckfrage außerhalb von rueckfrageOptionFuer.', `(f) ${optIn.befunde.join('; ')}`)
     const architektur = readFileSync('ARCHITECTURE.md', 'utf8')
     const w1 = architektur.slice(architektur.indexOf('Wachstumsbremse (F45 W1'), architektur.indexOf('Wachstumsbremse (F45 W1') + 4000)
     pruefe(/F-1131/.test(w1), '(f) ARCHITECTURE §1 nennt bei der W1-Regel F-1131 (Kollision mit check-f813-csrf (4)).', '(f) ARCHITECTURE §1: W1-Regel ohne Verweis auf F-1131')

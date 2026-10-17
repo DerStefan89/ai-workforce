@@ -18,7 +18,7 @@
  *      < 5 MB (vorher ~43 MB); zusammengesetztes Protokoll passt zum Speicher und ergibt ERFOLGREICH.
  * (b7) E-B7: herkunftDerAntwort (same-origin bzw. passender Origin ⇒ browser, sonst nicht_browser); über den echten Server
  *      geschriebene Antworten tragen herkunft im Protokoll; das Schema kennt das Feld.
- * (f)  Grenzen: starteWorkflowSchritt( im Server 6×; kein Produktaufrufer übergibt `rueckfrage:` (beide gegen main grün,
+ * (f)  Grenzen: starteWorkflowSchritt( im Server 6×; Produktaufrufer übergeben `rueckfrage` nur über rueckfrageOptionFuer (seit B2b-3b-2b-2a-1) (beide gegen main grün,
  *      Invarianten); ARCHITECTURE §3 nennt E-B7 (gegen main rot).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
@@ -46,6 +46,7 @@ import { ladeArtefaktVersion, listeVersionen, registriereKernArtefakt } from '..
 import { klassifiziereLauf } from '../src/result-evaluator/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
+import { pruefeKanalNurUeberOptIn } from './_rueckfrage-aus-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRueckfrageProtokollSchreiber } from './leitstand/rueckfrage-protokoll.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
@@ -281,7 +282,7 @@ try {
       arbeitsordnerNpm: async () => ({ code: 0, stdout: '', stderr: '', zeitueberschritten: false }),
       arbeitsordnerE183: () => ({ ok: true }),
       standCacheMs: 0,
-      rueckfrage: { an: true, url: basisUrl },
+      rueckfrage: { an: true, url: `${basisUrl}/api` },
     })
 
     /** Legt einen Ein-Schritt-Workflow 'ausfuehrung' an und startet ihn (mit Vorbereitung des Arbeitsordners). */
@@ -394,8 +395,10 @@ try {
     const aufrufe = server.split('starteWorkflowSchritt(').length - 1
     pruefe(aufrufe === 6, '(f) starteWorkflowSchritt( in leitstand-server.mjs 6× (unverändert).', `(f) starteWorkflowSchritt( ${aufrufe}×`)
     const produkt = ['scripts/leitstand-server.mjs', ...readdirSync('scripts/leitstand').filter((n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')).map((n) => `scripts/leitstand/${n}`)]
-    const mitKanal = produkt.filter((p) => /erzeugeRequestHandler\([^)]*\brueckfrage\s*:/s.test(readFileSync(p, 'utf8')))
-    pruefe(mitKanal.length === 0, '(f) Kanal aus: kein Produktaufrufer übergibt die Option rueckfrage an erzeugeRequestHandler.', `(f) Option rueckfrage gesetzt in: ${mitKanal.join(', ')}`)
+    // B2b-3b-2b-2a-1 (Advisor B1/B2): „Kanal aus“ heißt seit dem Opt-in „nur über rueckfrageOptionFuer, also nur mit
+    // LEITSTAND_RUECKFRAGE=1“ — gemeinsame, gleich strenge Regel in scripts/_rueckfrage-aus-pruefung.mjs.
+    const optIn = pruefeKanalNurUeberOptIn(produkt.map((p) => ({ pfad: p, text: readFileSync(p, 'utf8') })))
+    pruefe(optIn.befunde.length === 0 && optIn.handlerAufrufe >= 2, '(f) Kanal nur über das Opt-in: kein Produktaufrufer setzt die Option rueckfrage außerhalb von rueckfrageOptionFuer.', `(f) ${optIn.befunde.join('; ')}`)
     const architektur = readFileSync('ARCHITECTURE.md', 'utf8')
     const abschnitt3 = architektur.slice(architektur.indexOf('## 3. Auth'), architektur.indexOf('## 4. Fehlerbehandlung'))
     pruefe(/E-B7/.test(abschnitt3) && /herkunft/i.test(abschnitt3), '(f) ARCHITECTURE §3 nennt E-B7 (Herkunft je Antwort).', '(f) ARCHITECTURE §3 ohne E-B7/Herkunft')

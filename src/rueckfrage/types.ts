@@ -26,7 +26,7 @@ export interface PfadOptionen {
 
 /** Daten eines eingeschalteten Rückfrage-Kanals für einen Lauf (gesetzt nur vom Leitstand, nie aus einem Body). */
 export interface RueckfrageKanal {
-  /** Basis-URL des Leitstands, nur Loopback (http://127.0.0.1:<port>, http://localhost:<port>, http://[::1]:<port>). */
+  /** API-Basis der Instanz im Leitstand, nur Loopback (Workforce `http://127.0.0.1:<port>/api`, Projekt `…/api/projekte/<id>`; B2b-3b-2b-2a-1). */
   url: string
   /** Token je Lauf, 64 Hex-Zeichen — berechtigt nur zum Fragen. */
   token: string

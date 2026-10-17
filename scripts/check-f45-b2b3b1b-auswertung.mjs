@@ -13,7 +13,8 @@
  *      ERFOLGREICH, Terminalmarke daten.abgelehnt_durch_stefan (1 bzw. 2).
  * (e2) gemischt (Stefan + auto_deny, Stefan + Ablehnung ohne Eintrag) ⇒ VERWEIGERT.
  * (e3) nur auto_deny / zeitueberschreitung / lauf_beendet / Werkzeugsatz-Sperre ohne Eintrag ⇒ VERWEIGERT.
- * (e4) ohne Protokoll (Feld fehlt, null, ungültig, fremder Lauf): Ergebnis und Terminalmarke gleich dem Fall „Feld fehlt“.
+ * (e4) ohne Protokoll (Feld fehlt, null, ungültig, fremder Lauf): Ergebnis und Terminalmarke gleich dem Fall „Feld fehlt“ (seit
+ *      B2b-3b-2b-2a-1 bis auf daten.rueckfrage_abgleich, das genau bei VERWEIGERT steht).
  * (p1) Abgleich A6, Rotfälle: andere ID, andere Art zur ID (stefan_erlaubt, frage_beantwortet), Nicht-Objekt in den
  *      Ablehnungen, anderer tool_name, anderer Input, zwei Einträge je ID, doppelte Ablehnungs-ID, Ablehnung ohne ID,
  *      Stefan-Ablehnung mit Verbotswert ⇒ VERWEIGERT.
@@ -165,7 +166,11 @@ try {
       const soll = JSON.stringify(klassifiziere(denials, undefined, zusatz).payload) + JSON.stringify(klassifiziere(denials, undefined, zusatz).rest)
       for (const [variante, protokoll] of varianten) {
         const k = klassifiziere(denials, protokoll, zusatz)
-        if (JSON.stringify(k.payload) + JSON.stringify(k.rest) !== soll) abweichungen.push(`${name}/${variante}`)
+        // B2b-3b-2b-2a-1 (F-1128 (3)): mit Kanal trägt VERWEIGERT zusätzlich daten.rueckfrage_abgleich — alles andere bleibt gleich
+        // „Feld fehlt“ (Bedingung unverändert), und der Grund steht genau bei VERWEIGERT (neue Bedingung).
+        const { rueckfrage_abgleich: abgleich, ...daten } = k.payload.daten ?? {}
+        const ohneGrund = { ...k.payload, daten: k.payload.daten === undefined ? undefined : daten }
+        if (JSON.stringify(ohneGrund) + JSON.stringify(k.rest) !== soll || (abgleich !== undefined) !== (k.ergebnis === 'VERWEIGERT')) abweichungen.push(`${name}/${variante}`)
       }
     }
     pruefe(abweichungen.length === 0, '(e4) ohne Protokoll (null, ungültig, fremder Lauf): Ergebnis und Terminalmarke gleich „Feld fehlt“ (5 Rohströme).', `(e4) Abweichungen: ${abweichungen.join(', ')}`)
@@ -264,7 +269,7 @@ try {
       arbeitsordnerNpm: async () => ({ code: 0, stdout: '', stderr: '', zeitueberschritten: false }),
       arbeitsordnerE183: () => ({ ok: true }),
       standCacheMs: 0,
-      rueckfrage: { an: true, url: basisUrl },
+      rueckfrage: { an: true, url: `${basisUrl}/api` },
     })
 
     const { auftragId } = await (await fetch(`${basisUrl}/api/auftraege`, { method: 'POST', body: JSON.stringify({ titel: 'Gate 3b-1b', auftragstext: 'Lege eine Datei an.' }) })).json()

@@ -120,7 +120,9 @@
  * es (oder null) als eingaben.rueckfragen an klassifiziereLauf — das Urteil (Ablehnung allein durch Stefan ⇒ ERFOLGREICH)
  * bleibt beim Evaluator. Ohne Kanal kein Lesen, Eingaben unverändert. Seit B2b-3b-2a (F-1128 (1)) gilt die Datei nur, wenn sie
  * zum Speicherstand der Vermittlung passt (optionen.rueckfrageZugang, ermittleRueckfrageProtokoll) — sonst null, und seit
- * B2b-3b-2b-1a (R3) geht die Abweichung über den Zugang in die Startfehlerliste des Servers.
+ * B2b-3b-2b-1a (R3) geht die Abweichung über den Zugang in die Startfehlerliste des Servers. Seit B2b-3b-2b-2a-1 zusätzlich als
+ * eingaben.rueckfrageAbweichung an den Evaluator (dauerhaft in daten der Terminalmarke), dazu die Zählung der Antworten aus dem
+ * Speicherstand (leseRueckfrageZaehlung, eingaben.rueckfrageZaehlung).
  */
 
 import { createHash, randomUUID } from 'node:crypto'
@@ -138,6 +140,7 @@ import { erfassePluginDatenordner, vergleicheLaufKopie, vergleichePluginDatenord
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
 import { ladeArtefaktVersion, listeVersionen } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
+import type { RueckfrageZaehlung } from '../result-evaluator/types.ts'
 import { bestaetigeProtokoll, setzeProtokollZusammen } from '../rueckfrage/protokoll.ts'
 import type { AusfuehrungsEingaben, AusfuehrungsErgebnis, AusfuehrungsOptionen, RueckfrageZugang } from './types.ts'
 
@@ -321,6 +324,46 @@ export function ermittleRueckfrageProtokoll(laufId: string, basisVerzeichnis: st
   } catch (fehler) {
     console.error(`[execution-controller] Rückfrage-Protokoll von Lauf '${laufId}' nicht auswertbar — gilt als fehlend (Ablehnungen durch Stefan zählen nicht):`, fehler)
     return null
+  }
+}
+
+/**
+ * F45 B2b-3b-2b-2a-1 (F-1128 R3): die über den Zugang gemeldete Abweichung Speicher/Datei (`zugang.abweichung`). Wirft nie; ohne
+ * Zugang, ohne Meldung, bei Wurf oder fremder Form ⇒ undefined.
+ * @param laufId - Lauf (nur für die Meldung)
+ * @param zugang - optionen.rueckfrageZugang oder undefined
+ * @returns Grund oder undefined
+ */
+export function leseRueckfrageAbweichung(laufId: string, zugang: RueckfrageZugang | undefined): string | undefined {
+  try {
+    const grund: unknown = zugang?.abweichung?.()
+    return typeof grund === 'string' && grund.length > 0 ? grund : undefined
+  } catch (fehler) {
+    console.error(`[execution-controller] Abweichung des Rückfrage-Kanals von Lauf '${laufId}' nicht lesbar:`, fehler)
+    return undefined
+  }
+}
+
+/** Felder der Zählung (RueckfrageZaehlung) — eine andere Form gilt als „keine Zählung“. */
+const ZAEHLUNG_FELDER = ['stefan_erlaubt', 'stefan_abgelehnt', 'frage_beantwortet', 'nicht_browser'] as const
+
+/**
+ * F45 B2b-3b-2b-2a-1 (F-1128 (3), D13): Zählung der Antworten aus dem Speicherstand der Vermittlung (`zugang.zaehlung`, gleicher
+ * Prozess). Wirft nie; ohne Zugang, ohne Zählung, bei Wurf oder fremder Form ⇒ undefined (daten der Terminalmarke bleiben dann ohne Feld).
+ * @param laufId - Lauf (nur für die Meldung)
+ * @param zugang - optionen.rueckfrageZugang oder undefined
+ * @returns Zählung oder undefined
+ */
+export function leseRueckfrageZaehlung(laufId: string, zugang: RueckfrageZugang | undefined): RueckfrageZaehlung | undefined {
+  try {
+    const roh: unknown = zugang?.zaehlung?.()
+    if (typeof roh !== 'object' || roh === null) return undefined
+    const werte = roh as Record<string, unknown>
+    if (!ZAEHLUNG_FELDER.every((f) => Number.isInteger(werte[f]) && (werte[f] as number) >= 0)) return undefined
+    return { stefan_erlaubt: werte.stefan_erlaubt as number, stefan_abgelehnt: werte.stefan_abgelehnt as number, frage_beantwortet: werte.frage_beantwortet as number, nicht_browser: werte.nicht_browser as number }
+  } catch (fehler) {
+    console.error(`[execution-controller] Zählung des Rückfrage-Kanals von Lauf '${laufId}' nicht lesbar:`, fehler)
+    return undefined
   }
 }
 
@@ -616,12 +659,22 @@ export async function fuehreAufgabeDurch(
   // (z. B. EBUSY/EPERM unter OneDrive): null — wie fehlend, also VERWEIGERT; die Terminalmarke wird trotzdem geschrieben.
   // B2b-3b-2a (F-1128 (1)): die Datei gilt nur passend zum Speicherstand der Vermittlung (ermittleRueckfrageProtokoll).
   const rueckfragen = eingaben.rueckfrageKanal !== undefined ? ermittleRueckfrageProtokoll(laufId, optionen.basisVerzeichnis, optionen.rueckfrageZugang) : undefined
+  // B2b-3b-2b-2a-1 (F-1128 R3/(3)): die gemeldete Abweichung (der Zugang merkt sie) und die Zählung aus dem Speicherstand (D13) —
+  // beide nach ermittleRueckfrageProtokoll und vor beendeLauf gelesen; sie gehen in daten der Terminalmarke.
+  const rueckfrageAbweichung = eingaben.rueckfrageKanal !== undefined ? leseRueckfrageAbweichung(laufId, optionen.rueckfrageZugang) : undefined
+  const rueckfrageZaehlung = eingaben.rueckfrageKanal !== undefined ? leseRueckfrageZaehlung(laufId, optionen.rueckfrageZugang) : undefined
 
   optionen.zeitmessung?.('klassifikation_begonnen')
   const klassifikation = klassifiziereLauf(
     laufId,
     profilReferenz,
-    { laufakte: gatewayErgebnis.laufakte, ...(claudeAenderungen !== undefined ? { claudeAenderungen } : {}), ...(rueckfragen !== undefined ? { rueckfragen } : {}) },
+    {
+      laufakte: gatewayErgebnis.laufakte,
+      ...(claudeAenderungen !== undefined ? { claudeAenderungen } : {}),
+      ...(rueckfragen !== undefined ? { rueckfragen } : {}),
+      ...(rueckfrageAbweichung !== undefined ? { rueckfrageAbweichung } : {}),
+      ...(rueckfrageZaehlung !== undefined ? { rueckfrageZaehlung } : {}),
+    },
     { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: optionen.schreiber }
   )
   optionen.zeitmessung?.('terminal_checkpoint_geschrieben')
