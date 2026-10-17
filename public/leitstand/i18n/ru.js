@@ -1761,6 +1761,8 @@ export default {
   'chat.grund.fehlgeschlagen': 'запуск не удался',
   'chat.grund.unerwarteterLaufstatus': 'неожиданный статус запуска',
   'chat.grund.ergebnisUnlesbar': 'результата нет в записи запуска или он недействителен',
+  'chat.grund.umgehungsverdacht': 'подозрение на обход — сверка вопросов не проводилась',
+  'chat.grund.keineRueckfrageOderNichtLesbar': 'в запуске нет вопросов или журнал не читается',
   'chat.grund.unbekannt': 'неизвестный код ({code})',
   'chat.fehler.keinVerlauf': 'Истории для сводки пока нет.',
   'chat.fehler.laufAktiv': 'Активен другой запуск — одновременно работает только один. Отправка снова станет доступна после его завершения.',

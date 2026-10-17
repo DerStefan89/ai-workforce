@@ -1748,6 +1748,8 @@ export default {
   'chat.grund.fehlgeschlagen': 'run failed',
   'chat.grund.unerwarteterLaufstatus': 'unexpected run status',
   'chat.grund.ergebnisUnlesbar': 'result missing from the run record or invalid',
+  'chat.grund.umgehungsverdacht': 'suspected bypass — question check not performed',
+  'chat.grund.keineRueckfrageOderNichtLesbar': 'no question in the run or log not readable',
   'chat.grund.unbekannt': 'unknown ({code})',
   'chat.fehler.keinVerlauf': 'No history to summarise yet.',
   'chat.fehler.laufAktiv': 'Another run is active — only one runs at a time. You can send again once it ends.',
