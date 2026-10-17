@@ -1748,6 +1748,8 @@ export default {
   'chat.grund.fehlgeschlagen': 'çalıştırma başarısız',
   'chat.grund.unerwarteterLaufstatus': 'beklenmeyen çalıştırma durumu',
   'chat.grund.ergebnisUnlesbar': 'sonuç çalıştırma kaydında yok veya geçersiz',
+  'chat.grund.umgehungsverdacht': 'atlatma şüphesi — soru karşılaştırması yapılmadı',
+  'chat.grund.keineRueckfrageOderNichtLesbar': 'çalıştırmada soru yok veya kayıt okunamıyor',
   'chat.grund.unbekannt': 'bilinmiyor ({code})',
   'chat.fehler.keinVerlauf': 'Özetlenecek geçmiş henüz yok.',
   'chat.fehler.laufAktiv': 'Başka bir çalıştırma etkin — aynı anda yalnızca biri çalışır. Bittiğinde yeniden gönderebilirsiniz.',

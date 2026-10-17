@@ -106,31 +106,30 @@ test('gleicheAblehnungenAb: nur Stefan ⇒ nur_stefan mit Anzahl (eine und zwei 
   assert.deepEqual(gleicheAblehnungenAb([denial(), denial({ tool_use_id: 'toolu_b', tool_input: { command: 'npm publish' } })], protokoll([eintrag(), zweite, erlaubt, frage]), LAUF, ERG), { art: 'nur_stefan', anzahl: 2 })
 })
 
-test('gleicheAblehnungenAb: Rotfälle ⇒ nicht_nur_stefan (A6, fail closed)', () => {
-  const nein = { art: 'nicht_nur_stefan' }
-  const faelle: [string, unknown[], unknown, string?][] = [
-    ['kein Protokoll', [denial()], null],
-    ['ungültiges Protokoll', [denial()], protokoll([eintrag({ art: 'x' })])],
-    ['fremder Lauf', [denial()], protokoll([eintrag()], { lauf_id: 'anderer' })],
-    ['keine Ablehnung', [], protokoll([eintrag()])],
-    ['auto_deny', [denial()], protokoll([eintrag({ art: 'auto_deny' })])],
-    ['zeitueberschreitung', [denial()], protokoll([eintrag({ art: 'zeitueberschreitung' })])],
-    ['lauf_beendet', [denial()], protokoll([eintrag({ art: 'lauf_beendet' })])],
-    ['stefan_erlaubt zur Ablehnungs-ID', [denial()], protokoll([eintrag({ art: 'stefan_erlaubt' })])],
-    ['frage_beantwortet zur Ablehnungs-ID', [denial()], protokoll([eintrag({ art: 'frage_beantwortet' })])],
-    ['ohne Eintrag (Werkzeugsatz-Sperre)', [denial()], protokoll([])],
-    ['gemischt', [denial(), denial({ tool_use_id: 'toolu_b' })], protokoll([eintrag(), eintrag({ tool_use_id: 'toolu_b', art: 'auto_deny' })])],
-    ['andere tool_use_id', [denial({ tool_use_id: 'toolu_x' })], protokoll([eintrag()])],
-    ['anderer tool_name', [denial({ tool_name: 'Write' })], protokoll([eintrag()])],
-    ['anderer Input', [denial({ tool_input: { command: 'git push --force' } })], protokoll([eintrag()])],
-    ['Input fehlt', [denial({ tool_input: undefined })], protokoll([eintrag()])],
-    ['zwei Einträge je ID', [denial()], protokoll([eintrag(), eintrag({ art: 'auto_deny', grund: 'Rückfrage-ID doppelt' })])],
-    ['doppelte Ablehnungs-ID', [denial(), denial()], protokoll([eintrag()])],
-    ['Ablehnung ohne tool_use_id', [denial({ tool_use_id: undefined })], protokoll([eintrag({ tool_use_id: null })])],
-    ['Ablehnung mit tool_use_id null', [denial({ tool_use_id: null })], protokoll([eintrag({ tool_use_id: null })])],
-    ['Ablehnung kein Objekt', ['x'], protokoll([eintrag()])],
+test('gleicheAblehnungenAb: Rotfälle ⇒ nicht_nur_stefan mit Grund (A6, fail closed; Grund seit B2b-3b-2b-2a-1)', () => {
+  const faelle: [string, unknown[], unknown, string][] = [
+    ['kein Protokoll', [denial()], null, 'protokoll_ungueltig'],
+    ['ungültiges Protokoll', [denial()], protokoll([eintrag({ art: 'x' })]), 'protokoll_ungueltig'],
+    ['fremder Lauf', [denial()], protokoll([eintrag()], { lauf_id: 'anderer' }), 'protokoll_fremd'],
+    ['keine Ablehnung', [], protokoll([eintrag()]), 'keine_ablehnung'],
+    ['auto_deny', [denial()], protokoll([eintrag({ art: 'auto_deny' })]), 'nicht_von_stefan'],
+    ['zeitueberschreitung', [denial()], protokoll([eintrag({ art: 'zeitueberschreitung' })]), 'nicht_von_stefan'],
+    ['lauf_beendet', [denial()], protokoll([eintrag({ art: 'lauf_beendet' })]), 'nicht_von_stefan'],
+    ['stefan_erlaubt zur Ablehnungs-ID', [denial()], protokoll([eintrag({ art: 'stefan_erlaubt' })]), 'nicht_von_stefan'],
+    ['frage_beantwortet zur Ablehnungs-ID', [denial()], protokoll([eintrag({ art: 'frage_beantwortet' })]), 'nicht_von_stefan'],
+    ['ohne Eintrag (Werkzeugsatz-Sperre)', [denial()], protokoll([]), 'kein_eintrag'],
+    ['gemischt', [denial(), denial({ tool_use_id: 'toolu_b' })], protokoll([eintrag(), eintrag({ tool_use_id: 'toolu_b', art: 'auto_deny' })]), 'nicht_von_stefan'],
+    ['andere tool_use_id', [denial({ tool_use_id: 'toolu_x' })], protokoll([eintrag()]), 'kein_eintrag'],
+    ['anderer tool_name', [denial({ tool_name: 'Write' })], protokoll([eintrag()]), 'werkzeug_abweichend'],
+    ['anderer Input', [denial({ tool_input: { command: 'git push --force' } })], protokoll([eintrag()]), 'eingabe_abweichend'],
+    ['Input fehlt', [denial({ tool_input: undefined })], protokoll([eintrag()]), 'eingabe_abweichend'],
+    ['zwei Einträge je ID', [denial()], protokoll([eintrag(), eintrag({ art: 'auto_deny', grund: 'Rückfrage-ID doppelt' })]), 'eintrag_mehrfach'],
+    ['doppelte Ablehnungs-ID', [denial(), denial()], protokoll([eintrag()]), 'id_doppelt'],
+    ['Ablehnung ohne tool_use_id', [denial({ tool_use_id: undefined })], protokoll([eintrag({ tool_use_id: null })]), 'id_fehlt'],
+    ['Ablehnung mit tool_use_id null', [denial({ tool_use_id: null })], protokoll([eintrag({ tool_use_id: null })]), 'id_fehlt'],
+    ['Ablehnung kein Objekt', ['x'], protokoll([eintrag()]), 'ablehnung_ungueltig'],
   ]
-  for (const [name, denials, daten] of faelle) assert.deepEqual(gleicheAblehnungenAb(denials, daten, LAUF, ERG), nein, name)
+  for (const [name, denials, daten, grund] of faelle) assert.deepEqual(gleicheAblehnungenAb(denials, daten, LAUF, ERG), { art: 'nicht_nur_stefan', grund }, name)
 })
 
 test('gleicheAblehnungenAb (B2b-3b-2b-1b, F-1128 R1): zählt nur, wenn jedes tool_result der ID is_error trägt und genau Stefans Text (String)', () => {
@@ -149,7 +148,7 @@ test('gleicheAblehnungenAb (B2b-3b-2b-1b, F-1128 R1): zählt nur, wenn jedes too
     ['keine String-Form (O6)', ergebnisse(['toolu_a', null])],
     ['zweiter abweichender Block', new Map([['toolu_a', [{ fehler: true, text: TEXT_A }, { fehler: true, text: 'anders' }]]])],
   ]
-  for (const [name, erg] of faelle) assert.deepEqual(gleicheAblehnungenAb(d, p, LAUF, erg as never), { art: 'nicht_nur_stefan' }, name)
+  for (const [name, erg] of faelle) assert.deepEqual(gleicheAblehnungenAb(d, p, LAUF, erg as never), { art: 'nicht_nur_stefan', grund: 'ablehnungstext_passt_nicht' }, name)
   assert.deepEqual(gleicheAblehnungenAb(d, p, LAUF, new Map([['toolu_a', [{ fehler: true, text: TEXT_A }, { fehler: true, text: TEXT_A }]]])), { art: 'nur_stefan', anzahl: 1 }, 'doppelt, beide passend')
 })
 
@@ -219,7 +218,7 @@ test('bestaetigeProtokoll: Speicher leer und Datei fehlt ⇒ ok:false mit leer: 
 })
 
 test('gleicheAblehnungenAb (B2b-3b-2b-1a): ein einzelner Zuwachs (ab > 0) ist nie ein ganzes Protokoll', () => {
-  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()], { ab: 1 }), LAUF, ERG), { art: 'nicht_nur_stefan' })
+  assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()], { ab: 1 }), LAUF, ERG), { art: 'nicht_nur_stefan', grund: 'protokoll_fremd' })
   assert.deepEqual(gleicheAblehnungenAb([denial()], protokoll([eintrag()]), LAUF, ERG), { art: 'nur_stefan', anzahl: 1 })
 })
 

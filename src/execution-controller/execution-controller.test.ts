@@ -128,7 +128,7 @@ import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { registriereAuftrag } from '../auftrag/index.ts'
-import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, ermittleRueckfrageProtokoll, leseRueckfrageProtokoll, vergleicheClaudeOrdner } from './index.ts'
+import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, ermittleRueckfrageProtokoll, leseRueckfrageProtokoll, leseRueckfrageZaehlung, vergleicheClaudeOrdner } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -1692,7 +1692,9 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
       const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), ...(mitKanal ? { rueckfrageKanal: { token: 'a'.repeat(64), arbeitsordner: process.cwd(), werkzeugNamen: ['Bash'] } } : {}) }
       const projektion = protokoll.eintraege.map(({ tool_use_id, tool_name, input_hash, art, ablehnung_hash }) => (speicher === 'auto_deny' ? { tool_use_id, tool_name, input_hash, art: 'auto_deny' } : { tool_use_id, tool_name, input_hash, art, ablehnung_hash }))
       const gemeldet: string[] = []
-      const rueckfrageZugang = speicher === 'fehlt' ? undefined : { speicher: () => projektion, meldeAbweichung: (grund: string) => gemeldet.push(grund) }
+      // B2b-3b-2b-2a-1: Zählung aus dem Speicherstand geht in daten der Terminalmarke, die Abweichung zusätzlich (R3).
+      const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 1, frage_beantwortet: 0, nicht_browser: 0 }
+      const rueckfrageZugang = speicher === 'fehlt' ? undefined : { speicher: () => projektion, zaehlung: () => zaehlung, abweichung: () => gemeldet[0] ?? null, meldeAbweichung: (grund: string) => gemeldet.push(grund) }
       const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {}, ...(rueckfrageZugang !== undefined ? { rueckfrageZugang } : {}) })
       // B2b-3b-2b-1a (R3): eine Abweichung Speicher/Datei geht über den Zugang (Server: Startfehlerliste).
       // Gemeldet wird jede Abweichung: abweichende Art, oder Speicher mit Eintrag ohne Datei.
@@ -1700,6 +1702,9 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
       assert.ok(ergebnis.ok)
       assert.equal(ergebnis.klassifikation.ergebnis, erwartet, `Kanal ${mitKanal}, Protokoll ${mitProtokoll}, Speicher ${speicher}`)
       if (erwartet === 'ERFOLGREICH') assert.equal(ergebnis.klassifikation.ergebnis === 'ERFOLGREICH' && ergebnis.klassifikation.abgelehnt_durch_stefan, 1)
+      const daten = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS }).find((e) => e.payload.selbst_hash === ergebnis.klassifikation.wirkungsmarke.selbstHash)?.payload.daten as Record<string, unknown> | undefined
+      assert.deepEqual(daten?.rueckfrage_zaehlung, mitKanal && speicher !== 'fehlt' ? zaehlung : undefined, 'Zählung nur mit Kanal und Zugang')
+      assert.equal(daten?.rueckfrage_abweichung, gemeldet[0], 'R3-Grund dauerhaft in daten (gleich der Meldung)')
     } finally {
       raeumeKette(laufId)
       raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-rueckfragen-${laufId}`))
@@ -1751,4 +1756,24 @@ test('F45 B2b-3b-2a (Delta D1/D2): ermittleRueckfrageProtokoll wirft nie — wer
 test('F45 B2b-3b-1b (qa 1): leseRueckfrageProtokoll wirft nie — fehlendes Artefakt bzw. unlesbare Ablage ⇒ null', () => {
   assert.equal(leseRueckfrageProtokoll(neueLaufId('rfx'), KONTROLLZUSTAND_BASIS), null)
   assert.equal(leseRueckfrageProtokoll('x', 'ungültig\u0000ablage'), null)
+})
+
+test('F45 B2b-3b-2b-2a-1: leseRueckfrageZaehlung wirft nie — ohne Zugang, ohne zaehlung, Wurf, fremde Form ⇒ undefined', () => {
+  const basis = { speicher: () => null, meldeAbweichung: () => {} }
+  const gut = { stefan_erlaubt: 1, stefan_abgelehnt: 2, frage_beantwortet: 3, nicht_browser: 4 }
+  assert.deepEqual(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => ({ ...gut, extra: 'x' }) }), gut)
+  assert.equal(leseRueckfrageZaehlung('l', undefined), undefined)
+  assert.equal(leseRueckfrageZaehlung('l', basis), undefined)
+  assert.equal(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => null }), undefined)
+  assert.equal(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => ({ ...gut, nicht_browser: -1 }) }), undefined)
+  assert.equal(leseRueckfrageZaehlung('l', { ...basis, zaehlung: () => ({ ...gut, stefan_erlaubt: '1' }) }), undefined)
+  assert.equal(
+    leseRueckfrageZaehlung('l', {
+      ...basis,
+      zaehlung: () => {
+        throw new Error('kaputt')
+      },
+    }),
+    undefined
+  )
 })

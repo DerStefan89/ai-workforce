@@ -28,7 +28,8 @@
  * Wird aufgerufen von: src/result-evaluator/index.ts (Abgleich), src/execution-controller/index.ts (bestaetigeProtokoll,
  * setzeProtokollZusammen), scripts/leitstand/rueckfrage-protokoll.mjs (Schreiben), scripts/leitstand/rueckfrage-vermittlung.mjs
  * (Arten, Grenzen), scripts/check-f45-b2b3b1b-auswertung.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
- * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, src/rueckfrage/protokoll.test.ts.
+ * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, src/rueckfrage/protokoll.test.ts. Seit B2b-3b-2b-2a-1 trägt
+ * „nicht nur Stefan“ einen festen Grund (ABGLEICH_GRUENDE) für daten der Terminalmarke.
  */
 
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
@@ -180,8 +181,28 @@ export function neutralisiereText(text: string, orte: NeutralisierOrte): string 
   return ergebnis
 }
 
+/**
+ * B2b-3b-2b-2a-1 (F-1128 (3), qa B2b-3b-2b-1b 2): fester Grund je Ausgang „nicht nur Stefan“ — nur Beschriftung für daten der
+ * Terminalmarke (`rueckfrage_abgleich`), die Reihenfolge der Prüfungen ändert er nicht.
+ */
+export const ABGLEICH_GRUENDE = Object.freeze([
+  'protokoll_ungueltig',
+  'protokoll_fremd',
+  'keine_ablehnung',
+  'ablehnung_ungueltig',
+  'id_fehlt',
+  'id_doppelt',
+  'kein_eintrag',
+  'eintrag_mehrfach',
+  'nicht_von_stefan',
+  'werkzeug_abweichend',
+  'eingabe_abweichend',
+  'ablehnungstext_passt_nicht',
+] as const)
+export type AbgleichGrund = (typeof ABGLEICH_GRUENDE)[number]
+
 /** Ergebnis des Abgleichs A6. */
-export type AbgleichErgebnis = { art: 'nur_stefan'; anzahl: number } | { art: 'nicht_nur_stefan' }
+export type AbgleichErgebnis = { art: 'nur_stefan'; anzahl: number } | { art: 'nicht_nur_stefan'; grund: AbgleichGrund }
 
 /** tool_result-Blöcke des Rohstroms je tool_use_id (ermittleToolErgebnisse, src/claude-code-gateway). */
 export type ToolErgebnisse = ReadonlyMap<string, readonly { fehler: boolean; text: string | null }[]>
@@ -200,7 +221,8 @@ function traegtAblehnungstext(ergebnisse: ToolErgebnisse | undefined, id: string
   return liste.every((e) => e?.fehler === true && typeof e.text === 'string' && sha256Hex(e.text) === ablehnungHash)
 }
 
-const NICHT_NUR_STEFAN: AbgleichErgebnis = Object.freeze({ art: 'nicht_nur_stefan' })
+/** Je Grund ein eingefrorenes Ergebnis (Advisor B10). */
+const NICHT_NUR_STEFAN = Object.freeze(Object.fromEntries(ABGLEICH_GRUENDE.map((grund) => [grund, Object.freeze({ art: 'nicht_nur_stefan', grund })]))) as Readonly<Record<AbgleichGrund, AbgleichErgebnis>>
 
 /**
  * Abgleich A6: sind ALLE Ablehnungen eines Laufs allein von Stefan abgelehnt? Fail closed.
@@ -208,13 +230,14 @@ const NICHT_NUR_STEFAN: AbgleichErgebnis = Object.freeze({ art: 'nicht_nur_stefa
  * @param protokoll - zusammengesetztes Protokoll von `rueckfragen-<laufId>` (`ab: 0`; oder null/ungültig = fehlend)
  * @param laufId - Lauf, zu dem das Protokoll gehören muss (H2)
  * @param ergebnisse - B2b-3b-2b-1b (R1): tool_result-Blöcke des hash-geprüften Rohstroms je ID; fehlt er ⇒ wie „kein tool_result“
- * @returns nur_stefan mit Anzahl oder nicht_nur_stefan
+ * @returns nur_stefan mit Anzahl oder nicht_nur_stefan mit Grund (ABGLEICH_GRUENDE)
  */
 export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unknown, laufId: string, ergebnisse?: ToolErgebnisse): AbgleichErgebnis {
-  if (validiereRueckfrageProtokoll(protokoll).length > 0) return NICHT_NUR_STEFAN
+  if (validiereRueckfrageProtokoll(protokoll).length > 0) return NICHT_NUR_STEFAN.protokoll_ungueltig
   const geprueft = protokoll as { lauf_id: string; ab: number; eintraege: { tool_use_id: string | null; tool_name: string; input_hash: string; art: string; ablehnung_hash?: string }[] }
   // B2b-3b-2b-1a: ein einzelner Zuwachs (ab > 0) ist nie ein ganzes Protokoll.
-  if (geprueft.lauf_id !== laufId || geprueft.ab !== 0 || denials.length === 0) return NICHT_NUR_STEFAN
+  if (geprueft.lauf_id !== laufId || geprueft.ab !== 0) return NICHT_NUR_STEFAN.protokoll_fremd
+  if (denials.length === 0) return NICHT_NUR_STEFAN.keine_ablehnung
   const jeId = new Map<string, { anzahl: number; eintrag: (typeof geprueft.eintraege)[number] }>()
   for (const eintrag of geprueft.eintraege) {
     if (eintrag.tool_use_id === null) continue
@@ -223,16 +246,19 @@ export function gleicheAblehnungenAb(denials: readonly unknown[], protokoll: unk
   }
   const gesehen = new Set<string>()
   for (const denial of denials) {
-    if (!istObjekt(denial)) return NICHT_NUR_STEFAN
+    if (!istObjekt(denial)) return NICHT_NUR_STEFAN.ablehnung_ungueltig
     const id = denial.tool_use_id
-    if (typeof id !== 'string' || id.length === 0 || gesehen.has(id)) return NICHT_NUR_STEFAN
+    if (typeof id !== 'string' || id.length === 0) return NICHT_NUR_STEFAN.id_fehlt
+    if (gesehen.has(id)) return NICHT_NUR_STEFAN.id_doppelt
     gesehen.add(id)
     const treffer = jeId.get(id)
-    if (treffer === undefined || treffer.anzahl !== 1) return NICHT_NUR_STEFAN
-    if (treffer.eintrag.art !== 'stefan_abgelehnt' || treffer.eintrag.tool_name !== denial.tool_name) return NICHT_NUR_STEFAN
-    if (treffer.eintrag.input_hash !== sha256Hex(kanonischesJson(denial.tool_input ?? null))) return NICHT_NUR_STEFAN
+    if (treffer === undefined) return NICHT_NUR_STEFAN.kein_eintrag
+    if (treffer.anzahl !== 1) return NICHT_NUR_STEFAN.eintrag_mehrfach
+    if (treffer.eintrag.art !== 'stefan_abgelehnt') return NICHT_NUR_STEFAN.nicht_von_stefan
+    if (treffer.eintrag.tool_name !== denial.tool_name) return NICHT_NUR_STEFAN.werkzeug_abweichend
+    if (treffer.eintrag.input_hash !== sha256Hex(kanonischesJson(denial.tool_input ?? null))) return NICHT_NUR_STEFAN.eingabe_abweichend
     // R1: nur wenn die CLI genau Stefans eindeutigen Text zurückgegeben hat — schließt das „Waschen“ einer statischen Sperre.
-    if (!traegtAblehnungstext(ergebnisse, id, treffer.eintrag.ablehnung_hash)) return NICHT_NUR_STEFAN
+    if (!traegtAblehnungstext(ergebnisse, id, treffer.eintrag.ablehnung_hash)) return NICHT_NUR_STEFAN.ablehnungstext_passt_nicht
   }
   return { art: 'nur_stefan', anzahl: denials.length }
 }

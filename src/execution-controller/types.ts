@@ -94,6 +94,10 @@ export interface RueckfrageZugang {
   speicher: () => unknown
   /** Meldet eine Abweichung Speicher/Datei mit Grund (Server: Eintrag in die Startfehlerliste). */
   meldeAbweichung: (grund: string) => void
+  /** F45 B2b-3b-2b-2a-1: Zählung der Antworten je Art aus dem Speicherstand (RueckfrageZaehlung), oder null (Lauf nicht offen). */
+  zaehlung?: () => unknown
+  /** F45 B2b-3b-2b-2a-1: zuletzt über meldeAbweichung gemeldeter Grund (R3), oder null. */
+  abweichung?: () => unknown
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */

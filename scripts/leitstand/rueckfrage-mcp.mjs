@@ -13,9 +13,12 @@
  * „keine Antwort von Stefan“, nie allow (fail closed).
  *
  * Umgebung (aus dem `env` des Servers in der mcp-config, src/rueckfrage ergaenzeRueckfrageAufruf):
- * WORKFORCE_RUECKFRAGE_URL (Basis), WORKFORCE_RUECKFRAGE_TOKEN, WORKFORCE_RUECKFRAGE_FRIST_MS (Gesamtfrist je Rückfrage).
+ * WORKFORCE_RUECKFRAGE_URL (API-Basis der Instanz seit B2b-3b-2b-2a-1: Workforce `http://127.0.0.1:<port>/api`, Projekt
+ * `…/api/projekte/<id>`; das Skript hängt `/rueckfrage/anfrage…` an), WORKFORCE_RUECKFRAGE_TOKEN, WORKFORCE_RUECKFRAGE_FRIST_MS
+ * (Gesamtfrist je Rückfrage).
  *
- * Wird aufgerufen von: der Claude-Code-CLI über --mcp-config (erst ab B2b-3b-2 eingeschaltet), scripts/check-f45-b2b3b1-rueckfrage.mjs.
+ * Wird aufgerufen von: der Claude-Code-CLI über --mcp-config (nur mit LEITSTAND_RUECKFRAGE=1), scripts/check-f45-b2b3b1-rueckfrage.mjs,
+ * scripts/check-f45-b2b3b2b2a-einschalten.mjs (über den Multi-Projekt-Dispatcher).
  *
  * Wichtig: stdout gehört ausschließlich dem Protokoll — Diagnose nur auf stderr.
  */
@@ -52,7 +55,7 @@ const WERKZEUGE = [
 
 /**
  * Eine POST-Anfrage an den Leitstand.
- * @param {string} pfad - Pfad unter der Basis
+ * @param {string} pfad - Pfad unter der API-Basis der Instanz (ohne /api)
  * @param {unknown} body - JSON-Body
  * @returns {Promise<{ status: number, daten: unknown }>} wirft bei Netzfehler, Zeitgrenze oder kaputtem JSON
  */
@@ -95,7 +98,7 @@ async function frageLeitstand(anfrage) {
   }
   const ende = Date.now() + (Number.isFinite(FRIST_MS) && FRIST_MS > 0 ? FRIST_MS : 660000)
   try {
-    const erst = await post('/api/rueckfrage/anfrage', anfrage)
+    const erst = await post('/rueckfrage/anfrage', anfrage)
     const daten = /** @type {Record<string, unknown>} */ (erst.daten ?? {})
     if (erst.status === 200 && typeof daten.entscheidung === 'object' && daten.entscheidung !== null) return /** @type {Record<string, unknown>} */ (daten.entscheidung)
     // qa 9: 400 heißt „Anfrage ungültig, Stefan nicht gefragt“ — eigene Meldung statt „keine Antwort“.
@@ -106,7 +109,7 @@ async function frageLeitstand(anfrage) {
     }
     while (Date.now() < ende) {
       const pollStart = Date.now()
-      const poll = await post(`/api/rueckfrage/anfrage/${encodeURIComponent(daten.id)}/warten`, {})
+      const poll = await post(`/rueckfrage/anfrage/${encodeURIComponent(daten.id)}/warten`, {})
       const p = /** @type {Record<string, unknown>} */ (poll.daten ?? {})
       if (poll.status !== 200) {
         diagnose(`Warten abgelehnt (Status ${poll.status})`)

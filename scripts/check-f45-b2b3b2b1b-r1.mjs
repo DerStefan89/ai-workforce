@@ -17,7 +17,7 @@
  *       qa 1): kein Umgehungsverdacht, kein Startfehler „nicht bestätigt“, beide Einträge mit Hash, Hash A = Text des tool_result A, Argv
  *       mit --permission-prompt-tool — VERWEIGERT kommt also aus R1, nicht aus einem anderen Grund.
  * (r1e) Gegenprobe, gleicher Aufbau: nur A, echte Stefan-Ablehnung mit dem Text aus dem Long-Poll ⇒ ERFOLGREICH (1).
- * (f)   Grenzen: starteWorkflowSchritt( im Server 6×; kein Produktaufrufer übergibt `rueckfrage:`; ARCHITECTURE §4 nennt R1
+ * (f)   Grenzen: starteWorkflowSchritt( im Server 6×; Produktaufrufer übergeben `rueckfrage` nur über rueckfrageOptionFuer (seit B2b-3b-2b-2a-1); ARCHITECTURE §4 nennt R1
  *       (ablehnung_hash).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
@@ -40,6 +40,7 @@ import { sha256Hex } from '../src/checkpoint-store/index.ts'
 import { ermittleIstZustand } from '../src/invocation-policy/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
+import { pruefeKanalNurUeberOptIn } from './_rueckfrage-aus-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRueckfrageProtokollSchreiber } from './leitstand/rueckfrage-protokoll.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
@@ -279,7 +280,7 @@ try {
       arbeitsordnerNpm: async () => ({ code: 0, stdout: '', stderr: '', zeitueberschritten: false }),
       arbeitsordnerE183: () => ({ ok: true }),
       standCacheMs: 0,
-      rueckfrage: { an: true, url: basisUrl },
+      rueckfrage: { an: true, url: `${basisUrl}/api` },
     })
 
     /** Legt einen Ein-Schritt-Workflow 'ausfuehrung' an, startet ihn und wartet auf das Ende des Laufs. */
@@ -357,8 +358,10 @@ try {
     const aufrufe = server.split('starteWorkflowSchritt(').length - 1
     pruefe(aufrufe === 6, '(f) starteWorkflowSchritt( in leitstand-server.mjs 6× (unverändert).', `(f) starteWorkflowSchritt( ${aufrufe}×`)
     const produkt = ['scripts/leitstand-server.mjs', ...readdirSync('scripts/leitstand').filter((n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')).map((n) => `scripts/leitstand/${n}`)]
-    const mitKanal = produkt.filter((p) => /erzeugeRequestHandler\([^)]*\brueckfrage\s*:/s.test(readFileSync(p, 'utf8')))
-    pruefe(mitKanal.length === 0, '(f) Kanal aus: kein Produktaufrufer übergibt die Option rueckfrage an erzeugeRequestHandler.', `(f) Option rueckfrage gesetzt in: ${mitKanal.join(', ')}`)
+    // B2b-3b-2b-2a-1 (Advisor B1/B2): „Kanal aus“ heißt seit dem Opt-in „nur über rueckfrageOptionFuer, also nur mit
+    // LEITSTAND_RUECKFRAGE=1“ — gemeinsame, gleich strenge Regel in scripts/_rueckfrage-aus-pruefung.mjs.
+    const optIn = pruefeKanalNurUeberOptIn(produkt.map((p) => ({ pfad: p, text: readFileSync(p, 'utf8') })))
+    pruefe(optIn.befunde.length === 0 && optIn.handlerAufrufe >= 2, '(f) Kanal nur über das Opt-in: kein Produktaufrufer setzt die Option rueckfrage außerhalb von rueckfrageOptionFuer.', `(f) ${optIn.befunde.join('; ')}`)
     const architektur = readFileSync('ARCHITECTURE.md', 'utf8')
     const abschnitt4 = architektur.slice(architektur.indexOf('## 4. Fehlerbehandlung'), architektur.indexOf('## 5.'))
     pruefe(/ablehnung_hash/.test(abschnitt4) && /R1/.test(abschnitt4), '(f) ARCHITECTURE §4 nennt R1 (ablehnung_hash).', '(f) ARCHITECTURE §4 ohne R1/ablehnung_hash')

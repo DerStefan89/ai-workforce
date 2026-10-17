@@ -151,6 +151,8 @@ export const GRUND_SCHLUESSEL = {
   fehlgeschlagen: 'chat.grund.fehlgeschlagen',
   unerwarteter_laufstatus: 'chat.grund.unerwarteterLaufstatus',
   ergebnis_unlesbar: 'chat.grund.ergebnisUnlesbar',
+  umgehungsverdacht: 'chat.grund.umgehungsverdacht',
+  keine_rueckfrage_oder_nicht_lesbar: 'chat.grund.keineRueckfrageOderNichtLesbar',
 }
 
 /** Form eines Grund-Codes (Kleinbuchstaben, Ziffern, Unterstrich) — alles andere ist Fließtext. */

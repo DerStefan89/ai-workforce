@@ -30,6 +30,21 @@ export interface KlassifikationsEingaben {
    * bleibt die Klassifikation unverändert.
    */
   rueckfragen?: unknown
+  /**
+   * F45 B2b-3b-2b-2a-1 (F-1128 R3): Grund, warum die Protokoll-Datei nicht zum Speicherstand passte (nur mit Kanal, nur bei
+   * Abweichung) — steht als `rueckfrage_abweichung` in daten der Terminalmarke, gekappt.
+   */
+  rueckfrageAbweichung?: string
+  /** F45 B2b-3b-2b-2a-1 (F-1128 (3), D13): Zählung der Antworten aus dem Speicherstand der Vermittlung (nur mit Kanal). */
+  rueckfrageZaehlung?: RueckfrageZaehlung
+}
+
+/** Antworten eines Laufs über den Rückfrage-Kanal je Art; `nicht_browser` = davon nicht aus dem Browser (E-B7). */
+export interface RueckfrageZaehlung {
+  stefan_erlaubt: number
+  stefan_abgelehnt: number
+  frage_beantwortet: number
+  nicht_browser: number
 }
 
 export interface KlassifikationsOptionen {

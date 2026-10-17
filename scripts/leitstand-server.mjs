@@ -543,7 +543,9 @@ import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitsta
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
 import { baueUmfangProjektion, ermittleUmfangFuerUebersicht, leseUmfangsZeile } from './leitstand/umfang-stand.mjs'
-import { ergaenzeRueckfrageAufruf, RUECKFRAGE_SERVER, werkzeugNamenAus } from '../src/rueckfrage/index.ts'
+import { ergaenzeRueckfrageAufruf, RUECKFRAGE_REGEL, RUECKFRAGE_SERVER, werkzeugNamenAus } from '../src/rueckfrage/index.ts'
+import { rueckfrageBasisAusUmgebung, rueckfrageOptionFuer, rueckfrageStartzeile } from './leitstand/rueckfrage-einschalten.mjs'
+import { loeseProjektPfade } from './leitstand/projekt-pfade.mjs'
 import { erzeugeRueckfrageProtokollSchreiber } from './leitstand/rueckfrage-protokoll.mjs'
 import { erzeugeRueckfrageVermittlung, herkunftDerAntwort } from './leitstand/rueckfrage-vermittlung.mjs'
 import { erzeugeAktivitaetsSpeicher, zielFuerAnzeige } from './leitstand/lauf-aktivitaet.mjs'
@@ -6016,8 +6018,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Agents nicht übernommen, Fakt sichtbar). Die Prüfung gegen den Werkzeugsatz des Laufs folgt mit F-3b-2.
     pluginWerkzeugsatz = undefined,
     // F45 B2b-3b-1a (features/F45/plan-b2b3b1a-v2.md §4/§5): Rückfrage-Kanal { an, url, skriptPfad?, warteGrenzeMs?, pollFensterMs? }.
-    // undefined bzw. an !== true = AUS: kein Lauf bekommt --permission-prompt-tool, das Argv bleibt bitgleich. Bis B2b-3b-2 setzen
-    // weder der CLI-Bindeblock noch baueProjektHandlerMap die Option — nur das Gate (Gate f45-b2b3b1 (f)).
+    // undefined bzw. an !== true = AUS: kein Lauf bekommt --permission-prompt-tool, das Argv bleibt bitgleich. Seit B2b-3b-2b-2a-1
+    // setzen CLI-Bindeblock und baueProjektHandlerMap sie nur über rueckfrageOptionFuer, also nur mit LEITSTAND_RUECKFRAGE=1.
     rueckfrage = undefined,
     // F45 B2b-3b-1a: Vermittlung (Token, Warteschlange) — undefined = eigene je Instanz (erzeugt nach profilReferenz, 3b-1b:
     // mit dem Protokoll-Schreiber); injizierbar für Tests.
@@ -7514,6 +7516,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         ...ausfuehrungsOptionen,
         rueckfrage: { url: rueckfrage.url, token: randomBytes(32).toString('hex'), skriptPfad: rueckfrageSkriptPfad, nodePfad: process.execPath, warteGrenzeMs: rueckfrageVermittlung.warteGrenzeMs },
       }
+      // B2b-3b-2b-2a-1 (Punkt 4): nur mit Kanal die Regelzeile zu frage_stefan; ohne Kanal bleibt der Auftragstext bitgleich.
+      auftragstext = `${auftragstext}\n\n${RUECKFRAGE_REGEL.join('\n')}`
     }
     const eingabenErgebnis = loeseSchrittEingabenAuf(
       schritt,
@@ -8732,7 +8736,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         // sind dieselben, per Referenz geteilten Objekte, die GET /api/projekte bzw. der Dispatcher
         // lesen (kein zweiter, divergierender Zustand).
         projekte.push(neuerEintrag)
-        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad, faehigkeitenLokalWaechter, pruefberichtBasisVerzeichnis, pluginKopienWurzel, pluginWerkzeugsatz: kopieWerkzeugsatz })
+        // B2b-3b-2b-2a-1: Rückfrage-Kanal nur an der Workforce-Instanz weiterreichen (ihre url ist die API-Basis; Advisor B5).
+        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand, { faehigkeitenLokalPfad, faehigkeitenLokalWaechter, pruefberichtBasisVerzeichnis, pluginKopienWurzel, pluginWerkzeugsatz: kopieWerkzeugsatz, rueckfrageBasis: istWorkforceInstanz && rueckfrageAn ? rueckfrage.url : undefined })
         for (const [id, handler] of neueTeilkarte) projektHandlerMap.set(id, handler)
 
         // F42 WS-1 (E-PH-1 = B): read-only-Erkennung, KEIN Schreibzugriff auf ~/.claude.json — der
@@ -13125,12 +13130,13 @@ export function belegeInstanzLock(basisVerzeichnis, port) {
  * @param globalerLaufZustand - projektübergreifend geteiltes D13-Zustandsobjekt
  * @param optionen - { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad (F45 F-1), faehigkeitenLokalWaechter (F45 F-2a:
  *   ein Wächter für alle Instanzen), pruefberichtBasisVerzeichnis (F45 F-2b-2: Ablage der Workforce), pluginKopienWurzel und
- *   pluginWerkzeugsatz (F45 F-3b-1: Ablage der Plugin-Kopien bzw. Werkzeugsatz der Projektion; null = „unbekannt“) } — optional,
+ *   pluginWerkzeugsatz (F45 F-3b-1: Ablage der Plugin-Kopien bzw. Werkzeugsatz der Projektion; null = „unbekannt“), rueckfrageBasis } — optional,
  *   Muster oben
  * @returns Map von Projekt-id auf Request-Handler
  */
 export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZustand, optionen = {}) {
-  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null, faehigkeitenLokalWaechter = undefined, pruefberichtBasisVerzeichnis = undefined, pluginKopienWurzel = undefined, pluginWerkzeugsatz = undefined } = optionen
+  // B2b-3b-2b-2a-1: rueckfrageBasis = API-Basis der Workforce-Instanz bei eingeschaltetem Kanal, sonst undefined (Kanal aus).
+  const { selbstRepoWurzel, selbstHandler, faehigkeitenLokalPfad = null, faehigkeitenLokalWaechter = undefined, pruefberichtBasisVerzeichnis = undefined, pluginKopienWurzel = undefined, pluginWerkzeugsatz = undefined, rueckfrageBasis = undefined } = optionen
   const map = new Map()
   const gesehenePfade = new Map()
   for (const projekt of projekte) {
@@ -13183,6 +13189,8 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           // F45 F-3b-1: dieselbe Ablage der Plugin-Kopien für alle Instanzen; undefined → keine (Gates).
           ...(pluginKopienWurzel !== undefined ? { pluginKopienWurzel } : {}),
           ...(pluginWerkzeugsatz !== undefined ? { pluginWerkzeugsatz } : {}),
+          // B2b-3b-2b-2a-1: Rückfrage-Kanal mit der API-Basis dieser Projektinstanz (…/api/projekte/<id>), sonst {}.
+          ...rueckfrageOptionFuer(rueckfrageBasis, projekt.id),
         })
       )
     } catch (fehler) {
@@ -13192,30 +13200,8 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
   return map
 }
 
-/**
- * F25 WS-1 (AK2, AK3, AK4): reine Funktion, löst aus einem Registereintrag alle Pfade auf, die
- * baueProjektHandlerMap an erzeugeRequestHandler durchreicht — extrahiert, damit ein Gate-Skript
- * die Auflösungsarithmetik direkt prüfen kann, ohne dafür einen Server zu starten (D5, Muster
- * validiereRessourcenDaten als reine, unabhängig testbare Funktion). Keine Seiteneffekte, kein
- * Datei-I/O.
- * @param projekt - ein validierter Registereintrag (src/projekte/types.ts)
- * @param repoWurzelBasis - Referenzpunkt für ein relatives projekt.repo_pfad
- * @returns die aufgelösten Pfade für genau diesen Registereintrag
- */
-export function loeseProjektPfade(projekt, repoWurzelBasis) {
-  const repoWurzel = resolve(repoWurzelBasis, projekt.repo_pfad)
-  return {
-    repoWurzel,
-    basisVerzeichnis: join(repoWurzel, projekt.basisverzeichnis),
-    startvorlagePfad: join(repoWurzel, projekt.startvorlage_pfad),
-    settingsPfad: join(repoWurzel, '.claude', 'settings.json'),
-    aktuelleAutorisierungPfad: join(repoWurzel, 'state', 'aktuelle-autorisierung.json'),
-    cwd: repoWurzel,
-    // F36 WS-5a (E-F36-7): Projekt-URL mit Port, roh aus dem Registereintrag (validiert von
-    // validiereProjekteDaten); null, wenn der Eintrag sie nicht trägt.
-    vorschauUrl: projekt.vorschau_url ?? null,
-  }
-}
+// F25 WS-1: loeseProjektPfade liegt seit B2b-3b-2b-2a-1 in scripts/leitstand/projekt-pfade.mjs (Wachstumsbremse); Re-Export für die Gates.
+export { loeseProjektPfade }
 
 /** F-823: Antwortgrund bei einer nicht parsebaren Anfrage-URI. */
 const UNGUELTIGE_URL_GRUND = 'Ungültige Anfrage-URI'
@@ -13399,7 +13385,9 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // F45 F-3b-1 (E-F3b-4, Advisor N2): nur hier zeigt die Ablage der Plugin-Kopien auf Stefans echtes ~/.ai-workforce.
   const pluginKopienWurzel = process.env.LEITSTAND_PLUGIN_KOPIEN_WURZEL ?? join(homedir(), '.ai-workforce', 'plugin-kopien')
   const pluginWerkzeugsatz = ladeStartvorlage(startvorlagePfad).werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? null
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, istWorkforceInstanz: true, pluginKopienWurzel, pluginWerkzeugsatz, arbeitsordner: true })
+  // F45 B2b-3b-2b-2a-1: Rückfrage-Kanal nur mit LEITSTAND_RUECKFRAGE=1 (Adresse vor dem Binden aus PORT, Port 0 ⇒ aus).
+  const rueckfrageStand = rueckfrageBasisAusUmgebung(process.env, PORT)
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, istWorkforceInstanz: true, pluginKopienWurzel, pluginWerkzeugsatz, ...rueckfrageOptionFuer(rueckfrageStand.basis), arbeitsordner: true })
   const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,
@@ -13408,6 +13396,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     pruefberichtBasisVerzeichnis: BASISVERZEICHNIS,
     pluginKopienWurzel,
     pluginWerkzeugsatz,
+    rueckfrageBasis: rueckfrageStand.basis,
   })
   for (const [id, handler] of anfangsHandlerKarte) projektHandlerMap.set(id, handler)
   const dispatcher = erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler)
@@ -13430,6 +13419,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
       `Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad} — ${beschreibeStartvorlagenHerkunft(startvorlageWahl)}, Projekte: ${projekte.map((p) => p.id).join(', ') || '—'})`
     )
     console.log('Arbeitsordner je Ablauf: an (eigener Git-Worktree <Projektordner>-laeufe/<Kurzname>, Branch wf/<Ablauf-ID>)')
+    console.log(rueckfrageStartzeile(rueckfrageStand))
     // F-849: Registereinträge, deren vorschau_url auf den gebundenen Port zeigt, sichtbar melden —
     // gesperrt sind sie je Anfrage ohnehin (vorschauLeitstandSperre gegen req.socket.localPort).
     for (const projekt of projekte) {

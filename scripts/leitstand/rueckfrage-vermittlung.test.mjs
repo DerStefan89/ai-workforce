@@ -293,7 +293,9 @@ test('F45 B2b-3b-2b-1a (R3, Advisor B6/D9): zugang vor oeffneLauf gebaut, danach
   v.oeffneLauf('l1', KANAL)
   v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'z1' })
   assert.deepEqual(zugang.speicher().map((e) => e.art), ['auto_deny'])
+  assert.equal(zugang.abweichung(), null, 'B2b-3b-2b-2a-1: vor einer Meldung keine Abweichung')
   zugang.meldeAbweichung('Länge abweichend (Speicher 1, Datei 2)')
+  assert.equal(zugang.abweichung(), 'Länge abweichend (Speicher 1, Datei 2)', 'B2b-3b-2b-2a-1: der Zugang merkt die gemeldete Abweichung (R3, daten der Terminalmarke)')
   assert.equal(gemeldet.length, 1)
   assert.match(gemeldet[0], /Lauf 'l1' nicht bestätigt — Ablehnungen durch Stefan zählen nicht: Länge abweichend/)
   const fremd = v.zugang('unbekannt', () => {
@@ -303,6 +305,23 @@ test('F45 B2b-3b-2b-1a (R3, Advisor B6/D9): zugang vor oeffneLauf gebaut, danach
   assert.doesNotThrow(() => fremd.meldeAbweichung('x'))
   v.beendeLauf('l1')
   assert.equal(zugang.speicher(), null, 'nach dem Lauf-Ende kein Speicherstand mehr')
+})
+
+test('F45 B2b-3b-2b-2a-1 (F-1128 (3), D13): zugang.zaehlung zählt Antworten je Art und nicht_browser aus dem Speicher; ohne offenen Lauf null', () => {
+  const { v } = aufbau()
+  const zugang = v.zugang('l1', () => {})
+  assert.deepEqual(zugang.zaehlung(), { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0 })
+  const id = (tool_use_id, input) => v.stelle('l1', { art: 'rechte', tool_name: 'Bash', input, tool_use_id }).id
+  const frage = v.stelle('l1', { art: 'frage', frage: 'A oder B?', optionen: ['A', 'B'], tool_use_id: 'f1' }).id
+  v.beantworte(id('b1', { command: 'npm publish' }), { entscheidung: 'einmal_erlauben' }, 'browser')
+  v.beantworte(id('b2', { command: 'git push' }), { entscheidung: 'ablehnen' }, 'nicht_browser')
+  v.beantworte(id('b3', { command: 'rm -rf x' }), { entscheidung: 'ablehnen' }, 'browser')
+  v.beantworte(frage, { antwort: 'A' }, 'nicht_browser')
+  v.stelle('l1', { art: 'rechte', tool_name: 'Write', input: { file_path: '../x', content: 'x' }, tool_use_id: 'w1' })
+  assert.deepEqual(zugang.zaehlung(), { stefan_erlaubt: 1, stefan_abgelehnt: 2, frage_beantwortet: 1, nicht_browser: 2 }, 'auto_deny zählt nicht')
+  assert.equal(v.zugang('unbekannt', () => {}).zaehlung(), null)
+  v.beendeLauf('l1')
+  assert.equal(zugang.zaehlung(), null, 'nach dem Lauf-Ende null')
 })
 
 // ─── F45 B2b-3b-2b-1b (F-1128 R1): eindeutiger Ablehnungstext je Ablehnung durch Stefan ───────────────────────────────

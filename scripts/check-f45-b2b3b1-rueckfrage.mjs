@@ -29,8 +29,8 @@
  *      startet der Lauf normal (A2). Mit Schalter an bleiben nicht berechtigte Läufe ohne Kanal (Review, Projektordner).
  * (a2) Schalter an: --permission-prompt-tool mcp__rueckfrage__rechte_pruefen vor -p, rueckfrage (+ Katalog-MCP) in der mcp-config,
  *      frage_stefan in --allowedTools/--tools; pruefeInitZeile mit/ohne rueckfrage.
- * (f)  Quelltext: starteWorkflowSchritt( 6×, F-228 unverändert; kein Produktaufrufer setzt die Einschalt-Option (alle
- *      erzeugeRequestHandler(-Aufrufe in leitstand-server.mjs, src/** ohne Tests).
+ * (f)  Quelltext: starteWorkflowSchritt( 6×, F-228 unverändert; seit B2b-3b-2b-2a-1 setzt ein Produktaufrufer die Einschalt-Option nur
+ *      über rueckfrageOptionFuer (scripts/_rueckfrage-aus-pruefung.mjs); src/** ohne Tests setzt sie nicht.
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -49,6 +49,7 @@ import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { ergaenzeRueckfrageAufruf, FRAGE_WERKZEUG, RECHTE_WERKZEUG } from '../src/rueckfrage/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
+import { pruefeKanalNurUeberOptIn } from './_rueckfrage-aus-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, pruefeStartauftrag, RUECKFRAGE_BODY_MAX_BYTES } from './leitstand-server.mjs'
 import { erzeugeRueckfrageVermittlung, KEINE_ANTWORT } from './leitstand/rueckfrage-vermittlung.mjs'
@@ -264,7 +265,7 @@ try {
     const protokoll = []
     const ende = aufgeschoben()
     const vermittlung = erzeugeRueckfrageVermittlung({ protokolliere: (_l, e) => protokoll.push(e) })
-    const s = await starteServer(u, (basisUrl) => ({ rueckfrage: { an: true, url: basisUrl }, rueckfrageVermittlung: vermittlung }), (eingaben) => (eingaben.rolle === 'ausfuehrung' ? ende.versprechen : undefined))
+    const s = await starteServer(u, (basisUrl) => ({ rueckfrage: { an: true, url: `${basisUrl}/api` }, rueckfrageVermittlung: vermittlung }), (eingaben) => (eingaben.rolle === 'ausfuehrung' ? ende.versprechen : undefined))
     const workflowId = await legeAblaufAn(u, s, SCHRITT_AUSFUEHRUNG, 'a')
     const start = await starteAblauf(s, workflowId)
     const lauf = await warteBis(() => s.aufrufe.find((a) => a.rolle === 'ausfuehrung'))
@@ -277,7 +278,7 @@ try {
       const allowed = argv[argv.indexOf('--allowedTools') + 1].split(',')
       const tools = argv[argv.indexOf('--tools') + 1].split(',')
       pruefe(
-        argv.slice(p - 2, p).join(' ') === `--permission-prompt-tool ${RECHTE_WERKZEUG}` && allowed.includes(FRAGE_WERKZEUG) && tools.includes(FRAGE_WERKZEUG) && server.command === process.execPath && server.args[0] === SKRIPT && server.env.WORKFORCE_RUECKFRAGE_URL === s.basisUrl,
+        argv.slice(p - 2, p).join(' ') === `--permission-prompt-tool ${RECHTE_WERKZEUG}` && allowed.includes(FRAGE_WERKZEUG) && tools.includes(FRAGE_WERKZEUG) && server.command === process.execPath && server.args[0] === SKRIPT && server.env.WORKFORCE_RUECKFRAGE_URL === `${s.basisUrl}/api`,
         '(a2) Schalter an: --permission-prompt-tool vor -p, frage_stefan in --allowedTools/--tools, Server rueckfrage = Node + Skript der Installation, url des Leitstands.',
         `(a2) Argv/mcp-config: ${JSON.stringify({ vorP: argv.slice(p - 2, p), allowed, server })}`
       )
@@ -378,7 +379,7 @@ try {
     const protokoll = []
     const ende = aufgeschoben()
     const vermittlung = erzeugeRueckfrageVermittlung({ warteGrenzeMs: 1500, pollFensterMs: 50, protokolliere: (_l, e) => protokoll.push(e) })
-    const s = await starteServer(u, (basisUrl) => ({ rueckfrage: { an: true, url: basisUrl, warteGrenzeMs: 1500 }, rueckfrageVermittlung: vermittlung }), (eingaben) => (eingaben.rolle === 'ausfuehrung' ? ende.versprechen : undefined))
+    const s = await starteServer(u, (basisUrl) => ({ rueckfrage: { an: true, url: `${basisUrl}/api`, warteGrenzeMs: 1500 }, rueckfrageVermittlung: vermittlung }), (eingaben) => (eingaben.rolle === 'ausfuehrung' ? ende.versprechen : undefined))
     await starteAblauf(s, await legeAblaufAn(u, s, SCHRITT_AUSFUEHRUNG, 'b'))
     const lauf = await warteBis(() => s.aufrufe.find((a) => a.rolle === 'ausfuehrung'))
     if (!lauf) befunde.push('(Vorbedingung B) Ausführung nicht gestartet')
@@ -409,7 +410,7 @@ try {
     await new Promise((r) => weg.listen(0, '127.0.0.1', r))
     const port = weg.address().port
     await new Promise((r) => weg.close(r))
-    const client = starteClient({ command: process.execPath, args: [SKRIPT], env: { WORKFORCE_RUECKFRAGE_URL: `http://127.0.0.1:${port}`, WORKFORCE_RUECKFRAGE_TOKEN: 'a'.repeat(64) } })
+    const client = starteClient({ command: process.execPath, args: [SKRIPT], env: { WORKFORCE_RUECKFRAGE_URL: `http://127.0.0.1:${port}/api`, WORKFORCE_RUECKFRAGE_TOKEN: 'a'.repeat(64) } })
     const rechte = await client.rechte('Bash', { command: 'ls' }, 'toolu_r6')
     const frage = await client.werkzeug('frage_stefan', { frage: 'x?', optionen: [] })
     client.beende()
@@ -454,7 +455,7 @@ try {
   // ── (a1) Schalter an, Projektordner ohne Arbeitsordner ⇒ kein Kanal ────────────────────────────────────────────────
   {
     const u = baueUmgebung('a1p')
-    const s = await starteServer(u, (basisUrl) => ({ arbeitsordner: false, rueckfrage: { an: true, url: basisUrl } }))
+    const s = await starteServer(u, (basisUrl) => ({ arbeitsordner: false, rueckfrage: { an: true, url: `${basisUrl}/api` } }))
     const start = await starteAblauf(s, await legeAblaufAn(u, s, SCHRITT_AUSFUEHRUNG, 'a1p'))
     const lauf = await warteBis(() => s.aufrufe.find((a) => a.rolle === 'ausfuehrung'))
     pruefe(start.status === 202 && lauf && lauf.cwd === undefined && lauf.eingaben.rueckfrageKanal === undefined && lauf.eingaben.aufrufEingaben.permissionPromptTool === undefined && lauf.eingaben.aufrufEingaben.mcpConfig === undefined, '(a1) Schalter an, Ausführung im Projektordner ⇒ kein Kanal, Argv ohne Rückfrage-Teile.', `(a1) Projektordner: ${start.status} ${JSON.stringify(lauf?.eingaben?.aufrufEingaben)}`)
@@ -512,21 +513,12 @@ try {
     const schreiber = quelltext.split(`${'schreibeWorkflow'}${'Fortschritt'}(`).length - 1
     const gelesen = quelltext.split(`.${'eingefroren'}`).length - 1
     pruefe(starts === 6 && schreiber === 14 && gelesen === 13, '(f) starteWorkflowSchritt( 6×, Workflow-Schreiber 14 / GESTOPPT-Schutz 13 (F-228 unverändert).', `(f) Zählungen ${starts} / ${schreiber} / ${gelesen} (erwartet 6 / 14 / 13)`)
-    // B4: jeder Aufruf von erzeugeRequestHandler( in leitstand-server.mjs — Argumentliste bis zur passenden Klammer.
-    const aufrufe = []
-    for (let i = quelltext.indexOf('erzeugeRequestHandler('); i >= 0; i = quelltext.indexOf('erzeugeRequestHandler(', i + 1)) {
-      if (quelltext.slice(Math.max(0, i - 9), i) === 'function ') continue
-      let tiefe = 0
-      let j = i + 'erzeugeRequestHandler'.length
-      do {
-        if (quelltext[j] === '(') tiefe++
-        else if (quelltext[j] === ')') tiefe--
-        j++
-      } while (tiefe > 0 && j < quelltext.length)
-      aufrufe.push(quelltext.slice(i, j))
-    }
-    const setzt = aufrufe.filter((a) => /\brueckfrage(Vermittlung)?\b/.test(a))
-    pruefe(aufrufe.length >= 2 && setzt.length === 0, `(f) kein Produktaufrufer setzt die Einschalt-Option (${aufrufe.length} Aufrufe von erzeugeRequestHandler( in leitstand-server.mjs).`, `(f) Aufrufe mit rueckfrage: ${setzt.length} von ${aufrufe.length}`)
+    // B2b-3b-2b-2a-1 (Advisor B1/B2): „kein Produktaufrufer setzt die Einschalt-Option“ gilt mit dem Opt-in absichtlich nicht mehr;
+    // gleich streng: jeder erzeugeRequestHandler(-/baueProjektHandlerMap(-Aufruf nennt rueckfrage… nur über rueckfrageOptionFuer, und
+    // rueckfrageStand stammt genau einmal aus rueckfrageBasisAusUmgebung(process.env, PORT) (ohne LEITSTAND_RUECKFRAGE=1 ⇒ {}).
+    const leitstandModule = readdirSync('scripts/leitstand').filter((n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')).map((n) => `scripts/leitstand/${n}`)
+    const optIn = pruefeKanalNurUeberOptIn([{ pfad: 'scripts/leitstand-server.mjs', text: quelltext }, ...leitstandModule.map((pfad) => ({ pfad, text: readFileSync(pfad, 'utf8') }))])
+    pruefe(optIn.handlerAufrufe >= 2 && optIn.befunde.length === 0, `(f) Kanal nur über das Opt-in (${optIn.handlerAufrufe} Aufrufe von erzeugeRequestHandler(; rueckfrage nur über rueckfrageOptionFuer).`, `(f) ${optIn.befunde.join('; ') || `nur ${optIn.handlerAufrufe} Aufrufe gefunden`}`)
     // src/** (ohne Tests): erzeugt keinen Handler, setzt permissionPromptTool nur im Baustein.
     const srcDateien = []
     const sammle = (ordner) => {

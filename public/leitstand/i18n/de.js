@@ -1759,6 +1759,8 @@ export default {
   'chat.grund.fehlgeschlagen': 'Lauf fehlgeschlagen',
   'chat.grund.unerwarteterLaufstatus': 'unerwarteter Laufstatus',
   'chat.grund.ergebnisUnlesbar': 'Ergebnis fehlt in der Laufakte oder ist ungültig',
+  'chat.grund.umgehungsverdacht': 'Umgehungsverdacht — Rückfrage-Abgleich nicht geprüft',
+  'chat.grund.keineRueckfrageOderNichtLesbar': 'keine Rückfrage im Lauf oder Protokoll nicht lesbar',
   'chat.grund.unbekannt': 'unbekannt ({code})',
   'chat.fehler.keinVerlauf': 'Noch kein Verlauf zum Zusammenfassen.',
   'chat.fehler.laufAktiv': 'Ein anderer Lauf ist aktiv — es läuft immer nur einer. Senden geht wieder, sobald er endet.',

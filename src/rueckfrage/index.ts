@@ -42,6 +42,18 @@ export const SKRIPT_FRIST_ZUSATZ_MS = 60000
 /** Abstand des CLI-timeouts je Server zur Wartegrenze (Advisor-Hinweis: Verhalten bestimmt statt unbekannter CLI-Grenze). */
 export const CLI_TIMEOUT_ZUSATZ_MS = 120000
 
+/**
+ * F45 B2b-3b-2b-2a-1 (Punkt 4): Regelzeilen für den Ausführungsauftrag, nur bei eingeschaltetem Kanal (scripts/leitstand-server.mjs,
+ * starteWorkflowSchritt). Unversioniert wie `baueCdRegelZeile` (src/jarvis) — die Ausführung hat keine versionierte Policy. Vorrang vor
+ * dem F-689-Hinweis „- [x] Blockiert“ wörtlich (Advisor B9).
+ */
+export const RUECKFRAGE_REGEL: readonly string[] = Object.freeze([
+  'Rückfrage-Kanal zu Stefan:',
+  `- Entscheidungen, die nur Stefan treffen kann, holst du über das Werkzeug ${FRAGE_WERKZEUG} ein — rate nicht. Zuerst ${FRAGE_WERKZEUG}; nur wenn keine Antwort kommt, gilt der Hinweis zu '- [x] Blockiert'.`,
+  '- Bash-Befehle, die nicht freigegeben sind, legt der Leitstand Stefan zur Entscheidung vor (einmal erlauben oder ablehnen).',
+  '- Lehnt Stefan ab, umgehe die Ablehnung nicht (kein anderer Befehl oder Weg zum selben Ziel); nenne sie im Ergebnis.',
+])
+
 /** Werkzeuge, die immer einen Pfad tragen (ohne Pfad ⇒ nicht prüfbar). */
 const SCHREIB_WERKZEUGE = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
 /** Eingabefelder, die einen Pfad tragen — bei jedem Werkzeug geprüft. */

@@ -464,7 +464,10 @@ describe('Arbeitsordner je Ablauf (Server)', { concurrency: false }, () => {
 
   it('der reale Server schaltet den Arbeitsordner ein (CLI-Bindeblock und Projektinstanzen)', () => {
     const quelle = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-    const karte = quelle.slice(quelle.indexOf('export function baueProjektHandlerMap'), quelle.indexOf('export function loeseProjektPfade'))
+    // B2b-3b-2b-2a-1 (Advisor B11): Endmarke war die ausgelagerte loeseProjektPfade — jetzt die nächste Funktion im Server.
+    const ende = quelle.indexOf('function leseAnfrageUrl')
+    assert.ok(ende > quelle.indexOf('export function baueProjektHandlerMap'), 'Endmarke leseAnfrageUrl hinter baueProjektHandlerMap')
+    const karte = quelle.slice(quelle.indexOf('export function baueProjektHandlerMap'), ende)
     assert.match(karte, /arbeitsordner: true,/)
     assert.match(quelle, /const defaultHandler = erzeugeRequestHandler\(\{[^\n]*arbeitsordner: true \}\)/)
     assert.match(quelle, /^ {4}arbeitsordner = false,$/m, 'Standard aus für Gate-Instanzen')

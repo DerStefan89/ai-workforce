@@ -33,7 +33,9 @@
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (Routen /api/rueckfrage/…, /api/rueckfragen…, starteLaufUndVergiss,
  * laufOptionen.rueckfrageZugang), scripts/check-f45-b2b3b1-rueckfrage.mjs, scripts/check-f45-b2b3b2a-absicherung.mjs,
- * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, scripts/leitstand/rueckfrage-vermittlung.test.mjs.
+ * scripts/check-f45-b2b3b2b1a-rest.mjs, scripts/check-f45-b2b3b2b1b-r1.mjs, scripts/check-f45-b2b3b2b2a-einschalten.mjs (Dispatcher-Fall (d)),
+ * scripts/leitstand/rueckfrage-vermittlung.test.mjs. Seit B2b-3b-2b-2a-1 liefert `zugang` zusätzlich `zaehlung()` und `abweichung()` (daten der
+ * Terminalmarke über den Controller).
  */
 
 import { randomUUID, timingSafeEqual } from 'node:crypto'
@@ -394,16 +396,40 @@ export function erzeugeRueckfrageVermittlung(optionen = {}) {
   }
 
   /**
+   * B2b-3b-2b-2a-1 (F-1128 (3), E-B7, D13): Zählung der Antworten eines offenen Laufs je Art aus dem Speicherstand (nicht aus der
+   * Datei) — für daten der Terminalmarke. `nicht_browser` zählt die Antworten der drei Arten mit Herkunft 'nicht_browser'. Enthält auch
+   * Ablehnungen durch Stefan, die die Auswertung nicht bestätigt (Advisor B10, Beschriftung in der Anzeige).
+   * @param laufId - Lauf
+   * @returns { stefan_erlaubt, stefan_abgelehnt, frage_beantwortet, nicht_browser } oder null (Lauf nicht offen)
+   */
+  function zaehlungVon(laufId) {
+    const lauf = laeufe.get(laufId)
+    if (lauf === undefined) return null
+    const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0 }
+    for (const e of lauf.protokoll) {
+      if (e.art !== 'stefan_erlaubt' && e.art !== 'stefan_abgelehnt' && e.art !== 'frage_beantwortet') continue
+      zaehlung[e.art]++
+      if (e.herkunft !== 'browser') zaehlung.nicht_browser++
+    }
+    return zaehlung
+  }
+
+  /**
    * B2b-3b-2b-1a (F-1128 R3): Zugang des Controllers zu einem Lauf (laufOptionen.rueckfrageZugang). Wird für jeden Lauf gebaut,
-   * auch ohne Kanal und vor `oeffneLauf` (Advisor B6/D9) — deshalb schlägt `speicher()` den Lauf erst beim Aufruf nach. Wirft nie.
+   * auch ohne Kanal und vor `oeffneLauf` (Advisor B6/D9) — deshalb schlagen `speicher()`/`zaehlung()` den Lauf erst beim Aufruf nach. Wirft nie.
    * @param laufId - Lauf
    * @param melde - (fehler: string) => void, z. B. Eintrag in die Startfehlerliste des Servers; ein Wurf wird geloggt
-   * @returns { speicher: () => Projektion | null, meldeAbweichung: (grund: string) => void }
+   * @returns { speicher: () => Projektion | null, zaehlung: () => Zählung | null, abweichung: () => string | null, meldeAbweichung: (grund: string) => void }
    */
   function zugang(laufId, melde) {
+    let letzteAbweichung = null
     return {
       speicher: () => eintraegeVon(laufId),
+      zaehlung: () => zaehlungVon(laufId),
+      // B2b-3b-2b-2a-1 (R3): der Controller liest die gemeldete Abweichung zurück (daten der Terminalmarke, bleibt nach Neustart).
+      abweichung: () => letzteAbweichung,
       meldeAbweichung: (grund) => {
+        letzteAbweichung = typeof grund === 'string' ? grund : String(grund)
         try {
           melde(`Rückfrage-Protokoll von Lauf '${laufId}' nicht bestätigt — Ablehnungen durch Stefan zählen nicht: ${grund}`)
         } catch (fehler) {
