@@ -29,6 +29,11 @@
  * der Kachel Nachweise der Seite „entscheidbar“. Die Notiz „Budget erreicht“ mit „Budget erhöhen“ steht oben bei den Eingriffen
  * (views/workflow-eingriffe.js, design-guardian 1), nicht hier.
  *
+ * F45 B2b-3b-2b-2b-2b-2 (F-1146): die Seite „entscheidbar“ zeigt den Block „Rückfrage-Kanal im Lauf“ des Ausführungslaufs selbst
+ * (renderRueckfrageAbnahme aus rueckfrage-abnahme.js, mit dem Grund jeder Klasse — hier steht keine Fehler-Notiz); geladen in
+ * views/workflows.js aus GET /api/laeufe/<laufId>. Dazu oben die Zeile „Lauf mit abweichender Claude-Code-Version“ (projektCliHinweis,
+ * nur Warnung, projekt-cli-hinweis.js).
+ *
  * Reine Render-Funktionen: kein fetch, kein DOM, kein Import schreibender api.js-Funktionen; in Node
  * ohne DOM importierbar. Laden, Kennzeichen und alle POSTs bleiben in views/workflows.js.
  *
@@ -56,6 +61,8 @@ import { renderHarnessImLauf, zaehlZeileText } from '../harness-abgleich-anzeige
 import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
+import { renderRueckfrageAbnahme } from '../rueckfrage-abnahme.js'
+import { renderProjektCliZeile } from '../projekt-cli-hinweis.js'
 import { renderEntscheidungsPanel } from './entscheidung-panel.js'
 
 /** Die drei Abnahme-Aktionen in der Reihenfolge der Vorlage (Abnehmen, Anpassung, Ablehnen). */
@@ -733,6 +740,34 @@ function renderSelbstAusprobieren(urteil, vorschau) {
 }
 
 /**
+ * F45 B2b-3b-2b-2b-2b-2 (F-1146): „Rückfrage-Kanal im Lauf“ des Ausführungslaufs auf der Abnahmeseite — derselbe Block wie im
+ * Lauf-Detail (renderRueckfrageAbnahme), hier mit dem Grund jeder Klasse. Lädt der Kanal noch oder ist er nicht ladbar, steht eine Zeile da
+ * (nicht ladbar: mit Link ins Lauf-Detail, qa 2).
+ * @param kanal - undefined (kein Ausführungslauf), { laedt: true, laufId }, null (Lauf ohne Kanal), { fehler: true, laufId } (Lauf-Detail
+ *   nicht ladbar) oder rueckfrageKanal aus GET /api/laeufe/<laufId>
+ * @returns HTML ('' ohne Ausführungslauf und ohne Kanal)
+ */
+export function renderKanalImLauf(kanal) {
+  if (kanal === undefined || kanal === null) return ''
+  if (kanal.laedt === true) return `<p class="subtle abnahme-kanal-laedt">${tHtml('entscheiden.abnahme.kanalLaedt')}</p>`
+  if (kanal.fehler === true) {
+    const link = typeof kanal.laufId === 'string' ? ` <a class="text-link" href="#/runs/${escapeHtml(encodeURIComponent(kanal.laufId))}">${tHtml('eingriff.sichtung.lauf')} <span aria-hidden="true">→</span></a>` : ''
+    return `<p class="subtle abnahme-kanal-fehler">${tHtml('entscheiden.abnahme.kanalNichtLadbar')}${link}</p>`
+  }
+  return renderRueckfrageAbnahme(kanal, { mitUrsache: true })
+}
+
+/**
+ * Ob der Kanal auf der Abnahmeseite oben (unter den Kacheln) steht: nur mit einem Grund der Auswertung oder einer R3-Abweichung — sonst ist
+ * die Zählung ein Detail und steht nach „Selbst ausprobieren“ (design-guardian 2).
+ * @param kanal - wie renderKanalImLauf
+ * @returns true, wenn der Block oben stehen soll
+ */
+function kanalOben(kanal) {
+  return typeof kanal === 'object' && kanal !== null && kanal.laedt !== true && kanal.fehler !== true && ((kanal.abgleich ?? null) !== null || typeof kanal.abweichung === 'string')
+}
+
+/**
  * Hauptspalte der Abnahme (Lage 'entscheidbar', 09-Entscheiden-Abnahme): oben eine veraltete frühere
  * Entscheidung als Audit-Spur (samt F18-Hinweis), Abnahmekriterien, die Kacheln Prüfung · Review ·
  * Nachweise (die Review-Empfehlung dort gekürzt), „Selbst ausprobieren“ und darunter „Nachweise im
@@ -742,20 +777,26 @@ function renderSelbstAusprobieren(urteil, vorschau) {
  * @param abnahme - Antwort von GET …/abnahme
  * @param vorschau - siehe renderSelbstAusprobieren
  * @param harnessAbgleich - F45 B1b-2: Zustand des Harness-Abgleichs (siehe renderHarnessImLauf)
+ * @param zusatz - F45 B2b-3b-2b-2b-2b-2: { kanal, projektCliHinweis } — siehe renderKanalImLauf; projektCliHinweis aus GET /api/zustand
  * @returns HTML
  */
-export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined) {
+export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined, zusatz = {}) {
   const urteil = abnahme.urteil ?? { status: 'noch_nicht_gelaufen' }
+  const kanal = renderKanalImLauf(zusatz.kanal)
+  const oben = kanalOben(zusatz.kanal)
   // Eine veraltete frühere Entscheidung steht oben (qa 15) — sie erklärt, warum die Abnahme wieder offen ist.
   return `<div class="entscheiden-inhalt">
+    ${renderProjektCliZeile(zusatz.projektCliHinweis, 'abnahme')}
     ${renderFruehereEntscheidung(abnahme.entscheidung)}
     ${renderAkAbschnitt(urteil)}
     <section class="entscheiden-kacheln" aria-label="${tHtml('entscheiden.abnahme.kachelnLabel')}">
       ${renderPruefungKachel(workflowId, abnahme)}${renderReviewKachel(urteil)}${renderNachweiseKachel(abnahme, harnessAbgleich)}
     </section>
+    ${oben ? kanal : ''}
     ${renderUmfangHinweis(abnahme.umfang)}
     ${renderQaKarte(abnahme.qaErgebnis)}
     ${renderSelbstAusprobieren(urteil, vorschau)}
+    ${oben ? '' : kanal}
     <section id="abnahme-nachweise" class="entscheiden-karte" aria-labelledby="abnahme-nachweise-titel">
       <h2 id="abnahme-nachweise-titel" tabindex="-1">${tHtml('entscheiden.abnahme.nachweiseTitel')}</h2>
       ${urteil.status === 'ok' ? `<h3>${tHtml('entscheiden.abnahme.empfehlungVoll')}</h3><p class="entscheiden-empfehlung-voll">${urteil.empfehlung ? escapeHtml(urteil.empfehlung) : tHtml('abnahme.empfehlung.keine')}</p>${renderBefunde(urteil)}` : ''}
@@ -848,11 +889,12 @@ function renderVorab(workflowId, abnahme, harnessAbgleich) {
  * @param vorschau - Vorschau des Projekts für „Produkt öffnen“ (siehe renderSelbstAusprobieren), null solange sie lädt
  * @param harnessAbgleich - F45 B1b-2: Zustand des Harness-Abgleichs — undefined (lädt), { fehler } oder Antwort von
  *   GET …/harness-abgleich; gezeigt, sobald die Ausführung gelaufen ist (F-937: Kurzliste der benutzten Fähigkeiten)
+ * @param zusatz - F45 B2b-3b-2b-2b-2b-2: { kanal, projektCliHinweis } für die Seite „entscheidbar“ (renderAbnahmeSeite)
  * @returns { lage, oben, unten, spalte? } (HTML)
  */
-export function renderAbnahme(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined) {
+export function renderAbnahme(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined, zusatz = {}) {
   const lage = abnahmeLage(abnahme)
-  if (lage === 'entscheidbar') return { lage, oben: renderAbnahmeSeite(workflowId, abnahme, vorschau, harnessAbgleich), unten: '', spalte: renderAbnahmePanel(workflowId, abnahme) }
+  if (lage === 'entscheidbar') return { lage, oben: renderAbnahmeSeite(workflowId, abnahme, vorschau, harnessAbgleich, zusatz), unten: '', spalte: renderAbnahmePanel(workflowId, abnahme) }
   const pruefung = pruefungWiederholbar(abnahme) ? renderPruefergebnis(workflowId, abnahme) : ''
   // Nach dem Bau trägt der Block den Prüfbericht selbst (samt „Prüfung wiederholen“), vor dem Bau gibt es keinen.
   if (lage === 'vorab') return { lage, oben: '', unten: `${renderVorab(workflowId, abnahme, harnessAbgleich)}${ausfuehrungGelaufen(abnahme) ? '' : pruefung}` }

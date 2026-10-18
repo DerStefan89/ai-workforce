@@ -30,6 +30,11 @@
  * Blick und F12 ersetzt jeder Poll-Tick; Notizen, Aktionen und Abnahme nur bei ECHTER Änderung
  * (Kennzeichen, F-249), damit angefangene Begründungen überleben; #workflow-reparatur nie. Ein
  * Projektwechsel verwirft Dialog, Detail und Entwurf (F-874, F-923).
+ *
+ * F45 B2b-3b-2b-2b-2b-2: die Freigabe zeigt den Auftragstext (detail.auftragstext), die Abnahmeseite den Rückfrage-Kanal des
+ * Ausführungslaufs (kanalDerAbnahme, GET /api/laeufe/<laufId> über kanalDerSichtung), beide die Zeile zur abweichenden
+ * Claude-Code-Version (zustand.projektCliHinweis, letzterProjektCliHinweis). Aufgeklappte Abschnitte (<details data-klappe>) der Seite
+ * Entscheiden bleiben über das Neuzeichnen offen (setzeHtml).
  */
 
 import {
@@ -152,6 +157,35 @@ async function holeKanalDerSichtung(laufId) {
   }
 }
 
+/** F45 B2b-3b-2b-2b-2b-2 (F-1146): Kanal des Ausführungslaufs der Abnahmeseite { laufId, wert, laeuft } — wert { laedt, laufId }, { fehler, laufId }, null oder rueckfrageKanal; laeuft: ein Abruf ist unterwegs. */
+let kanalAbnahme = null
+
+/**
+ * Rückfrage-Kanal des Ausführungslaufs für die Abnahmeseite (Lage „entscheidbar“): einmal je Lauf geladen (kanalDerSichtung: gemerkt bei
+ * ABGESCHLOSSEN, ein Abruf je Lauf), danach zeichnet die Abnahme neu; nach einem Fehler erst wieder nach dem Rückzug (KANAL_RUECKZUG_MS) —
+ * während dieses Neuversuchs bleibt der Fehlerhinweis stehen (code-reviewer V2: kein Flackern, kein Neuzeichnen ohne Änderung).
+ * @param workflowId - angezeigter Workflow
+ * @param abnahme - Antwort von GET …/abnahme
+ * @returns undefined (kein Ausführungslauf) | { laedt: true, laufId } | null (Lauf ohne Kanal) | { fehler: true, laufId } | rueckfrageKanal
+ */
+function kanalDerAbnahme(workflowId, abnahme) {
+  const laufId = abnahmeLage(abnahme) === 'entscheidbar' ? abnahme.aenderungsuebersicht?.laufId : undefined
+  if (typeof laufId !== 'string' || laufId === '') return undefined
+  const gleich = kanalAbnahme?.laufId === laufId
+  const erneut = gleich && kanalAbnahme.wert?.fehler === true && !kanalAbnahme.laeuft && (kanalFehlerBis.get(laufId) ?? 0) <= Date.now()
+  if (gleich && !erneut) return kanalAbnahme.wert
+  kanalAbnahme = { laufId, wert: erneut ? kanalAbnahme.wert : { laedt: true, laufId }, laeuft: true }
+  void kanalDerSichtung(laufId).then((kanal) => {
+    if (kanalAbnahme?.laufId !== laufId) return
+    kanalAbnahme = { laufId, wert: kanal === KANAL_NICHT_LADBAR ? { fehler: true, laufId } : kanal, laeuft: false }
+    if (gewaehlteWorkflowId === workflowId && letzteAbnahme !== null) aktualisiereAbnahme(workflowId, letzteAbnahme)
+  })
+  return kanalAbnahme.wert
+}
+
+/** F45 B2b-3b-2b-2b-2b-2: projektCliHinweis des letzten Poll-Ticks (null in der Workforce-Instanz oder ohne Abweichung). */
+let letzterProjektCliHinweis = null
+
 // ─── Abnahme (F23 WS-2a/2b, F44 WS-4b; Rendern in ./workflow-abnahme.js) ─────
 
 /** Kennzeichen der zuletzt gerenderten Abnahme — nur bei ECHTER Änderung wird neu gebaut, sonst ginge eine angefangene Pflichtbegründung durch den 2-Sekunden-Poll verloren. */
@@ -191,17 +225,20 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   if (ausfuehrungGelaufen(abnahme) && letzterAbgleich?.schluessel !== schluessel) void ladeAbgleich(workflowId, schluessel)
   const abgleich = letzterAbgleich?.schluessel === schluessel ? letzterAbgleich.wert : undefined
   const abgleichMarke = abgleich === undefined ? 'laedt' : typeof abgleich.fehler === 'string' ? 'fehler' : `${abgleich.quelle}:${abgleich.daten?.berechnet_am ?? '-'}`
+  // F45 B2b-3b-2b-2b-2b-2 (F-1146): Kanal des Ausführungslaufs und die CLI-Zeile gehören ins Kennzeichen (nachgeladen bzw. aus dem Poll).
+  const kanal = kanalDerAbnahme(workflowId, abnahme)
+  const zusatzMarke = `${kanal === undefined ? '-' : JSON.stringify(kanal)}|${JSON.stringify(letzterProjektCliHinweis)}`
   const e = abnahme.entscheidung ?? {}
   // F45 B2a-3b (qa 1): die Review-Hinweise (u. a. „Review veraltet“, das der Poll ohne Statuswechsel liefert) gehören ins
   // Kennzeichen — sonst zeigte „Auf einen Blick“ den Hinweis, die Review-Kachel aber nicht.
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}|${abnahme.qaErgebnis?.status ?? 'null'}|${abnahme.qaErgebnis?.laufId ?? '-'}|${abnahme.qaErgebnis?.halt === true}|${qaHinweisKennung(abnahme.qaErgebnis)}|${abnahme.qaWiederholbar === true}|${budgetKennung(abnahme.budget)}|${umfangKennung(abnahme.umfang)}`
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}|${abgleichMarke}|${reviewHinweisKennung(abnahme.urteil)}|${abnahme.reviewWiederholbar === true}|${abnahme.qaErgebnis?.status ?? 'null'}|${abnahme.qaErgebnis?.laufId ?? '-'}|${abnahme.qaErgebnis?.halt === true}|${qaHinweisKennung(abnahme.qaErgebnis)}|${abnahme.qaWiederholbar === true}|${budgetKennung(abnahme.budget)}|${umfangKennung(abnahme.umfang)}|${zusatzMarke}`
   if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) {
     zeichneEntscheiden()
     return
   }
   let html
   try {
-    html = renderAbnahme(workflowId, abnahme, vorschau, abgleich)
+    html = renderAbnahme(workflowId, abnahme, vorschau, abgleich, { kanal, projektCliHinweis: letzterProjektCliHinweis })
   } catch (fehler) {
     // Eine unvollständige Projektion bricht nur die Anzeige ab; der nächste Tick versucht es erneut.
     console.error(`[workflows] Abnahme von '${workflowId}' nicht darstellbar:`, fehler)
@@ -355,14 +392,17 @@ let modus = null
 let detailAusAttention = false
 
 /**
- * Text eines Elements nur bei Änderung setzen (der Poll zeichnet sonst alle zwei Sekunden neu).
+ * Text eines Elements nur bei Änderung setzen (der Poll zeichnet sonst alle zwei Sekunden neu). F45 B2b-3b-2b-2b-2b-2: aufgeklappte
+ * Abschnitte (<details data-klappe>, z. B. „Ganzen Auftrag anzeigen“) bleiben nach dem Neuzeichnen offen.
  * @param id - Element-id @param html - neuer Inhalt (HTML) @returns das Element
  */
 function setzeHtml(id, html) {
   const element = document.getElementById(id)
   if (element.dataset.html !== html) {
+    const offen = new Set([...(element.querySelectorAll?.('details[data-klappe][open]') ?? [])].map((d) => d.dataset.klappe))
     element.innerHTML = html
     element.dataset.html = html
+    for (const klappe of element.querySelectorAll?.('details[data-klappe]') ?? []) if (offen.has(klappe.dataset.klappe)) klappe.open = true
   }
   return element
 }
@@ -391,7 +431,7 @@ function zeichneEntscheiden() {
   setzeHtml(
     'workflow-entscheiden',
     modusNeu === 'freigabe'
-      ? renderFreigabeSeite({ ...aktuellesDetail, codeStand: aktuellerCodeStand() })
+      ? renderFreigabeSeite({ ...aktuellesDetail, codeStand: aktuellerCodeStand(), projektCliHinweis: letzterProjektCliHinweis })
       : modusNeu === 'abnahme'
         ? renderArbeitsordnerKarte(aktuellesDetail.arbeitsordner ?? null, aktuellerCodeStand(), ordnerKontext)
         : ''
@@ -1108,7 +1148,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
     // F45 B2b-1b-2b: planFreigabe (Karten der Freigabe-Seite) und prueferWiederholbar („Advisor wiederholen“) aus dem Detail.
     const prueferWiederholbar = detail.prueferWiederholbar === true
-    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null, planFreigabe: detail.planFreigabe ?? null, prueferWiederholbar, budget: detail.budget ?? null }
+    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null, planFreigabe: detail.planFreigabe ?? null, prueferWiederholbar, budget: detail.budget ?? null, auftragstext: detail.auftragstext ?? null }
     aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null, prueferWiederholbar, detail.budget ?? null)
     pruefeAusstehendeVorbereitung(workflowId, detail)
     // F46 D2: Kopf, Freigabe-Teil und Lage der Bereiche je Modus (Freigabe, Abnahme oder heutige Ablaufseite).
@@ -1151,6 +1191,7 @@ function raeumeWorkflowBedienzustand() {
   letzteAbnahme = null
   letzterAbgleich = null
   letzterBlick = null
+  kanalAbnahme = null
   for (const id of ['workflow-bedienung', 'workflow-aktionen', 'workflow-abnahme', 'workflow-abnahme-stand']) document.getElementById(id).innerHTML = ''
   raeumeEntscheiden()
   zeigeAbnahme(true)
@@ -1565,6 +1606,8 @@ export function initWorkflowsView() {
   })
 
   abonniere((zustand) => {
+    // F45 B2b-3b-2b-2b-2b-2: vor dem Detail-Auffrischer desselben Takts — Freigabe und Abnahme zeichnen mit dem frischen Wert.
+    letzterProjektCliHinweis = zustand.projektCliHinweis ?? null
     renderWorkflows(zustand.workflows)
   })
   // Das offene Detail hängt als Detail-Auffrischer am einen Poll-Timer (zustand.js; anders als F-363).

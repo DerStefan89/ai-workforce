@@ -1,0 +1,21 @@
+[
+  {
+    "label": "Abnahmeseite mit Kanal-Block (Lauf A) — de-1440-hell",
+    "Auftragskarte": false,
+    "Auftrag aufgeklappt": false,
+    "<b> gerendert (soll false)": false,
+    "Kanal-Block auf der Abnahme": true,
+    "Sichtungs-Notiz mit Kanal-Grund": false,
+    "Titel": "Passt das Ergebnis?",
+    "Band": "Claude-Code-Version weicht von der Startfreigabe dieses Projekts ab — Läufe starten trotzdem. Installiert: 2.1.300 (Clau",
+    "Band-Art": "warnung",
+    "CLI-Zeile": "Die installierte Claude-Code-Version weicht derzeit von der Startfreigabe dieses Projekts ab (installiert: 2.1.300 (Clau",
+    "Auftrag-Klappe": "(fehlt)",
+    "Kanal-Block": "Rückfrage-Kanal im Lauf",
+    "Was tun": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

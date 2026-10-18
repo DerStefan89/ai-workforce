@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { bedienZustand } from './entscheidung-panel.js'
-import { entscheidungsModus, hatInstallierbares, renderFreigabePanel, renderFreigabeSeite, seitenKopf, zeitgrenzeText } from './workflow-entscheiden.js'
+import { AUFTRAG_LANG, entscheidungsModus, hatInstallierbares, renderAuftragKarte, renderFreigabePanel, renderFreigabeSeite, seitenKopf, zeitgrenzeText } from './workflow-entscheiden.js'
 
 const schritt = (schritt_id, rolle, worker, felder = {}) => ({ schritt_id, rolle, worker, modell: 'm-1', werkzeugsatz: 'lesend', freigabe: 'AUTOMATISCH', status: 'OFFEN', lauf_id: null, zeitgrenze_ms: 600000, risiko: 'r', nachfolger: null, ...felder })
 const DATEN = {
@@ -176,4 +176,44 @@ test('B2b-1b-2b Freigabe: Plan/Advisor unlesbar ⇒ Satz; kein Advisor ⇒ keine
   assert.doesNotMatch(ohneAdvisor, /Befunde des Advisors/)
   const ohne = freigabeMit(null)
   assert.doesNotMatch(ohne, /Plan, den du freigibst|Befunde des Advisors/)
+})
+
+test('F45 B2b-3b-2b-2b-2b-2 (F-1144): Auftragstext wörtlich und vollständig vor „Was startet“, nur als Text', () => {
+  const text = 'Baue den Export.\n  - CSV <script>alert(1)</script>\n  - Zeile mit &amp;'
+  const html = renderFreigabeSeite({ daten: DATEN, naechster: NAECHSTER, empfehlung: null, auftragstext: text })
+  assert.match(html, /<h2 id="freigabe-auftrag">Auftrag für diesen Schritt<\/h2>/)
+  assert.ok(html.includes('<pre class="entscheiden-auftrag-text">Baue den Export.\n  - CSV &lt;script&gt;alert(1)&lt;/script&gt;\n  - Zeile mit &amp;amp;</pre>'), 'wörtlich, Umbrüche und Einrückung erhalten, escaped')
+  assert.doesNotMatch(html, /<script>/)
+  assert.doesNotMatch(html, /<details class="entscheiden-auftrag-klappe"/, 'kurz ⇒ nicht eingeklappt')
+  assert.match(html, /So wurde der Auftrag angelegt. Beim Start ergänzt oder umrahmt das System ihn je nach Rolle[\s\S]*Abnahmekriterien[\s\S]*Anpassungswünsche/, 'qa 4')
+  assert.ok(html.indexOf('freigabe-auftrag') < html.indexOf('freigabe-was-startet'), 'vor „Was startet“')
+})
+
+test('F-1144: langer Auftragstext — Vorschau und aufklappbar der ganze Text; fehlt er, ein Hinweis statt leerer Fläche', () => {
+  const zeilen = Array.from({ length: AUFTRAG_LANG.zeilen + 8 }, (_, i) => `Zeile ${i + 1}: Anforderung <${i}>`)
+  const html = renderAuftragKarte(zeilen.join('\n'))
+  assert.match(html, /entscheiden-auftrag-vorschau">Zeile 1: Anforderung &lt;0&gt;[\s\S]*…<\/pre>/)
+  assert.match(html, /<details class="entscheiden-auftrag-klappe" data-klappe="auftrag"><summary>Ganzer Auftrag \([\d.]+ Zeichen\)<\/summary><pre class="entscheiden-auftrag-text">Zeile 1:/, 'design-guardian 5/6: Text passt auf- und zugeklappt, kein Zeilen-Plural')
+  assert.ok(html.includes('Zeile 20: Anforderung &lt;19&gt;</pre></details>'), 'die letzte Zeile steht im aufgeklappten Text')
+  assert.equal(html.match(/Zeile 20:/g).length, 1, 'die Vorschau endet vorher')
+  assert.match(renderAuftragKarte('x'.repeat(AUFTRAG_LANG.zeichen + 1)), /data-klappe="auftrag"/, 'auch eine einzige lange Zeile klappt ein')
+  for (const fehlt of [null, undefined, '', '  \n ']) {
+    const leer = renderAuftragKarte(fehlt)
+    assert.match(leer, /note amber entscheiden-auftrag-fehlt">Der Auftragstext ist nicht lesbar/, String(fehlt))
+    assert.doesNotMatch(leer, /<pre/)
+  }
+  assert.match(renderFreigabeSeite({ daten: DATEN, naechster: NAECHSTER, empfehlung: null }), /Der Auftragstext ist nicht lesbar/, 'Detail ohne Feld')
+  const mitPlan = freigabeMit({ art: 'ausfuehrung', fassung: 1, plan: PLAN, advisor: null })
+  assert.ok(mitPlan.indexOf('freigabe-plan') < mitPlan.indexOf('freigabe-auftrag') && mitPlan.indexOf('freigabe-auftrag') < mitPlan.indexOf('freigabe-was-startet'), 'qa 5: nach dem Plan, vor „Was startet“')
+})
+
+test('F45 B2b-3b-2b-2b-2b-2: Freigabeseite zeigt die abweichende Claude-Code-Version als Zeile — nur mit vollständigem Hinweis', () => {
+  const hinweis = { art: 'cliVersionGeaendert', installiert: '2.1.300 (Claude Code)', deklariert: '2.1.258 (Claude Code)', anleitung: 'docs/harness/startfreigabe-erneuern.md#projekt-startfreigabe-erneuern' }
+  const html = renderFreigabeSeite({ daten: DATEN, naechster: NAECHSTER, empfehlung: null, auftragstext: 'a', projektCliHinweis: hinweis })
+  assert.match(html, /^<div class="entscheiden-inhalt"><p class="note amber entscheiden-cli-hinweis">Die installierte Claude-Code-Version weicht von der Startfreigabe dieses Projekts ab \(installiert: 2\.1\.300 \(Claude Code\), Startfreigabe: 2\.1\.258 \(Claude Code\)\) — der Lauf startet trotzdem, sein Ergebnis gilt\. Startfreigabe des Projekts bei Gelegenheit erneuern\. Anleitung: docs\/harness\/startfreigabe-erneuern\.md#projekt-startfreigabe-erneuern<\/p>/, 'design-guardian 8: vor dem Start ohne Perfekt')
+  for (const kein of [null, undefined, { ...hinweis, anleitung: 1 }, { ...hinweis, art: 'anders' }]) {
+    assert.doesNotMatch(renderFreigabeSeite({ daten: DATEN, naechster: NAECHSTER, empfehlung: null, projektCliHinweis: kein }), /entscheiden-cli-hinweis/)
+  }
+  assert.match(renderFreigabePanel({ workflowId: 'w', empfehlung: null }), /Freigeben/, 'keine zusätzliche Bestätigung in der Spalte')
+  assert.doesNotMatch(renderFreigabePanel({ workflowId: 'w', empfehlung: null }), /Claude-Code-Version/)
 })

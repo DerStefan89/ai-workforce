@@ -6124,14 +6124,14 @@ export function erzeugeRequestHandler(optionen = {}) {
   }
 
   /**
-   * F45 B2a-2 (F-1071): Einrichtungsliste des Auftrags für die Anzeige (GET /api/workflows/<id>) — nur aus dem Artefakt.
+   * F45 B2a-2 (F-1071): Einrichtungsliste des Auftrags für die Anzeige (GET /api/workflows/<id>) — nur aus dem Artefakt; 2b-2b-2b-2 (F-1144): dazu der Auftragstext für die Freigabe.
    * @param auftragId - auftrag_id des Workflows
-   * @returns Liste oder null (Auftrag ohne Liste bzw. nicht ladbar)
+   * @returns { einrichtung: Liste oder null (ohne Liste bzw. nicht ladbar), auftragstext: Text oder null (nicht ladbar) }
    */
-  function leseEinrichtungProjektion(auftragId) {
-    if (typeof auftragId !== 'string' || LAUFID_UNZULAESSIGE_ZEICHEN.test(auftragId)) return null
+  function leseAuftragProjektion(auftragId) {
+    if (typeof auftragId !== 'string' || LAUFID_UNZULAESSIGE_ZEICHEN.test(auftragId)) return { einrichtung: null, auftragstext: null }
     const auftrag = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-    return Array.isArray(auftrag?.daten?.einrichtung) ? auftrag.daten.einrichtung : null
+    return { einrichtung: Array.isArray(auftrag?.daten?.einrichtung) ? auftrag.daten.einrichtung : null, auftragstext: typeof auftrag?.daten?.auftragstext === 'string' ? auftrag.daten.auftragstext : null }
   }
 
   /**
@@ -9128,8 +9128,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         pruefergebnis: pruefergebnisProjektion,
         // F45 B1a-1 (F-954): additiv — eigener Arbeitsordner des Ablaufs (nur aus dem Artefakt, kein Git im Poll).
         arbeitsordner: baueArbeitsordnerProjektion(workflowId, version.daten),
-        // F45 B2a-2 (F-1071): additiv — Einrichtung durch Stefan aus dem Auftrag (null: der Auftrag trägt keine Liste).
-        einrichtung: leseEinrichtungProjektion(version.daten.auftrag_id),
+        // F45 B2a-2 (F-1071) / 2b-2b-2b-2 (F-1144): additiv — einrichtung (null: keine Liste) und auftragstext (null: nicht ladbar) aus dem Auftrag.
+        ...leseAuftragProjektion(version.daten.auftrag_id),
         // F45 B2b-1b-2b: additiv — Plan/Advisor an der Freigabe der Plan-Stufe (sonst null) und „Advisor wiederholen“.
         planFreigabe,
         prueferWiederholbar,

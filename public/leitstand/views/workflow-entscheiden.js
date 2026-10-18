@@ -15,6 +15,9 @@
  * keinen Lesepfad) und Schätzung („kommt“, Fixpaket B5); „Arbeitspaket“ („kommt“, Fixpaket B2);
  * „Empfehlung zu Fähigkeiten“ (F36, die Katalog-Empfehlung des Details, nur lesend); rechts „Deine
  * Entscheidung“ mit Freigeben · Freigeben & installieren · Ablehnen.
+ * F45 B2b-3b-2b-2b-2b-2 (F-1144): vor „Was startet“ die Karte „Auftrag für diesen Schritt“ — der Auftragstext wörtlich und
+ * vollständig (detail.auftragstext aus GET /api/workflows/<id>), als Text, lange Texte mit Vorschau und aufklappbarem „Ganzer Auftrag“; ohne
+ * Text ein Hinweis. Oben die Zeile zur abweichenden Claude-Code-Version des Projekts (detail.projektCliHinweis, nur Warnung, projekt-cli-hinweis.js).
  *
  * Reine Funktionen: kein fetch, kein DOM. Die Entscheidung selbst läuft unverändert über die
  * bestehenden Wege in views/workflows.js: „<Option> bestätigen“ öffnet den Freigabedialog (Kennzeichen
@@ -32,6 +35,7 @@
 import { renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge } from '../kommt.js'
+import { renderProjektCliZeile } from '../projekt-cli-hinweis.js'
 import { escapeHtml } from '../render.js'
 import { rollenName, workerName } from '../rollen-anzeige.js'
 import { renderArbeitsordnerKarte } from './arbeitsordner-anzeige.js'
@@ -258,15 +262,51 @@ function renderAdvisorKarte(planFreigabe) {
   return `<section class="entscheiden-karte entscheiden-plan" aria-labelledby="freigabe-advisor">${kopf}${hinweis}${urteil}${begruendung}${liste}</section>`
 }
 
+/** Ab hier gilt ein Auftragstext als lang: Vorschau der ersten Zeilen, der ganze Text aufklappbar (F-1144). */
+export const AUFTRAG_LANG = Object.freeze({ zeilen: 12, zeichen: 1200 })
+
 /**
- * Hauptspalte der Freigabe. F45 B2b-1b-2b: vor „Was startet“ der Plan und die Befunde des Advisors (detail.planFreigabe).
- * @param detail - { workflowId, daten, naechster, empfehlung, arbeitsordner, codeStand, einrichtung, planFreigabe } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js; F45 B2a-2: einrichtung aus GET /api/workflows/<id>; F45 B2b-1b-2b: planFreigabe aus GET /api/workflows/<id> (oder null)
+ * Vorschau eines langen Auftragstexts: die ersten AUFTRAG_LANG.zeilen / 2 Zeilen, höchstens AUFTRAG_LANG.zeichen / 2 Zeichen.
+ * @param text - Auftragstext
+ * @returns Vorschau (Text, wörtlich gekürzt)
+ */
+function auftragVorschau(text) {
+  return text.split('\n').slice(0, Math.floor(AUFTRAG_LANG.zeilen / 2)).join('\n').slice(0, Math.floor(AUFTRAG_LANG.zeichen / 2))
+}
+
+/**
+ * F45 B2b-3b-2b-2b-2b-2 (F-1144): „Auftrag für diesen Schritt“ — der Auftragstext wörtlich und vollständig, nur als Text
+ * (escaped, Zeilenumbrüche erhalten). Kurz ⇒ ganz; lang ⇒ Vorschau und darunter <details data-klappe="auftrag"> mit dem ganzen Text (die
+ * Vorschau verschwindet beim Aufklappen, views/workflows.js hält den Zustand über den Poll). Kein Text ⇒ ein Hinweis statt leerer Fläche.
+ * Der Satz darunter sagt ehrlich, dass das System den Auftrag beim Start je nach Rolle ergänzt bzw. umrahmt (Regeln, Arbeitspaket,
+ * Abnahmekriterien, Anpassungswünsche) — der zusammengesetzte Prompt entsteht erst beim Start (code-reviewer V9, qa 4).
+ * @param auftragstext - detail.auftragstext (Text oder null)
+ * @returns HTML
+ */
+export function renderAuftragKarte(auftragstext) {
+  const kopf = `<h2 id="freigabe-auftrag">${tHtml('entscheiden.auftrag.titel')}</h2>`
+  if (typeof auftragstext !== 'string' || auftragstext.trim() === '') {
+    return `<section class="entscheiden-karte entscheiden-auftrag" aria-labelledby="freigabe-auftrag">${kopf}<p class="note amber entscheiden-auftrag-fehlt">${tHtml('entscheiden.auftrag.fehlt')}</p></section>`
+  }
+  const zeilen = auftragstext.split('\n').length
+  const lang = zeilen > AUFTRAG_LANG.zeilen || auftragstext.length > AUFTRAG_LANG.zeichen
+  const text = (inhalt, klasse) => `<pre class="entscheiden-auftrag-text${klasse}">${escapeHtml(inhalt)}</pre>`
+  const inhalt = lang
+    ? `${text(`${auftragVorschau(auftragstext)}\n…`, ' entscheiden-auftrag-vorschau')}<details class="entscheiden-auftrag-klappe" data-klappe="auftrag"><summary>${tHtml('entscheiden.auftrag.ganz', { zeichen: formatiereZahl(auftragstext.length) })}</summary>${text(auftragstext, '')}</details>`
+    : text(auftragstext, '')
+  return `<section class="entscheiden-karte entscheiden-auftrag" aria-labelledby="freigabe-auftrag">${kopf}${inhalt}<p class="subtle">${tHtml('entscheiden.auftrag.zusatz')}</p></section>`
+}
+
+/**
+ * Hauptspalte der Freigabe. F45 B2b-1b-2b: vor „Was startet“ der Plan und die Befunde des Advisors (detail.planFreigabe). F45
+ * B2b-3b-2b-2b-2b-2: oben die Zeile zur abweichenden Claude-Code-Version, dann (nach dem Plan) der Auftrag des Schritts.
+ * @param detail - { workflowId, daten, naechster, empfehlung, arbeitsordner, codeStand, einrichtung, planFreigabe, auftragstext, projektCliHinweis } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js; F45 B2a-2: einrichtung aus GET /api/workflows/<id>; F45 B2b-1b-2b: planFreigabe aus GET /api/workflows/<id> (oder null); F45 B2b-3b-2b-2b-2b-2: auftragstext aus GET /api/workflows/<id>, projektCliHinweis aus GET /api/zustand
  * @returns HTML
  */
 export function renderFreigabeSeite(detail) {
   const planFreigabe = detail.planFreigabe ?? null
   const planKarten = planFreigabe === null ? '' : `${renderPlanKarte(planFreigabe)}${renderAdvisorKarte(planFreigabe)}`
-  return `<div class="entscheiden-inhalt">${planKarten}${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket(detail.einrichtung ?? null, detail.workflowId ?? '')}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
+  return `<div class="entscheiden-inhalt">${renderProjektCliZeile(detail.projektCliHinweis, 'freigabe')}${planKarten}${renderAuftragKarte(detail.auftragstext ?? null)}${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket(detail.einrichtung ?? null, detail.workflowId ?? '')}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
 }
 
 /**
