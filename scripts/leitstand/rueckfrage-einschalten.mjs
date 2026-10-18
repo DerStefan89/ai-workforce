@@ -1,12 +1,14 @@
 /**
  * Datei: scripts/leitstand/rueckfrage-einschalten.mjs
  *
- * Zweck: Opt-in des Rückfrage-Kanals (F45 B2b-3b-2b-2a-1, features/F45/plan-b2b3b2b2a-v2.md). Reine Werte, kein I/O: aus der
- * Umgebung (`LEITSTAND_RUECKFRAGE=1`) und dem Port die API-Basis der Workforce-Instanz, daraus je Instanz die Handler-Option
- * `rueckfrage` und die Startzeile der Konsole.
+ * Zweck: Schalter des Rückfrage-Kanals (F45 B2b-3b-2b-2a-1, features/F45/plan-b2b3b2b2a-v2.md; seit B2b-3b-2b-2b-2b-1
+ * standardmäßig an). Reine Werte, kein I/O: aus der Umgebung (`LEITSTAND_RUECKFRAGE`) und dem Port die API-Basis der
+ * Workforce-Instanz, daraus je Instanz die Handler-Option `rueckfrage` und die Startzeile der Konsole.
  *
  * Grenzen:
- * - Nur der Wert `'1'` schaltet ein; jeder andere Wert (auch `'true'`) und eine fehlende Variable ⇒ aus.
+ * - An, wenn die Variable fehlt oder genau `'1'` ist; aus nur mit genau `'0'`. Jeder andere Wert (auch `'true'`, leer, `' 1'`)
+ *   ⇒ aus mit Grund (fail-closed: eine unklare Eingabe startet keinen Kanal). Ohne Umgebungsobjekt ⇒ aus. Unter Windows
+ *   entfernt Leeren (`$env:X = ''`, `set X=`) die Variable — das ist „fehlt“, also an; ausschalten nur mit `0`.
  * - Die url muss vor dem Binden feststehen (die Handler entstehen vor `listen`) — Port 0 bzw. kein ganzzahliger Port ⇒ aus mit Grund.
  * - `rueckfrageOptionFuer` liefert `{}` oder `{ rueckfrage }` zum Spreaden; die Aufrufstellen im Server stehen nur in dieser Form
  *   (Gate f45-b2b3b2b2a-einschalten (o3) und die „Kanal aus“-Prüfung der Bestands-Gates über scripts/_rueckfrage-aus-pruefung.mjs).
@@ -19,18 +21,20 @@
 
 import { ID_MUSTER } from '../../src/projekte/index.ts'
 
-/** Name der Umgebungsvariable des Opt-in. */
+/** Name der Umgebungsvariable des Schalters. */
 export const RUECKFRAGE_SCHALTER = 'LEITSTAND_RUECKFRAGE'
 
 /**
- * API-Basis der Workforce-Instanz, wenn der Kanal eingeschaltet ist.
+ * API-Basis der Workforce-Instanz, wenn der Kanal eingeschaltet ist (Standard an; aus nur mit `LEITSTAND_RUECKFRAGE=0`).
  * @param {Record<string, string | undefined>} env - Umgebung (process.env)
  * @param {number} port - Port, an den der Leitstand bindet (vor dem Binden bekannt)
  * @returns {{ an: true, basis: string } | { an: false, grund: string }}
  */
 export function rueckfrageBasisAusUmgebung(env, port) {
-  const wert = env?.[RUECKFRAGE_SCHALTER]
-  if (wert !== '1') return { an: false, grund: wert === undefined ? `${RUECKFRAGE_SCHALTER} nicht gesetzt` : `${RUECKFRAGE_SCHALTER}=${JSON.stringify(wert)} (nur 1 schaltet ein)` }
+  if (env === null || typeof env !== 'object') return { an: false, grund: 'keine Umgebung' }
+  const wert = env[RUECKFRAGE_SCHALTER]
+  if (wert === '0') return { an: false, grund: `${RUECKFRAGE_SCHALTER}=0 (ausgeschaltet)` }
+  if (wert !== undefined && wert !== '1') return { an: false, grund: `unbekannter Wert ${RUECKFRAGE_SCHALTER}=${JSON.stringify(wert)} (nur 0 schaltet aus)` }
   if (!Number.isInteger(port) || port <= 0 || port > 65535) return { an: false, grund: `Port ${port} — die Adresse muss vor dem Binden feststehen` }
   return { an: true, basis: `http://127.0.0.1:${port}/api` }
 }
@@ -54,6 +58,6 @@ export function rueckfrageOptionFuer(basis, projektId) {
  * @returns {string}
  */
 export function rueckfrageStartzeile(stand) {
-  if (stand?.an === true) return `Rückfrage-Kanal: an (${RUECKFRAGE_SCHALTER}=1, ${stand.basis}) — Rückfragen unter „Deine Entscheidungen“, Auswertung im Lauf-Detail; echter Lauf mit 2b-2b — noch nicht für echte Läufe nutzen`
+  if (stand?.an === true) return `Rückfrage-Kanal: an (${stand.basis}; ausschalten mit ${RUECKFRAGE_SCHALTER}=0) — Rückfragen unter „Deine Entscheidungen“, Auswertung im Lauf-Detail`
   return `Rückfrage-Kanal: aus (${stand?.grund ?? 'unbekannt'})`
 }

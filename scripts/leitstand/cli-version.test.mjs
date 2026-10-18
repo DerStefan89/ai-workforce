@@ -2,14 +2,15 @@
  * Datei: scripts/leitstand/cli-version.test.mjs
  *
  * Zweck: F45 B1b-2 (Kleinpunkt b) — Vergleich installierte gegen deklarierte Claude-Code-Version, Abfrage über
- * `--version` (echter Kindprozess: node selbst als Startziel), Fehlerwege ohne Wurf.
+ * `--version` (echter Kindprozess: node selbst als Startziel), Fehlerwege ohne Wurf. Seit B2b-3b-2b-2b-2b-1 (F-1136 (10)):
+ * gemerkte installierte Version und Projekt-Hinweis je Instanz (einmal ermittelt, keine Sperre).
  *
  * Wird aufgerufen von: npm run test (node --test).
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ANLEITUNG_STARTFREIGABE, ermittleCliHinweis, frageCliVersion, vergleicheCliVersion } from './cli-version.mjs'
+import { ANLEITUNG_PROJEKT_STARTFREIGABE, ANLEITUNG_STARTFREIGABE, ermittleCliHinweis, erzeugeProjektCliHinweis, frageCliVersion, installierteCliVersion, vergleicheCliVersion } from './cli-version.mjs'
 
 test('vergleicheCliVersion: gleich (auch mit Leerraum) → null, abweichend → Hinweis mit Anleitung', () => {
   assert.equal(vergleicheCliVersion('2.1.296 (Claude Code)\n', '2.1.296 (Claude Code)'), null)
@@ -54,4 +55,41 @@ test('ermittleCliHinweis: Abweichung → Hinweis, Abfragefehler → null, ohne V
   assert.equal(warnungen.length, 2)
   assert.match(warnungen[0], /CLI-Version geändert/)
   assert.match(warnungen[1], /nicht abfragbar \(ENOENT\)/)
+})
+
+test('erzeugeProjektCliHinweis: einmal je Instanz ermittelt, sobald die Version bekannt ist; gleich/nicht ermittelbar ⇒ null', () => {
+  const deklariert = '2.1.296 (Claude Code)'
+  assert.deepEqual(erzeugeProjektCliHinweis(deklariert, '2.1.300 (Claude Code)')(), { art: 'cliVersionGeaendert', installiert: '2.1.300 (Claude Code)', deklariert, anleitung: ANLEITUNG_PROJEKT_STARTFREIGABE })
+  assert.equal(ANLEITUNG_PROJEKT_STARTFREIGABE, 'docs/harness/startfreigabe-erneuern.md#projekt-startfreigabe-erneuern')
+  assert.equal(erzeugeProjektCliHinweis(deklariert, ` ${deklariert}\n`)(), null)
+  assert.equal(erzeugeProjektCliHinweis(deklariert, null)(), null)
+  assert.equal(erzeugeProjektCliHinweis(undefined, '2.1.300 (Claude Code)')(), null)
+  // Lesefunktion: vor der Abfrage null (kein Hinweis, erneut gelesen), danach genau einmal verglichen und gemerkt.
+  let version = null
+  let gelesen = 0
+  const hinweis = erzeugeProjektCliHinweis(deklariert, () => {
+    gelesen++
+    return version
+  })
+  assert.equal(hinweis(), null)
+  version = '2.1.300 (Claude Code)'
+  assert.equal(hinweis()?.installiert, '2.1.300 (Claude Code)')
+  version = deklariert
+  assert.equal(hinweis()?.installiert, '2.1.300 (Claude Code)')
+  assert.equal(gelesen, 2)
+})
+
+test('ermittleCliHinweis merkt die installierte Version für installierteCliVersion (auch ohne Abweichung); Fehlschlag ändert nichts', async () => {
+  const original = console.warn
+  console.warn = () => {}
+  try {
+    const vorlage = { werkzeugStartziel: ['x'], werkzeugVersionDeklariert: '2.1.296 (Claude Code)' }
+    await ermittleCliHinweis(vorlage, async () => ({ ok: true, version: '2.1.296 (Claude Code)\n' }))
+    assert.equal(installierteCliVersion(), '2.1.296 (Claude Code)')
+    await ermittleCliHinweis(vorlage, async () => ({ ok: false, grund: 'ENOENT' }))
+    assert.equal(installierteCliVersion(), '2.1.296 (Claude Code)')
+    assert.equal(erzeugeProjektCliHinweis('2.1.290 (Claude Code)')()?.installiert, '2.1.296 (Claude Code)')
+  } finally {
+    console.warn = original
+  }
 })

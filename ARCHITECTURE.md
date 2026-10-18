@@ -105,15 +105,17 @@ Kein Mehrbenutzerbetrieb, keine Anmeldung. Was hier geschützt wird, ist die Aut
 1. **Authorization Boundary** — Bezeugungen menschlicher Freigaben liegen außerhalb der Schreibreichweite des Ausführungswerkzeugs, in einem eigenen Git-Repository. Der Checkpoint trägt Referenz und Hash; validiert wird immer gegen den geschützten Ort, nie gegen die Referenz allein. Eine im Produkt-Repository sichtbare Kopie ist niemals alleinige Autoritätsquelle.
 2. **Invocation Policy / Protection Validator** — vor jeder Execution mit Schreibwirkung, lokal und ohne Werkzeugaufruf: ist die Werkzeugkonfiguration gültig und existiert jedes von ihr referenzierte Schutzskript mit dem erwarteten Hash, und liegt ein gültiger Wirksamkeitsnachweis für den Gültigkeitsschlüssel vor. Scheitert eine der beiden Prüfungen, startet keine Execution.
 
+Eine abweichende installierte CLI-Version sperrt keinen Lauf, der Leitstand zeigt nur einen Hinweis (`cliHinweis`, je Projekt
+`projektCliHinweis`; F-1136 (10) = B): E-188 vergleicht die Deklaration der Startvorlage mit dem Nachweis.
+
 Der Kern erzeugt niemals ein Freigabeartefakt. Autorisierungen entstehen ausschließlich aus direkter menschlicher Eingabe.
 
 Ein Pflichtdokument, das nur eine der beiden Schichten kennt, kann versehentlich unterlaufen werden — deshalb stehen beide hier.
 
 **Rückfrage-Kanal im Lauf** (F45 B2b-3b; Einzelheiten, Anzeige, Abnahme, Nachweislauf: `docs/architektur/rueckfrage-kanal.md`).
-Eine Bedien-Grenze für das Modell, keine Sicherheitsgrenze gegen selbst ausgeführten Code. Noch nicht für echte Läufe (außer dem
-Nachweislauf). Grenzen:
-- Opt-in nur mit `LEITSTAND_RUECKFRAGE=1` (genau dieser Wert, nur über `rueckfrageOptionFuer`); ohne bleiben Argv und
-  Auftragstext aller Läufe bitgleich — ERZWUNGEN (Gate f45-b2b3b2b2a-einschalten (o1)(o2)). Jede Instanz hat ihre eigene
+Eine Bedien-Grenze für das Modell, keine Sicherheitsgrenze gegen selbst ausgeführten Code. Grenzen:
+- Standard an (seit F45 B2b-3b-2b-2b-2b-1), aus nur mit `LEITSTAND_RUECKFRAGE=0`, jeder andere Wert ⇒ aus (fail-closed); nur über
+  `rueckfrageOptionFuer`; aus ⇒ Argv und Auftragstext aller Läufe bitgleich — ERZWUNGEN (Gate f45-b2b3b2b2a-einschalten (o1)(o2)). Jede Instanz hat ihre eigene
   Vermittlung; ein Token einer anderen Instanz ⇒ 403. Keine Regelzeile des Auftrags beginnt mit „- [x]“.
 - Die Vorentscheidung liegt im Leitstand, nicht in der CLI; Sperr-, Deny-Regeln und Hooks greifen vorher. Nur ein Bash-Befehl
   geht an Stefan (nur „einmal erlauben“ oder „ablehnen“); alles andere und jeder Befehl mit Steuer- oder Formatzeichen wird ohne

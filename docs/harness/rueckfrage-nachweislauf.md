@@ -1,10 +1,12 @@
 # Rückfrage-Kanal: echter Nachweislauf
 
-Stand F45 B2b-3b-2b-2b-1 (17.10.2026). Diese Anleitung führt Stefan durch zwei echte Läufe mit eingeschaltetem Rückfrage-Kanal
-(`LEITSTAND_RUECKFRAGE=1`, ARCHITECTURE.md §3) in einem Projekt und durch die Auswertung mit
+Stand F45 B2b-3b-2b-2b-1 (17.10.2026), Schalter seit B2b-3b-2b-2b-2b-1 (18.10.2026). Diese Anleitung führt Stefan durch zwei echte
+Läufe mit eingeschaltetem Rückfrage-Kanal (seit B2b-3b-2b-2b-2b-1 standardmäßig an, aus nur mit `LEITSTAND_RUECKFRAGE=0`, ARCHITECTURE.md
+§3) in einem Projekt und durch die Auswertung mit
 `scripts/leitstand/nachweis-rueckfrage-auswerten.mjs`. Ergebnis sind zwei Auswertungsdateien unter `features/F45/nachweise/b2b3b2b2b/`;
-sie belegen die offenen Punkte F-1128 (4), F-1126 (6), F-1132 (2)(6)(9) und F-1133 (1) im echten Lauf. Der Kanal bleibt danach Opt-in —
-das Umschalten auf Standard „an“ und die Erneuerung der Startfreigabe (auch für Projekte) sind ein eigener Schritt (2b-2b-2).
+sie belegen die offenen Punkte F-1128 (4), F-1126 (6), F-1132 (2)(6)(9) und F-1133 (1) im echten Lauf. Der erste Lauf
+(17.10.2026, CLI 2.1.300) ist bestanden; danach ist der Kanal Standard geworden. Die Anleitung bleibt für die Wiederholung nach einem
+Claude-Code-Update (`docs/harness/startfreigabe-erneuern.md` §8).
 
 Alle Befehle laufen in Windows PowerShell. Jeder Block ist vollständig und beginnt mit `Set-Location` auf den vollen Pfad.
 
@@ -50,11 +52,10 @@ Set-Location 'C:\Users\stefa\Projekte\ai-workforce'
 
 - **Version abweichend: beide Versionen notieren und weiterfahren** (Entscheidung Stefan, E-F-1136 (1) = B, 17.10.2026). Der Nachweislauf
   fährt bewusst mit der installierten CLI, auch wenn `haushaltsbuch2` eine ältere Version deklariert. Der Leitstand startet den Lauf trotzdem
-  (E-188 vergleicht nur die Deklaration mit der Baseline des Projekts; das Band „CLI-Version geändert“ gilt nur für die
-  Workforce-Startvorlage — ob das für Projekte eine Sperre sein soll, klärt 2b-2b-2, F-1136 (10)). Die Auswertung meldet die
-  CLI-abhängigen Punkte (P1, P2, P4, P4b, P5, P7, P8, P10, P11) dann als „erfüllt mit Abweichung“ und nennt beide Versionen mit Quelle. Die
-  Startfreigabe für Projekte wird in 2b-2b-2 zusammen mit der Kanal-Startfreigabe beschrieben und erneuert
-  (`docs/harness/startfreigabe-erneuern.md` §8).
+  (E-188 vergleicht nur die Deklaration mit der Baseline des Projekts; seit B2b-3b-2b-2b-2b-1 bewusst keine Sperre, nur ein Hinweis
+  `projektCliHinweis` in GET /api/zustand, F-1136 (10) = B — die Anzeige folgt in 2b-2b-2b-2). Die Auswertung meldet die
+  CLI-abhängigen Punkte (P1, P2, P4, P4b, P5, P7, P8, P10, P11) dann als „erfüllt mit Abweichung“ und nennt beide Versionen mit Quelle. Wie
+  die Startfreigabe eines Projekts erneuert wird: `docs/harness/startfreigabe-erneuern.md`, Abschnitt „Projekt-Startfreigabe erneuern“.
 - **Bash-Regeln 0:** falsches Projekt — anhalten.
 - **git status nicht leer:** erst aufräumen; ein schreibender Ablauf startet nur mit sauberem Arbeitsbaum.
 
@@ -64,16 +65,17 @@ Läuft schon ein Leitstand (anderes Terminal), ihn zuerst mit Strg+C beenden —
 
 ```powershell
 Set-Location 'C:\Users\stefa\Projekte\ai-workforce'
-$env:LEITSTAND_RUECKFRAGE = '1'
+Remove-Item Env:LEITSTAND_RUECKFRAGE -ErrorAction SilentlyContinue   # ein früher gesetztes '0' oder ein Tippfehler schaltet sonst aus
 npm run leitstand
 ```
 
-Erwartung in der Konsole: `Rückfrage-Kanal: an (LEITSTAND_RUECKFRAGE=1, http://127.0.0.1:<Port>/api) — … noch nicht für echte Läufe
-nutzen`. Der Satz „noch nicht für echte Läufe nutzen“ ist gewollt — genau dieser Lauf ist der Nachweis. Im Browser steht oben das Band
+Der Kanal ist ohne Variable an. Optional, gleichwertig und nur ausdrücklich, vor `npm run leitstand`: `$env:LEITSTAND_RUECKFRAGE = '1'`.
+
+Erwartung in der Konsole: `Rückfrage-Kanal: an (http://127.0.0.1:<Port>/api; ausschalten mit LEITSTAND_RUECKFRAGE=0) — …`. Im Browser steht oben das Band
 „Rückfrage-Kanal an — …“. Steht in der Konsole „Rückfrage-Kanal: aus (…)“, anhalten und den Grund zurückmelden. Im Leitstand läuft
 kein anderer Lauf.
 
-Das Terminal bleibt bis zum Ende von Schritt 4 offen (der Leitstand läuft darin). Die Variable gilt nur für dieses Terminal.
+Das Terminal bleibt bis zum Ende von Schritt 4 offen (der Leitstand läuft darin).
 
 ## 2 Lauf A anlegen und freigeben
 
@@ -142,12 +144,7 @@ bestätigt – weiter“ (nach Pflichtbegründung ein Klick). Steht stattdessen 
 Möglich: die CLI sperrt den Write schon vor dem Kanal (Projekt-Hook oder Deny-Regel). Dann fehlt der Protokolleintrag und P11 ist „nicht
 belegbar“ — kein Fehler der Anleitung.
 
-Danach den Leitstand im ersten Terminal mit Strg+C beenden und die Variable entfernen (der Kanal ist bis 2b-2b-2 nur für diesen Nachweis):
-
-```powershell
-Set-Location 'C:\Users\stefa\Projekte\ai-workforce'
-Remove-Item Env:LEITSTAND_RUECKFRAGE -ErrorAction SilentlyContinue
-```
+Danach den Leitstand im ersten Terminal mit Strg+C beenden. Nichts zurückzusetzen: der Kanal bleibt Standard (seit B2b-3b-2b-2b-2b-1).
 
 ## 5 Auswerten
 
@@ -204,8 +201,8 @@ festgelegt, getestet — Wirkung DEKLARIERT“.
 
 ## Optional
 
-- **Workforce-Instanz:** Lauf A einmal ohne Projektwahl in der Workforce wiederholen und ohne `--projekt` auswerten (url `/api`). Nicht
-  nötig für 2b-2b-2.
+- **Workforce-Instanz:** Lauf A einmal ohne Projektwahl in der Workforce wiederholen und ohne `--projekt` auswerten (url `/api`). Belegt die
+  Kanal-Argv mit der Startfreigabe der Workforce selbst (`docs/harness/startfreigabe-erneuern.md` §8).
 - **F-1126 (5) — nicht belegt.** Die Katalog-Kollision (ein Katalog-MCP mit der id `rueckfrage`) bräuchte einen eigenen Katalog-Eintrag mit
   Freigabe im Repo — kein kleiner Zusatzschritt; „Kanal an ohne url“ ist im Produkt nicht mehr erreichbar (`rueckfrageOptionFuer` setzt
   immer eine url). Beide Fälle bleiben über die Gates belegt (`ergaenzeRueckfrageAufruf` ⇒ „MCP-Server 'rueckfrage' ist schon belegt“,

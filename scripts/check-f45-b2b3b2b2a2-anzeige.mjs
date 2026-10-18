@@ -120,6 +120,7 @@ try {
   const wurzelOhne = `http://127.0.0.1:${dienstOhne.address().port}`
   const zustandOhne = await (await fetch(`${wurzelOhne}/api/zustand`)).json()
   const rueckfragenOhne = await (await fetch(`${wurzelOhne}/api/rueckfragen`)).json()
+  // F45 B2b-3b-2b-2b-2b-1: alt „Schlüssel = BISHER + rueckfrageStatus“; neu „… + projektCliHinweis“ (additiv, F-1136 (10), Gate f45-b2b3b2b2b2b1-projekt-cli).
   const BISHER = ['laeufe', 'startfehler', 'workflows', 'fehler', 'aktiverLauf', 'pruefbefehl', 'istAiWorkforce', 'startHinweis', 'cliHinweis']
   pruefe(
     zustandMit.rueckfrageStatus?.an === true && zustandMit.rueckfrageStatus.warteGrenzeMs === vW.warteGrenzeMs,
@@ -127,8 +128,8 @@ try {
     `(b) mit: ${JSON.stringify(zustandMit.rueckfrageStatus)}`
   )
   pruefe(
-    JSON.stringify(zustandOhne.rueckfrageStatus) === '{"an":false}' && JSON.stringify(Object.keys(zustandOhne)) === JSON.stringify([...BISHER, 'rueckfrageStatus']) && JSON.stringify(rueckfragenOhne) === '{"rueckfragen":[],"entschieden":[]}',
-    '(b) ohne Kanal: rueckfrageStatus { an: false } (kein Grund), übrige Schlüssel wie bisher; GET /api/rueckfragen ⇒ beide Listen leer.',
+    JSON.stringify(zustandOhne.rueckfrageStatus) === '{"an":false}' && JSON.stringify(Object.keys(zustandOhne)) === JSON.stringify([...BISHER, 'rueckfrageStatus', 'projektCliHinweis']) && JSON.stringify(rueckfragenOhne) === '{"rueckfragen":[],"entschieden":[]}',
+    '(b) ohne Kanal: rueckfrageStatus { an: false } (kein Grund), übrige Schlüssel wie bisher (+ projektCliHinweis); GET /api/rueckfragen ⇒ beide Listen leer.',
     `(b) ohne: ${JSON.stringify({ status: zustandOhne.rueckfrageStatus, schluessel: Object.keys(zustandOhne), rueckfragenOhne })}`
   )
 

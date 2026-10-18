@@ -122,7 +122,7 @@
       "beleg": {
         "art": "statisch",
         "quelle": "features/F45/nachweise/b1b2/zaehlung-hooks.json",
-        "skript_sha256": "13bc35a0eb596ae93313b43b46d19fc98464f1b9156f4656f0405ebcca1d3773",
+        "skript_sha256": "9cec2c6b189743864bda83f762a6f2383ee5088af0797d14b72a58cd11cf0450",
         "matcher": "Bash|PowerShell"
       },
       "begruendung": "Realer -p-Lauf (B1b-2): rm -rf über Bash und Remove-Item -Recurse -Force über PowerShell verweigert, Ordner unverändert; zuerst belegt in B1b-1 (features/F45/nachweise/b1b1/nachweis.md)."

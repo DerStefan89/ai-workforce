@@ -556,7 +556,7 @@ import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper }
 import { standPfadFuer } from '../src/faehigkeiten/stand.ts'
 import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, einschaltSperrgrund, erzeugeLokalWaechter, FREMD_UNBESTAETIGT, fremdGeaendert, freigabeSperrgrund, pruefeAktivierungKoerper, pruefeFreigabeKoerper } from './leitstand/routen-faehigkeiten.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
-import { ermittleCliHinweis } from './leitstand/cli-version.mjs'
+import { ermittleCliHinweis, erzeugeProjektCliHinweis, installierteCliVersion } from './leitstand/cli-version.mjs'
 import { baueHarnessAbgleichAntwort, baueHarnessAbgleichOhneLauf, schreibeHarnessAbgleichAmKettenende } from './leitstand/routen-harness-abgleich.mjs'
 import { bereitePluginPruefungVor, ergaenzePluginBestand, fuehrePluginFreigabeDurch, fuehrePluginRuecknahmeDurch, fuehrePluginZuordnungDurch, pruefePluginKoerper } from './leitstand/routen-plugin-freigabe.mjs'
 import { echterPluginListenLaeufer, erzeugePluginAbruf } from './leitstand/routen-plugins.mjs'
@@ -5949,8 +5949,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // F45 B0 (F-986 a): überschreibt den Start-Hinweis des Prozesses (prozessStartHinweis) — nur Tests;
     // undefined = den beim Serverstart ermittelten Wert liefern.
     startHinweis = undefined,
-    // F45 B1b-2 (F-1044): überschreibt den CLI-Hinweis des Prozesses (prozessCliHinweis) — nur Tests.
-    cliHinweis = undefined,
+    // F45 B1b-2 (F-1044): überschreibt den CLI-Hinweis des Prozesses (prozessCliHinweis) — nur Tests; 2b-2b-2b-1: installierteCliVersion (string | null) die installierte Version für projektCliHinweis — nur Tests.
+    cliHinweis = undefined, installierteCliVersion: installierteCliVersionOption = undefined,
     // F45 B1a-1 (E-F45-3 = A): eigener Arbeitsordner (Git-Worktree) je schreibendem Ablauf. Standard AUS, damit
     // die bestehenden Gates mit eigenen Handler-Instanzen bitgenau bleiben; der reale Server setzt ihn im
     // CLI-Bindeblock und in baueProjektHandlerMap auf true (kein Umgebungsschalter, Plan v2 i).
@@ -5987,9 +5987,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // undefined = der eigene der Startvorlage dieser Instanz (Gates/Tests); null = „Werkzeugsatz unbekannt“ (F-1094 (9): kein Rückfall,
     // Agents nicht übernommen, Fakt sichtbar). Die Prüfung gegen den Werkzeugsatz des Laufs folgt mit F-3b-2.
     pluginWerkzeugsatz = undefined,
-    // F45 B2b-3b-1a (features/F45/plan-b2b3b1a-v2.md §4/§5): Rückfrage-Kanal { an, url, skriptPfad?, warteGrenzeMs?, pollFensterMs? }.
-    // undefined bzw. an !== true = AUS: kein Lauf bekommt --permission-prompt-tool, das Argv bleibt bitgleich. Seit B2b-3b-2b-2a-1
-    // setzen CLI-Bindeblock und baueProjektHandlerMap sie nur über rueckfrageOptionFuer, also nur mit LEITSTAND_RUECKFRAGE=1.
+    // F45 B2b-3b-1a (features/F45/plan-b2b3b1a-v2.md §4/§5): Rückfrage-Kanal { an, url, skriptPfad?, warteGrenzeMs?, pollFensterMs? }; undefined bzw. an !== true = AUS:
+    // kein --permission-prompt-tool, Argv bitgleich. CLI-Bindeblock und baueProjektHandlerMap setzen sie nur über rueckfrageOptionFuer (seit 2b-2b-2b-1 Standard an, aus mit LEITSTAND_RUECKFRAGE=0).
     rueckfrage = undefined,
     // F45 B2b-3b-1a: Vermittlung (Token, Warteschlange) — undefined = eigene je Instanz (erzeugt nach profilReferenz, 3b-1b:
     // mit dem Protokoll-Schreiber); injizierbar für Tests.
@@ -6326,6 +6325,7 @@ export function erzeugeRequestHandler(optionen = {}) {
   }
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
+  const projektCliHinweis = erzeugeProjektCliHinweis(vorlage.werkzeugVersionDeklariert, installierteCliVersionOption !== undefined ? installierteCliVersionOption : installierteCliVersion) // 2b-2b-2b-1 (F-1136 (10) = B): nur Hinweis, Lauf startet unverändert
   const profilReferenz = leiteProfilReferenzAb(vorlage)
   // F45 B2b-3b-1b (Plan v2 A2): Standard-Vermittlung mit dem Protokoll-Schreiber — jede Entscheidung wird als neue Version von
   // rueckfragen-<laufId> im Kontrollzustand dieses Handlers registriert (dieselbe Wurzel, aus der der Controller liest:
@@ -9174,9 +9174,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // F45 B0 (F-986 a): lesender Start-Hinweis (Leitstand aus falschem Ordner, E-188) — der Server bleibt
       // Durchsetzungsort, Senden bleibt möglich. Option startHinweis nur für Tests.
       const startHinweisWert = startHinweis !== undefined ? startHinweis : prozessStartHinweis
-      // F45 B1b-2 (F-1044): CLI-Version weicht von der Startvorlage ab — aus dem Speicher, keine Datei-Lesung im Poll. 2a-2 (F-1132 (3)): rueckfrageStatus = Kanalstand.
+      // F45 B1b-2 (F-1044): CLI-Version weicht von der Startvorlage ab — aus dem Speicher, keine Datei-Lesung im Poll. 2a-2 (F-1132 (3)): rueckfrageStatus = Kanalstand. 2b-2b-2b-1: projektCliHinweis = dasselbe für die Startvorlage einer Projektinstanz (Workforce: null, dort gilt cliHinweis).
       const cliHinweisWert = cliHinweis !== undefined ? cliHinweis : prozessCliHinweis
-      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert, cliHinweis: cliHinweisWert, rueckfrageStatus: rueckfrageAn ? { an: true, warteGrenzeMs: rueckfrageVermittlung.warteGrenzeMs } : { an: false } })
+      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert, cliHinweis: cliHinweisWert, rueckfrageStatus: rueckfrageAn ? { an: true, warteGrenzeMs: rueckfrageVermittlung.warteGrenzeMs } : { an: false }, projektCliHinweis: istWorkforceInstanz ? null : projektCliHinweis() })
       // F45 P (Teil 1 Punkt 2): Gesamtdauer inkl. Serialisierung — nur bei LEITSTAND_ZEITMESSUNG=1 wirksam.
       erfasseQuellenDauer('gesamt', performance.now() - zustandStart)
       return
@@ -13356,7 +13356,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // F45 F-3b-1 (E-F3b-4, Advisor N2): nur hier zeigt die Ablage der Plugin-Kopien auf Stefans echtes ~/.ai-workforce.
   const pluginKopienWurzel = process.env.LEITSTAND_PLUGIN_KOPIEN_WURZEL ?? join(homedir(), '.ai-workforce', 'plugin-kopien')
   const pluginWerkzeugsatz = ladeStartvorlage(startvorlagePfad).werkzeugsaetze?.schreibend?.erlaubte_werkzeuge ?? null
-  // F45 B2b-3b-2b-2a-1: Rückfrage-Kanal nur mit LEITSTAND_RUECKFRAGE=1 (Adresse vor dem Binden aus PORT, Port 0 ⇒ aus).
+  // F45 B2b-3b-2b-2a-1, seit 2b-2b-2b-1 Standard an: aus nur mit LEITSTAND_RUECKFRAGE=0 oder unbekanntem Wert (Adresse vor dem Binden aus PORT, Port 0 ⇒ aus).
   const rueckfrageStand = rueckfrageBasisAusUmgebung(process.env, PORT)
   const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null, faehigkeitenLokalPfad, faehigkeitenLokalWaechter, istWorkforceInstanz: true, pluginKopienWurzel, pluginWerkzeugsatz, ...rueckfrageOptionFuer(rueckfrageStand.basis), arbeitsordner: true })
   const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
@@ -13399,8 +13399,8 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     }
     // F45 B0 (Teil 2 Punkt 6): Event-Loop-Zeile alle 60 s, nur bei LEITSTAND_ZEITMESSUNG=1 (sonst No-op).
     starteEventLoopMessung()
-    // F45 B1b-2 (F-1044): installierte Claude-Code-Version gegen werkzeugVersionDeklariert der Startvorlage — einmal,
-    // asynchron nach dem Binden (ermittleCliHinweis wirft nicht); kein automatisches Neuerzeugen der Startfreigabe (E3).
+    // F45 B1b-2 (F-1044): installierte Claude-Code-Version gegen werkzeugVersionDeklariert der Startvorlage — einmal, asynchron nach dem Binden (ermittleCliHinweis
+    // wirft nicht, merkt die Version für projektCliHinweis jeder Instanz); kein automatisches Neuerzeugen der Startfreigabe (E3).
     let startVorlageFuerVersion = null
     try {
       startVorlageFuerVersion = ladeStartvorlage(startvorlagePfad)
