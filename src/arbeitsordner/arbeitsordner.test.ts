@@ -5,7 +5,9 @@
  * und Löschen (F-715: erlaubt, außerhalb, .git, .claude, kontrollzustand, Verzeichnis, Junction/Symlink nach
  * außen), Löschblock im Ergebnistext, Ausführen bzw. Aussetzen der Löschliste nach einer Stefan-Ablehnung (F45 B2b-3b-2a), Artefakt-Validator gegen die Schema-Beispiele, Vorbereitung gegen echte
  * Wegwerf-Repos (Grün, kein Repo, kein Commit, Wiederaufnahme, fremder Pfad, npm ci, E-183-Vorprüfung),
- * E-183 gegen die Settings DES WORKTREES (Grün gleicher Commit, Rot geänderter Hook im Branch), Aufräumen
+ * E-183 gegen die Settings DES WORKTREES (Grün gleicher Commit, Rot geänderter Hook im Branch; Zeilenenden F45 B2b-3b-2b-2b-2a:
+ * autocrlf=true und `text=auto` mit core.eol=crlf ⇒ LF und Grün, alter CRLF-Arbeitsordner ⇒ Aufräum-Rat, frischer mit
+ * `eol=crlf` ⇒ kein Rat), Aufräumen
  * (gemergt, nicht gemergt, offene Änderungen ohne/mit Verwerfen) und die Vorbedingung im Worktree.
  *
  * Wird aufgerufen von: npm run test (node --test).
@@ -396,32 +398,57 @@ describe('bereiteArbeitsordnerVor', () => {
       const c = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId: 'wf-g', vorherigeBasis: null, npm: npmAttrappe(0).npm, pruefeE183: () => ({ ok: false, grund: 'Hash weicht ab (E-183)' }) })
       assert.equal(c.status, 'FEHLGESCHLAGEN')
       assert.match(c.grund ?? '', /E-183/)
+      assert.doesNotMatch(c.grund ?? '', /Zeilenenden|aufräumen/)
     } finally {
       raeumeVerzeichnis(basis)
     }
   })
 })
 
+/**
+ * Baseline der LF-committeten Settings/Hook-Bytes in einem externen Wegwerf-Repo (`* -text` wie B18) und die
+ * echte E-183-Prüfung (pruefeStartbedingung1 über ermittleIstZustand) gegen einen beliebigen Ordner.
+ * @param basis - Wegwerf-Wurzel des Tests (das externe Repo entsteht darunter)
+ * @param projekt - Projektordner (Pfad der Werkzeugkonfiguration in der Baseline)
+ * @param settingsInhalt - LF-Inhalt der committeten Werkzeugkonfiguration
+ * @param hookInhalt - LF-Inhalt des committeten Hooks
+ * @returns Prüffunktion: Ordner ⇒ Ergebnis von pruefeStartbedingung1
+ */
+function e183GegenBaseline(basis: string, projekt: string, settingsInhalt: string, hookInhalt: string): (wurzel: string) => ReturnType<typeof pruefeStartbedingung1> {
+  const extern = join(basis, 'autorisierung')
+  mkdirSync(extern, { recursive: true })
+  git(extern, ['init', '--quiet'])
+  git(extern, ['config', 'user.email', 'test@example.invalid'])
+  git(extern, ['config', 'user.name', 'Test'])
+  writeFileSync(join(extern, '.gitattributes'), '* -text\n')
+  const baselineInhalt = JSON.stringify({
+    werkzeug_konfiguration: { pfad: join(projekt, '.claude', 'settings.json'), hash: sha256Hex(settingsInhalt) },
+    schutzskripte: [{ pfad: '.claude/hooks/w.js', hash: sha256Hex(hookInhalt) }],
+  })
+  mkdirSync(join(extern, 'invocation-policy-baseline'), { recursive: true })
+  writeFileSync(join(extern, 'invocation-policy-baseline', 'b.json'), baselineInhalt)
+  git(extern, ['add', '.'])
+  git(extern, ['commit', '--quiet', '-m', 'baseline'])
+  const baselineReferenz = { pfad: join(extern, 'invocation-policy-baseline', 'b.json'), commit_hash: git(extern, ['rev-parse', 'HEAD']).trim(), datei_hash: sha256Hex(baselineInhalt) }
+  return (wurzel: string) => pruefeStartbedingung1(baselineReferenz, ermittleIstZustand(join(wurzel, '.claude', 'settings.json')), { repoWurzel: extern })
+}
+
+/**
+ * Kein CR in Werkzeugkonfiguration und Hook eines Arbeitsordners.
+ * @param pfad - Arbeitsordner
+ * @param kennung - workflowId für die Fehlermeldung
+ */
+function assertOhneCr(pfad: string, kennung: string): void {
+  for (const datei of [join('.claude', 'settings.json'), join('.claude', 'hooks', 'w.js')]) {
+    assert.equal(readFileSync(join(pfad, datei)).includes(0x0d), false, `${kennung}: ${datei} enthält CR`)
+  }
+}
+
 describe('E-183 gegen die Settings des Worktrees', () => {
   it('Grün bei gleichem Commit, Rot nach geändertem Hook im Branch', async () => {
     const { basis, projekt, settingsInhalt, hookInhalt } = neuesRepo()
-    const extern = join(basis, 'autorisierung')
     try {
-      mkdirSync(extern, { recursive: true })
-      git(extern, ['init', '--quiet'])
-      git(extern, ['config', 'user.email', 'test@example.invalid'])
-      git(extern, ['config', 'user.name', 'Test'])
-      writeFileSync(join(extern, '.gitattributes'), '* -text\n')
-      const baselineInhalt = JSON.stringify({
-        werkzeug_konfiguration: { pfad: join(projekt, '.claude', 'settings.json'), hash: sha256Hex(settingsInhalt) },
-        schutzskripte: [{ pfad: '.claude/hooks/w.js', hash: sha256Hex(hookInhalt) }],
-      })
-      mkdirSync(join(extern, 'invocation-policy-baseline'), { recursive: true })
-      writeFileSync(join(extern, 'invocation-policy-baseline', 'b.json'), baselineInhalt)
-      git(extern, ['add', '.'])
-      git(extern, ['commit', '--quiet', '-m', 'baseline'])
-      const baselineReferenz = { pfad: join(extern, 'invocation-policy-baseline', 'b.json'), commit_hash: git(extern, ['rev-parse', 'HEAD']).trim(), datei_hash: sha256Hex(baselineInhalt) }
-      const pruefe = (wurzel: string) => pruefeStartbedingung1(baselineReferenz, ermittleIstZustand(join(wurzel, '.claude', 'settings.json')), { repoWurzel: extern })
+      const pruefe = e183GegenBaseline(basis, projekt, settingsInhalt, hookInhalt)
 
       const vorbereitet = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId: 'wf-h', vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: pruefe })
       assert.equal(vorbereitet.status, 'BEREIT', vorbereitet.grund ?? '')
@@ -433,6 +460,116 @@ describe('E-183 gegen die Settings des Worktrees', () => {
       assert.equal(rot.ok, false)
       assert.match(rot.ok ? '' : rot.grund, /E-183/)
       assert.deepEqual(pruefe(projekt), { ok: true })
+    } finally {
+      raeumeVerzeichnis(basis)
+    }
+  })
+
+  it('core.autocrlf=true im Projekt: Arbeitsordner bekommt LF-Bytes, E-183 besteht (neuer und vorhandener Branch, F45 B2b-3b-2b-2b-2a)', async () => {
+    // Mutationsprobe: ohne `-c core.autocrlf=false` an beiden `worktree add` checkt git CRLF aus — E-183 wird rot.
+    const { basis, projekt, settingsInhalt, hookInhalt } = neuesRepo()
+    try {
+      git(projekt, ['config', 'core.autocrlf', 'true'])
+      const pruefe = e183GegenBaseline(basis, projekt, settingsInhalt, hookInhalt)
+      git(projekt, ['branch', 'wf/wf-crlf-b'])
+      for (const workflowId of ['wf-crlf-a', 'wf-crlf-b']) {
+        const ergebnis = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId, vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: pruefe })
+        assert.equal(ergebnis.status, 'BEREIT', ergebnis.grund ?? '')
+        assertOhneCr(ergebnis.pfad, workflowId)
+      }
+    } finally {
+      raeumeVerzeichnis(basis)
+    }
+  })
+
+  it('Projekt-.gitattributes `* text=auto` ohne eol und core.eol=crlf: Arbeitsordner trotzdem LF, E-183 besteht', async () => {
+    // Mutationsprobe: ohne `-c core.eol=lf` checkt git Dateien mit text-Attribut nach core.eol (hier crlf) aus — E-183 rot.
+    const { basis, projekt, settingsInhalt, hookInhalt } = neuesRepo()
+    try {
+      writeFileSync(join(projekt, '.gitattributes'), '* text=auto\n')
+      git(projekt, ['add', '.gitattributes'])
+      git(projekt, ['commit', '--quiet', '-m', 'attribute'])
+      git(projekt, ['config', 'core.autocrlf', 'true'])
+      git(projekt, ['config', 'core.eol', 'crlf'])
+      const pruefe = e183GegenBaseline(basis, projekt, settingsInhalt, hookInhalt)
+      git(projekt, ['branch', 'wf/wf-eol-b'])
+      for (const workflowId of ['wf-eol-a', 'wf-eol-b']) {
+        const ergebnis = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId, vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: pruefe })
+        assert.equal(ergebnis.status, 'BEREIT', ergebnis.grund ?? '')
+        assertOhneCr(ergebnis.pfad, workflowId)
+      }
+    } finally {
+      raeumeVerzeichnis(basis)
+    }
+  })
+
+  it('Wiederaufnahme eines CRLF-Arbeitsordners von vor der Korrektur: Halt mit Zeilenenden- und Aufräum-Hinweis', async () => {
+    const { basis, projekt, settingsInhalt, hookInhalt } = neuesRepo()
+    try {
+      git(projekt, ['config', 'core.autocrlf', 'true'])
+      const pruefe = e183GegenBaseline(basis, projekt, settingsInhalt, hookInhalt)
+      const abgeleitet = leiteArbeitsordnerAb(projekt, 'wf-alt')
+      const ziel = abgeleitet.ok ? abgeleitet.pfad : ''
+      // Wie vor F-1143 angelegt: worktree add ohne Optionen, autocrlf=true ⇒ CRLF.
+      git(projekt, ['worktree', 'add', '--quiet', '-b', 'wf/wf-alt', ziel, 'HEAD'])
+      assert.equal(readFileSync(join(ziel, '.claude', 'settings.json')).includes(0x0d), true, 'Vorbedingung: alter Arbeitsordner hat CRLF')
+      const ergebnis = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId: 'wf-alt', vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: pruefe })
+      assert.equal(ergebnis.status, 'FEHLGESCHLAGEN')
+      assert.match(ergebnis.grund ?? '', /E-183/)
+      assert.match(ergebnis.grund ?? '', /Windows-Zeilenenden \(CRLF\).*Arbeitsordner aufräumen/)
+    } finally {
+      raeumeVerzeichnis(basis)
+    }
+  })
+
+  it('Wiederaufnahme eines LF-Arbeitsordners mit rotem E-183: kein Zeilenenden-Rat', async () => {
+    const { basis, projekt } = neuesRepo()
+    try {
+      const rot = () => ({ ok: false as const, grund: 'Hash weicht ab (E-183)' })
+      const erst = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId: 'wf-lf', vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: E183_GRUEN })
+      assert.equal(erst.status, 'BEREIT', erst.grund ?? '')
+      const ohneCr = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId: 'wf-lf', vorherigeBasis: erst.basis_commit, npm: npmAttrappe().npm, pruefeE183: rot })
+      assert.equal(ohneCr.status, 'FEHLGESCHLAGEN')
+      assert.doesNotMatch(ohneCr.grund ?? '', /Zeilenenden|aufräumen/)
+    } finally {
+      raeumeVerzeichnis(basis)
+    }
+  })
+
+  it('Wiederaufnahme eines alten Arbeitsordners, nur der Hook mit CRLF: Rat erwartet (Hooks werden mitgeprüft)', async () => {
+    const { basis, projekt, settingsInhalt, hookInhalt } = neuesRepo()
+    try {
+      // Werkzeugkonfiguration ohne Umwandlung (-text), der Hook nicht: ein Checkout vor F-1143 gibt nur dem Hook CRLF.
+      writeFileSync(join(projekt, '.gitattributes'), '.claude/settings.json -text\n')
+      git(projekt, ['add', '.gitattributes'])
+      git(projekt, ['commit', '--quiet', '-m', 'attribute'])
+      git(projekt, ['config', 'core.autocrlf', 'true'])
+      const pruefe = e183GegenBaseline(basis, projekt, settingsInhalt, hookInhalt)
+      const abgeleitet = leiteArbeitsordnerAb(projekt, 'wf-hook')
+      const ziel = abgeleitet.ok ? abgeleitet.pfad : ''
+      git(projekt, ['worktree', 'add', '--quiet', '-b', 'wf/wf-hook', ziel, 'HEAD'])
+      assert.equal(readFileSync(join(ziel, '.claude', 'settings.json')).includes(0x0d), false, 'Vorbedingung: Werkzeugkonfiguration LF')
+      assert.equal(readFileSync(join(ziel, '.claude', 'hooks', 'w.js')).includes(0x0d), true, 'Vorbedingung: Hook CRLF')
+      const ergebnis = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId: 'wf-hook', vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: pruefe })
+      assert.equal(ergebnis.status, 'FEHLGESCHLAGEN')
+      assert.match(ergebnis.grund ?? '', /E-183.*Windows-Zeilenenden \(CRLF\).*Arbeitsordner aufräumen/)
+    } finally {
+      raeumeVerzeichnis(basis)
+    }
+  })
+
+  it('frisch angelegter Arbeitsordner mit CR aus dem Projekt (`eol=crlf`): E-183 rot ohne Aufräum-Rat (Aufräumen hülfe nicht)', async () => {
+    const { basis, projekt, settingsInhalt, hookInhalt } = neuesRepo()
+    try {
+      writeFileSync(join(projekt, '.gitattributes'), '.claude/** text eol=crlf\n')
+      git(projekt, ['add', '.gitattributes'])
+      git(projekt, ['commit', '--quiet', '-m', 'attribute'])
+      const pruefe = e183GegenBaseline(basis, projekt, settingsInhalt, hookInhalt)
+      const ergebnis = await bereiteArbeitsordnerVor({ repoWurzel: projekt, workflowId: 'wf-crlf-attr', vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: pruefe })
+      assert.equal(readFileSync(join(ergebnis.pfad, '.claude', 'settings.json')).includes(0x0d), true, 'Vorbedingung: Attribut erzeugt CR')
+      assert.equal(ergebnis.status, 'FEHLGESCHLAGEN')
+      assert.match(ergebnis.grund ?? '', /E-183/)
+      assert.doesNotMatch(ergebnis.grund ?? '', /Zeilenenden|aufräumen/)
     } finally {
       raeumeVerzeichnis(basis)
     }
