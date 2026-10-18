@@ -1,10 +1,16 @@
 # Startfreigabe nach einem Claude-Code-Update erneuern
 
-Stand Startfreigabe-Erneuerung CLI 2.1.300 (15.10.2026), Abschnitt 8 (Rückfrage-Kanal) seit F45 B2b-3b-2b-2b-1 (17.10.2026). Zeigt der Leitstand beim Start das Band **„CLI-Version geändert — Startfreigabe neu erzeugen“**,
+Stand Startfreigabe-Erneuerung CLI 2.1.300 (15.10.2026), Abschnitt 8 (Rückfrage-Kanal) seit F45 B2b-3b-2b-2b-1 (17.10.2026), gilt
+seit B2b-3b-2b-2b-2b-1 (18.10.2026, Kanal Standard); dort auch neu „Projekt-Startfreigabe erneuern“ (am Ende). Zeigt der Leitstand beim Start das Band **„CLI-Version geändert — Startfreigabe neu erzeugen“**,
 weicht die installierte Claude-Code-Version von `werkzeugVersionDeklariert` in `startvorlagen/ai-workforce.json`
 ab. Die Belege der Startfreigabe (Rot-Fälle, Hook-Wirkung) gelten dann nur für die alte Version. Die Workforce
 erneuert die Freigabe nie selbst: Nachweise erzeugt ein Skript, den Commit im Autorisierungs-Repo und die
 Verweisdatei setzt Stefan (E3, ARCHITECTURE.md §3).
+
+Zweiter Auslöser: eine Änderung an `.claude/settings.json` oder einem Hook der Installation (z. B. die `git stash`-Sperre im
+commit-guard). Dann zeigt der Leitstand kein Band, aber jeder Lauf der Workforce wird mit E-183 verweigert und kein Projekt angelegt —
+Vorgehen wie unten, mit den Abkürzungen aus §8 „Ohne CLI-Update“. Für die Startfreigabe eines Projekts: Abschnitt
+„Projekt-Startfreigabe erneuern“ am Ende.
 
 Die Schritte entsprechen dem Vorgehen aus F45 B1b-1 (`features/F45/feature.md`, Abschnitt „Stand B1b-1“, Nachtrag
 „Startfreigabe“). Alle Befehle laufen in PowerShell.
@@ -189,14 +195,16 @@ aus, nur `commit_hash` fehlt darin):
    `features/F45/nachweise/b1b1/zaehlung-*.json` sowie `features/F45/nachweise/b1b2/zaehlung-hooks.json` (Rohströme
    bleiben lokal, ARCHITECTURE.md §4).
 
-Neue Projekte, die danach angelegt werden, bekommen die erneuerte Verweisdatei mit (E-F41-1). Projekte, die vorher
-angelegt wurden, tragen eine eigene Kopie der alten Verweisdatei; ob sie nachgezogen werden muss, zeigt ein lesender
-Lauf in diesem Projekt (Verweigerung mit E-183/E-188 = nachziehen).
+Neue Projekte, die danach angelegt werden, bekommen die erneuerte Verweisdatei mit (E-F41-1) — zusammen mit
+`.claude/settings.json` und den Hooks der Installation (`kopiereBaseline`, `src/projekt-anlegen/index.ts`). Solange die Startfreigabe
+der Workforce nicht erneuert ist, legt der Leitstand kein Projekt an (die Quelle muss E-183 bestehen). Projekte, die vorher
+angelegt wurden, tragen eine eigene Kopie der alten Verweisdatei und ihrer Hooks; ob sie nachgezogen werden muss, zeigt ein
+lesender Lauf in diesem Projekt (Verweigerung mit E-183/E-188 = nachziehen nach „Projekt-Startfreigabe erneuern“ unten).
 
-## 8 Mit Rückfrage-Kanal (vorbereitet in F45 B2b-3b-2b-2b-1, gilt ab 2b-2b-2)
+## 8 Mit Rückfrage-Kanal (gilt jetzt — Kanal Standard seit F45 B2b-3b-2b-2b-2b-1)
 
-Solange der Kanal Opt-in ist (`LEITSTAND_RUECKFRAGE=1`, ARCHITECTURE.md §3), entfällt dieser Abschnitt. Sobald er standardmäßig an ist,
-tragen Ausführungsläufe zusätzliche Argv-Teile, und die Erneuerung braucht einen Beleg mit genau diesem Argv:
+Der Kanal ist standardmäßig an (aus nur mit `LEITSTAND_RUECKFRAGE=0`, ARCHITECTURE.md §3). Ausführungsläufe tragen deshalb
+zusätzliche Argv-Teile, und die Erneuerung braucht einen Beleg mit genau diesem Argv:
 
 - `--permission-prompt-tool mcp__rueckfrage__rechte_pruefen` — in `claude --help` **nicht** gelistet (Spike
   `features/F45/nachweise/b2b3a/spike.md` Frage 1); ob die neue CLI-Version das Flag noch annimmt, zeigt nur ein echter Lauf.
@@ -224,3 +232,143 @@ nach Schritt 2:
 Zwei Grenzen: Der Nachweislauf läuft nach Schritt 2, also noch unter der **alten** Startfreigabe (gewollt — er prüft die neue CLI, nicht die
 neue Freigabe). Und er läuft im Projekt `haushaltsbuch2`: P10 belegt die Startfreigabe dieses **Projekts** mit Kanal-Argv, nicht die der
 Workforce-Installation — für die Workforce den optionalen Lauf in der Workforce-Instanz der Anleitung mitfahren.
+
+**Ohne CLI-Update** (nur eine Hook- oder settings-Änderung der Installation, z. B. die `git stash`-Sperre im commit-guard, F45
+B2b-3b-2b-2b-2b-1; Leitstand meldet dann E-183 statt des Bands): der Beleg darf die vorhandenen Auswertungen unter
+`features/F45/nachweise/b2b3b2b2b/` verwenden, solange die installierte CLI (`$NEU`) genau die Version dieser Auswertungen ist
+(2.1.300, im Kopf jeder Auswertung). Dann entfallen nur die **§8-Punkte 1 und 2** (Nachweislauf fahren und vergleichen); §8-Punkt 3
+trägt die Dateinamen dieser Auswertungen. **Schritt 2 und 2a der Anleitung bleiben Pflicht:** `hooks-nachweis.mjs` misst den neuen
+Hook-Hash, und ohne den nachgezogenen Beleg in `harness-abgleich/standard.json` ist `npm run check` rot. Schritt 3 entfällt
+(`werkzeugVersionDeklariert` bleibt). In Schritt 5 die Commit-Nachricht anpassen, z. B. „Startfreigabe nach Hook-Änderung
+(git-stash-Sperre)“. Ist `$NEU` eine andere Version, gilt der volle Ablauf mit neuem Nachweislauf.
+
+## Projekt-Startfreigabe erneuern
+
+Jedes Projekt hat eine eigene Startfreigabe: die Verweisdatei `state\aktuelle-autorisierung.json` **im Projektordner** zeigt auf
+Baseline und Wirksamkeitsnachweis im selben Autorisierungs-Repo `$AUTH`; die Startvorlage ist `startvorlagen\<id>.json` im Projektordner
+(`startvorlage_pfad` des Registereintrags in `projekte.json`/`projekte.lokal.json`; `scripts/leitstand/projekt-pfade.mjs`).
+
+**Wann:**
+- **Pflicht** nach jeder Änderung an `.claude\settings.json` oder einem darin genannten Hook **im Projekt** (eigene Änderung, Nachrüsten).
+  Sonst verweigert die Vorbereitung des Arbeitsordners mit „Hash … weicht von der Baseline ab (E-183)“.
+- **Freiwillig**, wenn nur die installierte CLI von `werkzeugVersionDeklariert` der Projekt-Startvorlage abweicht: der Projektlauf startet
+  trotzdem, der Leitstand liefert nur den Hinweis `projektCliHinweis` (Entscheidung F-1136 (10) = B). Erneuern macht die Belege wieder zur
+  installierten Version passend. Der Hinweis verschwindet erst nach einem Neustart des Leitstands.
+- Eine Änderung an den Hooks der **Workforce-Installation** betrifft vorhandene Projekte nicht — sie tragen eigene Kopien (ohne die
+  `git stash`-Sperre, F-1150).
+
+Drei Eigenheiten gegenüber der Workforce (aus dem Code abgeleitet, am Nachweis von `haushaltsbuch2` gegengeprüft):
+- Gemessen werden `.claude\settings.json` und die Hooks **des Ordners, in dem das Skript läuft** — deshalb läuft P4 im Projektordner, das
+  Skript aber aus `$REPO`.
+- `--arbeitsverzeichnis-pfad` ist **`$REPO`** (der Ordner, aus dem der Leitstand startet; der Gültigkeitsschlüssel nimmt `process.cwd()`
+  des Leitstands, auch für Projektläufe), **nicht** der Projektordner.
+- Der Arbeitsordner eines Ablaufs entsteht aus dem **Commit** (HEAD) des Projekts, die Baseline aus der **Arbeitskopie**. Eine Änderung an
+  settings/Hooks muss deshalb vor P4 im Projekt committet sein, und Arbeitskopie und Commit müssen dieselben Bytes tragen (F-1143, F-1149).
+
+Die Schritte 1, 2, 2a und 4–7 oben gelten der Workforce; ihre Nachweis-Skripte messen die Hooks der Installation und belegen für ein
+Projekt nichts. Für ein Projekt gilt P1–P7.
+
+### Variablen (zusätzlich zum Abschnitt Variablen oben, im selben Terminal)
+
+```powershell
+$PROJEKT = 'C:\Users\stefa\Projekte\haushaltsbuch2'               # Projektordner (repo_pfad des Registereintrags)
+$VORLAGE = Join-Path $PROJEKT 'startvorlagen\haushaltsbuch2.json'  # startvorlage_pfad des Registereintrags
+$V = Get-Content $VORLAGE -Raw -Encoding UTF8 | ConvertFrom-Json
+"deklariert: $($V.werkzeugVersionDeklariert) | installiert: $NEU | Kontext: $($V.berechtigungskontext) | Programm: $(@($V.werkzeugStartziel)[0])"
+```
+
+Ein neues Terminal kennt diese Variablen nicht — dann den Abschnitt Variablen oben und diesen Block erneut ausführen.
+
+### P1 Änderung committen und Zeilenenden prüfen
+
+```powershell
+git -C $PROJEKT status --short -- .claude startvorlagen state
+git -C $PROJEKT ls-files --eol -- .claude
+```
+
+- Die erste Ausgabe ist leer. Sonst erst die Änderung im Projekt committen (ohne `git stash`).
+- In der zweiten Ausgabe tragen `settings.json` und jeder Hook vorn **`i/lf w/lf`**. Entscheidend ist, dass `i/` und `w/` gleich sind (sonst
+  misst die Baseline andere Bytes als der Arbeitsordner auscheckt). Steht dort `i/lf w/crlf`: anhalten — Abhilfe nach F-1143
+  (`.gitattributes` mit `* text=auto eol=lf` committen, die betroffenen Dateien unter `.claude` löschen und mit `git checkout -- .claude`
+  neu auschecken). Steht dort `i/crlf`: anhalten und zurückmelden (ein mit CRLF committeter Hook wird dadurch nicht normalisiert).
+
+### P2 Belege wählen
+
+| Auslöser | Belege für `$BELEG` |
+|---|---|
+| nur Hook/settings im Projekt geändert, `$NEU` = Version der letzten Auswertung **dieses** Projekts | diese Auswertungen unter `features/F45/nachweise/b2b3b2b2b/auswertung-<Projekt>-*.md` (Version steht im Kopf) |
+| nur CLI geändert (freiwillig) | neuer Nachweislauf in **diesem** Projekt (`docs/harness/rueckfrage-nachweislauf.md`, Lauf A und B); Soll wie §8-Punkt 2 |
+| Hook/settings geändert **und** CLI geändert | **anhalten** — der Nachweislauf scheitert vor der Erneuerung an E-183, die Erneuerung braucht seine Belege (offene Frage, zurückmelden) |
+| Projekt ohne eigene Auswertung (z. B. `haushaltsbuch`) | **anhalten** — welcher Beleg dann gilt, ist nicht festgelegt (offene Frage, zurückmelden) |
+
+### P3 Deklarierte Version
+
+Weicht `$NEU` von `$V.werkzeugVersionDeklariert` ab (Ausgabe des Variablen-Blocks) **und** stammen die Belege aus P2 von `$NEU`: in
+`$VORLAGE` das Feld `werkzeugVersionDeklariert` auf `$NEU` setzen (im eigenen Editor) und den Variablen-Block erneut ausführen. Stammen die
+Belege von der deklarierten Version, das Feld unverändert lassen. `berechtigungskontext` und `werkzeugStartziel` nie ändern.
+
+### P4 Baseline und Wirksamkeitsnachweis schreiben
+
+In die erste Zeile die Belege aus P2 einsetzen (Dateinamen, durch Komma getrennt).
+
+```powershell
+& {
+  $BELEGE = '<Belege aus P2>'
+  if (-not $REPO -or -not $AUTH -or -not $PROJEKT -or -not $VORLAGE) { throw 'Erst die Variablen-Blöcke ausführen ($REPO, $AUTH, $PROJEKT, $VORLAGE fehlen)' }
+  $V = Get-Content $VORLAGE -Raw -Encoding UTF8 | ConvertFrom-Json
+  $PROGRAMM = @($V.werkzeugStartziel)[0]
+  $BELEG = "=== rot_fall_beleg ===`nstand: CLI $($V.werkzeugVersionDeklariert), Projekt $PROJEKT`nbelege: $BELEGE`n=== Ende rot_fall_beleg ==="
+  Push-Location $PROJEKT -ErrorAction Stop
+  try {
+    node (Join-Path $REPO 'scripts\erzeuge-invocation-policy-nachweise.mjs') `
+      --repo-wurzel "$AUTH" `
+      --werkzeug-version "$($V.werkzeugVersionDeklariert)" `
+      --berechtigungskontext "$($V.berechtigungskontext)" `
+      --arbeitsverzeichnis-pfad "$REPO" `
+      --startziel-pfad "$PROGRAMM" `
+      --rot-fall-beleg "$BELEG"
+    if ($LASTEXITCODE -ne 0) { throw "Nachweis-Skript fehlgeschlagen (Exit $LASTEXITCODE)" }
+  } finally {
+    Pop-Location
+  }
+}
+```
+
+Die Ausgabe nennt „Werkzeugkonfiguration: .claude/settings.json“ — gemeint ist die des Projekts (der Block wechselt dafür in `$PROJEKT`).
+
+### P5 Commit im Autorisierungs-Repo (Stefan)
+
+Den Block aus Schritt 5 verwenden, mit einer Änderung: die Zeile `git commit -m "Startfreigabe nach Claude-Code-Update auf $NEU"` durch
+`git commit -m "Startfreigabe Projekt $(Split-Path -Leaf $PROJEKT)"` ersetzen. `$COMMIT` ist danach der ausgegebene Hash.
+
+### P6 Verweisdatei des Projekts
+
+In `$PROJEKT\state\aktuelle-autorisierung.json` (nicht in `$REPO`!) beide Referenzen ersetzen wie in Schritt 6.
+
+### P7 Prüfung und Commit im Projekt
+
+1. Leitstand neu starten (`npm run leitstand` aus `$REPO`), das Projekt wählen und im Chat eine Frage stellen: die Antwort kommt, keine
+   Verweigerung mit E-183/E-188.
+2. Einen schreibenden Ablauf mit einem harmlosen Auftrag anlegen und starten. Soll: die Vorbereitung des Arbeitsordners endet „bereit“ (nicht
+   „Werkzeugkonfiguration … besteht die Startprüfung nicht“). Danach den Ablauf stoppen und „Arbeitsordner aufräumen“ wählen (F-1147).
+3. Commit im Projekt mit expliziten Pfaden:
+
+```powershell
+& {
+  if (-not $PROJEKT -or -not $VORLAGE) { throw 'Erst die Variablen-Blöcke ausführen' }
+  $S = 'startvorlagen/' + (Split-Path -Leaf $VORLAGE)
+  Push-Location $PROJEKT -ErrorAction Stop
+  try {
+    if (@(git diff --cached --name-only).Count -ne 0) { throw 'Index ist vorher nicht leer - Abbruch' }
+    git add -- state/aktuelle-autorisierung.json $S
+    if ($LASTEXITCODE -ne 0) { throw "git add fehlgeschlagen (Exit $LASTEXITCODE)" }
+    git status --short
+    git commit -m "Startfreigabe erneuert"
+    if ($LASTEXITCODE -ne 0) { throw "git commit fehlgeschlagen (Exit $LASTEXITCODE)" }
+  } finally {
+    Pop-Location
+  }
+}
+```
+
+Ist `$VORLAGE` unverändert (P3 ohne Änderung), nimmt `git add` sie nicht auf — dann steht nur die Verweisdatei im Commit.

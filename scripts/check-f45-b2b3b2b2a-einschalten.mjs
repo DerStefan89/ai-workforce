@@ -4,10 +4,11 @@
  *
  * Zweck: Gate für F45 B2b-3b-2b-2a-1 „Rückfrage-Kanal: Einschalten (Opt-in), Server/Evaluator“ (features/F45/plan-b2b3b2b2a-v2.md,
  * Advisor features/F45/advisor-b2b3b2b2a.md). Prüft:
- * (o1) Opt-in: nur LEITSTAND_RUECKFRAGE=1 mit gültigem Port schaltet ein; Port 0 ⇒ aus und rueckfrageOptionFuer liefert {} (B3);
+ * (o1) Schalter (seit F45 B2b-3b-2b-2b-2b-1 Standard an): fehlt oder LEITSTAND_RUECKFRAGE=1 mit gültigem Port ⇒ an; 0 ⇒ aus; jeder
+ *      andere Wert ⇒ aus mit Grund (fail-closed); Port 0 ⇒ aus und rueckfrageOptionFuer liefert {} (B3);
  *      Option je Instanz (Workforce …/api, Projekt …/api/projekte/<id>); Startzeile an/aus.
- * (o2) Echter Start (Server, Arbeitsordner, Ausführung): Option aus leerer Umgebung ⇒ kein Kanal, kein --permission-prompt-tool,
- *      Auftragstext ohne Regelzeile; aus LEITSTAND_RUECKFRAGE=1 ⇒ Kanal mit url = API-Basis.
+ * (o2) Echter Start (Server, Arbeitsordner, Ausführung): Option aus LEITSTAND_RUECKFRAGE=0 ⇒ kein Kanal, kein --permission-prompt-tool,
+ *      Auftragstext ohne Regelzeile; aus leerer Umgebung und aus LEITSTAND_RUECKFRAGE=1 ⇒ Kanal mit url = API-Basis.
  * (r)  Regelzeile frage_stefan: mit Kanal genau einmal im Auftragstext, ohne Kanal nicht (Punkt 4).
  * (o3) Quelltext: CLI-Block und baueProjektHandlerMap setzen rueckfrage nur über rueckfrageOptionFuer (gemeinsame Regel
  *      scripts/_rueckfrage-aus-pruefung.mjs, mit Rotfall); Startzeile im listen-Rückruf; starteWorkflowSchritt( 6×.
@@ -204,13 +205,21 @@ try {
   // ── (o1) Opt-in als Wert ──────────────────────────────────────────────────────────────────────────────────────────
   if (einschalten !== null) {
     const { rueckfrageBasisAusUmgebung: basisAus, rueckfrageOptionFuer: option, rueckfrageStartzeile: startzeile } = einschalten
+    // F45 B2b-3b-2b-2b-2b-1 (Kanal Standard an): alt „nur '1' ⇒ an; 0/true/leer/' 1'/fehlt ⇒ aus“; neu „fehlt/'1' ⇒ an; '0' ⇒ aus;
+    // true/leer/' 1'/sonstiges ⇒ aus mit Grund ‚unbekannter Wert …‘ (fail-closed); Port 0 ⇒ aus“.
     const an = basisAus({ LEITSTAND_RUECKFRAGE: '1' }, 4173)
-    const aus = ['0', 'true', '', ' 1', undefined].map((w) => basisAus({ LEITSTAND_RUECKFRAGE: w }, 4173))
+    const fehlt = basisAus({}, 4173)
+    const null0 = basisAus({ LEITSTAND_RUECKFRAGE: '0' }, 4173)
+    const unbekannt = ['true', '', ' 1', '1 ', 'an'].map((w) => basisAus({ LEITSTAND_RUECKFRAGE: w }, 4173))
     const port0 = basisAus({ LEITSTAND_RUECKFRAGE: '1' }, 0)
+    const port0Fehlt = basisAus({}, 0)
     pruefe(
-      an.an === true && an.basis === 'http://127.0.0.1:4173/api' && aus.every((a) => a.an === false && typeof a.grund === 'string') && port0.an === false && JSON.stringify(option(port0.basis)) === '{}' && JSON.stringify(option(aus[0].basis)) === '{}',
-      '(o1) nur LEITSTAND_RUECKFRAGE=1 mit gültigem Port schaltet ein; 0/true/leer/Leerzeichen/fehlt bzw. Port 0 ⇒ aus mit Grund, Option {}.',
-      `(o1) ${JSON.stringify({ an, aus, port0 })}`
+      an.an === true && an.basis === 'http://127.0.0.1:4173/api' && isDeepStrictEqual(fehlt, an) &&
+        null0.an === false && /LEITSTAND_RUECKFRAGE=0/.test(null0.grund) &&
+        unbekannt.every((a) => a.an === false && /^unbekannter Wert .*nur 0 schaltet aus/.test(a.grund)) &&
+        port0.an === false && port0Fehlt.an === false && JSON.stringify(option(port0.basis)) === '{}' && JSON.stringify(option(null0.basis)) === '{}' && JSON.stringify(option(unbekannt[0].basis)) === '{}',
+      '(o1) fehlt/1 mit gültigem Port ⇒ an; 0 ⇒ aus; true/leer/Leerzeichen/sonstiges ⇒ aus mit Grund „unbekannter Wert“; Port 0 ⇒ aus; Option {} bei aus.',
+      `(o1) ${JSON.stringify({ an, fehlt, null0, unbekannt, port0, port0Fehlt })}`
     )
     pruefe(
       option(an.basis).rueckfrage?.url === 'http://127.0.0.1:4173/api' && option(an.basis, 'p1').rueckfrage?.url === 'http://127.0.0.1:4173/api/projekte/p1' && JSON.stringify(option(an.basis, '../x')) === '{}' && /: an /.test(startzeile(an)) && /: aus \(/.test(startzeile(port0)),
@@ -219,11 +228,13 @@ try {
     )
   }
 
-  // ── (o2)/(r) echter Start: Option aus leerer Umgebung bzw. aus LEITSTAND_RUECKFRAGE=1 ─────────────────────────────────────
+  // ── (o2)/(r) echter Start: Option aus LEITSTAND_RUECKFRAGE=0 bzw. aus leerer Umgebung und aus LEITSTAND_RUECKFRAGE=1 ──────────
+  // F45 B2b-3b-2b-2b-2b-1: alt „aus = leere Umgebung, an = '1'“; neu „aus = '0', an = leere Umgebung (Standard) und '1'“.
   if (einschalten !== null) {
     const { rueckfrageBasisAusUmgebung: basisAus, rueckfrageOptionFuer: option } = einschalten
     for (const [fall, env] of [
-      ['aus', {}],
+      ['aus', { LEITSTAND_RUECKFRAGE: '0' }],
+      ['an', {}],
       ['an', { LEITSTAND_RUECKFRAGE: '1' }],
     ]) {
       const u = baueUmgebung(`o2-${fall}`)
@@ -237,11 +248,11 @@ try {
         const text = lauf.eingaben.auftragstext
         const vorkommen = REGEL === null ? -1 : text.split(REGEL).length - 1
         if (fall === 'aus') {
-          pruefe(lauf.eingaben.rueckfrageKanal === undefined && a.permissionPromptTool === undefined && !argv.includes('--permission-prompt-tool') && argv[argv.indexOf('--mcp-config') + 1] === '{"mcpServers":{}}', '(o2) Option aus leerer Umgebung ⇒ kein Kanal, kein --permission-prompt-tool, mcp-config Standard.', `(o2) aus: ${JSON.stringify(a)}`)
+          pruefe(lauf.eingaben.rueckfrageKanal === undefined && a.permissionPromptTool === undefined && !argv.includes('--permission-prompt-tool') && argv[argv.indexOf('--mcp-config') + 1] === '{"mcpServers":{}}', '(o2) Option aus LEITSTAND_RUECKFRAGE=0 ⇒ kein Kanal, kein --permission-prompt-tool, mcp-config Standard.', `(o2) aus: ${JSON.stringify(a)}`)
           pruefe(vorkommen === 0 && !/frage_stefan/.test(text), '(r) ohne Kanal keine Regelzeile im Auftragstext.', `(r) aus: Regelzeile ${vorkommen}×`)
         } else {
           const url = JSON.parse(a.mcpConfig ?? '{}').mcpServers?.rueckfrage?.env?.WORKFORCE_RUECKFRAGE_URL
-          pruefe(lauf.eingaben.rueckfrageKanal !== undefined && a.permissionPromptTool === RECHTE_WERKZEUG && url === `${s.basisUrl}/api`, '(o2) LEITSTAND_RUECKFRAGE=1 ⇒ Kanal mit url = API-Basis der Instanz (…/api).', `(o2) an: url ${url}, ppt ${a.permissionPromptTool}`)
+          pruefe(lauf.eingaben.rueckfrageKanal !== undefined && a.permissionPromptTool === RECHTE_WERKZEUG && url === `${s.basisUrl}/api`, `(o2) ${JSON.stringify(env)} ⇒ Kanal mit url = API-Basis der Instanz (…/api).`, `(o2) an ${JSON.stringify(env)}: url ${url}, ppt ${a.permissionPromptTool}`)
           pruefe(vorkommen === 1, '(r) mit Kanal genau eine Regelzeile frage_stefan im Auftragstext.', `(r) an: Regelzeile ${vorkommen}×`)
         }
       }

@@ -235,6 +235,101 @@ test('PowerShell-Werkzeug (F-1042): unbekannte Eingabeform (kein tool_input.comm
   assert.match(powershellHook(undefined, { tool_input: { command: '' } }).grund, /kein Befehlstext gefunden — fail-closed/)
 })
 
+// F45 B2b-3b-2b-2b-2b-1 (F-1141): jedes `git stash` außer list/show — je Unterbefehl, mit globalen Optionen, in Ketten,
+// Pipelines und PowerShell-Form. drop/clear behalten den Grund „nicht umkehrbar“ (oben), alle übrigen den Stash-Grund.
+const STASH_ROT = [
+  'git stash',
+  'git stash push',
+  'git stash push -m "zwischenstand"',
+  'git stash save "alt"',
+  'git stash pop',
+  'git stash apply stash@{0}',
+  'git stash branch neu',
+  'git stash create',
+  'git stash store abc123',
+  'git stash -u',
+  'git -C ../anderes stash',
+  'git -c core.x=y stash pop',
+  'git.exe stash',
+  '/usr/bin/git stash',
+  'env X=1 git stash',
+  'npm run check && git stash',
+  'git status; git stash pop',
+  'git stash list && git stash pop',
+  'echo pop | xargs git stash',
+  'git status || git stash',
+  'powershell -Command "git stash pop"',
+  'cmd /c git stash',
+  'git status; if ($?) { git stash }',
+  'if ($?) {git stash}',
+  '{ git stash; }',
+  '1..2 | ForEach-Object { git stash pop }',
+  '& git stash apply',
+  'bash <<EOF\ngit stash\nEOF',
+  'git commit -m "stash erklärt" && git stash',
+]
+
+const STASH_GRUEN = [
+  'git stash list',
+  'git stash list --date=relative',
+  'git stash show',
+  'git stash show -p',
+  'git stash show -p stash@{1}',
+  'git show stash@{0}',
+  'git show refs/stash',
+  'git commit -m "stash erklärt"',
+  'gh pr create --title "git stash sperren" --body "git stash pop ist gesperrt"',
+  'grep stash datei',
+  'grep -rn "git stash" .claude/hooks',
+  'echo git stash',
+  'git log --grep=stash',
+  'git stash list | grep wip',
+  'git status; if ($?) { git stash list }',
+]
+
+// F-1141 (Blockklammer in verbenVon): dieselbe PowerShell-Kettenform war auch für die übrigen Regeln der Aufgabe 6 eine Lücke.
+// Korrekturrunde (code-reviewer V1, qa L2): auch ohne Leerzeichen vor der schließenden Klammer.
+const BLOCK_ROT = [
+  'npm run check; if ($?) { git reset --hard }',
+  'Get-ChildItem | ForEach-Object { Remove-Item $_ -Recurse -Force }',
+  '{ rm -rf build; }',
+  'npm run check; if ($?) {git reset --hard}',
+  'if ($?) {git clean -fd}',
+  'if ($?) { git checkout .}',
+  'ls | % {Remove-Item $_ -Recurse -Force}',
+]
+
+// Korrekturrunde (qa L3): PowerShell-Here-String als Commit-Nachricht ist Fließtext; in eine Shell gepipt bleibt er Befehl.
+const HERE_STRING_GRUEN = [
+  "git commit -m @'\nF45: git stash außer list/show gesperrt\ngit stash pop\nrm -rf build\n'@",
+  'git commit -m @"\ngit reset --hard erklärt\n"@',
+]
+const HERE_STRING_ROT = ["@'\ngit stash\n'@ | powershell -", "git commit -m @'\nx\n'@; git stash", "git commit -m @'\ngit stash"]
+
+test('Aufgabe 6, F-1141: git stash außer list/show wird gesperrt (je Variante), Grund mit Hinweis auf commit auf einem Branch', () => {
+  for (const command of STASH_ROT) assert.match(pruefeGehaerteteRegeln(command) ?? '', /git stash blockiert .* Änderungen sichern über commit auf einem Branch \(Stefan\)/, command)
+})
+
+test('Aufgabe 6, F-1141: git stash list/show und Texte, die „stash“ nur als Argument tragen, bleiben frei', () => {
+  for (const command of STASH_GRUEN) assert.equal(pruefeGehaerteteRegeln(command), null, command)
+})
+
+test('Aufgabe 6, F-1141: Befehl nach einer Blockklammer ({ … }) zählt als Befehlsstelle', () => {
+  for (const command of BLOCK_ROT) assert.match(pruefeGehaerteteRegeln(command) ?? '', /nicht umkehrbar/, command)
+})
+
+test('F-1141: PowerShell-Here-String als Nachricht bleibt frei; hinter einer Shell oder ungeschlossen zählt er als Befehl', () => {
+  for (const command of HERE_STRING_GRUEN) assert.equal(pruefeGehaerteteRegeln(command), null, command)
+  for (const command of HERE_STRING_ROT) assert.match(pruefeGehaerteteRegeln(command) ?? '', /git stash blockiert/, command)
+})
+
+test('Ende-zu-Ende, F-1141: git stash / git stash pop verweigert (Bash und PowerShell), git stash list durch', () => {
+  for (const command of ['git stash', 'git stash pop', 'git -C . stash push']) assert.equal(hookVerweigert(command), true, command)
+  for (const command of ['git stash', 'git stash apply']) assert.match(powershellHook(command).grund, /git stash blockiert/, command)
+  for (const command of ['git stash list', 'git stash show -p']) assert.equal(hookVerweigert(command), false, command)
+  assert.equal(powershellHook('git stash list').verweigert, false)
+})
+
 test('Ende-zu-Ende als Hook-Prozess: B1a-2-Umgehung „cp -rn .claude“ und rm -rf verweigert, Prüfbefehle durch', () => {
   for (const command of ['cp -rn .claude ../ziel/', 'rm -rf build', 'git branch -D foo', 'git reset --hard']) assert.equal(hookVerweigert(command), true, command)
   for (const command of ['npm run check', 'git status', 'git diff', 'git log --oneline -3']) assert.equal(hookVerweigert(command), false, command)

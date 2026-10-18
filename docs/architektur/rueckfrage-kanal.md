@@ -12,10 +12,16 @@ Thema berührt.
 **Rückfrage-Kanal im Lauf** (F45 B2b-3b-1a, E-B2b-3-1 = A, Spike `features/F45/nachweise/b2b3a/spike.md`). Ein
 Ausführungslauf kann über einen je Lauf mitgegebenen stdio-MCP-Server (`--permission-prompt-tool
 mcp__rueckfrage__rechte_pruefen`, Werkzeug `frage_stefan`) Stefan einen Bash-Befehl außerhalb der Allowlist vorlegen oder
-eine Entscheidungsfrage stellen. Der Kanal ist **Opt-in** (F45 B2b-3b-2b-2a-1): nur mit `LEITSTAND_RUECKFRAGE=1` (genau
-dieser Wert) setzen CLI-Bindeblock und `baueProjektHandlerMap` die Handler-Option `rueckfrage`, und nur über
-`rueckfrageOptionFuer` (`scripts/leitstand/rueckfrage-einschalten.mjs`); ohne die Variable bleibt das Argv aller Läufe
-bitgleich, und die Konsole meldet beim Start „Rückfrage-Kanal: an/aus“ — ERZWUNGEN am Quelltext (gemeinsame Regel
+eine Entscheidungsfrage stellen. Der Kanal ist seit F45 B2b-3b-2b-2b-2b-1 **standardmäßig an** (vorher Opt-in, F45
+B2b-3b-2b-2a-1; Entscheidung Stefan nach dem bestandenen Nachweislauf 17.10.2026, `features/F45/nachweise/b2b3b2b2b/`): fehlt
+`LEITSTAND_RUECKFRAGE` oder ist sie `1`, setzen CLI-Bindeblock und `baueProjektHandlerMap` die Handler-Option `rueckfrage`, und nur
+über `rueckfrageOptionFuer` (`scripts/leitstand/rueckfrage-einschalten.mjs`). **Ausschalter:** `LEITSTAND_RUECKFRAGE=0`; jeder
+andere Wert (`true`, leer, mit Leerzeichen …) schaltet ebenfalls aus, mit dem Grund „unbekannter Wert … (nur 0 schaltet aus)“ —
+fail-closed, eine unklare Eingabe startet keinen Kanal. Leeren unter Windows (`$env:LEITSTAND_RUECKFRAGE = ''` in PowerShell,
+`set LEITSTAND_RUECKFRAGE=` in cmd) entfernt die Variable — das ist „fehlt“, also **an**; ausschalten nur mit
+`$env:LEITSTAND_RUECKFRAGE = '0'` vor `npm run leitstand`. Bei „aus“ bleibt das Argv aller Läufe bitgleich; Handler ohne die Option
+(Gates, Tests) bleiben aus. Die Konsole meldet beim Start „Rückfrage-Kanal: an (…; ausschalten mit LEITSTAND_RUECKFRAGE=0)“ bzw.
+„aus (Grund)“ — ERZWUNGEN am Quelltext (gemeinsame Regel
 `scripts/_rueckfrage-aus-pruefung.mjs` in vier Gates) und funktional (Gate f45-b2b3b2b2a-einschalten (o1)(o2)). Die url ist die
 API-Basis der Instanz — Workforce `http://<Loopback>:<PORT>/api`, Projekt `…/api/projekte/<id>`; das MCP-Skript hängt
 `/rueckfrage/anfrage…` an, der Multi-Projekt-Dispatcher leitet an die Instanz weiter (Gate (d)); sie steht vor dem Binden fest,

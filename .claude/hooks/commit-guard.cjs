@@ -26,7 +26,11 @@
  * 6. Verweigert nicht umkehrbare Befehle: rm -rf (alle Schreibweisen),
  *    Remove-Item -Recurse -Force, rd /s /q, git branch -D, git reset --hard,
  *    git clean -f, git checkout ., git restore . (ohne --staged), git stash
- *    drop/clear, git worktree remove --force, git update-ref -d.
+ *    drop/clear, git worktree remove --force, git update-ref -d. Seit F45
+ *    B2b-3b-2b-2b-2b-1 (F-1141) zusätzlich jedes andere `git stash` außer
+ *    `list`/`show` (nacktes `stash`, push, save, pop, apply, branch …): es
+ *    nimmt Änderungen ohne Freigabe aus dem Arbeitsbaum — sichern über einen
+ *    Commit auf einem Branch (Stefan).
  *    Für 5 und 6 zählen nur Befehlsstellen (nach env/command/xargs …, nach
  *    powershell -Command); Commit-/PR-Nachrichten (-m, --body …) und
  *    Heredoc-Körper ohne Shell werden vorher entfernt.
@@ -72,6 +76,20 @@
  *   mitgesperrt — Read benutzen. Nicht erkannt: Kopien eines ganzen
  *   Ordnerinhalts (`cp -r ../tpl/. ./`, `cp -r . ../x`), die `.claude`
  *   mitnehmen, ohne es zu nennen; Optionswerte nach `xargs` (`xargs -n 1 cp`).
+ * - Aufgabe 6, `git stash` (F-1141): gesperrt, sobald in einem git-Glied ein
+ *   Token `stash` steht, dem nicht `list`/`show` folgt — auch als Optionswert
+ *   (`git log --grep stash` wird mitgesperrt, `--grep=stash` nicht; bewusst
+ *   streng statt Unterbefehl-Ermittlung, die an Pfaden mit Leerzeichen nach
+ *   `-C` scheitern würde). `git stash -q list` wird mitgesperrt. Offen (für
+ *   alle Regeln der Aufgabe 6): Aliase (`git -c alias.s=stash s`), ein
+ *   git-Programmpfad mit Leerzeichen, PowerShell-Zuweisung (`$r = git stash`),
+ *   Unterausdruck (`$(git stash)`), `Start-Process`/`Invoke-Expression`;
+ *   `git pull|rebase --autostash` stasht in der Sache, wird aber nicht gesperrt.
+ * - Blockklammer (F-1141): der Befehl nach `{` zählt als Befehlsstelle. Das
+ *   ganze Glied gilt dabei als eines — `if (Test-Path .claude) { git checkout x }`
+ *   wird als Schreiben auf `.claude` mitgesperrt (sichere Richtung).
+ * - Here-String (F-1141): `@'…'@` hinter einem Befehl ohne Shell ist Fließtext;
+ *   geht er hinter `'@` per Pipe in eine Shell, bleibt sein Körper Befehl.
  * - PowerShell-Werkzeug (F-1042): die Hook-Eingabe hat dieselbe Form wie beim
  *   Bash-Werkzeug (tool_name 'PowerShell', tool_input { command, description },
  *   real belegt in features/F45/nachweise/b1b1/zaehlung-powershell.json); der
@@ -193,11 +211,16 @@ function befehlsname(token) {
   return name.endsWith(".exe") ? name.slice(0, -4) : name;
 }
 
-/** Tokens eines Segments, je Token umschließende Anführungszeichen/Klammern entfernt. */
+/**
+ * Tokens eines Segments, je Token umschließende Anführungszeichen/Klammern entfernt. Seit F-1141 auch eine
+ * schließende Blockklammer am Token-Ende (`{git reset --hard}` → `--hard`), außer das Token enthält selbst `{`
+ * (Klammer-Expansion `{.claude,src}`, `stash@{0}`, Platzhalter `{}`).
+ */
 function tokenisiere(segment) {
   return segment
     .split(/\s+/)
     .map((token) => token.replace(/^['"`(]+|['"`),]+$/g, ""))
+    .map((token) => (token.includes("{") ? token : token.replace(/\}+$/, "").replace(/['"`),]+$/, "")))
     .filter((token) => token.length > 0);
 }
 
@@ -255,18 +278,41 @@ const TEXT_ARGUMENT = /(^|\s)(-m|--message|--body|--title|--notes)(\s+|=)("(?:[^
  * Entfernt Fließtext, der nicht ausgeführt wird: den Inhalt von Commit-/PR-Nachrichten
  * (`git commit -m "… rm -rf …"`) und Heredoc-Körper, die nicht in eine Shell oder einen
  * Interpreter gehen (`git commit -F - <<'EOF'`, `cat > datei <<EOF`). Die öffnende Zeile
- * (samt Umleitungsziel) bleibt erhalten.
+ * (samt Umleitungsziel) bleibt erhalten. Seit F-1141 ebenso der Körper eines PowerShell-Here-Strings
+ * (`git commit -m @'` … `'@`), wenn die öffnende Zeile ihn nicht an eine Shell oder einen Interpreter gibt;
+ * was hinter dem schließenden `'@` steht, bleibt Befehl.
  */
 function entferneFliesstext(command) {
   const zeilen = command.replace(TEXT_ARGUMENT, '$1$2$3""').split(/\r?\n/);
   const ergebnis = [];
   let ende = null;
+  let hereString = null;
+  let koerper = [];
   for (const zeile of zeilen) {
+    if (hereString !== null) {
+      if (!zeile.startsWith(hereString)) {
+        koerper.push(zeile);
+        continue;
+      }
+      // Geht der Here-String hinter `'@` in eine Shell oder einen Interpreter (`'@ | powershell -`), ist sein Körper Befehl.
+      const rest = zeile.slice(hereString.length);
+      const inShell = zerlegeKetten(rest).flat().some((glied) => verbenVon(tokenisiere(glied)).some((verb) => SHELLS.has(verb) || INTERPRETER.has(verb)));
+      if (inShell) ergebnis.push(...koerper);
+      ergebnis.push(rest);
+      hereString = null;
+      koerper = [];
+      continue;
+    }
     if (ende !== null) {
       if (zeile.trim() === ende) ende = null;
       continue;
     }
     ergebnis.push(zeile);
+    const oeffnend = zeile.match(/@(['"])\s*$/);
+    if (oeffnend !== null) {
+      const ausgefuehrt = verbenVon(tokenisiere(zeile.slice(0, oeffnend.index))).some((verb) => SHELLS.has(verb) || INTERPRETER.has(verb));
+      if (!ausgefuehrt) hereString = `${oeffnend[1]}@`;
+    }
     const heredoc = zeile.match(/<<-?\s*(['"]?)([A-Za-z_][\w-]*)\1/);
     if (heredoc !== null) {
       const tokens = tokenisiere(zeile.slice(0, heredoc.index));
@@ -274,6 +320,8 @@ function entferneFliesstext(command) {
       if (!ausgefuehrt) ende = heredoc[2];
     }
   }
+  // Nicht geschlossener Here-String: Körper als Befehl werten (fail-closed).
+  if (hereString !== null) ergebnis.push(...koerper);
   return ergebnis.join("\n");
 }
 
@@ -281,7 +329,10 @@ function entferneFliesstext(command) {
  * Befehlsnamen an Befehlsstellen eines Glieds: das erste Token nach Vorsätzen
  * (`env`, `command`, `xargs` …), Zuweisungen (`X=1`) und deren Optionen; dazu
  * je Shell-Aufruf mit `-Command`/`-c`/`/c` der Befehl danach. Ein Suchmuster
- * (`grep install`) oder ein `echo cp` zählt damit nicht als Verb.
+ * (`grep install`) oder ein `echo cp` zählt damit nicht als Verb. Seit F-1141
+ * zusätzlich der Befehl nach einer Blockklammer `{` (PowerShell
+ * `if ($?) { git … }`, `ForEach-Object { … }`, bash `{ git …; }`) — die
+ * Kettenform aus CLAUDE.md wäre sonst eine Lücke für Aufgabe 5/6.
  */
 function verbenVon(tokens) {
   const verben = [];
@@ -301,6 +352,8 @@ function verbenVon(tokens) {
     i = flagge + 1;
     nachVorsatz = false;
   }
+  const block = tokens.findIndex((token) => token === "{" || /^\{[^,{}]+$/.test(token));
+  if (block >= 0) verben.push(...verbenVon([tokens[block].slice(1), ...tokens.slice(block + 1)].filter((token) => token.length > 0)));
   return verben;
 }
 /** Verben, die löschen (für die Regel rekursiv + erzwungen). */
@@ -377,7 +430,8 @@ function wechseltInClaudeOrdner(glied) {
  * `git reset --hard`, `git clean -f`, `git checkout .`, `git restore .`
  * (ohne `--staged`), `git stash drop|clear`, `git worktree remove --force`,
  * `git update-ref -d`. Optionen vor dem Unterbefehl (`git -C x …`) zählen
- * mit. Liefert den Grund oder null.
+ * mit. Liefert den Grund oder null. Jedes übrige `git stash` außer
+ * `list`/`show` sperrt stashSegment (F-1141, eigener Grund).
  */
 function zerstoerendesSegment(segment) {
   const tokens = tokenisiere(segment);
@@ -413,6 +467,22 @@ function zerstoerendesSegment(segment) {
   return null;
 }
 
+/** Lesende `git stash`-Unterbefehle — die einzigen, die frei bleiben (F-1141). */
+const STASH_LESEND = new Set(["list", "show"]);
+
+/**
+ * Aufgabe 6 (F-1141): true, wenn ein Glied `git stash` ausführt, außer `git stash list`/`git stash show`
+ * — auch nacktes `stash`, mit globalen Optionen (`git -C x stash`, `git -c a=b stash`), über `powershell -Command`
+ * oder `xargs`. Maßgeblich ist ein Token `stash` (klein, ohne Pfadkürzung: `refs/stash` zählt nicht), dem kein
+ * lesender Unterbefehl folgt. Commit-Nachrichten sind vorher entfernt (entferneFliesstext).
+ */
+function stashSegment(segment) {
+  const tokens = tokenisiere(segment);
+  if (!verbenVon(tokens).includes("git")) return false;
+  const klein = tokens.map((token) => token.toLowerCase());
+  return klein.some((token, i) => token === "stash" && !STASH_LESEND.has(klein[i + 1] ?? ""));
+}
+
 /**
  * Aufgabe 5 und 6 als reine Funktion (exportiert für Tests): Grund der
  * Sperre oder null. Ein Wechsel in `.claude` gilt bis zum Ende des Befehls
@@ -435,6 +505,12 @@ function pruefeGehaerteteRegeln(roherBefehl) {
       const zerstoerend = zerstoerendesSegment(glied);
       if (zerstoerend !== null) {
         return `commit-guard: ${zerstoerend} blockiert — nicht umkehrbar. Wenn wirklich nötig, führt der Mensch den Befehl selbst aus.`;
+      }
+      if (stashSegment(glied)) {
+        return (
+          "commit-guard: git stash blockiert (frei sind nur git stash list und git stash show) — es nimmt Änderungen ohne " +
+          "Freigabe aus dem Arbeitsbaum und kann sie bei einem Konflikt verstecken. Änderungen sichern über commit auf einem Branch (Stefan)."
+        );
       }
     }
     if (schreibtAufClaudeOrdner(glieder, imClaudeOrdner)) {
