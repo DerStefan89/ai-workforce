@@ -115,6 +115,12 @@ im neuen Projekt korrigiert werden.
 | `SETUP.md` | Behebt die toten Verweise „SETUP.md Punkt …“ in `scripts/check-docs.mjs` (Zeilen 87, 248) und `scripts/check-rules.mjs` (Zeile 88). |
 | `scripts/check-gates.mjs`, `scripts/tests-mit-untergrenze.mjs`, `docs/harness/gate-vorlage-node.md` | Lokal neu: Mindest-Gates Node/TS (Platzhalter, `npm audit`, gitleaks, Hook-Probelauf) und Test-Untergrenze. |
 
+### Nachgezogen in F45 B2b-3b-2b-2b-2a (Zeilenenden)
+
+| Pfad | Begründung |
+|---|---|
+| `.gitattributes` | Byte-gleich aus dem Template (`* text=auto eol=lf`). Bedarfsnachweis: Nachweislauf Rückfrage-Kanal 17.10.2026 — mit `core.autocrlf=true` bekam der Arbeitsordner CRLF und E-183 lehnte jeden schreibenden Lauf ab (Kernschutz: `-c core.autocrlf=false -c core.eol=lf` in `src/arbeitsordner/index.ts`). Nachrüsten legt sie nur an, wenn sie fehlt; eine vorhandene, abweichende `.gitattributes` bleibt. Wirkt als verschachtelte `.gitattributes` auch auf `vorlagen/projekt-skelett/**` in ai-workforce selbst — heute gleich der Wurzel-Datei; weicht sie ab, ändern sich die gespeicherten Bytes und damit die Prüfsummen unten. |
+
 ## Ausgeschlossen (explizit)
 
 - `scout` — gibt es im Template nicht; ai-workforces `.claude/agents/scout.md`
@@ -124,7 +130,7 @@ im neuen Projekt korrigiert werden.
 
 ## Ausgeschlossen (nicht angefordert, kein Bedarfsnachweis)
 
-`README.md`, `START-KLEIN.md`, `LICENSE` (Root), `.gitattributes`,
+`README.md`, `START-KLEIN.md`, `LICENSE` (Root),
 `.gitignore` (neues Projekt bekommt seines aus
 `schreibeStartvorlageUndProfil`), `docs/adr/TEMPLATE.md`,
 `docs/harness/HARNESS-*.md`, `docs/harness/zaehne-taxonomie.md`,
@@ -155,6 +161,7 @@ Advisor-Historie).
 | `.claude/skills/spec-schreiben/SKILL.md` | `d97a4fa00a4cb504f5285129c5586837d5da7576353927d0067a671b399da30d` | template |
 | `.claude/skills/werkzeug-auswahl/SKILL.md` | `e6650a36c74e36abcb64a02336f0a3a6e37b57a9299609a3134d4f4849ba5726` | template |
 | `.claudeignore` | `5c92932f95648f7e2ce3abd8975181b283b4a2069bc543d91874352e79dbda6e` | template |
+| `.gitattributes` | `78dcc69557b57e737e065c8d41dc5c42514d46133246ca289d932c535e8f59a6` | template |
 | `.github/workflows/ci.yml` | `f8cc52dd4925bb65dc4fa05f671106410473bd38b2dfdfab2806bdf24d8b5a11` | template |
 | `.worktreeinclude` | `85d4f37b3364e1ba621c7d50e22564d8b9cfb239732fe8bbd64f5820a7d79311` | template |
 | `ARCHITECTURE.md` | `809dc26a10a3e9b51a5d1ca5590dde6ab39da59280bb3203ed3daa3785b0a114` | lokal geändert |

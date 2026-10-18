@@ -28,11 +28,11 @@
  */
 
 import { createHash } from 'node:crypto'
-import { existsSync, realpathSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { pruefeArbeitsordnerVorbedingung } from '../ausfuehrung-vorbedingung/index.ts'
 import { fuehreGitAsync, fuehreGitSync } from '../git-starter/index.ts'
-import { arbeitsverzeichnisseGleich } from '../invocation-policy/index.ts'
+import { arbeitsverzeichnisseGleich, ermittleHookPfade } from '../invocation-policy/index.ts'
 import { baueAusgabeEnde, entferneLeitstandUmgebungsvariablen } from '../pruefschritt/index.ts'
 import type { NpmRunner } from '../ressourcen/installation.ts'
 import { loescheDateien, MAX_LOESCHPFADE } from './loeschliste.ts'
@@ -52,6 +52,47 @@ export const NPM_CI_ZEITGRENZE_MS = 10 * 60 * 1000
 
 /** Zeitgrenze für `git worktree add` (checkt das ganze Projekt aus). */
 const WORKTREE_ADD_ZEITGRENZE_MS = 5 * 60 * 1000
+
+/**
+ * Globale Git-Optionen für `git worktree add` (F45 B2b-3b-2b-2b-2a, F-1143): kein autocrlf, und Dateien mit
+ * text-Attribut ohne eigenes `eol` bekommen LF statt `native` (unter Git für Windows CRLF). Sonst bekäme der
+ * Arbeitsordner CRLF, und E-183 (hasht bewusst die Rohbytes der Werkzeugkonfiguration und der Hooks) lehnte jeden
+ * schreibenden Lauf ab. Grenzen: ein `eol=crlf`-Attribut oder ein Filter des Projekts wirkt weiter; spätere
+ * Checkouts im Arbeitsordner folgen wieder der gemeinsamen Repo-Konfiguration.
+ */
+const CHECKOUT_OHNE_UMWANDLUNG = ['-c', 'core.autocrlf=false', '-c', 'core.eol=lf'] as const
+
+/**
+ * Zusatz zum E-183-Grund für einen wiederaufgenommenen Arbeitsordner mit CR in der Werkzeugkonfiguration oder einem
+ * ihrer Hooks (QA-/Review-Pass B2b-3b-2b-2b-2a): typisch angelegt vor F-1143 und weiterverwendet — aufräumen legt ihn
+ * mit LF neu an. Nur bei Wiederaufnahme: in einem frisch angelegten Ordner kommt CR nach dem Fix nur noch aus dem
+ * Projekt (Blob mit CRLF, `eol=crlf`, Filter), dort hülfe Aufräumen nicht. Liest nur.
+ * @param arbeitsordner - Pfad des Arbeitsordners
+ * @param wiederaufgenommen - true, wenn der Worktree schon registriert war (kein neuer Checkout)
+ * @param aufraeumenHinweis - Text „Arbeitsordner aufräumen … neu starten“
+ * @returns Zusatztext (mit führendem Gedankenstrich) oder ''
+ */
+function zeilenendenHinweis(arbeitsordner: string, wiederaufgenommen: boolean, aufraeumenHinweis: string): string {
+  if (!wiederaufgenommen) return ''
+  const lies = (relativ: string): Buffer | null => {
+    try {
+      return readFileSync(join(arbeitsordner, relativ))
+    } catch {
+      // Fehlende/unlesbare Datei ⇒ kein Rat; der E-183-Grund steht schon im Text.
+      return null
+    }
+  }
+  const settings = lies(join('.claude', 'settings.json'))
+  if (settings === null) return ''
+  let hooks: string[] = []
+  try {
+    hooks = ermittleHookPfade(JSON.parse(settings.toString('utf8')))
+  } catch {
+    // Unlesbares JSON ⇒ nur die Werkzeugkonfiguration selbst prüfen.
+  }
+  const mitCr = [settings, ...hooks.map(lies)].some((inhalt) => inhalt?.includes(0x0d) === true)
+  return mitCr ? ` — der Arbeitsordner hat Windows-Zeilenenden (CRLF), vermutlich von vor der Zeilenenden-Korrektur: ${aufraeumenHinweis}` : ''
+}
 
 /** Gültige Status-Werte des Artefakts. */
 const STATUS_WERTE: readonly ArbeitsordnerStatus[] = ['IN_VORBEREITUNG', 'BEREIT', 'FEHLGESCHLAGEN', 'ENTFERNT']
@@ -390,10 +431,10 @@ export async function bereiteArbeitsordnerVor(eingaben: VorbereitungEingaben): P
     if (branchDa.code === 0) {
       // Branch ohne Worktree (z. B. nach abgebrochenem Anlegen) nur, wenn er noch auf dem Projekt-HEAD steht.
       if (branchDa.stdout.trim() !== projektKopf) return fehlschlag(`Der Branch ${branch} existiert bereits mit eigenem Stand — erst sichern oder von Hand löschen, dann neu starten`)
-      const add = await fuehreGitAsync(['worktree', 'add', '--quiet', pfad, branch], { cwd, zeitgrenzeMs: WORKTREE_ADD_ZEITGRENZE_MS })
+      const add = await fuehreGitAsync([...CHECKOUT_OHNE_UMWANDLUNG, 'worktree', 'add', '--quiet', pfad, branch], { cwd, zeitgrenzeMs: WORKTREE_ADD_ZEITGRENZE_MS })
       if (add.code !== 0) return fehlschlag(`git worktree add fehlgeschlagen (${gitText(add.stderr)})`)
     } else {
-      const add = await fuehreGitAsync(['worktree', 'add', '--quiet', '-b', branch, pfad, projektKopf], { cwd, zeitgrenzeMs: WORKTREE_ADD_ZEITGRENZE_MS })
+      const add = await fuehreGitAsync([...CHECKOUT_OHNE_UMWANDLUNG, 'worktree', 'add', '--quiet', '-b', branch, pfad, projektKopf], { cwd, zeitgrenzeMs: WORKTREE_ADD_ZEITGRENZE_MS })
       if (add.code !== 0) return fehlschlag(`git worktree add fehlgeschlagen (${gitText(add.stderr)})`)
     }
     basis = projektKopf
@@ -423,7 +464,7 @@ export async function bereiteArbeitsordnerVor(eingaben: VorbereitungEingaben): P
     e183 = { ok: false, grund: (fehler as Error).message }
   }
   vorbereitung.e183_ms = Date.now() - e183Start
-  if (!e183.ok) return fehlschlag(`Die Werkzeugkonfiguration im Arbeitsordner besteht die Startprüfung nicht: ${e183.grund}`)
+  if (!e183.ok) return fehlschlag(`Die Werkzeugkonfiguration im Arbeitsordner besteht die Startprüfung nicht: ${e183.grund}${zeilenendenHinweis(pfad, vorhanden !== undefined, aufraeumenHinweis)}`)
 
   return { status: 'BEREIT', pfad, branch, basis_commit: basis, grund: null, vorbereitung }
 }
