@@ -1,0 +1,21 @@
+[
+  {
+    "label": "Freigabe ohne lesbaren Auftrag — de-1440",
+    "Auftragskarte": true,
+    "Auftrag aufgeklappt": false,
+    "<b> gerendert (soll false)": false,
+    "Kanal-Block auf der Abnahme": false,
+    "Sichtungs-Notiz mit Kanal-Grund": false,
+    "Titel": "Darf der Ablauf starten?",
+    "Band": "Claude-Code-Version weicht von der Startfreigabe dieses Projekts ab — Läufe starten trotzdem. Installiert: 2.1.300 (Clau",
+    "Band-Art": "warnung",
+    "CLI-Zeile": "Die installierte Claude-Code-Version weicht von der Startfreigabe dieses Projekts ab (installiert: 2.1.300 (Claude Code)",
+    "Auftrag-Klappe": "(fehlt)",
+    "Kanal-Block": "(fehlt)",
+    "Was tun": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

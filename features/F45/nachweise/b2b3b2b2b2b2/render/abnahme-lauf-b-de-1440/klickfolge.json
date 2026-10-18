@@ -1,0 +1,327 @@
+{
+  "url": "http://127.0.0.1:4408/#/workflows/nw-abnahme-b",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1100
+  },
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-kanal-erfolg",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "ERFOLGREICH",
+            "zeitpunkt": "2026-10-18T17:42:45.063Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.069Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3-lang",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.073Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-timeout",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "FEHLGESCHLAGEN",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": "2026-10-18T17:42:45.077Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-verweigert",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.059Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nw-abnahme-b",
+            "auftragId": "nw-a",
+            "ziel": "Monatsübersicht als CSV exportieren",
+            "versionSequenz": 2,
+            "status": "ABGESCHLOSSEN",
+            "aktiverSchrittId": null,
+            "grund": null,
+            "schritteAnzahl": 2,
+            "naechster": {
+              "art": "fertig"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": false,
+        "startHinweis": null,
+        "cliHinweis": null,
+        "rueckfrageStatus": {
+          "an": false
+        },
+        "projektCliHinweis": {
+          "art": "cliVersionGeaendert",
+          "installiert": "2.1.300 (Claude Code)",
+          "deklariert": "2.1.258 (Claude Code)",
+          "anleitung": "docs/harness/startfreigabe-erneuern.md#projekt-startfreigabe-erneuern"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-abnahme-b",
+      "json": {
+        "workflowId": "nw-abnahme-b",
+        "versionSequenz": 3,
+        "daten": {
+          "workflow_id": "nw-abnahme-b",
+          "auftrag_id": "nw-a",
+          "version": 1,
+          "ziel": "Monatsübersicht als CSV exportieren",
+          "status": "ABGESCHLOSSEN",
+          "aktiver_schritt_id": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "werkzeugsatz": "schreibend",
+              "freigabe": "ZWINGEND",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nw-lauf-a",
+              "zeitgrenze_ms": 1800000,
+              "risiko": "Schreibt Dateien im Arbeitsordner."
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "claude-sonnet",
+              "werkzeugsatz": "lesend",
+              "freigabe": "AUTOMATISCH",
+              "status": "ERFOLGREICH",
+              "nachfolger": null,
+              "lauf_id": "nw-lauf-review",
+              "zeitgrenze_ms": 1800000,
+              "risiko": ""
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "fertig"
+        },
+        "empfehlung": null,
+        "architekturEntscheidung": null,
+        "einrichtung": null,
+        "auftragstext": "Haushaltsbuch: Monatsübersicht als CSV exportieren.\n\nZiel: Auf der Seite „Übersicht“ ein Knopf „Als CSV herunterladen“, der die Buchungen des gewählten Monats exportiert.\n\nAnforderungen:\n- Spalten: Datum, Betrag, Kategorie, Notiz (in dieser Reihenfolge).\n- Beträge mit Punkt als Dezimaltrenner, ohne Tausendertrennzeichen.\n- Notizen mit Komma oder Anführungszeichen korrekt maskieren.\n- Leerer Monat: Datei nur mit Kopfzeile.\n- Dateiname: haushaltsbuch-<JJJJ-MM>.csv\n\nNicht hier:\n- Kein Import, keine Excel-Datei, keine Änderung an bestehenden Buchungen.\n\nFertig, wenn:\n- Tests für leeren Monat, Sonderzeichen und Sortierung grün sind.\n- Ein Text wie <b>fett</b> in einer Notiz erscheint wörtlich in der CSV.",
+        "planFreigabe": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-abnahme-b/abnahme",
+      "json": {
+        "workflowStatus": "ABGESCHLOSSEN",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "ok",
+          "laufId": "nw-lauf-review",
+          "urteil": "BEREIT",
+          "empfehlung": "Abnehmen.",
+          "befunde": [],
+          "ak_urteile": [
+            {
+              "ak_id": "AK1",
+              "urteil": "ERFUELLT",
+              "beleg": "Test grün."
+            }
+          ]
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "nw-lauf-a",
+          "daten": {
+            "basis_ref": "abc1234",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "A",
+                "pfad": "src/export/csv.ts",
+                "plus": 42,
+                "minus": null
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "nw-lauf-pruef",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nw-lauf-a",
+      "json": {
+        "laufId": "nw-lauf-a",
+        "aktiv": false,
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "VERWEIGERT"
+        },
+        "rueckfrageKanal": {
+          "ergebnis": "VERWEIGERT",
+          "zaehlung": {
+            "stefan_erlaubt": 0,
+            "stefan_abgelehnt": 0,
+            "frage_beantwortet": 0,
+            "nicht_browser": 0,
+            "abgelaufen": 0,
+            "lauf_ende": 0,
+            "automatisch": 1
+          },
+          "abgleich": {
+            "art": "abgleich",
+            "grund": "nicht_von_stefan"
+          },
+          "abweichung": null,
+          "abgelehntDurchStefan": null
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Titel",
+        "selector": "#workflow-detail-titel"
+      },
+      {
+        "name": "Band",
+        "selector": "#start-hinweis"
+      },
+      {
+        "name": "Band-Art",
+        "selector": "#start-hinweis",
+        "attribut": "data-art"
+      },
+      {
+        "name": "CLI-Zeile",
+        "selector": ".entscheiden-cli-hinweis"
+      },
+      {
+        "name": "Auftrag-Klappe",
+        "selector": ".entscheiden-auftrag-klappe summary"
+      },
+      {
+        "name": "Kanal-Block",
+        "selector": "#workflow-abnahme .rueckfrage-abnahme > strong"
+      },
+      {
+        "name": "Was tun",
+        "selector": ".kanal-was-tun"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Auftragskarte",
+        "selector": "#freigabe-auftrag"
+      },
+      {
+        "name": "Auftrag aufgeklappt",
+        "selector": ".entscheiden-auftrag-klappe[open]"
+      },
+      {
+        "name": "<b> gerendert (soll false)",
+        "selector": ".entscheiden-auftrag b"
+      },
+      {
+        "name": "Kanal-Block auf der Abnahme",
+        "selector": "#workflow-abnahme .rueckfrage-abnahme"
+      },
+      {
+        "name": "Sichtungs-Notiz mit Kanal-Grund",
+        "selector": "#workflow-bedienung .kanal-grund"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Abnahmeseite mit Lauf B (Grund oben) — de-1440",
+      "warteAufSelector": {
+        "selector": "#workflow-abnahme .kanal-was-tun",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-de-1440.webp"
+    }
+  ]
+}

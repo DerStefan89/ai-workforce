@@ -1,0 +1,21 @@
+[
+  {
+    "label": "Abnahmeseite mit Kanal-Block (Lauf A) — ru-390",
+    "Auftragskarte": false,
+    "Auftrag aufgeklappt": false,
+    "<b> gerendert (soll false)": false,
+    "Kanal-Block auf der Abnahme": true,
+    "Sichtungs-Notiz mit Kanal-Grund": false,
+    "Titel": "Результат подходит?",
+    "Band": "Версия Claude Code отличается от разрешения на запуск этого проекта — запуски всё равно стартуют. Установлена: 2.1.300 (",
+    "Band-Art": "warnung",
+    "CLI-Zeile": "Установленная версия Claude Code сейчас отличается от разрешения на запуск этого проекта (установлена: 2.1.300 (Claude C",
+    "Auftrag-Klappe": "(fehlt)",
+    "Kanal-Block": "Канал вопросов в этом запуске",
+    "Was tun": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

@@ -1,0 +1,306 @@
+{
+  "url": "http://127.0.0.1:4408/#/workflows/nw-lauf-b",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1100
+  },
+  "reduzierteBewegung": true,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-kanal-erfolg",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "ERFOLGREICH",
+            "zeitpunkt": "2026-10-18T17:42:45.063Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.069Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3-lang",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.073Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-timeout",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "FEHLGESCHLAGEN",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": "2026-10-18T17:42:45.077Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-verweigert",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.059Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nw-lauf-b",
+            "auftragId": "nw-a",
+            "ziel": "Monatsübersicht als CSV exportieren",
+            "versionSequenz": 2,
+            "status": "KLAERUNG_ERFORDERLICH",
+            "aktiverSchrittId": "s1",
+            "grund": "Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: Write — menschliche Sichtung vor Fortsetzung (F-760, Schritt 's1', Lauf 'nw-lauf-b')",
+            "schritteAnzahl": 2,
+            "naechster": {
+              "art": "haltKlaerung",
+              "grund": "F-760",
+              "schrittId": "s1"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": false,
+        "startHinweis": null,
+        "cliHinweis": null,
+        "rueckfrageStatus": {
+          "an": false
+        },
+        "projektCliHinweis": {
+          "art": "cliVersionGeaendert",
+          "installiert": "2.1.300 (Claude Code)",
+          "deklariert": "2.1.258 (Claude Code)",
+          "anleitung": "docs/harness/startfreigabe-erneuern.md#projekt-startfreigabe-erneuern"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-lauf-b",
+      "json": {
+        "workflowId": "nw-lauf-b",
+        "versionSequenz": 2,
+        "daten": {
+          "workflow_id": "nw-lauf-b",
+          "auftrag_id": "nw-a",
+          "version": 1,
+          "ziel": "Monatsübersicht als CSV exportieren",
+          "status": "KLAERUNG_ERFORDERLICH",
+          "aktiver_schritt_id": "s1",
+          "grund": "Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: Write — menschliche Sichtung vor Fortsetzung (F-760, Schritt 's1', Lauf 'nw-lauf-b')",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "werkzeugsatz": "schreibend",
+              "freigabe": "ZWINGEND",
+              "status": "VERWEIGERT",
+              "nachfolger": "s2",
+              "lauf_id": "nw-lauf-b",
+              "zeitgrenze_ms": 1800000,
+              "risiko": "Schreibt Dateien im Arbeitsordner."
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "claude-sonnet",
+              "werkzeugsatz": "lesend",
+              "freigabe": "AUTOMATISCH",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 1800000,
+              "risiko": ""
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "grund": "F-760",
+          "schrittId": "s1"
+        },
+        "empfehlung": null,
+        "architekturEntscheidung": null,
+        "einrichtung": null,
+        "auftragstext": "Haushaltsbuch: Monatsübersicht als CSV exportieren.\n\nZiel: Auf der Seite „Übersicht“ ein Knopf „Als CSV herunterladen“, der die Buchungen des gewählten Monats exportiert.\n\nAnforderungen:\n- Spalten: Datum, Betrag, Kategorie, Notiz (in dieser Reihenfolge).\n- Beträge mit Punkt als Dezimaltrenner, ohne Tausendertrennzeichen.\n- Notizen mit Komma oder Anführungszeichen korrekt maskieren.\n- Leerer Monat: Datei nur mit Kopfzeile.\n- Dateiname: haushaltsbuch-<JJJJ-MM>.csv\n\nNicht hier:\n- Kein Import, keine Excel-Datei, keine Änderung an bestehenden Buchungen.\n\nFertig, wenn:\n- Tests für leeren Monat, Sonderzeichen und Sortierung grün sind.\n- Ein Text wie <b>fett</b> in einer Notiz erscheint wörtlich in der CSV.",
+        "planFreigabe": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-lauf-b/abnahme",
+      "json": {
+        "workflowStatus": "KLAERUNG_ERFORDERLICH",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "nicht_vorhanden"
+        },
+        "pruefergebnis": {
+          "status": "nicht_vorhanden"
+        }
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nw-lauf-b",
+      "json": {
+        "laufId": "nw-lauf-b",
+        "aktiv": false,
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "VERWEIGERT"
+        },
+        "rueckfrageKanal": {
+          "ergebnis": "VERWEIGERT",
+          "zaehlung": {
+            "stefan_erlaubt": 0,
+            "stefan_abgelehnt": 0,
+            "frage_beantwortet": 0,
+            "nicht_browser": 0,
+            "abgelaufen": 0,
+            "lauf_ende": 0,
+            "automatisch": 1
+          },
+          "abgleich": {
+            "art": "abgleich",
+            "grund": "nicht_von_stefan"
+          },
+          "abweichung": null,
+          "abgelehntDurchStefan": null
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Titel",
+        "selector": "#workflow-detail-titel"
+      },
+      {
+        "name": "Band",
+        "selector": "#start-hinweis"
+      },
+      {
+        "name": "Band-Art",
+        "selector": "#start-hinweis",
+        "attribut": "data-art"
+      },
+      {
+        "name": "CLI-Zeile",
+        "selector": ".entscheiden-cli-hinweis"
+      },
+      {
+        "name": "Auftrag-Klappe",
+        "selector": ".entscheiden-auftrag-klappe summary"
+      },
+      {
+        "name": "Kanal-Block",
+        "selector": "#workflow-abnahme .rueckfrage-abnahme > strong"
+      },
+      {
+        "name": "Was tun",
+        "selector": ".kanal-was-tun"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Auftragskarte",
+        "selector": "#freigabe-auftrag"
+      },
+      {
+        "name": "Auftrag aufgeklappt",
+        "selector": ".entscheiden-auftrag-klappe[open]"
+      },
+      {
+        "name": "<b> gerendert (soll false)",
+        "selector": ".entscheiden-auftrag b"
+      },
+      {
+        "name": "Kanal-Block auf der Abnahme",
+        "selector": "#workflow-abnahme .rueckfrage-abnahme"
+      },
+      {
+        "name": "Sichtungs-Notiz mit Kanal-Grund",
+        "selector": "#workflow-bedienung .kanal-grund"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Sichtung Lauf B mit Regel-Text — de-1440-reduziert",
+      "warteAufSelector": {
+        "selector": "#workflow-bedienung .kanal-was-tun",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-de-1440-reduziert.webp"
+    }
+  ]
+}

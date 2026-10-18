@@ -319,6 +319,8 @@ try {
       if (liste.length !== 2 || liste[0].id !== 'E1' || liste[0].status !== 'offen' || liste[1].wann !== 'waehrend_des_baus') befunde.push(`(d) Einrichtung nicht als Auftragsversion übernommen: ${JSON.stringify(liste)}`)
       const detail = await (await fetch(`${s.url}/api/workflows/${workflowId}`)).json()
       if (!Array.isArray(detail.einrichtung) || detail.einrichtung.length !== 2) befunde.push(`(d) GET /api/workflows/<id> ohne einrichtung: ${JSON.stringify(detail.einrichtung)}`)
+      // F45 B2b-3b-2b-2b-2b-2 (F-1144): dieselbe Projektion trägt den Auftragstext für die Freigabeseite, wörtlich.
+      if (detail.auftragstext !== 'Zahlungen anbinden.') befunde.push(`(d) GET /api/workflows/<id> ohne auftragstext: ${JSON.stringify(detail.auftragstext)}`)
 
       const freigabe = () => fetch(`${s.url}/api/workflows/${workflowId}/freigabe`, { method: 'POST', body: JSON.stringify({ schrittId: 'schritt-2-ausfuehrung', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate.' }) })
       const workflowVorher = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)

@@ -4880,7 +4880,8 @@ th {
 #view-projektakte .text-link,
 #view-roadmap .rm-detail .text-link,
 #view-roadmap .rm-stand-alle .text-link,
-.live-karte .text-link {
+.live-karte .text-link,
+.workflow-seite .abnahme-kanal-fehler .text-link {
   gap: 6px;
   font: 12.5px var(--sans);
   color: var(--mint);
@@ -8271,7 +8272,8 @@ th {
   margin: 16px 0 0;
 }
 
-.lauf-seite .lauf-daten {
+.lauf-seite .lauf-daten,
+.workflow-seite .entscheiden-inhalt .rueckfrage-abnahme .lauf-daten {
   margin: 4px 0 0;
   padding-left: 18px;
   overflow-wrap: anywhere;
@@ -8280,7 +8282,9 @@ th {
 /* F45 B2b-3b-2b-2a-3: Grund-Code und R3-Freitext können lang und ohne Leerzeichen sein (bis 500 Zeichen). */
 .lauf-seite .kanal-grund code,
 .lauf-seite .rueckfrage-abweichung code,
-.wf-sichtung .kanal-grund code {
+.wf-sichtung .kanal-grund code,
+.workflow-seite .entscheiden-inhalt .kanal-grund code,
+.workflow-seite .entscheiden-inhalt .rueckfrage-abweichung code {
   overflow-wrap: anywhere;
 }
 
@@ -10237,6 +10241,51 @@ th {
 /* Was mit den Befunden geschieht (Kein Plan v2 / an den Architekten / eingearbeitet) — abgesetzt ohne eigene Farbe. */
 .workflow-seite .entscheiden-plan-hinweis {
   font-weight: 500;
+}
+
+/* F45 B2b-3b-2b-2b-2b-2 (F-1144): Auftragstext des Schritts — wörtlich als Text (Umbrüche bleiben, lange Wörter brechen), Muster
+   .rueckfrage-befehl; bei langem Text verschwindet die Vorschau, sobald „Ganzer Auftrag“ aufgeklappt ist. */
+.workflow-seite .entscheiden-auftrag-text {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--code-bg);
+  font: 12.5px/1.55 var(--font-family-mono);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+}
+
+.workflow-seite .entscheiden-auftrag:has(.entscheiden-auftrag-klappe[open]) .entscheiden-auftrag-vorschau {
+  display: none;
+}
+
+/* Muster der übrigen Klappen der Seite (details.workflow-technik): muted, aufgeklappt ink (design-guardian 4). */
+.workflow-seite .entscheiden-auftrag-klappe summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.workflow-seite .entscheiden-auftrag-klappe[open] summary {
+  margin-bottom: 10px;
+  color: var(--ink);
+}
+
+/* Projekt-CLI-Zeile (nur Warnung) und „Auftragstext fehlt“ — amber Notiz ohne zusätzlichen Abstand in der Kartenspalte. */
+.workflow-seite .entscheiden-cli-hinweis,
+.workflow-seite .entscheiden-auftrag-fehlt {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* F-1146: Block „Rückfrage-Kanal im Lauf“ auf der Abnahmeseite — Liste und Codes teilen die Regeln des Lauf-Details (.lauf-seite .lauf-daten,
+   .kanal-grund code). */
+.workflow-seite .entscheiden-inhalt .rueckfrage-abnahme,
+.workflow-seite .entscheiden-inhalt .rueckfrage-abweichung {
+  margin: 0;
 }
 
 .workflow-seite .faehigkeit-chip {

@@ -64,7 +64,13 @@ Startfehlerliste trägt `art: 'rueckfrage_abweichung'` und heißt in „Deine En
 ihn, E-Hauptknopf = A, Stefan 17.10.2026). Seit F45 B2b-3b-2b-2b-1 (E-R3-Sichtung = B, Stefan 17.10.2026) braucht „Sichtung bestätigt –
 weiter“ bei R3 einen zweiten, ausdrücklichen Schritt („Protokoll-Abweichung ansehen“ zeigt den R3-Text escaped, erst dann „Abweichung gesehen
 – Sichtung bestätigt – weiter“); ohne R3 bleibt es ein Klick — DEKLARIERT als Bedien-Hürde der Oberfläche, der Server prüft den zweiten
-Schritt nicht (Gate f45-b2b3b2b2b1-nachweis (a)). Gate f45-b2b3b2b2a3-abnahme. **Nachweislauf** (F45 B2b-3b-2b-2b-1): Anleitung
+Schritt nicht (Gate f45-b2b3b2b2b1-nachweis (a)). Gate f45-b2b3b2b2a3-abnahme. Seit F45 B2b-3b-2b-2b-2b-2: bei `nicht_von_stefan`
+nennen Text und „Was tun“ die Ursache aus der Zählung (`automatischUrsache`: Regel/Pfadgrenze oder Frist abgelaufen; keine oder beide ⇒
+neutraler Text, F-1145). Lauf-Ende (beim Lesen offene Rückfragen — Zählung und Protokoll werden vor `beendeLauf` gelesen) und
+Protokollgrenze (Summe der Zählung über `MAX_PROTOKOLL_JE_LAUF`) haben keinen Eintrag, ergeben `kein_eintrag` und erscheinen bei
+`automatisch` und `echt` als Zusatz. Die
+Abnahmeseite zeigt den Block des Ausführungslaufs selbst (mit dem Grund jeder Klasse, F-1146): oben bei einem Grund oder R3 (dann der Grund vor der
+Zählung), sonst nach „Selbst ausprobieren“; geladen wie bei der Sichtung über `GET /api/laeufe/<id>`. **Nachweislauf** (F45 B2b-3b-2b-2b-1): Anleitung
 `docs/harness/rueckfrage-nachweislauf.md` (zwei Läufe in einem Projekt), Auswertung nur lesend mit
 `scripts/leitstand/nachweis-rueckfrage-auswerten.mjs` (je Prüfpunkt erfüllt / nicht erfüllt / nicht belegbar mit Fundstelle, CLI-abhängige Punkte bei einer anderen CLI-Version als deklariert „erfüllt mit Abweichung“ — E-F-1136 (1) = B; die mcp-config
 eines Laufs ist nirgends gespeichert, url, `--permission-prompt-tool` und Werkzeugsatz sind deshalb nur indirekt belegt, Frist und timeout

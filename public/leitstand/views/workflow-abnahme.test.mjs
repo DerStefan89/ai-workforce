@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeEinleitung, abnahmeLage, budgetKennung, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweise, renderUmfangHinweis, reviewHinweisKennung, umfangKennung, zaehleAkUrteile } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, budgetKennung, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, renderKanalImLauf, reviewHinweise, renderUmfangHinweis, reviewHinweisKennung, umfangKennung, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -661,4 +661,36 @@ test('F45 B2b-3d: Umfangs-Hinweis auf der Seite „entscheidbar“ und im Block 
   assert.notEqual(umfangKennung(umfang), umfangKennung({ status: 'ok', ausserhalb: [] }))
   assert.notEqual(umfangKennung(umfang), umfangKennung({ status: 'nicht_bestimmbar', ausserhalb: [] }))
   assert.equal(umfangKennung(undefined), '-')
+})
+
+/** Lauf A des Nachweislaufs (features/F45/nachweise/b2b3b2b2b/auswertung-haushaltsbuch2-a-…md: ERFOLGREICH, je 1 erlaubt/abgelehnt/beantwortet). */
+const KANAL_A = { ergebnis: 'ERFOLGREICH', zaehlung: { stefan_erlaubt: 1, stefan_abgelehnt: 1, frage_beantwortet: 1, nicht_browser: 0, abgelaufen: 0, lauf_ende: 0, automatisch: 0 }, abgleich: null, abweichung: null, abgelehntDurchStefan: 1 }
+const PROJEKT_CLI = { art: 'cliVersionGeaendert', installiert: '2.1.300 (Claude Code)', deklariert: '2.1.258 <b>', anleitung: 'docs/harness/startfreigabe-erneuern.md#projekt-startfreigabe-erneuern' }
+
+test('F45 B2b-3b-2b-2b-2b-2 (F-1146): Abnahmeseite zeigt den Block „Rückfrage-Kanal im Lauf“ selbst (Lauf A), samt CLI-Zeile', () => {
+  const { oben } = renderAbnahme('w-1', abnahme(), null, undefined, { kanal: KANAL_A, projektCliHinweis: PROJEKT_CLI })
+  assert.match(oben, /note rueckfrage-abnahme[\s\S]*Rückfrage-Kanal im Lauf[\s\S]*Einmal erlaubt: 1[\s\S]*Abgelehnt: 1[\s\S]*Fragen beantwortet: 1[\s\S]*als deine Ablehnung bestätigt: 1/)
+  assert.ok(oben.indexOf('abnahme-selbst-titel') < oben.indexOf('rueckfrage-abnahme'), 'design-guardian 2: ohne Grund ist die Zählung Detail — nach „Selbst ausprobieren“')
+  assert.match(oben, /note amber entscheiden-cli-hinweis">Die installierte Claude-Code-Version weicht derzeit von der Startfreigabe dieses Projekts ab \(installiert: 2\.1\.300 \(Claude Code\), Startfreigabe: 2\.1\.258 &lt;b&gt;\) — das Ergebnis gilt trotzdem/, 'qa 3: heutiger Stand, nicht die Version des Laufs')
+  assert.match(oben, /Anleitung: docs\/harness\/startfreigabe-erneuern\.md#projekt-startfreigabe-erneuern/)
+  assert.doesNotMatch(oben, /<b>/)
+  const ohne = renderAbnahme('w-1', abnahme()).oben
+  assert.doesNotMatch(ohne, /rueckfrage-abnahme|entscheiden-cli-hinweis/, 'ohne Kanal und ohne Abweichung nichts')
+  assert.equal(renderAbnahme('w-1', abnahme(), null, undefined, { kanal: null, projektCliHinweis: null }).oben, ohne)
+  // Der Block steht nur auf der Seite „entscheidbar“ — im Block „vorab“ (Sichtungs-Halt) trägt die Notiz der Eingriffe die Ursache.
+  assert.doesNotMatch(renderAbnahme('w-1', abnahme({ workflowStatus: 'KLAERUNG_ERFORDERLICH' }), null, undefined, { kanal: KANAL_A }).unten, /rueckfrage-abnahme/)
+})
+
+test('F-1146: lädt ⇒ Zeile; nicht ladbar ⇒ Hinweis mit Link ins Lauf-Detail; Lauf B ⇒ Regel-Text oben auf der Abnahmeseite', () => {
+  assert.equal(renderKanalImLauf(undefined), '')
+  assert.equal(renderKanalImLauf(null), '')
+  assert.match(renderKanalImLauf({ laedt: true, laufId: 'l' }), /abnahme-kanal-laedt">Rückfrage-Kanal des Laufs wird geladen/)
+  const fehler = renderKanalImLauf({ fehler: true, laufId: 'l <x>' })
+  assert.match(fehler, /gerade nicht ladbar — er steht auch im Lauf-Detail\. <a class="text-link" href="#\/runs\/l%20%3Cx%3E">Lauf ansehen/, 'qa 2: Weg ins Lauf-Detail')
+  assert.doesNotMatch(renderKanalImLauf({ fehler: true }), /<a /)
+  const laufB = { ergebnis: 'VERWEIGERT', zaehlung: { stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: 0, automatisch: 1 }, abgleich: { art: 'abgleich', grund: 'nicht_von_stefan' }, abweichung: null, abgelehntDurchStefan: null }
+  assert.match(renderKanalImLauf(laufB), /nach einer festen Regel selbst abgelehnt/)
+  const oben = renderAbnahme('w-1', abnahme(), null, undefined, { kanal: laufB }).oben
+  assert.ok(oben.indexOf('rueckfrage-abnahme') < oben.indexOf('abnahme-selbst-titel'), 'mit Grund oben, unter den Kacheln')
+  assert.ok(oben.indexOf('entscheiden-kacheln') < oben.indexOf('rueckfrage-abnahme'))
 })

@@ -1,0 +1,432 @@
+{
+  "url": "http://127.0.0.1:4408/#/workflows/nw-freigabe",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-kanal-erfolg",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "ERFOLGREICH",
+            "zeitpunkt": "2026-10-18T17:42:45.063Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.069Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-r3-lang",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.073Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-timeout",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "FEHLGESCHLAGEN",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": "2026-10-18T17:42:45.077Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "lauf-kanal-verweigert",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 2,
+              "runPreparedSequenz": 1,
+              "terminaleOhneRunPrepared": []
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-18T17:42:45.059Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nw-freigabe",
+            "auftragId": "nw-a",
+            "ziel": "Monatsübersicht als CSV exportieren",
+            "versionSequenz": 2,
+            "status": "WARTET_FREIGABE",
+            "aktiverSchrittId": "s2",
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltFreigabe",
+              "schrittId": "s2",
+              "grund": "freigabe ZWINGEND"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": false,
+        "startHinweis": null,
+        "cliHinweis": null,
+        "rueckfrageStatus": {
+          "an": false
+        },
+        "projektCliHinweis": {
+          "art": "cliVersionGeaendert",
+          "installiert": "2.1.300 (Claude Code)",
+          "deklariert": "2.1.258 (Claude Code)",
+          "anleitung": "docs/harness/startfreigabe-erneuern.md#projekt-startfreigabe-erneuern"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-freigabe",
+      "json": {
+        "workflowId": "nw-freigabe",
+        "versionSequenz": 2,
+        "daten": {
+          "workflow_id": "nw-freigabe",
+          "auftrag_id": "nw-a",
+          "version": 1,
+          "ziel": "Monatsübersicht als CSV exportieren",
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s2",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "werkzeugsatz": "lesend",
+              "freigabe": "AUTOMATISCH",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "l-arch",
+              "zeitgrenze_ms": 1800000,
+              "risiko": ""
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "werkzeugsatz": "schreibend",
+              "freigabe": "ZWINGEND",
+              "status": "OFFEN",
+              "nachfolger": "s3",
+              "lauf_id": null,
+              "zeitgrenze_ms": 1800000,
+              "risiko": "Schreibt Dateien im Arbeitsordner."
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "claude-sonnet",
+              "werkzeugsatz": "lesend",
+              "freigabe": "AUTOMATISCH",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 1800000,
+              "risiko": ""
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltFreigabe",
+          "schrittId": "s2",
+          "grund": "freigabe ZWINGEND"
+        },
+        "empfehlung": null,
+        "architekturEntscheidung": null,
+        "einrichtung": null,
+        "auftragstext": "Haushaltsbuch: Monatsübersicht als CSV exportieren.\n\nZiel: Auf der Seite „Übersicht“ ein Knopf „Als CSV herunterladen“, der die Buchungen des gewählten Monats exportiert.\n\nAnforderungen:\n- Spalten: Datum, Betrag, Kategorie, Notiz (in dieser Reihenfolge).\n- Beträge mit Punkt als Dezimaltrenner, ohne Tausendertrennzeichen.\n- Notizen mit Komma oder Anführungszeichen korrekt maskieren.\n- Leerer Monat: Datei nur mit Kopfzeile.\n- Dateiname: haushaltsbuch-<JJJJ-MM>.csv\n\nNicht hier:\n- Kein Import, keine Excel-Datei, keine Änderung an bestehenden Buchungen.\n\nFertig, wenn:\n- Tests für leeren Monat, Sonderzeichen und Sortierung grün sind.\n- Ein Text wie <b>fett</b> in einer Notiz erscheint wörtlich in der CSV.",
+        "planFreigabe": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-freigabe/abnahme",
+      "json": {
+        "workflowStatus": "WARTET_FREIGABE",
+        "freigabeHalt": {
+          "schrittId": "s2"
+        },
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Titel",
+        "selector": "#workflow-detail-titel"
+      },
+      {
+        "name": "Band",
+        "selector": "#start-hinweis"
+      },
+      {
+        "name": "Band-Art",
+        "selector": "#start-hinweis",
+        "attribut": "data-art"
+      },
+      {
+        "name": "CLI-Zeile",
+        "selector": ".entscheiden-cli-hinweis"
+      },
+      {
+        "name": "Auftrag-Klappe",
+        "selector": ".entscheiden-auftrag-klappe summary"
+      },
+      {
+        "name": "Kanal-Block",
+        "selector": "#workflow-abnahme .rueckfrage-abnahme > strong"
+      },
+      {
+        "name": "Was tun",
+        "selector": ".kanal-was-tun"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Auftragskarte",
+        "selector": "#freigabe-auftrag"
+      },
+      {
+        "name": "Auftrag aufgeklappt",
+        "selector": ".entscheiden-auftrag-klappe[open]"
+      },
+      {
+        "name": "<b> gerendert (soll false)",
+        "selector": ".entscheiden-auftrag b"
+      },
+      {
+        "name": "Kanal-Block auf der Abnahme",
+        "selector": "#workflow-abnahme .rueckfrage-abnahme"
+      },
+      {
+        "name": "Sichtungs-Notiz mit Kanal-Grund",
+        "selector": "#workflow-bedienung .kanal-grund"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Freigabe mit Auftrag (eingeklappt) — de-390",
+      "warteAufSelector": {
+        "selector": "#freigabe-auftrag",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-de-390.webp"
+    },
+    {
+      "label": "„Ganzer Auftrag“ aufgeklappt — de-390",
+      "klick": ".entscheiden-auftrag-klappe summary",
+      "warteAufSelector": {
+        "selector": ".entscheiden-auftrag-klappe[open]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-de-390.webp"
+    },
+    {
+      "label": "nach echtem Neuzeichnen (2.1.301): bleibt aufgeklappt — de-390",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/zustand",
+          "json": {
+            "laeufe": [
+              {
+                "laufId": "lauf-kanal-erfolg",
+                "laufStatus": {
+                  "status": "ABGESCHLOSSEN",
+                  "ergebnis": "ERFOLGREICH",
+                  "terminalSequenz": 2,
+                  "runPreparedSequenz": 1,
+                  "terminaleOhneRunPrepared": []
+                },
+                "ergebnis": "ERFOLGREICH",
+                "zeitpunkt": "2026-10-18T17:42:45.063Z",
+                "auftragsbezug": null,
+                "anzahlCheckpoints": 2,
+                "kettenintegritaet": true,
+                "kenntnisgenommen": false
+              },
+              {
+                "laufId": "lauf-kanal-r3",
+                "laufStatus": {
+                  "status": "ABGESCHLOSSEN",
+                  "ergebnis": "VERWEIGERT",
+                  "terminalSequenz": 2,
+                  "runPreparedSequenz": 1,
+                  "terminaleOhneRunPrepared": []
+                },
+                "ergebnis": "VERWEIGERT",
+                "zeitpunkt": "2026-10-18T17:42:45.069Z",
+                "auftragsbezug": null,
+                "anzahlCheckpoints": 2,
+                "kettenintegritaet": true,
+                "kenntnisgenommen": false
+              },
+              {
+                "laufId": "lauf-kanal-r3-lang",
+                "laufStatus": {
+                  "status": "ABGESCHLOSSEN",
+                  "ergebnis": "VERWEIGERT",
+                  "terminalSequenz": 2,
+                  "runPreparedSequenz": 1,
+                  "terminaleOhneRunPrepared": []
+                },
+                "ergebnis": "VERWEIGERT",
+                "zeitpunkt": "2026-10-18T17:42:45.073Z",
+                "auftragsbezug": null,
+                "anzahlCheckpoints": 2,
+                "kettenintegritaet": true,
+                "kenntnisgenommen": false
+              },
+              {
+                "laufId": "lauf-kanal-timeout",
+                "laufStatus": {
+                  "status": "ABGESCHLOSSEN",
+                  "ergebnis": "FEHLGESCHLAGEN",
+                  "terminalSequenz": 2,
+                  "runPreparedSequenz": 1,
+                  "terminaleOhneRunPrepared": []
+                },
+                "ergebnis": "FEHLGESCHLAGEN",
+                "zeitpunkt": "2026-10-18T17:42:45.077Z",
+                "auftragsbezug": null,
+                "anzahlCheckpoints": 2,
+                "kettenintegritaet": true,
+                "kenntnisgenommen": false
+              },
+              {
+                "laufId": "lauf-kanal-verweigert",
+                "laufStatus": {
+                  "status": "ABGESCHLOSSEN",
+                  "ergebnis": "VERWEIGERT",
+                  "terminalSequenz": 2,
+                  "runPreparedSequenz": 1,
+                  "terminaleOhneRunPrepared": []
+                },
+                "ergebnis": "VERWEIGERT",
+                "zeitpunkt": "2026-10-18T17:42:45.059Z",
+                "auftragsbezug": null,
+                "anzahlCheckpoints": 2,
+                "kettenintegritaet": true,
+                "kenntnisgenommen": false
+              }
+            ],
+            "startfehler": [],
+            "workflows": [
+              {
+                "workflowId": "nw-freigabe",
+                "auftragId": "nw-a",
+                "ziel": "Monatsübersicht als CSV exportieren",
+                "versionSequenz": 2,
+                "status": "WARTET_FREIGABE",
+                "aktiverSchrittId": "s2",
+                "grund": null,
+                "schritteAnzahl": 3,
+                "naechster": {
+                  "art": "haltFreigabe",
+                  "schrittId": "s2",
+                  "grund": "freigabe ZWINGEND"
+                }
+              }
+            ],
+            "fehler": [],
+            "aktiverLauf": {
+              "aktiv": false,
+              "laufId": null
+            },
+            "pruefbefehl": null,
+            "istAiWorkforce": false,
+            "startHinweis": null,
+            "cliHinweis": null,
+            "rueckfrageStatus": {
+              "an": false
+            },
+            "projektCliHinweis": {
+              "art": "cliVersionGeaendert",
+              "installiert": "2.1.301 (Claude Code)",
+              "deklariert": "2.1.258 (Claude Code)",
+              "anleitung": "docs/harness/startfreigabe-erneuern.md#projekt-startfreigabe-erneuern"
+            }
+          }
+        }
+      ],
+      "warteAufSelector": {
+        "selector": "#gibt-es-nicht-b2b3b2b2b2b2",
+        "timeoutMs": 5000
+      },
+      "screenshot": "03-de-390.webp"
+    }
+  ]
+}

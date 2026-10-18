@@ -12,6 +12,9 @@
  * docs/harness/startfreigabe-erneuern.md). Nur im Band (Läufe werden dadurch nicht verweigert); stehen beide an, je
  * eine Zeile.
  *
+ * F45 B2b-3b-2b-2b-2b-2 (F-1136 (10) = B): dritte Zeile projektCliHinweis — in einer Projektinstanz weicht die installierte Version von
+ * der Projekt-Startvorlage ab (Text aus projekt-cli-hinweis.js); nur Warnung, Läufe starten unverändert.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initStartHinweisBand vor initZustandPoll)
  * - public/leitstand/views/chat.js (startHinweisText)
@@ -25,6 +28,7 @@
  */
 
 import { t } from './i18n.js'
+import { istCliHinweis, projektCliHinweisText } from './projekt-cli-hinweis.js'
 import { abonniere } from './zustand.js'
 
 /**
@@ -43,17 +47,17 @@ export function startHinweisText(hinweis) {
  * @returns Anzeigetext, oder '' ohne (bekannten) Hinweis
  */
 export function cliHinweisText(hinweis) {
-  if (hinweis?.art !== 'cliVersionGeaendert' || typeof hinweis.installiert !== 'string' || typeof hinweis.deklariert !== 'string' || typeof hinweis.anleitung !== 'string') return ''
+  if (!istCliHinweis(hinweis)) return ''
   return t('start.hinweis.cliVersion', { installiert: hinweis.installiert, deklariert: hinweis.deklariert, anleitung: hinweis.anleitung })
 }
 
 /**
- * Die Zeilen des Bands: falscher Ordner und CLI-Version, je eine Zeile, leere weggelassen.
+ * Die Zeilen des Bands: falscher Ordner, CLI-Version und CLI-Version des Projekts, je eine Zeile, leere weggelassen.
  * @param zustand - Poll-Aggregat oder null
  * @returns Texte
  */
 export function startBandZeilen(zustand) {
-  return [startHinweisText(zustand?.startHinweis), cliHinweisText(zustand?.cliHinweis)].filter((text) => text !== '')
+  return [startHinweisText(zustand?.startHinweis), cliHinweisText(zustand?.cliHinweis), projektCliHinweisText(zustand?.projektCliHinweis)].filter((text) => text !== '')
 }
 
 /** Abonniert den Poll und blendet das Band #start-hinweis ein oder aus (je Hinweis eine Zeile, nur über textContent). */
@@ -64,7 +68,7 @@ export function initStartHinweisBand() {
     const zeilen = startBandZeilen(zustand)
     const schluessel = zeilen.join('\n')
     band.hidden = zeilen.length === 0
-    // Nur der CLI-Hinweis: eine Warnung (Läufe laufen weiter) — gelb statt rot.
+    // Nur CLI-Hinweise: eine Warnung (Läufe laufen weiter) — gelb statt rot.
     band.dataset.art = startHinweisText(zustand?.startHinweis) === '' && zeilen.length > 0 ? 'warnung' : 'sperre'
     if (schluessel === zuletzt) return
     zuletzt = schluessel
