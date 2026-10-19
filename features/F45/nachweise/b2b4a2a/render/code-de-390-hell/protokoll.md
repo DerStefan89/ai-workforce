@@ -1,0 +1,4 @@
+| Aktion | Hinweis unter Prüfstand-Block | zweiter Sichern-Block (push) | Sichern, erster Block, Zeile 1 | Enter-Hinweis | Anzahl | Knopf | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen | Zwischenablage | Pfadprobe |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/code: Sichern und Prüfstand in Blockform — de-390-hell | true | true | & { | Nach dem Einfügen einmal Enter drücken. | 3 Befehle · nacheinander | Kopieren | false | 390/390 | true |  | sauber |
+| „Kopieren“ am commit-Block — de-390-hell | true | true | & { | Nach dem Einfügen einmal Enter drücken. | 3 Befehle · nacheinander | Kopiert | false | 390/390 | true | & { ⏎ Set-Location -LiteralPath 'C:\Projekte\haushaltsbuch' -ErrorAction Stop ⏎ git add src/export/monatsuebersicht/fo | sauber |

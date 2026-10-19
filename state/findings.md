@@ -7926,7 +7926,7 @@ Beschreibung: (1) Der Fingerabdruck zählt jede unverfolgte, nicht ignorierte Da
 Fundstelle: `src/review-stand/index.ts`, `scripts/leitstand-server.mjs` (`vergleicheReviewStand`, `aktuellerStandMitCache`), `public/leitstand/code-daten.js` (`befehlsBloecke`).
 Auswirkung: Gering — jeweils ein sichtbarer Hinweis zu viel oder etwas zu spät, nie ein stilles BEREIT.
 Maßnahme: (1) Entscheidung Challenger (13.10.2026): „Claude outputs/“ in `.gitignore`, nicht in `istAusnahmePfad`; (2) bei realem Bedarf; (3) beobachten; (4)/(6) beim UX-Durchgang nach F30; (5) mit B2b („Bereit zum Sichern“: cd und Folge in einer Zeile mit Abbruch bei Fehler, mindestens für den Push-Block — vorher in PowerShell ausprobieren).
-Status: teilweise — (1) erledigt (F45 B2a-3b, 13.10.2026): `.gitignore` ignoriert `Claude outputs/` (Kommentarblock F-1088); wirkt auf den Fingerabdruck des Reviews (`ls-files --exclude-standard`), den Sichern-Block und die Ausführungsvorbedingung (`git status`). Offen: (2)–(6).
+Status: teilweise — (1) erledigt (F45 B2a-3b, 13.10.2026): `.gitignore` ignoriert `Claude outputs/` (Kommentarblock F-1088); wirkt auf den Fingerabdruck des Reviews (`ls-files --exclude-standard`), den Sichern-Block und die Ausführungsvorbedingung (`git status`). (5) erledigt für den Leitstand (F45 B2b-4a-2a, 19.10.2026, `features/F45/plan-b2b4a2a.md`): jeder Befehlsblock des Leitstands (Sichern commit/push, Prüfstand, Orts-Block in „Auftrag anlegen“) hat die Blockform `& {` / `Set-Location -LiteralPath <Pfad> -ErrorAction Stop` / Befehle / `}` ohne Einzug (`public/leitstand/code-daten.js` `befehlsBlock`, eine Regel); fehlt der Ordner, bricht der Block nach `Set-Location` ab und kein git-Befehl läuft (belegt `features/F45/nachweise/b2b4a2a/powershell-versuch.md` (a)–(f), Windows PowerShell 5.1; Grenze: ein git-Fehler innerhalb des Blocks bricht nicht ab); unter jedem Block „Nach dem Einfügen einmal Enter drücken“; Gate `scripts/check-f45-b2b4a2a-blockform.mjs` (Blockform aller Erzeuger, Rotfall „Ordner fehlt“ in echter PowerShell). Rest von (5): die Jarvis-Regel (`cdZeile` im Server, Chat) folgt in B2b-4b. Offen: (2)–(4), (6), (5) für Jarvis.
 Feature/Run: Entdeckt: F45 B2a-3b (code-reviewer, qa), 13.10.2026.
 
 **F-1090** · `TECH_DEBT` · P2 · teilweise
@@ -8494,3 +8494,12 @@ Auswirkung: Gering — keine Rechteausweitung über die Anfrage; cwd kommt aus d
 Maßnahme: (1) vor lesenden Git-Aufrufen im Arbeitsordner `rev-parse --git-common-dir` gegen `<repoWurzel>/.git` prüfen — mit W2 oder beim nächsten Eingriff in `src/review-stand`; (2) dieselbe Prüfung `workflow_id === id` in den Workflow-Routen mit W2.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-4a-1 (qa), 19.10.2026.
+
+**F-1159** · `TECH_DEBT` · P3 · offen
+Titel: Ein git-Fehler mitten im Sichern-Block bricht den Block nicht ab — ein Commit kann einen Teilstand sichern.
+Beschreibung: Die Blockform (F45 B2b-4a-2a) bricht nur ab, wenn `Set-Location` scheitert. Scheitert innerhalb des Blocks ein git-Befehl (z. B. die zweite von mehreren `git add`-Zeilen bei mehr als 50 Pfaden), laufen die Folgezeilen weiter und `git commit` sichert, was bis dahin gestagt ist (belegt `features/F45/nachweise/b2b4a2a/powershell-versuch.md` (e)). Kein Rückschritt — vor der Blockform war es ebenso.
+Fundstelle: `public/leitstand/code-daten.js` (`sicherBefehle`, `befehlsBlock`).
+Auswirkung: Gering — der Fehler steht sichtbar in der Shell; der Commit lässt sich nachbessern.
+Maßnahme: Nach jeder `git add`-Zeile `if ($LASTEXITCODE -ne 0) { return }` (in der Blockform billig) — beim nächsten Eingriff in `sicherBefehle` (B2b-4a-2b), vorher in PowerShell ausprobieren.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-4a-2a (qa 4), 19.10.2026.

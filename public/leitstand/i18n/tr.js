@@ -1787,6 +1787,7 @@ export default {
   'befehl.kopieren': 'Kopyala',
   'befehl.kopiert': 'Kopyalandı',
   'befehl.strgC': 'Ctrl+C ile kopyala',
+  'befehl.enterHinweis': 'Yapıştırdıktan sonra bir kez Enter’a bas.',
   'vorfilter.nichtGeladen': 'Durum henüz yüklenmedi — lütfen birazdan tekrar sor.',
   'vorfilter.nichtVerfuegbar': 'kullanılamıyor',
   'vorfilter.status.laeufe': 'Çalıştırmalar: {wert}',

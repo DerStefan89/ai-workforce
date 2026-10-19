@@ -22,7 +22,7 @@
  */
 
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
-import { bereitschaft, cdZeile } from '../code-daten.js'
+import { befehlsBlock, bereitschaft } from '../code-daten.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
@@ -246,13 +246,16 @@ function woHtml(projekt, daten, mainWarnung) {
     projekt?.vorschau_url ? '' : tHtml('auftrag.wo.vorschauUnter'),
     kommtKnopf(t('auftrag.wo.festlegen'))
   )
-  const cd = basis === null ? '' : renderBefehlsblock({ sprache: 'powershell', zeilen: [cdZeile(basis)] }, { echteWerte: true })
+  // F45 B2b-4a-2a: reiner Orts-Block in Blockform (code-daten.js befehlsBlock) — der Ort bleibt nach dem Block gesetzt; ohne
+  // absoluten Pfad kein Block.
+  const ortBlock = basis === null ? null : befehlsBlock(basis, [])
+  const ortHtml = ortBlock === null ? '' : renderBefehlsblock({ sprache: 'powershell', zeilen: ortBlock }, { echteWerte: true })
   return `<section class="umgebung-karte" aria-labelledby="wo-titel">
       <h2 id="wo-titel">${tHtml('auftrag.wo.titel')}</h2>
       ${werkzeuge}
       <dl class="umgebung-felder">${projektZeile}${ordner}${git}${arbeitsordnerZeile}${githubZeile}${kontroll}${wissen}${vorschau}</dl>
       <div class="note amber umgebung-warnung"><p>${tHtml('auftrag.wo.warnung')}</p>${mainWarnung ? `<p><strong>${tHtml('auftrag.wo.warnungMain')}</strong></p>` : ''}</div>
-      ${cd}
+      ${ortHtml}
     </section>`
 }
 

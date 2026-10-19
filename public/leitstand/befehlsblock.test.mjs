@@ -47,6 +47,18 @@ test('zaehleBefehle, hatPlatzhalter, kopierText', () => {
   assert.equal(kopierText(['a', 'b']), 'a\nb')
 })
 
+test('F45 B2b-4a-2a: Blockform — Kopf und Fuß zählen nicht, eine „}“ in anderem Code schon; Enter-Hinweis nur bei Blockform', () => {
+  const zeilen = ['& {', "Set-Location -LiteralPath 'C:\\Projekte\\a b' -ErrorAction Stop", 'git status', '}']
+  assert.equal(zaehleBefehle(zeilen), 2)
+  assert.equal(zaehleBefehle(['if ($x) {', 'git status', '}']), 3, 'keine Blockform: jede Zeile zählt')
+  const html = renderBefehlsblock({ sprache: 'powershell', zeilen }, { echteWerte: true })
+  assert.match(html, /2 Befehle · nacheinander/)
+  assert.match(html, /<\/code><\/pre>\s*<p class="befehlsblock-enter">Nach dem Einfügen einmal Enter drücken\.<\/p>/)
+  // Der Hinweis steht außerhalb von <code> — kopiert werden nur die Zeilen.
+  assert.doesNotMatch(html.slice(html.indexOf('<code>'), html.indexOf('</code>')), /Enter/)
+  assert.doesNotMatch(renderBefehlsblock({ sprache: 'powershell', zeilen: ['git status'] }), /befehlsblock-enter/)
+})
+
 test('renderBefehlsblock: Etikett, Anzahl (Plural), Kopieren, kein Chip ohne Platzhalter', () => {
   const html = renderBefehlsblock({ sprache: 'powershell', zeilen: ['git status', 'git diff --stat'] })
   assert.match(html, /<span class="befehlsblock-etikett">POWERSHELL<\/span>/)

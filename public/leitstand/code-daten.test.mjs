@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { hatPlatzhalter } from './befehlsblock.js'
-import { befehlsBloecke, bereitschaft, cdZeile, commitUrl, commitVorschlag, filtereVerlauf, freigabeZustand, gitPfadArgument, gruppiereNachOrdner, pruefstandBefehle, psArgument, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from './code-daten.js'
+import { BLOCK_FUSS, BLOCK_KOPF, befehlsBlock, befehlsBloecke, bereitschaft, cdZeile, istBlockform, ortZeile, commitUrl, commitVorschlag, filtereVerlauf, freigabeZustand, gitPfadArgument, gruppiereNachOrdner, pruefstandBefehle, psArgument, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from './code-daten.js'
 
 const DATEIEN = [
   { pfad: 'public/leitstand/views/code.js', art: '??', xy: '??', plus: 10, minus: 0 },
@@ -20,9 +20,11 @@ const DATEIEN = [
   { pfad: 'neu name.txt', art: 'R', xy: 'R ', alterPfad: 'alt.txt', plus: 0, minus: 0 },
 ]
 
-/** Projektpfad der Route (F45 B2a-3b: erste Zeile jedes Blocks). */
+/** Projektpfad der Route (F45 B2a-3b; seit B2b-4a-2a Ortszeile jedes Blocks in Blockform). */
 const PFAD = String.raw`C:\Users\stefa\Projekte\mein projekt`
-const CD = String.raw`cd 'C:\Users\stefa\Projekte\mein projekt'`
+const ORT = String.raw`Set-Location -LiteralPath 'C:\Users\stefa\Projekte\mein projekt' -ErrorAction Stop`
+/** Blockform um eine Folge (F45 B2b-4a-2a). */
+const block = (...folge) => ['& {', ORT, ...folge, '}']
 
 /** Antwort der Route im Grünfall. */
 function daten(zusatz = {}) {
@@ -30,11 +32,11 @@ function daten(zusatz = {}) {
 }
 
 /**
- * Zeilen des ersten Blocks ohne cd (für die bestehenden Prüfungen von add/commit).
+ * Zeilen des ersten Blocks ohne Kopf, Ortszeile und Fuß (für die bestehenden Prüfungen von add/commit).
  * @param befehle - Ergebnis von sicherBefehle
  * @returns Zeilen
  */
-const ersterBlock = (befehle) => befehle.bloecke[0].slice(1)
+const ersterBlock = (befehle) => befehle.bloecke[0].slice(2, -1)
 
 test('Gruppierung nach Ordner und Summe der Zeilen', () => {
   const gruppen = gruppiereNachOrdner(DATEIEN)
@@ -79,16 +81,16 @@ test('Commit-Vorschlag aus dem Branchnamen, ohne aktive Zeichen', () => {
   assert.equal(commitVorschlag(null), null)
 })
 
-test('Sichern: echte Dateien, Vorschlag, Push — keine Platzhalter (F-958); je Block erste Zeile cd, push getrennt (F-959)', () => {
+test('Sichern: echte Dateien, Vorschlag, Push — keine Platzhalter (F-958); je Block in Blockform (B2b-4a-2a), push getrennt (F-959)', () => {
   const befehle = sicherBefehle(daten())
   assert.equal(befehle.bloecke.length, 2)
-  assert.ok(befehle.bloecke.every((block) => block[0] === CD), 'erste Zeile jedes Blocks: cd auf den Projektpfad')
+  assert.ok(befehle.bloecke.every((zeilen) => zeilen[0] === '& {' && zeilen[1] === ORT && zeilen.at(-1) === '}'), 'jeder Block in Blockform mit Set-Location auf den Projektpfad')
   const zeilen = ersterBlock(befehle)
   assert.equal(zeilen.length, 2)
   // Umbenennung: nur der neue Pfad (der alte ist im Index schon entfernt, Prüfpass qa 1).
   assert.equal(zeilen[0], "git add public/leitstand/views/code.js public/leitstand/api.js README.md public/leitstand/views/alt.js 'neu name.txt'")
   assert.equal(zeilen[1], 'git commit -m "F46 D4: entwicklung code"')
-  assert.deepEqual(befehle.bloecke[1], [CD, 'git push -u origin feat/f46-d4-entwicklung-code'])
+  assert.deepEqual(befehle.bloecke[1], block('git push -u origin feat/f46-d4-entwicklung-code'))
   assert.deepEqual(befehle.hinweise, [])
   assert.equal(hatPlatzhalter(befehle.bloecke.flat()), false)
   const minus = sicherBefehle(daten({ dateien: { status: 'ok', eintraege: [{ pfad: '-x.txt', art: '??', xy: '??' }], anzahl: 1, gekappt: false } }))
@@ -116,22 +118,43 @@ test('Sichern: viele Pfade auf mehrere Zeilen, ohne origin nur ein Block, veralt
   assert.deepEqual(sicherBefehle(daten(), { veraltet: true }), { grund: 'veraltet' })
 })
 
-test('F45 B2a-3b: cdZeile (Quoting, -LiteralPath bei Platzhalterzeichen), ohne absoluten Pfad Grund statt Befehl, Prüfstand mit cd', () => {
+test('F45 B2a-3b: cdZeile (Jarvis-Regel: Quoting, -LiteralPath bei Platzhalterzeichen), ohne absoluten Pfad Grund statt Befehl, Prüfstand in Blockform', () => {
   assert.equal(cdZeile(String.raw`C:\Projekte\a`), String.raw`cd 'C:\Projekte\a'`)
   assert.equal(cdZeile('/home/u/a'), "cd '/home/u/a'")
   assert.equal(cdZeile(String.raw`C:\Projekte\a[1]`), String.raw`cd -LiteralPath 'C:\Projekte\a[1]'`)
   assert.equal(cdZeile('C:\\x\\a`b'), "cd -LiteralPath 'C:\\x\\a`b'")
   assert.equal(cdZeile(String.raw`C:\x\it's`), String.raw`cd 'C:\x\it''s'`)
   for (const pfad of [undefined, null, '', 'relativ/ordner', '.']) assert.deepEqual(sicherBefehle(daten({ absoluterPfad: pfad })), { grund: 'keinPfad' }, String(pfad))
+  const unc = String.raw`Set-Location -LiteralPath '\\server\freigabe' -ErrorAction Stop`
   assert.deepEqual(befehlsBloecke(String.raw`\\server\freigabe`, [['a'], [], ['b']]).bloecke, [
-    [String.raw`cd '\\server\freigabe'`, 'a'],
-    [String.raw`cd '\\server\freigabe'`, 'b'],
+    ['& {', unc, 'a', '}'],
+    ['& {', unc, 'b', '}'],
   ])
   const vorlage = { status: 'ok', pruefbefehl: 'npm run check' }
-  assert.deepEqual(pruefstandBefehle({ absoluterPfad: PFAD, startvorlage: vorlage }), { bloecke: [[CD, 'npm run check']] })
+  assert.deepEqual(pruefstandBefehle({ absoluterPfad: PFAD, startvorlage: vorlage }), { bloecke: [block('npm run check')] })
   assert.deepEqual(pruefstandBefehle({ absoluterPfad: 'x', startvorlage: vorlage }), { grund: 'keinPfad' })
   assert.deepEqual(pruefstandBefehle({ absoluterPfad: PFAD, startvorlage: { status: 'ok', pruefbefehl: '  ' } }), { grund: 'keinBefehl' })
   assert.deepEqual(pruefstandBefehle(null), { grund: 'keinBefehl' })
+})
+
+test('F45 B2b-4a-2a: Blockform — ortZeile immer -LiteralPath mit -ErrorAction Stop, befehlsBlock ohne Einzug, reiner Orts-Block, istBlockform', () => {
+  assert.equal(ortZeile(String.raw`C:\Projekte\a`), String.raw`Set-Location -LiteralPath 'C:\Projekte\a' -ErrorAction Stop`)
+  assert.equal(ortZeile(String.raw`C:\Projekte\a[1]`), String.raw`Set-Location -LiteralPath 'C:\Projekte\a[1]' -ErrorAction Stop`)
+  assert.equal(ortZeile(String.raw`C:\x\it’s`), String.raw`Set-Location -LiteralPath 'C:\x\it’’s' -ErrorAction Stop`)
+  assert.equal(ortZeile('/home/u/a b'), "Set-Location -LiteralPath '/home/u/a b' -ErrorAction Stop")
+  // Backtick und $ sind in einfachen Anführungszeichen wörtlich (in echter PowerShell: Gate b2b4a2a (b)).
+  assert.equal(ortZeile('C:\\x\\back`tick $x'), "Set-Location -LiteralPath 'C:\\x\\back`tick $x' -ErrorAction Stop")
+  assert.deepEqual(befehlsBlock(PFAD, ['git status']), block('git status'))
+  assert.deepEqual(befehlsBlock(PFAD, []), ['& {', ORT, '}'], 'reiner Orts-Block')
+  for (const pfad of [undefined, null, '', 'relativ/ordner', '.']) assert.equal(befehlsBlock(pfad, ['x']), null, String(pfad))
+  assert.ok(befehlsBlock(PFAD, ['git status']).every((zeile) => zeile === zeile.trimStart()), 'kein Einzug')
+  assert.equal(istBlockform(block('git status')), true)
+  assert.equal(istBlockform([' & { ', 'x', ' } ']), true, 'getrimmt')
+  assert.equal(istBlockform(['git status', '}']), false)
+  assert.equal(istBlockform(['& {']), false)
+  assert.equal(istBlockform(undefined), false)
+  assert.equal(BLOCK_KOPF, '& {')
+  assert.equal(BLOCK_FUSS, '}')
 })
 
 test('Sichern: Gründe statt halber Befehle', () => {

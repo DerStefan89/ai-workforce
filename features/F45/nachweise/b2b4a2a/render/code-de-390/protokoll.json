@@ -1,0 +1,30 @@
+[
+  {
+    "label": "#/code: Sichern und Prüfstand in Blockform — de-390",
+    "Hinweis unter Prüfstand-Block": true,
+    "zweiter Sichern-Block (push)": true,
+    "Sichern, erster Block, Zeile 1": "& {",
+    "Enter-Hinweis": "Nach dem Einfügen einmal Enter drücken.",
+    "Anzahl": "3 Befehle · nacheinander",
+    "Knopf": "Kopieren",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "sauber"
+  },
+  {
+    "label": "„Kopieren“ am commit-Block — de-390",
+    "Hinweis unter Prüfstand-Block": true,
+    "zweiter Sichern-Block (push)": true,
+    "Sichern, erster Block, Zeile 1": "& {",
+    "Enter-Hinweis": "Nach dem Einfügen einmal Enter drücken.",
+    "Anzahl": "3 Befehle · nacheinander",
+    "Knopf": "Kopiert",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Zwischenablage": "& {\r ⏎ Set-Location -LiteralPath 'C:\\Projekte\\haushaltsbuch' -ErrorAction Stop\r ⏎ git add src/export/monatsuebersicht/fo",
+    "Pfadprobe": "sauber"
+  }
+]

@@ -1800,6 +1800,7 @@ export default {
   'befehl.kopieren': 'Копировать',
   'befehl.kopiert': 'Скопировано',
   'befehl.strgC': 'Скопировать через Ctrl+C',
+  'befehl.enterHinweis': 'После вставки один раз нажми Enter.',
   'vorfilter.nichtGeladen': 'Состояние ещё не загружено — спроси ещё раз чуть позже.',
   'vorfilter.nichtVerfuegbar': 'недоступно',
   'vorfilter.status.laeufe': 'Запуски: {wert}',

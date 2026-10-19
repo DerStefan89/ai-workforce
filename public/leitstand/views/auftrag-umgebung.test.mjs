@@ -31,7 +31,10 @@ test('bereit: echte Werte, GitHub und VS Code als Link, cd-Befehl PowerShell-geq
   assert.match(h, /data-ton="ok">bereit</)
   assert.match(h, /href="https:\/\/github\.com\/o\/r" target="_blank" rel="noopener noreferrer"/)
   assert.match(h, /href="vscode:\/\/file\/C:\/Users\/stefa\/Projekte\/ai-workforce"/)
-  assert.match(h, /cd &#39;C:\\Users\\stefa\\Projekte\\ai-workforce&#39;/)
+  // F45 B2b-4a-2a: reiner Orts-Block in Blockform statt cd.
+  assert.match(h, /<span class="befehlsblock-zeile">&amp; \{<\/span><span class="befehlsblock-zeile">Set-Location -LiteralPath &#39;C:\\Users\\stefa\\Projekte\\ai-workforce&#39; -ErrorAction Stop<\/span><span class="befehlsblock-zeile">\}<\/span>/)
+  assert.match(h, /befehlsblock-enter/)
+  assert.doesNotMatch(h, />cd /)
   assert.match(h, /docs\/projekt\/kontext\/<\/code> <span class="umgebung-unter">Standard<\/span>/)
   assert.match(h, /npm run check/)
   assert.doesNotMatch(h, /Fehlt noch/)
@@ -70,4 +73,10 @@ test('Escaping: Titel, Pfad, Branch und Projektname aus Daten sind Text', () => 
   })
   assert.doesNotMatch(h, /<img/)
   assert.match(h, /&lt;img src=x onerror=alert\(1\)&gt;/)
+})
+
+test('F45 B2b-4a-2a: relativer Pfad ⇒ kein Orts-Block (befehlsBlock liefert null)', () => {
+  const h = umgebungHtml({ werte: WERTE, aktiverLauf: { aktiv: false }, codeStand: { zustand: 'ok', daten: { ...DATEN, absoluterPfad: 'relativ/ordner' } }, projekt: PROJEKT })
+  assert.doesNotMatch(h, /class="befehlsblock"/)
+  assert.doesNotMatch(h, /Set-Location/)
 })

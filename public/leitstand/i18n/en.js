@@ -1787,6 +1787,7 @@ export default {
   'befehl.kopieren': 'Copy',
   'befehl.kopiert': 'Copied',
   'befehl.strgC': 'Copy with Ctrl+C',
+  'befehl.enterHinweis': 'After pasting, press Enter once.',
   'vorfilter.nichtGeladen': 'The status is not loaded yet — please ask again in a moment.',
   'vorfilter.nichtVerfuegbar': 'not available',
   'vorfilter.status.laeufe': 'Runs: {wert}',
