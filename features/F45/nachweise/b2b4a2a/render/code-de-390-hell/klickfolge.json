@@ -1,0 +1,233 @@
+{
+  "url": "http://127.0.0.1:4408/#/code",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 1600
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "zwischenablage": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/code",
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Projekte\\haushaltsbuch",
+        "arbeitsverzeichnis": {
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "feat/f45-b2b4a2a-blockform",
+          "losgeloest": false,
+          "commit": "abc1234def5678"
+        },
+        "basis": {
+          "status": "ok",
+          "ref": "origin/main",
+          "voraus": 1,
+          "zurueck": 0
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": null,
+          "origin": true
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-01-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 12,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-02-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 13,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-03-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 14,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-04-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 15,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-05-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 16,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-06-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 17,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-07-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 18,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-08-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 19,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-09-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 20,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-10-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 21,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-11-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 22,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-12-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 23,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-13-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 24,
+              "minus": null
+            },
+            {
+              "pfad": "src/export/monatsuebersicht/formatierung/spalten-14-betrag-und-kategorie.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 25,
+              "minus": null
+            },
+            {
+              "pfad": "docs/haushaltsbuch export (entwurf).md",
+              "art": "M",
+              "xy": " M",
+              "plus": 4,
+              "minus": 1
+            }
+          ],
+          "anzahl": 15,
+          "gekappt": false
+        },
+        "verlauf": {
+          "status": "ok",
+          "ref": "origin/main",
+          "eintraege": []
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": true,
+          "hooks": 5,
+          "agents": 5
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlagen/beispielprojekt.json",
+          "pruefbefehl": "npm run check",
+          "werkzeugsaetze": [
+            "lesend"
+          ],
+          "worker": [
+            "claude-code"
+          ],
+          "modell": "claude-sonnet"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Sichern, erster Block, Zeile 1",
+        "selector": ".code-sichern .befehlsblock .befehlsblock-zeile"
+      },
+      {
+        "name": "Enter-Hinweis",
+        "selector": ".code-sichern .befehlsblock-enter"
+      },
+      {
+        "name": "Anzahl",
+        "selector": ".code-sichern .befehlsblock-anzahl"
+      },
+      {
+        "name": "Knopf",
+        "selector": ".code-sichern .befehlsblock-kopieren"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Hinweis unter Prüfstand-Block",
+        "selector": ".code-pruef-kacheln ~ .befehlsblock .befehlsblock-enter"
+      },
+      {
+        "name": "zweiter Sichern-Block (push)",
+        "selector": ".code-sichern .befehlsblock + .befehlsblock"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/code: Sichern und Prüfstand in Blockform — de-390-hell",
+      "warteAufSelector": {
+        "selector": ".code-sichern .befehlsblock-enter",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-de-390-hell.webp"
+    },
+    {
+      "label": "„Kopieren“ am commit-Block — de-390-hell",
+      "klick": ".code-sichern .befehlsblock-kopieren",
+      "warteAufSelector": {
+        "selector": ".code-sichern .befehlsblock-kopieren",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-de-390-hell.webp"
+    }
+  ]
+}

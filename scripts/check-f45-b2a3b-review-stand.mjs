@@ -13,8 +13,8 @@
  * (c) GET …/abnahme, Projektion urteil: offene Abnahme, Ordner unverändert → veraltet false; Datei danach geändert → true;
  *     kein Repo mehr an der Wurzel → null mit stand_grund; Laufakte ohne geprueft_stand (alter Lauf) → null mit Grund;
  *     Abnahme entschieden → nicht berechnet (null ohne Grund).
- * (d) sicherBefehle/pruefstandBefehle: erste Zeile jedes Blocks cd auf den Projektpfad, push in eigenem Block, ohne origin
- *     ein Block, ohne Pfad ein Grund.
+ * (d) sicherBefehle/pruefstandBefehle: jeder Block in Blockform („& {“, Set-Location -LiteralPath auf den Projektpfad mit
+ *     -ErrorAction Stop, …, „}“ — F45 B2b-4a-2a), push in eigenem Block, ohne origin ein Block, ohne Pfad ein Grund.
  * (e) F-1085 (11): Befund mit leerer fundstelle/zusammenfassung/beleg → drei Hinweise, kein Halt; F-1085 (6): nach
  *     ANPASSUNG_ANGEFORDERT und zweitem Bau folgt die Projektion dem neuesten Review-Lauf (laufId, Befund, geprueft_stand).
  * (f) Quelltext: starteWorkflowSchritt( genau 6-mal im Server; leseGeprueftenStandSync( genau einmal; der Vergleich in
@@ -137,20 +137,21 @@ function pruefeProjektion(name, urteil, erwartet) {
 }
 
 /**
- * (d) Prüft Befehlsblöcke: erste Zeile cd auf den Pfad, push nur in einem eigenen Block.
+ * (d) Prüft Befehlsblöcke in Blockform (F45 B2b-4a-2a): Kopf „& {“, Ortszeile auf den Pfad, Fuß „}“; push nur in einem
+ * eigenen Block (genau [Kopf, Ort, push, Fuß]).
  * @param name - Fall
  * @param befehle - Ergebnis mit bloecke
- * @param cd - erwartete cd-Zeile
+ * @param ort - erwartete Ortszeile
  * @param anzahl - erwartete Blockzahl
  * @returns Befunde
  */
-function pruefeBloecke(name, befehle, cd, anzahl) {
+function pruefeBloecke(name, befehle, ort, anzahl) {
   const b = []
   if (!Array.isArray(befehle?.bloecke)) return [`(d) ${name}: keine Blöcke (${JSON.stringify(befehle)})`]
   if (befehle.bloecke.length !== anzahl) b.push(`(d) ${name}: ${befehle.bloecke.length} Blöcke, erwartet ${anzahl}`)
   for (const [i, block] of befehle.bloecke.entries()) {
-    if (block[0] !== cd) b.push(`(d) ${name}: Block ${i + 1} beginnt nicht mit ${cd}`)
-    if (block.some((z) => z.startsWith('git push')) && block.length !== 2) b.push(`(d) ${name}: push nicht in einem eigenen Block`)
+    if (block[0] !== '& {' || block[1] !== ort || block.at(-1) !== '}') b.push(`(d) ${name}: Block ${i + 1} nicht in Blockform mit ${ort}`)
+    if (block.some((z) => z.startsWith('git push')) && block.length !== 4) b.push(`(d) ${name}: push nicht in einem eigenen Block`)
   }
   return b
 }
@@ -188,7 +189,7 @@ function pruefeServerQuelltext(server) {
 // ─── (d), (e) (11), (f) — rein ───────────────────────────────────────────────
 
 const PFAD = String.raw`C:\Users\stefa\Projekte\mein projekt`
-const CD = String.raw`cd 'C:\Users\stefa\Projekte\mein projekt'`
+const ORT = String.raw`Set-Location -LiteralPath 'C:\Users\stefa\Projekte\mein projekt' -ErrorAction Stop`
 const ROUTE = {
   status: 'ok',
   absoluterPfad: PFAD,
@@ -200,11 +201,11 @@ const ROUTE = {
 const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
 {
   const vor = befunde.length
-  befunde.push(...pruefeBloecke('Sichern', sicherBefehle(ROUTE), CD, 2))
-  befunde.push(...pruefeBloecke('Sichern ohne origin', sicherBefehle({ ...ROUTE, remoteWebUrl: { status: 'ok', url: null, origin: false } }), CD, 1))
-  befunde.push(...pruefeBloecke('Prüfstand', pruefstandBefehle(ROUTE), CD, 1))
+  befunde.push(...pruefeBloecke('Sichern', sicherBefehle(ROUTE), ORT, 2))
+  befunde.push(...pruefeBloecke('Sichern ohne origin', sicherBefehle({ ...ROUTE, remoteWebUrl: { status: 'ok', url: null, origin: false } }), ORT, 1))
+  befunde.push(...pruefeBloecke('Prüfstand', pruefstandBefehle(ROUTE), ORT, 1))
   if (sicherBefehle({ ...ROUTE, absoluterPfad: undefined }).grund !== 'keinPfad' || pruefstandBefehle({ ...ROUTE, absoluterPfad: 'relativ' }).grund !== 'keinPfad') befunde.push('(d) ohne absoluten Pfad kein Grund')
-  if (befunde.length === vor) console.log('✓ (d) Befehlsblöcke: erste Zeile cd, push getrennt, ohne origin ein Block, ohne Pfad ein Grund (Sichern und Prüfstand).')
+  if (befunde.length === vor) console.log('✓ (d) Befehlsblöcke in Blockform (& { Set-Location … }), push getrennt, ohne origin ein Block, ohne Pfad ein Grund (Sichern und Prüfstand).')
 }
 {
   const vor = befunde.length
@@ -477,9 +478,10 @@ try {
     ['neues Objekt', MESSUNG === null ? [] : pruefeLesend('rot', MESSUNG.vorher, { ...MESSUNG.vorher, objekte: `${MESSUNG.vorher.objekte}\nx` })],
     ['Projektion ohne veraltet', pruefeProjektion('rot', { status: 'ok', geprueft_stand: null, aktueller_stand: null, stand_grund: null }, { veraltet: false, grund: false })],
     ['Projektion null ohne Grund', pruefeProjektion('rot', { ...urteilOk, veraltet: null }, { veraltet: null, grund: true })],
-    ['Block ohne cd', pruefeBloecke('rot', { bloecke: [['git add a'], [CD, 'git push']] }, CD, 2)],
-    ['push im ersten Block', pruefeBloecke('rot', { bloecke: [[CD, 'git add a', 'git commit -m "x"', 'git push -u origin b']] }, CD, 1)],
-    ['zweiter Block fehlt', pruefeBloecke('rot', { bloecke: [[CD, 'git add a']] }, CD, 2)],
+    ['Block ohne Ortszeile', pruefeBloecke('rot', { bloecke: [['& {', 'git add a', '}'], ['& {', ORT, 'git push', '}']] }, ORT, 2)],
+    ['Block mit cd statt Blockform', pruefeBloecke('rot', { bloecke: [[String.raw`cd 'C:\Users\stefa\Projekte\mein projekt'`, 'git add a'], ['& {', ORT, 'git push', '}']] }, ORT, 2)],
+    ['push im ersten Block', pruefeBloecke('rot', { bloecke: [['& {', ORT, 'git add a', 'git commit -m "x"', 'git push -u origin b', '}']] }, ORT, 1)],
+    ['zweiter Block fehlt', pruefeBloecke('rot', { bloecke: [['& {', ORT, 'git add a', '}']] }, ORT, 2)],
     ['(11) ohne Hinweise', pruefeElf(() => ({ halt: [], hinweise: [] }))],
     ['starteWorkflowSchritt( siebenmal', pruefeServerQuelltext(`${SERVER}\nstarteWorkflowSchritt(`)],
     ['leseGeprueftenStandSync( zweimal', pruefeServerQuelltext(`${SERVER}\nleseGeprueftenStandSync(`)],

@@ -773,7 +773,8 @@ function renderTerminalBlock() {
     block = `<p class="subtle">${tHtml(stand.zustand === 'fehler' ? 'code.fehler.titel' : 'entwicklung.laedt')}</p>`
   } else {
     const befehle = stand.daten.status === 'ok' ? sicherBefehle(stand.daten, { veraltet: stand.zustand === 'fehler' }) : { grund: 'dateienFehler' }
-    // F45 B2a-3b (F-959): je Block ein Befehlsblock mit eigenem „Kopieren“ — [cd, add…, commit] und getrennt [cd, push].
+    // F45 B2a-3b (F-959): je Block ein Befehlsblock mit eigenem „Kopieren“ — [add…, commit] und getrennt [push], je in
+    // Blockform „& { Set-Location … }“ (B2b-4a-2a).
     block = befehle.bloecke ? befehle.bloecke.map((zeilen) => renderBefehlsblock({ sprache: 'powershell', zeilen }, { echteWerte: true })).join('') : `<p class="subtle">${tHtml(`code.sichern.grund.${befehle.grund}`)}</p>`
     // Zeitpunkt des Stands, damit klar ist, worauf sich die Dateiliste bezieht.
     if (stand.zustand === 'laedt') block = `<p class="subtle">${tHtml('code.aktualisiert')}</p>${block}`

@@ -9,7 +9,7 @@
  */
 
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { createServer, request } from 'node:http'
@@ -343,12 +343,18 @@ test('Sichern ausgeführt (PowerShell): git add der Leseroute staged alles — U
     const p = await baueCodeProjektion({ repoWurzel: repo })
     const befehle = sicherBefehle(p)
     assert.ok(Array.isArray(befehle.bloecke), JSON.stringify(befehle))
-    // F45 B2a-3b (F-959): die erste Zeile (cd) bringt PowerShell aus einem fremden Ordner in das Repo — gestartet in tmpdir.
-    const [cd, ...rest0] = befehle.bloecke[0]
-    assert.ok(cd.startsWith('cd '), cd)
-    const adds = rest0.filter((z) => z.startsWith('git add '))
+    // F45 B2a-3b (F-959), Blockform B2b-4a-2a: der echte Block (ohne Commit-Zeile) bringt PowerShell aus einem fremden Ordner
+    // in das Repo — als ein -Command, gestartet in tmpdir; $LASTEXITCODE meldet nur die letzte Zeile, deshalb zählt porcelain.
+    const erster = befehle.bloecke[0]
+    assert.equal(erster[0], '& {')
+    assert.ok(erster[1].startsWith('Set-Location -LiteralPath ') && erster[1].endsWith(' -ErrorAction Stop'), erster[1])
+    assert.equal(erster.at(-1), '}')
+    const adds = erster.filter((z) => z.startsWith('git add '))
     assert.ok(adds.length >= 1)
-    for (const zeile of adds) execFileSync(ps, ['-NoProfile', '-NonInteractive', '-Command', `${cd}; ${zeile}; exit $LASTEXITCODE`], { cwd: tmpdir(), stdio: 'pipe' })
+    const ohneCommit = erster.filter((z) => !z.startsWith('git commit '))
+    const lauf = spawnSync(ps, ['-NoProfile', '-NonInteractive', '-Command', `${ohneCommit.join('\n')}\nexit $LASTEXITCODE`], { cwd: tmpdir(), encoding: 'utf8' })
+    assert.equal(lauf.status, 0, lauf.stderr)
+    assert.doesNotMatch(lauf.stderr, /fatal:/)
     // Danach ist nichts mehr ungestaged oder ungetrackt.
     const rest = porcelain(repo).filter((z) => z[1] !== ' ')
     assert.deepEqual(rest, [], 'nach git add ist alles gestaged')

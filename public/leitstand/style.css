@@ -9745,7 +9745,9 @@ th {
   content: '\200b';
 }
 
-.v10-seite .befehlsblock-hinweis {
+/* F45 B2b-4a-2a: „Nach dem Einfügen einmal Enter drücken“ unter einem Block in Blockform — gleiche Form wie der Strg+C-Hinweis. */
+.v10-seite .befehlsblock-hinweis,
+.v10-seite .befehlsblock-enter {
   margin: 0;
   padding: 0 14px 10px;
   font-size: 11px;

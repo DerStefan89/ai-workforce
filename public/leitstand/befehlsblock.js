@@ -19,6 +19,9 @@
  * Jede Befehlszeile ist ein eigener Block mit hängendem Einzug (style.css): bricht ein langer Befehl
  * im schmalen Dock um, ist die Fortsetzung eingerückt und nicht mit einem neuen Befehl zu verwechseln.
  *
+ * Blockform (F45 B2b-4a-2a, code-daten.js befehlsBlock): ein Block „& { … }“ zählt ohne Kopf und Fuß und trägt unter
+ * dem Code den Hinweis „Nach dem Einfügen einmal Enter drücken“.
+ *
  * Kopieren: navigator.clipboard.writeText mit den Zeilen des Blocks, mit \n verbunden. Danach
  * zeigt der Knopf kurz „Kopiert“ (keine Live-Region — die einzige gehört der Persona). Ohne
  * Clipboard-API oder bei Ablehnung wird der Code markiert und der Hinweis „Mit Strg+C kopieren“
@@ -40,6 +43,7 @@
  * - Ein Zaun muss am Zeilenanfang stehen; eingerückte Zäune (z. B. in Listen) bleiben Text (F-970).
  */
 
+import { istBlockform } from './code-daten.js'
 import { escapeHtml } from './render.js'
 import { t, tHtml } from './i18n.js'
 
@@ -92,12 +96,14 @@ export function zerlegeAntwort(text) {
 }
 
 /**
- * Zahl der Befehle eines Blocks: nicht leere Zeilen.
+ * Zahl der Befehle eines Blocks: nicht leere Zeilen; bei Blockform (code-daten.js istBlockform) ohne Kopf „& {“ und
+ * Fuß „}“ (F45 B2b-4a-2a) — eine „}“ mitten in einem anderen Block (if, JSON) zählt weiter mit.
  * @param zeilen - Zeilen des Blocks
  * @returns Anzahl
  */
 export function zaehleBefehle(zeilen) {
-  return zeilen.filter((zeile) => zeile.trim() !== '').length
+  const anzahl = zeilen.filter((zeile) => zeile.trim() !== '').length
+  return istBlockform(zeilen) ? anzahl - 2 : anzahl
 }
 
 /**
@@ -132,6 +138,9 @@ export function renderBefehlsblock(segment, optionen = {}) {
   // F46 D4: Befehle aus echten Werten (Git-Pfade, Branch) tragen keinen Platzhalter — ein Dateiname mit <…>
   // ist dort Text, kein „ausfüllen“ (echteWerte).
   const chip = optionen.echteWerte !== true && hatPlatzhalter(segment.zeilen) ? `<span class="befehlsblock-platzhalter">${tHtml('befehl.platzhalter')}</span>` : ''
+  // F45 B2b-4a-2a: ein Block in Blockform läuft erst mit Enter (der kopierte Text endet ohne Zeilenumbruch) — an der Form
+  // erkannt, damit auch ein Chat-Block derselben Form den Hinweis trägt. Außerhalb von <code>: kopiert wird er nicht.
+  const enter = istBlockform(segment.zeilen) ? `\n    <p class="befehlsblock-enter">${tHtml('befehl.enterHinweis')}</p>` : ''
   return `<div class="befehlsblock">
     <div class="befehlsblock-kopf">
       <span class="befehlsblock-etikett">${escapeHtml(etikett)}</span>
@@ -139,7 +148,7 @@ export function renderBefehlsblock(segment, optionen = {}) {
       ${chip}
       <button type="button" class="button befehlsblock-kopieren" data-befehl-kopieren>${tHtml('befehl.kopieren')}</button>${typeof optionen.zusatzHtml === 'string' ? optionen.zusatzHtml : ''}
     </div>
-    <pre class="befehlsblock-code"><code>${segment.zeilen.map((zeile) => `<span class="befehlsblock-zeile">${escapeHtml(zeile)}</span>`).join('')}</code></pre>
+    <pre class="befehlsblock-code"><code>${segment.zeilen.map((zeile) => `<span class="befehlsblock-zeile">${escapeHtml(zeile)}</span>`).join('')}</code></pre>${enter}
     <p class="befehlsblock-hinweis" hidden>${tHtml('befehl.strgC')}</p>
   </div>`
 }

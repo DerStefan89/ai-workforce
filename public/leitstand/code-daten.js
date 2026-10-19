@@ -11,19 +11,24 @@
  *   Branchnamen und Push — PowerShell-tauglich gequotet, keine Platzhalter (F-958, F-959). Gibt es
  *   nichts Sicheres zu zeigen (keine Änderungen, Liste gekappt, kein Branch, kein Pfad), kommt ein
  *   Grund statt eines halben Befehls.
- * - Regel „direkt ausführbar“ (F-959, F45 B2a-3b): erste Zeile JEDES Blocks ist cd auf den absoluten
- *   Projektpfad (cdZeile — die eine Quelle, auch für die Jarvis-Regel des Servers); eine Folge, die nach
- *   außen wirkt (push), steht in einem eigenen Block (befehlsBloecke).
- * - pruefstandBefehle: der Prüfbefehl der Startvorlage als Block mit cd.
+ * - Regel „direkt ausführbar“ (F-959, F45 B2a-3b; Blockform F45 B2b-4a-2a, F-1088 (5)): JEDER Befehlsblock des
+ *   Leitstands hat die Form „& {“ / Set-Location -LiteralPath <Pfad> -ErrorAction Stop / Befehle / „}“ ohne Einzug
+ *   (befehlsBlock — die eine Regel). Fehlt der Ordner, bricht der Block nach Set-Location ab und kein git-Befehl
+ *   läuft (features/F45/nachweise/b2b4a2a/powershell-versuch.md); der Ort bleibt nach dem Block gesetzt. Eine
+ *   Folge, die nach außen wirkt (push), steht in einem eigenen Block (befehlsBloecke).
+ * - cdZeile: nur noch die cd-Zeile der Jarvis-Regel des Servers (Chat) — kein Leitstand-Block; Jarvis folgt in B2b-4b.
+ * - pruefstandBefehle: der Prüfbefehl der Startvorlage als Block.
  * - verlaufArt/filtereVerlauf: Verlauf auf main nach Alle · Feature · Fixes · Doku.
  * - freigabeZustand: Commit-Freigabe aus den Metadaten (Dateizeit, 10 Minuten).
  * - bereitschaft: die Prüfliste „Bereit zum Start?“.
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/code.js, public/leitstand/views/workboard.js, public/leitstand/views/auftrag-umgebung.js
- * - scripts/leitstand-server.mjs (cdZeile: cd-Zeile der Jarvis-Regel, F45 B2a-3a/B2a-3b — dieselbe Quelle wie die
- *   Befehlsblöcke, deshalb importiert der Server hier aus public/; das Modul ist import-sicher, ohne DOM)
- * - scripts/check-f45-b2a3-codex-review.mjs, scripts/check-f45-b2a3b-review-stand.mjs
+ * - public/leitstand/befehlsblock.js (istBlockform: Zählung und Enter-Hinweis)
+ * - scripts/leitstand-server.mjs (cdZeile: cd-Zeile der Jarvis-Regel, F45 B2a-3a/B2a-3b — dieselbe Quoting-Quelle
+ *   (psArgument) wie die Befehlsblöcke, aber nicht deren Blockform (folgt in B2b-4b); deshalb importiert der Server hier aus
+ *   public/; das Modul ist import-sicher, ohne DOM)
+ * - scripts/check-f45-b2a3-codex-review.mjs, scripts/check-f45-b2a3b-review-stand.mjs, scripts/check-f45-b2b4a2a-blockform.mjs
  * - public/leitstand/code-daten.test.mjs (node:test)
  *
  * Wichtig: Die Befehle werden nur angezeigt und auf Klick kopiert — der Leitstand führt nichts aus.
@@ -159,9 +164,9 @@ export function commitVorschlag(branch) {
 }
 
 /**
- * Erste Zeile eines Befehlsblocks: cd auf den absoluten Pfad, PowerShell-gequotet (psArgument). Enthält der Pfad ein
- * Platzhalterzeichen von PowerShell ([ ] * ? `), steht -LiteralPath davor — sonst läse Set-Location ihn als Muster.
- * Einzige Quelle für Leitstand und Jarvis-Regel (scripts/leitstand-server.mjs baueProjektCdZeile).
+ * cd-Zeile der Jarvis-Regel (Chat): cd auf den absoluten Pfad, PowerShell-gequotet (psArgument); bei einem Platzhalterzeichen
+ * von PowerShell ([ ] * ? `) mit -LiteralPath. Nicht für Leitstand-Blöcke (die haben die Blockform, befehlsBlock) — nur
+ * scripts/leitstand-server.mjs baueProjektCdZeile nutzt sie; die Jarvis-Regel bekommt die Blockform in B2b-4b.
  * @param pfad - absoluter Pfad
  * @returns z. B. „cd 'C:\Projekte\mein projekt'“
  */
@@ -169,21 +174,57 @@ export function cdZeile(pfad) {
   return PS_PLATZHALTER.test(pfad) ? `cd -LiteralPath ${psArgument(pfad)}` : `cd ${psArgument(pfad)}`
 }
 
+/** Erste und letzte Zeile eines Befehlsblocks (Blockform, F45 B2b-4a-2a) — eine Quelle für Erzeuger, Zählung und Enter-Hinweis. */
+export const BLOCK_KOPF = '& {'
+export const BLOCK_FUSS = '}'
+
 /**
- * Befehlsblöcke nach der Regel „direkt ausführbar“: je Folge ein Block, erste Zeile cd auf den Pfad.
+ * Ortszeile eines Befehlsblocks: Set-Location immer mit -LiteralPath (Platzhalterzeichen sind dann gleichgültig) und
+ * -ErrorAction Stop — fehlt der Ordner, bricht der umschließende Block ab, statt die Folge im aktuellen Ordner auszuführen
+ * (F-1088 (5)).
+ * @param pfad - absoluter Pfad
+ * @returns z. B. „Set-Location -LiteralPath 'C:\Projekte\mein projekt' -ErrorAction Stop“
+ */
+export function ortZeile(pfad) {
+  return `Set-Location -LiteralPath ${psArgument(pfad)} -ErrorAction Stop`
+}
+
+/**
+ * Ein Befehlsblock in Blockform: [„& {“, Ortszeile, …folge, „}“], ohne Einzug (sonst wäre der hängende Einzug der Anzeige,
+ * style.css .befehlsblock-zeile, nicht mehr eindeutig). Mit leerer Folge ein reiner Orts-Block — der Ort bleibt nach dem
+ * Block gesetzt.
+ * @param pfad - absoluter Pfad (sonst kein Block)
+ * @param folge - Befehlszeilen ohne Ortszeile
+ * @returns Zeilen oder null ohne absoluten Pfad
+ */
+export function befehlsBlock(pfad, folge) {
+  if (typeof pfad !== 'string' || !ABSOLUTER_PFAD.test(pfad)) return null
+  return [BLOCK_KOPF, ortZeile(pfad), ...folge, BLOCK_FUSS]
+}
+
+/**
+ * true, wenn Zeilen die Blockform haben (erste Zeile „& {“, letzte „}“, je getrimmt).
+ * @param zeilen - Zeilen eines Blocks
+ * @returns boolean
+ */
+export function istBlockform(zeilen) {
+  return Array.isArray(zeilen) && zeilen.length >= 2 && String(zeilen[0]).trim() === BLOCK_KOPF && String(zeilen[zeilen.length - 1]).trim() === BLOCK_FUSS
+}
+
+/**
+ * Befehlsblöcke nach der Regel „direkt ausführbar“: je nicht leerer Folge ein Block in Blockform (befehlsBlock).
  * @param pfad - absoluter Projektpfad (sonst kein Befehl)
- * @param folgen - Befehlsfolgen (je Folge die Zeilen ohne cd)
+ * @param folgen - Befehlsfolgen (je Folge die Zeilen ohne Ortszeile)
  * @returns { bloecke: string[][] } oder { grund: 'keinPfad' }
  */
 export function befehlsBloecke(pfad, folgen) {
   if (typeof pfad !== 'string' || !ABSOLUTER_PFAD.test(pfad)) return { grund: 'keinPfad' }
-  const cd = cdZeile(pfad)
-  return { bloecke: folgen.filter((folge) => folge.length > 0).map((folge) => [cd, ...folge]) }
+  return { bloecke: folgen.filter((folge) => folge.length > 0).map((folge) => befehlsBlock(pfad, folge)) }
 }
 
 /**
- * Befehlsblöcke „Sichern“: [cd, git add mit den echten Dateien, git commit mit dem Vorschlag] und — getrennt, weil er nach
- * außen wirkt — [cd, git push] (F-959, F45 B2a-3b).
+ * Befehlsblöcke „Sichern“ in Blockform: [git add mit den echten Dateien, git commit mit dem Vorschlag] und — getrennt, weil
+ * er nach außen wirkt — [git push] (F-959, F45 B2a-3b; Blockform F45 B2b-4a-2a).
  * Welche Pfade in „git add“ gehören (Prüfpass qa 1): jede Datei mit Änderung im Arbeitsbaum oder neu;
  * NICHT eine schon gestagte Löschung (X = D) und nicht der alte Pfad einer gestagten Umbenennung — beide
  * stehen weder im Index noch im Arbeitsbaum, „git add“ bräche sonst mit „pathspec did not match“ ab und
@@ -234,7 +275,7 @@ export function sicherBefehle(daten, { veraltet = false } = {}) {
 }
 
 /**
- * Befehlsblock „Prüfstand“: [cd, Prüfbefehl der Startvorlage] (F-959, F45 B2a-3b).
+ * Befehlsblock „Prüfstand“: der Prüfbefehl der Startvorlage in Blockform (F-959, F45 B2a-3b; Blockform B2b-4a-2a).
  * @param daten - Antwort der Route oder null
  * @returns { bloecke: string[][] } oder { grund: 'keinBefehl' | 'keinPfad' }
  */

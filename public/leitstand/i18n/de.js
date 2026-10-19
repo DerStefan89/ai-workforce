@@ -1798,6 +1798,7 @@ export default {
   'befehl.kopieren': 'Kopieren',
   'befehl.kopiert': 'Kopiert',
   'befehl.strgC': 'Mit Strg+C kopieren',
+  'befehl.enterHinweis': 'Nach dem Einfügen einmal Enter drücken.',
   'vorfilter.nichtGeladen': 'Der Zustand ist noch nicht geladen — bitte gleich noch einmal fragen.',
   'vorfilter.nichtVerfuegbar': 'nicht verfügbar',
   'vorfilter.status.laeufe': 'Läufe: {wert}',

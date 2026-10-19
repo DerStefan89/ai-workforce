@@ -225,7 +225,7 @@ function diffHtml(daten) {
 
 /**
  * Je Block ein Befehlsblock mit eigenem „Kopieren“ und „Ins Terminal“ (F45 B2a-3b, F-959).
- * @param bloecke - Zeilen je Block (erste Zeile cd)
+ * @param bloecke - Zeilen je Block (Blockform „& { Set-Location … }“, code-daten.js befehlsBlock)
  * @returns HTML
  */
 function renderBloecke(bloecke) {
@@ -233,8 +233,8 @@ function renderBloecke(bloecke) {
 }
 
 /**
- * „Sichern“: Befehlsblöcke mit echten Dateien (code-daten.js sicherBefehle; F45 B2a-3b: je Block erste Zeile cd, push
- * getrennt, jeder mit eigenem „Kopieren“) oder ein Grund. Nach einem
+ * „Sichern“: Befehlsblöcke mit echten Dateien (code-daten.js sicherBefehle; F45 B2a-3b, Blockform B2b-4a-2a: je Block
+ * „& { Set-Location … }“, push getrennt, jeder mit eigenem „Kopieren“) oder ein Grund. Nach einem
  * gescheiterten Aktualisieren kein Befehl aus dem alten Stand (Prüfpass qa 5); läuft gerade ein Lauf,
  * ein Hinweis (aus dem Poll, Prüfpass qa 8).
  * @param daten - Antwort der Route
@@ -309,7 +309,7 @@ function freigabeHtml(daten, geladenAm) {
 
 /**
  * Karte „Prüfstand“: Ergebnis, Tests, Prüfskripte, CI und „berührt“ kommen (F-962); der Prüfbefehl ist
- * echt (Startvorlage der Instanz), seit F45 B2a-3b mit cd auf den Projektpfad als erster Zeile (pruefstandBefehle).
+ * echt (Startvorlage der Instanz), seit F45 B2b-4a-2a in Blockform mit Set-Location auf den Projektpfad (pruefstandBefehle).
  * @param daten - Antwort der Route oder null
  * @returns HTML
  */
