@@ -7,7 +7,9 @@
  *
  * Felder von GET /api/code (jedes Feld trägt einen eigenen Status, nie ein 500):
  * - status: 'ok' | 'nicht_verfuegbar' (kein Git oder die Repo-Wurzel ist kein Git-Arbeitsverzeichnis)
- * - absoluterPfad: Repo-Wurzel der Instanz (für VS Code und „Pfad kopieren“)
+ * - absoluterPfad: Repo-Wurzel der Instanz (für VS Code und „Pfad kopieren“) bzw. mit ?workflow= der Arbeitsordner
+ * - ablauf: nur mit ?workflow=<id> (F45 B2b-4a-1) — { workflowId, bedarf, workflowStatus, arbeitsordner, sichern }, angehängt
+ *   vom Server (scripts/leitstand/ablauf-sichern.mjs mitAblauf); ohne Parameter fehlt das Feld
  * - branch: { status, name | null, losgeloest, commit }
  * - basis: { status, ref ('origin/main' oder 'main'), voraus, zurueck }
  * - remoteWebUrl: { status, url | null } — nur github.com über https bzw. git@github.com:, sonst null
@@ -28,14 +30,17 @@
  *   --no-textconv' (kein externes Diff-Programm aus der Repo-Konfiguration). Diffs gegen HEAD über
  *   das Plumbing 'diff-index' — das Porcelain 'git diff' schreibt den Index beim Auffrischen trotz
  *   --no-optional-locks (im Test belegt). Zeitgrenze je Aufruf GIT_ZEITGRENZE_MS, Ausgabe begrenzt
- *   (maxBuffer), cwd = Repo-Wurzel der Instanz. Befehle: rev-parse, symbolic-ref, rev-list, remote
- *   get-url, status, diff-index, log, diff --no-index (nur für neue Dateien) — keiner ändert etwas.
+ *   (maxBuffer), cwd = Repo-Wurzel der Instanz oder — mit ?workflow=<id> — der Arbeitsordner des Ablaufs, den der
+ *   Server aus dem Kontrollzustand bestimmt (loeseCodeOrt, F45 B2b-4a-1); auch dort nur lesend. Befehle: rev-parse,
+ *   symbolic-ref, rev-list, remote get-url, status, diff-index, log, diff --no-index (nur für neue Dateien) — keiner
+ *   ändert etwas.
  * - Die Repo-Wurzel muss die Wurzel des Arbeitsverzeichnisses sein (rev-parse --show-toplevel) —
  *   sonst liefe Git gegen ein umgebendes Repo.
  * - Kein Teil der Anfrage wird ein Git-Argument außer dem Parameter 'pfad' von /api/code/diff. Der
  *   wird geprüft (pruefeDiffPfad: nicht leer, keine Steuerzeichen, nicht absolut, kein '..', kein
  *   führendes '-') und muss in der AKTUELLEN Dateiliste stehen (Allowlist); er wird nach '--'
- *   übergeben.
+ *   übergeben. Der Parameter 'workflow' wählt nur den Ort (Kennung geprüft vor jedem Dateizugriff,
+ *   scripts/leitstand/kennung.mjs) und wird nie ein Git-Argument.
  * - Diff-Ausgabe gekappt (DIFF_MAX_BYTES, Kennzeichen 'gekuerzt').
  *
  * Wird aufgerufen von:

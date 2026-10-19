@@ -538,7 +538,11 @@ import { ladeProjektregisterMitLokal, projektOriginsAus, vorschauLeitstandSperre
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
-import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
+import { baueCodeDiff, baueCodeProjektion, fuehreGitAus, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
+import { arbeitsordnerGrund, mitAblauf, SICHERN_GRUND_TEXT } from './leitstand/ablauf-sichern.mjs'
+import { LAUFID_UNZULAESSIGE_ZEICHEN, pruefeAblaufKennung } from './leitstand/kennung.mjs'
+import { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt } from './leitstand/text-auszug.mjs'
+export { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt }
 import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitstand/startvorlage-wahl.mjs'
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
@@ -2198,9 +2202,6 @@ const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext', 'herkunft', 'a
  * schweigen — sonst liest sich das Schweigen neben der Nachbarmeldung als "vielleicht doch".
  */
 const ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ = '. Die Entscheidung wurde NICHT festgehalten.'
-
-/** Spiegelt src/checkpoint-store/index.ts' pruefeLaufId (nicht exportiert) — dieselbe rein strukturelle Zeichenregel, kein zweiter fachlicher Regelsatz (D5). Fängt einen unzulässigen Wert ab, BEVOR laufIdBelegt() ihn ungeprüft in einen existsSync-Pfad einsetzt. */
-const LAUFID_UNZULAESSIGE_ZEICHEN = /[/\\]|\.\.|[\u0000-\u001f]/
 
 const PFLICHT_STARTAUFTRAG_FELDER = ['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragId', 'werkzeugsatz']
 
@@ -3953,90 +3954,6 @@ function ladeWorkflowBestandUndPruefeSperre(workflowId, ladeOptionen) {
   const bestandUngueltig = bestand !== null && validiereWorkflowDaten(bestand.daten).length > 0
   const gesperrt = bestand !== null && !bestandUngueltig && GESPERRTE_ERSETZUNGS_STATUS.has(bestand.daten?.status)
   return { bestand, gesperrt }
-}
-
-/**
- * Entfernt einen Markdown-Codezaun (```lang\n...\n```), falls einer im Text vorkommt,
- * sonst null. Reine Funktion, kein Wurf (F22 WS-1). NUR im worker 'claude-code'-
- * Rückfallzweig von verarbeiteRouterErgebnis gebraucht (F-337/F-346, state/findings.md):
- * 'codex' liefert strukturierte Ausgabe über '--output-schema' und braucht keinen
- * Zweitversuch. Muster: scripts/eval-router.mjs' versucheForensischeEntzaunung — dort
- * rein forensisch/berichtend, hier PRODUKTIV im Nachbearbeitungspfad.
- *
- * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): der Zaun muss NICHT
- * mehr den GESAMTEN (getrimmten) Text umschließen — ein realer Jarvis-Lauf lieferte Prosa
- * VOR dem Zaun ("Kein neuer Sachstand … — ich antworte konsistent damit." gefolgt von
- * ```json\n{…}\n```), die bisherige startsWith('```')-Prüfung verwarf das gesamt als
- * "kein Codezaun" und lieferte null, obwohl ein gültiges JSON-Objekt im Zaun stand. Die
- * Regex sucht den ersten Zaun IRGENDWO im Text und verwirft Prosa davor/danach — ein Text
- * ganz ohne Zaun liefert weiterhin null (Regressionsschutz, scripts/check-f22-click-to-
- * work.mjs Abschnitt (0): entferneCodezaun('{"a":1}') !== null muss falsch bleiben).
- * @param text - roher Klassifikationstext
- * @returns der Zaun-Inhalt (Prosa davor/danach verworfen), oder null, wenn kein Codezaun vorlag
- */
-export function entferneCodezaun(text) {
-  const treffer = text.match(/```[a-zA-Z]*[ \t]*\r?\n?([\s\S]*?)```/)
-  return treffer === null ? null : treffer[1].trim()
-}
-
-/**
- * F44 WS-8b (löst F-966): der ÄUSSERSTE Codezaun — vom ersten Öffner bis zum LETZTEN ``` im
- * Text. entferneCodezaun endet am ersten schließenden ```; steht im Feld 'antwort' selbst ein
- * Codeblock (```powershell …```, Regel „direkt ausführbar“, F-959), schneidet der erste Zaun
- * das Objekt mitten im String ab. Reine Funktion, kein Wurf. Nur ein Zweitversuch in
- * leseRollenErgebnisRohstrom, NACH allen bisherigen Stufen.
- * @param text - roher Ergebnistext
- * @returns der Inhalt zwischen erstem Öffner und letztem ``` (getrimmt), oder null ohne zweites ```
- */
-export function entferneAeusserstenCodezaun(text) {
-  const oeffner = text.match(/```[a-zA-Z]*[ \t]*\r?\n?/)
-  if (oeffner === null) return null
-  const inhaltStart = oeffner.index + oeffner[0].length
-  const ende = text.lastIndexOf('```')
-  if (ende < inhaltStart) return null
-  return text.slice(inhaltStart, ende).trim()
-}
-
-/**
- * Löst das erste vollständige, balancierte {…}-JSON-Objekt aus einem Text, Prosa
- * davor/danach verworfen — Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst
- * F-506), zweite Fallback-Stufe NACH entferneCodezaun (die deckt nur den Fall mit
- * Codezaun ab; hier: Prosa + rohes JSON-Objekt ganz ohne Zaun). Reine Funktion, kein
- * Wurf. Klammerzählung überspringt Anführungszeichen-Inhalte (Escape-bewusst, sonst
- * zählte eine geschweifte Klammer INNERHALB eines String-Werts mit) — reicht für dieses
- * Anwendungsfeld (Jarvis-Ergebnistext), kein vollständiger JSON-Tokenizer.
- * @param text - roher Ergebnistext
- * @returns der Objekt-Ausschnitt vom ersten '{' bis zur passenden '}', oder null, wenn
- *   kein '{' vorkommt oder keine Klammer je wieder auf 0 zurückfällt (unvollständiges Objekt)
- */
-export function extrahiereErstesJsonObjekt(text) {
-  const start = text.indexOf('{')
-  if (start === -1) return null
-  let tiefe = 0
-  let inString = false
-  let escaped = false
-  for (let i = start; i < text.length; i++) {
-    const zeichen = text[i]
-    if (inString) {
-      if (escaped) {
-        escaped = false
-      } else if (zeichen === '\\') {
-        escaped = true
-      } else if (zeichen === '"') {
-        inString = false
-      }
-      continue
-    }
-    if (zeichen === '"') {
-      inString = true
-    } else if (zeichen === '{') {
-      tiefe++
-    } else if (zeichen === '}') {
-      tiefe--
-      if (tiefe === 0) return text.slice(start, i + 1)
-    }
-  }
-  return null
 }
 
 /**
@@ -5959,6 +5876,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // pruefeWerkzeugkonfigurationVorab); nur Tests setzen Attrappen.
     arbeitsordnerNpm = undefined,
     arbeitsordnerE183 = undefined,
+    // F45 B2b-4a-1: Git-Ausführer von GET …/code und …/code/diff — nur Tests setzen einen Spion (Gate b2b4a1 (d)), nie aus der Anfrage; reist wie jede Option im optionen-Objekt mit, nur diese Route liest ihn.
+    codeGit = fuehreGitAus,
     // F45 F-1 (E-F45-8, Delta B7): Pfad von faehigkeiten.lokal.json — null = keine Datei (Standard: alles wie vorher,
     // POST-Routen 500). Nur der CLI-Bindeblock und baueProjektHandlerMap setzen ~/.ai-workforce/faehigkeiten.lokal.json,
     // damit kein Gate/Test Stefans echte Datei liest oder schreibt.
@@ -6391,8 +6310,8 @@ export function erzeugeRequestHandler(optionen = {}) {
   let aufrufAktiv = false
   /** F43: Ergebnis des letzten Aufrufs dieser Instanz oder null — flüchtig (Begründung src/projekt-aufruf/index.ts). */
   let letzterAufruf = null
-  /** F46 D4: laufender Aufbau von GET /api/code dieser Instanz oder null — gleichzeitige Abrufe teilen ihn (keine Git-Prozess-Lawine). */
-  let codeProjektionLaufend = null
+  /** F46 D4: laufende Aufbauten von GET /api/code dieser Instanz je Laufort (F45 B2b-4a-1: Map statt eines einzigen) — gleichzeitige Abrufe desselben Orts teilen einen (keine Git-Prozess-Lawine). */
+  const codeProjektionLaufend = new Map()
 
   /**
    * F45 B0 (F-1007): wirksame Zeitgrenze eines Laufs für GET /api/laeufe/<laufId>. Chat-Läufe erkennt die
@@ -6491,15 +6410,41 @@ export function erzeugeRequestHandler(optionen = {}) {
    * Bedarf, Bestand). Pflicht ohne bereiten Ordner → Fehler (Tiefenverteidigung: nie still im Projektordner).
    * @param workflowId - Kennung
    * @param workflowDaten - WORKFLOW_V0-Daten
-   * @returns { ok: true, wurzel, arbeitsordner: { pfad, branch } | null } oder { ok: false, grund }
+   * @returns { ok: true, wurzel, arbeitsordner: { pfad, branch } | null, bedarf } oder { ok: false, grund } — bedarf (F45 B2b-4a-1)
+   *   aus derselben Lage, damit GET …/code?workflow= sie nicht ein zweites Mal liest
    */
   function ermittleLaufort(workflowId, workflowDaten) {
     const lage = ermittleArbeitsordnerLage(workflowId, workflowDaten)
-    if (lage.bedarf !== 'pflicht') return { ok: true, wurzel: repoWurzel, arbeitsordner: null }
+    if (lage.bedarf !== 'pflicht') return { ok: true, wurzel: repoWurzel, arbeitsordner: null, bedarf: lage.bedarf }
     if (lage.daten?.status !== 'BEREIT' || !existsSync(lage.daten.pfad)) {
       return { ok: false, grund: `Workflow '${workflowId}' braucht einen eigenen Arbeitsordner, der nicht bereit ist (${lage.daten === null ? 'noch nicht angelegt' : lage.daten.status === 'BEREIT' ? 'Ordner fehlt auf der Platte' : lage.daten.status}) — über „Starten“ bzw. die Freigabe wird er vorbereitet` }
     }
-    return { ok: true, wurzel: lage.daten.pfad, arbeitsordner: { pfad: lage.daten.pfad, branch: lage.daten.branch } }
+    return { ok: true, wurzel: lage.daten.pfad, arbeitsordner: { pfad: lage.daten.pfad, branch: lage.daten.branch }, bedarf: 'pflicht' }
+  }
+
+  /**
+   * F45 B2b-4a-1 (F-1087): Ort von GET …/code und …/code/diff. Ohne ?workflow= der Projektordner (Antwort bitgleich); mit
+   * Parameter erst die Form (400, vor jedem Dateizugriff), dann der Ablauf (404) und sein Laufort (409 mit dem Schlüssel aus
+   * arbeitsordnerGrund, nie mit der Kennung im Text). Die id ist nie Git-Argument und nie cwd — cwd ist der Pfad aus dem
+   * Kontrollzustand. Nur lesend. Ein Windows-Alias derselben Kennung (andere Schreibweise, Punkt am Ende) ist unbekannt (404);
+   * läuft Vorbereitung oder Aufräumen, gilt 409 inVorbereitung, auch wenn der Ordner noch da ist (qa 1).
+   * @param werte - searchParams.getAll('workflow') (mehr als ein Wert ⇒ 400)
+   * @returns { http: 200, wurzel, ablauf | null } oder { http: 400 | 404 | 409, koerper: { grund, grund_schluessel } }
+   */
+  function loeseCodeOrt(werte) {
+    if (werte.length === 0) return { http: 200, wurzel: repoWurzel, ablauf: null }
+    const roh = werte[0]
+    const formfehler = werte.length > 1 ? 'Der Parameter workflow ist mehrfach angegeben' : pruefeAblaufKennung(roh)
+    if (formfehler !== null) return { http: 400, koerper: { grund: formfehler, grund_schluessel: null } }
+    const version = ladeArtefaktVersion(`workflow-${roh}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+    if (version === null || version.daten?.workflow_id !== roh) return { http: 404, koerper: { grund: 'Ablauf nicht gefunden', grund_schluessel: null } }
+    const laufort = ermittleLaufort(roh, version.daten)
+    if (!laufort.ok || arbeitsordnerVorbereitungLaeuft.has(roh)) {
+      // Wettlauf zwischen den beiden Lesungen der Lage (Vorbereitung schreibt BEREIT, Ordner erscheint): nie ein Schlüssel null.
+      const schluessel = arbeitsordnerGrund(baueArbeitsordnerProjektion(roh, version.daten)) ?? 'nichtBestimmbar'
+      return { http: 409, koerper: { grund: SICHERN_GRUND_TEXT[schluessel], grund_schluessel: schluessel } }
+    }
+    return { http: 200, wurzel: laufort.wurzel, ablauf: { workflowId: roh, bedarf: laufort.bedarf, workflowStatus: version.daten.status ?? null, arbeitsordner: laufort.arbeitsordner } }
   }
 
   /** F45 B2a-3b (qa 2): aktueller Stand je Laufort → { zeit, versprechen } — gleichzeitige und kurz aufeinanderfolgende Abfragen teilen eine Berechnung. */
@@ -8489,29 +8434,34 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     // F46 D4: Leseroute Code und Arbeitsumgebung — reine Projektion, keine Logik hier (D5), siehe
     // scripts/leitstand/routen-code.mjs. Git nur lesend über execFile (asynchron, ohne Shell,
-    // --no-optional-locks, Zeitgrenze je Aufruf), cwd = repoWurzel dieser Instanz; Fehler als
-    // Feldstatus, nie 500. Einziger Anfrageteil, der ein Git-Argument wird: ?pfad= von /api/code/diff,
-    // geprüft und nur, wenn er in der aktuellen Liste geänderter Dateien steht (Allowlist).
+    // --no-optional-locks, Zeitgrenze je Aufruf), cwd = repoWurzel dieser Instanz oder — mit ?workflow=<id> (F45 B2b-4a-1)
+    // — der Arbeitsordner des Ablaufs aus dem Kontrollzustand (loeseCodeOrt), auch dort nur lesend; Fehler als Feldstatus,
+    // nie 500. Einziger Anfrageteil, der ein Git-Argument wird: ?pfad= von /api/code/diff, geprüft und nur, wenn er in der
+    // aktuellen Liste geänderter Dateien steht (Allowlist); ?workflow= wird nie Git-Argument.
     // Prüfpass D4 (cr 2): diese GETs starten Git-Prozesse — eine fremde Seite im selben Browser darf sie nicht
-    // auslösen (Sec-Fetch-Site); gleichzeitige Abrufe derselben Instanz teilen sich einen Lauf.
+    // auslösen (Sec-Fetch-Site); gleichzeitige Abrufe desselben Orts teilen sich einen Lauf.
     if (req.method === 'GET' && (pfad === '/api/code' || pfad === '/api/code/diff')) {
       const fremd = pruefeCodeHerkunft(req)
       if (fremd !== null) {
         sendeJson(res, 403, { grund: fremd })
         return
       }
-    }
-    if (req.method === 'GET' && pfad === '/api/code') {
-      if (codeProjektionLaufend === null) {
-        codeProjektionLaufend = baueCodeProjektion({ repoWurzel, vorlage, startvorlagePfad }).finally(() => {
-          codeProjektionLaufend = null
-        })
+      const ort = loeseCodeOrt(angefragteUrl.searchParams.getAll('workflow'))
+      if (ort.http !== 200) {
+        sendeJson(res, ort.http, ort.koerper)
+        return
       }
-      sendeJson(res, 200, await codeProjektionLaufend)
-      return
-    }
-    if (req.method === 'GET' && pfad === '/api/code/diff') {
-      const { http, koerper } = await baueCodeDiff({ repoWurzel, pfad: angefragteUrl.searchParams.get('pfad') })
+      if (pfad === '/api/code') {
+        let laufend = codeProjektionLaufend.get(ort.wurzel)
+        if (laufend === undefined) {
+          laufend = baueCodeProjektion({ repoWurzel: ort.wurzel, vorlage, startvorlagePfad, git: codeGit }).finally(() => codeProjektionLaufend.delete(ort.wurzel))
+          codeProjektionLaufend.set(ort.wurzel, laufend)
+        }
+        const projektion = await laufend
+        sendeJson(res, 200, ort.ablauf === null ? projektion : mitAblauf(projektion, ort.ablauf))
+        return
+      }
+      const { http, koerper } = await baueCodeDiff({ repoWurzel: ort.wurzel, pfad: angefragteUrl.searchParams.get('pfad'), git: codeGit })
       sendeJson(res, http, koerper)
       return
     }
