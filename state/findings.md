@@ -7230,8 +7230,7 @@ Beschreibung: Nach der Abnahme gibt es keinen eigenen Zustand für „abgenommen
 Fundstelle: Lebenszyklus eines Eintrags (Abnahme → Merge).
 Auswirkung: Gering — der Schritt zum Sichern ist im Leitstand nicht sichtbar.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“.
-Status: offen.
-Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+Status: offen. Nachtrag F45 B2b-4a-1 (19.10.2026, `features/F45/plan-b2b4a1.md`): Server-Teil gebaut — „Bereit zum Sichern“ als abgeleiteter Zustand ohne neuen Workflow-Status (`scripts/leitstand/ablauf-sichern.mjs` `leiteSichernLageAb`: abgeschlossen + eigener Arbeitsordner + geänderte Dateien bzw. Commits noch nicht auf main; Grenze F-1155), geliefert als Feld `ablauf.sichern` von GET `/api/code?workflow=<id>`; Gate `scripts/check-f45-b2b4a1-sichern.mjs`. Die Anzeige (Karte, Abnahme, Workboard) folgt in B2b-4a-2, erst dann erledigt.
 
 **F-980** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Bestehensbedingung des Fixpakets: gleichwertig zum manuellen Ablauf.
@@ -7918,7 +7917,7 @@ Beschreibung: Der Block „Sichern“ im Workboard (Phase „abgeschlossen“) u
 Fundstelle: `public/leitstand/views/workboard.js` (`renderTerminalBlock`), `scripts/leitstand/routen-code.mjs` (`baueCodeProjektion`), `scripts/leitstand-server.mjs` (GET /api/code).
 Auswirkung: Mittel — die Befehle sind ausführbar, sichern aber das Falsche bzw. nichts; Stefan muss selbst wissen, wo der Ablauf gearbeitet hat.
 Maßnahme: Mit B2b („Bereit zum Sichern“): Sichern je Ablauf aus dem Laufort (`ermittleLaufort`), cd auf den Worktree. In B2a-3b bewusst nicht gelöst (Auftrag).
-Status: offen.
+Status: offen. Nachtrag F45 B2b-4a-1 (19.10.2026): Server-Teil gebaut — GET `/api/code` und `/api/code/diff` nehmen `?workflow=<id>` (keine neue Route): Formprüfung vor jedem Dateizugriff (`scripts/leitstand/kennung.mjs`, 400), unbekannt 404, Laufort über `ermittleLaufort` (Arbeitsordner aus dem Kontrollzustand, nie die id als Git-Argument oder cwd), Arbeitsordner nicht bereit ⇒ 409 mit `grund_schluessel` aus `arbeitsordnerGrund` ohne Kennung im Text; ohne Parameter bitgleich; Aufbau je Laufort geteilt (`codeProjektionLaufend` als Map). Gate `scripts/check-f45-b2b4a1-sichern.mjs` (b)–(d). Workboard und Abnahme nutzen den Parameter erst ab B2b-4a-2 (jeder Ablauf mit Arbeitsordner über `?workflow=`), erst dann erledigt.
 Feature/Run: Entdeckt: F45 B2a-3b (Plan, Befunde vorab), 13.10.2026.
 
 **F-1088** · `TECH_DEBT` · P3 · teilweise
@@ -8450,3 +8449,48 @@ Auswirkung: Gering — Anzeige und Prüftiefe, keine falsche Freigabe.
 Maßnahme: (1) Entscheidung Stefan; (2) bei Bedarf mit einer Lauf-Projektion der Version; (3)(4) mit dem nächsten Eingriff in den Kanal; (5) Unit-Tests mit Fake-DOM beim nächsten Eingriff in `workflows.js`; (6)–(9) bei Bedarf; (10) siehe F-1151.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-3b-2b-2b-2b-2 (code-reviewer, qa, design-guardian), 18.10.2026.
+
+**F-1154** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Voller npm run check bricht in der Claude-Code-Sitzung mit Speichermangel ab.
+Beschreibung: Am 18.10.2026 brach `npm run check` in der Claude-Code-Sitzung in 3 von 4 Läufen mit Speichermangel ab; im frischen Terminal lief derselbe Stand stabil grün (≈ 4,7 min). Die Parallelität des Testlaufs ist schon begrenzt (`--test-concurrency=4`, F-1002 im Archiv, F46 D5) — die Grenze reicht neben der laufenden Sitzung (Modell-Prozess, Subagenten) offenbar nicht. Ob die Gates (`check:gates`, darunter mehrere mit echtem Handler und Worktree) oder der Testlauf den Speicher erschöpfen, ist nicht gemessen.
+Fundstelle: `package.json` (Skripte „check“, „check:gates“, „test“).
+Auswirkung: Mittel — die volle Kette läuft in der Bausitzung nicht verlässlich; Bauaufträge fahren deshalb nur betroffene Gates, den vollen Lauf fährt Stefan im Commit-Block.
+Maßnahme: Speicherspitze und Laufzeit je Teil messen (Gates einzeln, Testlauf mit `--test-concurrency` 4/2/1), danach eine kleinere Grenze nur für die Sitzung (eigenes Skript) oder schwere Gates entkoppeln. Nur Eintrag, nicht umgesetzt (Auftrag B2b-4a-1).
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-3b-2b-2b-2b-2 (Commit-Block), 18.10.2026; eingetragen F45 B2b-4a-1, 19.10.2026.
+
+**F-1155** · `TECH_DEBT` · P3 · offen
+Titel: „Noch nicht auf main“ ist nicht „ungepusht“ — gepusht und gemergt werden lokal nicht erkannt.
+Beschreibung: „Bereit zum Sichern“ (`scripts/leitstand/ablauf-sichern.mjs`) zählt mit `basis.voraus` die Commits des Arbeitsordners, die noch nicht auf main sind (`rev-list <origin/main|main>...HEAD` gegen den lokal bekannten Ref, `scripts/leitstand/routen-code.mjs` `leseBasis`); die Projektion holt nie (`fetch`). Nach einem Push bleibt ein Ablauf deshalb „bereit (push)“, und nach einem Merge im Web — hier in der Regel Squash (je PR ein Commit auf main) — ebenso, bis der Arbeitsordner aufgeräumt ist; bei Squash bleibt dort zudem der Branch stehen (`branch -d` nur gemergt). Ohne Basis-Ref (weder origin/main noch main) ist die Lage `nichtBestimmbar`, auch wenn ein Commit möglich wäre.
+Fundstelle: `scripts/leitstand/ablauf-sichern.mjs` (`leiteSichernLageAb`), `scripts/leitstand/routen-code.mjs` (`leseBasis`).
+Auswirkung: Gering — ein erneuter Push ist harmlos; der normale Weg „gepusht/gemergt → Aufräumen“ beendet die Anzeige.
+Maßnahme: Grenze deklariert (Entscheidung Challenger 19.10.2026: kein Upstream-Vergleich). Die Anzeige (B2b-4a-2) nennt „noch nicht auf main“ und den Weg zum Aufräumen. Upstream-Vergleich (`@{u}`) nur bei realem Bedarf.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-4 (Advisor-Pässe `features/F45/advisor-b2b4.md` 6, `advisor-b2b4a-delta.md` 3), 19.10.2026.
+
+**F-1156** · `TECH_DEBT` · P3 · offen
+Titel: Commit-Vorschlag für wf/<id>-Branches enthält die interne Ablauf-ID.
+Beschreibung: `commitVorschlag` (`public/leitstand/code-daten.js`) kennt das Präfix `wf/` nicht und macht aus dem Branch eines Arbeitsordners `wf/<Ablauf-ID>` den Vorschlag „wf <Ablauf-ID mit Leerzeichen>“ — die interne Kennung steht dann in der Commit-Nachricht. Ein Workflow trägt keinen Titel (nur `ziel` und `auftrag_id`); die Quelle für einen Titel wäre der Auftragstitel (`auftrag-<auftrag_id>`), z. B. als Serverfeld `ablauf.titel` von GET `/api/code?workflow=<id>`.
+Fundstelle: `public/leitstand/code-daten.js` (`commitVorschlag`), `scripts/leitstand-server.mjs` (`loeseCodeOrt`).
+Auswirkung: Gering — die Nachricht ist ausführbar, aber nicht sprechend.
+Maßnahme: UX-Runde nach R (Entscheidung Challenger 19.10.2026: in B2b-4 zurückgestellt; `commitVorschlag` bleibt unverändert).
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-4 (Advisor-Pass `features/F45/advisor-b2b4.md` 9e), 19.10.2026.
+
+**F-1157** · `TECH_DEBT` · P2 · offen
+Titel: Auflagen aus dem Prüfpass von B2b-4a-1 an B2b-4a-2 (Anzeige „Bereit zum Sichern“).
+Beschreibung: Die Ableitung (`scripts/leitstand/ablauf-sichern.mjs`) liefert bewusst nur die Lage; der Befehlsblock und die Anzeige in 4a-2 müssen: (1) node_modules ohne `.gitignore` berücksichtigen — nach `npm ci` im Arbeitsordner eines Fremdprojekts zählt `git status --untracked-files=all` node_modules/ als neu (Tausende Einträge, `gekappt`, „bereit (commit)“ ohne Änderung des Ablaufs; bei sehr großer Ausgabe `nichtBestimmbar`); Anzahl und Kappung zeigen, kein pauschales Stagen (qa 6, code-reviewer 1); (2) vor einem Push-Block `branch.losgeloest`, `branch.name` gegen `ablauf.arbeitsordner.branch` und `remoteWebUrl.origin` prüfen — die Ableitung meldet auch bei losgelöstem HEAD oder fremdem Branch „bereit (push)“ (qa 5, Advisor-Delta 4a-1 15); (3) Befehle nur aus `ablauf.arbeitsordner.pfad/branch` bauen, nie aus der zurückgegebenen `workflowId` (code-reviewer 5); (4) GET …/code?workflow= nur für die geöffnete Karte bzw. Abnahme abrufen, nie im Poll für alle Karten — je Abruf ≈ 10 Git-Prozesse und synchrones Lesen der Checkpoint-Ketten (qa 7); (5) 409 mit `grund_schluessel` ist eine Lage (z. B. `aufgeraeumt` als normaler Endzustand), kein Fehler; bei 400/404 ist der Schlüssel `null` (qa 8); (6) GESTOPPT mit offenen Änderungen auf Aufräumen/Verwerfen verweisen (`offeneAenderungen` wird geliefert; qa 2); (7) Text je Grund übersetzen und `keinArbeitsordner` für `kein_bedarf` (nichts zu sichern) und `bestand` (Projektordner) trennen (code-reviewer 9); (8) Advisor-Delta 4a 8–20, soweit sie C betreffen, und Befund 6 (jeder Ablauf mit Arbeitsordner über `?workflow=`).
+Fundstelle: `scripts/leitstand/ablauf-sichern.mjs`, `public/leitstand/code-daten.js` (`sicherBefehle`), `public/leitstand/views/workboard.js`, `public/leitstand/views/workflows.js`, `public/leitstand/views/arbeitsordner-anzeige.js`.
+Auswirkung: Mittel — ohne die Auflagen zeigte 4a-2 irreführende oder zu breite Befehle.
+Maßnahme: in den Plan von B2b-4a-2 übernehmen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-4a-1 (code-reviewer, qa), 19.10.2026.
+
+**F-1158** · `TECH_DEBT` · P3 · offen
+Titel: Lesende Git-Aufrufe im Arbeitsordner vertrauen dessen `.git`-Verweis; Windows-Aliasse von Kennungen in den Workflow-Routen.
+Beschreibung: (1) Der Worker kann die `.git`-Datei seines Arbeitsordners auf ein eigenes gitdir umlenken; dessen Konfiguration (z. B. `filter.<x>.clean` mit `.gitattributes`) würde dann von `git status`/`diff-index` beim lesenden GET …/code?workflow= (und schon heute vom Abnahme-Stand, `src/review-stand`) ausgeführt — `-c core.fsmonitor=false`, `--no-ext-diff` decken das nicht ab. Einordnung: Tiefenverteidigung; der Prüfbefehl führt ohnehin Code des Workers aus (qa 10). (2) NTFS normalisiert Groß-/Kleinschreibung, Punkt und Leerzeichen am Ende: `GET /api/workflows/<ALIAS>` und die übrigen Workflow-Routen laden denselben Ablauf unter anderer Kennung; `?workflow=` weist das seit B2b-4a-1 mit 404 ab (`workflow_id !== roh`), die übrigen Routen nicht (qa 3).
+Fundstelle: `scripts/leitstand/routen-code.mjs` (`fuehreGitAus`), `src/review-stand/index.ts`, `scripts/leitstand-server.mjs` (Routen `/api/workflows/<id>…`), `src/checkpoint-store/index.ts` (`ladeGueltigeCheckpoints`).
+Auswirkung: Gering — keine Rechteausweitung über die Anfrage; cwd kommt aus dem Kontrollzustand.
+Maßnahme: (1) vor lesenden Git-Aufrufen im Arbeitsordner `rev-parse --git-common-dir` gegen `<repoWurzel>/.git` prüfen — mit W2 oder beim nächsten Eingriff in `src/review-stand`; (2) dieselbe Prüfung `workflow_id === id` in den Workflow-Routen mit W2.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-4a-1 (qa), 19.10.2026.

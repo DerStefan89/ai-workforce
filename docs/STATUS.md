@@ -99,9 +99,9 @@ gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 10.10.2026), F45 Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
-`docs/projekt/fixpaket-f45.md`; gemergt bis B2b-2b-1, zuletzt #344; B2b-2b-2
-(qa-Schritt live) gebaut, nicht gemergt — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gemergt #349; B2b-3b-1b (Auswertung) gemergt #350; B2b-3e-1 (keine persönlichen Pfade in Render-Screenshots, F-1125) gemergt #351; B2b-3e-2 (Budget-Feld, eine Regel für Bereiche, Formular-Reste F-1123) gemergt #352; W1 (Wachstumsbremse leitstand-server.mjs, Gate mit straffer Ratsche, E-WART-1 = A) mit B2b-3e-3 (Aufräumen alter Laufordner, F-1125) und F-1123 (18) gebaut, nicht gemergt; es folgen B2b-3b-2 (Einschalten), B2b-4, Fähigkeit bauen, B5a/B5b, B3, W2 (Aufräumpaket: Server in Module); danach F30 — E-M5-18, geändert 02.10.2026) (Stand
-22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 16.10.2026).
+`docs/projekt/fixpaket-f45.md`; gemergt bis B2b-3b-2, zuletzt #365; B2b-2b-2
+(qa-Schritt live) gemergt #345 — damit B2b-2 abgeschlossen; B2b-3a gemergt #346; B2b-3c (Budget je Arbeitspaket) gemergt #347; B2b-3d (Umfangs-Abgleich) gemergt #348; B2b-3b-1a (Rückfrage-Kanal, ausgeschaltet) gemergt #349; B2b-3b-1b (Auswertung) gemergt #350; B2b-3e-1 (keine persönlichen Pfade in Render-Screenshots, F-1125) gemergt #351; B2b-3e-2 (Budget-Feld, eine Regel für Bereiche, Formular-Reste F-1123) gemergt #352; W1 (Wachstumsbremse leitstand-server.mjs, Gate mit straffer Ratsche, E-WART-1 = A) mit B2b-3e-3 (Aufräumen alter Laufordner, F-1125) und F-1123 (18) gemergt #353; B2b-3b-2 (Rückfrage-Kanal einschalten, B2b-3b-2a bis B2b-3b-2b-2b-2b-2) gemergt #354 bis #365 — damit B2b-3 abgeschlossen; K (Kontext-Diät) gemergt #361; B2b-4 geteilt in B2b-4a-1 (Server: Ableitung „Bereit zum Sichern“, `?workflow=` an …/code) — gebaut, nicht gemergt —, B2b-4a-2 (Befehlsform, Anzeige) und B2b-4b (Jarvis-cd-Zeilen); es folgen B2b-4a-2, B2b-4b, Fähigkeit bauen, B5a/B5b, B3, W2 (Aufräumpaket: Server in Module); danach F30 — E-M5-18, geändert 02.10.2026) (Stand
+22.09.2026; F36 29.09.2026; F43 30.09.2026; F44 02.10.2026; F46 10.10.2026; F45 19.10.2026).
 
 ## Erledigt
 

@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). B2a-2 gemergt #330 (`a6d3411`). B2a-3 nach dem Advisor-Pass geteilt (Stefan, 13.10.2026) in B2a-3a/B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut (Branch `f45/b2a3-codex-review`, Basis `a6d3411`, nicht committet; Abschnitt „Stand B2a-3a“). B2a-3a gemergt #331 (`2fd1ac5`). B2a-3b „Geprüfter Stand und Review veraltet, Befehlsblöcke im Leitstand“ gebaut (Branch `f45/b2a3b-review-stand`, Basis `2fd1ac5`, nicht committet; Abschnitt „Stand B2a-3b“). B2a gilt als abgeschlossen, wenn auch B2a-3b gemergt ist. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). B2a-2 gemergt #330 (`a6d3411`). B2a-3 nach dem Advisor-Pass geteilt (Stefan, 13.10.2026) in B2a-3a/B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut (Branch `f45/b2a3-codex-review`, Basis `a6d3411`, nicht committet; Abschnitt „Stand B2a-3a“). B2a-3a gemergt #331 (`2fd1ac5`). B2a-3b „Geprüfter Stand und Review veraltet, Befehlsblöcke im Leitstand“ gebaut (Branch `f45/b2a3b-review-stand`, Basis `2fd1ac5`, nicht committet; Abschnitt „Stand B2a-3b“). B2a gilt als abgeschlossen, wenn auch B2a-3b gemergt ist. Stand der Pakete nach F-3b-1 bis B2b-3b-2 (gemergt bis #365): `docs/projekt/fixpaket-f45.md` und `docs/STATUS.md`. B2b-4 geteilt (Challenger, 19.10.2026) in B2b-4a-1/-4a-2/-4b; B2b-4a-1 „Bereit zum Sichern, Server-Teil“ gebaut (Branch `f45/b2b4-sichern`, Basis `d7f207c`, nicht committet; Abschnitt „Stand B2b-4a-1“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -1078,3 +1078,32 @@ mit Plugin-Feldern für ungültig — bis zum Merge keine echte Plugin-Freigabe 
 F-1094. **Ist F-3b-1 ≈ 0,95 AT** (beauftragt 0,5; Grund: Auflagen des Advisor-Passes — 16 Auflagen und Delta-Auflagen, Teilung in Server und Oberfläche); F-3b-2 nach Plan ≈ 0,6 AT.
 
 **Vor dem Merge (Challenger 14.10.2026):** F-1094 (8) Fokus nach Aktionen (Statusbereich, Meldung bzw. nächstes Bedienelement, Liste nach dem Entfernen; Statusmeldungen über die feste Live-Region `#plugins-status`) und F-1094 (9) Werkzeugsatz `null` = „unbekannt“ (kein Rückfall per `??`; Fakt sichtbar, keine Bewertung im Satz; Gate (o)). Gezielte Nachpässe design-guardian (Fokus) und code-reviewer ((9)), keine weitere Korrekturrunde.
+
+## Stand B2b-4a-1
+
+**Auftrag:** B2b-4 „Bereit zum Sichern“ (F-979, F-1087, F-1085 (5)), nach zwei Advisor-Pässen „zu groß“ geteilt (Challenger,
+19.10.2026): 4a-1 Server (dieser Stand), 4a-2 Befehlsform und Anzeige, 4b Jarvis. Verlauf: `plan-b2b4.md` → `advisor-b2b4.md` →
+`plan-b2b4a.md` → `advisor-b2b4a-delta.md` → `plan-b2b4a1.md` → `advisor-b2b4a1-delta.md` (Freigegeben mit Hinweisen).
+
+**Gebaut (nur Server, keine Oberfläche):** `scripts/leitstand/ablauf-sichern.mjs` (eine Liste der Gründe, `arbeitsordnerGrund`
+für die 409, `leiteSichernLageAb` nach `ermittleLaufort.ok`, `mitAblauf`); `scripts/leitstand/kennung.mjs`
+(`LAUFID_UNZULAESSIGE_ZEICHEN` aus dem Server, `pruefeAblaufKennung`); GET `/api/code` und `/api/code/diff` mit `?workflow=<id>`
+(403 → 400 → 404 → 409 → 200, Laufort aus dem Kontrollzustand, Aufbau je Laufort geteilt, Handler-Option `codeGit`; ohne Parameter
+bitgleich); `ermittleLaufort` liefert zusätzlich `bedarf`. Ausgleich der Wachstumsbremse: `entferneCodezaun`,
+`entferneAeusserstenCodezaun`, `extrahiereErstesJsonObjekt` nach `scripts/leitstand/text-auszug.mjs` (Server exportiert sie weiter);
+Server 13 416 → 13 366 Zeilen, Grenze gesenkt.
+
+**Tests/Gates:** neues Gate `scripts/check-f45-b2b4a1-sichern.mjs` (a)–(e) mit echtem Worktree aus dem Startweg; Unit-Tests
+`ablauf-sichern.test.mjs`, `kennung.test.mjs`, `text-auszug.test.mjs`. Mutationsproben (Ort, Zusatzfeld ohne Parameter, Regel
+„kein Arbeitsordner“, Formprüfung, laufende Vorbereitung/Aufräumen, Windows-Alias, Mehrfachparameter) je rot.
+
+**Prüfpass:** code-reviewer und qa „Freigegeben mit Hinweisen“; eine Korrekturrunde: 409 `inVorbereitung` auch bei laufendem
+Aufräumen mit noch vorhandenem Ordner, 404 für einen Windows-Alias der Kennung, 400 bei mehrfachem Parameter, Texte für
+GESTOPPT/`nichtBestimmbar`/`keinArbeitsordner`, Grenzen im Modulkopf, Gate um geteilten Aufbau, Vorbereitung läuft, aufgeräumt,
+Bestand, 200 Zeichen, Alias, Mehrfachparameter und 403 vor 400 erweitert. Auflagen an 4a-2: F-1157; Rest F-1158.
+
+**Nachweis:** `nachweise/b2b4a1/powershell-versuch.md` (Vorabversuch Blockform in Windows PowerShell 5.1 für 4a-2).
+
+**Register:** Nachtrag F-979, F-1087 (Server-Teil gebaut, Anzeige folgt); neu F-1154 (Speichermangel beim vollen Check), F-1155
+(„noch nicht auf main“ ≠ ungepusht), F-1156 (Commit-Vorschlag mit Ablauf-ID), F-1157 (Auflagen an 4a-2), F-1158 (`.git`-Verweis
+im Arbeitsordner, Windows-Aliasse der Workflow-Routen).
