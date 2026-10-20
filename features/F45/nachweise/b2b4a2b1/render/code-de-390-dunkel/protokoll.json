@@ -1,0 +1,26 @@
+[
+  {
+    "label": "#/code: node_modules ausgelassen — de-390-dunkel",
+    "Sichern-Block": true,
+    "Hinweis unter der Dateiliste": "node_modules ausgelassen — fehlt in .gitignore: 1.532 neue Dateien darunter stehen in keinem Befehl. Abhilfe: node_modul",
+    "Text der leeren Liste": "(fehlt)",
+    "Sichern, Grund/Hinweis": "Neue Dateien unter node_modules stehen in keinem git add.",
+    "Sichern, erster Block, Zeile 3": "git add src/export/monatsuebersicht.ts src/export/kategorien.ts node_modules/vendored-datum/index.js",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  },
+  {
+    "label": "#/code: nur node_modules offen — de-390-dunkel",
+    "Sichern-Block": false,
+    "Hinweis unter der Dateiliste": "(fehlt)",
+    "Text der leeren Liste": "Keine Änderungen außer 1.532 neuen Dateien unter node_modules — node_modules fehlt in .gitignore; dort eintragen.",
+    "Sichern, Grund/Hinweis": "Nichts zu sichern — nur neue Dateien unter node_modules, und die kommen in keinen git add.",
+    "Sichern, erster Block, Zeile 3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

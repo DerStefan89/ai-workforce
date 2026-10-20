@@ -19,10 +19,11 @@
  * - Ob ein Remote „origin“ oder ein Branch vorhanden ist, prüft die Ableitung nicht; den Befehlsblock (und dessen Grund
  *   keinOrigin/keinBranch) baut die Anzeige (4a-2) aus remoteWebUrl/branch der Projektion.
  * - Ohne Basis-Ref (weder origin/main noch main) ist die Lage nichtBestimmbar, auch wenn ein Commit möglich wäre.
- * - Unverfolgte Dateien zählen mit (git status --untracked-files=all). Ein Fremdprojekt ohne node_modules in der .gitignore
- *   (das Skelett hat keine) zeigt nach npm ci im Arbeitsordner node_modules/ als neu ⇒ „bereit (commit)“, ohne dass der
- *   Ablauf etwas geändert hat, bzw. bei sehr großer Liste nichtBestimmbar. Die Vorbereitung nimmt node_modules aus
- *   (src/arbeitsordner zaehleUnsauber), die Ableitung nicht — der Befehlsblock (4a-2) muss das berücksichtigen (F-1157).
+ * - Unverfolgte Dateien zählen mit (git status --untracked-files=all) — außer neuen Dateien unter node_modules: die nimmt
+ *   die Projektion seit F45 B2b-4a-2b-1 aus der Liste und aus dateien.anzahl (scripts/leitstand/routen-code.mjs leseDateien,
+ *   Feld dateien.nodeModules; F-1157 (1)). Ein Arbeitsordner nur mit node_modules ist deshalb nicht „bereit (commit)“. Bei
+ *   sehr großer Liste (Ausgabe von git status über dem Puffer) bleibt die Lage nichtBestimmbar; der Grund der Dateiliste nennt
+ *   dann node_modules ohne .gitignore als häufige Ursache.
  * - Läuft gerade das Aufräumen und liegt der Ordner noch da, ist der Status noch BEREIT: die Route liest dann im Ordner, der
  *   gerade entfernt wird, und die Lage kann kurz „bereit“ zeigen; ist er schon weg, gilt inVorbereitung.
  * - GESTOPPT mit offenen Änderungen wird nicht angeboten (Regel 1); eine abgelehnte Abnahme setzt den Ablauf auf GESTOPPT.

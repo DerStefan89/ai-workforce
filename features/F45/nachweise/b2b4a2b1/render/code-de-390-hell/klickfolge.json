@@ -1,0 +1,211 @@
+{
+  "url": "http://127.0.0.1:4408/#/code",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 1600
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "de"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/code",
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Projekte\\haushaltsbuch",
+        "arbeitsverzeichnis": {
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "feat/f45-b2b4a2b1-regeln",
+          "losgeloest": false,
+          "commit": "abc1234def5678"
+        },
+        "basis": {
+          "status": "ok",
+          "ref": "origin/main",
+          "voraus": 1,
+          "zurueck": 0
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": null,
+          "origin": true
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [
+            {
+              "pfad": "src/export/monatsuebersicht.ts",
+              "art": "M",
+              "xy": " M",
+              "plus": 18,
+              "minus": 4
+            },
+            {
+              "pfad": "src/export/kategorien.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 41,
+              "minus": null
+            },
+            {
+              "pfad": "node_modules/vendored-datum/index.js",
+              "art": "M",
+              "xy": " M",
+              "plus": 2,
+              "minus": 2
+            }
+          ],
+          "anzahl": 3,
+          "gekappt": false,
+          "nodeModules": 1532
+        },
+        "verlauf": {
+          "status": "ok",
+          "ref": "origin/main",
+          "eintraege": []
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": true,
+          "hooks": 5,
+          "agents": 5
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlagen/beispielprojekt.json",
+          "pruefbefehl": "npm run check",
+          "werkzeugsaetze": [
+            "lesend"
+          ],
+          "worker": [
+            "claude-code"
+          ],
+          "modell": "claude-sonnet"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Hinweis unter der Dateiliste",
+        "selector": ".code-node-modules"
+      },
+      {
+        "name": "Text der leeren Liste",
+        "selector": ".code-sauber"
+      },
+      {
+        "name": "Sichern, Grund/Hinweis",
+        "selector": ".code-sichern .code-sichern-grund"
+      },
+      {
+        "name": "Sichern, erster Block, Zeile 3",
+        "selector": ".code-sichern .befehlsblock .befehlsblock-zeile:nth-child(3)"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Sichern-Block",
+        "selector": ".code-sichern .befehlsblock"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/code: node_modules ausgelassen — de-390-hell",
+      "warteAufSelector": {
+        "selector": ".code-node-modules",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-de-390-hell.webp"
+    },
+    {
+      "label": "#/code: nur node_modules offen — de-390-hell",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/code",
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "feat/f45-b2b4a2b1-regeln",
+              "losgeloest": false,
+              "commit": "abc1234def5678"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 1,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": null,
+              "origin": true
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [],
+              "anzahl": 0,
+              "gekappt": false,
+              "nodeModules": 1532
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            }
+          }
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": ".code-node-modules",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-de-390-hell.webp"
+    }
+  ]
+}

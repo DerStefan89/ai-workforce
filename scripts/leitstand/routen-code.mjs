@@ -13,7 +13,10 @@
  * - branch: { status, name | null, losgeloest, commit }
  * - basis: { status, ref ('origin/main' oder 'main'), voraus, zurueck }
  * - remoteWebUrl: { status, url | null } — nur github.com über https bzw. git@github.com:, sonst null
- * - dateien: { status, eintraege: [{ pfad, art, alterPfad?, plus, minus }], anzahl, gekappt }
+ * - dateien: { status, eintraege: [{ pfad, art, alterPfad?, plus, minus }], anzahl, gekappt, nodeModules } — neue,
+ *   ungetrackte Dateien unter node_modules (public/leitstand/code-daten.js istNodeModulesPfad, F45 B2b-4a-2b-1) stehen nicht
+ *   in eintraege und zählen weder in anzahl noch in gekappt; nodeModules ist ihre Anzahl (der Client zeigt den Hinweis
+ *   „node_modules ausgelassen – fehlt in .gitignore“). Getrackte bzw. gestagte Änderungen darunter bleiben in der Liste.
  * - verlauf: { status, ref, eintraege: [{ hash, kurz, zeit, betreff, zuordnung, abstandMinuten }] }
  * - freigabeCommit: { status, vorhanden, alterMinuten } — nur Metadaten (Dateizeit), kein Inhalt
  * - harness: { status, claudeMd, settings, hooks, agents } — nur Vorhandensein
@@ -38,7 +41,8 @@
  *   sonst liefe Git gegen ein umgebendes Repo.
  * - Kein Teil der Anfrage wird ein Git-Argument außer dem Parameter 'pfad' von /api/code/diff. Der
  *   wird geprüft (pruefeDiffPfad: nicht leer, keine Steuerzeichen, nicht absolut, kein '..', kein
- *   führendes '-') und muss in der AKTUELLEN Dateiliste stehen (Allowlist); er wird nach '--'
+ *   führendes '-') und muss in der AKTUELLEN, ungekappten Ausgabe von git status stehen (Allowlist — auch ein Pfad, den
+ *   die gezeigte Liste kappt oder als neue node_modules-Datei auslässt); er wird nach '--'
  *   übergeben. Der Parameter 'workflow' wählt nur den Ort (Kennung geprüft vor jedem Dateizugriff,
  *   scripts/leitstand/kennung.mjs) und wird nie ein Git-Argument.
  * - Diff-Ausgabe gekappt (DIFF_MAX_BYTES, Kennzeichen 'gekuerzt').
@@ -54,6 +58,8 @@
 import { execFile } from 'node:child_process'
 import { lstat, readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
+// Die eine node_modules-Regel liegt beim Client (import-sicher, ohne DOM — wie cdZeile für scripts/leitstand-server.mjs).
+import { istNodeModulesPfad } from '../../public/leitstand/code-daten.js'
 import { GIT_NICHT_GEFUNDEN, gitProgramm, gitUmgebung } from '../../src/git-starter/index.ts'
 
 /** Zeitgrenze je Git-Aufruf. */
@@ -409,7 +415,8 @@ const NEU_ZAEHLEN_MAX_BYTES = 1024 * 1024
 async function leseStatusListe(repoWurzel, git) {
   const status = await git(repoWurzel, ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--ignore-submodules=dirty'])
   if (!status.ok) return feldFehler(status)
-  if (status.gekuerzt) return { status: 'fehler', grund: 'Ausgabe von git status zu groß' }
+  // Häufigste Ursache: node_modules ohne Eintrag in der .gitignore (F45 B2b-4a-2b-1, Plan §1 Grenze) — als Hinweis im Grund.
+  if (status.gekuerzt) return { status: 'fehler', grund: 'Ausgabe von git status zu groß — oft ein node_modules ohne Eintrag in der .gitignore' }
   return { ok: true, alle: parseStatus(text(status.stdout)).sort((a, b) => (a.pfad < b.pfad ? -1 : a.pfad > b.pfad ? 1 : 0)) }
 }
 
@@ -447,7 +454,10 @@ async function zaehleNeueZeilen(repoWurzel, pfad, budget) {
 async function leseDateien(repoWurzel, git) {
   const liste = await leseStatusListe(repoWurzel, git)
   if (liste.ok !== true) return liste
-  const { alle } = liste
+  // F45 B2b-4a-2b-1 (O2): neue, ungetrackte Dateien unter node_modules (Fremdprojekt ohne node_modules in der .gitignore,
+  // nach npm ci) zählen nicht — vor der Kappung heraus, nur als Anzahl gemeldet; getrackte Änderungen bleiben in der Liste.
+  const alle = liste.alle.filter((e) => !(e.art === '??' && istNodeModulesPfad(e.pfad)))
+  const nodeModules = liste.alle.length - alle.length
   // Zeilen gegen HEAD (gestaged und ungestaged zusammen); ohne ersten Commit gibt es keine. Plumbing
   // diff-index statt Porcelain diff: 'git diff' frischt den Index auf und schreibt ihn trotz
   // --no-optional-locks (im Test belegt), diff-index nie.
@@ -467,7 +477,7 @@ async function leseDateien(repoWurzel, git) {
       eintraege.push({ ...e, plus: z?.plus ?? null, minus: z?.minus ?? null })
     }
   }
-  return { status: 'ok', eintraege, anzahl: alle.length, gekappt: alle.length > MAX_DATEIEN }
+  return { status: 'ok', eintraege, anzahl: alle.length, gekappt: alle.length > MAX_DATEIEN, nodeModules }
 }
 
 /**

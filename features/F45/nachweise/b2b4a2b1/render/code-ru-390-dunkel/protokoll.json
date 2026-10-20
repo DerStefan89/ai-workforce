@@ -1,0 +1,26 @@
+[
+  {
+    "label": "#/code: node_modules ausgelassen — ru-390-dunkel",
+    "Sichern-Block": true,
+    "Hinweis unter der Dateiliste": "node_modules пропущена — нет в .gitignore: 1 532 новых файла в ней не входят ни в одну команду. Решение: добавить node_m",
+    "Text der leeren Liste": "(fehlt)",
+    "Sichern, Grund/Hinweis": "Новые файлы в node_modules не попадают ни в один git add.",
+    "Sichern, erster Block, Zeile 3": "git add src/export/monatsuebersicht.ts src/export/kategorien.ts node_modules/vendored-datum/index.js",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  },
+  {
+    "label": "#/code: nur node_modules offen — ru-390-dunkel",
+    "Sichern-Block": false,
+    "Hinweis unter der Dateiliste": "(fehlt)",
+    "Text der leeren Liste": "Нет изменений, кроме 1 532 новых файлов в node_modules — node_modules нет в .gitignore; добавь её туда.",
+    "Sichern, Grund/Hinweis": "Нечего сохранять — только новые файлы в node_modules, а они не попадают ни в один git add.",
+    "Sichern, erster Block, Zeile 3": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]
