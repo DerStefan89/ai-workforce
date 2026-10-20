@@ -24,6 +24,7 @@
  *   holeProjektakte — nur lesend)
  * - public/leitstand/views/projektakte.js (F46 D1: holeProjektakte, holeRoadmap)
  * - public/leitstand/code-stand.js (F46 D4: holeCode), public/leitstand/views/code.js (F46 D4: holeCodeDiff)
+ * - public/leitstand/ablauf-code-stand.js (F45 B2b-4a-2b-2: holeAblaufCode — GET …/code?workflow=<id>)
  * - public/leitstand/views/nutzung.js (F44 WS-2b: holeVerbrauch)
  * - public/leitstand/fokus-daten.js (F44 WS-2b: holeWorkflowDetail, holeAbnahme, holeLaufDetail)
  * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
@@ -258,6 +259,19 @@ const CODE_ZEITLIMIT_MS = 30000
 // der aktuellen Dateiliste steht (400 sonst → Wurf).
 export const holeCode = () => holeJsonOderWirf(mitPraefix('/code'), { signal: AbortSignal.timeout(CODE_ZEITLIMIT_MS) })
 export const holeCodeDiff = (pfad) => holeJsonOderWirf(mitPraefix(`/code/diff?pfad=${encodeURIComponent(pfad)}`), { signal: AbortSignal.timeout(CODE_ZEITLIMIT_MS) })
+
+/**
+ * F45 B2b-4a-2b-2 (F-1087, F-1157 (4)(5)): Stand des Arbeitsordners eines Ablaufs — dieselbe Leseroute mit ?workflow=<id>. Nur über
+ * ablauf-code-stand.js (geöffnete Karte bzw. Abnahme, je Schlüssel einmal), nie aus dem Poll. Anders als holeCode wirft eine
+ * Nicht-2xx-Antwort nicht: 409 mit grund_schluessel ist eine Lage (z. B. aufgeräumt), kein Fehler; nur ein Netzfehler wirft.
+ * @param workflowId - Kennung des Ablaufs
+ * @returns Promise<{ http: number, koerper: object }>
+ */
+export async function holeAblaufCode(workflowId) {
+  const antwort = await fetch(mitPraefix(`/code?workflow=${encodeURIComponent(workflowId)}`), { signal: AbortSignal.timeout(CODE_ZEITLIMIT_MS) })
+  const koerper = await antwort.json().catch(() => ({}))
+  return { http: antwort.status, koerper: koerper !== null && typeof koerper === 'object' ? koerper : {} }
+}
 
 // F46 D6: Leseroute Harness-Aufbau (scripts/leitstand/routen-harness.mjs) — feste Liste bekannter Orte in sechs
 // Bausteinen (Dateien mit Größe, Ordner eine Ebene gezählt) und der gekappte Inhalt genau einer Datei daraus. Nur

@@ -72,8 +72,10 @@
 import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, holeRoadmap, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { baueAkEntwurf, baueAkzeptanzkriterien } from '../ak-entwurf.js'
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
-import { sicherBefehle } from '../code-daten.js'
+import { abonniereAblaufCodeStand, ladeAblaufCodeStand, stelleAblaufCodeStandSicher } from '../ablauf-code-stand.js'
+import { sicherBefehle, sichernQuelle } from '../code-daten.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
+import { behandleSichernKlick, sichernFuerAblauf } from './ablauf-sichern-anzeige.js'
 import { kuerzeText } from '../eintrag-bausteine.js'
 import { ENTWICKLUNG_REGISTER, entwicklungsReiterHtml } from '../entwicklung-reiter.js'
 import { baueVsCodeLink, pruefeGithubUrl } from '../kopf-werkzeuge.js'
@@ -764,9 +766,18 @@ function renderSchrittkette(daten) {
  * der Leseroute über code-stand.js; nie `git add -A`/`git add .`, CLAUDE.md). Fehlt der Stand oder
  * gibt es nichts Sicheres zu zeigen, steht der Grund da und der Weg zu #/code. Der Skill-Name steht im
  * Hinweis als {skill} (Satzstellung je Sprache).
+ * F45 B2b-4a-2b-2 (F-1087, F-1157 (4)(8) Befund 6): Quelle aus dem Feld arbeitsordner des Ablaufs (sichernFuerAblauf). Jeder Ablauf
+ * mit eigenem Arbeitsordner zeigt den Abschnitt „Bereit zum Sichern“ aus GET …/code?workflow=<id> (ablauf-code-stand.js, je
+ * Neuladen-Schlüssel einmal; Aufräumen als Link auf die Seite des Ablaufs); nur der Projektordner (bestand) behält den Block unten;
+ * kein_bedarf bzw. ein Feld unbekannt ⇒ ein Satz. Grenze (Bauauflage 6): nach „abgeschlossen“ fragt das Workboard das Detail nicht
+ * mehr ab — ein späteres Aufräumen erscheint hier nur über „Aktualisieren“.
+ * @param zustand - bearbeitungsZustand in Phase 'abgeschlossen' (workflowId, workflowDetail)
  * @returns HTML
  */
-function renderTerminalBlock() {
+function renderTerminalBlock(zustand) {
+  const sichern = sichernFuerAblauf({ workflowId: zustand.workflowId, detail: zustand.workflowDetail ?? null, aufraeumen: { art: 'link' }, stelle: stelleAblaufCodeStandSicher })
+  if (sichern.quelle === 'ablauf') return `<section class="workboard-git">${sichern.html}</section>`
+  if (sichern.quelle !== 'projekt') return `<section class="workboard-git" aria-labelledby="workboard-git-titel"><h3 id="workboard-git-titel">${tHtml('entwicklung.ctw.git.titel')}</h3>${sichern.html}</section>`
   const stand = aktuellerCodeStand()
   let block
   if (stand.daten === null) {
@@ -863,7 +874,8 @@ function renderBearbeitungsInhalt(workitem, zustand) {
   if (zustand.phase === 'gestartet' || zustand.phase === 'abgeschlossen') {
     // F46 D4: Der Block „Sichern“ braucht den Stand NACH dem Lauf — einmal je Ablauf neu laden, sobald er
     // abgeschlossen ist (Prüfpass qa 2, cr 4); ein weiterer Render-Tick aus dem Poll löst kein Git aus.
-    if (zustand.phase === 'abgeschlossen' && zustand.workflowId !== codeStandNachAblauf) {
+    // F45 B2b-4a-2b-2: nur, wenn im Projektordner gearbeitet wurde — sonst liest renderTerminalBlock den Arbeitsordner.
+    if (zustand.phase === 'abgeschlossen' && sichernQuelle(zustand.workflowDetail?.arbeitsordner) === 'projekt' && zustand.workflowId !== codeStandNachAblauf) {
       codeStandNachAblauf = zustand.workflowId
       void ladeCodeStand({ neu: true })
     }
@@ -871,7 +883,7 @@ function renderBearbeitungsInhalt(workitem, zustand) {
       <h3 id="workboard-kette-titel" ${FOKUS}>${tHtml('entwicklung.ctw.kette.titel')}</h3>
       <p>${tHtml('entwicklung.ctw.kette.status')}: <code>${escapeHtml(daten?.status ?? '')}</code> · <a href="#/workflows/${encodeURIComponent(zustand.workflowId ?? '')}">${tHtml('uebersicht.rolle.link')}</a></p>
       ${renderSchrittkette(daten)}
-    </section>${zustand.phase === 'abgeschlossen' ? renderTerminalBlock() : ''}`
+    </section>${zustand.phase === 'abgeschlossen' ? renderTerminalBlock(zustand) : ''}`
   }
   return ''
 }
@@ -1740,12 +1752,10 @@ function initBearbeitungBedienung() {
   document.getElementById('workboard-bearbeitung').addEventListener('click', (ereignis) => {
     // F-922: ein gesperrter Einstieg (disabled/aria-disabled) löst nichts aus — auch nicht über eine künstliche Klickfolge.
     if (ereignis.target.closest('[aria-disabled="true"]') !== null) return
-    // F46 D4 (F-958): „Kopieren“ im Befehlsblock „Sichern“ — nur Zwischenablage, nichts wird ausgeführt.
-    const kopieren = ereignis.target.closest('[data-befehl-kopieren]')
-    if (kopieren !== null) {
-      void kopiereBefehlsblock(kopieren)
-      return
-    }
+    // F46 D4 (F-958): „Kopieren“ im Befehlsblock „Sichern“ — nur Zwischenablage, nichts wird ausgeführt. F45 B2b-4a-2b-2
+    // (Advisor-Delta 4a 15, Code-Review 6): dazu „Aktualisieren“ im Abschnitt „Bereit zum Sichern“ — dieselbe Regel wie die
+    // Ablaufseite; einziger Weg zu einem neuen Stand nach „abgeschlossen“ (Bauauflage 6).
+    if (behandleSichernKlick(ereignis, { kopiere: kopiereBefehlsblock, aktualisiere: (id) => ladeAblaufCodeStand(id, { neu: true }) })) return
     const bearbeitenKnopf = ereignis.target.closest('#workboard-bearbeiten')
     if (bearbeitenKnopf) {
       const workitem = findeWorkitem(bearbeitenKnopf.dataset.id)
@@ -1852,6 +1862,14 @@ export function initWorkboardView() {
   // offenes Detail neu — „Pull Requests“, VS-Code-Pfad und der Block „Sichern“ hängen daran.
   abonniereCodeStand(() => {
     if (seiteAktiv && gewaehlteId !== null) renderDetailNachtrag()
+  })
+  // F45 B2b-4a-2b-2 (Advisor 1): kommt der Stand „Bereit zum Sichern“ an (erster Abruf, „Aktualisieren“), zeichnet der
+  // Click-to-Work-Bereich des offenen Details neu — nur bei passendem Ablauf in Phase „abgeschlossen“.
+  abonniereAblaufCodeStand((workflowId) => {
+    const zustand = bearbeitungsZustand
+    if (!seiteAktiv || gewaehlteId === null || zustand === null || zustand.phase !== 'abgeschlossen' || zustand.workflowId !== workflowId || zustand.workitemId !== gewaehlteId) return
+    const workitem = findeWorkitem(gewaehlteId)
+    if (workitem !== null) renderBearbeitungsAbschnitt(workitem, false)
   })
 
   // F44 WS-1a (F-860): beim Projektwechsel allen projektgebundenen Zustand verwerfen. Neu geladen

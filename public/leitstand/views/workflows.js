@@ -35,6 +35,11 @@
  * Ausführungslaufs (kanalDerAbnahme, GET /api/laeufe/<laufId> über kanalDerSichtung), beide die Zeile zur abweichenden
  * Claude-Code-Version (zustand.projektCliHinweis, letzterProjektCliHinweis). Aufgeklappte Abschnitte (<details data-klappe>) der Seite
  * Entscheiden bleiben über das Neuzeichnen offen (setzeHtml).
+ *
+ * F45 B2b-4a-2b-2 (F-979, F-1087, F-1157): die Karte „Wo gearbeitet wird“ steht auf der Abnahme- und — bei ABGESCHLOSSEN/GESTOPPT —
+ * auf der Ablaufseite und trägt den Abschnitt „Bereit zum Sichern“ (views/ablauf-sichern-anzeige.js); Stand je Ablauf über
+ * ablauf-code-stand.js (GET …/code?workflow=<id>, je Neuladen-Schlüssel einmal, nur auf der Detailroute, nie aus dem Poll). Kopieren
+ * und Aktualisieren über behandleEntscheidenKlick.
  */
 
 import {
@@ -55,6 +60,8 @@ import {
   wiederholePruefer,
   wiederholeWorkflowPruefung,
 } from '../api.js'
+import { ablaufCodeStand, abonniereAblaufCodeStand, ladeAblaufCodeStand, stelleAblaufCodeStandSicher } from '../ablauf-code-stand.js'
+import { kopiereBefehlsblock } from '../befehlsblock.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
@@ -63,6 +70,7 @@ import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzeige.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
+import { aufraeumenArt, behandleSichernKlick, sichernFuerAblauf } from './ablauf-sichern-anzeige.js'
 import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDialog } from './arbeitsordner-anzeige.js'
 import { bedienZustand } from './entscheidung-panel.js'
 import { abnahmeLage, ausfuehrungGelaufen, budgetKennung, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung, umfangKennung } from './workflow-abnahme.js'
@@ -427,14 +435,14 @@ function zeichneEntscheiden() {
   // F45 B1a-1: offene Änderungen des Projektordners aus der Leseroute …/code (nie aus dem Poll; einmal je Projekt).
   if (modusNeu === 'freigabe' && aktuellerCodeStand().zustand === 'leer') void ladeCodeStand()
   // F45 B1a-1 (QA-Pass, Befund 3): auf der Abnahme-Seite die Karte des Arbeitsordners offen — dort liegt das Ergebnis.
+  // F45 B2b-4a-2b-2: dazu auf der Ablaufseite eines beendeten Ablaufs; in der Karte der Abschnitt „Bereit zum Sichern“, ihr Knopf
+  // entfällt (Aufräumen steht genau einmal: unter den Aktionen, V3).
+  const mitKarte = modusNeu === 'abnahme' || (modusNeu === null && BEENDETE_STATUS.has(daten.status))
   const ordnerKontext = { workflowId, workflowStatus: daten.status ?? null, abnahmeOffen: istAbnahmeOffen(daten.status ?? null), loeschliste: letzteAbnahme?.aenderungsuebersicht?.daten?.loeschliste ?? null }
+  const karte = () => renderArbeitsordnerKarte(aktuellesDetail.arbeitsordner ?? null, aktuellerCodeStand(), { ...ordnerKontext, sichernHtml: sichernHtmlDerKarte(), ohneKnopf: true })
   setzeHtml(
     'workflow-entscheiden',
-    modusNeu === 'freigabe'
-      ? renderFreigabeSeite({ ...aktuellesDetail, codeStand: aktuellerCodeStand(), projektCliHinweis: letzterProjektCliHinweis })
-      : modusNeu === 'abnahme'
-        ? renderArbeitsordnerKarte(aktuellesDetail.arbeitsordner ?? null, aktuellerCodeStand(), ordnerKontext)
-        : ''
+    modusNeu === 'freigabe' ? renderFreigabeSeite({ ...aktuellesDetail, codeStand: aktuellerCodeStand(), projektCliHinweis: letzterProjektCliHinweis }) : mitKarte ? karte() : ''
   )
   document.getElementById('workflow-entscheidung').hidden = modusNeu === null || panelArt !== modusNeu
   document.getElementById('workflow-detail').classList.toggle('entscheiden-modus', modusNeu !== null)
@@ -453,6 +461,38 @@ function zeichneEntscheiden() {
   if (/^#\/workflows\/[^/]+$/.test(location.hash ?? '')) markiereNav(modusNeu)
   aktualisiereZurueck()
   heileSpalte(modusNeu)
+}
+
+/** Workflow-Status eines beendeten Ablaufs (Karte mit „Bereit zum Sichern“ auch ohne Entscheidungsmodus). */
+const BEENDETE_STATUS = new Set(['ABGESCHLOSSEN', 'GESTOPPT'])
+
+/**
+ * F45 B2b-4a-2b-2 (F-1087, F-1157 (4)): Abschnitt „Bereit zum Sichern“ der Karte für das aktuelle Detail (sichernFuerAblauf). Der
+ * Stand kommt je Neuladen-Schlüssel (V1) höchstens einmal — der Poll zeichnet neu, ruft aber nicht erneut ab; abgerufen wird nur auf
+ * der Detailroute (der Auffrischer lädt das Detail auch auf anderen Seiten nach, Advisor 5), sonst nur gelesen.
+ * @returns HTML
+ */
+function sichernHtmlDerKarte() {
+  const { workflowId, daten, arbeitsordner } = aktuellesDetail
+  const aufDetail = /^#\/workflows\/[^/]+$/.test(location.hash ?? '')
+  const status = daten.status ?? null
+  return sichernFuerAblauf({
+    workflowId,
+    detail: aktuellesDetail,
+    aufraeumen: { art: aufraeumenArt({ workflowStatus: status, ao: arbeitsordner, abnahmeOffen: istAbnahmeOffen(status) }) },
+    stelle: aufDetail ? stelleAblaufCodeStandSicher : ablaufCodeStand,
+  }).html
+}
+
+/**
+ * F45 B2b-4a-2b-2: Klicks in #workflow-entscheiden außerhalb von .wf-aktion — „Kopieren“ eines Befehlsblocks (nur Zwischenablage)
+ * und „Aktualisieren“ des Abschnitts „Bereit zum Sichern“ (eine Regel mit dem Workboard: behandleSichernKlick).
+ * @param ereignis - Klick-Ereignis
+ * @param abh - { kopiere: (knopf) => Promise, aktualisiere: (workflowId) => Promise }
+ * @returns true, wenn der Klick behandelt wurde
+ */
+export function behandleEntscheidenKlick(ereignis, abh) {
+  return behandleSichernKlick(ereignis, abh)
 }
 
 /** true, solange heileSpalte neu zeichnet (kein Wiedereintritt über aktualisiereAbnahme → zeichneEntscheiden). */
@@ -1148,7 +1188,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
     // F45 B2b-1b-2b: planFreigabe (Karten der Freigabe-Seite) und prueferWiederholbar („Advisor wiederholen“) aus dem Detail.
     const prueferWiederholbar = detail.prueferWiederholbar === true
-    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null, planFreigabe: detail.planFreigabe ?? null, prueferWiederholbar, budget: detail.budget ?? null, auftragstext: detail.auftragstext ?? null }
+    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung, arbeitsordner: detail.arbeitsordner ?? null, einrichtung: detail.einrichtung ?? null, planFreigabe: detail.planFreigabe ?? null, prueferWiederholbar, budget: detail.budget ?? null, auftragstext: detail.auftragstext ?? null, versionSequenz: detail.versionSequenz ?? null }
     aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung, detail.arbeitsordner ?? null, prueferWiederholbar, detail.budget ?? null)
     pruefeAusstehendeVorbereitung(workflowId, detail)
     // F46 D2: Kopf, Freigabe-Teil und Lage der Bereiche je Modus (Freigabe, Abnahme oder heutige Ablaufseite).
@@ -1533,6 +1573,10 @@ function initWorkflowBedienung() {
       }
     })
   }
+  // F45 B2b-4a-2b-2: „Kopieren“ und „Aktualisieren“ im Abschnitt „Bereit zum Sichern“ der Karte (Abnahme- und Ablaufseite).
+  document.getElementById('workflow-entscheiden').addEventListener('click', (ereignis) => {
+    behandleEntscheidenKlick(ereignis, { kopiere: kopiereBefehlsblock, aktualisiere: (id) => ladeAblaufCodeStand(id, { neu: true }) })
+  })
   // Auswahl und Begründung schalten den einen Knopf der Spalte frei (Absenden gesperrt, solange eins fehlt).
   for (const art of ['input', 'change']) document.getElementById('workflow-entscheidung').addEventListener(art, aktualisierePanelKnopf)
   document.getElementById('workflow-reparatur').addEventListener('input', (ereignis) => {
@@ -1618,5 +1662,9 @@ export function initWorkflowsView() {
   // F45 B1a-1: kommt der Code-Stand (offene Änderungen des Projektordners) an, zeichnet die Freigabe-Seite neu.
   abonniereCodeStand(() => {
     if (modus === 'freigabe') zeichneEntscheiden()
+  })
+  // F45 B2b-4a-2b-2: kommt der Stand „Bereit zum Sichern“ des offenen Ablaufs an, zeichnet die Karte neu (nur dieses Detail).
+  abonniereAblaufCodeStand((workflowId) => {
+    if (aktuellesDetail?.workflowId === workflowId) zeichneEntscheiden()
   })
 }

@@ -31,6 +31,8 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/code.js, public/leitstand/views/workboard.js, public/leitstand/views/auftrag-umgebung.js
+ * - public/leitstand/views/workflows.js, public/leitstand/views/ablauf-sichern-anzeige.js (sichernQuelle, sichernSchluessel,
+ *   ablaufSicherBefehle, nodeModulesAnzahl: Abschnitt „Bereit zum Sichern“, F45 B2b-4a-2b-2)
  * - public/leitstand/befehlsblock.js (istBlockform: Zählung und Enter-Hinweis)
  * - scripts/leitstand/routen-code.mjs (istNodeModulesPfad: Dateiliste ohne neue node_modules-Dateien, F45 B2b-4a-2b-1)
  * - scripts/leitstand-server.mjs (cdZeile: cd-Zeile der Jarvis-Regel, F45 B2a-3a/B2a-3b — dieselbe Quoting-Quelle

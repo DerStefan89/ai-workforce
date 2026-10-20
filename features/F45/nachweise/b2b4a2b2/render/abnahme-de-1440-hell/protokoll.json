@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Abnahme offen — de-1440-hell",
+    "Abschnitt": true,
+    "Befehlsblock": true,
+    "Knopf Aufräumen in der Karte": false,
+    "Fehlerfarbe im Abschnitt": false,
+    "Lage/erste Zeile": "2 geänderte Dateien im Arbeitsordner",
+    "Aufräumen": "Aufräumen erst nach deiner Abnahme — dann steht der Knopf „Arbeitsordner aufräumen“ unter den Aktionen.",
+    "Schritt 2": "PushenNach dem Commit den Branch pushen: POWERSHELL 2 Befehle · nacheinander Kopieren & {Set-Location -LiteralPath 'C:\\P",
+    "Schritt 3": "Pull Request und Merge im WebPull Request anlegen und im Web mergen, danach den Arbeitsordner aufräumen. Repository im W",
+    "node_modules": "(fehlt)",
+    "Knopf Kopieren": "Kopieren",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "sauber"
+  },
+  {
+    "label": "Abnahme: Kopieren commit-Block — de-1440-hell",
+    "Abschnitt": true,
+    "Befehlsblock": true,
+    "Knopf Aufräumen in der Karte": false,
+    "Fehlerfarbe im Abschnitt": false,
+    "Lage/erste Zeile": "2 geänderte Dateien im Arbeitsordner",
+    "Aufräumen": "Aufräumen erst nach deiner Abnahme — dann steht der Knopf „Arbeitsordner aufräumen“ unter den Aktionen.",
+    "Schritt 2": "PushenNach dem Commit den Branch pushen: POWERSHELL 2 Befehle · nacheinander Kopieren & {Set-Location -LiteralPath 'C:\\P",
+    "Schritt 3": "Pull Request und Merge im WebPull Request anlegen und im Web mergen, danach den Arbeitsordner aufräumen. Repository im W",
+    "node_modules": "(fehlt)",
+    "Knopf Kopieren": "Kopiert",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "& {\r ⏎ Set-Location -LiteralPath 'C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4' -ErrorAction Stop\r ⏎ git add src/export/mon",
+    "Pfadprobe": "sauber"
+  }
+]

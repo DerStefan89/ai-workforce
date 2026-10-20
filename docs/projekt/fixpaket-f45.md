@@ -158,8 +158,12 @@ node_modules-Regel (`code-daten.js` `istNodeModulesPfad`; `routen-code.mjs` `les
 `dateien.nodeModules`; getrackte/gestagte bleiben), Hinweis „node_modules ausgelassen – fehlt in .gitignore“ in #/code, reine Regeln
 `ablaufSicherBefehle`/`sichernQuelle`/`sichernSchluessel` (push unabhängig von der Kappung, nur bei passendem Branch und origin; origin
 nicht lesbar sichtbar), Gate `check-f45-b2b4a2b1-regeln`; schließt F-1157 (1)(2)(3)(7) auf Regelebene; neu F-1160 (erledigt) →
-**B2b-4a-2b-2** Anzeige (Stand je Ablauf, Karte, Abnahme mit Kopieren, Workboard, Enter-Hinweis-Text, ein Aufräumen, volle Render-Matrix),
-eigener Auftrag nach dem Merge; schließt F-979, F-1087, Rest F-1157. Für B2b-4b vorgemerkt: Serverkommentar zu `baueProjektCdZeile` (`scripts/leitstand-server.mjs`, „die eine Quelle der Befehlsblöcke“) nachziehen, sobald die Jarvis-Regel die Blockform bekommt (4a-2a lässt den Server unberührt).
+**B2b-4a-2b-1 gemergt #368. B2b-4a-2b-2** Anzeige — gebaut (`plan-b2b4a2b2.md`, Delta-Advisor `advisor-b2b4a2b2.md` „Freigegeben mit
+Hinweisen“): Stand je Ablauf (`ablauf-code-stand.js`, GET …/code?workflow=<id> je Neuladen-Schlüssel einmal, nie im Poll), Abschnitt „Bereit
+zum Sichern“ in der Karte (Abnahme- und Ablaufseite) und im Workboard „abgeschlossen“ (Schritte commit · push bzw. Grund · Pull Request und
+Merge im Web, danach genau ein Aufräumen), 409 als Lage, GESTOPPT mit Änderungen, node_modules-Hinweis, Kopieren auf der Abnahme, neuer
+Enter-Hinweis ×4, Gate `check-f45-b2b4a2b2-anzeige`; schließt F-979, F-1087, F-1157; neu F-1161, F-1162. **B2b-4a ist damit abgeschlossen; offen in
+B2b-4 nur noch B2b-4b.** Für B2b-4b vorgemerkt: Serverkommentar zu `baueProjektCdZeile` (`scripts/leitstand-server.mjs`, „die eine Quelle der Befehlsblöcke“) nachziehen, sobald die Jarvis-Regel die Blockform bekommt (4a-2a lässt den Server unberührt).
 
 - **E-WART-1 = A** (Stefan, 16.10.2026, entschieden): `scripts/leitstand-server.mjs` (≈ 13 455 Zeilen, nächstgrößte Datei ≈ 3 500; F-371 forderte die Aufteilung ab > 6 000) wird jetzt nur gebremst (W1, Gate mit straffer Ratsche), aufgeteilt erst im Aufräumpaket W2 nach B3, vor R. Dazu (W1-Advisor-Pass, Nachentscheid nach dem Bericht): Rot-Nachweis (a2)/(b2) mit echtem git als Challenger-Cloud-Prüfung nach dem Push, CI checkt mit `fetch-depth: 0` aus und prüft (a2)/(b2); straffe Ratsche für Zeilen und Routen; Ausgleich bis W2 durch Auslagern reiner Helfer, schreibende Aufrufe bleiben im Server.
 

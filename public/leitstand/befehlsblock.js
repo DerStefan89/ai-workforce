@@ -20,7 +20,8 @@
  * im schmalen Dock um, ist die Fortsetzung eingerückt und nicht mit einem neuen Befehl zu verwechseln.
  *
  * Blockform (F45 B2b-4a-2a, code-daten.js befehlsBlock): ein Block „& { … }“ zählt ohne Kopf und Fuß und trägt unter
- * dem Code den Hinweis „Nach dem Einfügen einmal Enter drücken“.
+ * dem Code den Hinweis „Nach dem Einfügen Enter drücken – erscheint „>>“, noch einmal Enter.“ (Wortlaut F45 B2b-4a-2b-2: PowerShell
+ * zeigt bei einem offenen Block die Fortsetzungsmarke „>>“ und braucht dann ein zweites Enter).
  *
  * Kopieren: navigator.clipboard.writeText mit den Zeilen des Blocks, mit \n verbunden. Danach
  * zeigt der Knopf kurz „Kopiert“ (keine Live-Region — die einzige gehört der Persona). Ohne
