@@ -11000,7 +11000,8 @@ th {
 }
 
 .code-sichern-kopf .subtle,
-.code-sichern-grund {
+.code-sichern-grund,
+.code-node-modules {
   margin: 0;
   font-size: 12px;
 }

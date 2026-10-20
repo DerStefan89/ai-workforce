@@ -27,7 +27,7 @@
 
 import { holeArbeitsordner, holeCodeDiff } from '../api.js'
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
-import { commitUrl, FREIGABE_MINUTEN, filtereVerlauf, freigabeZustand, gruppiereNachOrdner, nameVon, pruefstandBefehle, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from '../code-daten.js'
+import { commitUrl, FREIGABE_MINUTEN, filtereVerlauf, freigabeZustand, gruppiereNachOrdner, nameVon, nodeModulesAnzahl, pruefstandBefehle, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from '../code-daten.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { renderArbeitsordnerListe } from './arbeitsordner-anzeige.js'
 import { entwicklungsReiterHtml } from '../entwicklung-reiter.js'
@@ -245,6 +245,7 @@ function sichernHtml(daten, veraltet) {
   const befehle = sicherBefehle(daten, { veraltet })
   const block = befehle.bloecke ? renderBloecke(befehle.bloecke) : `<p class="subtle code-sichern-grund">${tHtml(`code.sichern.grund.${befehle.grund}`)}</p>`
   const hinweise = (befehle.hinweise ?? []).map((h) => `<p class="subtle code-sichern-grund">${tHtml(`code.sichern.hinweis.${h}`)}</p>`).join('')
+  // Der Hinweis 'nodeModules' (F45 B2b-4a-2b-1) sagt nur „in keinem git add“; Anzahl und Abhilfe stehen unter der Dateiliste.
   const lauf = aktiverLauf?.aktiv === true ? `<div class="note amber"><p>${tHtml('code.sichern.laeuft')}</p></div>` : ''
   return `<div class="code-sichern">
       <div class="code-sichern-kopf"><h3>${tHtml('code.sichern.titel')}</h3><span class="subtle">${tHtml('code.sichern.hinweis')}</span></div>
@@ -265,10 +266,14 @@ function standHtml(stand) {
   }
   if (daten.status !== 'ok') return `<h2 id="code-stand-titel">${tHtml('code.stand.titel')}</h2>${notiz('amber', 'code.nichtVerfuegbar', daten.grund ?? null)}`
   const dateien = daten.dateien
+  // F45 B2b-4a-2b-1 (O2): ausgelassene neue node_modules-Dateien sichtbar, nie still — nur wenn wirklich welche fehlen.
+  const nodeModules = nodeModulesAnzahl(daten)
+  const nmHinweis = nodeModules > 0 ? `<p class="subtle code-node-modules">${tHtml('code.dateien.nodeModules', { anzahl: nodeModules, zahl: formatiereZahl(nodeModules) })}</p>` : ''
   let mitte
   if (dateien?.status !== 'ok') mitte = notiz('red', 'code.dateien.fehler', dateien?.grund ?? null)
-  else if (dateien.eintraege.length === 0) mitte = `<p class="code-sauber">${tHtml('code.dateien.keine')}</p>`
-  else mitte = `<div class="code-arbeitsstand">${dateienHtml(dateien)}${diffHtml(daten)}</div>`
+  // Nur node_modules offen: ein Satz mit Anzahl statt „sauber“ plus Hinweis (Design-Prüfung 2).
+  else if (dateien.eintraege.length === 0) mitte = `<p class="code-sauber">${nodeModules > 0 ? tHtml('code.dateien.nurNodeModules', { anzahl: nodeModules, zahl: formatiereZahl(nodeModules) }) : tHtml('code.dateien.keine')}</p>`
+  else mitte = `<div class="code-arbeitsstand">${dateienHtml(dateien)}${diffHtml(daten)}</div>${nmHinweis}`
   return `${standKopfHtml(daten)}${mitte}${sichernHtml(daten, stand.zustand === 'fehler')}`
 }
 

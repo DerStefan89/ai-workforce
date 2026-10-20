@@ -8477,13 +8477,22 @@ Maßnahme: UX-Runde nach R (Entscheidung Challenger 19.10.2026: in B2b-4 zurück
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-4 (Advisor-Pass `features/F45/advisor-b2b4.md` 9e), 19.10.2026.
 
-**F-1157** · `TECH_DEBT` · P2 · offen
+**F-1157** · `TECH_DEBT` · P2 · teilweise
 Titel: Auflagen aus dem Prüfpass von B2b-4a-1 an B2b-4a-2 (Anzeige „Bereit zum Sichern“).
 Beschreibung: Die Ableitung (`scripts/leitstand/ablauf-sichern.mjs`) liefert bewusst nur die Lage; der Befehlsblock und die Anzeige in 4a-2 müssen: (1) node_modules ohne `.gitignore` berücksichtigen — nach `npm ci` im Arbeitsordner eines Fremdprojekts zählt `git status --untracked-files=all` node_modules/ als neu (Tausende Einträge, `gekappt`, „bereit (commit)“ ohne Änderung des Ablaufs; bei sehr großer Ausgabe `nichtBestimmbar`); Anzahl und Kappung zeigen, kein pauschales Stagen (qa 6, code-reviewer 1); (2) vor einem Push-Block `branch.losgeloest`, `branch.name` gegen `ablauf.arbeitsordner.branch` und `remoteWebUrl.origin` prüfen — die Ableitung meldet auch bei losgelöstem HEAD oder fremdem Branch „bereit (push)“ (qa 5, Advisor-Delta 4a-1 15); (3) Befehle nur aus `ablauf.arbeitsordner.pfad/branch` bauen, nie aus der zurückgegebenen `workflowId` (code-reviewer 5); (4) GET …/code?workflow= nur für die geöffnete Karte bzw. Abnahme abrufen, nie im Poll für alle Karten — je Abruf ≈ 10 Git-Prozesse und synchrones Lesen der Checkpoint-Ketten (qa 7); (5) 409 mit `grund_schluessel` ist eine Lage (z. B. `aufgeraeumt` als normaler Endzustand), kein Fehler; bei 400/404 ist der Schlüssel `null` (qa 8); (6) GESTOPPT mit offenen Änderungen auf Aufräumen/Verwerfen verweisen (`offeneAenderungen` wird geliefert; qa 2); (7) Text je Grund übersetzen und `keinArbeitsordner` für `kein_bedarf` (nichts zu sichern) und `bestand` (Projektordner) trennen (code-reviewer 9); (8) Advisor-Delta 4a 8–20, soweit sie C betreffen, und Befund 6 (jeder Ablauf mit Arbeitsordner über `?workflow=`).
 Fundstelle: `scripts/leitstand/ablauf-sichern.mjs`, `public/leitstand/code-daten.js` (`sicherBefehle`), `public/leitstand/views/workboard.js`, `public/leitstand/views/workflows.js`, `public/leitstand/views/arbeitsordner-anzeige.js`.
 Auswirkung: Mittel — ohne die Auflagen zeigte 4a-2 irreführende oder zu breite Befehle.
 Maßnahme: in den Plan von B2b-4a-2 übernehmen.
-Status: offen.
+Status: teilweise — (1), (2), (3), (7) erledigt auf Regelebene (F45 B2b-4a-2b-1, 20.10.2026, `features/F45/plan-b2b4a2b.md`):
+(1) `scripts/leitstand/routen-code.mjs` `leseDateien` nimmt neue, ungetrackte Dateien unter node_modules (Regel `istNodeModulesPfad` in
+`public/leitstand/code-daten.js`) vor der Kappung heraus und meldet ihre Anzahl (`dateien.nodeModules`); getrackte/gestagte bleiben; kein
+Block stagt sie; #/code zeigt „node_modules ausgelassen – fehlt in .gitignore“ nur bei ausgelassenen Dateien; `ablauf.sichern` zählt sie
+nicht mehr ⇒ ein Arbeitsordner nur mit node_modules ist nicht „bereit (commit)“. (2)/(3) `ablaufSicherBefehle`: Ort und Branch nur aus
+`ablauf.arbeitsordner`, Branch-Prüfung (losgelöst, main, fremder Branch) vor jedem Block, push nur bei origin und Commits noch nicht auf
+main bzw. commit-Block davor, unabhängig von der Kappung; origin nicht lesbar ⇒ sichtbarer Hinweis. (7) `sichernQuelle` trennt
+`kein_bedarf` (nichts zu sichern) und `bestand` (Projektordner); Gründe/Hinweise in de/en/tr/ru. Gate `scripts/check-f45-b2b4a2b1-regeln.mjs`.
+Rest: (4), (5), (6), (8) und die Anzeige der Regeln in Karte/Abnahme/Workboard folgen in B2b-4a-2b-2; Grenze von (1): übersteigt die
+Ausgabe von `git status` den Puffer, bleibt `nichtBestimmbar`.
 Feature/Run: Entdeckt: F45 B2b-4a-1 (code-reviewer, qa), 19.10.2026.
 
 **F-1158** · `TECH_DEBT` · P3 · offen
@@ -8503,3 +8512,12 @@ Auswirkung: Gering — der Fehler steht sichtbar in der Shell; der Commit lässt
 Maßnahme: Nach jeder `git add`-Zeile `if ($LASTEXITCODE -ne 0) { return }` (in der Blockform billig) — beim nächsten Eingriff in `sicherBefehle` (B2b-4a-2b), vorher in PowerShell ausprobieren.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-4a-2a (qa 4), 19.10.2026.
+
+**F-1160** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: Challenger-Commit-Block prüfte „NICHT GESTAGT“ mit `git status --short` und brach fälschlich ab.
+Beschreibung: Der Commit-Block des Challengers prüfte nach dem gezielten Stagen, ob noch etwas „NICHT GESTAGT“ ist, mit `git status --short` — das listet auch Gestagtes; der Block brach deshalb ab, obwohl alles richtig gestagt war.
+Fundstelle: Commit-Block des Challengers (Freigabe/Commit nach einer Iteration).
+Auswirkung: Gering — Fehlabbruch, kein falscher Commit.
+Maßnahme: Regel: Nicht Gestagtes über `git diff --name-only` (geänderte, nicht gestagte) plus `git ls-files --others --exclude-standard` (neue, unverfolgte) prüfen, nie über `git status --short`.
+Status: erledigt — Regel angewandt ab 19.10.2026.
+Feature/Run: Entdeckt: F45 B2b-4a-2a (Commit durch den Challenger), 19.10.2026; eingetragen F45 B2b-4a-2b-1, 20.10.2026.

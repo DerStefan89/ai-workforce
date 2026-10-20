@@ -32,7 +32,8 @@ import {
   pruefeCodeHerkunft,
   pruefeDiffPfad,
 } from './routen-code.mjs'
-import { sicherBefehle } from '../../public/leitstand/code-daten.js'
+import { ablaufSicherBefehle, sicherBefehle } from '../../public/leitstand/code-daten.js'
+import { leiteSichernLageAb } from './ablauf-sichern.mjs'
 
 /** Führt git im Test-Repo aus (nur zum Aufbau der Fixtures). */
 function g(repo, ...args) {
@@ -360,6 +361,77 @@ test('Sichern ausgeführt (PowerShell): git add der Leseroute staged alles — U
     assert.deepEqual(rest, [], 'nach git add ist alles gestaged')
     assert.ok(porcelain(repo).some((z) => z.startsWith('D ') && z.endsWith('zweite.txt')), 'gestagte Löschung bleibt gestaged')
   })
+})
+
+test('node_modules (F45 B2b-4a-2b-1, O2): neue Dateien darunter zählen nicht und kappen nicht; getrackte und gestagte bleiben', async () => {
+  const repo = mkdtempSync(join(tmpdir(), 'f45-code-nm-'))
+  try {
+    g(repo, 'init', '-q', '-b', 'main')
+    mkdirSync(join(repo, 'node_modules'))
+    writeFileSync(join(repo, 'node_modules', 'vendored.js'), 'alt\n')
+    writeFileSync(join(repo, 'a.txt'), 'a\n')
+    g(repo, 'add', 'a.txt', 'node_modules/vendored.js')
+    g(repo, 'commit', '-q', '-m', 'start')
+    g(repo, 'checkout', '-q', '-b', 'feat/f45-nm-test')
+    // getrackt geändert und neu gestagt — bleiben; neu ungetrackt (oben und als Pfadteil) — fallen heraus.
+    writeFileSync(join(repo, 'node_modules', 'vendored.js'), 'neu\n')
+    writeFileSync(join(repo, 'node_modules', 'gestagt.js'), 'g\n')
+    g(repo, 'add', 'node_modules/gestagt.js')
+    mkdirSync(join(repo, 'node_modules', 'pkg'))
+    for (let i = 0; i < 505; i++) writeFileSync(join(repo, 'node_modules', 'pkg', `f${String(i).padStart(3, '0')}.js`), 'x')
+    mkdirSync(join(repo, 'paket', 'node_modules', 'x'), { recursive: true })
+    writeFileSync(join(repo, 'paket', 'node_modules', 'x', 'y.js'), 'y')
+    mkdirSync(join(repo, 'meine_node_modules'))
+    writeFileSync(join(repo, 'meine_node_modules', 'echt.js'), 'echt')
+    writeFileSync(join(repo, 'b.txt'), 'b\n')
+    const p = await baueCodeProjektion({ repoWurzel: repo })
+    assert.equal(p.dateien.status, 'ok')
+    assert.deepEqual(p.dateien.eintraege.map((e) => e.pfad).sort(), ['b.txt', 'meine_node_modules/echt.js', 'node_modules/gestagt.js', 'node_modules/vendored.js'])
+    assert.equal(p.dateien.anzahl, 4)
+    assert.equal(p.dateien.gekappt, false, 'neue node_modules-Dateien kappen die Liste nicht')
+    assert.equal(p.dateien.nodeModules, 506)
+    const befehle = sicherBefehle(p)
+    assert.deepEqual(befehle.hinweise, ['keinOrigin', 'nodeModules'], 'ohne origin; Hinweis node_modules sichtbar')
+    const add = befehle.bloecke[0].filter((z) => z.startsWith('git add')).join(' ')
+    assert.match(add, /node_modules\/vendored\.js/)
+    assert.doesNotMatch(add, /node_modules\/pkg|paket\/node_modules/)
+    // Diff-Allowlist bleibt die ungekappte Ausgabe von git status — auch eine ausgelassene Datei ist dort gültig.
+    assert.equal((await baueCodeDiff({ repoWurzel: repo, pfad: 'paket/node_modules/x/y.js' })).http, 200)
+    // Mehr als 500 echte Dateien: gekappt, anzahl zählt nur die echten (cr 5).
+    for (let i = 0; i < 501; i++) writeFileSync(join(repo, `echt${String(i).padStart(3, '0')}.txt`), 'x')
+    const viele = await baueCodeProjektion({ repoWurzel: repo })
+    assert.deepEqual([viele.dateien.gekappt, viele.dateien.anzahl, viele.dateien.nodeModules], [true, 505, 506])
+  } finally {
+    raeumeVerzeichnis(repo)
+  }
+})
+
+test('node_modules bis zur Ableitung (F-1157 (1), qa 9): nur node_modules offen ⇒ nichtsOffen; mit Commit voraus ⇒ bereit (push) mit Hinweis', async () => {
+  const repo = mkdtempSync(join(tmpdir(), 'f45-code-nm-ablauf-'))
+  try {
+    g(repo, 'init', '-q', '-b', 'main')
+    writeFileSync(join(repo, 'a.txt'), 'a\n')
+    g(repo, 'add', 'a.txt')
+    g(repo, 'commit', '-q', '-m', 'start')
+    g(repo, 'checkout', '-q', '-b', 'wf/ablauf-1')
+    mkdirSync(join(repo, 'node_modules', 'pkg'), { recursive: true })
+    writeFileSync(join(repo, 'node_modules', 'pkg', 'index.js'), 'x')
+    const lage = (p) => leiteSichernLageAb({ workflowStatus: 'ABGESCHLOSSEN', bedarf: 'pflicht', projektion: p })
+    const nur = await baueCodeProjektion({ repoWurzel: repo })
+    assert.deepEqual([nur.dateien.anzahl, nur.dateien.nodeModules, lage(nur).grund], [0, 1, 'nichtsOffen'])
+    writeFileSync(join(repo, 'b.txt'), 'b\n')
+    g(repo, 'add', 'b.txt')
+    g(repo, 'commit', '-q', '-m', 'ablauf')
+    const voraus = await baueCodeProjektion({ repoWurzel: repo })
+    const s = lage(voraus)
+    assert.deepEqual([s.bereit, s.art], [true, 'push'])
+    g(repo, 'remote', 'add', 'origin', 'git@github.com:besitzer/repo-name.git')
+    const mitOrigin = await baueCodeProjektion({ repoWurzel: repo })
+    const befehle = ablaufSicherBefehle({ ...mitOrigin, ablauf: { workflowId: 'ablauf-1', bedarf: 'pflicht', workflowStatus: 'ABGESCHLOSSEN', arbeitsordner: { pfad: repo, branch: 'wf/ablauf-1' }, sichern: lage(mitOrigin) } })
+    assert.deepEqual([befehle.bloecke.map((b) => b.art), befehle.hinweise], [['push'], ['nodeModules']])
+  } finally {
+    raeumeVerzeichnis(repo)
+  }
 })
 
 test('Randfälle der Route: detached HEAD, ohne origin, ohne Commits, mehr als 500 Dateien, fehlender Ordner', async () => {
