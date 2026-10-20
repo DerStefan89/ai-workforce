@@ -1,0 +1,74 @@
+[
+  {
+    "label": "Workboard: Detail",
+    "Abschnitt": false,
+    "Projektordner-Block (alt)": false,
+    "Abschnitt Lage": "(fehlt)",
+    "Aufräumen": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Click-to-Work: Bearbeiten",
+    "Abschnitt": false,
+    "Projektordner-Block (alt)": false,
+    "Abschnitt Lage": "(fehlt)",
+    "Aufräumen": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Click-to-Work: Auftrag anlegen",
+    "Abschnitt": false,
+    "Projektordner-Block (alt)": false,
+    "Abschnitt Lage": "(fehlt)",
+    "Aufräumen": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Click-to-Work: Freigeben",
+    "Abschnitt": true,
+    "Projektordner-Block (alt)": false,
+    "Abschnitt Lage": "2 geänderte Dateien im Arbeitsordner",
+    "Aufräumen": "Aufräumen auf der Seite des Ablaufs",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "–"
+  },
+  {
+    "label": "Workboard abgeschlossen — de-1440-hell",
+    "Abschnitt": true,
+    "Projektordner-Block (alt)": false,
+    "Abschnitt Lage": "2 geänderte Dateien im Arbeitsordner",
+    "Aufräumen": "Aufräumen auf der Seite des Ablaufs",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "sauber"
+  },
+  {
+    "label": "Workboard: Kopieren — de-1440-hell",
+    "Abschnitt": true,
+    "Projektordner-Block (alt)": false,
+    "Abschnitt Lage": "2 geänderte Dateien im Arbeitsordner",
+    "Aufräumen": "Aufräumen auf der Seite des Ablaufs",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Zwischenablage": "& {\r ⏎ Set-Location -LiteralPath 'C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4' -ErrorAction Stop\r ⏎ git add src/export/mon",
+    "Pfadprobe": "–"
+  }
+]

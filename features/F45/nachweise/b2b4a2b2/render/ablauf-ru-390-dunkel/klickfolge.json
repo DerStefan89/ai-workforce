@@ -1,0 +1,1402 @@
+{
+  "url": "http://127.0.0.1:4408/#/workflows/w-haushalt-export",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 1600
+  },
+  "farbschema": "dark",
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workflows/w-haushalt-export",
+      "status": 200,
+      "json": {
+        "daten": {
+          "ziel": "Monatsexport als CSV",
+          "status": "ABGESCHLOSSEN",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "ERLEDIGT",
+              "nachfolger": null,
+              "lauf_id": null
+            }
+          ]
+        },
+        "naechster": null,
+        "arbeitsordner": {
+          "status": "BEREIT",
+          "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+          "branch": "wf/w-haushalt-export",
+          "basis_commit": "abc1234def5678"
+        },
+        "versionSequenz": 1
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/workflows/w-haushalt-export/abnahme",
+      "status": 200,
+      "json": {
+        "workflowStatus": "ABGESCHLOSSEN",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "ok",
+          "entscheidung": "ANGENOMMEN",
+          "begruendung": "passt",
+          "versionSequenz": 1
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/code?workflow=**",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+        "arbeitsverzeichnis": {
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "wf/w-haushalt-export",
+          "losgeloest": false,
+          "commit": "def5678abc1234"
+        },
+        "basis": {
+          "status": "ok",
+          "ref": "origin/main",
+          "voraus": 0,
+          "zurueck": 0
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": "https://github.com/beispiel/haushaltsbuch",
+          "origin": true
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [
+            {
+              "pfad": "src/export/monatsuebersicht.ts",
+              "art": "M",
+              "xy": " M",
+              "plus": 18,
+              "minus": 4
+            },
+            {
+              "pfad": "src/export/csv-export.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 41,
+              "minus": null
+            }
+          ],
+          "anzahl": 2,
+          "gekappt": false,
+          "nodeModules": 0
+        },
+        "verlauf": {
+          "status": "ok",
+          "ref": "origin/main",
+          "eintraege": []
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": true,
+          "hooks": 5,
+          "agents": 5
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlagen/beispielprojekt.json",
+          "pruefbefehl": "npm run check",
+          "werkzeugsaetze": [
+            "lesend"
+          ],
+          "worker": [
+            "claude-code"
+          ],
+          "modell": "claude-sonnet"
+        },
+        "ablauf": {
+          "workflowId": "w-haushalt-export",
+          "bedarf": "pflicht",
+          "workflowStatus": "ABGESCHLOSSEN",
+          "arbeitsordner": {
+            "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "branch": "wf/w-haushalt-export"
+          },
+          "sichern": {
+            "bereit": true,
+            "art": "commit",
+            "grund": null,
+            "offeneAenderungen": 2,
+            "voraus": 0
+          }
+        }
+      },
+      "methode": "GET"
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Lage/erste Zeile",
+        "selector": "#workflow-entscheiden .sichern-abschnitt p, #workflow-entscheiden .sichern-satz"
+      },
+      {
+        "name": "Aufräumen",
+        "selector": "#workflow-entscheiden [data-sichern-aufraeumen]"
+      },
+      {
+        "name": "Schritt 2",
+        "selector": "#workflow-entscheiden .sichern-schritt:nth-child(2)"
+      },
+      {
+        "name": "Schritt 3",
+        "selector": "#workflow-entscheiden .sichern-schritt:nth-child(3)"
+      },
+      {
+        "name": "node_modules",
+        "selector": "#workflow-entscheiden .code-node-modules"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Abschnitt",
+        "selector": "#workflow-entscheiden [data-sichern-abschnitt]"
+      },
+      {
+        "name": "Befehlsblock",
+        "selector": "#workflow-entscheiden .befehlsblock"
+      },
+      {
+        "name": "Knopf Aufräumen in der Karte",
+        "selector": "#workflow-entscheiden [data-aktion=\"aufraeumen-oeffnen\"]"
+      },
+      {
+        "name": "Fehlerfarbe im Abschnitt",
+        "selector": "#workflow-entscheiden .sichern-abschnitt .fehler"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Ablaufseite: 01-bereit-commit — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "ABGESCHLOSSEN",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "BEREIT",
+              "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+              "branch": "wf/w-haushalt-export",
+              "basis_commit": "abc1234def5678"
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "ABGESCHLOSSEN",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "ok",
+              "entscheidung": "ANGENOMMEN",
+              "begruendung": "passt",
+              "versionSequenz": 1
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "wf/w-haushalt-export",
+              "losgeloest": false,
+              "commit": "def5678abc1234"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 0,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": "https://github.com/beispiel/haushaltsbuch",
+              "origin": true
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [
+                {
+                  "pfad": "src/export/monatsuebersicht.ts",
+                  "art": "M",
+                  "xy": " M",
+                  "plus": 18,
+                  "minus": 4
+                },
+                {
+                  "pfad": "src/export/csv-export.ts",
+                  "art": "??",
+                  "xy": "??",
+                  "plus": 41,
+                  "minus": null
+                }
+              ],
+              "anzahl": 2,
+              "gekappt": false,
+              "nodeModules": 0
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            },
+            "ablauf": {
+              "workflowId": "w-haushalt-export",
+              "bedarf": "pflicht",
+              "workflowStatus": "ABGESCHLOSSEN",
+              "arbeitsordner": {
+                "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+                "branch": "wf/w-haushalt-export"
+              },
+              "sichern": {
+                "bereit": true,
+                "art": "commit",
+                "grund": null,
+                "offeneAenderungen": 2,
+                "voraus": 0
+              }
+            }
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-bereit-commit-ru-390-dunkel.webp"
+    },
+    {
+      "label": "Ablaufseite: 02-bereit-push — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "ABGESCHLOSSEN",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "BEREIT",
+              "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+              "branch": "wf/w-haushalt-export",
+              "basis_commit": "abc1234def5678"
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "ABGESCHLOSSEN",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "ok",
+              "entscheidung": "ANGENOMMEN",
+              "begruendung": "passt",
+              "versionSequenz": 1
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "wf/w-haushalt-export",
+              "losgeloest": false,
+              "commit": "def5678abc1234"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 3,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": "https://github.com/beispiel/haushaltsbuch",
+              "origin": true
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [],
+              "anzahl": 0,
+              "gekappt": false,
+              "nodeModules": 0
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            },
+            "ablauf": {
+              "workflowId": "w-haushalt-export",
+              "bedarf": "pflicht",
+              "workflowStatus": "ABGESCHLOSSEN",
+              "arbeitsordner": {
+                "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+                "branch": "wf/w-haushalt-export"
+              },
+              "sichern": {
+                "bereit": true,
+                "art": "push",
+                "grund": null,
+                "offeneAenderungen": 0,
+                "voraus": 3
+              }
+            }
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-bereit-push-ru-390-dunkel.webp"
+    },
+    {
+      "label": "Ablaufseite: 03-push-grund-branch — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "ABGESCHLOSSEN",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "BEREIT",
+              "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+              "branch": "wf/w-haushalt-export",
+              "basis_commit": "abc1234def5678"
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "ABGESCHLOSSEN",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "ok",
+              "entscheidung": "ANGENOMMEN",
+              "begruendung": "passt",
+              "versionSequenz": 1
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "feat/anderer-branch",
+              "losgeloest": false,
+              "commit": "def5678abc1234"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 1,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": "https://github.com/beispiel/haushaltsbuch",
+              "origin": true
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [
+                {
+                  "pfad": "src/export/monatsuebersicht.ts",
+                  "art": "M",
+                  "xy": " M",
+                  "plus": 18,
+                  "minus": 4
+                },
+                {
+                  "pfad": "src/export/csv-export.ts",
+                  "art": "??",
+                  "xy": "??",
+                  "plus": 41,
+                  "minus": null
+                }
+              ],
+              "anzahl": 2,
+              "gekappt": false,
+              "nodeModules": 0
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            },
+            "ablauf": {
+              "workflowId": "w-haushalt-export",
+              "bedarf": "pflicht",
+              "workflowStatus": "ABGESCHLOSSEN",
+              "arbeitsordner": {
+                "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+                "branch": "wf/w-haushalt-export"
+              },
+              "sichern": {
+                "bereit": true,
+                "art": "commit",
+                "grund": null,
+                "offeneAenderungen": 2,
+                "voraus": 1
+              }
+            }
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "03-push-grund-branch-ru-390-dunkel.webp"
+    },
+    {
+      "label": "Ablaufseite: 04-push-grund-origin — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "ABGESCHLOSSEN",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "BEREIT",
+              "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+              "branch": "wf/w-haushalt-export",
+              "basis_commit": "abc1234def5678"
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "ABGESCHLOSSEN",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "ok",
+              "entscheidung": "ANGENOMMEN",
+              "begruendung": "passt",
+              "versionSequenz": 1
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "wf/w-haushalt-export",
+              "losgeloest": false,
+              "commit": "def5678abc1234"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 1,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": null,
+              "origin": false
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [
+                {
+                  "pfad": "src/export/monatsuebersicht.ts",
+                  "art": "M",
+                  "xy": " M",
+                  "plus": 18,
+                  "minus": 4
+                },
+                {
+                  "pfad": "src/export/csv-export.ts",
+                  "art": "??",
+                  "xy": "??",
+                  "plus": 41,
+                  "minus": null
+                }
+              ],
+              "anzahl": 2,
+              "gekappt": false,
+              "nodeModules": 0
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            },
+            "ablauf": {
+              "workflowId": "w-haushalt-export",
+              "bedarf": "pflicht",
+              "workflowStatus": "ABGESCHLOSSEN",
+              "arbeitsordner": {
+                "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+                "branch": "wf/w-haushalt-export"
+              },
+              "sichern": {
+                "bereit": true,
+                "art": "commit",
+                "grund": null,
+                "offeneAenderungen": 2,
+                "voraus": 1
+              }
+            }
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "04-push-grund-origin-ru-390-dunkel.webp"
+    },
+    {
+      "label": "Ablaufseite: 05-node-modules — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "ABGESCHLOSSEN",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "BEREIT",
+              "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+              "branch": "wf/w-haushalt-export",
+              "basis_commit": "abc1234def5678"
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "ABGESCHLOSSEN",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "ok",
+              "entscheidung": "ANGENOMMEN",
+              "begruendung": "passt",
+              "versionSequenz": 1
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "wf/w-haushalt-export",
+              "losgeloest": false,
+              "commit": "def5678abc1234"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 0,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": "https://github.com/beispiel/haushaltsbuch",
+              "origin": true
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [
+                {
+                  "pfad": "src/export/monatsuebersicht.ts",
+                  "art": "M",
+                  "xy": " M",
+                  "plus": 18,
+                  "minus": 4
+                },
+                {
+                  "pfad": "src/export/csv-export.ts",
+                  "art": "??",
+                  "xy": "??",
+                  "plus": 41,
+                  "minus": null
+                }
+              ],
+              "anzahl": 2,
+              "gekappt": false,
+              "nodeModules": 1532
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            },
+            "ablauf": {
+              "workflowId": "w-haushalt-export",
+              "bedarf": "pflicht",
+              "workflowStatus": "ABGESCHLOSSEN",
+              "arbeitsordner": {
+                "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+                "branch": "wf/w-haushalt-export"
+              },
+              "sichern": {
+                "bereit": true,
+                "art": "commit",
+                "grund": null,
+                "offeneAenderungen": 2,
+                "voraus": 0
+              }
+            }
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "05-node-modules-ru-390-dunkel.webp"
+    },
+    {
+      "label": "Ablaufseite: 06-aufgeraeumt-409 — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "ABGESCHLOSSEN",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "ENTFERNT",
+              "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+              "branch": "wf/w-haushalt-export",
+              "basis_commit": "abc1234def5678",
+              "aufraeumen": {
+                "branch_geloescht": true
+              }
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "ABGESCHLOSSEN",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "ok",
+              "entscheidung": "ANGENOMMEN",
+              "begruendung": "passt",
+              "versionSequenz": 1
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 409,
+          "json": {
+            "grund": "Der Arbeitsordner des Ablaufs ist aufgeräumt",
+            "grund_schluessel": "aufgeraeumt"
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "06-aufgeraeumt-409-ru-390-dunkel.webp"
+    },
+    {
+      "label": "Ablaufseite: 07-gestoppt-aenderungen — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "GESTOPPT",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "BEREIT",
+              "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+              "branch": "wf/w-haushalt-export",
+              "basis_commit": "abc1234def5678"
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "GESTOPPT",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "fehlt"
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "wf/w-haushalt-export",
+              "losgeloest": false,
+              "commit": "def5678abc1234"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 0,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": "https://github.com/beispiel/haushaltsbuch",
+              "origin": true
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [
+                {
+                  "pfad": "src/export/monatsuebersicht.ts",
+                  "art": "M",
+                  "xy": " M",
+                  "plus": 18,
+                  "minus": 4
+                },
+                {
+                  "pfad": "src/export/csv-export.ts",
+                  "art": "??",
+                  "xy": "??",
+                  "plus": 41,
+                  "minus": null
+                }
+              ],
+              "anzahl": 2,
+              "gekappt": false,
+              "nodeModules": 0
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            },
+            "ablauf": {
+              "workflowId": "w-haushalt-export",
+              "bedarf": "pflicht",
+              "workflowStatus": "GESTOPPT",
+              "arbeitsordner": {
+                "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+                "branch": "wf/w-haushalt-export"
+              },
+              "sichern": {
+                "bereit": false,
+                "art": null,
+                "grund": "nichtAbgeschlossen",
+                "offeneAenderungen": 3,
+                "voraus": 0
+              }
+            }
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "07-gestoppt-aenderungen-ru-390-dunkel.webp"
+    },
+    {
+      "label": "Ablaufseite: 08-ohne-arbeitsordner — ru-390-dunkel",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/workflows/w-haushalt-export",
+          "status": 200,
+          "json": {
+            "daten": {
+              "ziel": "Monatsexport als CSV",
+              "status": "ABGESCHLOSSEN",
+              "schritte": [
+                {
+                  "schritt_id": "s1",
+                  "rolle": "ausfuehrung",
+                  "worker": "claude-code",
+                  "modell": "claude-sonnet",
+                  "freigabe": "ZWINGEND",
+                  "status": "ERLEDIGT",
+                  "nachfolger": null,
+                  "lauf_id": null
+                }
+              ]
+            },
+            "naechster": null,
+            "arbeitsordner": {
+              "status": "bestand"
+            },
+            "versionSequenz": 1
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/workflows/w-haushalt-export/abnahme",
+          "status": 200,
+          "json": {
+            "workflowStatus": "ABGESCHLOSSEN",
+            "freigabeHalt": null,
+            "entscheidung": {
+              "status": "ok",
+              "entscheidung": "ANGENOMMEN",
+              "begruendung": "passt",
+              "versionSequenz": 1
+            },
+            "urteil": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "aenderungsuebersicht": {
+              "status": "noch_nicht_gelaufen"
+            },
+            "pruefergebnis": {
+              "status": "noch_nicht_gelaufen"
+            }
+          },
+          "methode": "GET"
+        },
+        {
+          "muster": "**/api/code?workflow=**",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "arbeitsverzeichnis": {
+              "vorhanden": true
+            },
+            "branch": {
+              "status": "ok",
+              "name": "wf/w-haushalt-export",
+              "losgeloest": false,
+              "commit": "def5678abc1234"
+            },
+            "basis": {
+              "status": "ok",
+              "ref": "origin/main",
+              "voraus": 0,
+              "zurueck": 0
+            },
+            "remoteWebUrl": {
+              "status": "ok",
+              "url": "https://github.com/beispiel/haushaltsbuch",
+              "origin": true
+            },
+            "dateien": {
+              "status": "ok",
+              "eintraege": [
+                {
+                  "pfad": "src/export/monatsuebersicht.ts",
+                  "art": "M",
+                  "xy": " M",
+                  "plus": 18,
+                  "minus": 4
+                },
+                {
+                  "pfad": "src/export/csv-export.ts",
+                  "art": "??",
+                  "xy": "??",
+                  "plus": 41,
+                  "minus": null
+                }
+              ],
+              "anzahl": 2,
+              "gekappt": false,
+              "nodeModules": 0
+            },
+            "verlauf": {
+              "status": "ok",
+              "ref": "origin/main",
+              "eintraege": []
+            },
+            "freigabeCommit": {
+              "status": "ok",
+              "vorhanden": false,
+              "alterMinuten": null
+            },
+            "harness": {
+              "status": "ok",
+              "claudeMd": true,
+              "settings": true,
+              "hooks": 5,
+              "agents": 5
+            },
+            "startvorlage": {
+              "status": "ok",
+              "pfad": "startvorlagen/beispielprojekt.json",
+              "pruefbefehl": "npm run check",
+              "werkzeugsaetze": [
+                "lesend"
+              ],
+              "worker": [
+                "claude-code"
+              ],
+              "modell": "claude-sonnet"
+            },
+            "ablauf": {
+              "workflowId": "w-haushalt-export",
+              "bedarf": "pflicht",
+              "workflowStatus": "ABGESCHLOSSEN",
+              "arbeitsordner": {
+                "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+                "branch": "wf/w-haushalt-export"
+              },
+              "sichern": {
+                "bereit": true,
+                "art": "commit",
+                "grund": null,
+                "offeneAenderungen": 2,
+                "voraus": 0
+              }
+            }
+          },
+          "methode": "GET"
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-abschnitt .sichern-fuss, #workflow-entscheiden .sichern-satz",
+        "timeoutMs": 15000
+      },
+      "screenshot": "08-ohne-arbeitsordner-ru-390-dunkel.webp"
+    }
+  ]
+}

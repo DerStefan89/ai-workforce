@@ -1,0 +1,227 @@
+{
+  "url": "http://127.0.0.1:4408/#/workflows/w-haushalt-export",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1100
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "zwischenablage": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "de"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workflows/w-haushalt-export",
+      "status": 200,
+      "json": {
+        "daten": {
+          "ziel": "Monatsexport als CSV",
+          "status": "ABGESCHLOSSEN",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "ERLEDIGT",
+              "nachfolger": null,
+              "lauf_id": null
+            }
+          ]
+        },
+        "naechster": null,
+        "arbeitsordner": {
+          "status": "BEREIT",
+          "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+          "branch": "wf/w-haushalt-export",
+          "basis_commit": "abc1234def5678"
+        },
+        "versionSequenz": 1
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/workflows/w-haushalt-export/abnahme",
+      "status": 200,
+      "json": {
+        "workflowStatus": "ABGESCHLOSSEN",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "fehlt"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/code?workflow=**",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+        "arbeitsverzeichnis": {
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "wf/w-haushalt-export",
+          "losgeloest": false,
+          "commit": "def5678abc1234"
+        },
+        "basis": {
+          "status": "ok",
+          "ref": "origin/main",
+          "voraus": 0,
+          "zurueck": 0
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": "https://github.com/beispiel/haushaltsbuch",
+          "origin": true
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [
+            {
+              "pfad": "src/export/monatsuebersicht.ts",
+              "art": "M",
+              "xy": " M",
+              "plus": 18,
+              "minus": 4
+            },
+            {
+              "pfad": "src/export/csv-export.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 41,
+              "minus": null
+            }
+          ],
+          "anzahl": 2,
+          "gekappt": false,
+          "nodeModules": 0
+        },
+        "verlauf": {
+          "status": "ok",
+          "ref": "origin/main",
+          "eintraege": []
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": true,
+          "hooks": 5,
+          "agents": 5
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlagen/beispielprojekt.json",
+          "pruefbefehl": "npm run check",
+          "werkzeugsaetze": [
+            "lesend"
+          ],
+          "worker": [
+            "claude-code"
+          ],
+          "modell": "claude-sonnet"
+        },
+        "ablauf": {
+          "workflowId": "w-haushalt-export",
+          "bedarf": "pflicht",
+          "workflowStatus": "ABGESCHLOSSEN",
+          "arbeitsordner": {
+            "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "branch": "wf/w-haushalt-export"
+          },
+          "sichern": {
+            "bereit": true,
+            "art": "commit",
+            "grund": null,
+            "offeneAenderungen": 2,
+            "voraus": 0
+          }
+        }
+      },
+      "methode": "GET"
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Lage/erste Zeile",
+        "selector": "#workflow-entscheiden .sichern-abschnitt p, #workflow-entscheiden .sichern-satz"
+      },
+      {
+        "name": "Aufräumen",
+        "selector": "#workflow-entscheiden [data-sichern-aufraeumen]"
+      },
+      {
+        "name": "Schritt 2",
+        "selector": "#workflow-entscheiden .sichern-schritt:nth-child(2)"
+      },
+      {
+        "name": "Schritt 3",
+        "selector": "#workflow-entscheiden .sichern-schritt:nth-child(3)"
+      },
+      {
+        "name": "node_modules",
+        "selector": "#workflow-entscheiden .code-node-modules"
+      },
+      {
+        "name": "Knopf Kopieren",
+        "selector": "#workflow-entscheiden [data-befehl-kopieren]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Abschnitt",
+        "selector": "#workflow-entscheiden [data-sichern-abschnitt]"
+      },
+      {
+        "name": "Befehlsblock",
+        "selector": "#workflow-entscheiden .befehlsblock"
+      },
+      {
+        "name": "Knopf Aufräumen in der Karte",
+        "selector": "#workflow-entscheiden [data-aktion=\"aufraeumen-oeffnen\"]"
+      },
+      {
+        "name": "Fehlerfarbe im Abschnitt",
+        "selector": "#workflow-entscheiden .sichern-abschnitt .fehler"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Abnahme offen — de-1440-hell",
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workflow-entscheiden .sichern-fuss",
+        "timeoutMs": 15000
+      },
+      "screenshot": "09-abnahme-de-1440-hell.webp"
+    },
+    {
+      "label": "Abnahme: Kopieren commit-Block — de-1440-hell",
+      "klick": "#workflow-entscheiden [data-befehl-kopieren]",
+      "screenshot": "10-abnahme-kopiert-de-1440-hell.webp"
+    }
+  ]
+}

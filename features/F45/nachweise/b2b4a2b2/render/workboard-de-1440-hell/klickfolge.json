@@ -1,0 +1,286 @@
+{
+  "url": "http://127.0.0.1:4408/#/workboard/F-9100",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1100
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "zwischenablage": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "de"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workitems",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "id": "F-9100",
+            "titel": "Monatsexport als CSV",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": "Der Monatsexport fehlt.",
+            "massnahme": "CSV-Export je Monat anlegen."
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/workitems?**",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "id": "F-9100",
+            "titel": "Monatsexport als CSV",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": "Der Monatsexport fehlt.",
+            "massnahme": "CSV-Export je Monat anlegen."
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/auftraege",
+      "status": 200,
+      "json": [],
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "POST",
+      "status": 201,
+      "json": {
+        "auftragId": "A-nachweis"
+      }
+    },
+    {
+      "muster": "**/api/auftraege/*/routen",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "L-nachweis",
+        "auftragId": "A-nachweis"
+      }
+    },
+    {
+      "muster": "**/api/workflows/router-A-nachweis/freigabe",
+      "methode": "POST",
+      "status": 200,
+      "json": {
+        "status": "LAEUFT"
+      }
+    },
+    {
+      "muster": "**/api/workflows/router-A-nachweis",
+      "status": 200,
+      "json": {
+        "daten": {
+          "ziel": "Monatsexport als CSV",
+          "status": "ABGESCHLOSSEN",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "ERLEDIGT",
+              "nachfolger": null,
+              "lauf_id": null
+            }
+          ]
+        },
+        "naechster": {
+          "art": "haltFreigabe",
+          "schrittId": "s1"
+        },
+        "arbeitsordner": {
+          "status": "BEREIT",
+          "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+          "branch": "wf/router-A-nachweis",
+          "basis_commit": "abc1234def5678"
+        },
+        "versionSequenz": 1
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/code?workflow=**",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+        "arbeitsverzeichnis": {
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "wf/router-A-nachweis",
+          "losgeloest": false,
+          "commit": "def5678abc1234"
+        },
+        "basis": {
+          "status": "ok",
+          "ref": "origin/main",
+          "voraus": 0,
+          "zurueck": 0
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": "https://github.com/beispiel/haushaltsbuch",
+          "origin": true
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [
+            {
+              "pfad": "src/export/monatsuebersicht.ts",
+              "art": "M",
+              "xy": " M",
+              "plus": 18,
+              "minus": 4
+            },
+            {
+              "pfad": "src/export/csv-export.ts",
+              "art": "??",
+              "xy": "??",
+              "plus": 41,
+              "minus": null
+            }
+          ],
+          "anzahl": 2,
+          "gekappt": false,
+          "nodeModules": 0
+        },
+        "verlauf": {
+          "status": "ok",
+          "ref": "origin/main",
+          "eintraege": []
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": true,
+          "hooks": 5,
+          "agents": 5
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlagen/beispielprojekt.json",
+          "pruefbefehl": "npm run check",
+          "werkzeugsaetze": [
+            "lesend"
+          ],
+          "worker": [
+            "claude-code"
+          ],
+          "modell": "claude-sonnet"
+        },
+        "ablauf": {
+          "workflowId": "router-A-nachweis",
+          "bedarf": "pflicht",
+          "workflowStatus": "ABGESCHLOSSEN",
+          "arbeitsordner": {
+            "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4",
+            "branch": "wf/router-A-nachweis"
+          },
+          "sichern": {
+            "bereit": true,
+            "art": "commit",
+            "grund": null,
+            "offeneAenderungen": 2,
+            "voraus": 0
+          }
+        }
+      },
+      "methode": "GET"
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Abschnitt Lage",
+        "selector": "#workboard-bearbeitung .sichern-abschnitt p"
+      },
+      {
+        "name": "Aufräumen",
+        "selector": "#workboard-bearbeitung [data-sichern-aufraeumen]"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Abschnitt",
+        "selector": "#workboard-bearbeitung [data-sichern-abschnitt]"
+      },
+      {
+        "name": "Projektordner-Block (alt)",
+        "selector": "#workboard-git-titel"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Workboard: Detail",
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeiten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Click-to-Work: Bearbeiten",
+      "klick": "#workboard-bearbeiten",
+      "warteAufSelector": {
+        "selector": ".wb-ak-anlegen",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Click-to-Work: Auftrag anlegen",
+      "klick": ".wb-ak-anlegen",
+      "warteAufSelector": {
+        "selector": ".wb-freigeben",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "label": "Click-to-Work: Freigeben",
+      "klick": ".wb-freigeben",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeitung .sichern-fuss",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "label": "Workboard abgeschlossen — de-1440-hell",
+      "screenshot": "11-workboard-de-1440-hell.webp"
+    },
+    {
+      "label": "Workboard: Kopieren — de-1440-hell",
+      "klick": "#workboard-bearbeitung [data-befehl-kopieren]"
+    }
+  ]
+}

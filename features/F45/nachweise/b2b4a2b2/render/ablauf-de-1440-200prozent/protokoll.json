@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Ablaufseite: 01-bereit-commit — de-1440-200prozent",
+    "Abschnitt": true,
+    "Befehlsblock": true,
+    "Knopf Aufräumen in der Karte": false,
+    "Fehlerfarbe im Abschnitt": false,
+    "Lage/erste Zeile": "2 geänderte Dateien im Arbeitsordner",
+    "Aufräumen": "Aufräumen: Knopf „Arbeitsordner aufräumen“ unter den Aktionen.",
+    "Schritt 2": "PushenNach dem Commit den Branch pushen: POWERSHELL 2 Befehle · nacheinander Kopieren & {Set-Location -LiteralPath 'C:\\P",
+    "Schritt 3": "Pull Request und Merge im WebPull Request anlegen und im Web mergen, danach den Arbeitsordner aufräumen. Repository im W",
+    "node_modules": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "720/720",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

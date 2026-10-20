@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Abnahme offen — ru-390-dunkel",
+    "Abschnitt": true,
+    "Befehlsblock": true,
+    "Knopf Aufräumen in der Karte": false,
+    "Fehlerfarbe im Abschnitt": false,
+    "Lage/erste Zeile": "2 изменённых файла в рабочей папке",
+    "Aufräumen": "Убирать — только после твоей приёмки; тогда под действиями появится кнопка «Убрать рабочую папку».",
+    "Schritt 2": "PushПосле коммита запушь ветку: POWERSHELL 2 команды · по порядку Копировать & {Set-Location -LiteralPath 'C:\\Projekte\\h",
+    "Schritt 3": "Pull request и merge в вебеОткрой pull request и смёржи его в вебе, потом убери рабочую папку. Открыть репозиторий в веб",
+    "node_modules": "(fehlt)",
+    "Knopf Kopieren": "Копировать",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Zwischenablage": "",
+    "Pfadprobe": "sauber"
+  },
+  {
+    "label": "Abnahme: Kopieren commit-Block — ru-390-dunkel",
+    "Abschnitt": true,
+    "Befehlsblock": true,
+    "Knopf Aufräumen in der Karte": false,
+    "Fehlerfarbe im Abschnitt": false,
+    "Lage/erste Zeile": "2 изменённых файла в рабочей папке",
+    "Aufräumen": "Убирать — только после твоей приёмки; тогда под действиями появится кнопка «Убрать рабочую папку».",
+    "Schritt 2": "PushПосле коммита запушь ветку: POWERSHELL 2 команды · по порядку Копировать & {Set-Location -LiteralPath 'C:\\Projekte\\h",
+    "Schritt 3": "Pull request и merge в вебеОткрой pull request и смёржи его в вебе, потом убери рабочую папку. Открыть репозиторий в веб",
+    "node_modules": "(fehlt)",
+    "Knopf Kopieren": "Скопировано",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Zwischenablage": "& {\r ⏎ Set-Location -LiteralPath 'C:\\Projekte\\haushaltsbuch-laeufe\\a1b2c3d4' -ErrorAction Stop\r ⏎ git add src/export/mon",
+    "Pfadprobe": "sauber"
+  }
+]

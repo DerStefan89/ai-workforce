@@ -44,12 +44,24 @@ test('Karte: bereit mit Branch, Ordner, Basis und offenen Änderungen (blockiere
 test('Karte auf der Abnahme-Seite: Sichern-Hinweis, Löschliste mit Gründen, Knopf erst nach der Abnahme', () => {
   const kontext = { workflowId: 'wf-1', workflowStatus: 'ABGESCHLOSSEN', abnahmeOffen: true, loeschliste: { geloescht: ['a.txt'], abgelehnt: [{ pfad: '../x', grund: "Segment '..' nicht erlaubt" }] } }
   const offen = renderArbeitsordnerKarte(BEREIT, CODE_OK, kontext)
-  assert.match(offen, /Das Ergebnis liegt nur hier, auf Branch wf\/wf-1/)
+  // F45 B2b-4a-2b-2: die alte Zeile „bis „Bereit zum Sichern“ kommt“ ist weg — der Abschnitt kommt über kontext.sichernHtml.
+  assert.doesNotMatch(offen, /Das Ergebnis liegt nur hier|bis „Bereit zum Sichern“/)
   assert.match(offen, /1 gelöscht, 1 abgelehnt/)
   assert.match(offen, /\.\.\/x<\/code> — Segment/)
   assert.doesNotMatch(offen, /aufraeumen-oeffnen/, 'vor der Abnahme kein Aufräumen')
   assert.match(renderArbeitsordnerKarte(BEREIT, CODE_OK, { ...kontext, abnahmeOffen: false }), /data-aktion="aufraeumen-oeffnen"/)
   assert.match(renderArbeitsordnerKarte({ ...BEREIT, status: 'FEHLGESCHLAGEN', grund: 'x' }, CODE_OK, {}), /Nächster Schritt/)
+})
+
+test('F45 B2b-4a-2b-2: Karte mit Abschnitt „Bereit zum Sichern“ in der Karte, ohneKnopf lässt den Kartenknopf weg', () => {
+  const kontext = { workflowId: 'wf-1', workflowStatus: 'GESTOPPT', abnahmeOffen: false }
+  const mit = renderArbeitsordnerKarte(BEREIT, CODE_OK, { ...kontext, sichernHtml: '<div data-sichern-abschnitt>X</div>', ohneKnopf: true })
+  assert.equal((mit.match(/data-sichern-abschnitt/g) ?? []).length, 1, 'Abschnitt genau einmal, in der Karte')
+  assert.ok(mit.indexOf('data-sichern-abschnitt') < mit.indexOf('</section>'), 'kein zweiter Block')
+  assert.doesNotMatch(mit, /aufraeumen-oeffnen/, 'Kartenknopf entfällt — Aufräumen steht unter den Aktionen')
+  // Advisor 5: auch ein leerer Abschnitt lässt den Knopf mit ohneKnopf weg (nicht an sichernHtml gebunden).
+  assert.doesNotMatch(renderArbeitsordnerKarte(BEREIT, CODE_OK, { ...kontext, sichernHtml: '', ohneKnopf: true }), /aufraeumen-oeffnen/)
+  assert.match(renderArbeitsordnerKarte(BEREIT, CODE_OK, kontext), /data-aktion="aufraeumen-oeffnen"/, 'ohne ohneKnopf wie bisher')
 })
 
 test('Karte: nicht angelegt zeigt Muster und den aktuellen Commit beim Start; Vorbereitung, Fehler, Aufgeräumt', () => {

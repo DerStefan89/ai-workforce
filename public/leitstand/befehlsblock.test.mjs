@@ -53,7 +53,7 @@ test('F45 B2b-4a-2a: Blockform — Kopf und Fuß zählen nicht, eine „}“ in 
   assert.equal(zaehleBefehle(['if ($x) {', 'git status', '}']), 3, 'keine Blockform: jede Zeile zählt')
   const html = renderBefehlsblock({ sprache: 'powershell', zeilen }, { echteWerte: true })
   assert.match(html, /2 Befehle · nacheinander/)
-  assert.match(html, /<\/code><\/pre>\s*<p class="befehlsblock-enter">Nach dem Einfügen einmal Enter drücken\.<\/p>/)
+  assert.match(html, /<\/code><\/pre>\s*<p class="befehlsblock-enter">Nach dem Einfügen Enter drücken – erscheint „&gt;&gt;“, noch einmal Enter\.<\/p>/)
   // Der Hinweis steht außerhalb von <code> — kopiert werden nur die Zeilen.
   assert.doesNotMatch(html.slice(html.indexOf('<code>'), html.indexOf('</code>')), /Enter/)
   assert.doesNotMatch(renderBefehlsblock({ sprache: 'powershell', zeilen: ['git status'] }), /befehlsblock-enter/)

@@ -9745,7 +9745,7 @@ th {
   content: '\200b';
 }
 
-/* F45 B2b-4a-2a: „Nach dem Einfügen einmal Enter drücken“ unter einem Block in Blockform — gleiche Form wie der Strg+C-Hinweis. */
+/* F45 B2b-4a-2a: Enter-Hinweis (befehl.enterHinweis) unter einem Block in Blockform — gleiche Form wie der Strg+C-Hinweis. */
 .v10-seite .befehlsblock-hinweis,
 .v10-seite .befehlsblock-enter {
   margin: 0;
@@ -14485,4 +14485,72 @@ button.harness-ordner-eintrag {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 12px;
+}
+
+/* F45 B2b-4a-2b-2: Abschnitt „Bereit zum Sichern“ in der Karte „Wo gearbeitet wird“ und im Workboard „abgeschlossen“
+   (views/ablauf-sichern-anzeige.js). Nur Tokens und die Maße von .code-sichern; Befehlsblöcke brechen wie dort um. */
+.sichern-abschnitt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--line);
+}
+
+.sichern-titel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.sichern-abschnitt > p,
+.sichern-schritt > p {
+  margin: 0;
+}
+
+.sichern-schritte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.sichern-schritt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.sichern-schritt .befehlsblock {
+  margin: 0;
+}
+
+.sichern-schritt-titel {
+  font-weight: 500;
+}
+
+.sichern-fuss {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 12px;
+}
+
+/* Links im Abschnitt und im Satz („Repository im Web öffnen“, „Code“, Seite des Ablaufs) laufen im Fließtext mit — nicht in der
+   großen Serifenform des Vorlage-Textlinks (.v10-seite .text-link). */
+.v10-seite .sichern-abschnitt .text-link,
+.v10-seite .sichern-satz .text-link {
+  display: inline;
+  padding: 0;
+  font: inherit;
 }

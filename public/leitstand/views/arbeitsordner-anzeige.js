@@ -3,8 +3,8 @@
  *
  * Zweck: Anzeige des eigenen Arbeitsordners je Ablauf (F45 B1a-1, E-F45-3 = A, F-954): jeder schreibende Ablauf
  * arbeitet in einem eigenen Git-Worktree `<Projektordner>-laeufe/<Kurzname>` (Hash der Ablauf-ID) auf dem Branch
- * `wf/<Ablauf-ID>`. Die Karte steht auf der Freigabe- und der Abnahme-Seite (dort mit Sichern-Hinweis, Löschliste und
- * dem Knopf „Arbeitsordner aufräumen“, sobald die Abnahme entschieden ist).
+ * `wf/<Ablauf-ID>`. Die Karte steht auf der Freigabe- und der Abnahme-Seite (dort mit Löschliste und dem Abschnitt „Bereit
+ * zum Sichern“, F45 B2b-4a-2b-2) und auf der Ablaufseite eines beendeten Ablaufs (Abschnitt; Aufräumen unter den Aktionen).
  * - renderArbeitsordnerKarte: Karte „Wo gearbeitet wird“ auf der Freigabe-Seite (Branch, Arbeitsordner,
  *   Basis-Commit, offene Änderungen des Projektordners — blockieren nicht) mit allen Zuständen (nicht angelegt,
  *   wird vorbereitet, bereit, fehlgeschlagen, aufgeräumt, Bestand).
@@ -22,6 +22,7 @@
  * - public/leitstand/views/workflow-entscheiden.js, public/leitstand/views/workflows.js,
  *   public/leitstand/views/workflow-eingriffe.js, public/leitstand/views/auftrag-umgebung.js,
  *   public/leitstand/views/code.js
+ * - public/leitstand/views/ablauf-sichern-anzeige.js (aufraeumenMoeglich: Aufräumen-Element des Abschnitts „Bereit zum Sichern“)
  * - public/leitstand/views/arbeitsordner-anzeige.test.mjs (node:test)
  *
  * Wichtig: Pfade, Branches, Commits und Gründe sind Server- bzw. Projektinhalte und werden escaped; alle übrigen
@@ -133,7 +134,10 @@ function loeschlisteHtml(loeschliste) {
  * Karte „Wo gearbeitet wird“ (Freigabe- und Abnahme-Seite). Leer, wenn der Ablauf keinen Arbeitsordner braucht.
  * @param ao - Feld arbeitsordner aus GET /api/workflows/<id> (oder undefined bei älterem Server)
  * @param codeStand - aktuellerCodeStand() (offene Änderungen und HEAD des Projektordners)
- * @param kontext - { workflowId, workflowStatus, abnahmeOffen, loeschliste } — optional (Abnahme-Seite)
+ * @param kontext - { workflowId, workflowStatus, abnahmeOffen, loeschliste, sichernHtml, ohneKnopf } — optional (Abnahme-Seite).
+ *   F45 B2b-4a-2b-2: sichernHtml = fertiger Abschnitt „Bereit zum Sichern“ bzw. Satz (views/ablauf-sichern-anzeige.js) in der Karte
+ *   (kein zweiter Block); ohneKnopf = true lässt den Kartenknopf „Arbeitsordner aufräumen“ weg — dann steht er nur unter den
+ *   Aktionen, der Abschnitt verweist darauf (genau ein Aufräumen je Seite, V3).
  * @returns HTML oder ''
  */
 export function renderArbeitsordnerKarte(ao, codeStand, kontext = {}) {
@@ -159,18 +163,18 @@ export function renderArbeitsordnerKarte(ao, codeStand, kontext = {}) {
   const lageKlasse = lage.art === 'fehler' ? 'fehler' : 'subtle'
   // Keine Live-Region (Design-Prüfung B1a-1, Befund 1): die Karte wird bei jedem Poll neu gezeichnet.
   const naechster = ao.status === 'FEHLGESCHLAGEN' ? `<p class="subtle">${tHtml('arbeitsordner.naechsterSchritt.fehlgeschlagen')}</p>` : ''
-  const sichern = ao.status === 'BEREIT' && kontext.workflowStatus === 'ABGESCHLOSSEN' ? `<p class="subtle">${tHtml('arbeitsordner.sichern', { branch: ao.branch ?? '' })}</p>` : ''
+  const sichern = typeof kontext.sichernHtml === 'string' ? kontext.sichernHtml : ''
   const knopf =
-    typeof kontext.workflowId === 'string' && aufraeumenMoeglich(kontext.workflowStatus, ao, kontext.abnahmeOffen === true)
+    kontext.ohneKnopf !== true && typeof kontext.workflowId === 'string' && aufraeumenMoeglich(kontext.workflowStatus, ao, kontext.abnahmeOffen === true)
       ? `<div class="action-row"><button type="button" class="button wf-aktion" data-aktion="aufraeumen-oeffnen" data-workflow-id="${escapeHtml(kontext.workflowId)}" aria-haspopup="dialog">${tHtml('arbeitsordner.aufraeumen.knopf')}</button></div>`
       : ''
   return `<section class="entscheiden-karte arbeitsordner-karte" aria-labelledby="freigabe-arbeitsordner">
     <h2 id="freigabe-arbeitsordner">${tHtml('arbeitsordner.titel')}</h2>
     <dl class="entscheiden-kennzahlen">${kennzahlen}</dl>
     <p class="${lageKlasse} arbeitsordner-lage">${escapeHtml(lage.text)}</p>
-    ${naechster}${sichern}${loeschlisteHtml(kontext.loeschliste ?? null)}
+    ${naechster}${loeschlisteHtml(kontext.loeschliste ?? null)}
     ${istBestand ? '' : `<p class="subtle">${tHtml('arbeitsordner.hinweisUnabhaengig')}</p>`}
-    ${knopf}
+    ${sichern}${knopf}
   </section>`
 }
 

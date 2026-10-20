@@ -7224,13 +7224,14 @@ Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2/B5.
 Status: offen.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
-**F-979** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-979** · `PROCESS_IMPROVEMENT` · P3 · erledigt
 Titel: „Bereit zum Sichern“ ist kein Zustand zwischen Abnahme und Merge.
 Beschreibung: Nach der Abnahme gibt es keinen eigenen Zustand für „abgenommen, noch nicht committet/gemergt“.
 Fundstelle: Lebenszyklus eines Eintrags (Abnahme → Merge).
 Auswirkung: Gering — der Schritt zum Sichern ist im Leitstand nicht sichtbar.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“.
 Status: offen. Nachtrag F45 B2b-4a-1 (19.10.2026, `features/F45/plan-b2b4a1.md`): Server-Teil gebaut — „Bereit zum Sichern“ als abgeleiteter Zustand ohne neuen Workflow-Status (`scripts/leitstand/ablauf-sichern.mjs` `leiteSichernLageAb`: abgeschlossen + eigener Arbeitsordner + geänderte Dateien bzw. Commits noch nicht auf main; Grenze F-1155), geliefert als Feld `ablauf.sichern` von GET `/api/code?workflow=<id>`; Gate `scripts/check-f45-b2b4a1-sichern.mjs`. Die Anzeige (Karte, Abnahme, Workboard) folgt in B2b-4a-2, erst dann erledigt.
+Erledigt (F45 B2b-4a-2b-2, 20.10.2026, `features/F45/plan-b2b4a2b2.md`): Abschnitt „Bereit zum Sichern“ in der Karte „Wo gearbeitet wird“ (Abnahme- und Ablaufseite bei ABGESCHLOSSEN/GESTOPPT) und im Workboard „abgeschlossen“ (`public/leitstand/views/ablauf-sichern-anzeige.js`, Stand je Ablauf `public/leitstand/ablauf-code-stand.js`): Schritte commit · push bzw. Grund · Pull Request und Merge im Web, danach Aufräumen; Gate `scripts/check-f45-b2b4a2b2-anzeige.mjs`. Rest: kein eigener Eintrag „Bereit zum Sichern“ in „Deine Entscheidungen“ (Filter bleibt „kommt“, `attention-daten.js`); „noch nicht auf main“ bleibt nach Push/Merge bis zum Aufräumen stehen (F-1155).
 
 **F-980** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Bestehensbedingung des Fixpakets: gleichwertig zum manuellen Ablauf.
@@ -7911,13 +7912,14 @@ Maßnahme: (1) Änderung an einem Codex-Ausgabeschema (`schemas/ergebnis-*.schem
 Status: offen.
 Feature/Run: Entdeckt: F45 B2a-3b (Nachzug Nachweis B2a-3a), 13.10.2026.
 
-**F-1087** · `TECH_DEBT` · P2 · offen
+**F-1087** · `TECH_DEBT` · P2 · erledigt
 Titel: Workboard-„Sichern“ zeigt nach einem Ablauf im Arbeitsordner die Änderungen des Projektordners statt des Worktrees.
 Beschreibung: Der Block „Sichern“ im Workboard (Phase „abgeschlossen“) und in #/code liest GET /api/code, und die Code-Projektion (`baueCodeProjektion({ repoWurzel })`) liest immer den Projektordner. Lief der Ablauf in seinem eigenen Arbeitsordner (Worktree, Branch `wf/<id>`, E-F45-3 = A), stehen die Änderungen dort — der Block nennt dann die Dateien, den Branch und den `cd`-Pfad des Projektordners, nicht des Ablaufs.
 Fundstelle: `public/leitstand/views/workboard.js` (`renderTerminalBlock`), `scripts/leitstand/routen-code.mjs` (`baueCodeProjektion`), `scripts/leitstand-server.mjs` (GET /api/code).
 Auswirkung: Mittel — die Befehle sind ausführbar, sichern aber das Falsche bzw. nichts; Stefan muss selbst wissen, wo der Ablauf gearbeitet hat.
 Maßnahme: Mit B2b („Bereit zum Sichern“): Sichern je Ablauf aus dem Laufort (`ermittleLaufort`), cd auf den Worktree. In B2a-3b bewusst nicht gelöst (Auftrag).
 Status: offen. Nachtrag F45 B2b-4a-1 (19.10.2026): Server-Teil gebaut — GET `/api/code` und `/api/code/diff` nehmen `?workflow=<id>` (keine neue Route): Formprüfung vor jedem Dateizugriff (`scripts/leitstand/kennung.mjs`, 400), unbekannt 404, Laufort über `ermittleLaufort` (Arbeitsordner aus dem Kontrollzustand, nie die id als Git-Argument oder cwd), Arbeitsordner nicht bereit ⇒ 409 mit `grund_schluessel` aus `arbeitsordnerGrund` ohne Kennung im Text; ohne Parameter bitgleich; Aufbau je Laufort geteilt (`codeProjektionLaufend` als Map). Gate `scripts/check-f45-b2b4a1-sichern.mjs` (b)–(d). Workboard und Abnahme nutzen den Parameter erst ab B2b-4a-2 (jeder Ablauf mit Arbeitsordner über `?workflow=`), erst dann erledigt.
+Erledigt (F45 B2b-4a-2b-2, 20.10.2026): Workboard „abgeschlossen“ und Karte (Abnahme-/Ablaufseite) wählen die Quelle über `sichernQuelle` (`sichernFuerAblauf`) — jeder Ablauf mit eigenem Arbeitsordner (jeder Status außer `kein_bedarf`/`bestand`) liest GET `/api/code?workflow=<id>`, Befehle mit Ort und Branch des Arbeitsordners; nur `bestand` behält den Projektordner-Block. Rest: keiner.
 Feature/Run: Entdeckt: F45 B2a-3b (Plan, Befunde vorab), 13.10.2026.
 
 **F-1088** · `TECH_DEBT` · P3 · teilweise
@@ -8474,10 +8476,10 @@ Beschreibung: `commitVorschlag` (`public/leitstand/code-daten.js`) kennt das Pr�
 Fundstelle: `public/leitstand/code-daten.js` (`commitVorschlag`), `scripts/leitstand-server.mjs` (`loeseCodeOrt`).
 Auswirkung: Gering — die Nachricht ist ausführbar, aber nicht sprechend.
 Maßnahme: UX-Runde nach R (Entscheidung Challenger 19.10.2026: in B2b-4 zurückgestellt; `commitVorschlag` bleibt unverändert).
-Status: offen.
+Status: offen. Nachtrag F45 B2b-4a-2b-2 (QA 9, 20.10.2026): seit dem Abschnitt „Bereit zum Sichern“ steht der Vorschlag `git commit -m "wf <Ablauf-ID>"` sichtbar in der Karte und im Workboard; kopiert und ausgeführt landet die interne Kennung als Commit-Nachricht im Projekt-Repo (z. B. haushaltsbuch2) — bis zur Maßnahme vor dem Einfügen von Hand umformulieren.
 Feature/Run: Entdeckt: F45 B2b-4 (Advisor-Pass `features/F45/advisor-b2b4.md` 9e), 19.10.2026.
 
-**F-1157** · `TECH_DEBT` · P2 · teilweise
+**F-1157** · `TECH_DEBT` · P2 · erledigt
 Titel: Auflagen aus dem Prüfpass von B2b-4a-1 an B2b-4a-2 (Anzeige „Bereit zum Sichern“).
 Beschreibung: Die Ableitung (`scripts/leitstand/ablauf-sichern.mjs`) liefert bewusst nur die Lage; der Befehlsblock und die Anzeige in 4a-2 müssen: (1) node_modules ohne `.gitignore` berücksichtigen — nach `npm ci` im Arbeitsordner eines Fremdprojekts zählt `git status --untracked-files=all` node_modules/ als neu (Tausende Einträge, `gekappt`, „bereit (commit)“ ohne Änderung des Ablaufs; bei sehr großer Ausgabe `nichtBestimmbar`); Anzahl und Kappung zeigen, kein pauschales Stagen (qa 6, code-reviewer 1); (2) vor einem Push-Block `branch.losgeloest`, `branch.name` gegen `ablauf.arbeitsordner.branch` und `remoteWebUrl.origin` prüfen — die Ableitung meldet auch bei losgelöstem HEAD oder fremdem Branch „bereit (push)“ (qa 5, Advisor-Delta 4a-1 15); (3) Befehle nur aus `ablauf.arbeitsordner.pfad/branch` bauen, nie aus der zurückgegebenen `workflowId` (code-reviewer 5); (4) GET …/code?workflow= nur für die geöffnete Karte bzw. Abnahme abrufen, nie im Poll für alle Karten — je Abruf ≈ 10 Git-Prozesse und synchrones Lesen der Checkpoint-Ketten (qa 7); (5) 409 mit `grund_schluessel` ist eine Lage (z. B. `aufgeraeumt` als normaler Endzustand), kein Fehler; bei 400/404 ist der Schlüssel `null` (qa 8); (6) GESTOPPT mit offenen Änderungen auf Aufräumen/Verwerfen verweisen (`offeneAenderungen` wird geliefert; qa 2); (7) Text je Grund übersetzen und `keinArbeitsordner` für `kein_bedarf` (nichts zu sichern) und `bestand` (Projektordner) trennen (code-reviewer 9); (8) Advisor-Delta 4a 8–20, soweit sie C betreffen, und Befund 6 (jeder Ablauf mit Arbeitsordner über `?workflow=`).
 Fundstelle: `scripts/leitstand/ablauf-sichern.mjs`, `public/leitstand/code-daten.js` (`sicherBefehle`), `public/leitstand/views/workboard.js`, `public/leitstand/views/workflows.js`, `public/leitstand/views/arbeitsordner-anzeige.js`.
@@ -8493,6 +8495,17 @@ main bzw. commit-Block davor, unabhängig von der Kappung; origin nicht lesbar �
 `kein_bedarf` (nichts zu sichern) und `bestand` (Projektordner); Gründe/Hinweise in de/en/tr/ru. Gate `scripts/check-f45-b2b4a2b1-regeln.mjs`.
 Rest: (4), (5), (6), (8) und die Anzeige der Regeln in Karte/Abnahme/Workboard folgen in B2b-4a-2b-2; Grenze von (1): übersteigt die
 Ausgabe von `git status` den Puffer, bleibt `nichtBestimmbar`.
+Erledigt (F45 B2b-4a-2b-2, 20.10.2026, `features/F45/plan-b2b4a2b2.md`, Advisor `advisor-b2b4a2b2.md`): (4) Stand je Ablauf
+`public/leitstand/ablauf-code-stand.js` — Abruf nur beim Zeichnen der geöffneten Karte/Abnahme bzw. des Workboard-Details „abgeschlossen“,
+je Neuladen-Schlüssel (V1) einmal, Fehlschlag zählt, Ablaufseite nur auf der Detailroute, Projektwechsel verwirft alles; neu nur über
+„Aktualisieren“. (5) 409 mit `grund_schluessel` ist eine Lage ohne Fehlerfarbe (`aufgeraeumt` = Endzustand), 409 ohne Schlüssel, 400/404,
+200 ohne Feld `ablauf` (älterer Server, „Leitstand neu starten“) sind Fehler. (6) GESTOPPT mit offenen Änderungen ⇒ „Weg: Aufräumen — mit
+„Änderungen verwerfen““, nur Commits ⇒ eigener Text, 0/0 ⇒ „Nichts offen“, unlesbar ⇒ eigener Text. (8) Aufräumen-Art aus
+`aufraeumenMoeglich` (Delta 8, Bauauflage 3), V1, Branch/origin (13), Kartensignatur `sichernHtml`/`ohneKnopf` (14), Workboard-Delegation
+(15), Köpfe (16), Befund 6 über `sichernQuelle`. Gate `scripts/check-f45-b2b4a2b2-anzeige.mjs` (a)–(h). Rest (Grenzen, im Plan): kein
+automatisches Neuladen bei Rückkehr auf dieselbe Karte („Aktualisieren“); das Workboard frischt nach „abgeschlossen“ nicht auf
+(Bauauflage 6); der Verweis „Knopf unter den Aktionen“ hat kein Sprungziel; bei GESTOPPT mit unlesbarem git fehlt der node_modules-Satz
+(Server liefert dort `nichtAbgeschlossen`).
 Feature/Run: Entdeckt: F45 B2b-4a-1 (code-reviewer, qa), 19.10.2026.
 
 **F-1158** · `TECH_DEBT` · P3 · offen
@@ -8521,3 +8534,21 @@ Auswirkung: Gering — Fehlabbruch, kein falscher Commit.
 Maßnahme: Regel: Nicht Gestagtes über `git diff --name-only` (geänderte, nicht gestagte) plus `git ls-files --others --exclude-standard` (neue, unverfolgte) prüfen, nie über `git status --short`.
 Status: erledigt — Regel angewandt ab 19.10.2026.
 Feature/Run: Entdeckt: F45 B2b-4a-2a (Commit durch den Challenger), 19.10.2026; eingetragen F45 B2b-4a-2b-1, 20.10.2026.
+
+**F-1161** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `biome check --write` formatiert ganze Dateien um — das Repo nutzt den Formatierer nicht, `biome.json` schaltet ihn aber nicht ab.
+Beschreibung: Vorfall 20.10.2026 (F45 B2b-4a-2b-2): ein `biome check --write` über die geänderten Dateien stellte 10 Dateien vollständig auf das Biome-Standardformat um (Tabs, doppelte Anführungszeichen, Semikolons; ≈ 20.000 Zeilen Diff), darunter `views/workflows.js`, `views/workboard.js` und die vier Wörterbücher. Quelltext-Gates mit Mustern auf einfache Anführungszeichen bzw. einzeilige Aufrufe kippen dadurch; der Diff wird unreviewbar. Das Repo prüft nur mit `biome lint` (`npm run lint`); `biome.json` hat keinen Block `formatter`, der Formatierer ist damit eingeschaltet. Zurückgesetzt per `git checkout HEAD -- …` (durch Stefan), Änderungen neu eingespielt.
+Fundstelle: `biome.json` (kein `formatter.enabled: false`, kein `assist`/`organizeImports`-Block); Befehl `biome check --write`.
+Auswirkung: Mittel — ein naheliegender Aufruf zerstört die Reviewbarkeit und macht Gates rot, ohne dass sich Verhalten ändert.
+Maßnahme: `formatter.enabled: false` (und ggf. `assist`/`organizeImports` aus) in `biome.json`, zusammen mit F-1152 in einem eigenen Aufräumauftrag, nicht in diesem PR. Bis dahin: nur `npm run lint`, nie `biome check --write` oder `biome format`.
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-4a-2b-2 (Bau, eigener Fehler), 20.10.2026.
+
+**F-1162** · `TECH_DEBT` · P2 · offen
+Titel: Design-Reste am Abschnitt „Bereit zum Sichern“ (design-guardian F45 B2b-4a-2b-2).
+Beschreibung: (1) Schrittnummern fehlen: `.sichern-schritt { display: flex }` nimmt dem `<li>` das `list-item`, der Text „Kein Push, solange der Grund in Schritt 1 besteht“ verweist aber auf eine Nummer (mittel). (2) Badge „Bereit zum Sichern“ erscheint auch bei Branch-/Ort-Grund ohne jeden Befehl (Lage „push-Grund fremder Branch“) — hängt nur an `sichern.bereit`, nicht an `ablaufSicherBefehle(...).grund` (mittel). (3) `.v10-seite h3` schlägt `.sichern-titel`: die Überschrift „Sichern“ wird 20 px Serif statt 14 px, fast gleichrangig zum Kartenkopf, das Badge erbt die Serifenschrift (mittel). (4) Abnahmeseite bei 390: zwei Befehlsblöcke schieben Abnahmekriterien und „Deine Entscheidung“ ≈ 700 px nach unten; Vorschlag eingeklappt (`<details>`) auf der Abnahmeseite — braucht Stefans Entscheidung (mittel). (5) Workboard: `#view-workboard .workboard-git pre` legt einen zweiten Rahmen um den Code (Kasten im Kasten), Abschnitt steht ohne Karte zwischen „Ablauf“ und „Worum es geht“ (gering). (6) Links im Abschnitt auf hell kaum als Link erkennbar (Unterstreichung direkt am Text, gering). (7) Wenig Abstand zwischen Karte „Wo gearbeitet wird“ und „Der Weg zum Ergebnis“ (bestehend, fällt durch die längere Karte stärker auf; gering).
+Fundstelle: `public/leitstand/style.css` (Block F45 B2b-4a-2b-2 am Ende, `.v10-seite h3`, `#view-workboard .workboard-git pre`), `public/leitstand/views/ablauf-sichern-anzeige.js` (`renderSichernAbschnitt`), Bilder `features/F45/nachweise/b2b4a2b2/render/`.
+Auswirkung: Mittel — Hierarchie und eine irreführende grüne Marke; die Abnahmeentscheidung rückt bei 390 weit nach unten.
+Maßnahme: Folgepaket: (1)/(3) CSS (`li` bleibt `list-item`, Flex in einem inneren Element; Selektor `.v10-seite .sichern-titel`), (2) Badge nur ohne `grund`, (4) nach Entscheidung Stefans, (5)–(7) gesammelt. Keine Korrekturrunde in B2b-4a-2b-2 (Auftrag).
+Status: offen.
+Feature/Run: Entdeckt: F45 B2b-4a-2b-2 (design-guardian), 20.10.2026.
