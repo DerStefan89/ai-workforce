@@ -9,6 +9,8 @@
  */
 
 import assert from 'node:assert/strict'
+import { tmpdir } from 'node:os'
+import { resolve } from 'node:path'
 import test from 'node:test'
 import { BLOCK_FUSS, BLOCK_KOPF, ortZeile } from '../../public/leitstand/code-daten.js'
 import { MAX_ABLAUF_ORTE, ablaufTitel, baueJarvisOrte, waehleOffeneArbeitsordner } from './jarvis-orte.mjs'
@@ -65,11 +67,14 @@ test('ablaufTitel: Auftragstitel, sonst Ziel; einzeilig, Anführungszeichen erse
 })
 
 test('baueJarvisOrte: Blockform und Ortszeilen aus code-daten.js, Reihenfolge bleibt, höchstens 5', () => {
-  const orte = baueJarvisOrte('C:\\Projekte\\haushalt', [
+  // repoWurzel geht durch resolve: echter absoluter Pfad der laufenden Plattform (C:\… wäre unter Linux relativ, CI);
+  // die Ablauf-Pfade gehen nicht durch resolve und bleiben Windows-Pfade.
+  const projekt = resolve(tmpdir(), 'haushalt')
+  const orte = baueJarvisOrte(projekt, [
     { workflowId: 'b', pfad: "C:\\wt\\it's", titel: 'B' },
     { workflowId: 'a', pfad: 'C:\\wt\\a', ziel: 'Ziel A' },
   ])
-  assert.deepEqual(orte.block, { kopf: BLOCK_KOPF, ortZeile: ortZeile('C:\\Projekte\\haushalt'), fuss: BLOCK_FUSS })
+  assert.deepEqual(orte.block, { kopf: BLOCK_KOPF, ortZeile: ortZeile(projekt), fuss: BLOCK_FUSS })
   assert.deepEqual(orte.ablaufOrte, [
     { titel: 'B', ortZeile: "Set-Location -LiteralPath 'C:\\wt\\it''s' -ErrorAction Stop" },
     { titel: 'Ziel A', ortZeile: ortZeile('C:\\wt\\a') },
