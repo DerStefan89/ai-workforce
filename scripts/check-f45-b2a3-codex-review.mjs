@@ -18,8 +18,9 @@
  *     Regel 1k hält (KLAERUNG_ERFORDERLICH), keine automatische Anpassung; mit dem Satz → ABGESCHLOSSEN; ohne
  *     review in der Laufakte → kein Halt (Gegenprobe); Befund ohne Pflichtwert → Hinweis ohne Halt; Karte mit Lücke →
  *     kontext_luecken.
- * (f) Jarvis-Auftrag: jede Zeile der Regel „direkt ausführbar“, cd mit eingesetztem, gequotetem Pfad, „Deine Schritte“;
- *     der Server baut die cd-Zeile an beiden Aufrufen aus dem Projektpfad.
+ * (f) Jarvis-Auftrag: jede Zeile der Regel „direkt ausführbar“, Blockform mit eingesetzter, gequoteter Ortszeile (seit
+ *     F45 B2b-4b statt cd, F-1088 (5)), „Deine Schritte“; der Server baut die Ortsangaben an beiden Aufrufen über
+ *     baueJarvisOrte(repoWurzel, offeneAblaufOrte()) und ruft weder cdZeile noch ortZeile selbst.
  * (g) Quelltext: starteWorkflowSchritt( genau 6-mal im Server.
  * Rot (Selbsttest, kalibriert)
  * (h) Jede Prüfung aus (a), (b), (c), (f) schlägt bei einem verfälschten Eingang an.
@@ -37,7 +38,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { psArgument } from '../public/leitstand/code-daten.js'
+import { BLOCK_FUSS, BLOCK_KOPF, ortZeile } from '../public/leitstand/code-daten.js'
 import { validiereLaufakteDaten } from '../src/claude-code-gateway/index.ts'
 import { fuehreGitSync } from '../src/git-starter/index.ts'
 import { baueJarvisAuftragstext, REGEL_DEINE_SCHRITTE, REGEL_DIREKT_AUSFUEHRBAR } from '../src/jarvis/index.ts'
@@ -123,13 +124,14 @@ function pruefeSchemaV2(schema) {
 /**
  * (f) Prüft den Jarvis-Auftrag auf die Ausgaberegel.
  * @param text - Auftragstext
- * @param cdZeile - erwartete cd-Zeile
+ * @param ortsZeile - erwartete Ortszeile des Projekts
  * @returns Befunde
  */
-function pruefeJarvis(text, cdZeile) {
+function pruefeJarvis(text, ortsZeile) {
   const b = []
   for (const zeile of [...REGEL_DIREKT_AUSFUEHRBAR, ...REGEL_DEINE_SCHRITTE]) if (!text.includes(zeile)) b.push(`(f) Regelzeile fehlt: ${zeile.slice(0, 60)}`)
-  if (!text.includes(`- Erste Zeile jedes Blocks: ${cdZeile}`)) b.push('(f) cd-Zeile mit eingesetztem Pfad fehlt')
+  if (!text.includes(`erste Zeile „${BLOCK_KOPF}“, zweite Zeile die Ortszeile, danach die Befehle, letzte Zeile „${BLOCK_FUSS}“`)) b.push('(f) Blockform fehlt')
+  if (!text.includes(`- Ortszeile für das Projekt: ${ortsZeile}`)) b.push('(f) Ortszeile mit eingesetztem Pfad fehlt')
   for (const teil of ['PowerShell (Windows)', 'getrennte Blöcke', 'Anführungszeichen', '--no-verify', 'auf main pushen', 'Keine Platzhalter', "'Deine Schritte:'", 'höchstens drei Zeilen', 'einfache Sprache']) {
     if (!text.includes(teil)) b.push(`(f) Regelteil fehlt: ${teil}`)
   }
@@ -172,9 +174,10 @@ function pruefeServerQuelltext(server) {
   const b = []
   const starte = server.split('starteWorkflowSchritt(').length - 1
   if (starte !== 6) b.push(`(g) starteWorkflowSchritt( ${starte}-mal im Server (erwartet 6)`)
-  if (server.split('function baueProjektCdZeile(').length - 1 !== 1) b.push('(f) baueProjektCdZeile fehlt im Server')
-  const aufrufe = server.split('{ cdZeile: baueProjektCdZeile(repoWurzel) }').length - 1
-  if (aufrufe !== 2) b.push(`(f) der Server baut die cd-Zeile ${aufrufe}-mal aus dem Projektpfad (erwartet 2: Chat und Zusammenfassung)`)
+  if (!server.includes("import { baueJarvisOrte, waehleOffeneArbeitsordner } from './leitstand/jarvis-orte.mjs'")) b.push('(f) baueJarvisOrte nicht aus scripts/leitstand/jarvis-orte.mjs importiert')
+  const aufrufe = server.split(', verlaufsfenster, baueJarvisOrte(repoWurzel, offeneAblaufOrte()))').length - 1
+  if (aufrufe !== 2) b.push(`(f) der Server baut die Ortsangaben ${aufrufe}-mal aus dem Projektpfad (erwartet 2: Chat und Zusammenfassung)`)
+  for (const name of ['cdZeile', 'ortZeile(']) if (server.includes(name)) b.push(`(f) der Server nutzt ${name} selbst (eine Quelle: jarvis-orte.mjs)`)
   return b
 }
 
@@ -201,17 +204,17 @@ const SCHEMA = JSON.parse(readFileSync('schemas/ergebnis-code-reviewer.schema.js
 // (f) Jarvis
 {
   const vor = befunde.length
-  const cdZeile = `cd ${psArgument(String.raw`C:\Users\stefa\Projekte\mein projekt`)}`
-  if (cdZeile !== String.raw`cd 'C:\Users\stefa\Projekte\mein projekt'`) befunde.push(`(f) psArgument quotet den Pfad nicht wie erwartet: ${cdZeile}`)
-  befunde.push(...pruefeJarvis(baueJarvisAuftragstext('Wie sichere ich?', [], { cdZeile }), cdZeile))
-  if (befunde.length === vor) console.log('✓ (f) Jarvis: Regel „direkt ausführbar“ vollständig, cd mit eingesetztem Pfad, „Deine Schritte“ (Server-Teil in (g)).')
+  const ortsZeile = ortZeile(String.raw`C:\Projekte\mein projekt`)
+  if (ortsZeile !== String.raw`Set-Location -LiteralPath 'C:\Projekte\mein projekt' -ErrorAction Stop`) befunde.push(`(f) ortZeile quotet den Pfad nicht wie erwartet: ${ortsZeile}`)
+  befunde.push(...pruefeJarvis(baueJarvisAuftragstext('Wie sichere ich?', [], { block: { kopf: BLOCK_KOPF, ortZeile: ortsZeile, fuss: BLOCK_FUSS } }), ortsZeile))
+  if (befunde.length === vor) console.log('✓ (f) Jarvis: Regel „direkt ausführbar“ vollständig, Blockform mit eingesetzter Ortszeile, „Deine Schritte“ (Server-Teil in (g)).')
 }
 
 // (g) Quelltext (mit dem Server-Teil von (f))
 {
   const vor = befunde.length
   befunde.push(...pruefeServerQuelltext(SERVER))
-  if (befunde.length === vor) console.log('✓ (g) starteWorkflowSchritt( genau 6-mal im Server; cd-Zeile aus baueProjektCdZeile an beiden Jarvis-Aufrufen.')
+  if (befunde.length === vor) console.log('✓ (g) starteWorkflowSchritt( genau 6-mal im Server; Ortsangaben aus baueJarvisOrte an beiden Jarvis-Aufrufen, kein eigenes cdZeile/ortZeile.')
 }
 
 // (h) Rot-Selbsttest
@@ -226,12 +229,14 @@ const SCHEMA = JSON.parse(readFileSync('schemas/ergebnis-code-reviewer.schema.js
     ['Claude ohne Beobachtung', pruefeReviewAuftrag(`# Projektkarte\n${baueReviewPolicyBlock()}`, 'claude-code')],
     ['Schema: Feld nicht in required', pruefeSchemaV2({ ...SCHEMA, properties: { ...SCHEMA.properties, befunde: { ...SCHEMA.properties.befunde, items: { ...SCHEMA.properties.befunde.items, required: ['schwere'] } } } })],
     ['Schema: nicht nullable', pruefeSchemaV2(JSON.parse(JSON.stringify(SCHEMA).replace('"type":["string","null"],"minLength":1,"description":"v2: Befund-ID', '"type":"string","minLength":1,"description":"v2: Befund-ID')))],
-    ['Jarvis ohne „Deine Schritte“', pruefeJarvis(baueJarvisAuftragstext('x', [], { cdZeile: 'cd x' }).replace(REGEL_DEINE_SCHRITTE[0], ''), 'cd x')],
-    ['Jarvis mit Platzhalter statt Pfad', pruefeJarvis(baueJarvisAuftragstext('x'), "cd 'C:\\p'")],
+    ['Jarvis ohne „Deine Schritte“', pruefeJarvis(baueJarvisAuftragstext('x', [], { block: { kopf: BLOCK_KOPF, ortZeile: 'o', fuss: BLOCK_FUSS } }).replace(REGEL_DEINE_SCHRITTE[0], ''), 'o')],
+    ['Jarvis mit Platzhalter statt Pfad', pruefeJarvis(baueJarvisAuftragstext('x'), ortZeile('C:\\p'))],
+    ['Jarvis mit cd statt Blockform', pruefeJarvis(baueJarvisAuftragstext('x', [], { block: { kopf: 'cd', ortZeile: "cd 'C:\\p'", fuss: '' } }), ortZeile('C:\\p'))],
     ['Policy-Text ohne neue Version', pruefePolicy(`${baueReviewPolicyBlock()} `, REVIEW_POLICY_VERSION, SERVER)],
     ['Policy zweimal im Server', pruefePolicy(baueReviewPolicyBlock(), REVIEW_POLICY_VERSION, `${SERVER}\nbaueReviewPolicyBlock()`)],
     ['starteWorkflowSchritt( siebenmal', pruefeServerQuelltext(`${SERVER}\nstarteWorkflowSchritt(`)],
-    ['cd-Zeile nur einmal', pruefeServerQuelltext(SERVER.replace('{ cdZeile: baueProjektCdZeile(repoWurzel) }', '{}'))],
+    ['Ort-Optionen nur einmal', pruefeServerQuelltext(SERVER.replace(', verlaufsfenster, baueJarvisOrte(repoWurzel, offeneAblaufOrte()))', ', verlaufsfenster, {})'))],
+    ['Server baut die Ortszeile selbst', pruefeServerQuelltext(`${SERVER}\nortZeile(repoWurzel)`)],
   ]
   for (const [name, ergebnis] of rot) if (ergebnis.length === 0) befunde.push(`(h) Rotfall '${name}' wird nicht erkannt`)
   if (befunde.length === vor) console.log(`✓ (h) Rot-Selbsttest: ${rot.length} verfälschte Eingänge erkannt.`)

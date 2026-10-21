@@ -45,7 +45,7 @@ export const CLI_TIMEOUT_ZUSATZ_MS = 120000
 
 /**
  * F45 B2b-3b-2b-2a-1 (Punkt 4): Regelzeilen für den Ausführungsauftrag, nur bei eingeschaltetem Kanal (scripts/leitstand-server.mjs,
- * starteWorkflowSchritt). Unversioniert wie `baueCdRegelZeile` (src/jarvis) — die Ausführung hat keine versionierte Policy. Vorrang vor
+ * starteWorkflowSchritt). Unversioniert wie `baueOrtRegelZeilen` (src/jarvis) — die Ausführung hat keine versionierte Policy. Vorrang vor
  * dem F-689-Hinweis „- [x] Blockiert“ wörtlich (Advisor B9). B2b-3b-2b-2a-3 (F-1132 (5), ARCHITECTURE §3): eine als ungültig
  * zurückgewiesene Frage („Frage ungültig — nicht an Stefan gestellt“, scripts/leitstand/rueckfrage-mcp.mjs) wird einmal korrigiert neu
  * gestellt; scheitert auch das, gilt es wie „keine Antwort“. Keine Zeile beginnt mit „- [x]“ (SELBSTBLOCKADE_ZEILE, src/korrekturschleife).

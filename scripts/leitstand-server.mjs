@@ -532,7 +532,7 @@ import { baueBudgetHaltGrund, erhoehtesBudget, istBudgetHaltGrund, wendeBudgetAn
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { baueReviewPolicyBlock, pruefeReviewErgebnisFuer, REVIEW_POLICY_VERSION, zaehleSchwereBeiBereit } from '../src/review-policy/index.ts'
 import { leseGeprueftenStandAsync, leseGeprueftenStandSync, standIstVeraltet } from '../src/review-stand/index.ts'
-import { cdZeile } from '../public/leitstand/code-daten.js'
+import { baueJarvisOrte, waehleOffeneArbeitsordner } from './leitstand/jarvis-orte.mjs'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregisterMitLokal, projektOriginsAus, vorschauLeitstandSperre } from '../src/projekte/index.ts'
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
@@ -541,7 +541,7 @@ import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, fuehreGitAus, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
 import { arbeitsordnerGrund, mitAblauf, SICHERN_GRUND_TEXT } from './leitstand/ablauf-sichern.mjs'
 import { LAUFID_UNZULAESSIGE_ZEICHEN, pruefeAblaufKennung } from './leitstand/kennung.mjs'
-import { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt } from './leitstand/text-auszug.mjs'
+import { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt, formatiereAbgelehnteBefehle, versucheJsonParse } from './leitstand/text-auszug.mjs'
 export { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt }
 import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitstand/startvorlage-wahl.mjs'
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
@@ -4146,28 +4146,6 @@ function schreibeKenntnisnahme(laufId, ergebnis, begruendung, profilReferenz, op
   return { artefaktId: `entscheidung-${laufId}`, versionSequenz: artefakt.versionSequenz }
 }
 
-/** F-760: kürzt die Liste abgelehnter Befehle (leseAbgelehnteBefehleAusRohstrom) für den persistierten Halt-Grund — der Text soll nicht mit der Zahl der Probeaufrufe beliebig wachsen. @returns lesbarer Fließtext */
-function formatiereAbgelehnteBefehle(befehle) {
-  if (befehle.length === 0) return 'keine im Rohstrom lesbar'
-  const GRENZE = 8
-  const sichtbar = befehle.slice(0, GRENZE)
-  const rest = befehle.length - sichtbar.length
-  return rest > 0 ? `${sichtbar.join(', ')}, … (+${rest} weitere)` : sichtbar.join(', ')
-}
-
-/**
- * Versucht JSON.parse, ohne zu werfen.
- * @param kandidat - Text
- * @returns { ok: true, geparst } oder { ok: false, grund }
- */
-function versucheJsonParse(kandidat) {
-  try {
-    return { ok: true, geparst: JSON.parse(kandidat) }
-  } catch (fehler) {
-    return { ok: false, grund: fehler.message }
-  }
-}
-
 /**
  * Liest den geparsten JSON-Ergebnistext eines Rollen-Laufs aus dessen Rohstrom —
  * worker-abhängig (Codex über leseCodexEreignisse().letzteAgentMessage, claude-code
@@ -4938,16 +4916,6 @@ function beschreibeLaufUrsache(ergebnis, fehler, zeitgrenzeMs) {
   if (misserfolg.art === 'zeitgrenze') return `Zeitgrenze (${Math.round((zeitgrenzeMs ?? 0) / 1000)} s)`
   if (misserfolg.art === 'abgebrochen') return 'abgebrochen'
   return `${misserfolg.art === 'nicht_gestartet' ? 'Werkzeug nicht gestartet' : misserfolg.art === 'verweigert' ? 'verweigert' : 'Werkzeugausfall'}: ${misserfolg.grund ?? 'kein Grund gemeldet'}`
-}
-
-/**
- * F45 B2a-3a (F-959): erste Zeile jedes Befehlsblocks einer Jarvis-Antwort — cd auf den vollen Projektpfad, PowerShell-gequotet
- * über cdZeile (die eine Quelle der Befehlsblöcke des Leitstands, public/leitstand/code-daten.js; F45 B2a-3b).
- * @param wurzel - Projektordner dieser Instanz
- * @returns z. B. „cd 'C:\Projekte\mein projekt'“
- */
-function baueProjektCdZeile(wurzel) {
-  return cdZeile(resolve(wurzel))
 }
 
 /**
@@ -6391,6 +6359,37 @@ export function erzeugeRequestHandler(optionen = {}) {
   function wirksamerArbeitsordnerStatus(workflowId, daten) {
     if (daten === null || daten === undefined) return null
     return daten.status === 'IN_VORBEREITUNG' && !arbeitsordnerVorbereitungLaeuft.has(workflowId) ? 'FEHLGESCHLAGEN' : daten.status
+  }
+
+  /** Arbeitsordner-Einträge aus Ordnernamen des Kontrollzustands (GET /api/arbeitsordner, Jarvis). @param namen - Ordnernamen @returns [{ workflowId, daten (wirksamer Status), ordnerVorhanden }] */
+  function arbeitsordnerEintraege(namen) {
+    return namen.filter((name) => name.startsWith('lineage-arbeitsordner-')).map((name) => {
+      const workflowId = name.slice('lineage-arbeitsordner-'.length)
+      const version = ladeArbeitsordner(workflowId)
+      const daten = version === null ? null : { ...version.daten, status: wirksamerArbeitsordnerStatus(workflowId, version.daten) }
+      return { workflowId, daten, ordnerVorhanden: version !== null && existsSync(version.daten.pfad) }
+    })
+  }
+
+  /**
+   * F45 B2b-4b (F-1085 (5)): offene Arbeitsordner für den Jarvis-Auftrag (höchstens 5, neueste zuerst) mit Auftragstitel und
+   * Ziel. Bewusst SYNCHRON (D13, plan-b2b4b §3): zwischen `if (laufAktiv)` und dem Laufstart darf kein await liegen. ENOENT
+   * still leer, andere Fehler geloggt und leer (Jarvis antwortet dann mit der Projekt-Ortszeile allein).
+   * @returns [{ workflowId, pfad, titel, ziel }]
+   */
+  function offeneAblaufOrte() {
+    const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+    try {
+      const namen = readdirSync(basisVerzeichnis, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()
+      return waehleOffeneArbeitsordner(arbeitsordnerEintraege(namen)).map(({ workflowId, pfad }) => {
+        const workflow = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten
+        const auftragId = workflow?.auftrag_id
+        return { workflowId, pfad, titel: auftragId ? ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, ladeOptionen)?.daten?.titel : undefined, ziel: workflow?.ziel }
+      })
+    } catch (fehler) {
+      if (fehler?.code !== 'ENOENT') console.error('[leitstand] Jarvis: offene Arbeitsordner nicht lesbar:', fehler)
+      return []
+    }
   }
 
   /**
@@ -10750,7 +10749,7 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_JARVIS, 8, 12000)
       markiereZeit(zeitmessung, 'verlauf_geladen')
-      starteRollenChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster, { cdZeile: baueProjektCdZeile(repoWurzel) }), false, KONFIGURATION_JARVIS, zeitmessung)
+      starteRollenChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster, baueJarvisOrte(repoWurzel, offeneAblaufOrte())), false, KONFIGURATION_JARVIS, zeitmessung)
       return
     }
 
@@ -10801,7 +10800,7 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const zusammenfassungsNachricht =
         "Fasse den bisherigen Gesprächsverlauf kompakt zusammen (Ziele, getroffene Entscheidungen, offene Punkte, zuletzt Besprochenes), damit das Gespräch allein auf Basis dieser Zusammenfassung sinnvoll fortgesetzt werden kann. Antworte mit art 'antwort'."
-      starteRollenChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster, { cdZeile: baueProjektCdZeile(repoWurzel) }), true, KONFIGURATION_JARVIS, zeitmessung)
+      starteRollenChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster, baueJarvisOrte(repoWurzel, offeneAblaufOrte())), true, KONFIGURATION_JARVIS, zeitmessung)
       return
     }
 
@@ -12255,15 +12254,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 403, { grund: fremd })
         return
       }
-      const praefix = 'lineage-arbeitsordner-'
-      const ordner = (await leseKontrollzustandOrdner(basisVerzeichnis)).filter((name) => name.startsWith(praefix))
-      const eintraege = ordner.map((name) => {
-        const workflowId = name.slice(praefix.length)
-        const version = ladeArbeitsordner(workflowId)
-        const daten = version === null ? null : { ...version.daten, status: wirksamerArbeitsordnerStatus(workflowId, version.daten) }
-        return { workflowId, daten, ordnerVorhanden: version !== null && existsSync(version.daten.pfad) }
-      })
-      sendeJson(res, 200, baueArbeitsordnerListe(eintraege))
+      sendeJson(res, 200, baueArbeitsordnerListe(arbeitsordnerEintraege(await leseKontrollzustandOrdner(basisVerzeichnis))))
       return
     }
 

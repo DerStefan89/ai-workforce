@@ -1,7 +1,7 @@
 /**
  * Datei: scripts/leitstand/text-auszug.test.mjs
  *
- * Zweck: Unit-Tests der ausgelagerten Textauszüge (F45 B2b-4a-1) und der Re-Exporte aus scripts/leitstand-server.mjs —
+ * Zweck: Unit-Tests der ausgelagerten Textauszüge (F45 B2b-4a-1, B2b-4b) und der Re-Exporte aus scripts/leitstand-server.mjs —
  * dieselben Funktionen, dasselbe Verhalten (die Fälle von check-f22-click-to-work (0) und F-966/F-506 in Kurzform).
  *
  * Wird aufgerufen von: `npm run test` (node --test).
@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as server from '../leitstand-server.mjs'
-import { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt } from './text-auszug.mjs'
+import { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt, formatiereAbgelehnteBefehle, versucheJsonParse } from './text-auszug.mjs'
 
 test('Re-Export: der Server liefert genau die Funktionen des Moduls', () => {
   assert.equal(server.entferneCodezaun, entferneCodezaun)
@@ -36,4 +36,15 @@ test('extrahiereErstesJsonObjekt: erstes balanciertes Objekt, Klammern in String
   assert.equal(extrahiereErstesJsonObjekt('{"a":"\\"}"}'), '{"a":"\\"}"}')
   assert.equal(extrahiereErstesJsonObjekt('kein Objekt'), null)
   assert.equal(extrahiereErstesJsonObjekt('{"a":1'), null)
+})
+
+test('F45 B2b-4b: versucheJsonParse wirft nicht; formatiereAbgelehnteBefehle kürzt ab dem neunten Befehl', () => {
+  assert.deepEqual(versucheJsonParse('{"a":1}'), { ok: true, geparst: { a: 1 } })
+  const fehler = versucheJsonParse('{a')
+  assert.equal(fehler.ok, false)
+  assert.ok(typeof fehler.grund === 'string' && fehler.grund.length > 0)
+  assert.equal(formatiereAbgelehnteBefehle([]), 'keine im Rohstrom lesbar')
+  const acht = Array.from({ length: 8 }, (_, i) => `b${i}`)
+  assert.equal(formatiereAbgelehnteBefehle(acht), acht.join(', '))
+  assert.equal(formatiereAbgelehnteBefehle([...acht, 'b8']), `${acht.join(', ')}, … (+1 weitere)`)
 })

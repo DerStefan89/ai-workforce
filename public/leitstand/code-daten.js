@@ -16,7 +16,8 @@
  *   (befehlsBlock — die eine Regel). Fehlt der Ordner, bricht der Block nach Set-Location ab und kein git-Befehl
  *   läuft (features/F45/nachweise/b2b4a2a/powershell-versuch.md); der Ort bleibt nach dem Block gesetzt. Eine
  *   Folge, die nach außen wirkt (push), steht in einem eigenen Block (befehlsBloecke).
- * - cdZeile: nur noch die cd-Zeile der Jarvis-Regel des Servers (Chat) — kein Leitstand-Block; Jarvis folgt in B2b-4b.
+ * - Dieselbe Blockform gilt für die Jarvis-Regel (Chat, F45 B2b-4b): der Server reicht BLOCK_KOPF, ortZeile(...) und
+ *   BLOCK_FUSS fertig in den Auftragstext (scripts/leitstand/jarvis-orte.mjs) — keine zweite Quoting-Regel.
  * - pruefstandBefehle: der Prüfbefehl der Startvorlage als Block.
  * - istNodeModulesPfad (F45 B2b-4a-2b-1, O2): die eine Regel für node_modules — neue, ungetrackte Dateien darunter
  *   zählt die Route nicht (scripts/leitstand/routen-code.mjs leseDateien, Feld dateien.nodeModules) und kein Block stagt
@@ -35,9 +36,8 @@
  *   ablaufSicherBefehle, nodeModulesAnzahl: Abschnitt „Bereit zum Sichern“, F45 B2b-4a-2b-2)
  * - public/leitstand/befehlsblock.js (istBlockform: Zählung und Enter-Hinweis)
  * - scripts/leitstand/routen-code.mjs (istNodeModulesPfad: Dateiliste ohne neue node_modules-Dateien, F45 B2b-4a-2b-1)
- * - scripts/leitstand-server.mjs (cdZeile: cd-Zeile der Jarvis-Regel, F45 B2a-3a/B2a-3b — dieselbe Quoting-Quelle
- *   (psArgument) wie die Befehlsblöcke, aber nicht deren Blockform (folgt in B2b-4b); deshalb importiert der Server hier aus
- *   public/; das Modul ist import-sicher, ohne DOM)
+ * - scripts/leitstand/jarvis-orte.mjs (BLOCK_KOPF, ortZeile, BLOCK_FUSS: Blockform der Jarvis-Regel, F45 B2b-4b; deshalb
+ *   importiert der Server-Teil hier aus public/; das Modul ist import-sicher, ohne DOM)
  * - scripts/check-f45-b2a3-codex-review.mjs, scripts/check-f45-b2a3b-review-stand.mjs, scripts/check-f45-b2b4a2a-blockform.mjs,
  *   scripts/check-f45-b2b4a2b1-regeln.mjs
  * - public/leitstand/code-daten.test.mjs, public/leitstand/code-daten-ablauf.test.mjs (node:test)
@@ -71,9 +71,6 @@ const ADD_ZEICHEN_JE_ZEILE = 8000
 
 /** Zeichen, die Git in einem Pfad als Muster liest (Glob) — solche Pfade bekommen „:(literal)“ (Prüfpass qa 12). */
 const GLOB_ZEICHEN = /[*?[\]]/
-
-/** Platzhalterzeichen von Set-Location -Path ([ ] * ? und das Escape-Zeichen `) — dann -LiteralPath (Code-Review 5). */
-const PS_PLATZHALTER = /[*?[\]`]/
 
 /** Absoluter Pfad: Windows-Laufwerk (C:\ oder C:/), UNC (\\server) oder POSIX (/). */
 const ABSOLUTER_PFAD = /^(?:[A-Za-z]:[\\/]|\\\\|\/)/
@@ -174,18 +171,7 @@ export function commitVorschlag(branch) {
   return sauber === '' ? null : sauber
 }
 
-/**
- * cd-Zeile der Jarvis-Regel (Chat): cd auf den absoluten Pfad, PowerShell-gequotet (psArgument); bei einem Platzhalterzeichen
- * von PowerShell ([ ] * ? `) mit -LiteralPath. Nicht für Leitstand-Blöcke (die haben die Blockform, befehlsBlock) — nur
- * scripts/leitstand-server.mjs baueProjektCdZeile nutzt sie; die Jarvis-Regel bekommt die Blockform in B2b-4b.
- * @param pfad - absoluter Pfad
- * @returns z. B. „cd 'C:\Projekte\mein projekt'“
- */
-export function cdZeile(pfad) {
-  return PS_PLATZHALTER.test(pfad) ? `cd -LiteralPath ${psArgument(pfad)}` : `cd ${psArgument(pfad)}`
-}
-
-/** Erste und letzte Zeile eines Befehlsblocks (Blockform, F45 B2b-4a-2a) — eine Quelle für Erzeuger, Zählung und Enter-Hinweis. */
+/** Erste und letzte Zeile eines Befehlsblocks (Blockform, F45 B2b-4a-2a) — eine Quelle für Erzeuger, Zählung, Enter-Hinweis und Jarvis-Regel (B2b-4b). */
 export const BLOCK_KOPF = '& {'
 export const BLOCK_FUSS = '}'
 
