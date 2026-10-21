@@ -10,7 +10,7 @@
  *     Kopf/Fuß; Enter-Hinweis unter jedem Block in Blockform und nur dort; Schlüssel befehl.enterHinweis in de/en/tr/ru.
  *     Quelltext (nur public/leitstand/views/** ohne Tests und befehlsblock.js; code-daten.js decken die Verhaltensproben ab):
  *     kein cdZeile(, kein Literal 'cd /"cd /`cd ; auftrag-umgebung.js baut seinen Block mit befehlsBlock(.
- *     Grenze: Chat/Jarvis (cdZeile im Server, src/jarvis) folgt in B2b-4b und ist hier nicht geprüft.
+ *     Chat/Jarvis (Blockform in der Jarvis-Regel, F45 B2b-4b) prüft scripts/check-f45-b2b4b-jarvis.mjs, nicht dieses Gate.
  * (b) Rotfall „Ordner fehlt“ → kein git: echte PowerShell führt den erzeugten Block als ein -Command aus — Ordner fehlt ⇒
  *     Exit ≠ 0, Abbruch an Set-Location (kein Parse-Fehler) und kein „git version“ in stdout; Gegenprobe: vorhandene Ordner
  *     mit Leerzeichen, [1], ', ’, ` und $ ⇒ Exit 0, git lief (eine kaputte Quotierung fiele hier auf). Startfehler und

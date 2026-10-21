@@ -58,7 +58,7 @@
 import { execFile } from 'node:child_process'
 import { lstat, readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
-// Die eine node_modules-Regel liegt beim Client (import-sicher, ohne DOM — wie cdZeile für scripts/leitstand-server.mjs).
+// Die eine node_modules-Regel liegt beim Client (import-sicher, ohne DOM — wie ortZeile für scripts/leitstand/jarvis-orte.mjs).
 import { istNodeModulesPfad } from '../../public/leitstand/code-daten.js'
 import { GIT_NICHT_GEFUNDEN, gitProgramm, gitUmgebung } from '../../src/git-starter/index.ts'
 

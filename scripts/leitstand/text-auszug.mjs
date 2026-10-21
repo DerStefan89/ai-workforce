@@ -2,12 +2,15 @@
  * Datei: scripts/leitstand/text-auszug.mjs
  *
  * Zweck: Reine Textauszüge aus einem Rollen-Ergebnistext — Codezaun entfernen (erster bzw. äußerster Zaun) und das erste
- * balancierte JSON-Objekt herauslösen. Wörtlich aus scripts/leitstand-server.mjs ausgelagert (F45 B2b-4a-1, Ausgleich der
- * Wachstumsbremse, ARCHITECTURE.md §1): kein I/O, nicht schreibend, ohne Abhängigkeit.
+ * balancierte JSON-Objekt herauslösen; dazu JSON.parse ohne Wurf (versucheJsonParse) und die gekürzte Liste abgelehnter
+ * Befehle (formatiereAbgelehnteBefehle, F45 B2b-4b). Wörtlich aus scripts/leitstand-server.mjs ausgelagert (F45 B2b-4a-1 und
+ * B2b-4b, Ausgleich der Wachstumsbremse, ARCHITECTURE.md §1): kein I/O, nicht schreibend, ohne Abhängigkeit.
  *
  * Wird aufgerufen von:
  * - scripts/leitstand-server.mjs (leseRollenErgebnisRohstrom, leseRollenErgebnisStufen; dort auch weiter exportiert —
- *   scripts/check-f22-click-to-work.mjs und scripts/check-f31-gedaechtnis.mjs importieren sie aus dem Server)
+ *   scripts/check-f22-click-to-work.mjs und scripts/check-f31-gedaechtnis.mjs importieren sie aus dem Server;
+ *   versucheJsonParse in leseRollenErgebnisRohstrom/leseRollenErgebnisStufen, formatiereAbgelehnteBefehle im F-760-Halt des
+ *   Schritt-Nachlaufs — beide nur intern, kein Re-Export)
  * - scripts/leitstand/text-auszug.test.mjs (node:test)
  *
  * Wichtig: Den Re-Export im Server nicht entfernen — die Gates f22 und f31 importieren die Funktionen von dort.
@@ -95,4 +98,26 @@ export function extrahiereErstesJsonObjekt(text) {
     }
   }
   return null
+}
+
+/**
+ * Versucht JSON.parse, ohne zu werfen (aus scripts/leitstand-server.mjs ausgelagert, F45 B2b-4b, Wachstumsbremse).
+ * @param kandidat - Text
+ * @returns { ok: true, geparst } oder { ok: false, grund }
+ */
+export function versucheJsonParse(kandidat) {
+  try {
+    return { ok: true, geparst: JSON.parse(kandidat) }
+  } catch (fehler) {
+    return { ok: false, grund: fehler.message }
+  }
+}
+
+/** F-760: kürzt die Liste abgelehnter Befehle (leseAbgelehnteBefehleAusRohstrom) für den persistierten Halt-Grund — der Text soll nicht mit der Zahl der Probeaufrufe beliebig wachsen (aus dem Server ausgelagert, F45 B2b-4b). @param befehle - Befehle @returns lesbarer Fließtext */
+export function formatiereAbgelehnteBefehle(befehle) {
+  if (befehle.length === 0) return 'keine im Rohstrom lesbar'
+  const GRENZE = 8
+  const sichtbar = befehle.slice(0, GRENZE)
+  const rest = befehle.length - sichtbar.length
+  return rest > 0 ? `${sichtbar.join(', ')}, … (+${rest} weitere)` : sichtbar.join(', ')
 }

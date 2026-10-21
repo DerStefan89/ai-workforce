@@ -1118,7 +1118,7 @@ im Arbeitsordner, Windows-Aliasse der Workflow-Routen).
 (`Set-Location -LiteralPath <psArgument> -ErrorAction Stop`), `BLOCK_KOPF`/`BLOCK_FUSS`, `istBlockform`; `befehlsBloecke` baut jeden Block
 darüber ⇒ Sichern (commit- und push-Block), Prüfstand und der Orts-Block in „Auftrag anlegen“ in der Form `& {` / Ort / Befehle / `}`
 ohne Einzug. `befehlsblock.js`: Kopf/Fuß zählen nur bei Blockform nicht; unter jedem Block in Blockform „Nach dem Einfügen einmal Enter
-drücken“ (`befehl.enterHinweis`, de/en/tr/ru). `cdZeile` bleibt nur für die Jarvis-Regel des Servers (B2b-4b).
+drücken“ (`befehl.enterHinweis`, de/en/tr/ru). `cdZeile` blieb nur für die Jarvis-Regel des Servers (entfiel mit B2b-4b).
 
 **Tests/Gates:** Golden bewusst umgestellt in `code-daten.test.mjs`, `routen-code.test.mjs` (echter Block in PowerShell, stderr ohne
 `fatal:`), `check-f45-b2a3b-review-stand.mjs` (d)/(g), `befehlsblock.test.mjs`, `views/auftrag-umgebung.test.mjs`. Neues Gate
@@ -1187,3 +1187,34 @@ Projektwechsel, CR 2) — eine Korrekturrunde (siehe Plan „Bau und Prüfpass�
 **Nachweise:** `nachweise/b2b4a2b2/nachweis.md`.
 
 **Register:** F-979, F-1087, F-1157 erledigt (Reste/Grenzen benannt); Nachtrag F-1156 (Commit-Vorschlag mit Kennung, QA 9); neu F-1161 (Biome-Formatierer), F-1162 (Design-Reste, design-guardian „Freigegeben mit Hinweisen“).
+
+## Stand B2b-4b
+
+**Auftrag:** B2b-4b „Jarvis im Arbeitsordner“ (letzter Teil von B2b; F-1085 (5), Rest F-1088 (5), D13-Lücke aus `advisor-b2b4.md`
+Befund 3, Gate-Bruch b2a3 (g) aus Befund 2). Verlauf: `plan-b2b4.md` Teil D/E → `plan-b2b4b.md` → `advisor-b2b4b.md` (Freigegeben mit
+Hinweisen, Punkte 1–6 in Plan v2).
+
+**Gebaut:** `src/jarvis/index.ts` `baueOrtRegelZeilen` (ersetzt `baueCdRegelZeile`; Optionen `block`, `ablaufOrte` statt `cdZeile`):
+Blockform „& {“ / Ortszeile / Befehle / „}“ mit den vom Server fertig gebauten Zeilen, Projekt-Ortszeile, bei offenen Arbeitsordnern je
+„Titel“ + Ortszeile (nur Kontext, keine Anweisungen) und „nie stillschweigend einen Ordner wählen, nachfragen“. Neues reines Modul
+`scripts/leitstand/jarvis-orte.mjs` (`waehleOffeneArbeitsordner`: wirksam BEREIT, Ordner vorhanden, absoluter Pfad, höchstens 5, Sortierung
+aus `baueArbeitsordnerListe`; `ablaufTitel`: Auftragstitel, sonst Ziel, einzeilig, ≤ 80 Codepoints, Kennung nur ohne beides;
+`baueJarvisOrte`: Kopf/Ortszeile/Fuß aus `code-daten.js`). Server: `offeneAblaufOrte` synchron (D13: kein await zwischen `if (laufAktiv)` und
+Laufstart; ENOENT still leer, sonst Log + leer), `arbeitsordnerEintraege` (auch GET `/api/arbeitsordner`), beide Jarvis-Aufrufe über
+`baueJarvisOrte(repoWurzel, offeneAblaufOrte())`; `baueProjektCdZeile` und `cdZeile` entfallen. Ratsche: `versucheJsonParse`,
+`formatiereAbgelehnteBefehle` nach `text-auszug.mjs`; Server 13.366 → 13.357, Grenze gesenkt; `starteWorkflowSchritt(` 6×, keine Route.
+
+**Tests/Gates:** neu `scripts/leitstand/jarvis-orte.test.mjs`, `scripts/check-f45-b2b4b-jarvis.mjs` (a)–(f) (Ortszeilen ≤ 5 neueste zuerst;
+bitgleich: `[]` = fehlend, außer der Ortsregel identisch zum Text von 8ee5f8b, Golden-Hash; Blockform aus einer Quelle; D13 mit zwei
+gleichzeitigen Anfragen am echten Handler und statisch; 9 Rotfälle); `jarvis.test.ts`, `code-daten.test.mjs` angepasst;
+`check-f45-b2a3-codex-review.mjs` (f)/(g) auf die neue Aufrufform (fester Quoting-Vergleich, Literal 2×, kein eigenes `cdZeile`/`ortZeile(`
+im Server; Rotfälle „Ort-Optionen nur einmal“, „cd statt Blockform“, „Server baut die Ortszeile selbst“).
+
+**Prüfpass:** code-reviewer und qa je „Freigegeben mit Hinweisen“, keine kritischen Befunde. Eine Korrekturrunde: Hinweis „weitere,
+ältere offene Arbeitsordner … nachfragen“ ab dem sechsten (qa 1; `waehleOffeneArbeitsordner` liefert dafür 5 + 1), Zeile „Pfade und
+Befehlsformen im Verlauf können veraltet sein“ (qa 3, Teil der Ortsregel, auch ohne Ordner), Bidi-/Nullbreiten-/Trennzeichen aus Pfad und
+Titel (qa 5), Ordnernamen sortiert wie GET (cr 2), Pfadregel über `befehlsBlock` statt Kopie (cr 3), D13-Ausschnitt bis zum Aufrufende und
+Rumpf-nicht-gefunden als Befund (cr 5/6), Tests der ausgelagerten Helfer (cr 7), Gate (a) mit FEHLGESCHLAGEN und ohne Ordner (cr 8); Golden
+(b3) neu, (b2) unverändert grün. Rest → F-1163.
+
+**Register:** F-1085 (5) erledigt, F-1088 (5) ganz erledigt; Nachtrag F-1085 (10); neu F-1163 (Restpunkte).

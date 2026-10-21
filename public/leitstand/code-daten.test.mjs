@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { hatPlatzhalter } from './befehlsblock.js'
-import { BLOCK_FUSS, BLOCK_KOPF, befehlsBlock, befehlsBloecke, bereitschaft, cdZeile, istBlockform, ortZeile, commitUrl, commitVorschlag, filtereVerlauf, freigabeZustand, gitPfadArgument, gruppiereNachOrdner, pruefstandBefehle, psArgument, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from './code-daten.js'
+import { BLOCK_FUSS, BLOCK_KOPF, befehlsBlock, befehlsBloecke, bereitschaft, istBlockform, ortZeile, commitUrl, commitVorschlag, filtereVerlauf, freigabeZustand, gitPfadArgument, gruppiereNachOrdner, pruefstandBefehle, psArgument, sicherBefehle, summeZeilen, verlaufArt, zerlegeAbstand } from './code-daten.js'
 
 const DATEIEN = [
   { pfad: 'public/leitstand/views/code.js', art: '??', xy: '??', plus: 10, minus: 0 },
@@ -118,12 +118,10 @@ test('Sichern: viele Pfade auf mehrere Zeilen, ohne origin nur ein Block, veralt
   assert.deepEqual(sicherBefehle(daten(), { veraltet: true }), { grund: 'veraltet' })
 })
 
-test('F45 B2a-3b: cdZeile (Jarvis-Regel: Quoting, -LiteralPath bei Platzhalterzeichen), ohne absoluten Pfad Grund statt Befehl, Prüfstand in Blockform', () => {
-  assert.equal(cdZeile(String.raw`C:\Projekte\a`), String.raw`cd 'C:\Projekte\a'`)
-  assert.equal(cdZeile('/home/u/a'), "cd '/home/u/a'")
-  assert.equal(cdZeile(String.raw`C:\Projekte\a[1]`), String.raw`cd -LiteralPath 'C:\Projekte\a[1]'`)
-  assert.equal(cdZeile('C:\\x\\a`b'), "cd -LiteralPath 'C:\\x\\a`b'")
-  assert.equal(cdZeile(String.raw`C:\x\it's`), String.raw`cd 'C:\x\it''s'`)
+test('F45 B2a-3b: ohne absoluten Pfad Grund statt Befehl, Prüfstand in Blockform; Quoting der Ortszeile (cdZeile entfiel mit B2b-4b)', () => {
+  assert.equal(ortZeile('/home/u/a'), "Set-Location -LiteralPath '/home/u/a' -ErrorAction Stop")
+  assert.equal(ortZeile('C:\\x\\a`b'), "Set-Location -LiteralPath 'C:\\x\\a`b' -ErrorAction Stop")
+  assert.equal(ortZeile(String.raw`C:\x\it's`), String.raw`Set-Location -LiteralPath 'C:\x\it''s' -ErrorAction Stop`)
   for (const pfad of [undefined, null, '', 'relativ/ordner', '.']) assert.deepEqual(sicherBefehle(daten({ absoluterPfad: pfad })), { grund: 'keinPfad' }, String(pfad))
   const unc = String.raw`Set-Location -LiteralPath '\\server\freigabe' -ErrorAction Stop`
   assert.deepEqual(befehlsBloecke(String.raw`\\server\freigabe`, [['a'], [], ['b']]).bloecke, [
