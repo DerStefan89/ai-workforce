@@ -10,11 +10,14 @@
  * konkreten Präfix-Strip-Falls, nur eine Herleitung am Schreibtisch; hier real getestet).
  * scripts/check-f34-product-coach.mjs prüft zusätzlich die Schema-Beispiele und reale
  * HTTP-Rot-/Grünfälle (D5-Muster: kein zweiter, von Hand nachgebauter Regelsatz).
+ * F45 B5a-1: baueFeatureAkteAusScope (nächste freie ID, ENTWURF, Abschnitte, Rundlauf, Feldregeln, LF).
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueAuftragAusProjektentwurf, baueAuftragAusScope, baueCoachAuftragstext, entferneIdPraefix, validiereErgebnisProductCoach, vergebeFeatureIds } from './index.ts'
+import { leseFeatureAkteAnzeige } from '../feature-auftrag/index.ts'
+import { leseFeatureStatus } from '../workboard/feature-akte-pruefung.ts'
+import { baueAuftragAusProjektentwurf, baueAuftragAusScope, baueCoachAuftragstext, baueFeatureAkteAusScope, entferneIdPraefix, validiereErgebnisProductCoach, vergebeFeatureIds } from './index.ts'
 
 const GUELTIGER_SCOPE = {
   titel: 'Design-Phase vor F30',
@@ -291,4 +294,72 @@ test('baueAuftragAusProjektentwurf: der Auftrag an den Baudurchgang gibt das AK-
 test('baueAuftragAusProjektentwurf: dieselbe AK-Format-Vorgabe gilt auch außerhalb von ai-workforce (istAiWorkforce false/undefined)', () => {
   const { auftragstext } = baueAuftragAusProjektentwurf(baueProjektMitEchtenIds(), 'neu', {})
   assert.ok(auftragstext.includes('- AK<n>: <prüfbarer Satz>'), `AK-Format-Vorgabe fehlt: ${auftragstext}`)
+})
+
+// ─── baueFeatureAkteAusScope (F45 B5a-1, F-912) ─────────────────────────────
+
+test('baueFeatureAkteAusScope: nächste freie ID über Ordner und Roadmap, ENTWURF, liest sich wie der Scope', () => {
+  const ergebnis = baueFeatureAkteAusScope(GUELTIGER_SCOPE, { features: ['F1', 'F12', 'F7B', 'AF-F001', 'F19-bridge'], meilensteine: ['M1'] }, '2026-10-23')
+  assert.ok(ergebnis.ok, JSON.stringify(ergebnis))
+  assert.equal(ergebnis.featureId, 'F13')
+  assert.equal(leseFeatureStatus(ergebnis.inhalt), 'ENTWURF')
+  assert.ok(!ergebnis.inhalt.includes('\r'), 'neue Akte immer LF')
+  const gelesen = leseFeatureAkteAnzeige(ergebnis.inhalt, 'F13')
+  assert.deepEqual(gelesen, {
+    ok: true,
+    titel: 'Design-Phase vor F30',
+    ziel: 'Alle Optik-Findings gebündelt schließen.\n\nProblem: Mehrere Karten sind optisch unfertig.',
+    nicht_ziele: ['Neue Views'],
+    akzeptanzkriterien: [{ id: 'AK1', text: 'Kein offenes Optik-Finding mehr.' }],
+  })
+  for (const zeile of ['## Scope\n- Bestehende Optik-Findings', '## Annahmen\n- Design-Tokens bleiben unverändert', '## Offene Fragen\n- Vor oder nach F34 WS-2?', '## Dependencies\nkeine', '## Änderungen\n- 2026-10-23 · angelegt · aus Coach-Scope']) {
+    assert.ok(ergebnis.inhalt.includes(zeile), zeile)
+  }
+})
+
+test('baueFeatureAkteAusScope: leere Listen ⇒ „keine“, ID-Präfix im Titel entfernt, ohne bestehende IDs F1', () => {
+  const scope = { ...GUELTIGER_SCOPE, titel: 'F9 — Neuer Titel', out_of_scope: [], annahmen: [], in_scope: [], offene_fragen: [] }
+  const ergebnis = baueFeatureAkteAusScope(scope, { features: [], meilensteine: [] }, '2026-10-23')
+  assert.ok(ergebnis.ok)
+  assert.equal(ergebnis.featureId, 'F1')
+  assert.ok(ergebnis.inhalt.startsWith('# F1 — Neuer Titel\n'))
+  assert.ok(ergebnis.inhalt.includes('## Nicht-Ziele\nkeine\n'))
+  const gelesen = leseFeatureAkteAnzeige(ergebnis.inhalt, 'F1')
+  assert.ok(gelesen.ok && gelesen.nicht_ziele.length === 0)
+})
+
+test('baueFeatureAkteAusScope: mehrzeiliger Eintrag wird eingerückt und liest sich zurück', () => {
+  const scope = { ...GUELTIGER_SCOPE, out_of_scope: ['Erste Zeile\n- keine neue Liste'], erfolgskriterium: 'A\r\nB' }
+  const ergebnis = baueFeatureAkteAusScope(scope, { features: [], meilensteine: [] }, '2026-10-23')
+  assert.ok(ergebnis.ok, JSON.stringify(ergebnis))
+  assert.ok(ergebnis.inhalt.includes('- Erste Zeile\n  - keine neue Liste\n'))
+  const gelesen = leseFeatureAkteAnzeige(ergebnis.inhalt, 'F1')
+  assert.ok(gelesen.ok)
+  assert.deepEqual(gelesen.nicht_ziele, ['Erste Zeile\n- keine neue Liste'])
+  assert.deepEqual(gelesen.akzeptanzkriterien, [{ id: 'AK1', text: 'A\nB' }])
+})
+
+test('baueFeatureAkteAusScope: ungültiger Scope, ##-Zeile im Ziel, Checkbox, Titel mit Umbruch, Steuerzeichen ⇒ 400', () => {
+  const rot: unknown[] = [
+    { ...GUELTIGER_SCOPE, ziel: '' },
+    { ...GUELTIGER_SCOPE, ziel: 'Gut\n## Status' },
+    { ...GUELTIGER_SCOPE, out_of_scope: ['[x] erledigt'] },
+    { ...GUELTIGER_SCOPE, titel: 'Zwei\nZeilen' },
+    // code-reviewer M1/qa 7: ein Titel darf weder Status-Zeile noch Überschrift werden.
+    { ...GUELTIGER_SCOPE, titel: 'Status: ABGESCHLOSSEN' },
+    { ...GUELTIGER_SCOPE, titel: '## Ziel' },
+    { ...GUELTIGER_SCOPE, in_scope: [`x${String.fromCharCode(0x2028)}## Datenmodell`] },
+    { ...GUELTIGER_SCOPE, problem: 'Steuer\u0007zeichen' },
+    { ...GUELTIGER_SCOPE, fremd: 1 },
+    null,
+  ]
+  for (const scope of rot) {
+    const ergebnis = baueFeatureAkteAusScope(scope, { features: [], meilensteine: [] }, '2026-10-23')
+    assert.ok(!ergebnis.ok && ergebnis.status === 400, JSON.stringify({ scope, ergebnis }))
+  }
+})
+
+test('baueAuftragAusScope bleibt unverändert neben baueFeatureAkteAusScope', () => {
+  assert.equal(baueAuftragAusScope(GUELTIGER_SCOPE).titel, 'Design-Phase vor F30')
+  assert.ok(baueAuftragAusScope(GUELTIGER_SCOPE).auftragstext.startsWith('# Design-Phase vor F30\n\n## Problem\n'))
 })

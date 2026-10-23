@@ -3,8 +3,8 @@
  *
  * Zweck: node:test für das Gate Akte ↔ Meilenstein (F46 D0, scripts/check-akte-meilenstein.mjs):
  * Grünfall, Rotfälle fehlend (Akte ohne Meilenstein, Roadmap-Eintrag ohne Akte) und doppelt (zwei
- * Meilensteine, zweimal im selben), Ausnahmen (greifen, veraltet, ohne Begründung, ohne ID, doppelt) und der reale
- * Repo-Stand.
+ * Meilensteine, zweimal im selben), Ausnahmen (greifen, veraltet, ohne Begründung, ohne ID, doppelt), E-B5-2 (ENTWURF ohne Meilenstein
+ * zulässig, jeder andere Status Pflicht; F45 B5a-1) und der reale Repo-Stand.
  *
  * Wird aufgerufen von: `npm test` (node --test)
  */
@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { AUSNAHMEN, leseAktenIds, pruefeAkteMeilenstein } from './check-akte-meilenstein.mjs'
+import { AUSNAHMEN, leseAktenIds, leseAktenStatus, pruefeAkteMeilenstein } from './check-akte-meilenstein.mjs'
 
 const roadmap = (...meilensteine) => ({ meilensteine: meilensteine.map(([id, features]) => ({ id, features })) })
 
@@ -82,6 +82,24 @@ test('rot: Ausnahme ohne ID und doppelte Ausnahme', () => {
 
 test('realer Repo-Stand ist grün (Ausnahmen AF-F001, F30 greifen)', () => {
   const echt = JSON.parse(readFileSync('docs/projekt/roadmap.json', 'utf-8'))
-  assert.deepEqual(pruefeAkteMeilenstein(leseAktenIds('features'), echt), [])
+  const ids = leseAktenIds('features')
+  assert.deepEqual(pruefeAkteMeilenstein(ids, echt, AUSNAHMEN, leseAktenStatus('features', ids)), [])
   assert.deepEqual(AUSNAHMEN.map((a) => a.id), ['AF-F001', 'F30'])
+})
+
+test('E-B5-2 grün: Akte mit Status ENTWURF darf ohne Meilenstein sein', () => {
+  const status = new Map([['F1', 'IN_ARBEIT'], ['F2', 'ENTWURF']])
+  assert.deepEqual(pruefeAkteMeilenstein(['F1', 'F2'], roadmap(['M1', ['F1']]), [], status), [])
+})
+
+test('E-B5-2 rot: READY_FOR_TECH, BLOCKIERT, ABGEBROCHEN, fehlender Status ⇒ Meilenstein Pflicht', () => {
+  const status = new Map([['F2', 'READY_FOR_TECH'], ['F3', 'BLOCKIERT'], ['F4', 'ABGEBROCHEN']])
+  const befunde = pruefeAkteMeilenstein(['F1', 'F2', 'F3', 'F4', 'F5'], roadmap(['M1', ['F1']]), [], status)
+  assert.deepEqual(befunde, ['Akte F2 steht in keinem Meilenstein', 'Akte F3 steht in keinem Meilenstein', 'Akte F4 steht in keinem Meilenstein', 'Akte F5 steht in keinem Meilenstein'])
+})
+
+test('E-B5-2: ohne Status-Map bisheriges Verhalten; ENTWURF zweimal eingeplant bleibt rot', () => {
+  assert.deepEqual(pruefeAkteMeilenstein(['F1', 'F2'], roadmap(['M1', ['F1']]), []), ['Akte F2 steht in keinem Meilenstein'])
+  const status = new Map([['F1', 'ENTWURF']])
+  assert.deepEqual(pruefeAkteMeilenstein(['F1'], roadmap(['M1', ['F1']], ['M2', ['F1']]), [], status), ['Akte F1 steht 2× in der Roadmap (M1, M2) — genau einmal erlaubt'])
 })

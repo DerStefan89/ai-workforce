@@ -570,7 +570,7 @@ import { echterPluginListenLaeufer, erzeugePluginAbruf } from './leitstand/route
 import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } from './leitstand/routen-sammlung.mjs'
 import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
-import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
+import { baueUndRegistriereAuftragAusFeatureAkte, erkenneAkteRoute, fuehreAkteRouteDurch } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
 import {
   findeWorkflowEntscheidungFuerSchritt,
@@ -9522,18 +9522,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
-    // F44 WS-3b: GET /api/features/<featureId>/akte — Titel, Status, Ziel, Nicht-Ziele und AKs für
-    // das Detail im Leitstand, aufgerufen über den Multi-Projekt-Dispatcher wie die auftrag-Route.
-    // Rein lesend; die Logik liegt in leseFeatureAkteFuerAnzeige (scripts/leitstand/routen-f35.mjs).
-    const featureAkteTreffer = /^\/api\/features\/([^/]+)\/akte$/.exec(pfad)
-    if (req.method === 'GET' && featureAkteTreffer !== null) {
-      const featureId = dekodiereSegment(featureAkteTreffer[1])
-      if (featureId === null) {
-        sendeJson(res, 400, { grund: 'featureId ist keine gültige URL-Kodierung' })
-        return
-      }
-      const ergebnis = leseFeatureAkteFuerAnzeige(featureId, repoWurzel)
-      sendeJson(res, ergebnis.status, ergebnis.koerper)
+    // F44 WS-3b/F45 B5a-1 (Zwischenmuster E-FB1-2/F-1131): Akte lesen (GET …/akte), bearbeiten (PUT …/akte, E-F45-1) und aus einem
+    // Coach-Scope anlegen (POST /api/features, F-912) — Erkennung und Ablauf in scripts/leitstand/routen-f35.mjs, hier die Methode.
+    const akteRoute = erkenneAkteRoute(pfad)
+    if (akteRoute !== null) {
+      const lesen = akteRoute.art === 'akte' && req.method === 'GET'
+      if (!lesen && req.method !== (akteRoute.art === 'akte' ? 'PUT' : 'POST')) return sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+      const koerper = lesen ? null : await leseJsonBegrenzt(req, 65536)
+      const kontext = { repoWurzel, workflows: () => sammleWorkflows(basisVerzeichnis), auftraege: () => sammleAuftraege(basisVerzeichnis), bestehendeIds: () => sammleBestehendeIds(repoWurzel, roadmapPfad) }
+      const antwort = await fuehreAkteRouteDurch({ ...akteRoute, aktion: lesen ? 'lesen' : akteRoute.art === 'akte' ? 'bearbeiten' : 'anlegen' }, koerper, kontext)
+      sendeJson(res, antwort.status, antwort.koerper)
       return
     }
 

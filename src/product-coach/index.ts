@@ -23,11 +23,17 @@
  * ist strukturell identisch zu JarvisVerlaufsEintrag (nachricht/antwort/
  * istZusammenfassung?).
  *
- * Wird aufgerufen von: scripts/leitstand-server.mjs (POST/GET /api/sparring),
+ * F45 B5a-1 (F-912): baueFeatureAkteAusScope baut aus einem Scope eine neue Feature-Akte (Status ENTWURF, nächste
+ * freie F-Nummer) — rein, geschrieben wird in scripts/leitstand/routen-f35.mjs (POST /api/features).
+ *
+ * Wird aufgerufen von: scripts/leitstand-server.mjs (POST/GET /api/sparring), scripts/leitstand/routen-f35.mjs,
  * scripts/check-f34-product-coach.mjs, src/product-coach/product-coach.test.ts.
  */
 
+import { baueBulletZeilen, normalisiereEintrag, normalisiereZiel, pruefeAkteText } from '../feature-auftrag/akte-schreiben.ts'
+import { leseFeatureAkteAnzeige } from '../feature-auftrag/index.ts'
 import { FEATURE_ID_MUSTER } from '../projektkontext/index.ts'
+import { leseFeatureStatus, pruefeFeatureAkteInhalt } from '../workboard/feature-akte-pruefung.ts'
 import type {
   AuftragKontext,
   BestehendeIds,
@@ -126,9 +132,10 @@ function validiereAlternativen(alternativen: unknown): string[] {
  * Prüft daten.scope gegen die schemas/ergebnis-product-coach.schema.json'
  * scope-Form.
  * @param scope - geparstes, sonst unbekanntes Objekt
+ * F45 B5a-1: exportiert — POST /api/features prüft den Scope mit derselben Regel (baueFeatureAkteAusScope).
  * @returns Liste der Regelverletzungen; leer = gültig
  */
-function validiereScope(scope: unknown): string[] {
+export function validiereScope(scope: unknown): string[] {
   if (!istObjekt(scope)) return ["'scope' muss ein Objekt sein"]
   const verstoesse: string[] = []
   for (const feld of Object.keys(scope)) {
@@ -485,6 +492,96 @@ export function baueAuftragAusScope(scope: CoachScope): { titel: string; auftrag
     scope.erfolgskriterium,
   ].join('\n')
   return { titel: scope.titel, auftragstext }
+}
+
+/** Ergebnis von baueFeatureAkteAusScope: die neue Akte oder ein Fachfehler mit HTTP-Status. */
+export type FeatureAkteAusScope = { ok: true; featureId: string; inhalt: string } | { ok: false; status: 400 | 422; grund: string; verstoesse?: string[] }
+
+/**
+ * F45 B5a-1 (F-912, features/F45/plan-b5a1-v2.md): reine Funktion — baut aus einem Coach-Scope eine neue Feature-Akte mit
+ * Status ENTWURF und der nächsten freien F-Nummer (naechsteFreieNummer über Ordner unter features/ und roadmap.json, wie
+ * vergebeFeatureIds). Neben baueAuftragAusScope, dessen Verhalten unverändert bleibt. Abschnitte: Titel, Status, Ziel (ziel,
+ * Leerzeile, „Problem: …“), Nicht-Ziele (out_of_scope), Akzeptanzkriterien (`- AK1: <erfolgskriterium>`), Scope (in_scope),
+ * Annahmen, Offene Fragen, Dependencies „keine“, Änderungen mit Anlagezeile; leere Listen ⇒ Zeile „keine“. Immer LF
+ * (ARCHITECTURE.md §7; nur bestehende Akten behalten ihr Zeilenende). Kein Roadmap-Eintrag (E-B5-2). Dieselben Feldregeln
+ * und dieselbe Rundlauf-Probe wie das Bearbeiten (src/feature-auftrag/akte-schreiben.ts).
+ * @param scope - Körperfeld scope (noch ungeprüft)
+ * @param bestehendeIds - real vergebene IDs (Server: sammleBestehendeIds)
+ * @param datum - Datum der Anlagezeile (JJJJ-MM-TT)
+ * @returns { ok: true, featureId, inhalt } | { ok: false, status: 400 (Scope ungültig) | 422 (Rundlauf/Gate), grund, verstoesse? }
+ */
+export function baueFeatureAkteAusScope(scope: unknown, bestehendeIds: BestehendeIds, datum: string): FeatureAkteAusScope {
+  const verstoesse = validiereScope(scope)
+  if (verstoesse.length > 0) return { ok: false, status: 400, grund: `scope ungültig: ${verstoesse.join('; ')}` }
+  const s = scope as CoachScope
+  const pruefungen: [string, unknown, 'fliesstext' | 'eintrag' | 'zeile'][] = [
+    ['scope.titel', s.titel, 'zeile'],
+    ['scope.ziel', s.ziel, 'fliesstext'],
+    ['scope.problem', s.problem, 'fliesstext'],
+    ['scope.erfolgskriterium', s.erfolgskriterium, 'eintrag'],
+    ...SCOPE_STRING_LISTEN_FELDER.flatMap((feld) => s[feld].map((eintrag, index): [string, unknown, 'eintrag'] => [`scope.${feld}[${index}]`, eintrag, 'eintrag'])),
+  ]
+  for (const [feld, wert, art] of pruefungen) {
+    const fehler = pruefeAkteText(feld, wert, art)
+    if (fehler !== null) return { ok: false, status: 400, grund: fehler }
+  }
+
+  const featureId = `F${naechsteFreieNummer(bestehendeIds.features, FEATURE_ID_MUSTER, 1)}`
+  const titelRoh = s.titel.replace(/\s+/g, ' ').trim()
+  const titel = entferneIdPraefix(titelRoh).trim() || titelRoh
+  const ziel = `${normalisiereZiel(s.ziel)}\n\nProblem: ${normalisiereZiel(s.problem)}`
+  const liste = (eintraege: string[]) => (eintraege.length === 0 ? ['keine'] : eintraege.flatMap((eintrag) => baueBulletZeilen('- ', eintrag)))
+  const inhalt = [
+    `# ${featureId} — ${titel}`,
+    '',
+    '## ID',
+    featureId,
+    '',
+    '## Titel',
+    titel,
+    '',
+    '## Status',
+    'Status: ENTWURF',
+    '',
+    '## Ziel',
+    ...ziel.split('\n'),
+    '',
+    '## Nicht-Ziele',
+    ...liste(s.out_of_scope),
+    '',
+    '## Akzeptanzkriterien',
+    ...baueBulletZeilen('- AK1: ', s.erfolgskriterium),
+    '',
+    '## Scope',
+    ...liste(s.in_scope),
+    '',
+    '## Annahmen',
+    ...liste(s.annahmen),
+    '',
+    '## Offene Fragen',
+    ...liste(s.offene_fragen),
+    '',
+    '## Dependencies',
+    'keine',
+    '',
+    '## Änderungen',
+    `- ${datum} · angelegt · aus Coach-Scope`,
+    '',
+  ].join('\n')
+
+  // Rundlauf-Probe und Gate (Verteidigungslinie, Advisor C2): die Akte liest sich genau wie der Scope.
+  const gateVerstoesse = pruefeFeatureAkteInhalt(inhalt)
+  if (gateVerstoesse.length > 0) return { ok: false, status: 422, grund: 'Die neue Akte bestünde das Feature-Akte-Gate nicht', verstoesse: gateVerstoesse }
+  const gelesen = leseFeatureAkteAnzeige(inhalt, featureId)
+  const gleich =
+    gelesen.ok &&
+    leseFeatureStatus(inhalt) === 'ENTWURF' &&
+    gelesen.titel === titel &&
+    gelesen.ziel === ziel &&
+    JSON.stringify(gelesen.nicht_ziele) === JSON.stringify(s.out_of_scope.map(normalisiereEintrag)) &&
+    JSON.stringify(gelesen.akzeptanzkriterien) === JSON.stringify([{ id: 'AK1', text: normalisiereEintrag(s.erfolgskriterium) }])
+  if (!gleich) return { ok: false, status: 422, grund: `Die neue Akte liest sich nicht wie der Scope (${gelesen.ok ? 'Werte abweichend' : gelesen.grund})` }
+  return { ok: true, featureId, inhalt }
 }
 
 /**

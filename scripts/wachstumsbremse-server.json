@@ -1,5 +1,5 @@
 {
-  "obergrenze_zeilen": 13266,
+  "obergrenze_zeilen": 13264,
   "routen": {
     "gleich": [
       "/",
@@ -68,7 +68,6 @@
       "/stoppen"
     ],
     "muster": [
-      "/^\\/api\\/features\\/([^/]+)\\/akte$/",
       "/^\\/api\\/features\\/([^/]+)\\/auftrag$/",
       "/^\\/api\\/ressourcen\\/([^/]+)\\/installation(\\/vorbereiten)?$/",
       "/^\\/api\\/rueckfrage\\/anfrage\\/([0-9a-f-]{36})\\/warten$/",
