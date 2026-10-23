@@ -1,0 +1,20 @@
+[
+  {
+    "label": "01 entscheidbar: drei Vorschläge — en-1440-hell",
+    "Karte": true,
+    "Übernehmen": true,
+    "Verwerfen": true,
+    "Wirklich verwerfen": false,
+    "Knöpfe gesperrt": false,
+    "Meldung": "",
+    "Hinweis ungesichert": "(fehlt)",
+    "Zwischenstand": "(fehlt)",
+    "Fokus": "null",
+    "Fokus-id": "workflow-detail-titel",
+    "Begründung": "",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

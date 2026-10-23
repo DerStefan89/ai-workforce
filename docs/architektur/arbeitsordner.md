@@ -37,6 +37,18 @@ Thema berührt.
   ohne Sichern verworfen wird; stürzt der Server zwischen Bewegen und Freigabe ab, liegt die Fähigkeit ohne Freigabe (nicht
   aktiv) unter `.claude/` bzw. beim Agent zusätzlich der Vorschlag — sichtbar erst mit FB-2. Ist der Basis-Commit nicht
   lesbar, sperrt das nur das Übernehmen; Verwerfen bleibt möglich.
+- Anzeige in der Abnahme (F45 FB-2, `features/F45/plan-fb2-v2.md`): GET `…/abnahme` trägt `faehigkeitVorschlaege` (je Vorschlag
+  `adressierbar` nach den Prüfungen der Route) und `faehigkeitUngesichert` — ungesicherte Änderungen unter `.claude/` des
+  Arbeitsordners, gelesen nur lesend mit `git --no-optional-locks -c core.fsmonitor=false status --porcelain=v1 -z
+  --untracked-files=all` und demselben Filter wie der Laufdiff (`claudePfadeAusStatus`); nicht auswertbar ⇒ „nicht bestimmbar“
+  (sichtbar). Der Hinweis „vor einem weiteren Lauf sichern“ steht damit dauerhaft, solange der Stand ungesichert ist (B4) —
+  in jeder Lage der Abnahme und auf der Freigabe-Seite des nächsten Laufs.
+  Cache je Arbeitsordner (Stat-Signatur der Vorschläge, der Namen unter `.claude/skills|agents|commands` und der obersten
+  `.gitignore`, höchstens 30 s; ungesichert höchstens 10 s, nach einer Zeitgrenze 60 s), den jede Aktion übernehmen/verwerfen
+  verwirft. DEKLARIERT: verschachtelte `.gitignore` und Unterordner von `.claude/commands` gehen nicht in die Signatur ein (höchstens
+  bis zum Ablauf der Frist; die Route prüft frisch). DEKLARIERT: `git status` startet wie im Laufdiff
+  und in `routen-code` einen Clean-Filter (z. B. LFS) auf getrackten Dateien mit geändertem Stat — hier höchstens alle 10 s und
+  nur, solange die Ablaufseite offen ist.
 - Zeilenenden-Schutz (F45 B2b-3b-2b-2b-2a, Umsetzungsdetail zu „Worktree nur über git angelegt“, keine eigene Regel):
   `git worktree add` läuft mit `-c core.autocrlf=false -c core.eol=lf` — ohne autocrlf-Umwandlung, text-Dateien ohne
   eigenes `eol` mit LF. E-183 hasht bewusst Rohbytes; sonst bekäme der Arbeitsordner unter Windows CRLF und jeder

@@ -559,7 +559,7 @@ import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper } from './leitstand/routen-arbeitsordner.mjs'
 import { standPfadFuer } from '../src/faehigkeiten/stand.ts'
 import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, einschaltSperrgrund, erzeugeLokalWaechter, FREMD_UNBESTAETIGT, fremdGeaendert, freigabeSperrgrund, pruefeAktivierungKoerper, pruefeFreigabeKoerper } from './leitstand/routen-faehigkeiten.mjs'
-import { baueVorschlagProjektion, erkenneVorschlagRoute, FAEHIGKEIT_VORSCHLAG_REGEL, fuehreVorschlagAktionDurch } from './leitstand/routen-faehigkeit-vorschlag.mjs'
+import { baueVorschlagFelder, erkenneVorschlagRoute, FAEHIGKEIT_VORSCHLAG_REGEL, fuehreVorschlagAktionDurch } from './leitstand/routen-faehigkeit-vorschlag.mjs'
 import { ermittleFreigabeAbschwaechungen } from './leitstand/freigabe-abschwaechung.mjs'
 import { beschreibeAutomatAusgang, workflowStatusZuAusgang } from './leitstand/automat-ausgang.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
@@ -8810,7 +8810,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         cursorSchritt !== null &&
         pruefschrittWiederholbar({ workflowStatus: workflowDaten.status, schritt: cursorSchritt, befund: ermittlePrueferBefund(cursorSchritt, workflowDaten.auftrag_id, ladeOptionen, qa.vorgelesen) }).wiederholbar
       const vorschlagOrt = ermittleLaufort(workflowId, workflowDaten)
-      const faehigkeitVorschlaege = vorschlagOrt.ok && vorschlagOrt.arbeitsordner !== null && !arbeitsordnerVorbereitungLaeuft.has(workflowId) ? await baueVorschlagProjektion(vorschlagOrt.wurzel, { basisCommit: ladeArbeitsordner(workflowId)?.daten.basis_commit ?? null }) : []
+      const faehigkeitFelder = vorschlagOrt.ok && vorschlagOrt.arbeitsordner !== null && !arbeitsordnerVorbereitungLaeuft.has(workflowId) ? await baueVorschlagFelder(vorschlagOrt.wurzel, { basisCommit: ladeArbeitsordner(workflowId)?.daten.basis_commit ?? null }) : {}
 
       sendeJson(res, 200, {
         workflowId,
@@ -8829,8 +8829,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         budget: baueBudgetProjektion(workflowId, workflowDaten, workflowVersion.versionSequenz, ladeOptionen),
         // F45 B2b-3d (F-978): additiv — Dateien außerhalb der vereinbarten Bereiche (nur ein Hinweis).
         umfang: umfangProjektion,
-        // F45 FB-1a (F-1069): additiv, nur im Arbeitsordner und nur mit Vorschlägen — sonst fehlt das Feld (bitgleich).
-        ...(faehigkeitVorschlaege.length > 0 ? { faehigkeitVorschlaege } : {}),
+        // F45 FB-1a/FB-2 (F-1069, F-1169): additiv, nur im Arbeitsordner — faehigkeitVorschlaege/faehigkeitUngesichert nur, wenn nicht leer.
+        ...faehigkeitFelder,
       })
       return
     }

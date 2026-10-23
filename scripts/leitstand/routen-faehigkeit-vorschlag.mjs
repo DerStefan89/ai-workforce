@@ -11,11 +11,14 @@
  * Rückrufe herein. Übernehmen verschiebt den Vorschlag nach .claude/skills/<name>/ bzw. .claude/agents/<name>.md im selben
  * Arbeitsordner und setzt die Freigabe nach Inhalt (Rückruf aendere ⇒ aendereLokaleDatei ⇒ setzeInhaltsfreigabe) — nie
  * eingeschaltet (E-F45-6). Verwerfen entfernt nur den Vorschlag.
+ * FB-2 (features/F45/plan-fb2.md/plan-fb2-v2.md, Advisor advisor-fb2.md): baueVorschlagFelder liefert der Abnahme die Felder
+ * faehigkeitVorschlaege (je Vorschlag adressierbar) und faehigkeitUngesichert (ungesicherte Änderungen unter .claude/ des
+ * Arbeitsordners, dieselbe Sicht wie der Laufdiff, F-1169) — mit Cache je Wurzel (cr1), den jede Aktion verwirft.
  *
  * Wird aufgerufen von:
  * - scripts/leitstand-server.mjs (GET …/abnahme; Regelzeile im Auftrag der Ausführung; Routen übernehmen/verwerfen)
  * - scripts/leitstand/routen-faehigkeit-vorschlag.test.mjs, scripts/check-f45-fb1-faehigkeit-vorschlag.mjs,
- *   scripts/check-f45-fb1b-faehigkeit-uebernehmen.mjs
+ *   scripts/check-f45-fb1b-faehigkeit-uebernehmen.mjs, scripts/check-f45-fb2-faehigkeit-anzeige.mjs
  *
  * Wichtig:
  * - Schreiben (B10, docs/architektur/wachstumsbremse.md): Dateien bewegt bzw. löscht dieses Modul nur im Arbeitsordner
@@ -30,12 +33,17 @@
  *   setzen — die Probe am Ziel prüft danach den Hash; .gitignore kann sich zwischen Phase A und B ändern.
  * - Statuscodes: Bedienfälle 4xx; 500 nur, wenn eine Rücknahme scheitert (beide Orte im Grund, B9), und bei einem unerwarteten
  *   Wurf (Programmfehler, geloggt). Eine Ablehnung von aendere (auch dessen 500 beim Schreiben) ⇒ 409 „nichts übernommen“.
- * - Der Cache der Projektion hält höchstens einen Eintrag je Arbeitsordner, der je angezeigt wurde, auch nach dem Aufräumen.
+ * - Beide Caches der Projektion halten höchstens einen Eintrag je Arbeitsordner, der je angezeigt wurde, auch nach dem Aufräumen.
+ * - DEKLARIERT (plan-fb2-v2 V3/V4): git status startet wie im Laufdiff und in routen-code einen Clean-Filter auf getrackten Dateien
+ *   mit geändertem Stat; eine Änderung gleicher Größe im selben mtime-Takt übersieht die Signatur höchstens 30 s (die Route prüft den
+ *   Hash ohnehin frisch, 409).
  */
 
-import { constants, copyFileSync, lstatSync, mkdirSync, realpathSync, renameSync, rmdirSync, rmSync, unlinkSync } from 'node:fs'
+import { constants, copyFileSync, lstatSync, mkdirSync, readdirSync, realpathSync, renameSync, rmdirSync, rmSync, unlinkSync } from 'node:fs'
 import { isAbsolute, join, relative, sep } from 'node:path'
+import { claudePfadeAusStatus } from '../../src/execution-controller/index.ts'
 import { ermittleProjektFaehigkeiten, hashLokaleDatei, ladeFaehigkeitenLokal, leseEingebautReferenz, projektEinstellungen, SHA256_MUSTER } from '../../src/faehigkeiten/index.ts'
+import { fuehreGitAsync } from '../../src/git-starter/index.ts'
 import {
   erkenneFaehigkeitVorschlaege,
   FAEHIGKEIT_VORSCHLAG_REGEL,
@@ -89,6 +97,161 @@ export async function baueVorschlagProjektion(wurzel, { basisCommit = null, jetz
     ergebnis.push({ ...v, grund: v.grund ?? (stand === null ? BASIS_UNBESTIMMT : null), ziel_ignoriert: ignoriert.get(v.pfad) ?? null })
   }
   return ergebnis
+}
+
+/** FB-2 (plan-fb2-v2 V4): Stand je Wurzel → { signatur, basisCommit, vZeit, vorschlaege, uZeit, uFrist, ungesichert } (Promises). */
+const STAND_CACHE = new Map()
+
+/** Höchstzahl der Einträge der Stat-Signatur; darüber gilt sie als unbestimmt (wie ein Durchlauf der Erkennung, nie unbegrenzt). */
+const SIGNATUR_MAX = 4000
+
+/** Signatur, wenn der Stand nicht billig bestimmbar ist (zu viele Einträge) — dann gilt für die Vorschläge die kurze Frist. */
+const SIGNATUR_UNBESTIMMT = '?'
+
+/** Frist für „ungesichert“ nach einer Zeitgrenze von git status (code-reviewer 5: unter Windows läuft git danach weiter). */
+const ZEITGRENZE_FRIST_MS = 60000
+
+/** Höchstzahl der gezeigten Pfade im Hinweis „ungesichert“ (die Anzahl steht daneben). */
+const UNGESICHERT_MAX = 20
+
+/**
+ * Art eines Eintrags für die Signatur (lstat, nie gefolgt). @param abs - Pfad @returns Text ('-' fehlt)
+ */
+function statText(abs) {
+  const info = lstatOderFehlt(abs)
+  return info === 'fehlt' ? '-' : `${info.isSymbolicLink() ? 'l' : info.isDirectory() ? 'd' : 'f'}:${info.size}:${info.mtimeMs}`
+}
+
+/**
+ * Stat-Signatur des Stands, von dem die Vorschläge abhängen (V4, Advisor 5c): lstat-Durchlauf unter vorschlaege/faehigkeiten (Pfad,
+ * Art, Größe, mtimeMs; nie einer Verknüpfung gefolgt), die Namen in .claude/skills, .claude/agents, .claude/commands (ziel_existiert,
+ * Mehrdeutigkeit mit Commands; kein Ordner ⇒ seine Art) und die oberste .gitignore (ziel_ignoriert). Liest keinen Inhalt. Wirft nie.
+ * Grenze (DEKLARIERT, code-reviewer 7): verschachtelte .gitignore-Dateien, Unterordner von .claude/commands und die Referenz der
+ * eingebauten Namen gehen nicht ein — sie wirken höchstens bis zum Ablauf der Frist (die Route prüft frisch, 409).
+ * @param wurzel - Arbeitsordner
+ * @returns Signatur, SIGNATUR_UNBESTIMMT (zu viele Einträge) oder null (nicht lesbar ⇒ kein Cache)
+ */
+export function vorschlagSignatur(wurzel) {
+  try {
+    const teile = [`.gitignore:${statText(join(wurzel, '.gitignore'))}`]
+    const offen = [VORSCHLAG_ORDNER]
+    while (offen.length > 0) {
+      const rel = offen.pop()
+      const abs = join(wurzel, ...rel.split('/'))
+      const art = statText(abs)
+      teile.push(`${rel}:${art}`)
+      if (teile.length > SIGNATUR_MAX) return SIGNATUR_UNBESTIMMT
+      if (art.startsWith('d:')) for (const name of readdirSync(abs)) offen.push(`${rel}/${name}`)
+    }
+    for (const ordner of ['skills', 'agents', 'commands']) {
+      const abs = join(wurzel, '.claude', ordner)
+      const art = statText(abs)
+      teile.push(`.claude/${ordner}:${art.startsWith('d:') ? readdirSync(abs).sort().join('/') : art}`)
+    }
+    return teile.sort().join('\n')
+  } catch (fehler) {
+    console.error(`[faehigkeiten] Signatur der Vorschläge in '${wurzel}' nicht bestimmbar:`, fehler)
+    return null
+  }
+}
+
+/**
+ * Ungesicherte Änderungen unter .claude/ (F-1169, plan-fb2-v2 V1/V3): dieselbe Sicht wie der Laufdiff (leseClaudeAenderungen —
+ * git status ohne Pathspec, Filter claudePfadeAusStatus), asynchron über den Git-Starter, fsmonitor aus. Wirft nie.
+ * @param wurzel - Arbeitsordner
+ * @param git - Ausführer (Tests), Standard fuehreGitAsync
+ * @returns null (nichts ungesichert) | { status: 'ok', pfade, anzahl } | { status: 'nicht_bestimmbar', grund }
+ */
+export async function leseClaudeUngesichert(wurzel, git = fuehreGitAsync) {
+  try {
+    const e = await git(['--no-optional-locks', '-c', 'core.fsmonitor=false', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: wurzel, zeitgrenzeMs: 5000, maxBuffer: 50_000_000 })
+    if (e.abbruch !== undefined || e.code !== 0) {
+      console.error(`[faehigkeiten] git status in '${wurzel}' nicht auswertbar (code ${e.code}${e.abbruch !== undefined ? `, ${e.abbruch}` : ''}):`, e.stderr)
+      return { status: 'nicht_bestimmbar', grund: e.abbruch ?? `git status code ${e.code}` }
+    }
+    const pfade = claudePfadeAusStatus(e.stdout).sort()
+    return pfade.length === 0 ? null : { status: 'ok', pfade: pfade.slice(0, UNGESICHERT_MAX), anzahl: pfade.length }
+  } catch (fehler) {
+    console.error(`[faehigkeiten] Stand von .claude/ in '${wurzel}' nicht bestimmbar:`, fehler)
+    return { status: 'nicht_bestimmbar', grund: String(fehler?.message ?? fehler) }
+  }
+}
+
+/**
+ * Ob ein Vorschlag als Körper der Routen adressierbar ist (V5) — mit den Prüfungen der Route, kein Zwilling im Client.
+ * @param v - Vorschlag
+ * @returns adressierbar?
+ */
+const adressierbar = (v) => (v.typ === 'skill' || v.typ === 'agent') && typeof v.name === 'string' && istSchreibbarerName(v.name) && typeof v.hash === 'string' && SHA256_MUSTER.test(v.hash)
+
+/**
+ * Felder der Fähigkeit-Vorschläge für GET …/abnahme (FB-2, plan-fb2-v2): faehigkeitVorschlaege (mit adressierbar und ziel) und
+ * faehigkeitUngesichert, jedes nur, wenn nicht leer — ohne beide {} (Antwort bitgleich). Cache je Wurzel (cr1, V4): Vorschläge bei
+ * gleicher Signatur und Basis höchstens vorschlagCacheMs alt (Signatur unbestimmt: ungesichertCacheMs), ungesichert höchstens
+ * ungesichertCacheMs (nach einer Zeitgrenze ZEITGRENZE_FRIST_MS); laufende Aufrufe werden geteilt; eine andere Signatur ersetzt den
+ * ganzen Eintrag, eine nicht lesbare (null) cacht nichts. Einträge entstehen nur synchron vor dem ersten await — vergissVorschlagStand
+ * löscht, ein älterer Aufruf schreibt nichts zurück. Wirft nie (V2): jeder Teil fängt seine Fehler (Vorschläge ⇒ [], ungesichert ⇒
+ * „nicht bestimmbar“), ein Wurf außerhalb ⇒ ungesichert „nicht bestimmbar“.
+ * @param wurzel - Arbeitsordner
+ * @param optionen - { basisCommit, jetzt, cache, vorschlagCacheMs, ungesichertCacheMs, projektion, ungesichert } (die letzten für Tests)
+ * @returns Felder zum Einmischen in die Antwort
+ */
+export async function baueVorschlagFelder(wurzel, { basisCommit = null, jetzt = Date.now, cache = STAND_CACHE, vorschlagCacheMs = 30000, ungesichertCacheMs = 10000, projektion = baueVorschlagProjektion, ungesichert = leseClaudeUngesichert } = {}) {
+  try {
+    const signatur = vorschlagSignatur(wurzel)
+    let eintrag = cache.get(wurzel)
+    if (eintrag === undefined || signatur === null || eintrag.signatur !== signatur || eintrag.basisCommit !== basisCommit) {
+      eintrag = { signatur, basisCommit, vZeit: 0, vorschlaege: null, uZeit: 0, uFrist: ungesichertCacheMs, ungesichert: null }
+      if (signatur === null) cache.delete(wurzel)
+      else cache.set(wurzel, eintrag)
+    }
+    const zeit = jetzt()
+    const vFrist = signatur === SIGNATUR_UNBESTIMMT ? ungesichertCacheMs : vorschlagCacheMs
+    if (eintrag.vorschlaege === null || zeit - eintrag.vZeit >= vFrist) {
+      eintrag.vZeit = zeit
+      eintrag.vorschlaege = Promise.resolve()
+        .then(() => projektion(wurzel, { basisCommit }))
+        .catch((fehler) => {
+          console.error(`[faehigkeiten] Vorschläge in '${wurzel}' nicht bestimmbar:`, fehler)
+          return []
+        })
+    }
+    if (eintrag.ungesichert === null || zeit - eintrag.uZeit >= eintrag.uFrist) {
+      const neu = eintrag
+      neu.uZeit = zeit
+      neu.uFrist = ungesichertCacheMs
+      neu.ungesichert = Promise.resolve()
+        .then(() => ungesichert(wurzel))
+        .catch((fehler) => {
+          // code-reviewer 6: ein Fehler hier nimmt die Vorschläge nicht mit.
+          console.error(`[faehigkeiten] Stand von .claude/ in '${wurzel}' nicht bestimmbar:`, fehler)
+          return { status: 'nicht_bestimmbar', grund: String(fehler?.message ?? fehler) }
+        })
+        .then((stand) => {
+          if (stand?.status === 'nicht_bestimmbar' && stand.grund === 'zeitgrenze') neu.uFrist = ZEITGRENZE_FRIST_MS
+          return stand
+        })
+    }
+    const [vorschlaege, stand] = await Promise.all([eintrag.vorschlaege, eintrag.ungesichert])
+    return {
+      ...(vorschlaege.length > 0 ? { faehigkeitVorschlaege: vorschlaege.map((v) => ({ ...v, ziel: zielPfad(v), adressierbar: adressierbar(v) })) } : {}),
+      ...(stand !== null ? { faehigkeitUngesichert: stand } : {}),
+    }
+  } catch (fehler) {
+    console.error(`[faehigkeiten] Felder der Vorschläge in '${wurzel}' nicht bestimmbar:`, fehler)
+    return { faehigkeitUngesichert: { status: 'nicht_bestimmbar', grund: String(fehler?.message ?? fehler) } }
+  }
+}
+
+/**
+ * Verwirft den Stand einer Wurzel samt git-Cache der Projektion (nach jeder Aktion übernehmen/verwerfen, V4 5d; code-reviewer 7) —
+ * die Abnahme liest danach frisch.
+ * @param wurzel - Arbeitsordner
+ * @param cache - Cache (Tests)
+ */
+export function vergissVorschlagStand(wurzel, cache = STAND_CACHE) {
+  cache.delete(wurzel)
+  for (const k of STANDARD_CACHE.keys()) if (k.startsWith(`${wurzel}\0`)) STANDARD_CACHE.delete(k)
 }
 
 /** Pfad der Routen (Zwischenmuster: hier erkannt, die Methode prüft der Server). */
@@ -415,6 +578,8 @@ export function fuehreSynchronDurch(aktion, workflowId, k, vorab, kontext) {
  * @returns { status, koerper }
  */
 export async function fuehreVorschlagAktionDurch(route, gelesen, kontext) {
+  // FB-2 (V4 5d): der Stand der Wurzel verfällt nach jeder Aktion mit bekannter Wurzel, gleich mit welchem Ausgang.
+  let wurzelFuerStand = null
   try {
     let workflowId
     try {
@@ -427,6 +592,7 @@ export async function fuehreVorschlagAktionDurch(route, gelesen, kontext) {
     const k = pruefeVorschlagKoerper(gelesen.daten)
     if (!k.ok) return antwort(k.status, k.grund)
     const lage = kontext.lage(workflowId)
+    if (typeof lage?.wurzel === 'string') wurzelFuerStand = lage.wurzel
     const sperre = lageSperre(lage, route.aktion)
     if (sperre !== null) return sperre
     const eintrag = finde(erkenneFaehigkeitVorschlaege(lage.wurzel), k)
@@ -438,5 +604,7 @@ export async function fuehreVorschlagAktionDurch(route, gelesen, kontext) {
   } catch (fehler) {
     console.error(`[faehigkeiten] ${route.aktion} unerwartet abgebrochen:`, fehler)
     return antwort(500, `unerwartet abgebrochen: ${fehler?.message ?? fehler}`)
+  } finally {
+    if (wurzelFuerStand !== null) vergissVorschlagStand(wurzelFuerStand)
   }
 }

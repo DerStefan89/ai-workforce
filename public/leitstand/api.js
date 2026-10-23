@@ -154,6 +154,9 @@ export const sendeWorkflowArchitekturEntscheidung = (workflowId, koerper) =>
 // F23 WS-2a: Abnahme-Projektion (Urteil, Änderungsübersicht, etwaige bereits vorhandene Entscheidung) und -Schreibstelle.
 export const holeAbnahme = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/abnahme`)).then((r) => r.json())
 export const sendeAbnahme = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/abnahme`), { method: 'POST', body: JSON.stringify(koerper) })
+// F45 FB-2: Fähigkeit-Vorschlag übernehmen bzw. verwerfen (Routen aus FB-1b). aktion: 'uebernehmen' | 'verwerfen'; koerper: { typ, name, hash }.
+export const sendeFaehigkeitVorschlag = (workflowId, aktion, koerper) =>
+  fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/faehigkeit-vorschlag/${aktion === 'uebernehmen' ? 'uebernehmen' : 'verwerfen'}`), { method: 'POST', body: JSON.stringify(koerper) })
 
 // F24: Capabilities v1 (Library, Coverage, Rollen) — rein lesend, kein Poll (dieselben Gründe wie
 // holeWorkitems: die Quellen ändern sich nur durch Commits bzw. echte Läufe, kein Live-Zustand).

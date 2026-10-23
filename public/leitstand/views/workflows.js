@@ -53,6 +53,7 @@ import {
   reicheWorkflowFassungEin,
   sendeAbnahme,
   sendeEinrichtung,
+  sendeFaehigkeitVorschlag,
   sendeWorkflowArchitekturEntscheidung,
   sendeWorkflowFreigabe,
   starteWorkflowSchritt,
@@ -64,6 +65,7 @@ import { ablaufCodeStand, abonniereAblaufCodeStand, ladeAblaufCodeStand, stelleA
 import { kopiereBefehlsblock } from '../befehlsblock.js'
 import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
+import { abnahmeLaesstUebernehmenZu, faehigkeitVorschlagKennung, vorschlagErfolg, vorschlagSchluessel } from '../faehigkeit-vorschlag-anzeige.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
@@ -214,6 +216,15 @@ function zeichneBlick() {
 /** workflowId einer laufenden Abnahme-Bedienung, oder null — sperrt den ganzen Abnahmebereich (genau ein POST) und das Neu-Rendern, bis die Antwort da ist. */
 let laufendeAbnahme = null
 
+/** F45 FB-2 (Entscheidung Stefan, zweistufig): Schlüssel des Vorschlags in der Stufe „Wirklich verwerfen?“ (vorschlagSchluessel), oder null. */
+let verwerfenOffen = null
+
+/** Zeitpunkt (ms), seit dem die Stufe offen ist — „Wirklich verwerfen?“ zählt erst danach (Doppelklick, gehaltene Taste; qa 2, cr 2). */
+let verwerfenOffenSeit = 0
+
+/** Mindestzeit zwischen dem Öffnen der Stufe und der Bestätigung (länger als Doppelklick und Verzögerung der Tastenwiederholung). */
+const VERWERFEN_SPERRE_MS = 700
+
 /**
  * Rendert die Abnahme (Abschnitt über der Timeline bzw. Block oder Zeile darunter), aber nur bei
  * ECHTER Änderung und nicht während einer laufenden Abnahme-Bedienung. Wird bei gleichem Workflow neu
@@ -235,7 +246,10 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   const abgleichMarke = abgleich === undefined ? 'laedt' : typeof abgleich.fehler === 'string' ? 'fehler' : `${abgleich.quelle}:${abgleich.daten?.berechnet_am ?? '-'}`
   // F45 B2b-3b-2b-2b-2b-2 (F-1146): Kanal des Ausführungslaufs und die CLI-Zeile gehören ins Kennzeichen (nachgeladen bzw. aus dem Poll).
   const kanal = kanalDerAbnahme(workflowId, abnahme)
-  const zusatzMarke = `${kanal === undefined ? '-' : JSON.stringify(kanal)}|${JSON.stringify(letzterProjektCliHinweis)}`
+  // F45 FB-2 (qa 9): eine Stufe „Wirklich verwerfen?“ zu einem Vorschlag, den es so nicht mehr gibt (anderer Hash, verworfen), verfällt.
+  const vorschlaege = Array.isArray(abnahme.faehigkeitVorschlaege) ? abnahme.faehigkeitVorschlaege : []
+  if (verwerfenOffen !== null && !vorschlaege.some((v) => vorschlagSchluessel(workflowId, v) === verwerfenOffen)) verwerfenOffen = null
+  const zusatzMarke = `${kanal === undefined ? '-' : JSON.stringify(kanal)}|${JSON.stringify(letzterProjektCliHinweis)}|${faehigkeitVorschlagKennung(abnahme)}|${verwerfenOffen ?? '-'}`
   const e = abnahme.entscheidung ?? {}
   // F45 B2a-3b (qa 1): die Review-Hinweise (u. a. „Review veraltet“, das der Poll ohne Statuswechsel liefert) gehören ins
   // Kennzeichen — sonst zeigte „Auf einen Blick“ den Hinweis, die Review-Kachel aber nicht.
@@ -246,7 +260,7 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   }
   let html
   try {
-    html = renderAbnahme(workflowId, abnahme, vorschau, abgleich, { kanal, projektCliHinweis: letzterProjektCliHinweis })
+    html = renderAbnahme(workflowId, abnahme, vorschau, abgleich, { kanal, projektCliHinweis: letzterProjektCliHinweis, verwerfenOffen })
   } catch (fehler) {
     // Eine unvollständige Projektion bricht nur die Anzeige ab; der nächste Tick versucht es erneut.
     console.error(`[workflows] Abnahme von '${workflowId}' nicht darstellbar:`, fehler)
@@ -259,8 +273,15 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   const altesFeld = document.getElementById('wf-abnahme-begruendung')
   const angefangen = gleicherWorkflow && altesFeld !== null ? (altesFeld.value ?? '') : ''
   const hatteFokus = altesFeld !== null && document.activeElement === altesFeld
+  // F45 FB-2 (qa 5, cr 11): ein Knopf der Vorschlagskarte behält beim Neuzeichnen den Fokus (gleiche Aktion, gleicher Vorschlag).
+  const fokusVorschlag = document.activeElement?.closest?.('.wf-faehigkeit-vorschlag')?.dataset ?? null
   container.innerHTML = html.oben
   stand.innerHTML = html.unten
+  if (fokusVorschlag !== null) {
+    for (const k of document.querySelectorAll('.wf-faehigkeit-vorschlag')) {
+      if (k.dataset.aktion === fokusVorschlag.aktion && k.dataset.typ === fokusVorschlag.typ && k.dataset.name === fokusVorschlag.name) k.focus()
+    }
+  }
   // F46 D2: in der Lage „entscheidbar“ steht die Entscheidung in der Spalte „Deine Entscheidung“.
   setzePanel('abnahme', html.spalte ?? '', workflowId)
   const panel = document.getElementById('workflow-entscheidung')
@@ -440,9 +461,11 @@ function zeichneEntscheiden() {
   const mitKarte = modusNeu === 'abnahme' || (modusNeu === null && BEENDETE_STATUS.has(daten.status))
   const ordnerKontext = { workflowId, workflowStatus: daten.status ?? null, abnahmeOffen: istAbnahmeOffen(daten.status ?? null), loeschliste: letzteAbnahme?.aenderungsuebersicht?.daten?.loeschliste ?? null }
   const karte = () => renderArbeitsordnerKarte(aktuellesDetail.arbeitsordner ?? null, aktuellerCodeStand(), { ...ordnerKontext, sichernHtml: sichernHtmlDerKarte(), ohneKnopf: true })
+  // F45 FB-2 (qa 1): der Hinweis „ungesichert“ auch auf der Freigabe-Seite — der Weg mit der Abnahme-Karte ist dort zugeklappt.
+  const faehigkeitUngesichert = letzteAbnahme?.workflowId === workflowId ? letzteAbnahme.faehigkeitUngesichert : undefined
   setzeHtml(
     'workflow-entscheiden',
-    modusNeu === 'freigabe' ? renderFreigabeSeite({ ...aktuellesDetail, codeStand: aktuellerCodeStand(), projektCliHinweis: letzterProjektCliHinweis }) : mitKarte ? karte() : ''
+    modusNeu === 'freigabe' ? renderFreigabeSeite({ ...aktuellesDetail, codeStand: aktuellerCodeStand(), projektCliHinweis: letzterProjektCliHinweis, faehigkeitUngesichert }) : mitKarte ? karte() : ''
   )
   document.getElementById('workflow-entscheidung').hidden = modusNeu === null || panelArt !== modusNeu
   document.getElementById('workflow-detail').classList.toggle('entscheiden-modus', modusNeu !== null)
@@ -596,8 +619,10 @@ async function aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt) {
  * und das Feld der Abnahme gesperrt (genau ein POST); Erfolg fokussiert die Meldung; eine Antwort zu
  * einem inzwischen geschlossenen Workflow wird verworfen.
  * @param workflowId - Kennung @param anfrage - () => Promise<Response> @param knopf - auslösender Button @param erfolgstext - (inhalt) => Text
+ * @param fehlerFokus - F45 FB-2 (Advisor 12): true fokussiert die Meldung auch bei einem Fehler (Knopf in der Hauptspalte, Meldung
+ *   in der Lage „entscheidbar“ hinter der Spalte „Deine Entscheidung“)
  */
-async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext) {
+async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext, fehlerFokus = false) {
   if (laufendeAbnahme !== null) return
   zeigeAbnahmeMeldung(null)
   const bereich = [...document.querySelectorAll('#workflow-abnahme button, #workflow-abnahme-stand button, #workflow-entscheidung button, #workflow-entscheidung input, #wf-abnahme-begruendung')]
@@ -623,9 +648,11 @@ async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext) {
       document.getElementById('workflow-abnahme-meldung').focus()
     } else {
       zeigeAbnahmeMeldung(`${antwort.status}: ${inhalt.grund ?? t('ablauf.fehler.unbekannt')}`)
+      if (fehlerFokus) document.getElementById('workflow-abnahme-meldung').focus()
     }
   } catch (fehler) {
     if (gewaehlteWorkflowId === workflowId) zeigeAbnahmeMeldung(t('ablauf.fehler.anfrage', { meldung: fehler.message }))
+    if (fehlerFokus && gewaehlteWorkflowId === workflowId) document.getElementById('workflow-abnahme-meldung').focus()
   } finally {
     if (laufendeAbnahme === workflowId) laufendeAbnahme = null
     for (const el of gesperrt) el.disabled = false
@@ -1223,6 +1250,7 @@ function raeumeWorkflowBedienzustand() {
   // Laufende Anfragen des alten Workflows sperren den neuen nicht (ihre Antwort wird ohnehin verworfen).
   laufendeDialogBedienung = null
   laufendeAbnahme = null
+  verwerfenOffen = null
   geretteteBegruendung = null
   aktuellesDetail = null
   ausstehendeVorbereitung = null
@@ -1475,6 +1503,41 @@ async function fuehreAbnahmeAktionAus(button) {
 }
 
 /**
+ * F45 FB-2: „Übernehmen“ bzw. „Verwerfen“ eines Fähigkeit-Vorschlags (Karte aus faehigkeit-vorschlag-anzeige.js). Verwerfen ist
+ * zweistufig (Entscheidung Stefan): der erste Klick schaltet nur die Stufe „Wirklich verwerfen?“ (neu gezeichnet, Fokus auf den
+ * Knopf), „Abbrechen“ hebt sie auf; erst „Wirklich verwerfen?“ bzw. „Übernehmen“ schickt den POST — ohne vorheriges await über
+ * sendeAbnahmeBedienung (genau ein POST, die ganze Abnahme gesperrt bis zur Antwort; 4xx/5xx wörtlich mit dem Ausweg des Servers).
+ * DEKLARIERT (Advisor 11): zwischen dem Ende der Sperre und dem frischen GET kann ein älterer Poll die Karte noch einmal mit Knöpfen
+ * zeichnen; ein Klick dort endet fail-closed mit 404/409.
+ * Korrekturrunde (qa 2, cr 2): „Wirklich verwerfen?“ zählt nur als einzelner Klick und frühestens VERWERFEN_SPERRE_MS nach dem
+ * Öffnen der Stufe — sonst träfe der zweite Klick eines Doppelklicks (bzw. eine gehaltene Taste) den an derselben Stelle
+ * neu gezeichneten Knopf. Die Stufe wechselt ohne Zurücksetzen des Kennzeichens (qa 3: eine angefangene Begründung bleibt).
+ * @param button - der geklickte .wf-faehigkeit-vorschlag-Knopf
+ * @param ereignis - das Klick-Ereignis (detail = Klickzahl)
+ */
+function fuehreVorschlagAktionAus(button, ereignis) {
+  const { workflowId, aktion, typ, name, hash } = button.dataset
+  if (laufendeAbnahme !== null || letzteAbnahme === null) return
+  const schluessel = vorschlagSchluessel(workflowId, { typ, name, hash })
+  if (aktion === 'verwerfen-bestaetigt' && (ereignis.detail > 1 || Date.now() - verwerfenOffenSeit < VERWERFEN_SPERRE_MS)) return
+  if (aktion === 'verwerfen' || aktion === 'abbrechen') {
+    verwerfenOffen = aktion === 'verwerfen' ? schluessel : null
+    verwerfenOffenSeit = Date.now()
+    zeigeAbnahmeMeldung(null)
+    aktualisiereAbnahme(workflowId, letzteAbnahme)
+    const ziel = aktion === 'verwerfen' ? 'verwerfen-bestaetigt' : 'verwerfen'
+    for (const k of document.querySelectorAll(`.wf-faehigkeit-vorschlag[data-aktion="${ziel}"]`)) if (k.dataset.typ === typ && k.dataset.name === name) k.focus()
+    return
+  }
+  if (aktion !== 'uebernehmen' && aktion !== 'verwerfen-bestaetigt') return
+  const echteAktion = aktion === 'uebernehmen' ? 'uebernehmen' : 'verwerfen'
+  // Die Abnahme ist beim Klick offen, wenn das Übernehmen erlaubt und noch nicht entschieden ist — dann gilt das Review danach als veraltet.
+  const abnahmeOffen = abnahmeLaesstUebernehmenZu(letzteAbnahme) && letzteAbnahme.entscheidung?.status !== 'ok'
+  verwerfenOffen = null
+  void sendeAbnahmeBedienung(workflowId, () => sendeFaehigkeitVorschlag(workflowId, echteAktion, { typ, name, hash }), button, (inhalt) => vorschlagErfolg(echteAktion, inhalt, abnahmeOffen), true)
+}
+
+/**
  * „Prüfung wiederholen“ (F-656): kein Body, keine Begründungspflicht; die Antwort kommt synchron nach
  * dem ganzen Prüflauf (scripts/leitstand-server.mjs), bis dahin bleibt der Knopf gesperrt.
  * @param button - der geklickte .wf-pruefung-wiederholen-Knopf
@@ -1563,7 +1626,9 @@ function initWorkflowBedienung() {
       const abnahmeButton = ereignis.target.closest('.wf-abnahme-aktion')
       const pruefungButton = ereignis.target.closest('.wf-pruefung-wiederholen')
       const prueferButton = ereignis.target.closest('.wf-pruefer-wiederholen')
-      if (abnahmeButton) void fuehreAbnahmeAktionAus(abnahmeButton)
+      const vorschlagButton = ereignis.target.closest('.wf-faehigkeit-vorschlag')
+      if (vorschlagButton) fuehreVorschlagAktionAus(vorschlagButton, ereignis)
+      else if (abnahmeButton) void fuehreAbnahmeAktionAus(abnahmeButton)
       else if (pruefungButton) void fuehrePruefungWiederholenAus(pruefungButton)
       else if (prueferButton) void fuehrePrueferWiederholenAus(prueferButton)
       else if (ereignis.target.closest('.abnahme-nachweise-zeigen')) {

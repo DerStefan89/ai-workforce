@@ -1,0 +1,266 @@
+{
+  "url": "http://127.0.0.1:4408/#/workflows/w-haushalt-faehigkeit",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 2400
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "tr"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workflows/w-haushalt-faehigkeit",
+      "status": 200,
+      "json": {
+        "daten": {
+          "ziel": "Prüf-Skill für Monatsexporte bauen",
+          "status": "ABGESCHLOSSEN",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "ERFOLGREICH",
+              "nachfolger": null,
+              "lauf_id": "l-bau"
+            }
+          ]
+        },
+        "naechster": null,
+        "arbeitsordner": {
+          "status": "BEREIT",
+          "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\f2b3c4d5",
+          "branch": "wf/w-haushalt-faehigkeit",
+          "basis_commit": "abc1234def5678"
+        },
+        "versionSequenz": 1
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/workflows/w-haushalt-faehigkeit/abnahme",
+      "status": 200,
+      "json": {
+        "workflowId": "w-haushalt-faehigkeit",
+        "workflowStatus": "ABGESCHLOSSEN",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "l-bau",
+          "daten": {
+            "basis_ref": "abc1234",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "A",
+                "pfad": "vorschlaege/faehigkeiten/skills/monatsexport-pruefen-mit-sehr-langem-namen-fuer-schmale-ansichten/SKILL.md",
+                "plus": 24,
+                "minus": null
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "l-pruef",
+          "ergebnis": "GRUEN",
+          "exitCode": 0,
+          "versionSequenz": 1
+        },
+        "faehigkeitVorschlaege": [
+          {
+            "typ": "skill",
+            "name": "monatsexport-pruefen-mit-sehr-langem-namen-fuer-schmale-ansichten",
+            "pfad": "vorschlaege/faehigkeiten/skills/monatsexport-pruefen-mit-sehr-langem-namen-fuer-schmale-ansichten",
+            "beschreibung": "Prüft einen Monatsexport (CSV) auf Summen, Datumsformat und doppelte Buchungen und meldet Abweichungen mit Zeilennummer — eine bewusst lange Beschreibung, damit Umbrüche in schmalen Ansichten sichtbar werden.",
+            "hash": "c0ffee12ab34cd56ef7890ab12cd34ef56ab7890cd12ef34ab56cd78ef90ab12",
+            "grund": null,
+            "ziel_existiert": false,
+            "ziel_ignoriert": false,
+            "adressierbar": true
+          },
+          {
+            "typ": "agent",
+            "name": "buchungsleser",
+            "pfad": "vorschlaege/faehigkeiten/agents/buchungsleser.md",
+            "beschreibung": "Liest Buchungen und fasst sie zusammen.",
+            "hash": "5eed00aa11bb22cc33dd44ee55ff66007788990011223344556677889900aabb",
+            "grund": null,
+            "ziel_existiert": true,
+            "ziel_ignoriert": false,
+            "adressierbar": true
+          },
+          {
+            "typ": null,
+            "name": null,
+            "pfad": "vorschlaege/faehigkeiten/skills/Ohne Name",
+            "beschreibung": null,
+            "hash": null,
+            "grund": "Ordnername ist kein gültiger Name (nur Buchstaben, Ziffern, Punkt, _ und -)",
+            "ziel_existiert": null,
+            "ziel_ignoriert": null,
+            "adressierbar": false
+          }
+        ]
+      },
+      "methode": "GET"
+    },
+    {
+      "muster": "**/api/code?workflow=**",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Projekte\\haushaltsbuch-laeufe\\f2b3c4d5",
+        "arbeitsverzeichnis": {
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "wf/w-haushalt-faehigkeit",
+          "losgeloest": false,
+          "commit": "def5678abc1234"
+        },
+        "basis": {
+          "status": "ok",
+          "ref": "origin/main",
+          "voraus": 0,
+          "zurueck": 0
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": "https://github.com/beispiel/haushaltsbuch",
+          "origin": true
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [],
+          "anzahl": 0,
+          "gekappt": false,
+          "nodeModules": 0
+        },
+        "verlauf": {
+          "status": "ok",
+          "ref": "origin/main",
+          "eintraege": []
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": true,
+          "hooks": 5,
+          "agents": 5
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlagen/beispielprojekt.json",
+          "pruefbefehl": "npm run check",
+          "werkzeugsaetze": [
+            "lesend"
+          ],
+          "worker": [
+            "claude-code"
+          ],
+          "modell": "claude-sonnet"
+        },
+        "ablauf": {
+          "workflowId": "w-haushalt-faehigkeit",
+          "bedarf": "pflicht",
+          "workflowStatus": "ABGESCHLOSSEN",
+          "arbeitsordner": {
+            "pfad": "C:\\Projekte\\haushaltsbuch-laeufe\\f2b3c4d5",
+            "branch": "wf/w-haushalt-faehigkeit"
+          },
+          "sichern": {
+            "bereit": false,
+            "art": null,
+            "grund": "nichtsOffen",
+            "offeneAenderungen": 0,
+            "voraus": 0
+          }
+        }
+      },
+      "methode": "GET"
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      },
+      {
+        "name": "Hinweis ungesichert",
+        "selector": ".abnahme-faehigkeit-ungesichert"
+      },
+      {
+        "name": "Zwischenstand",
+        "selector": ".abnahme-faehigkeiten .note:not(.amber)"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "data-aktion"
+      },
+      {
+        "name": "Fokus-id",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Begründung",
+        "selector": "#wf-abnahme-begruendung",
+        "eigenschaft": "value"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte",
+        "selector": ".abnahme-faehigkeiten"
+      },
+      {
+        "name": "Übernehmen",
+        "selector": ".wf-faehigkeit-vorschlag[data-aktion=\"uebernehmen\"]"
+      },
+      {
+        "name": "Verwerfen",
+        "selector": ".wf-faehigkeit-vorschlag[data-aktion=\"verwerfen\"]"
+      },
+      {
+        "name": "Wirklich verwerfen",
+        "selector": ".wf-faehigkeit-vorschlag[data-aktion=\"verwerfen-bestaetigt\"]"
+      },
+      {
+        "name": "Knöpfe gesperrt",
+        "selector": ".wf-faehigkeit-vorschlag:disabled"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "01 entscheidbar: drei Vorschläge — tr-390-hell",
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#abnahme-faehigkeiten-titel",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-entscheidbar-tr-390-hell.webp"
+    }
+  ]
+}
