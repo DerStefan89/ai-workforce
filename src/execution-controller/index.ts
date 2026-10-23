@@ -27,6 +27,7 @@
  *
  * Wird aufgerufen von:
  * - scripts/leitstand-server.mjs (fuehreAufgabeDurch, Standard von fuehreAufgabeDurchFn) und Gates
+ * - scripts/leitstand/routen-faehigkeit-vorschlag.mjs (claudePfadeAusStatus: Hinweis „ungesichert“ der Abnahme, F45 FB-2)
  * - scripts/check-f45-b2b3b2a-absicherung.mjs (ermittleRueckfrageProtokoll, leseRueckfrageProtokoll, Fall (a2))
  * - scripts/check-f45-b2b3b2b1a-rest.mjs (ermittleRueckfrageProtokoll, leseRueckfrageProtokoll), scripts/check-f45-b2b3b1b-auswertung.mjs
  *   (leseRueckfrageProtokoll, (p3)), scripts/leitstand/rueckfrage-protokoll.test.mjs (leseRueckfrageProtokoll)
@@ -184,6 +185,17 @@ export function leseClaudeAenderungen(projektWurzel: string): string[] {
     console.error(`[execution-controller] Laufdiff in '${projektWurzel}' nicht lesbar:`, fehler)
     return [`(Laufdiff nicht lesbar: ${(fehler as Error).message})`]
   }
+  return claudePfadeAusStatus(roh)
+}
+
+/**
+ * Pfade mit einem Segment '.claude' (ohne Unterschied der Schreibweise) aus der Ausgabe von
+ * `git status --porcelain=v1 -z` — rein. F45 FB-2 (Advisor 3): dieselbe Sicht für den Laufdiff und für den
+ * Hinweis „ungesichert“ der Abnahme (scripts/leitstand/routen-faehigkeit-vorschlag.mjs).
+ * @param roh - Ausgabe von git status (NUL-getrennt)
+ * @returns betroffene Pfade, auch der alte Pfad einer Umbenennung
+ */
+export function claudePfadeAusStatus(roh: string): string[] {
   const pfade: string[] = []
   const teile = roh.split('\0')
   for (let i = 0; i < teile.length; i++) {

@@ -33,6 +33,10 @@
  * (renderRueckfrageAbnahme aus rueckfrage-abnahme.js, mit dem Grund jeder Klasse — hier steht keine Fehler-Notiz); geladen in
  * views/workflows.js aus GET /api/laeufe/<laufId>. Dazu oben die Zeile „Lauf mit abweichender Claude-Code-Version“ (projektCliHinweis,
  * nur Warnung, projekt-cli-hinweis.js).
+ * F45 FB-2 (F-1167): die Karte „Vorgeschlagene Fähigkeiten“ (faehigkeit-vorschlag-anzeige.js) — auf der Seite „entscheidbar“ nach
+ * dem Umfangs-Hinweis, in jeder anderen Lage unter dem Block; zusatz.verwerfenOffen trägt die Stufe „Wirklich verwerfen?“. Der
+ * Umfangs-Hinweis nennt den Vorschlagsordner in einem Satz statt in der amber Liste. ausfuehrungGelaufen liegt seitdem im
+ * Blattmodul abnahme-ausfuehrung.js (hier re-exportiert) — kein Importzyklus mit der Vorschlagskarte.
  *
  * Reine Render-Funktionen: kein fetch, kein DOM, kein Import schreibender api.js-Funktionen; in Node
  * ohne DOM importierbar. Laden, Kennzeichen und alle POSTs bleiben in views/workflows.js.
@@ -57,6 +61,8 @@
  *   data-aktion, .wf-pruefung-wiederholen (Klick-Delegation in views/workflows.js, Gate f20-shell).
  */
 
+import { ausfuehrungGelaufen } from '../abnahme-ausfuehrung.js'
+import { renderFaehigkeitVorschlaege, trenneVorschlagDateien } from '../faehigkeit-vorschlag-anzeige.js'
 import { renderHarnessImLauf, zaehlZeileText } from '../harness-abgleich-anzeige.js'
 import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
@@ -111,18 +117,8 @@ export function erlaubteAbnahmeAktionen(workflowStatus) {
   return { ANGENOMMEN: workflowStatus === 'ABGESCHLOSSEN', ANPASSUNG_ANGEFORDERT: ablehnbar, ABGELEHNT: ablehnbar }
 }
 
-/** Status der Änderungsübersicht, bei denen die Ausführung (noch) nicht gelaufen ist — dann gibt es kein Ergebnis zum Ablehnen. */
-const NICHT_GELAUFEN = new Set(['noch_nicht_gelaufen', 'kein_ausfuehrungs_schritt'])
-
-/**
- * Ob die Ausführung gelaufen ist (es ein Ergebnis gibt). Fehlt die Änderungsübersicht ganz, gilt sie als
- * nicht gelaufen.
- * @param abnahme - Antwort von GET …/abnahme
- * @returns true, wenn aenderungsuebersicht.status weder 'noch_nicht_gelaufen' noch 'kein_ausfuehrungs_schritt' ist
- */
-export function ausfuehrungGelaufen(abnahme) {
-  return !NICHT_GELAUFEN.has(abnahme.aenderungsuebersicht?.status ?? 'noch_nicht_gelaufen')
-}
+// F45 FB-2 (code-reviewer 8): die Regel liegt im Blattmodul abnahme-ausfuehrung.js (kein Importzyklus mit der Vorschlagskarte).
+export { ausfuehrungGelaufen }
 
 /**
  * Die Lage der Abnahme (Entscheidungen Challenger, F44 WS-4b):
@@ -518,14 +514,19 @@ function vereinbarteBereicheHtml(bereiche) {
 export function renderUmfangHinweis(umfang) {
   if (umfang?.status === 'nicht_bestimmbar') return `<p class="subtle abnahme-umfang">${tHtml('abnahme.umfang.nichtBestimmbar')}</p>`
   if (umfang?.status !== 'ok' || !Array.isArray(umfang.ausserhalb) || umfang.ausserhalb.length === 0) return ''
-  const punkte = umfang.ausserhalb
+  // F45 FB-2 (F-1167): der Vorschlagsordner liegt gewollt außerhalb der Bereiche — ein Satz statt der amber Liste (auch als
+  // Ordner-Eintrag `vorschlaege/`, wenn git ihn ganz ungetrackt meldet, code-reviewer 1).
+  const { uebrige, vorschlaege } = trenneVorschlagDateien(umfang.ausserhalb)
+  const vorschlagSatz = vorschlaege > 0 ? `<p class="subtle abnahme-umfang">${tHtml('abnahme.faehigkeiten.umfang')}</p>` : ''
+  if (uebrige.length === 0) return vorschlagSatz
+  const punkte = uebrige
     .slice(0, UMFANG_MAX_DATEIEN)
     .map((pfad) => `<li><code>${escapeHtml(String(pfad))}</code></li>`)
     .join('')
-  const rest = umfang.ausserhalb.length - UMFANG_MAX_DATEIEN
+  const rest = uebrige.length - UMFANG_MAX_DATEIEN
   const weitere = rest > 0 ? `<p>${tHtml('abnahme.umfang.weitere', { anzahl: rest })}</p>` : ''
   const vereinbart = Array.isArray(umfang.bereiche) && umfang.bereiche.length > 0 ? `<p>${tHtml('abnahme.umfang.vereinbart', {}, { bereiche: vereinbarteBereicheHtml(umfang.bereiche) })}</p>` : ''
-  return `<div class="note amber abnahme-umfang" role="note"><p><strong>${tHtml('abnahme.umfang.titel')}</strong></p><p>${tHtml('abnahme.umfang.text')}</p><ul>${punkte}</ul>${weitere}${vereinbart}</div>`
+  return `<div class="note amber abnahme-umfang" role="note"><p><strong>${tHtml('abnahme.umfang.titel')}</strong></p><p>${tHtml('abnahme.umfang.text')}</p><ul>${punkte}</ul>${weitere}${vereinbart}</div>${vorschlagSatz}`
 }
 
 /**
@@ -777,7 +778,8 @@ function kanalOben(kanal) {
  * @param abnahme - Antwort von GET …/abnahme
  * @param vorschau - siehe renderSelbstAusprobieren
  * @param harnessAbgleich - F45 B1b-2: Zustand des Harness-Abgleichs (siehe renderHarnessImLauf)
- * @param zusatz - F45 B2b-3b-2b-2b-2b-2: { kanal, projektCliHinweis } — siehe renderKanalImLauf; projektCliHinweis aus GET /api/zustand
+ * @param zusatz - F45 B2b-3b-2b-2b-2b-2: { kanal, projektCliHinweis } — siehe renderKanalImLauf; projektCliHinweis aus GET /api/zustand;
+ *   F45 FB-2: verwerfenOffen (Stufe „Wirklich verwerfen?“)
  * @returns HTML
  */
 export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined, zusatz = {}) {
@@ -794,6 +796,7 @@ export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harness
     </section>
     ${oben ? kanal : ''}
     ${renderUmfangHinweis(abnahme.umfang)}
+    ${renderFaehigkeitVorschlaege(workflowId, abnahme, { ebene: 2, verwerfenOffen: zusatz.verwerfenOffen ?? null })}
     ${renderQaKarte(abnahme.qaErgebnis)}
     ${renderSelbstAusprobieren(urteil, vorschau)}
     ${oben ? '' : kanal}
@@ -889,18 +892,21 @@ function renderVorab(workflowId, abnahme, harnessAbgleich) {
  * @param vorschau - Vorschau des Projekts für „Produkt öffnen“ (siehe renderSelbstAusprobieren), null solange sie lädt
  * @param harnessAbgleich - F45 B1b-2: Zustand des Harness-Abgleichs — undefined (lädt), { fehler } oder Antwort von
  *   GET …/harness-abgleich; gezeigt, sobald die Ausführung gelaufen ist (F-937: Kurzliste der benutzten Fähigkeiten)
- * @param zusatz - F45 B2b-3b-2b-2b-2b-2: { kanal, projektCliHinweis } für die Seite „entscheidbar“ (renderAbnahmeSeite)
+ * @param zusatz - F45 B2b-3b-2b-2b-2b-2: { kanal, projektCliHinweis } für die Seite „entscheidbar“ (renderAbnahmeSeite); F45 FB-2:
+ *   verwerfenOffen für die Karte „Vorgeschlagene Fähigkeiten“ in jeder Lage
  * @returns { lage, oben, unten, spalte? } (HTML)
  */
 export function renderAbnahme(workflowId, abnahme, vorschau = null, harnessAbgleich = undefined, zusatz = {}) {
   const lage = abnahmeLage(abnahme)
   if (lage === 'entscheidbar') return { lage, oben: renderAbnahmeSeite(workflowId, abnahme, vorschau, harnessAbgleich, zusatz), unten: '', spalte: renderAbnahmePanel(workflowId, abnahme) }
   const pruefung = pruefungWiederholbar(abnahme) ? renderPruefergebnis(workflowId, abnahme) : ''
+  // F45 FB-2: die Karte „Vorgeschlagene Fähigkeiten“ (samt Hinweis „ungesichert“) steht in jeder übrigen Lage unter dem Block.
+  const faehigkeiten = renderFaehigkeitVorschlaege(workflowId, abnahme, { ebene: 3, verwerfenOffen: zusatz.verwerfenOffen ?? null })
   // Nach dem Bau trägt der Block den Prüfbericht selbst (samt „Prüfung wiederholen“), vor dem Bau gibt es keinen.
-  if (lage === 'vorab') return { lage, oben: '', unten: `${renderVorab(workflowId, abnahme, harnessAbgleich)}${ausfuehrungGelaufen(abnahme) ? '' : pruefung}` }
+  if (lage === 'vorab') return { lage, oben: '', unten: `${renderVorab(workflowId, abnahme, harnessAbgleich)}${ausfuehrungGelaufen(abnahme) ? '' : pruefung}${faehigkeiten}` }
   const harness = ausfuehrungGelaufen(abnahme) ? `<div class="abnahme-stand">${renderHarnessImLauf(harnessAbgleich)}</div>` : ''
-  if (lage === 'entschieden') return { lage, oben: '', unten: `${renderEntschieden(abnahme.entscheidung)}${pruefung}${harness}` }
-  return { lage, oben: '', unten: `<div class="abnahme-stand"><p class="subtle">${tHtml('abnahme.folgt')}</p>${renderFruehereEntscheidung(abnahme.entscheidung)}${pruefung}</div>` }
+  if (lage === 'entschieden') return { lage, oben: '', unten: `${renderEntschieden(abnahme.entscheidung)}${pruefung}${faehigkeiten}${harness}` }
+  return { lage, oben: '', unten: `<div class="abnahme-stand"><p class="subtle">${tHtml('abnahme.folgt')}</p>${renderFruehereEntscheidung(abnahme.entscheidung)}${pruefung}</div>${faehigkeiten}` }
 }
 
 /**

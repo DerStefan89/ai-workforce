@@ -18,6 +18,9 @@
  * F45 B2b-3b-2b-2b-2b-2 (F-1144): vor „Was startet“ die Karte „Auftrag für diesen Schritt“ — der Auftragstext wörtlich und
  * vollständig (detail.auftragstext aus GET /api/workflows/<id>), als Text, lange Texte mit Vorschau und aufklappbarem „Ganzer Auftrag“; ohne
  * Text ein Hinweis. Oben die Zeile zur abweichenden Claude-Code-Version des Projekts (detail.projektCliHinweis, nur Warnung, projekt-cli-hinweis.js).
+ * F45 FB-2 (F-1169, qa 1): darunter der Hinweis zu ungesicherten Änderungen unter .claude/ des Arbeitsordners
+ * (detail.faehigkeitUngesichert aus GET …/abnahme) — hier wird der nächste Lauf freigegeben, der sonst rot würde. Ausweg dort
+ * „von Hand committen“, nie „Bereit zum Sichern“ (den gibt es nur bei ABGESCHLOSSEN, F-1173 N1).
  *
  * Reine Funktionen: kein fetch, kein DOM. Die Entscheidung selbst läuft unverändert über die
  * bestehenden Wege in views/workflows.js: „<Option> bestätigen“ öffnet den Freigabedialog (Kennzeichen
@@ -33,6 +36,7 @@
  */
 
 import { renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
+import { renderUngesichertHinweis } from '../faehigkeit-vorschlag-anzeige.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge } from '../kommt.js'
 import { renderProjektCliZeile } from '../projekt-cli-hinweis.js'
@@ -300,13 +304,13 @@ export function renderAuftragKarte(auftragstext) {
 /**
  * Hauptspalte der Freigabe. F45 B2b-1b-2b: vor „Was startet“ der Plan und die Befunde des Advisors (detail.planFreigabe). F45
  * B2b-3b-2b-2b-2b-2: oben die Zeile zur abweichenden Claude-Code-Version, dann (nach dem Plan) der Auftrag des Schritts.
- * @param detail - { workflowId, daten, naechster, empfehlung, arbeitsordner, codeStand, einrichtung, planFreigabe, auftragstext, projektCliHinweis } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js; F45 B2a-2: einrichtung aus GET /api/workflows/<id>; F45 B2b-1b-2b: planFreigabe aus GET /api/workflows/<id> (oder null); F45 B2b-3b-2b-2b-2b-2: auftragstext aus GET /api/workflows/<id>, projektCliHinweis aus GET /api/zustand
+ * @param detail - { workflowId, daten, naechster, empfehlung, arbeitsordner, codeStand, einrichtung, planFreigabe, auftragstext, projektCliHinweis } — F45 B1a-1: arbeitsordner aus GET /api/workflows/<id>, codeStand aus code-stand.js; F45 B2a-2: einrichtung aus GET /api/workflows/<id>; F45 B2b-1b-2b: planFreigabe aus GET /api/workflows/<id> (oder null); F45 B2b-3b-2b-2b-2b-2: auftragstext aus GET /api/workflows/<id>, projektCliHinweis aus GET /api/zustand; F45 FB-2: faehigkeitUngesichert aus GET …/abnahme
  * @returns HTML
  */
 export function renderFreigabeSeite(detail) {
   const planFreigabe = detail.planFreigabe ?? null
   const planKarten = planFreigabe === null ? '' : `${renderPlanKarte(planFreigabe)}${renderAdvisorKarte(planFreigabe)}`
-  return `<div class="entscheiden-inhalt">${renderProjektCliZeile(detail.projektCliHinweis, 'freigabe')}${planKarten}${renderAuftragKarte(detail.auftragstext ?? null)}${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket(detail.einrichtung ?? null, detail.workflowId ?? '')}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
+  return `<div class="entscheiden-inhalt">${renderProjektCliZeile(detail.projektCliHinweis, 'freigabe')}${renderUngesichertHinweis(detail.faehigkeitUngesichert)}${planKarten}${renderAuftragKarte(detail.auftragstext ?? null)}${renderWasStartet(detail)}${renderArbeitsordnerKarte(detail.arbeitsordner ?? null, detail.codeStand ?? null)}${renderArbeitspaket(detail.einrichtung ?? null, detail.workflowId ?? '')}${renderFaehigkeiten(detail.empfehlung ?? null)}</div>`
 }
 
 /**

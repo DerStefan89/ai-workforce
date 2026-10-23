@@ -1,0 +1,20 @@
+[
+  {
+    "label": "08e Freigabe-Halt (nächster Lauf) mit Hinweis „ungesichert“ — de-1440-freigabe-n1",
+    "Karte": true,
+    "Übernehmen": false,
+    "Verwerfen": false,
+    "Wirklich verwerfen": false,
+    "Knöpfe gesperrt": false,
+    "Meldung": "",
+    "Hinweis ungesichert": "Ungesicherte Änderungen unter .claude/Vor einem weiteren Lauf in diesem Ablauf sichern: im Arbeitsordner von Hand commit",
+    "Zwischenstand": "(fehlt)",
+    "Fokus": "null",
+    "Fokus-id": "workflow-detail-titel",
+    "Begründung": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

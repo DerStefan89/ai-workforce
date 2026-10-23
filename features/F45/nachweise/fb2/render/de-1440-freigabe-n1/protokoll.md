@@ -1,0 +1,3 @@
+| Aktion | Karte | Übernehmen | Verwerfen | Wirklich verwerfen | Knöpfe gesperrt | Meldung | Hinweis ungesichert | Zwischenstand | Fokus | Fokus-id | Begründung | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen | Pfadprobe |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 08e Freigabe-Halt (nächster Lauf) mit Hinweis „ungesichert“ — de-1440-freigabe-n1 | true | false | false | false | false |  | Ungesicherte Änderungen unter .claude/Vor einem weiteren Lauf in diesem Ablauf sichern: im Arbeitsordner von Hand commit | (fehlt) | null | workflow-detail-titel | (fehlt) | false | 1440/1440 | true | sauber |

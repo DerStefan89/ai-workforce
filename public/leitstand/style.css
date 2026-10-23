@@ -8021,6 +8021,52 @@ th {
   margin: 0 0 8px;
 }
 
+/* F45 FB-2: Karte „Vorgeschlagene Fähigkeiten“ — unter dem Block mit Abstand wie die Abnahme-Zeile; je Vorschlag ein Eintrag
+   mit Trennlinie, lange Namen, Beschreibungen und Pfade brechen um. Nur bestehende Tokens. */
+.workflow-seite .abnahme-stand ~ .abnahme-faehigkeiten,
+.workflow-seite .abnahme-faehigkeiten:first-child {
+  margin-top: 18px;
+}
+
+/* design-guardian 3/4: Notizen und h3 der Karte ohne eigenen Rand — der Abstand kommt aus gap wie bei der h2-Fassung. */
+.workflow-seite .abnahme-faehigkeiten > .note {
+  margin: 0;
+}
+
+.workflow-seite .abnahme-faehigkeiten > h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.workflow-seite .abnahme-faehigkeiten-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-seite .abnahme-faehigkeit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .abnahme-faehigkeit .ablauf-marke {
+  margin-left: 0;
+}
+
+.workflow-seite .abnahme-faehigkeit .action-row {
+  margin-top: 4px;
+}
+
+.workflow-seite .abnahme-faehigkeit-ungesichert ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
 /* Lage „vorab“: Auftrag ablehnen oder Anpassung wünschen, bevor die Ausführung gelaufen ist. */
 .workflow-seite .abnahme-vorab {
   margin-top: 28px;

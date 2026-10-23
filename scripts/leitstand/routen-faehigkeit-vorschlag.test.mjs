@@ -6,7 +6,9 @@
  * verwerfen (FB-1b, features/F45/plan-fb1b-v2.md) mit Attrappen-Kontext auf einem echten tmp-Repo: Erfolg Skill/Agent, Freigabe
  * nach Inhalt ohne Einschalten, Hash-Drift, B3, Phase B liest die Lage frisch und ist synchron, Probe am Ziel (q4) mit Rücknahme,
  * Ablehnung von aendere mit Rücknahme, gescheiterte Rücknahme ⇒ 500, Verwerfen mit Grund, .claude als Verknüpfung, Körper (q9),
- * ignoriertes Ziel (B13), Abnahme-Bedingung; Dateisystem-Annahmen (Ordner-Rename und COPYFILE_EXCL überschreiben nie).
+ * ignoriertes Ziel (B13), Abnahme-Bedingung; Dateisystem-Annahmen (Ordner-Rename und COPYFILE_EXCL überschreiben nie). FB-2
+ * (features/F45/plan-fb2-v2.md): Felder der Abnahme (adressierbar, ungesichert mit echtem git), Cache je Wurzel (Signatur, Fristen,
+ * Vergessen nach einer Aktion, Wettlauf), wirft nie, Filter claudePfadeAusStatus.
  *
  * Wird aufgerufen von: npm run test (node --test)
  *
@@ -24,7 +26,8 @@ import { after, test } from 'node:test'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { erkenneFaehigkeitVorschlaege } from '../../src/faehigkeiten/vorschlag.ts'
 import { aendereLokaleDatei, erzeugeLokalWaechter } from './routen-faehigkeiten.mjs'
-import { BASIS_UNBESTIMMT, baueVorschlagProjektion, erkenneVorschlagRoute, fuehreSynchronDurch, fuehreVorschlagAktionDurch, pruefeVorschlagKoerper, ZIEL_IGNORIERT } from './routen-faehigkeit-vorschlag.mjs'
+import { claudePfadeAusStatus } from '../../src/execution-controller/index.ts'
+import { BASIS_UNBESTIMMT, baueVorschlagFelder, baueVorschlagProjektion, erkenneVorschlagRoute, fuehreSynchronDurch, fuehreVorschlagAktionDurch, leseClaudeUngesichert, pruefeVorschlagKoerper, vergissVorschlagStand, vorschlagSignatur, ZIEL_IGNORIERT } from './routen-faehigkeit-vorschlag.mjs'
 
 // qa FB-1a 7: ohne globale/System-git-Konfiguration des Entwicklers (core.excludesFile könnte .claude/ ignorieren).
 const gitKonfig = mkdtempSync(join(tmpdir(), 'fb1a-gitcfg-'))
@@ -364,4 +367,233 @@ test('Dateisystem-Annahmen (B9): Ordner-Rename auf einen nicht leeren Ordner und
   assert.ok(existsSync(join(w, 'a', 'x.txt')))
   assert.throws(() => copyFileSync(join(w, 'c.md'), join(w, 'd.md'), constants.COPYFILE_EXCL))
   assert.equal(readFileSync(join(w, 'd.md'), 'utf8'), 'd\n')
+})
+
+// ─── FB-2: Felder der Abnahme, Cache je Wurzel ─────────────────────────────────────────────────────────────────────────
+
+const H = 'a'.repeat(64)
+
+test('FB-2 Felder mit echtem git: sauber ⇒ {}; ungetrackte .claude-Dateien (auch verschachtelt) ⇒ ungesichert; gesichert ⇒ Feld fehlt', async () => {
+  const { w, basis } = repoMitBasis()
+  const frisch = () => baueVorschlagFelder(w, { basisCommit: basis, cache: new Map() })
+  assert.deepEqual(await frisch(), {})
+  lege(w, { '.claude/skills/neu/SKILL.md': skillText('neu'), 'pakete/a/.Claude/agents/y.md': agentText('y') })
+  const mit = await frisch()
+  assert.deepEqual(mit, { faehigkeitUngesichert: { status: 'ok', pfade: ['.claude/skills/neu/SKILL.md', 'pakete/a/.Claude/agents/y.md'], anzahl: 2 } })
+  git(w, ['add', '--', '.claude', 'pakete'])
+  git(w, ['commit', '--quiet', '-m', 'gesichert'])
+  assert.deepEqual(await frisch(), {}, 'gesichert ⇒ bitgleich ohne Feld')
+  lege(w, { [`${VS}/agents/leser.md`]: agentText('leser') })
+  const v = (await frisch()).faehigkeitVorschlaege
+  assert.deepEqual(
+    v.map((e) => [e.name, e.adressierbar]),
+    [['leser', true]]
+  )
+})
+
+test('FB-2 adressierbar mit den Prüfungen der Route (Gerätename, fehlender Typ/Hash)', async () => {
+  const projektion = async () => [
+    { typ: 'agent', name: 'con', hash: H, grund: 'x' },
+    { typ: null, name: null, hash: null, grund: 'y', pfad: `${VS}/agents/kaputt` },
+    { typ: 'skill', name: 'gut', hash: H, grund: null },
+    { typ: 'skill', name: 'kurz', hash: 'abc', grund: null },
+  ]
+  const f = await baueVorschlagFelder(tmp('adr'), { cache: new Map(), projektion, ungesichert: async () => null })
+  assert.deepEqual(
+    f.faehigkeitVorschlaege.map((e) => e.adressierbar),
+    [false, false, true, false]
+  )
+})
+
+test('FB-2 Cache: gleiche Signatur geteilt, Fristen je Teil, andere Signatur ersetzt alles, vergissVorschlagStand liest neu', async () => {
+  const w = tmp('cache')
+  lege(w, { [`${VS}/agents/a.md`]: 'x' })
+  const zaehler = { p: 0, u: 0 }
+  let zeit = 0
+  const optionen = (cache) => ({
+    cache,
+    jetzt: () => zeit,
+    vorschlagCacheMs: 300,
+    ungesichertCacheMs: 100,
+    projektion: async () => {
+      zaehler.p++
+      return []
+    },
+    ungesichert: async () => {
+      zaehler.u++
+      return null
+    },
+  })
+  const cache = new Map()
+  await Promise.all([baueVorschlagFelder(w, optionen(cache)), baueVorschlagFelder(w, optionen(cache))])
+  assert.deepEqual(zaehler, { p: 1, u: 1 }, 'gleichzeitige Aufrufe geteilt')
+  zeit = 150
+  await baueVorschlagFelder(w, optionen(cache))
+  assert.deepEqual(zaehler, { p: 1, u: 2 }, 'ungesichert nach seiner Frist neu, Vorschläge nicht')
+  writeFileSync(join(w, ...VS.split('/'), 'agents', 'a.md'), 'xy')
+  await baueVorschlagFelder(w, optionen(cache))
+  assert.deepEqual(zaehler, { p: 2, u: 3 }, 'andere Signatur (Größe) ersetzt den ganzen Eintrag')
+  mkdirSync(join(w, '.claude', 'agents'), { recursive: true })
+  writeFileSync(join(w, '.claude', 'agents', 'a.md'), 'x')
+  await baueVorschlagFelder(w, optionen(cache))
+  assert.deepEqual(zaehler, { p: 3, u: 4 }, 'neuer Name unter .claude/agents ändert die Signatur (ziel_existiert)')
+  vergissVorschlagStand(w, cache)
+  await baueVorschlagFelder(w, optionen(cache))
+  assert.deepEqual(zaehler, { p: 4, u: 5 })
+  assert.equal(cache.size, 1)
+})
+
+test('FB-2 Wettlauf: ein vor dem Vergessen gestarteter Aufruf schreibt nichts zurück', async () => {
+  const w = tmp('wett')
+  const cache = new Map()
+  let loese
+  const haengt = new Promise((ok) => {
+    loese = ok
+  })
+  let aufrufe = 0
+  const ungesichert = () => (++aufrufe === 1 ? haengt : Promise.resolve({ status: 'ok', pfade: ['.claude/x'], anzahl: 1 }))
+  const alt = baueVorschlagFelder(w, { cache, projektion: async () => [], ungesichert })
+  vergissVorschlagStand(w, cache)
+  loese(null)
+  assert.deepEqual(await alt, {})
+  assert.deepEqual(await baueVorschlagFelder(w, { cache, projektion: async () => [], ungesichert }), { faehigkeitUngesichert: { status: 'ok', pfade: ['.claude/x'], anzahl: 1 } })
+  assert.equal(aufrufe, 2)
+})
+
+test('FB-2 wirft nie: Projektion wirft ⇒ ohne Vorschläge; ungesichert wirft ⇒ nicht bestimmbar', async () => {
+  const w = tmp('wurf')
+  const fehlerLog = console.error
+  console.error = () => {}
+  try {
+    const wirft = (text) => () => {
+      throw new Error(text)
+    }
+    assert.deepEqual(await baueVorschlagFelder(w, { cache: new Map(), projektion: wirft('kaputt'), ungesichert: async () => null }), {})
+    assert.deepEqual(await baueVorschlagFelder(w, { cache: new Map(), projektion: async () => [], ungesichert: wirft('git weg') }), { faehigkeitUngesichert: { status: 'nicht_bestimmbar', grund: 'git weg' } })
+  } finally {
+    console.error = fehlerLog
+  }
+})
+
+test('FB-2 leseClaudeUngesichert: Abbruch/Exit ≠ 0 ⇒ nicht bestimmbar; höchstens 20 Pfade mit Anzahl; Argumente wie der Laufdiff', async () => {
+  const fehlerLog = console.error
+  console.error = () => {}
+  try {
+    assert.equal((await leseClaudeUngesichert('w', async () => ({ code: null, stdout: '', stderr: '', abbruch: 'zeitgrenze' }))).status, 'nicht_bestimmbar')
+    assert.equal((await leseClaudeUngesichert('w', async () => ({ code: 128, stdout: '', stderr: 'kein repo' }))).status, 'nicht_bestimmbar')
+  } finally {
+    console.error = fehlerLog
+  }
+  let argumente
+  const roh = Array.from({ length: 25 }, (_, i) => `?? .claude/skills/s${String(i).padStart(2, '0')}/SKILL.md`).join('\0')
+  const r = await leseClaudeUngesichert('w', async (a) => {
+    argumente = a
+    return { code: 0, stdout: `${roh}\0 M src/x.ts\0`, stderr: '' }
+  })
+  assert.equal(r.anzahl, 25)
+  assert.equal(r.pfade.length, 20)
+  assert.deepEqual(argumente, ['--no-optional-locks', '-c', 'core.fsmonitor=false', 'status', '--porcelain=v1', '-z', '--untracked-files=all'])
+})
+
+test('FB-2 claudePfadeAusStatus: Umbenennung mit altem Pfad, Schreibweise egal, andere Pfade fallen weg', () => {
+  assert.deepEqual(claudePfadeAusStatus('R  .claude/agents/neu.md\0.claude/agents/alt.md\0?? src/a.ts\0 M .CLAUDE/x\0'), ['.claude/agents/neu.md', '.claude/agents/alt.md', '.CLAUDE/x'])
+  assert.deepEqual(claudePfadeAusStatus(''), [])
+})
+
+test('FB-2 vorschlagSignatur: neue Datei und .gitignore ändern sie; .claude/skills als Datei wirft nicht; zu viele Einträge ⇒ „?“', () => {
+  const w = tmp('sig')
+  const leer = vorschlagSignatur(w)
+  lege(w, { [`${VS}/skills/s/SKILL.md`]: 'x' })
+  const mitSkill = vorschlagSignatur(w)
+  assert.notEqual(mitSkill, leer)
+  lege(w, { '.gitignore': '.claude/\n' })
+  assert.notEqual(vorschlagSignatur(w), mitSkill, '.gitignore gehört dazu (ziel_ignoriert)')
+  lege(w, { '.claude/skills': 'keine Ordner' })
+  assert.equal(typeof vorschlagSignatur(w), 'string', 'kein Wurf, kein Log je Poll (code-reviewer 4)')
+  lege(w, Object.fromEntries(Array.from({ length: 4001 }, (_, i) => [`${VS}/skills/s/d${i}.txt`, ''])))
+  assert.equal(vorschlagSignatur(w), '?')
+})
+
+test('FB-2 Signatur unbestimmt („?“): ungesichert bleibt in seiner Frist geteilt, Vorschläge mit der kurzen Frist (code-reviewer 4)', async () => {
+  const w = tmp('viel')
+  lege(w, Object.fromEntries(Array.from({ length: 4001 }, (_, i) => [`${VS}/skills/s/d${i}.txt`, ''])))
+  const zaehler = { p: 0, u: 0 }
+  let zeit = 0
+  const optionen = {
+    cache: new Map(),
+    jetzt: () => zeit,
+    projektion: async () => {
+      zaehler.p++
+      return []
+    },
+    ungesichert: async () => {
+      zaehler.u++
+      return null
+    },
+  }
+  await baueVorschlagFelder(w, optionen)
+  await baueVorschlagFelder(w, optionen)
+  assert.deepEqual(zaehler, { p: 1, u: 1 })
+  zeit = 10000
+  await baueVorschlagFelder(w, optionen)
+  assert.deepEqual(zaehler, { p: 2, u: 2 }, 'Vorschläge nach 10 s statt 30 s neu')
+})
+
+test('FB-2 Zeitgrenze von git status ⇒ längere Frist für ungesichert (code-reviewer 5); ziel und Vorschläge bleiben bei einem Wurf (cr 6, 9)', async () => {
+  const w = tmp('frist')
+  let zeit = 0
+  let aufrufe = 0
+  const cache = new Map()
+  const optionen = {
+    cache,
+    jetzt: () => zeit,
+    projektion: async () => [{ typ: 'agent', name: 'leser', pfad: `${VS}/agents/leser.md`, hash: H, grund: null }],
+    ungesichert: async () => {
+      aufrufe++
+      return { status: 'nicht_bestimmbar', grund: 'zeitgrenze' }
+    },
+  }
+  const erste = await baueVorschlagFelder(w, optionen)
+  assert.equal(erste.faehigkeitVorschlaege[0].ziel, '.claude/agents/leser.md')
+  zeit = 30000
+  await baueVorschlagFelder(w, optionen)
+  assert.equal(aufrufe, 1, 'nach 30 s noch in der langen Frist')
+  zeit = 60000
+  await baueVorschlagFelder(w, optionen)
+  assert.equal(aufrufe, 2)
+  const fehlerLog = console.error
+  console.error = () => {}
+  try {
+    const wurf = await baueVorschlagFelder(w, {
+      ...optionen,
+      cache: new Map(),
+      ungesichert: () => {
+        throw new Error('weg')
+      },
+    })
+    assert.equal(wurf.faehigkeitVorschlaege.length, 1, 'die Vorschläge bleiben')
+    assert.deepEqual(wurf.faehigkeitUngesichert, { status: 'nicht_bestimmbar', grund: 'weg' })
+  } finally {
+    console.error = fehlerLog
+  }
+})
+
+test('FB-2 jede Aktion mit bekannter Wurzel verwirft den Stand (auch bei 409)', async () => {
+  const u = umgebung({ laufGesperrt: 'Ein Lauf ist aktiv' })
+  let aufrufe = 0
+  const optionen = {
+    projektion: async () => {
+      aufrufe++
+      return []
+    },
+    ungesichert: async () => null,
+  }
+  await baueVorschlagFelder(u.w, optionen)
+  await baueVorschlagFelder(u.w, optionen)
+  assert.equal(aufrufe, 1)
+  const r = await rufe(u.kontext, 'verwerfen', { typ: 'agent', name: 'leser', hash: H })
+  assert.equal(r.status, 409)
+  await baueVorschlagFelder(u.w, optionen)
+  assert.equal(aufrufe, 2, 'nach der Aktion neu gelesen')
+  vergissVorschlagStand(u.w)
 })

@@ -89,6 +89,10 @@
  *                                       sichtbar sind (etwa ein geschlossener <dialog>), sowie "ohneAusschnitt": true —
  *                                       dieses Bild ohne screenshotAusschnitt (ganzer Viewport, z. B.
  *                                       ein modaler Dialog über der Seite).
+ *                                       F45 FB-2: je Antwort optional "verzoegerungMs" (die Antwort kommt
+ *                                       später — eine laufende Anfrage) und "zaehlen": "<Name>" (Spalte
+ *                                       „Anfragen <Name>“ mit der Zahl der bis dahin beantworteten Anfragen);
+ *                                       je Schritt "doppelklick": "<selector>" (page.dblclick).
  * Ein Screenshot-Dateiname auf .webp wird als PNG aufgenommen und im selben Browser per
  * canvas.toDataURL('image/webp') verlustbehaftet umkodiert (keine neue Abhängigkeit; kleine
  * Nachweise im Repo, F-869). Je Schritt zusätzlich "navigiere": "#/route" (setzt location.hash
@@ -220,11 +224,17 @@ async function main() {
   // F44 WS-2a: feste Antwort für bestimmte Anfragen (Datei-Kommentar, "anfragenAntworten").
   // F44 WS-3b: optional nur für eine HTTP-Methode ("methode"); andere Methoden gehen an die nächste Route bzw. den Server.
   // F44 WS-4a: dieselbe Regel je Schritt ("anfragenAntworten" im Schritt) — später eingetragene Routen haben Vorrang.
+  // F45 FB-2: je Antwort optional "verzoegerungMs" (Antwort kommt später — eine laufende Anfrage nachstellen) und "zaehlen":
+  // "<Name>" (jede beantwortete Anfrage zählt; Spalte „Anfragen <Name>“ je Schritt, z. B. „Doppelklick ⇒ ein POST“).
+  const zaehler = {}
   const setzeAntworten = async (antworten) => {
-    for (const { muster, status = 200, json, methode } of antworten ?? []) {
-      await page.route(muster, (route) =>
-        methode !== undefined && route.request().method() !== methode ? route.fallback() : route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(json) })
-      )
+    for (const { muster, status = 200, json, methode, verzoegerungMs = 0, zaehlen } of antworten ?? []) {
+      await page.route(muster, async (route) => {
+        if (methode !== undefined && route.request().method() !== methode) return route.fallback()
+        if (typeof zaehlen === 'string') zaehler[zaehlen] = (zaehler[zaehlen] ?? 0) + 1
+        if (verzoegerungMs > 0) await new Promise((ok) => setTimeout(ok, verzoegerungMs))
+        return route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(json) })
+      })
     }
   }
   await setzeAntworten(klickfolge.anfragenAntworten)
@@ -326,6 +336,8 @@ async function main() {
       // beides innerhalb DESSELBEN Schritts formulierbar).
       if (schritt.tippen) await page.fill(schritt.tippen.selector, schritt.tippen.text)
       if (schritt.klick) await page.click(schritt.klick)
+      // F45 FB-2: echter Doppelklick (page.dblclick) — zusammen mit "zaehlen" der Nachweis einer Doppelklick-Sperre.
+      if (schritt.doppelklick) await page.dblclick(schritt.doppelklick)
       if (schritt.navigiere) await page.evaluate((hash) => { location.hash = hash }, schritt.navigiere)
       if (schritt.auswaehlen) await page.selectOption(schritt.auswaehlen.selector, schritt.auswaehlen.wert)
       // F44 WS-1a: Tastaturbedienung — 'fokus' setzt den Fokus per Selector, 'taste' drückt danach eine Taste (page.keyboard.press).
@@ -368,7 +380,8 @@ async function main() {
           .evaluate(async () => (await navigator.clipboard.readText()).replace(/\n/g, ' ⏎ ').replace(/\|/g, '/').slice(0, 120))
           .catch((fehler) => `(nicht lesbar: ${fehler.message.split('\n')[0]})`)
       }
-      protokoll.push({ label: schritt.label, ...zustand, ...(angehalten === undefined ? {} : { 'Animationen angehalten': angehalten }) })
+      const anfragen = Object.fromEntries(Object.entries(zaehler).map(([name, anzahl]) => [`Anfragen ${name}`, anzahl]))
+      protokoll.push({ label: schritt.label, ...zustand, ...anfragen, ...(angehalten === undefined ? {} : { 'Animationen angehalten': angehalten }) })
       if (schritt.screenshot) await knappesScreenshot(schritt.screenshot, schritt.screenshotVollseite ?? klickfolge.screenshotVollseite, schritt.ohneAusschnitt === true)
       // F-1125: der Eintrag steht schon im Protokoll — die Spalte erst nach der bestandenen Probe setzen.
       protokoll[protokoll.length - 1].Pfadprobe = schritt.screenshot ? 'sauber' : '–'
