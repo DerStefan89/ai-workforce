@@ -57,7 +57,8 @@ und das Bearbeiten von Gate oder JSON.
   - Wachstumsbremse (F45 W1, E-WART-1, F-371): `scripts/leitstand-server.mjs` wächst nicht (Zeilen = Grenze; Grenze und
     Routen-Bestand nur senkbar gegen main); neue Routen dispatchen in `scripts/leitstand/routen-*.mjs`, schreibende Aufrufe bleiben
     im Server und gehen als Rückruf ins Modul; Server-Zeilen eines Pakets werden bis W2 durch Auslagern reiner, nicht schreibender
-    Helfer ausgeglichen; bis W2 entstehen keine neuen Routen (Kollision mit `check-f813-csrf` (4), F-1131).
+    Helfer ausgeglichen; neue Routen bis W2 nur im Zwischenmuster: Modul erkennt den Pfad, Server prüft die Methode hinter dem
+    CSRF-Haken (DEKLARIERT, F-1131).
     ERZWUNGEN: Zeilenzahl, Literal-/Regex-Dispatch an `pfad`, Vergleich mit main bei lesbarer Referenz. DEKLARIERT: andere
     Dispatch-Formen, Bearbeiten von Gate oder JSON. Einzelheiten: `docs/architektur/wachstumsbremse.md`.
 - `docs/projekt/` — führende Projektdokumente (Zielfassung, Umsetzungsplan); Projektkontext für `jarvis`/`router` je Projekt-Repo, kein zweiter Speicher (E-M4-2).
@@ -90,7 +91,8 @@ Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, i
 - Produktdateien im freigegebenen Baupfad ändert ausschließlich das Ausführungswerkzeug. Der Kern liest sie read-only.
   Einzige Ausnahme: der Arbeitsordner je Ablauf — Worktree nur über git angelegt und entfernt, `npm ci --ignore-scripts`;
   nach einem Lauf der Rolle `ausfuehrung` löscht der Kern ausschließlich geprüfte reguläre Dateien der Löschliste, nur
-  innerhalb, nie unter `.git`, `.claude/` oder `kontrollzustand/`; im Projektordner bleibt der Kern lesend. Der Fingerabdruck
+  innerhalb, nie unter `.git`, `.claude/` oder `kontrollzustand/`; außerdem übernimmt bzw. verwirft er Fähigkeit-Vorschläge
+  nur auf Klick (`.claude/`; DEKLARIERT, Pfadprüfung ERZWUNGEN, Gate f45-fb1b); im Projektordner bleibt der Kern lesend. Der Fingerabdruck
   des Review-Stands nutzt nur Git-Plumbing mit `--no-optional-locks` (nie `git status`, `update-index`, `write-tree`),
   schreibt weder Index noch `.git/objects` (Gate f45-b2a3b (a)) und startet nie einen Filter-Treiber. Einzelheiten:
   `docs/architektur/arbeitsordner.md`.

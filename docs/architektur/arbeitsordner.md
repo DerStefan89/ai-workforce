@@ -13,6 +13,30 @@ Thema berührt.
   darin `npm ci --ignore-scripts` aus und löscht nach einem Lauf der Rolle `ausfuehrung` ausschließlich geprüfte
   reguläre Dateien aus dessen Löschliste — nur innerhalb des Arbeitsordners, nie unter `.git`, `.claude/` oder
   `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend.
+- Fähigkeit-Vorschläge (F45 FB-1b, F-1167, E-FB1-2/-3, `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`, Plan
+  `features/F45/plan-fb1b-v2.md`): außerdem bewegt bzw. löscht der Server auf direkte Eingabe (POST
+  `…/workflows/<id>/faehigkeit-vorschlag/uebernehmen|verwerfen { typ, name, hash }`) einen Vorschlag des Laufs. Übernehmen
+  verschiebt `vorschlaege/faehigkeiten/skills/<name>/` bzw. `…/agents/<name>.md` nach `.claude/skills/<name>/` bzw.
+  `.claude/agents/<name>.md` desselben Arbeitsordners und setzt die Freigabe nach Inhalt (nie `an`); Verwerfen entfernt nur den
+  Vorschlag. Beides nur mit bereitem Arbeitsordner und ohne Lauf, Übernehmen bei offener Abnahme oder nach ANGENOMMEN; nur
+  Vorschläge, die gegenüber dem Basis-Commit neu oder geändert sind (q1). Fail-closed mit 409: Hash-Drift, Grund der Erkennung,
+  Ziel vorhanden (ohne Unterschied der Schreibweise), Ziel gitignoriert (B13, würde beim Sichern nicht mitgenommen),
+  eingeschaltet oder anders freigegeben (B3), Probe am Ziel mit allen vorhandenen Einträgen aktiv meldet ein neues Hindernis
+  (q4, Rücknahme). ERZWUNGEN (Gate f45-fb1b (s)(z)(r)): lstat-Kette ohne Verknüpfung, `.claude` und `.claude/<art>` einzeln und
+  nicht rekursiv angelegt, Enthaltensein über `relative()` auf `realpathSync.native`, nie überschreiben (Ordner-Rename bzw.
+  `COPYFILE_EXCL`), Rücknahme bei Ablehnung; scheitert die Rücknahme ⇒ 500 mit beiden Orten (ohne Freigabe nicht aktiv).
+  Geprüft und geschrieben wird in einem synchronen Abschnitt (kein Laufstart, kein Aufräumen dazwischen). DEKLARIERT: „nur auf
+  Klick“ (jeder lokale Prozess mit passender Herkunft kann die Route aufrufen); ein fremder Prozess kann zwischen lstat und
+  Bewegen eine Verknüpfung setzen (die Probe prüft danach den Hash am Ziel); `.gitignore` kann sich zwischen der Prüfung und dem
+  Bewegen ändern. B4 (DEKLARIERT): `leseClaudeAenderungen` wertet den Laufdiff absolut aus — liegt eine übernommene Fähigkeit
+  ungesichert unter `.claude/`, wird ein weiterer Lauf mit Fähigkeiten, Ort-B-Skill oder Plugin in diesem Arbeitsordner rot
+  (fail-closed); die Antwort trägt den Hinweis „vor einem weiteren Lauf sichern“, bei offener Abnahme gilt das Review danach als
+  veraltet (E-FB1-3). Vorher/nachher im Controller ist ein eigenes Paket (F-1169). Weitere Grenzen (DEKLARIERT, qa FB-1b):
+  eine bestehende Fähigkeit (Ziel vorhanden) bzw. eine schon anders freigegebene aktualisiert die Route nicht — 409 mit Ausweg,
+  Aktualisieren bleibt Handarbeit; eine Freigabe nach Inhalt bleibt in der lokalen Datei stehen, auch wenn der Arbeitsordner
+  ohne Sichern verworfen wird; stürzt der Server zwischen Bewegen und Freigabe ab, liegt die Fähigkeit ohne Freigabe (nicht
+  aktiv) unter `.claude/` bzw. beim Agent zusätzlich der Vorschlag — sichtbar erst mit FB-2. Ist der Basis-Commit nicht
+  lesbar, sperrt das nur das Übernehmen; Verwerfen bleibt möglich.
 - Zeilenenden-Schutz (F45 B2b-3b-2b-2b-2a, Umsetzungsdetail zu „Worktree nur über git angelegt“, keine eigene Regel):
   `git worktree add` läuft mit `-c core.autocrlf=false -c core.eol=lf` — ohne autocrlf-Umwandlung, text-Dateien ohne
   eigenes `eol` mit LF. E-183 hasht bewusst Rohbytes; sonst bekäme der Arbeitsordner unter Windows CRLF und jeder

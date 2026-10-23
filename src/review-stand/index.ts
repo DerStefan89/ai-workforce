@@ -74,8 +74,9 @@ const GRUND_ARGUMENTE = Object.freeze(['--no-optional-locks', '-c', 'core.quoteP
  * Terminal-Prompt verhindert stdin als Pipe bzw. fuehreGitAsync selbst. */
 const UMGEBUNG = Object.freeze({ LC_ALL: 'C' })
 
-/** Eintrag des HEAD-Baums. */
-interface BaumEintrag {
+/** Eintrag des HEAD-Baums. F45 FB-1b: modus additiv (120000 Verknüpfung, 160000 Submodul), der Fingerabdruck nutzt ihn nicht. */
+export interface BaumEintrag {
+  modus: string
   typ: string
   blob: string
 }
@@ -92,7 +93,7 @@ export function parseNulListe(roh: string): string[] {
 /**
  * Liest `ls-tree -r -z HEAD`: je Eintrag `<mode> <typ> <hash>\t<pfad>`.
  * @param roh - Ausgabe
- * @returns Map Pfad → { typ, blob }
+ * @returns Map Pfad → { modus, typ, blob }
  * @throws Error bei einer Zeile, die nicht dem Format entspricht
  */
 export function parseLsTree(roh: string): Map<string, BaumEintrag> {
@@ -100,7 +101,7 @@ export function parseLsTree(roh: string): Map<string, BaumEintrag> {
   for (const zeile of parseNulListe(roh)) {
     const treffer = /^(\d{6}) (\w+) ([0-9a-f]{40,64})\t(.+)$/s.exec(zeile)
     if (treffer === null) throw new Error(`ls-tree: unerwartete Zeile ${JSON.stringify(zeile.slice(0, 80))}`)
-    baum.set(treffer[4], { typ: treffer[2], blob: treffer[3] })
+    baum.set(treffer[4], { modus: treffer[1], typ: treffer[2], blob: treffer[3] })
   }
   return baum
 }

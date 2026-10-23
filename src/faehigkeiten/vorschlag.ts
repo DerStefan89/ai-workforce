@@ -6,10 +6,11 @@
  * Skills unter vorschlaege/faehigkeiten/skills/<name>/ (mit SKILL.md) und Agents unter vorschlaege/faehigkeiten/agents/<name>.md
  * ab; Stefan übernimmt sie (FB-1b). Je Vorschlag: typ, name, beschreibung (Frontmatter), hash (dieselbe Form wie beim Start:
  * Agent = sha256 der Bytes, Skill = berechneInhaltHash), ziel_existiert, grund bei Ungültigkeit; ziel_ignoriert über
- * pruefeZielIgnoriert (git check-ignore, lesend).
+ * pruefeZielIgnoriert (git check-ignore, lesend). FB-1b (features/F45/plan-fb1b-v2.md): istSchreibbarerName (q9), Stand gegenüber
+ * dem Basis-Commit (leseBasisBaum asynchron, vergleicheMitBasis synchron — q1) und vorschlagDateien für die Routen.
  *
  * Wird aufgerufen von:
- * - scripts/leitstand/routen-faehigkeit-vorschlag.mjs (Projektion für GET …/abnahme)
+ * - scripts/leitstand/routen-faehigkeit-vorschlag.mjs (Projektion für GET …/abnahme; Routen übernehmen/verwerfen, FB-1b)
  * - scripts/leitstand-server.mjs (FAEHIGKEIT_VORSCHLAG_REGEL im Auftrag der Ausführung, über das Routenmodul)
  * - src/faehigkeiten/vorschlag.test.ts, scripts/check-f45-fb1-faehigkeit-vorschlag.mjs
  *
@@ -25,7 +26,8 @@
  *   Zugehörigkeit zum Werkzeugsatz prüft der Start (fail-closed).
  * - Ein Vorschlag mit grund ist nie übernehmbar. ziel_existiert vergleicht ohne Unterschied der Schreibweise nur im direkten
  *   Zielordner; Skills zusätzlich gegen Projekt-Commands (sonst sperrt der Start den ganzen Lauf). Mehrdeutigkeit über
- *   Frontmatter-Namen anderer Dateien und Agents in Unterordnern prüft weiter der Start (F-1167).
+ *   Frontmatter-Namen anderer Dateien und Agents in Unterordnern prüft die Übernahme-Route mit einer Probe am Ziel (FB-1b, q4)
+ *   und der Start.
  */
 
 import { createHash } from 'node:crypto'
@@ -33,6 +35,7 @@ import { lstatSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fuehreGitAsync } from '../git-starter/index.ts'
 import { EINGEBAUT_REST_SKILLS, leseProjektCommandNamen } from '../ressourcen/ort-b-start.ts'
+import { type BaumEintrag, parseLsTree } from '../review-stand/index.ts'
 import { berechneInhaltHash, EINGEBAUTE_SKILLS_S7, pruefeSkillDateiNamen } from '../ressourcen/skill-dateien.ts'
 import { leseEingebautReferenz, NAME_MUSTER, pruefeFrontmatter } from './index.ts'
 import type { ProjektTyp } from './types.ts'
@@ -213,6 +216,7 @@ function bucheBudget(kontext: Kontext, bytes: number): string | null {
  */
 function bewerteInhalt(typ: ProjektTyp, name: string, text: string, kontext: Kontext): { grund: string | null; beschreibung: string | null } {
   if (!NAME_MUSTER.test(name)) return { grund: `Name '${name.slice(0, 40)}' nicht schlicht (nur Buchstaben, Ziffern, Punkt, _ und -; beginnt mit Buchstabe oder Ziffer)`, beschreibung: null }
+  if (!istSchreibbarerName(name)) return { grund: `Name '${name}' unter Windows nicht anlegbar (Punkt am Ende oder Gerätename wie con, nul, com1)`, beschreibung: null }
   const fm = pruefeFrontmatter(typ, text, null)
   if (!fm.ok) return { grund: fm.grund, beschreibung: null }
   if (fm.name !== name) return { grund: `Frontmatter-name '${fm.name}' ≠ ${typ === 'skill' ? 'Ordnername' : 'Dateiname'} '${name}'`, beschreibung: fm.beschreibung }
@@ -388,4 +392,102 @@ export function pruefeZielIgnoriert(wurzel: string, vorschlaege: readonly Faehig
     const ignoriert = new Set(ergebnis.stdout.split(/\r?\n/).filter((z) => z !== ''))
     return new Map(ziele.map((z) => [z.pfad, ignoriert.has(z.ziel)]))
   })
+}
+
+/** Windows-Gerätenamen (q9, F-1167): als Stamm vor dem ersten Punkt nicht anlegbar — ohne Unterschied der Schreibweise. */
+const GERAETENAMEN = new Set(['con', 'prn', 'aux', 'nul', ...Array.from({ length: 10 }, (_, i) => `com${i}`), ...Array.from({ length: 10 }, (_, i) => `lpt${i}`)])
+
+/**
+ * F45 FB-1b (q9): ein Name, der als Ordner- bzw. Dateiname auf jedem Ziel anlegbar ist — NAME_MUSTER, kein Punkt am Ende,
+ * kein Windows-Gerätename als Stamm (con, con.md, COM1.x …). Rein.
+ * @param name - Name
+ * @returns anlegbar?
+ */
+export function istSchreibbarerName(name: string): boolean {
+  return NAME_MUSTER.test(name) && !name.endsWith('.') && !GERAETENAMEN.has(name.split('.')[0].toLowerCase())
+}
+
+/**
+ * F45 FB-1b: Dateien eines Vorschlags (relativ zur Wurzel, '/') — Agent: die Datei; Skill: der begrenzte Durchlauf (keine
+ * Verknüpfung, Grenzen wie die Erkennung). Synchron, wirft nie.
+ * @param wurzel - Arbeitsordner
+ * @param v - Vorschlag mit typ und pfad
+ * @returns Pfade oder null (Behälter, nicht durchlaufbar)
+ */
+export function vorschlagDateien(wurzel: string, v: Pick<FaehigkeitVorschlag, 'typ' | 'pfad'>): string[] | null {
+  if (v.typ === 'agent') return [v.pfad]
+  if (v.typ !== 'skill') return null
+  const durchlauf = durchlaufeBegrenzt(absolut(wurzel, v.pfad))
+  return durchlauf.ok ? durchlauf.dateien.map((d) => `${v.pfad}/${d}`) : null
+}
+
+/** Basis-Baum unter vorschlaege/faehigkeiten (Pfad relativ zur Wurzel → Eintrag) oder Grund. */
+export type BasisBaum = { ok: true; baum: Map<string, BaumEintrag> } | { ok: false; grund: string }
+
+/**
+ * F45 FB-1b (q1, Entscheidung Challenger 23.10.2026): liest den Baum des Basis-Commits unter vorschlaege/faehigkeiten — ein
+ * asynchroner Aufruf `git --no-optional-locks -c core.quotePath=false -c core.fsmonitor=false ls-tree -r -z <basis> -- …`
+ * (Plumbing, Git-Starter F-1000, LC_ALL=C, Parser aus src/review-stand). Wirft nie.
+ * @param wurzel - Arbeitsordner (cwd, Toplevel seines Worktrees)
+ * @param basisCommit - basis_commit des Arbeitsordners
+ * @param zeitgrenzeMs - Zeitgrenze
+ * @returns Baum oder Grund (keine Basis, git-Fehler, Abbruch, unlesbare Ausgabe)
+ */
+export async function leseBasisBaum(wurzel: string, basisCommit: string | null, zeitgrenzeMs = 5000): Promise<BasisBaum> {
+  if (typeof basisCommit !== 'string' || !/^[0-9a-f]{40,64}$/.test(basisCommit)) return { ok: false, grund: 'Basis-Commit des Arbeitsordners unbekannt' }
+  const ergebnis = await fuehreGitAsync(['--no-optional-locks', '-c', 'core.quotePath=false', '-c', 'core.fsmonitor=false', 'ls-tree', '-r', '-z', basisCommit, '--', VORSCHLAG_ORDNER], { cwd: wurzel, zeitgrenzeMs, umgebung: { LC_ALL: 'C' } })
+  let grund: string
+  if (ergebnis.abbruch !== undefined || ergebnis.code !== 0) grund = `git ls-tree nicht auswertbar (code ${ergebnis.code}${ergebnis.abbruch !== undefined ? `, ${ergebnis.abbruch}` : ''}): ${ergebnis.stderr.slice(0, 300)}`
+  else {
+    try {
+      return { ok: true, baum: parseLsTree(ergebnis.stdout) }
+    } catch (fehler) {
+      grund = (fehler as Error).message
+    }
+  }
+  // code-reviewer FB-1b 4: nach außen steht nur „nicht bestimmbar“ — der Grund gehört ins Log.
+  console.error(`[faehigkeiten] Basis-Baum in '${wurzel}' nicht lesbar:`, grund)
+  return { ok: false, grund }
+}
+
+/**
+ * Git-Blob-Kennung der Bytes (wie `hash-object --no-filters`): Kopf `blob <länge>\0`, sha1 bzw. sha256 nach der Länge der
+ * Vergleichskennung (40 bzw. 64 Hex).
+ * @param bytes - Inhalt
+ * @param laenge - Länge der Kennung im Baum
+ * @returns Kennung
+ */
+function blobKennung(bytes: Buffer, laenge: number): string {
+  return createHash(laenge === 64 ? 'sha256' : 'sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex')
+}
+
+/**
+ * F45 FB-1b (q1): Vorschlag gegenüber dem Basis-Baum — 'neu' (kein Pfad darunter im Baum), 'unveraendert' (gleiche Pfade,
+ * jede Datei regulär im Baum, 100644/100755, und Blob der Bytes gleich), sonst 'geaendert'. Synchron (Phase B der Route).
+ * Grenze: ohne Zeilenende-Umwandlung — im Arbeitsordner gilt core.autocrlf=false (docs/architektur/arbeitsordner.md).
+ * @param wurzel - Arbeitsordner
+ * @param v - Vorschlag mit typ, name, pfad
+ * @param baum - leseBasisBaum(...).baum
+ * @returns Stand oder null (nicht bestimmbar)
+ */
+export function vergleicheMitBasis(wurzel: string, v: Pick<FaehigkeitVorschlag, 'typ' | 'name' | 'pfad'>, baum: ReadonlyMap<string, BaumEintrag>): 'neu' | 'geaendert' | 'unveraendert' | null {
+  if (v.typ === null || v.name === null) return null
+  const praefix = `${v.pfad}/`
+  const imBaum = [...baum.keys()].filter((p) => (v.typ === 'agent' ? p === v.pfad : p.startsWith(praefix)))
+  if (imBaum.length === 0) return 'neu'
+  const dateien = vorschlagDateien(wurzel, v)
+  if (dateien === null || dateien.length !== imBaum.length || dateien.some((d) => !baum.has(d))) return 'geaendert'
+  try {
+    for (const d of dateien) {
+      const eintrag = baum.get(d) as BaumEintrag
+      if (eintrag.typ !== 'blob' || (eintrag.modus !== '100644' && eintrag.modus !== '100755')) return 'geaendert'
+      const art = artVon(absolut(wurzel, d))
+      if (art.art !== 'datei' || art.groesse > VORSCHLAG_GRENZEN.skillBytes) return 'geaendert'
+      if (blobKennung(readFileSync(absolut(wurzel, d)), eintrag.blob.length) !== eintrag.blob) return 'geaendert'
+    }
+  } catch (fehler) {
+    console.error(`[faehigkeiten] Vergleich von '${v.pfad}' mit dem Basis-Commit nicht möglich:`, fehler)
+    return null
+  }
+  return 'unveraendert'
 }
