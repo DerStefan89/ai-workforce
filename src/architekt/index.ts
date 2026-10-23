@@ -597,6 +597,8 @@ function baueFeatureRolleninstruktion(stackOffen: boolean): string[] {
     '  "einrichtung": [ { "schritt": "<was Stefan selbst einrichten muss: Konto, API-Schlüssel als Umgebungsvariable, Dienst, Berechtigung>", "wann": "vor_dem_bau" | "waehrend_des_baus" }, ... ] (leer, wenn nichts einzurichten ist; F45 B2a-2)',
     '}',
     "'einrichtung' nennt nur, was der Bau selbst nicht herstellen kann. Ein Schritt 'vor_dem_bau' hält den Bau an, bis Stefan ihn im Leitstand abgehakt hat.",
+    // F45 FB-1a (F-1096, K39): Form-Empfehlung ohne Schemafeld — sie steht in der zusammenfassung.
+    'Bei wiederkehrenden Aufgaben in der zusammenfassung die Form mit Begründung empfehlen: deterministisch/wiederholt → Skript/Gate; Urteil/Wissen → Skill; eigene Rolle mit eigenem Kontext → Agent; fremder Dienst/Daten → MCP (über die Sammlung).',
     "In 'entscheidungen_mensch[].empfehlung' NUR einen Titel nennen, der auch in 'optionen' steht — keine Option erfinden. In 'capabilities_bedarf[].ressource_id' NUR eine ID aus dem eingespeisten Capability-Auszug nennen, sonst 'null' und 'status': 'fehlt' — keine Ressource erfinden. 'schema_entwuerfe[].json_schema' ist ein STRING mit dem JSON-Text des Schema-Fragments (z. B. \"{\\\"type\\\":\\\"object\\\",\\\"additionalProperties\\\":false,...}\"), KEIN verschachteltes JSON-Objekt. Kein weiteres Feld außer den genannten.",
   ]
   if (stackOffen) zeilen.push(STACK_OFFEN_HINWEIS)

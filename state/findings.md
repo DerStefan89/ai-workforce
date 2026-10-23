@@ -7773,6 +7773,7 @@ Fundstelle: `src/faehigkeiten/start.ts` (Write/Edit(`**/.claude/**`)), `src/ress
 Auswirkung: Mittel — „Fähigkeit bauen“ endet heute in Handarbeit.
 Maßnahme: nach F30/Teil 2 — Ablauf „Fähigkeit bauen“ schreibt in einen Vorschlagsordner; Stefan übernimmt per Knopf (Server schreibt, Freigabe nach Inhalt wie F-1/F-2a).
 Nachtrag (Stefan, 14.10.2026, E-F45-12 = A): vorgezogen in den neuen Baustein „Fähigkeit bauen“ nach B2b, vor B3 (≈ 0,5–0,75 AT), zusammen mit der Form-Empfehlung durch den Architekten (F-1096, K39).
+Nachtrag F45 FB-1a (23.10.2026, Plan `features/F45/plan-fb1.md`/`plan-fb1-v2.md`, Advisor `features/F45/advisor-fb1.md` „Nicht freigegeben“ ⇒ v2): „Fähigkeit bauen“ geteilt (E-FB1-1): **FB-1a erledigt** — Erkennung `src/faehigkeiten/vorschlag.ts` (`vorschlaege/faehigkeiten/skills/<name>/` mit SKILL.md bzw. `…/agents/<name>.md`; je Vorschlag typ, name, beschreibung, Hash in der Form des Starts, ziel_existiert ohne Unterschied der Schreibweise, ziel_ignoriert über `git check-ignore --no-index`, Grund bei Name, Frontmatter (streng, `tools` nur der Form nach), Dateinamen, Verknüpfung, Größe, eingebautem Namen; nie durch eine Verknüpfung gelesen, begrenzter Durchlauf, höchstens 20 Vorschläge), Projektion `faehigkeitVorschlaege` in `GET …/abnahme` (nur im Arbeitsordner, leer ⇒ Feld fehlt), Regelzeile im Auftrag der Ausführung im Arbeitsordner; Gate `check-f45-fb1-faehigkeit-vorschlag`. Die deny-Regel `Write/Edit(**/.claude/**)` bleibt. **Offen:** FB-1b (Routen „übernehmen“/„verwerfen“, F-1167) und FB-2 (Anzeige). Entscheidungen Stefan 23.10.2026: E-FB1-2 neue Routen bis W2 nach dem Zwischenmuster „Modul erkennt den Pfad, Server prüft die Methode hinter dem CSRF-Haken“ (F-1131); E-FB1-3 Verwerfen immer, Übernehmen bei offener Abnahme oder nach ANGENOMMEN (bereiter Arbeitsordner, kein Lauf aktiv, „Review veraltet“ hingenommen); E-FB1-4 Kernsätze knapp, Wortlaut in `docs/architektur/`, Deckel bleibt.
 Status: offen.
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 
@@ -7999,6 +8000,7 @@ Beschreibung: Bei wiederkehrenden Aufgaben empfiehlt der Architekt die Form mit 
 Fundstelle: Rolle `architekt` (`src/architekt`), Ausgabeschema `ergebnis-architektur`.
 Auswirkung: Mittel — falsch gewählte Form (z. B. Skill statt Gate) macht eine Regel unzuverlässig oder teuer.
 Maßnahme: mit F-1069 im Baustein „Fähigkeit bauen“ (E-F45-12 = A).
+Nachtrag F45 FB-1a (23.10.2026): Regelzeile im Architekten-Auftrag (`baueFeatureRolleninstruktion`, `src/architekt/index.ts`, gilt auch im Modus `projekt`), ohne Schemafeld: „Bei wiederkehrenden Aufgaben in der zusammenfassung die Form mit Begründung empfehlen: deterministisch/wiederholt → Skript/Gate; Urteil/Wissen → Skill; eigene Rolle mit eigenem Kontext → Agent; fremder Dienst/Daten → MCP (über die Sammlung).“ Gate `check-f45-fb1-faehigkeit-vorschlag` (r2). Offen: Anzeige der Empfehlung im Leitstand (FB-2); ob die Empfehlung im echten Lauf erscheint, belegt erst ein Architekten-Lauf (R).
 Status: offen.
 Feature/Run: Challenger, Entscheidung Stefan 14.10.2026.
 Zugeordnet: F45 „Fähigkeit bauen“.
@@ -8254,6 +8256,7 @@ Beschreibung: Die Wachstumsbremse (F45 W1) verlangt, dass neue Routen in `script
 Fundstelle: ARCHITECTURE.md §1 (Wachstumsbremse), `scripts/check-f813-csrf.mjs` (4), `scripts/check-wachstumsbremse-server.mjs`, `scripts/wachstumsbremse-server.json`.
 Auswirkung: Mittel — bis zur Klärung kann keine Route mit Methodenweiche regelkonform entstehen oder umziehen.
 Maßnahme: In W2 (Aufräumpaket Server-Module) das Muster für Routen-Module mit Methodenweiche und CSRF-Haken festlegen (z. B. f813 (4) prüft die Aufrufstelle hinter dem Haken statt `.method` im Modul); bis dahin keine neuen Routen. Der Umzug der Rückfrage-Routen geht nach W2 (Entscheidung Stefan, B2b-3b-2a), `check-f813-csrf` bleibt bis dahin unverändert.
+Nachtrag (Entscheidung Stefan 23.10.2026, E-FB1-2, Advisor `features/F45/advisor-fb1.md` B1): bis W2 dürfen neue Routen nach dem Zwischenmuster „Modul erkennt den Pfad (`erkenne…Route(pfad)`), der Server prüft die Methode hinter dem zentralen CSRF-Haken (`req.method !== 'POST'` ⇒ 405)“ entstehen — Durchsetzungsgrad DEKLARIERT (weder Wachstumsbremse noch f813 (3) sehen diese Form), je Route eine eigene CSRF-Probe im Gate. Erste Anwendung FB-1b (F-1167); Kern, `docs/architektur/wachstumsbremse.md` und dieser Eintrag werden dort angepasst.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-3b-2a (Advisor-Pass B1), 16.10.2026; Entscheidung Stefan (Challenger) 16.10.2026.
 
@@ -8561,3 +8564,48 @@ Auswirkung: Gering — sichtbar oder selten; (1) wird erst bei vielen Abläufen 
 Maßnahme: (1) Auslöser spürbare Chat-Latenz: Cache nach mtime bzw. nur neueste Version laden (mit W2, Server in Module); (2) try/catch je Eintrag mit Überspringen (kostet Server-Zeilen, mit W2); (3) bei Kollision Datum oder Kurzname anhängen; (5) fehlendes Datum ans Ende sortieren; (4)(6) beobachten.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-4b (code-reviewer, qa), 21.10.2026.
+
+**F-1164** · `TECH_DEBT` · P3 · offen
+Titel: Hash einer Fähigkeit ohne Zeilenende-Normalisierung.
+Beschreibung: Agent-Hash (sha256 der Bytes) und Skill-Hash (`berechneInhaltHash`) beschreiben die Bytes auf der Platte. Checkt ein Fremdprojekt mit `core.autocrlf=true` (CRLF) aus, hat eine im Arbeitsordner (LF) übernommene und nach Inhalt freigegebene Fähigkeit nach dem Merge im Projektordner einen anderen Hash ⇒ „abweichend“, ein Klick Neufreigabe.
+Fundstelle: `src/faehigkeiten/index.ts` (`ermittleProjektFaehigkeiten`, Hash-Formen), `src/ressourcen/skill-dateien.ts` (`berechneInhaltHash`), `src/faehigkeiten/vorschlag.ts`.
+Auswirkung: Gering — fail-closed (nicht aktiv bis zur Neufreigabe), ein Klick.
+Maßnahme: in R beobachten; keine Hash-Normalisierung ohne eigenen Plan (beide Hash-Formen müssen zu `erfasseClaudeOrdner`/`pruefeGegenMomentaufnahme` passen).
+Status: offen.
+Feature/Run: Entdeckt: F45 FB-1a (Bauauftrag), 23.10.2026.
+
+**F-1165** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Belegslücke B3/Beleg 15 nach E-F45-11.
+Beschreibung: R2 (Motion) läuft seit E-F45-11 im Leitstand der Workforce; eine Website mit Bewegung im Fremdprojekt hat damit keinen Beleglauf mehr — der Render-Nachweis mit Bewegung (B3) wäre nur am eigenen Leitstand belegt.
+Fundstelle: `docs/projekt/fixpaket-f45.md` (Zeilen B3, R2, E-F45-10/E-F45-11).
+Auswirkung: Mittel — B3 gälte als belegt, ohne dass ein Fremdprojekt mit sichtbarer Bewegung gebaut wurde.
+Maßnahme: R-Auftrag in haushaltsbuch2 mit sichtbarer Bewegung. Entscheidung Stefan 23.10.2026: B3 bleibt vollständig vor R.
+Status: offen.
+Feature/Run: Bauauftrag F45 FB-1, 23.10.2026.
+
+**F-1166** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Tests mit Windows-Pfad und `resolve`/`isAbsolute` nur unter Windows grün.
+Beschreibung: Ein Test, der einen Windows-Pfad (`C:\…`) durch `resolve` oder `isAbsolute` schickt, ist unter Linux (CI, Cloud-Prüfung) rot oder prüft etwas anderes; Pfade in Tests nur über `join`/`mkdtemp`, Enthaltensein über `relative()` statt String-Präfix.
+Fundstelle: Test-Konvention (ARCHITECTURE.md §6), Bauaufträge F45.
+Auswirkung: Mittel — rote Cloud-Prüfung nach lokal grünem `npm run check`.
+Maßnahme: Regel in die Bauaufträge (seit FB-1 dort) und bei W2 in `docs/kommentar-standard.md` bzw. einen Prüfschritt (Suche nach `[A-Za-z]:\\` in `*.test.*`).
+Status: offen.
+Feature/Run: Bauauftrag F45 FB-1, 23.10.2026.
+
+**F-1167** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: F45 FB-1b — Routen „Fähigkeit übernehmen“/„verwerfen“ (Pflichtpunkte aus dem Advisor-Pass FB-1).
+Beschreibung: Mit FB-1a gibt es Erkennung und Projektion, aber keine Übernahme. FB-1b baut `POST …/workflows/<id>/faehigkeit-vorschlag/uebernehmen|verwerfen { typ, name, hash }` in `scripts/leitstand/routen-faehigkeit-vorschlag.mjs` nach `features/F45/plan-fb1-v2.md` (Abschnitt FB-1b) mit den Entscheidungen E-FB1-2/-3/-4 (F-1069) und den Pflichtpunkten des Advisors (`features/F45/advisor-fb1.md`): B3 409, wenn `<typ>:<name>` schon in `an` steht oder mit anderem Hash in `inhalt_freigaben` (sonst stilles Einschalten); B4 Wechselwirkung mit `leseClaudeAenderungen` (ungetrackte `.claude/`-Dateien nach Übernahme ⇒ nächster Lauf mit Ort-B/Fähigkeiten rot) entscheiden und belegen; B6 lstat-Kette vor jedem Anlegen, nicht rekursiv, `relative()` auf `realpathSync.native`, Fall „`.claude` als Junction“; B9 nie überschreiben auch gegen fremde Prozesse (Agent `linkSync`+`unlinkSync`) und Fehlerpfad „Rücknahme scheitert“; B10 Schreiben im Modul dokumentieren; B11 Kernsatz §2 (Server schreibt auf Klick nach `.claude/` des Arbeitsordners) mit Durchsetzungsgrad, `docs/architektur/arbeitsordner.md`, `lokale-dateien.md`; B13 ignoriertes Ziel: 409 oder Hinweis (Stefan); CSRF-Probe der neuen Routen direkt und über `/api/projekte/<id>/…`. Dazu aus code-reviewer/qa FB-1a: (q1) Entscheidung „getrackte Vorschläge im Basisstand“ — die Erkennung unterscheidet nicht, ob ein Vorschlag in diesem Lauf entstand oder schon im Basis-Commit lag (z. B. nur ungetrackte bzw. im Lauf geänderte zeigen); (q4) Mehrdeutigkeit über Frontmatter-Namen anderer Dateien und Agents in Unterordnern erst am Start erkannt (Commands seit FB-1a in der Erkennung); (q9) vor dem Schreiben `NAME_MUSTER` gegen Punkt am Ende und Windows-Reservenamen (`con`, `x.`) absichern; Vorschläge erscheinen während eines laufenden Laufs mit Zwischenständen (FB-2); `umfang` meldet Vorschlagsdateien als „außerhalb der vereinbarten Bereiche“ (Hinweis, kein Halt); (cr1) die Erkennung läuft je 2-s-Poll ungecacht (begrenzt: 20 Vorschläge, 4 MiB gesamt) — Cache je Wurzel spätestens mit FB-2; (cr7) `ermittleLaufort` je Poll ein zweites Mal (mit W2 einmal bestimmen).
+Fundstelle: `features/F45/plan-fb1-v2.md`, `features/F45/advisor-fb1.md`, `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`.
+Auswirkung: Mittel — bis dahin bleibt die Übernahme Handarbeit, und die Regelzeile der Ausführung („Stefan übernimmt sie in der Abnahme“) verspricht seit FB-1a mehr, als da ist: ein Vorschlag steht nur im JSON der Abnahme (Anzeige FB-2), „Bereit zum Sichern“ staged `vorschlaege/faehigkeiten/…` als normale Dateien in den Branch und nach main, jeder spätere Arbeitsordner trägt sie dann schon beim Anlegen (und zeigt sie als Vorschläge), und beim Aufräumen ohne Sichern gehen sie verloren. Bis FB-1b/FB-2: Fähigkeit-Aufträge nur mit Übernahme von Hand und vor dem Sichern `vorschlaege/` entfernen.
+Maßnahme: eigener Plan mit Advisor-Pass (FB-1b), danach FB-2 (Anzeige).
+Status: offen.
+Feature/Run: F45 FB-1a (Advisor-Pass, Teilung E-FB1-1), 23.10.2026.
+
+**F-1168** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Lagebild-Drift im Bauauftrag nicht erkannt.
+Beschreibung: FB-1a änderte `docs/STATUS.md` und `state/findings.md`, ohne danach `node scripts/erzeuge-lagebild.mjs` auszuführen; `docs/projekt/kontext/lagebild.md` war damit veraltet (`check-f40-lagebild` (a) rot, im Auftrag „check-f40-ws2“ genannt). Es fiel erst im Commit-Block auf, weil `npm run check` am Speicher abbrach und der Bericht ohne vollständigen `check:gates` geliefert wurde. Im selben Zug: `check-git-starter` (F-1000) war rot (`pruefeZielIgnoriert` startete git mit bloßem Namen), ebenfalls erst dort gesehen.
+Fundstelle: Bauauftrag F45 FB-1a; `scripts/erzeuge-lagebild.mjs`, `scripts/check-f40-lagebild.mjs`.
+Auswirkung: Mittel — ein als „mit Hinweisen freigegeben“ berichteter Stand war nicht commitfähig; die Korrektur kostete eine zweite Runde.
+Maßnahme: In Bauaufträgen nach jeder Änderung an `docs/STATUS.md`/`state/findings.md` immer `node scripts/erzeuge-lagebild.mjs` + `node scripts/check-f40-lagebild.mjs`; `npm run check:gates` vollständig vor dem Bericht (bei Speicherabbruch die restlichen Gates einzeln ab dem abgebrochenen).
+Status: offen.
+Feature/Run: Entdeckt im FB-1a-Commit, 23.10.2026.

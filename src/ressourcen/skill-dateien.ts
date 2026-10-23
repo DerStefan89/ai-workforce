@@ -13,7 +13,7 @@
  *   installation_vorlage.skill_pfad.
  *
  * Wird aufgerufen von: src/ressourcen/index.ts, src/ressourcen/skill-installation.ts,
- * src/ressourcen/ort-b-start.ts, src/claude-plugins/index.ts (F45 F-3a-1), zugehörige Tests und
+ * src/ressourcen/ort-b-start.ts, src/claude-plugins/index.ts (F45 F-3a-1), src/faehigkeiten/vorschlag.ts (F45 FB-1a), zugehörige Tests und
  * scripts/check-f36-ws5b-skill.mjs.
  *
  * Wichtig: inhalt_hash-Form (festgeschrieben, sonst passt kein gespeicherter Hash mehr): Dateien des

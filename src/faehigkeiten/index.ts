@@ -12,6 +12,7 @@
  *
  * Wird aufgerufen von:
  * - src/faehigkeiten/start.ts, src/faehigkeiten/faehigkeiten.test.ts
+ * - src/faehigkeiten/vorschlag.ts (F45 FB-1a: pruefeFrontmatter, NAME_MUSTER, leseEingebautReferenz für Vorschläge)
  * - scripts/leitstand-server.mjs (Empfehlung/Start), scripts/leitstand/routen-faehigkeiten.mjs (Endpunkte)
  * - src/execution-controller/index.ts (pruefeGegenMomentaufnahme, hashLokaleDatei)
  *
@@ -521,10 +522,11 @@ export function alleFrontmatterNamen(inhalt: string): string[] {
  * Prüft die Frontmatter eines Projekt-Agents bzw. -Skills gegen Positivliste und Wertformen.
  * @param typ - agent oder skill
  * @param inhalt - Inhalt der .md-Datei bzw. SKILL.md
- * @param werkzeugNamen - Werkzeugnamen des Laufs (für agent.tools)
+ * @param werkzeugNamen - Werkzeugnamen des Laufs (für agent.tools); seit F45 FB-1a null = nur die Form der tools prüfen
+ *   (Vorschlag ohne bekannten Werkzeugsatz, src/faehigkeiten/vorschlag.ts — die Zugehörigkeit prüft der Start)
  * @returns { name, beschreibung (F45 F-2a: Wert der description-Zeile) } oder Sperrgrund
  */
-function pruefeFrontmatter(typ: ProjektTyp, inhalt: string, werkzeugNamen: readonly string[]): { ok: true; name: string; beschreibung: string } | { ok: false; grund: string } {
+export function pruefeFrontmatter(typ: ProjektTyp, inhalt: string, werkzeugNamen: readonly string[] | null): { ok: true; name: string; beschreibung: string } | { ok: false; grund: string } {
   const gelesen = leseFrontmatterStreng(inhalt, typ === 'agent' ? AGENT_FELDER : SKILL_FELDER)
   if (!gelesen.ok) return gelesen
   const f = gelesen.felder
@@ -534,7 +536,7 @@ function pruefeFrontmatter(typ: ProjektTyp, inhalt: string, werkzeugNamen: reado
   if (typ === 'agent') {
     const tools = (f.get('tools') ?? '').split(',').map((t) => t.trim())
     if (tools.length === 0 || tools.some((t) => !/^[A-Za-z]+$/.test(t))) return { ok: false, grund: "Frontmatter-tools fehlt oder ist keine Komma-Liste schlichter Namen (Pflicht, z. B. 'Read, Grep, Glob')" }
-    const fremd = tools.filter((t) => VERBOTENE_AGENT_WERKZEUGE.has(t) || !werkzeugNamen.includes(t))
+    const fremd = tools.filter((t) => VERBOTENE_AGENT_WERKZEUGE.has(t) || (werkzeugNamen !== null && !werkzeugNamen.includes(t)))
     if (fremd.length > 0) return { ok: false, grund: `Frontmatter-tools außerhalb des Werkzeugsatzes: ${fremd.join(', ')}` }
     if (f.has('model') && f.get('model') !== 'inherit') return { ok: false, grund: "Frontmatter-model nur 'inherit' (E-185: das Laufmodell gilt auch für Subagenten)" }
     if (f.has('color') && !/^[a-z]+$/.test(f.get('color') ?? '')) return { ok: false, grund: 'Frontmatter-color nicht schlicht' }
