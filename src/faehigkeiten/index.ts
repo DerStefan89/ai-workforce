@@ -775,7 +775,7 @@ export function ermittleProjektFaehigkeiten(wurzel: string, kontext: ProjektFaeh
       if (ordner.length + cmd.length > 1) hindernisse.push(`Skill-Name '${e.name}' mehrdeutig (${[...ordner.map((d) => d.pfad), ...cmd.map(() => 'commands')].join(', ')})`)
     }
   }
-  return { eintraege, agentNamen: [...agentNamen].sort(), hindernis: hindernisse.length > 0 ? hindernisse.join('; ') : null }
+  return { eintraege, agentNamen: [...agentNamen].sort(), hindernis: hindernisse.length > 0 ? hindernisse.join('; ') : null, hindernisse }
 }
 
 /**

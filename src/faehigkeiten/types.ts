@@ -103,4 +103,6 @@ export interface ProjektFaehigkeitenErgebnis {
   agentNamen: string[]
   /** Grund, aus dem ein Lauf mit ≥1 aktivem Eintrag nicht startet (Verknüpfung, Mehrdeutigkeit, nicht sperrbar), sonst null. */
   hindernis: string | null
+  /** F45 FB-1b (Advisor-Delta 8): dieselben Hindernisse einzeln (hindernis = hindernisse.join('; ')), leer = keines. */
+  hindernisse: string[]
 }

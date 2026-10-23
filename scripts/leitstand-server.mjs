@@ -371,7 +371,7 @@
  * Böswilligkeit, sondern Unachtsamkeit: der Mensch ändert einen Plan und
  * merkt nicht, dass er dabei eine Freigabepflicht verloren hat — der Automat
  * fährt den Schritt danach unbeaufsichtigt.
- * ermittleFreigabeAbschwaechungen vergleicht die eingereichte Fassung mit dem
+ * ermittleFreigabeAbschwaechungen (scripts/leitstand/freigabe-abschwaechung.mjs) vergleicht die eingereichte Fassung mit dem
  * ohnehin geladenen Bestand (kein zusätzliches I/O) und meldet jeden Schritt,
  * der nicht mehr ZWINGEND trägt oder ganz entfällt. Bei einem Treffer ist
  * begruendung Pflicht — ein Transportfeld, das VOR der Schemaprüfung aus dem
@@ -559,7 +559,8 @@ import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { aufraeumenSperrgrund, baueArbeitsordnerListe, pruefeAufraeumenKoerper } from './leitstand/routen-arbeitsordner.mjs'
 import { standPfadFuer } from '../src/faehigkeiten/stand.ts'
 import { aendereLokaleDatei, baueFaehigkeitenStatus, bestaetigeLokaleDatei, einschaltSperrgrund, erzeugeLokalWaechter, FREMD_UNBESTAETIGT, fremdGeaendert, freigabeSperrgrund, pruefeAktivierungKoerper, pruefeFreigabeKoerper } from './leitstand/routen-faehigkeiten.mjs'
-import { baueVorschlagProjektion, FAEHIGKEIT_VORSCHLAG_REGEL } from './leitstand/routen-faehigkeit-vorschlag.mjs'
+import { baueVorschlagProjektion, erkenneVorschlagRoute, FAEHIGKEIT_VORSCHLAG_REGEL, fuehreVorschlagAktionDurch } from './leitstand/routen-faehigkeit-vorschlag.mjs'
+import { ermittleFreigabeAbschwaechungen } from './leitstand/freigabe-abschwaechung.mjs'
 import { beschreibeAutomatAusgang, workflowStatusZuAusgang } from './leitstand/automat-ausgang.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { ermittleCliHinweis, erzeugeProjektCliHinweis, installierteCliVersion } from './leitstand/cli-version.mjs'
@@ -2143,54 +2144,6 @@ export function ermittleAbnahmeStand(workflowDaten, abnahmeVersion) {
   if (abnahmeVersion !== null && abnahmeVersion !== undefined) entscheidungStatus = abnahmeVersion.daten?.bezug?.ausfuehrung_lauf_id === ausfuehrungSchritt?.lauf_id ? 'ok' : 'veraltet'
   const faellig = workflowDaten?.status === 'ABGESCHLOSSEN' && typeof ausfuehrungSchritt?.lauf_id === 'string'
   return { entscheidungStatus, faellig, offen: faellig && entscheidungStatus !== 'ok', status: faellig ? entscheidungStatus : 'nicht_faellig' }
-}
-
-/**
- * Vergleicht zwei Fassungen desselben Workflows und meldet jeden Schritt, der
- * dabei seine Freigabepflicht verliert (F15 WS-2c (b3), löst F-226).
- *
- * Der zweite Weg an der Freigabe vorbei: ein ZWINGEND-Schritt lässt sich seit
- * (b1) über POST /api/workflows/<id>/freigabe auflösen — mit Pflichtbegründung
- * und Entscheidungsartefakt —, aber ebenso über eine neue Fassung, in der
- * derselbe Schritt AUTOMATISCH trägt. Der Bedrohungsfall ist nicht
- * Böswilligkeit, sondern Unachtsamkeit: der Mensch ändert einen Plan und merkt
- * nicht, dass er dabei eine Freigabepflicht verloren hat — der Automat fährt
- * den Schritt danach unbeaufsichtigt.
- *
- * Zwei Formen von Abschwächung, beide gleich behandelt:
- *   - derselbe Schritt trägt nicht mehr ZWINGEND (nachher: der neue Wert),
- *   - der Schritt fehlt in der neuen Fassung ganz (nachher: null). Ein
- *     entfernter ZWINGEND-Schritt ist keine kleinere Änderung als ein
- *     abgestufter, sondern eine größere.
- *
- * ABSICHTLICH als "nicht mehr ZWINGEND" formuliert und nicht als Aufzählung
- * der beiden heutigen Gegenwerte (EMPFOHLEN, AUTOMATISCH): käme je eine vierte
- * Freigabestufe dazu, fiele sie sonst still aus der Bezeugungspflicht. Die
- * sichere Richtung ist hier die umgekehrte als bei den Allowlists in
- * ermittleNaechstenSchritt — dort heißt sie "hält an", hier "wird bezeugt".
- *
- * Die VERSCHÄRFUNG ist ausdrücklich frei: wer AUTOMATISCH auf ZWINGEND hebt,
- * legt sich selbst eine Pflicht auf und braucht dafür keine Begründung.
- * @param vorherigeSchritte - schritte-Liste der abgelegten Fassung
- * @param neueSchritte - schritte-Liste der eingereichten Fassung
- * @returns [{ schritt_id, vorher: 'ZWINGEND', nachher: <neuer Wert> | null }], leer bei keinem Treffer
- */
-function ermittleFreigabeAbschwaechungen(vorherigeSchritte, neueSchritte) {
-  if (!Array.isArray(vorherigeSchritte)) return []
-  const neueNachId = new Map((Array.isArray(neueSchritte) ? neueSchritte : []).map((schritt) => [schritt?.schritt_id, schritt]))
-  const treffer = []
-  for (const alt of vorherigeSchritte) {
-    if (alt?.freigabe !== 'ZWINGEND') continue
-    const neu = neueNachId.get(alt.schritt_id)
-    if (neu === undefined) {
-      treffer.push({ schritt_id: alt.schritt_id, vorher: 'ZWINGEND', nachher: null })
-      continue
-    }
-    if (neu.freigabe !== 'ZWINGEND') {
-      treffer.push({ schritt_id: alt.schritt_id, vorher: 'ZWINGEND', nachher: neu.freigabe ?? null })
-    }
-  }
-  return treffer
 }
 
 /** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). F39 WS-2a: 'herkunft' additiv/optional. F45 B2a-2 (E3): 'akzeptanzkriterien' nur zusammen mit herkunft.art 'finding' (pruefeAuftragsformular) — sonst bleibt das Formular für AK zu (F35 AK2). */
@@ -6548,6 +6501,13 @@ export function erzeugeRequestHandler(optionen = {}) {
     return { aktiv: false }
   }
 
+  /** Laufsperre der Plugin- und Vorschlag-Routen (Projekt-Aufruf, globaler oder instanzlokaler Lauf). @returns Grund oder null */
+  function laufGesperrtGrund() {
+    const sperre = laufSperreAnzeige()
+    if (sperre.aktiv) return sperre.grund
+    return laufAktiv !== false ? 'ein Lauf ist aktiv — nach seinem Ende erneut versuchen' : null
+  }
+
   /**
    * F25 WS-1 (AK5, D13): zusätzliche, von der instanzlokalen laufAktiv-Sperre unabhängige
    * Prüfung gegen den projektübergreifend geteilten globalerLaufZustand — genau ein aktiver
@@ -8617,6 +8577,34 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    // F45 FB-1b (F-1167; Zwischenmuster bis W2, E-FB1-2/F-1131): Fähigkeit-Vorschlag übernehmen/verwerfen — Erkennung und Ablauf in
+    // scripts/leitstand/routen-faehigkeit-vorschlag.mjs; hier die Methode hinter dem zentralen CSRF-Haken, die Lage und die Rückrufe.
+    const vorschlagRoute = erkenneVorschlagRoute(pfad)
+    if (vorschlagRoute !== null) {
+      if (req.method !== 'POST') {
+        sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+        return
+      }
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const lage = (workflowId) => {
+        const workflow = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten
+        if (workflow?.workflow_id !== workflowId) return null
+        const ort = ermittleLaufort(workflowId, workflow)
+        const bereit = ort.ok && ort.arbeitsordner !== null && !arbeitsordnerVorbereitungLaeuft.has(workflowId)
+        const abnahme = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen)
+        const satz = loeseWerkzeugsatzAuf(vorlage, findeAusfuehrungsSchritt(workflow)?.werkzeugsatz)
+        return { wurzel: bereit ? ort.wurzel : null, basisCommit: bereit ? (ladeArbeitsordner(workflowId)?.daten.basis_commit ?? null) : null, laufGesperrt: laufGesperrtGrund(), abnahme: { ...ermittleAbnahmeStand(workflow, abnahme), ergebnis: abnahme?.daten?.ergebnis ?? null }, werkzeugNamen: satz === undefined || satz === null ? null : werkzeugNamenAus(satz.erlaubte_werkzeuge) }
+      }
+      const aendere = (aenderung) => {
+        const ergebnis = aendereLokaleDatei(faehigkeitenLokalPfad, projektId, aenderung, undefined, faehigkeitenLokalWaechter)
+        if (ergebnis.ok) faehigkeitenLokalWaechter?.nachRoute(ergebnis.hash) // wirft nie (speichere fängt jeden Schreibfehler)
+        return ergebnis
+      }
+      const antwort = await fuehreVorschlagAktionDurch(vorschlagRoute, await leseJsonBegrenzt(req, 4096), { lage, projektId, lokalPfad: faehigkeitenLokalPfad, waechter: faehigkeitenLokalWaechter, aendere })
+      sendeJson(res, antwort.status, antwort.koerper)
+      return
+    }
+
     // ─── GET /api/workflows/<id>/abnahme (F23 WS-2a, AK14) ──────────────────────────────
     //
     // VOR dem generischen Detailendpunkt (Muster F15 WS-2a: längeres, spezielleres Präfix
@@ -8822,7 +8810,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         cursorSchritt !== null &&
         pruefschrittWiederholbar({ workflowStatus: workflowDaten.status, schritt: cursorSchritt, befund: ermittlePrueferBefund(cursorSchritt, workflowDaten.auftrag_id, ladeOptionen, qa.vorgelesen) }).wiederholbar
       const vorschlagOrt = ermittleLaufort(workflowId, workflowDaten)
-      const faehigkeitVorschlaege = vorschlagOrt.ok && vorschlagOrt.arbeitsordner !== null && !arbeitsordnerVorbereitungLaeuft.has(workflowId) ? await baueVorschlagProjektion(vorschlagOrt.wurzel) : []
+      const faehigkeitVorschlaege = vorschlagOrt.ok && vorschlagOrt.arbeitsordner !== null && !arbeitsordnerVorbereitungLaeuft.has(workflowId) ? await baueVorschlagProjektion(vorschlagOrt.wurzel, { basisCommit: ladeArbeitsordner(workflowId)?.daten.basis_commit ?? null }) : []
 
       sendeJson(res, 200, {
         workflowId,
@@ -9147,11 +9135,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           const lokal = ladeFaehigkeitenLokal(faehigkeitenLokalPfad)
           return lokal.zustand === 'ungueltig' ? {} : (projektEinstellungen(lokal.daten, projektId).plugin_zuordnung ?? {})
         },
-        laufGesperrt: () => {
-          const sperre = laufSperreAnzeige()
-          if (sperre.aktiv) return sperre.grund
-          return laufAktiv !== false ? 'ein Lauf ist aktiv — nach seinem Ende erneut versuchen' : null
-        },
+        laufGesperrt: laufGesperrtGrund,
         aendere: (aenderung, stand) => aendereLokaleDatei(faehigkeitenLokalPfad, projektId, aenderung, stand, faehigkeitenLokalWaechter),
       }
       let ergebnis

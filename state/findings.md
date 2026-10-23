@@ -7774,7 +7774,8 @@ Auswirkung: Mittel — „Fähigkeit bauen“ endet heute in Handarbeit.
 Maßnahme: nach F30/Teil 2 — Ablauf „Fähigkeit bauen“ schreibt in einen Vorschlagsordner; Stefan übernimmt per Knopf (Server schreibt, Freigabe nach Inhalt wie F-1/F-2a).
 Nachtrag (Stefan, 14.10.2026, E-F45-12 = A): vorgezogen in den neuen Baustein „Fähigkeit bauen“ nach B2b, vor B3 (≈ 0,5–0,75 AT), zusammen mit der Form-Empfehlung durch den Architekten (F-1096, K39).
 Nachtrag F45 FB-1a (23.10.2026, Plan `features/F45/plan-fb1.md`/`plan-fb1-v2.md`, Advisor `features/F45/advisor-fb1.md` „Nicht freigegeben“ ⇒ v2): „Fähigkeit bauen“ geteilt (E-FB1-1): **FB-1a erledigt** — Erkennung `src/faehigkeiten/vorschlag.ts` (`vorschlaege/faehigkeiten/skills/<name>/` mit SKILL.md bzw. `…/agents/<name>.md`; je Vorschlag typ, name, beschreibung, Hash in der Form des Starts, ziel_existiert ohne Unterschied der Schreibweise, ziel_ignoriert über `git check-ignore --no-index`, Grund bei Name, Frontmatter (streng, `tools` nur der Form nach), Dateinamen, Verknüpfung, Größe, eingebautem Namen; nie durch eine Verknüpfung gelesen, begrenzter Durchlauf, höchstens 20 Vorschläge), Projektion `faehigkeitVorschlaege` in `GET …/abnahme` (nur im Arbeitsordner, leer ⇒ Feld fehlt), Regelzeile im Auftrag der Ausführung im Arbeitsordner; Gate `check-f45-fb1-faehigkeit-vorschlag`. Die deny-Regel `Write/Edit(**/.claude/**)` bleibt. **Offen:** FB-1b (Routen „übernehmen“/„verwerfen“, F-1167) und FB-2 (Anzeige). Entscheidungen Stefan 23.10.2026: E-FB1-2 neue Routen bis W2 nach dem Zwischenmuster „Modul erkennt den Pfad, Server prüft die Methode hinter dem CSRF-Haken“ (F-1131); E-FB1-3 Verwerfen immer, Übernehmen bei offener Abnahme oder nach ANGENOMMEN (bereiter Arbeitsordner, kein Lauf aktiv, „Review veraltet“ hingenommen); E-FB1-4 Kernsätze knapp, Wortlaut in `docs/architektur/`, Deckel bleibt.
-Status: offen.
+Nachtrag F45 FB-1b (23.10.2026, Plan `features/F45/plan-fb1b-v2.md`): **FB-1b erledigt** — Routen „übernehmen“ (Server verschiebt nach `.claude/` desselben Arbeitsordners und gibt nach Inhalt frei, nie eingeschaltet) und „verwerfen“, Einzelheiten F-1167. **Offen:** FB-2 (Anzeige in der Abnahme, Hinweis „vor einem weiteren Lauf sichern“).
+Status: offen (FB-2).
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 
 **F-1070** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -8257,6 +8258,7 @@ Fundstelle: ARCHITECTURE.md §1 (Wachstumsbremse), `scripts/check-f813-csrf.mjs`
 Auswirkung: Mittel — bis zur Klärung kann keine Route mit Methodenweiche regelkonform entstehen oder umziehen.
 Maßnahme: In W2 (Aufräumpaket Server-Module) das Muster für Routen-Module mit Methodenweiche und CSRF-Haken festlegen (z. B. f813 (4) prüft die Aufrufstelle hinter dem Haken statt `.method` im Modul); bis dahin keine neuen Routen. Der Umzug der Rückfrage-Routen geht nach W2 (Entscheidung Stefan, B2b-3b-2a), `check-f813-csrf` bleibt bis dahin unverändert.
 Nachtrag (Entscheidung Stefan 23.10.2026, E-FB1-2, Advisor `features/F45/advisor-fb1.md` B1): bis W2 dürfen neue Routen nach dem Zwischenmuster „Modul erkennt den Pfad (`erkenne…Route(pfad)`), der Server prüft die Methode hinter dem zentralen CSRF-Haken (`req.method !== 'POST'` ⇒ 405)“ entstehen — Durchsetzungsgrad DEKLARIERT (weder Wachstumsbremse noch f813 (3) sehen diese Form), je Route eine eigene CSRF-Probe im Gate. Erste Anwendung FB-1b (F-1167); Kern, `docs/architektur/wachstumsbremse.md` und dieser Eintrag werden dort angepasst.
+Nachtrag F45 FB-1b (23.10.2026): angewendet — `erkenneVorschlagRoute(pfad)` in `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`, im Server `req.method !== 'POST'` ⇒ 405 hinter dem Haken; Kern §1 („neue Routen bis W2 nur im Zwischenmuster … DEKLARIERT“) und `wachstumsbremse.md` angepasst; CSRF-Probe Gate `check-f45-fb1b-faehigkeit-uebernehmen` (c). Die Festlegung des endgültigen Musters bleibt W2.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-3b-2a (Advisor-Pass B1), 16.10.2026; Entscheidung Stefan (Challenger) 16.10.2026.
 
@@ -8598,7 +8600,8 @@ Beschreibung: Mit FB-1a gibt es Erkennung und Projektion, aber keine Übernahme.
 Fundstelle: `features/F45/plan-fb1-v2.md`, `features/F45/advisor-fb1.md`, `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`.
 Auswirkung: Mittel — bis dahin bleibt die Übernahme Handarbeit, und die Regelzeile der Ausführung („Stefan übernimmt sie in der Abnahme“) verspricht seit FB-1a mehr, als da ist: ein Vorschlag steht nur im JSON der Abnahme (Anzeige FB-2), „Bereit zum Sichern“ staged `vorschlaege/faehigkeiten/…` als normale Dateien in den Branch und nach main, jeder spätere Arbeitsordner trägt sie dann schon beim Anlegen (und zeigt sie als Vorschläge), und beim Aufräumen ohne Sichern gehen sie verloren. Bis FB-1b/FB-2: Fähigkeit-Aufträge nur mit Übernahme von Hand und vor dem Sichern `vorschlaege/` entfernen.
 Maßnahme: eigener Plan mit Advisor-Pass (FB-1b), danach FB-2 (Anzeige).
-Status: offen.
+Nachtrag F45 FB-1b (23.10.2026, Plan `features/F45/plan-fb1b.md`/`plan-fb1b-v2.md`, Advisor `features/F45/advisor-fb1b.md` „Nicht freigegeben“ ⇒ v2, Delta `advisor-fb1b-delta.md` „Freigegeben mit Hinweisen“): **Routen gebaut** — `POST …/workflows/<id>/faehigkeit-vorschlag/uebernehmen|verwerfen { typ, name, hash }` (auch über `/api/projekte/<id>/…`) in `scripts/leitstand/routen-faehigkeit-vorschlag.mjs` nach dem Zwischenmuster E-FB1-2 (Server: Methode hinter dem CSRF-Haken, Lage, Rückrufe). Erledigt: **B3** (eingeschaltet oder anders freigegeben ⇒ 409, ohne Unterschied der Schreibweise), **B4** = (b) DEKLARIERT mit `hinweis` „vor einem weiteren Lauf sichern“ (belegt Gate (b4); Umbau vorher/nachher ⇒ F-1169), **B6** (lstat-Kette, einzeln nicht rekursiv angelegt, `relative()` auf `realpathSync.native`, `.claude`/`.claude/agents`/Behälter als Verknüpfung, Gate (s)), **B9** (Skill Ordner-Rename, Agent `COPYFILE_EXCL`; Rücknahme; Rücknahme scheitert ⇒ 500 mit beiden Orten), **B10** (`wachstumsbremse.md`), **B11** (Kern §2 mit Durchsetzungsgrad, `arbeitsordner.md`, `lokale-dateien.md`), **B13** (Ziel gitignoriert ⇒ 409, Entscheidung Challenger), **q1** (nur gegenüber dem Basis-Commit neue/geänderte Vorschläge, in Projektion und Routen; Entscheidung Challenger), **q4** (Probe am Ziel mit allen vorhandenen Einträgen aktiv, neues Hindernis ⇒ 409 mit Rücknahme), **q9** (`istSchreibbarerName`: kein Punkt am Ende, keine Windows-Gerätenamen, in Erkennung und Körper), **CSRF-Probe** direkt und über den Präfix (Gate (c), auf main grün — Rot über Sabotage-Kopie). Prüfen und Schreiben in einem synchronen Abschnitt (Phase B, Advisor 1/Delta 1). **cr1** teilweise: git-Ergebnisse der Projektion gecacht (Schlüssel mit Hashes und Basis), die Erkennung läuft weiter je Poll. Gate `check-f45-fb1b-faehigkeit-uebernehmen`. **Offen für FB-2:** Anzeige der Vorschläge mit „Übernehmen“/„Verwerfen“ und Pflicht, den `hinweis` (B4, „Review veraltet“) und `vorschlag_geblieben` sichtbar zu machen — **dauerhaft**, abgeleitet aus dem Stand von `.claude/` im Arbeitsordner (ungesicherte Übernahme), nicht nur nach dem Klick (qa FB-1b 1); Knopf während der Anfrage sperren, Doppelklick ergibt sonst 404/409 (qa 4); „Übernehmen“ nur anbieten, wenn erlaubt (zwischen „Anpassung“ und neuem Lauf 409, qa 8); Vorschläge während eines laufenden Laufs; `umfang`-Hinweis zu Vorschlagsdateien; Cache der Erkennung und des Basis-Vergleichs je Wurzel (cr1-Rest, code-reviewer FB-1b 5: `vergleicheMitBasis` liest je Poll, wenn der Basis-Commit Vorschläge trägt). Korrekturrunde FB-1b (code-reviewer, qa): Wurf nach dem Bewegen nimmt zurück (409), `liegtAn`/`bereiteZielVor` ohne 500, Rücknahme mit drei Versuchen (EPERM/EBUSY unter Windows), Verwerfen auch bei nicht lesbarem Basis-Commit, Ausweg in den 409-Gründen, Grenzen in `arbeitsordner.md`. **Offen für W2:** cr7 (`ermittleLaufort` je Poll zweimal).
+Status: offen (nur noch FB-2/W2-Reste).
 Feature/Run: F45 FB-1a (Advisor-Pass, Teilung E-FB1-1), 23.10.2026.
 
 **F-1168** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8609,3 +8612,30 @@ Auswirkung: Mittel — ein als „mit Hinweisen freigegeben“ berichteter Stand
 Maßnahme: In Bauaufträgen nach jeder Änderung an `docs/STATUS.md`/`state/findings.md` immer `node scripts/erzeuge-lagebild.mjs` + `node scripts/check-f40-lagebild.mjs`; `npm run check:gates` vollständig vor dem Bericht (bei Speicherabbruch die restlichen Gates einzeln ab dem abgebrochenen).
 Status: offen.
 Feature/Run: Entdeckt im FB-1a-Commit, 23.10.2026.
+
+**F-1169** · `TECH_DEBT` · P2 · offen
+Titel: `.claude`-Laufdiff wertet absolut aus — nach einer Übernahme wird ein Lauf mit Fähigkeiten im selben Arbeitsordner rot.
+Beschreibung: `leseClaudeAenderungen` (`git status --untracked-files=all`) nimmt einen sauberen `.claude/` vor dem Lauf an. Seit FB-1b liegt eine übernommene Fähigkeit bis zum Sichern ungetrackt unter `.claude/` des Arbeitsordners; ein weiterer Lauf mit Fähigkeiten, Ort-B-Skill oder Plugin dort endet FEHLGESCHLAGEN (`claude_ordner_veraendert`, fail-closed). FB-1b hat das als (b) DEKLARIERT entschieden (Hinweis in der Antwort, Gate fb1b (b4)).
+Fundstelle: `src/execution-controller/index.ts` (`leseClaudeAenderungen`, Aufruf nach dem Lauf), `features/F45/plan-fb1b.md` §3.
+Auswirkung: Mittel — ein ganzer, bezahlter Lauf wird rot, wenn Stefan nach einer Übernahme bei offener Abnahme ohne Sichern eine Anpassung startet.
+Maßnahme: eigenes Paket (c): git-Weg vorher und nachher lesen und nur Pfade unter `<wurzel>/.claude/` ausnehmen, die schon vorher im Laufdiff standen und die der Dateisystem-Vergleich (`vergleicheClaudeOrdner`) abdeckt; ohne Momentaufnahme absolut wie heute. Alternativ Vorstart-Prüfung (`vorStartPruefung`), die den Lauf vor dem Start ablehnt. Bis dahin: vor einem weiteren Lauf sichern.
+Status: offen.
+Feature/Run: Entdeckt: F45 FB-1b (Advisor-Pass FB-1 B4, Entscheidung im Plan), 23.10.2026.
+
+**F-1170** · `TECH_DEBT` · P3 · offen
+Titel: Aufräumen-Route prüft die Identität der Ablaufkennung nicht (Windows-Alias).
+Beschreibung: POST `…/arbeitsordner-aufraeumen` prüft nur die Zeichenregel und ob das Artefakt ladbar ist, nicht `daten.workflow_id === workflowId`, und trägt die Kennung wie angefragt in `arbeitsordnerVorbereitungLaeuft` ein. Unter NTFS findet `WF` das Artefakt von `wf`; eine Route, die mit der richtigen Kennung fragt (z. B. FB-1b), sieht die Sperre dann nicht.
+Fundstelle: `scripts/leitstand-server.mjs` (Aufräumen-Route), Vorbild `loeseCodeOrt` und `lage` der Vorschlag-Routen.
+Auswirkung: Gering — nur über eine gebastelte Anfrage; ohne Verwerfen bricht `git worktree remove` an ungetrackten Vorschlägen ab, `an` bleibt unberührt.
+Maßnahme: dieselbe Identitätsprüfung wie `loeseCodeOrt` (eine Bedingung, 404); mit W2 oder dem nächsten Paket am Aufräumen.
+Status: offen.
+Feature/Run: Entdeckt: F45 FB-1b (Delta-Advisor-Pass, Befund 4), 23.10.2026.
+
+**F-1171** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Cloud-Prüfung FB-1a ohne Node 24.
+Beschreibung: Die Cloud-Prüfung von FB-1a lief ohne Node 24 (Download nicht freigegeben); die Tests liefen unter Node 22: 29 abgebrochen in `rueckfrage-vermittlung.test.mjs` (unverändert gegenüber main). Der Prüfbericht belegt damit die gepinnte Laufzeit nicht.
+Fundstelle: Cloud-Prüfung F45 FB-1a; `package.json` (gepinnte Laufzeit), `scripts/leitstand/rueckfrage-vermittlung.test.mjs`.
+Auswirkung: Gering — die PR-CI läuft mit der gepinnten Version; ohne Verweis darauf wirkt der Prüfbericht unvollständig.
+Maßnahme: PR-CI als Node-24-Beleg im Prüfbericht nennen.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 23.10.2026.

@@ -11,7 +11,9 @@ Thema berührt.
   der Fähigkeiten je Projekt (Schema `schemas/faehigkeiten-lokal.schema.json`). Liegt außerhalb jedes Repos und jedes
   Arbeitsordners, damit kein Lauf sich selbst etwas freigibt; geschrieben nur von den POST-Routen
   `/api/projekte/<id>/faehigkeiten/…` und — seit F45 F-3b-1 — `…/plugins/freigabe`, `…/plugins/freigabe/ruecknahme` und
-  `…/plugins/zuordnung` (unpräfigiert oder `/api/projekte/<id>/…`) auf direkte Eingabe (gesperrt, solange ein Lauf aktiv ist), vorher/nachher je
+  `…/plugins/zuordnung` (unpräfigiert oder `/api/projekte/<id>/…`) und — seit F45 FB-1b — `…/workflows/<id>/faehigkeit-vorschlag/uebernehmen`
+  (nur die Freigabe nach Inhalt des übernommenen Eintrags, nie `an`; über den Rückruf des Servers auf `aendereLokaleDatei`,
+  geprüft und geschrieben im selben synchronen Abschnitt wie die Laufsperre) auf direkte Eingabe (gesperrt, solange ein Lauf aktiv ist), vorher/nachher je
   Lauf gehasht (Abweichung = Lauf rot). Kein Kontrollzustand, keine Hash-Kette; ungültig sperrt jeden Start mit
   Katalog-Fähigkeiten (E-F45-7). Eine Änderung, die nicht über diese Routen kam, gilt erst nach ausdrücklicher Bestätigung
   im Leitstand (POST `/api/projekte/<id>/faehigkeiten/bestaetigung`, „Datei geprüft – Stand übernehmen“, Laufsperre wie die

@@ -19,7 +19,7 @@ import { join } from 'node:path'
 import { after, describe, it } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import { ermittleProjektFaehigkeiten } from './index.ts'
-import { erkenneFaehigkeitVorschlaege, FAEHIGKEIT_VORSCHLAG_REGEL, pruefeZielIgnoriert, VORSCHLAG_GRENZEN, zielPfad } from './vorschlag.ts'
+import { erkenneFaehigkeitVorschlaege, FAEHIGKEIT_VORSCHLAG_REGEL, istSchreibbarerName, leseBasisBaum, pruefeZielIgnoriert, VORSCHLAG_GRENZEN, vergleicheMitBasis, vorschlagDateien, zielPfad } from './vorschlag.ts'
 
 // qa FB-1a 7: check-ignore liest sonst die globale/System-Konfiguration des Entwicklers (z. B. core.excludesFile mit .claude/).
 const gitKonfig = mkdtempSync(join(tmpdir(), 'fb1a-gitcfg-'))
@@ -311,5 +311,72 @@ describe('pruefeZielIgnoriert', () => {
     assert.equal(zielPfad({ typ: 'agent', name: 'a b' }), null)
     assert.ok(!FAEHIGKEIT_VORSCHLAG_REGEL.startsWith('- [x]'))
     for (const teil of ['vorschlaege/faehigkeiten/skills/<name>/', 'vorschlaege/faehigkeiten/agents/<name>.md', 'nie unter .claude/', 'argument-hint', 'ohne Agent, Task, Skill', 'model nur inherit']) assert.ok(FAEHIGKEIT_VORSCHLAG_REGEL.includes(teil), teil)
+  })
+})
+
+describe('FB-1b: anlegbare Namen (q9) und Stand gegenüber dem Basis-Commit (q1)', () => {
+  /** git mit fester Identität. @param w - Wurzel @param argumente - Argumente @returns stdout */
+  const git = (w: string, argumente: string[]): string => execFileSync('git', ['-c', 'user.email=t@example.invalid', '-c', 'user.name=T', '-c', 'core.autocrlf=false', ...argumente], { cwd: w, encoding: 'utf8' })
+  /** Repo mit allem Vorhandenen als Basis-Commit. @param w - Wurzel @returns Basis-Commit */
+  const basisAnlegen = (w: string): string => {
+    git(w, ['add', '.'])
+    git(w, ['commit', '--quiet', '-m', 'basis'])
+    return git(w, ['rev-parse', 'HEAD']).trim()
+  }
+
+  it('istSchreibbarerName: Punkt am Ende und Windows-Gerätenamen nicht, sonst NAME_MUSTER; Erkennung meldet Grund', () => {
+    for (const ok of ['pruefen', 'a.b', 'console', 'com10', 'x-1']) assert.equal(istSchreibbarerName(ok), true, ok)
+    for (const nein of ['con', 'CON', 'nul.txt', 'com0', 'LPT9', 'aux.md', 'x.', '', '.x', 'a b']) assert.equal(istSchreibbarerName(nein), false, nein)
+    const w = wurzel()
+    agent(w, 'prn.md', agentText('prn'))
+    assert.match(erkenneFaehigkeitVorschlaege(w)[0]?.grund ?? '', /nicht anlegbar/)
+  })
+
+  it('vergleicheMitBasis: neu, unverändert (Blob wie git hash-object --no-filters), geändert; Verknüpfung im Baum ⇒ geändert', async () => {
+    const w = wurzel()
+    git(w, ['init', '--quiet'])
+    skill(w, 's', { 'SKILL.md': skillText('s'), 'teil/a.txt': 'a\n' })
+    agent(w, 'leser.md', agentText('leser'))
+    const basis = await leseBasisBaum(w, basisAnlegen(w))
+    assert.ok(basis.ok)
+    if (!basis.ok) return
+    const v = Object.fromEntries(erkenneFaehigkeitVorschlaege(w).map((e) => [e.name, e]))
+    assert.equal(vergleicheMitBasis(w, v.s, basis.baum), 'unveraendert')
+    assert.equal(vergleicheMitBasis(w, v.leser, basis.baum), 'unveraendert')
+    assert.deepEqual(vorschlagDateien(w, v.s)?.sort(), ['vorschlaege/faehigkeiten/skills/s/SKILL.md', 'vorschlaege/faehigkeiten/skills/s/teil/a.txt'])
+    const blob = git(w, ['hash-object', '--no-filters', 'vorschlaege/faehigkeiten/agents/leser.md']).trim()
+    assert.equal(basis.baum.get('vorschlaege/faehigkeiten/agents/leser.md')?.blob, blob)
+    agent(w, 'neu.md', agentText('neu'))
+    writeFileSync(join(w, 'vorschlaege', 'faehigkeiten', 'skills', 's', 'teil', 'a.txt'), 'b\n')
+    const v2 = Object.fromEntries(erkenneFaehigkeitVorschlaege(w).map((e) => [e.name, e]))
+    assert.equal(vergleicheMitBasis(w, v2.neu, basis.baum), 'neu')
+    assert.equal(vergleicheMitBasis(w, v2.s, basis.baum), 'geaendert')
+    const mitLink = new Map(basis.baum)
+    const alt = mitLink.get('vorschlaege/faehigkeiten/agents/leser.md')
+    if (alt !== undefined) mitLink.set('vorschlaege/faehigkeiten/agents/leser.md', { ...alt, modus: '120000' })
+    assert.equal(vergleicheMitBasis(w, v2.leser, mitLink), 'geaendert')
+    // Ein Skill-Präfix trifft keinen längeren Namen (skills/s ≠ skills/s2).
+    skill(w, 's2')
+    const s2 = erkenneFaehigkeitVorschlaege(w).find((e) => e.name === 's2')
+    assert.equal(s2 === undefined ? null : vergleicheMitBasis(w, s2, basis.baum), 'neu')
+    assert.equal((await leseBasisBaum(w, null)).ok, false)
+    assert.equal((await leseBasisBaum(w, 'f'.repeat(40))).ok, false)
+  })
+
+  it('vergleicheMitBasis in einem sha256-Repo (übersprungen, wenn git es nicht kann)', async (t) => {
+    const w = wurzel()
+    try {
+      git(w, ['init', '--quiet', '--object-format=sha256'])
+    } catch {
+      t.skip('git ohne --object-format=sha256')
+      return
+    }
+    agent(w, 'leser.md', agentText('leser'))
+    const basis = await leseBasisBaum(w, basisAnlegen(w))
+    assert.ok(basis.ok)
+    if (!basis.ok) return
+    const leser = erkenneFaehigkeitVorschlaege(w)[0]
+    assert.equal(basis.baum.get('vorschlaege/faehigkeiten/agents/leser.md')?.blob.length, 64)
+    assert.equal(vergleicheMitBasis(w, leser, basis.baum), 'unveraendert')
   })
 })
