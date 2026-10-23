@@ -3,7 +3,10 @@
  *
  * Zweck: Gate Akte ↔ Meilenstein (F46 D0, löst F-953 mechanisch). Jede Akte
  * features/<id>/feature.md steht in GENAU einem Meilenstein von docs/projekt/roadmap.json,
- * und jeder Roadmap-Eintrag hat eine Akte. Anlassfall F-953: F42 und F44 fehlten in M5, Roadmap-
+ * und jeder Roadmap-Eintrag hat eine Akte. Seit F45 B5a-1 (E-B5-2, löst F-1176): eine Akte mit
+ * Status ENTWURF darf ohne Meilenstein sein (Roadmap „Noch nicht eingeplant“); ab jedem anderen
+ * Status — auch fehlend oder unbekannt — bleibt der Meilenstein Pflicht. Steht eine ENTWURF-Akte in
+ * einem Meilenstein, gilt dort weiter „genau einmal“. Anlassfall F-953: F42 und F44 fehlten in M5, Roadmap-
  * Ansicht und Fortschrittsring zählten sie nicht mit — niemand hat es bemerkt, weil keine Prüfung
  * die beiden Quellen gegeneinander hält.
  *
@@ -24,8 +27,9 @@
  * Wichtig — bekannte Grenzen:
  * - Akte heißt: Ordner unter features/ MIT feature.md. Ein Ordner ohne feature.md ist Sache von
  *   scripts/check-feature.mjs, nicht dieses Gates.
- * - Das Gate vergleicht nur IDs, nicht den Status (eine ABGESCHLOSSEN-Akte in einem LAEUFT-
- *   Meilenstein ist zulässig) und nicht die Reihenfolge innerhalb eines Meilensteins.
+ * - Das Gate vergleicht IDs; den Status der Akte nur für E-B5-2 (ENTWURF ohne Meilenstein), nicht
+ *   gegen den Meilensteinstatus (eine ABGESCHLOSSEN-Akte in einem LAEUFT-Meilenstein ist zulässig;
+ *   die Status-Regel R1 ist F-1010/F-1175, B5b-1) und nicht die Reihenfolge innerhalb eines Meilensteins.
  * - Die Form von roadmap.json (Schema v0) prüft scripts/check-f33-projektkontext.mjs; hier nur so
  *   viel, wie für den Abgleich nötig ist (meilensteine[].features[] als Strings).
  *
@@ -36,6 +40,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { leseFeatureStatus } from '../src/workboard/feature-akte-pruefung.ts'
 
 /**
  * Begründete Ausnahmen. Form: { id, art: 'ohne_meilenstein' | 'ohne_akte', grund }.
@@ -58,9 +63,10 @@ export const AUSNAHMEN = [
  * @param aktenIds - IDs der Akten (Ordnernamen unter features/ mit feature.md)
  * @param roadmap - geparstes roadmap.json
  * @param ausnahmen - begründete Ausnahmen (Standard AUSNAHMEN)
+ * @param aktenStatus - Map Akten-ID → Status (leseAktenStatus); ohne Eintrag gilt der Meilenstein als Pflicht (E-B5-2)
  * @returns Befunde als Text; leer = sauber
  */
-export function pruefeAkteMeilenstein(aktenIds, roadmap, ausnahmen = AUSNAHMEN) {
+export function pruefeAkteMeilenstein(aktenIds, roadmap, ausnahmen = AUSNAHMEN, aktenStatus = new Map()) {
   const befunde = []
   const meilensteine = roadmap?.meilensteine
   if (!Array.isArray(meilensteine)) return ['roadmap.json: meilensteine fehlt oder ist keine Liste']
@@ -96,7 +102,8 @@ export function pruefeAkteMeilenstein(aktenIds, roadmap, ausnahmen = AUSNAHMEN) 
   const akten = new Set(aktenIds)
   for (const id of [...akten].sort((a, b) => a.localeCompare(b))) {
     const orte = fundstellen.get(id) ?? []
-    if (orte.length === 0 && !ausgenommen(id, 'ohne_meilenstein')) befunde.push(`Akte ${id} steht in keinem Meilenstein`)
+    // E-B5-2: ein Entwurf darf noch nicht eingeplant sein.
+    if (orte.length === 0 && aktenStatus.get(id) !== 'ENTWURF' && !ausgenommen(id, 'ohne_meilenstein')) befunde.push(`Akte ${id} steht in keinem Meilenstein`)
     if (orte.length > 1) befunde.push(`Akte ${id} steht ${orte.length}× in der Roadmap (${orte.join(', ')}) — genau einmal erlaubt`)
   }
   for (const [id, orte] of [...fundstellen].sort(([a], [b]) => a.localeCompare(b))) {
@@ -127,6 +134,25 @@ export function leseAktenIds(featuresDir) {
     .map((eintrag) => eintrag.name)
 }
 
+/**
+ * Liest den Status je Akte (E-B5-2) — dieselbe Status-Zeilen-Regel wie check-feature (leseFeatureStatus).
+ * @param featuresDir - Pfad zu features/
+ * @param aktenIds - IDs der Akten (leseAktenIds)
+ * @returns Map ID → Status; eine Akte ohne lesbare Status-Zeile fehlt (dann Pflicht)
+ */
+export function leseAktenStatus(featuresDir, aktenIds) {
+  const status = new Map()
+  for (const id of aktenIds) {
+    try {
+      const wert = leseFeatureStatus(readFileSync(join(featuresDir, id, 'feature.md'), 'utf-8'))
+      if (wert !== null) status.set(id, wert)
+    } catch (fehler) {
+      console.error(`  (${id}: feature.md nicht lesbar — Meilenstein bleibt Pflicht: ${fehler instanceof Error ? fehler.message : String(fehler)})`)
+    }
+  }
+  return status
+}
+
 const istDirekterAufruf = process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
 if (istDirekterAufruf) {
@@ -138,7 +164,7 @@ if (istDirekterAufruf) {
     befunde = ['keine Akte unter features/ gefunden — falsches Arbeitsverzeichnis?']
   } else {
     try {
-      befunde = pruefeAkteMeilenstein(aktenIds, JSON.parse(readFileSync('docs/projekt/roadmap.json', 'utf-8')))
+      befunde = pruefeAkteMeilenstein(aktenIds, JSON.parse(readFileSync('docs/projekt/roadmap.json', 'utf-8')), AUSNAHMEN, leseAktenStatus('features', aktenIds))
     } catch (fehler) {
       befunde = [`docs/projekt/roadmap.json nicht lesbar: ${fehler instanceof Error ? fehler.message : String(fehler)}`]
     }

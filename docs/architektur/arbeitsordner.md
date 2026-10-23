@@ -12,7 +12,23 @@ Thema berührt.
   Git-Worktree eines schreibenden Ablaufs ausschließlich über git an und entfernt ihn ebenso (Git-Starter), führt
   darin `npm ci --ignore-scripts` aus und löscht nach einem Lauf der Rolle `ausfuehrung` ausschließlich geprüfte
   reguläre Dateien aus dessen Löschliste — nur innerhalb des Arbeitsordners, nie unter `.git`, `.claude/` oder
-  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend.
+  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — einzige Ausnahme die Feature-Akte (nächster Punkt).
+- Feature-Akte im Projektordner (F45 B5a-1, E-F45-1, F-912; Entscheidung Stefan 23.10.2026 nach dem Advisor-Pass
+  `features/F45/advisor-b5a1.md` A1/A2; `scripts/leitstand/routen-f35.mjs`, Plan `features/F45/plan-b5a1-v2.md`): der Server
+  schreibt auf direkte Eingabe ausschließlich `features/<id>/feature.md` der `repoWurzel` des Projekts — PUT
+  `…/features/<id>/akte` ersetzt nur `## Ziel`, `## Nicht-Ziele` und `## Akzeptanzkriterien` und hängt eine Zeile unter
+  `## Änderungen` an (`grund` Pflicht); POST `/api/features` legt aus einem Coach-Scope eine neue Akte mit Status ENTWURF
+  an. ERZWUNGEN (Gate f45-b5a1): ID-Muster und Pfad unter `features/` (F-595), Hash der gelesenen Bytes (abweichend ⇒
+  409), Sperre bei einem nicht beendeten Ablauf, dessen Auftrag auf das Feature zeigt oder nicht lesbar ist (409),
+  ABGESCHLOSSEN/ABGEBROCHEN nicht bearbeitbar, Listenabschnitt mit Text außerhalb der Liste ⇒ 422, Ergebnis besteht
+  `scripts/check-feature.mjs` (sonst 422), Rest der Datei bytegleich, Anlage nie überschreibend (`wx` ⇒ 409). Zeilenende:
+  eine bestehende Akte behält ihres (auch CRLF, Ausnahme zu §7 im Kern), eine neue wird LF geschrieben. Kein Commit und
+  kein git-Prozess — die Antwort trägt einen Git-Block als Text. DEKLARIERT: „nur auf Eingabe“ (jeder lokale Prozess mit
+  passender Herkunft kann die Route aufrufen); nicht atomar (direktes Schreiben, danach Rücklesen mit Hash-Vergleich ⇒
+  500); ein Ablauf, der zwischen Sperrprüfung und Schreiben angelegt wird, wird übersehen; ein offener Ablauf mit kaputter
+  Workflow-Kette fehlt in der Ablaufliste und sperrt nicht, einer mit unlesbarem Auftrag sperrt dagegen jede Akte des
+  Projekts (fail-closed, 409 nennt die Ablauf-ID). Voraussetzung: schreibende
+  Läufe arbeiten im eigenen Worktree (E-F45-3), deshalb gilt die globale Laufsperre hier nicht.
 - Fähigkeit-Vorschläge (F45 FB-1b, F-1167, E-FB1-2/-3, `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`, Plan
   `features/F45/plan-fb1b-v2.md`): außerdem bewegt bzw. löscht der Server auf direkte Eingabe (POST
   `…/workflows/<id>/faehigkeit-vorschlag/uebernehmen|verwerfen { typ, name, hash }`) einen Vorschlag des Laufs. Übernehmen

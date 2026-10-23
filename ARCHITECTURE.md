@@ -92,10 +92,9 @@ Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, i
   Einzige Ausnahme: der Arbeitsordner je Ablauf — Worktree nur über git angelegt und entfernt, `npm ci --ignore-scripts`;
   nach einem Lauf der Rolle `ausfuehrung` löscht der Kern ausschließlich geprüfte reguläre Dateien der Löschliste, nur
   innerhalb, nie unter `.git`, `.claude/` oder `kontrollzustand/`; außerdem übernimmt bzw. verwirft er Fähigkeit-Vorschläge
-  nur auf Klick (`.claude/`; DEKLARIERT, Pfadprüfung ERZWUNGEN, Gate f45-fb1b); im Projektordner bleibt der Kern lesend. Der Fingerabdruck
-  des Review-Stands nutzt nur Git-Plumbing mit `--no-optional-locks` (nie `git status`, `update-index`, `write-tree`),
-  schreibt weder Index noch `.git/objects` (Gate f45-b2a3b (a)) und startet nie einen Filter-Treiber. Einzelheiten:
-  `docs/architektur/arbeitsordner.md`.
+  nur auf Klick (`.claude/`; DEKLARIERT, Pfadprüfung ERZWUNGEN, Gate f45-fb1b); im Projektordner bleibt der Kern lesend,
+  außer der Feature-Akte auf Eingabe (F45 B5a-1, Gate f45-b5a1). Der Fingerabdruck des Review-Stands schreibt weder Index
+  noch `.git/objects` und startet keinen Filter-Treiber (Gate f45-b2a3b (a)). Einzelheiten: `docs/architektur/arbeitsordner.md`.
 - Stefans Claude-Code-Bestand liest der Leitstand nur lesend; unser Code schreibt dort nie (Gate f45-f3a (b)). Eine Abweichung
   im Plugin-Datenordner nach einem Lauf ist ein Befund, kein Abbruch.
 - Pauschales Stagen ist in allen Git-Schritten ausgeschlossen.
@@ -168,7 +167,7 @@ Siehe `docs/kommentar-standard.md`.
 | Überschreiben eines persistierten Artefakts | Inhaltsadressiert — neue Version statt Mutation | keine |
 | Freigabeartefakt durch den Kern erzeugen | Autorisierung entsteht nur aus direkter menschlicher Eingabe | keine |
 | Aufrufparameter, die eine Schutzschicht abwählen | Der Kern ruft nie in einer Form auf, die Schutz abschaltet | Rolle `jarvis`, ausschließlich `--setting-sources` statt `project` (lesender Werkzeugsatz — Bash/Edit/Write-Guards sind für diese Rolle strukturell wirkungslos), Stefan 20.09.2026, `docs/projekt/zielfassung.md` §9.1 Nachtrag |
-| CRLF in Dateien, die der Kern schreibt | Der Hash beschreibt die Bytes auf der Platte; der Kern schreibt ausnahmslos LF | keine |
+| CRLF in Dateien, die der Kern schreibt | Der Hash beschreibt die Bytes auf der Platte; der Kern schreibt LF | bestehende Feature-Akte behält ihr Zeilenende (F45 B5a-1) |
 | Laufergebnis aus Konsolentext ableiten | Beobachtbarkeit ausschließlich aus strukturierter Laufausgabe | keine |
 | Zwei gleichzeitig aktive Arbeitsstränge | Genau ein aktiver Arbeitsstrang; keine Sperren, kein paralleler Zustand | keine |
 | `any` | Die Typprüfung ist Teil der Definition of Done | begründeter Einzelfall mit Kommentar nach `docs/kommentar-standard.md` |

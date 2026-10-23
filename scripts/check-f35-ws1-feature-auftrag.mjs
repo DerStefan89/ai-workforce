@@ -39,6 +39,8 @@
  *     Titel, featureStatus, Ziel, Nicht-Zielen und AKs (derselbe Leser wie der
  *     Auftrag), 200 unvollstaendig mit Grund, 400 bei ungültiger ID, 404 ohne
  *     Akte — und schreibt kein Artefakt (Kontrollzustand leer, Akten unverändert).
+ *     Seit F45 B5a-1 zusätzlich hash (sha256 der Dateibytes) und entscheidungen;
+ *     Bearbeiten und Anlegen prüft scripts/check-f45-b5a1-akte.mjs.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -47,7 +49,7 @@
  */
 
 import { createServer } from 'node:http'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -290,6 +292,9 @@ function baueFremdprojekt(featureAkten) {
         { id: 'AK2', text: 'Zweites AK ohne explizite ID.' },
         { id: 'AK5', text: 'Drittes AK mit expliziter ID.' },
       ],
+      // F45 B5a-1: additiv der Hash der Dateibytes (Grundlage des PUT) und die Entscheidungen (F-995; die Attrappe hat keine).
+      hash: createHash('sha256').update(Buffer.from(AKTE_MIT_AKS, 'utf8')).digest('hex'),
+      entscheidungen: [],
     }
     if (ok.status !== 200 || JSON.stringify(ok.inhalt) !== JSON.stringify(erwartet)) befunde.push(`(g) Grünfall: erwartet 200 ${JSON.stringify(erwartet)}, erhalten ${ok.status} ${JSON.stringify(ok.inhalt)}`)
     const ohneAk = await hole(`${FREMDPROJEKT_ID}B`)

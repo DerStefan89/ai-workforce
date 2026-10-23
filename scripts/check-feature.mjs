@@ -21,14 +21,16 @@
  * (Rückwärtskompatibilität). Rot-/Grünfälle in
  * src/workboard/feature-abschnitte.test.ts.
  *
+ * F45 B5a-1: die Regeln liegen in pruefeFeatureAkteInhalt (src/workboard/feature-akte-pruefung.ts);
+ * dieses Skript liest nur die Akten und meldet. Meldungstexte unverändert.
+ *
  * Aufruf: node scripts/check-feature.mjs   (Teil von npm run check)
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { gueltigeStatusWerte } from '../src/workboard/feature-status.ts'
-import { pruefeOptionaleAbschnitte } from '../src/workboard/feature-abschnitte.ts'
+import { pruefeFeatureAkteInhalt } from '../src/workboard/feature-akte-pruefung.ts'
 
 const befunde = []
 
@@ -50,18 +52,9 @@ if (featureOrdner.length === 0) {
   process.exit(0)
 }
 
-// Entscheidung (löst specs/AF-F001/spec.md §Offene Fragen, Punkt 2):
-// Überschriften werden exakt und case-sensitiv erkannt (`## Ziel`, kein
-// Toleranzbereich für Groß-/Kleinschreibung oder Synonyme) — hält sich an
-// die Konvention der übrigen Feature-Akte-Abschnitte, keine zusätzliche
-// Fuzzy-Logik ohne belegten Bedarf.
-const pflichtAbschnitte = [
-  { name: 'Ziel', muster: /^##\s+Ziel\b/m },
-  { name: 'Nicht-Ziele', muster: /^##\s+Nicht-Ziele\b/m },
-  { name: 'Akzeptanzkriterien', muster: /^##\s+Akzeptanzkriterien\b/m },
-  { name: 'Dependencies', muster: /^##\s+Dependencies\b/m },
-]
-
+// Die Regeln (Status, Pflichtabschnitte bei READY_FOR_TECH, optionale technische Abschnitte) stehen seit
+// F45 B5a-1 in pruefeFeatureAkteInhalt (src/workboard/feature-akte-pruefung.ts) — dieselbe Funktion prüft
+// PUT/POST der Akte im Leitstand, bevor geschrieben wird.
 for (const ordner of featureOrdner) {
   const pfad = join(featuresDir, ordner, 'feature.md')
 
@@ -70,30 +63,7 @@ for (const ordner of featureOrdner) {
     continue
   }
 
-  const inhalt = readFileSync(pfad, 'utf-8')
-  const statusMatch = inhalt.match(/^Status:\s*(\S+)/m)
-  const status = statusMatch ? statusMatch[1] : undefined
-
-  if (!status || !gueltigeStatusWerte.includes(status)) {
-    befunde.push(`${pfad}: Status fehlt oder unbekannt`)
-    continue
-  }
-
-  if (status === 'READY_FOR_TECH') {
-    for (const abschnitt of pflichtAbschnitte) {
-      if (!abschnitt.muster.test(inhalt)) {
-        befunde.push(`${pfad}: Abschnitt "${abschnitt.name}" fehlt (Status: READY_FOR_TECH verlangt ihn)`)
-      }
-    }
-  }
-
-  // F39 WS-3a (Auftrags-Vorgabe Punkt 3): die neun optionalen technischen Abschnitte —
-  // unabhängig vom Status geprüft (sie sind additiv, kein neuer Pflichtabschnitt einer
-  // bestimmten Statusstufe). Fehlt ein Abschnitt, ist das gültig (Rückwärtskompatibilität,
-  // src/workboard/feature-abschnitte.ts); nur ein vorhandener, aber leerer Abschnitt ist ein Befund.
-  for (const abschnittsBefund of pruefeOptionaleAbschnitte(inhalt)) {
-    befunde.push(`${pfad}: ${abschnittsBefund}`)
-  }
+  for (const befund of pruefeFeatureAkteInhalt(readFileSync(pfad, 'utf-8'))) befunde.push(`${pfad}: ${befund}`)
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

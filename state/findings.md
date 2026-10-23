@@ -6878,7 +6878,7 @@ Beschreibung: Im bestehenden Projekt macht der Coach aus dem Scope direkt einen 
 Fundstelle: `src/product-coach/index.ts` (baueAuftragAusScope), `public/leitstand/auftrag-aus-scope.js`.
 Auswirkung: Coach-Ideen erscheinen nicht als Feature im Board, AK werden nicht in einer Akte gepflegt, und F35 „Bauen aus der Akte“ greift nicht.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B5.
-Status: offen.
+Status: offen — Server in B5a-1, Anzeige in B5a-2. Nachtrag 23.10.2026 (F45 B5a-1): POST /api/features legt aus einem Coach-Scope eine Akte mit Status ENTWURF an (`baueFeatureAkteAusScope`, `src/product-coach/index.ts`; Route in `scripts/leitstand/routen-f35.mjs`); der Knopf im Coach folgt mit B5a-2.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-915** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -7339,7 +7339,7 @@ Beschreibung: Das Detail eines Features soll unter „Verlauf“ die Entscheidun
 Fundstelle: `scripts/leitstand/routen-f35.mjs` (`leseFeatureAkteFuerAnzeige`), `src/feature-auftrag/index.ts` (`leseFeatureAkteAnzeige`); Anzeige `public/leitstand/views/workboard-detail.js` (`verlaufBlock`).
 Auswirkung: Gering — die Entscheidungen bleiben über „Akte in VS Code öffnen“ erreichbar.
 Maßnahme: Die lesende Projektion um den Abschnitt „Entscheidungen“ (Zeilen mit E-…) erweitern, eine Regel mit dem Bau-Auftrag; dann die Kachel echt (D4 oder Fixpaket).
-Status: offen.
+Status: offen — Server in B5a-1, Anzeige in B5a-2. Nachtrag 23.10.2026 (F45 B5a-1): GET …/akte liefert zusätzlich `entscheidungen[]` (Bullets, die mit einer E-Kennung beginnen, aus „## Entscheidungen“; `leseFeatureEntscheidungen`, `src/feature-auftrag/index.ts`) und `hash`; die Kachel „Verlauf“ folgt mit B5a-2.
 Feature/Run: Entdeckt: F46 D3.
 
 **F-998** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8662,3 +8662,39 @@ Maßnahme: N1 eigener Text für die Freigabe-Seite in vier Sprachen („im Arbei
 Nachtrag 23.10.2026 (Entscheidung Challenger: N1 vor dem Commit beheben): **N1 erledigt** — `renderUngesichertHinweis(feld, { sichernMoeglich })` in `public/leitstand/faehigkeit-vorschlag-anzeige.js`: „Bereit zum Sichern“ nur in der Abnahme eines ABGESCHLOSSENEN Ablaufs, sonst (Freigabe-Seite, Freigabe-Halt, vorab, Lauf) neuer Text `abnahme.faehigkeiten.ungesichert.textHand` in de/en/tr/ru: „im Arbeitsordner von Hand committen (Pfad in der Karte „Wo gearbeitet wird“), dann neu laden“. Kein Befehlsblock: `ablaufSicherBefehle` setzt `sichern.bereit` voraus, die Freigabe-Seite lädt den Sichern-Stand nicht. Gate fb2 Teil (n) mit drei Gegenproben, Test in `faehigkeit-vorschlag-anzeige.test.mjs`, Render-Nachweis `features/F45/nachweise/fb2/render/de-1440-freigabe-n1/`. **N3 erledigt** mit derselben i18n-Änderung (tr aria-label „„{name}“ gerçekten atılsın mı?“). Offen bleiben N2, N4, cr 1–4 und der Absatzabstand der Notiz (design-guardian).
 Status: offen (N2, N4, cr 1–4, Absatzabstand).
 Feature/Run: Entdeckt: F45 FB-2 (Nachpass code-reviewer, qa, design-guardian), 23.10.2026.
+
+**F-1174** · `BUG` · P2 · offen
+Titel: Test „Zeitgrenze 0“ in `vorschlag.test.ts` wackelt unter paralleler Testausführung.
+Beschreibung: Der Fall „Abbruch durch die Zeitgrenze ⇒ null“ (`src/faehigkeiten/vorschlag.test.ts:299`) setzt die Zeitgrenze 0 und erwartet den Abbruch. Unter `--test-concurrency=4` endet `git` gelegentlich vor dem Timer; das Ergebnis ist dann `[true, true]` statt `null`.
+Fundstelle: `src/faehigkeiten/vorschlag.test.ts:299` (`pruefeZielIgnoriert` mit Zeitgrenze 0).
+Auswirkung: Mittel — ein roter Testlauf ohne Codeänderung (CLAUDE.md, Falle „einmalig ohne erkennbaren Grund“); untergräbt das Vertrauen in `npm run check`.
+Maßnahme: einen sicher langsamen Aufruf bzw. einen injizierbaren Starter verwenden oder den Fall streichen (src/git-starter testet den Abbruch selbst).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 23.10.2026 (FB-2-Prüfung).
+
+**F-1175** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Text von F-1010 „Kein Gate prüft“ ist überholt.
+Beschreibung: F-1010 sagt „Kein Gate prüft diese Übereinstimmung“. `scripts/check-akte-meilenstein.mjs` prüft seit F46 D0 die IDs (Akte ↔ Meilenstein); offen ist nur die Status-Regel R1 (Meilensteinstatus gegen den Status der Akten).
+Fundstelle: `state/findings.md` (F-1010), `scripts/check-akte-meilenstein.mjs`.
+Auswirkung: Gering — der Befund beschreibt einen größeren Rest, als offen ist.
+Maßnahme: in B5b-1 F-1010 berichtigen (offen nur R1).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, 23.10.2026 (Bauauftrag F45 B5a-1).
+
+**F-1176** · `BUG` · P3 · erledigt
+Titel: Gate verbietet Akten ohne Meilenstein, die Roadmap zeigt sie als „Noch nicht eingeplant“.
+Beschreibung: Die Roadmap-Ansicht kennt Akten ohne Meilenstein („Noch nicht eingeplant“), `scripts/check-akte-meilenstein.mjs` lehnte jede solche Akte ab — eine frisch angelegte Akte (Coach-Scope, F-912) hätte das Gate sofort rot gemacht.
+Fundstelle: `scripts/check-akte-meilenstein.mjs` (`pruefeAkteMeilenstein`), `scripts/leitstand/routen-roadmap.mjs`.
+Auswirkung: Gering — ein Widerspruch zwischen Anzeige und Gate.
+Maßnahme: E-B5-2 (F45 B5a-1): Akte mit Status ENTWURF darf ohne Meilenstein sein; ab jedem anderen Status bleibt der Meilenstein Pflicht.
+Status: erledigt durch F45 B5a-1 (23.10.2026) — `pruefeAkteMeilenstein` nimmt den Status je Akte (`leseAktenStatus`); ENTWURF ohne Meilenstein ist zulässig, Tests für ENTWURF und READY_FOR_TECH in `scripts/check-akte-meilenstein.test.mjs`.
+Feature/Run: Entdeckt: Challenger, 23.10.2026 (Bauauftrag F45 B5a-1).
+
+**F-1177** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B5a-1 (Prüfpass code-reviewer und qa nach der Korrekturrunde).
+Beschreibung: (qa 4) Der Körper `unvollstaendig` von GET …/akte trägt seit der Korrekturrunde `featureStatus`, aber weiter keine lesbaren Teilwerte (Ziel, Nicht-Ziele) — B5a-2 kann eine unvollständige Akte (erster echter Fall F45) nicht vorbelegen; fehlende Abschnitte legt PUT vor „## Änderungen“ bzw. am Dateiende an, bei F45 also hinter allen „Stand …“-Abschnitten. (qa 9) Ein einziger offener Ablauf mit unlesbarem Auftrag sperrt jede Akte des Projekts (fail-closed, Meldung nennt jetzt „Ablauf stoppen oder Auftrag reparieren“); geprüft am echten Kontrollzustand 23.10.2026: 10 offene Abläufe, keine Sperre für F45/F30/F47. (qa 10) `**AK1** …` erkennt der Leser nicht als Kennung — nach einer Änderung der AKs steht `- AK1: **AK1** …` (F21, F22). (qa 11) Unter Windows trifft `F6A` den Ordner `F6a`, die Sperre vergleicht die Kennung exakt. (cr V5) Ein offener Ablauf mit kaputter Workflow-Kette fehlt in `sammleWorkflows` und sperrt nicht (in der Korrekturrunde als DEKLARIERT in `docs/architektur/arbeitsordner.md` eingetragen). (cr V7) Drei Zwillinge der Statusmengen (`STATUS_NICHT_BEARBEITBAR`, `STATUS_NICHT_BAUBAR`, `FEATURE_STATUS_NICHT_BAUBAR`) und `ABLAUF_BEENDET`/`BEENDET`. (cr V9) Pfadsicherheit ohne `realpath` (Junction unter `features/<id>` lenkt das Schreiben um); ein neu angelegtes leeres `features/` bleibt beim Rückbau stehen. (Tests) Kein Test für zwei gleichzeitige PUTs über HTTP, kaputtes UTF-8 (422) und den Rückbau des Ordners bei einem Schreibfehler der Anlage; 409 hat zwei Formen (`hash` bzw. `workflowId`) ohne Feld `art`.
+Fundstelle: `scripts/leitstand/routen-f35.mjs` (`leseFeatureAkteFuerAnzeige`, `findeSperrendenAblauf`, `loeseFeatureAktePfadAuf`, `legeAkteAn`), `src/feature-auftrag/akte-schreiben.ts`, `src/feature-auftrag/index.ts` (`AK_ID_PRAEFIX_MUSTER`), `scripts/check-f45-b5a1-akte.mjs`.
+Auswirkung: Gering bis mittel für B5a-2 (Vorbelegung, Platz neuer Abschnitte, eindeutige 409-Form); sonst gering.
+Maßnahme: qa 4 und die 409-Form mit B5a-2 entscheiden (Teilwerte additiv, Einfügen hinter „## Ziel“); qa 10 mit B5b-1 (Akten-Bereinigung); übrige mit dem nächsten Paket an `routen-f35.mjs`.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5a-1 (Prüfpass code-reviewer, qa), 23.10.2026.

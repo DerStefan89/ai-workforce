@@ -23,7 +23,11 @@
  * das Detail im Leitstand (GET /api/features/<id>/akte) — über denselben internen Leser leseAkte
  * wie baueAuftragAusFeatureAkte, keine zweite Parse-Logik.
  *
- * Wird aufgerufen von: scripts/leitstand/routen-f35.mjs,
+ * F45 B5a-1 (features/F45/plan-b5a1-v2.md): findeAbschnitt, leseAbschnitt, leseTopLevelBullets und
+ * leseAkzeptanzkriterien sind exportiert — der Schreiber (akte-schreiben.ts) ersetzt genau die Spanne, die
+ * hier gelesen wird; leseFeatureEntscheidungen liefert die E-Bullets aus '## Entscheidungen' (F-995).
+ *
+ * Wird aufgerufen von: scripts/leitstand/routen-f35.mjs, src/feature-auftrag/akte-schreiben.ts,
  * scripts/check-f35-ws1-feature-auftrag.mjs.
  */
 
@@ -81,13 +85,29 @@ const AK_ID_PRAEFIX_MUSTER = /^AK(\d+)\b[:.)]?\s*/
  * @param exakt - true: die Überschriftzeile trägt nur den Namen (F-824); sonst genügt ein Wortanfang (Bestand)
  * @returns Abschnittstext (ungetrimmt), oder null, wenn die Überschrift fehlt
  */
-function leseAbschnitt(inhalt: string, name: string, exakt = false): string | null {
+export function leseAbschnitt(inhalt: string, name: string, exakt = false): string | null {
+  const spanne = findeAbschnitt(inhalt, name, exakt)
+  return spanne === null ? null : inhalt.slice(spanne.kopfEnde, spanne.koerperEnde)
+}
+
+/**
+ * F45 B5a-1 (Advisor B7): die Spanne EINES '## <Name>'-Abschnitts — dieselben Grenzen für den Leser
+ * (leseAbschnitt) und den Schreiber (src/feature-auftrag/akte-schreiben.ts), damit das Bearbeiten genau
+ * den Abschnitt ersetzt, den Anzeige und Bau-Auftrag lesen.
+ * @param inhalt - Text der Akte
+ * @param name - Überschriftsname bzw. Regex-Fragment
+ * @param exakt - true: die Überschriftzeile trägt nur den Namen (F-824); sonst genügt ein Wortanfang (Bestand)
+ * @returns { kopfStart, kopfEnde, koerperEnde } — kopfStart = Beginn der Überschriftzeile, kopfEnde = Ende des Treffers (vor
+ *   `\r\n` bzw. `\n`: in JS trifft `.` kein `\r`, `$` mit `m`-Flag greift auch vor `\r`), koerperEnde = Beginn der nächsten
+ *   '## '-Überschrift oder Dateiende; null, wenn die Überschrift fehlt
+ */
+export function findeAbschnitt(inhalt: string, name: string, exakt = false): { kopfStart: number; kopfEnde: number; koerperEnde: number } | null {
   const ueberschrift = new RegExp(exakt ? `^##[ \\t]+${name}[ \\t]*$` : `^##\\s+${name}\\b.*$`, 'm')
   const treffer = ueberschrift.exec(inhalt)
   if (treffer === null) return null
-  const restAbUeberschrift = inhalt.slice(treffer.index + treffer[0].length)
-  const naechsteUeberschrift = /^##\s+/m.exec(restAbUeberschrift)
-  return naechsteUeberschrift === null ? restAbUeberschrift : restAbUeberschrift.slice(0, naechsteUeberschrift.index)
+  const kopfEnde = treffer.index + treffer[0].length
+  const naechsteUeberschrift = /^##\s+/m.exec(inhalt.slice(kopfEnde))
+  return { kopfStart: treffer.index, kopfEnde, koerperEnde: naechsteUeberschrift === null ? inhalt.length : kopfEnde + naechsteUeberschrift.index }
 }
 
 /** Erster nicht-leerer Zeileninhalt eines Abschnitts (Muster extrahiereTitel, src/workboard/features.ts). @returns getrimmter Text, oder null bei einem leeren Abschnitt */
@@ -105,10 +125,10 @@ function ersteNichtLeereZeile(abschnitt: string): string | null {
  * lieferte dadurch 0 AK statt eines Ablehnungsgrunds ODER (bei zufällig vorhandenen
  * '- '-Bullets an anderer Stelle) ein irreführend leeres Ergebnis).
  */
-const BULLET_EINLEITUNG_MUSTER = /^(?:[-*]|\d+[.)])\s+(.*)$/
+export const BULLET_EINLEITUNG_MUSTER = /^(?:[-*]|\d+[.)])\s+(.*)$/
 
 /** Entfernt eine führende Markdown-Checkbox ('[ ] '/'[x] '/'[X] ') vom Bullet-Text (F-732) — der reine AK-Text soll die Checkbox nicht tragen. */
-const CHECKBOX_PRAEFIX_MUSTER = /^\[[ xX]\]\s+/
+export const CHECKBOX_PRAEFIX_MUSTER = /^\[[ xX]\]\s+/
 
 /**
  * Top-Level-Bullets eines Abschnitts: eine Zeile, die mit '- ', '* ', '1. ' oder '1) ' beginnt
@@ -117,7 +137,7 @@ const CHECKBOX_PRAEFIX_MUSTER = /^\[[ xX]\]\s+/
  * Fortsetzungszeile dazu (getrimmt angehängt).
  * @returns getrimmte Bullet-Texte in Dokumentreihenfolge; leere Bullets ausgeschlossen
  */
-function leseTopLevelBullets(abschnitt: string): string[] {
+export function leseTopLevelBullets(abschnitt: string): string[] {
   const bullets: string[] = []
   let laufend: string[] | null = null
   for (const zeile of abschnitt.split(/\r?\n/)) {
@@ -157,6 +177,67 @@ function leseGeklaerteVorgaben(inhalt: string, featureId: string): string | null
 }
 
 /**
+ * Akzeptanzkriterien aus dem Text eines '## Akzeptanzkriterien'-Abschnitts (aus leseAkte herausgelöst,
+ * F45 B5a-1 — der Schreiber vergleicht damit den alten Stand). Regeln siehe leseAkte.
+ * @param akAbschnitt - Abschnittstext oder null, wenn der Abschnitt fehlt
+ * @returns { ok: true, akzeptanzkriterien } | { ok: false, grund } (kein Bullet bzw. doppelte ID)
+ */
+export function leseAkzeptanzkriterien(akAbschnitt: string | null): { ok: true; akzeptanzkriterien: FeatureAuftragAkzeptanzkriterium[] } | { ok: false; grund: string } {
+  const akBullets = akAbschnitt === null ? [] : leseTopLevelBullets(akAbschnitt)
+  if (akBullets.length === 0) {
+    return { ok: false, grund: "Abschnitt '## Akzeptanzkriterien' fehlt oder enthält keinen Bullet — kein Auftrag ableitbar" }
+  }
+
+  const akzeptanzkriterien: FeatureAuftragAkzeptanzkriterium[] = []
+  const vergebeneIds = new Set<string>()
+  for (const [index, bullet] of akBullets.entries()) {
+    const praefixTreffer = AK_ID_PRAEFIX_MUSTER.exec(bullet)
+    const eintrag = praefixTreffer !== null ? { id: `AK${praefixTreffer[1]}`, text: bullet.slice(praefixTreffer[0].length).trim() } : { id: `AK${index + 1}`, text: bullet }
+    // Eine explizite ID kann mit der Positions-ID eines anderen Bullets kollidieren (z. B. 'AK2:'
+    // als erster Bullet, ein zweiter Bullet ohne ID erhielte sonst stillschweigend dieselbe
+    // Positions-ID 'AK2') — beide Vergabearten teilen sich denselben Namensraum, eine Kollision
+    // ist ein Fehler in der Akte, keine stillschweigend verschluckte Duplikat-ID (Reviewer-Befund).
+    if (vergebeneIds.has(eintrag.id)) {
+      return { ok: false, grund: `Akzeptanzkriterium-ID '${eintrag.id}' ist doppelt vergeben (Bullet ${index + 1} unter '## Akzeptanzkriterien') — kein Auftrag ableitbar` }
+    }
+    vergebeneIds.add(eintrag.id)
+    akzeptanzkriterien.push(eintrag)
+  }
+  return { ok: true, akzeptanzkriterien }
+}
+
+/** Eine Entscheidung der Akte (F-995): Kennung am Bullet-Anfang und vollständiger Bullet-Text. */
+export interface FeatureAkteEntscheidung {
+  id: string
+  text: string
+}
+
+/**
+ * Kennung am Anfang eines Entscheidungs-Bullets, optional in `**` gefasst: 'E-' plus Bestandteile aus Buchstaben und
+ * Ziffern mit '-', mindestens eine Ziffer (E-188, E-F45-1, E-B5-2 — nicht „E-Mail“). Eine Kennung mitten im Text
+ * („… Muster E-F45-7“) zählt nicht (Advisor B5a-1 C1).
+ */
+const ENTSCHEIDUNG_KENNUNG_MUSTER = /^(?:\*\*)?(E-(?=[0-9A-Za-z-]*[0-9])[0-9A-Za-z]+(?:-[0-9A-Za-z]+)*)(?![0-9A-Za-z-])/
+
+/**
+ * F45 B5a-1 (F-995): die Entscheidungen einer Akte — Top-Level-Bullets unter '## Entscheidungen', die mit einer
+ * E-Kennung beginnen (ENTSCHEIDUNG_KENNUNG_MUSTER); andere Bullets (z. B. „**Sammlung als Basis**“) fehlen.
+ * Reine Funktion, derselbe Bullet-Leser wie Nicht-Ziele und AKs.
+ * @param inhalt - Text der Akte
+ * @returns Entscheidungen in Dokumentreihenfolge; [] ohne Abschnitt
+ */
+export function leseFeatureEntscheidungen(inhalt: string): FeatureAkteEntscheidung[] {
+  const abschnitt = leseAbschnitt(inhalt, 'Entscheidungen')
+  if (abschnitt === null) return []
+  const entscheidungen: FeatureAkteEntscheidung[] = []
+  for (const bullet of leseTopLevelBullets(abschnitt)) {
+    const treffer = ENTSCHEIDUNG_KENNUNG_MUSTER.exec(bullet)
+    if (treffer !== null) entscheidungen.push({ id: treffer[1], text: bullet })
+  }
+  return entscheidungen
+}
+
+/**
  * Gemeinsamer Leser der Akte für den Bau-Auftrag (baueAuftragAusFeatureAkte) und die Anzeige
  * (leseFeatureAkteAnzeige, F44 WS-3b) — eine Parse-Logik, damit das Detail nie andere
  * Kriterien zeigt, als der Auftrag übernähme.
@@ -179,26 +260,9 @@ function leseAkte(inhalt: string, featureId: string): FeatureAkteAnzeige {
   }
 
   const akAbschnitt = leseAbschnitt(inhalt, 'Akzeptanzkriterien')
-  const akBullets = akAbschnitt === null ? [] : leseTopLevelBullets(akAbschnitt)
-  if (akBullets.length === 0) {
-    return { ok: false, grund: "Abschnitt '## Akzeptanzkriterien' fehlt oder enthält keinen Bullet — kein Auftrag ableitbar" }
-  }
-
-  const akzeptanzkriterien: FeatureAuftragAkzeptanzkriterium[] = []
-  const vergebeneIds = new Set<string>()
-  for (const [index, bullet] of akBullets.entries()) {
-    const praefixTreffer = AK_ID_PRAEFIX_MUSTER.exec(bullet)
-    const eintrag = praefixTreffer !== null ? { id: `AK${praefixTreffer[1]}`, text: bullet.slice(praefixTreffer[0].length).trim() } : { id: `AK${index + 1}`, text: bullet }
-    // Eine explizite ID kann mit der Positions-ID eines anderen Bullets kollidieren (z. B. 'AK2:'
-    // als erster Bullet, ein zweiter Bullet ohne ID erhielte sonst stillschweigend dieselbe
-    // Positions-ID 'AK2') — beide Vergabearten teilen sich denselben Namensraum, eine Kollision
-    // ist ein Fehler in der Akte, keine stillschweigend verschluckte Duplikat-ID (Reviewer-Befund).
-    if (vergebeneIds.has(eintrag.id)) {
-      return { ok: false, grund: `Akzeptanzkriterium-ID '${eintrag.id}' ist doppelt vergeben (Bullet ${index + 1} unter '## Akzeptanzkriterien') — kein Auftrag ableitbar` }
-    }
-    vergebeneIds.add(eintrag.id)
-    akzeptanzkriterien.push(eintrag)
-  }
+  const ak = leseAkzeptanzkriterien(akAbschnitt)
+  if (!ak.ok) return ak
+  const akzeptanzkriterien = ak.akzeptanzkriterien
 
   const nichtZieleAbschnitt = leseAbschnitt(inhalt, 'Nicht-Ziele')
   const nicht_ziele = nichtZieleAbschnitt === null ? [] : leseTopLevelBullets(nichtZieleAbschnitt)
