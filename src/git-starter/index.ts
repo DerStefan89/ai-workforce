@@ -27,6 +27,7 @@
  * - scripts/zustand-sichern.mjs (git)
  * - src/arbeitsordner/index.ts (fuehreGitAsync und fuehreGitSync: worktree, branch, symbolic-ref, status)
  * - src/review-stand/index.ts (fuehreGitAsync und fuehreGitSync: geprüfter Stand des Reviews, nur Plumbing, lesend)
+ * - src/faehigkeiten/vorschlag.ts (fuehreGitAsync: check-ignore der Zielpfade von Fähigkeit-Vorschlägen, lesend)
  * - src/git-starter/git-starter.test.ts (node:test)
  *
  * Durchsetzungsgrad: geprüft, nicht ERZWUNGEN — Rotfall-Test (Attrappe in der Repo-Wurzel, in
