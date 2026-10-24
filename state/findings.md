@@ -7059,7 +7059,7 @@ Beschreibung: Jedes Feature, jeder Workstream, jedes Finding und jeder Meilenste
 Fundstelle: Feature-Akten (Pakettabelle), `state/findings.md`, Roadmap-Ansicht.
 Auswirkung: Mittel — ohne Schätzungen keine belastbare Planung bis V0.9/V1.0.
 Maßnahme: im Fixpaket „Arbeitsfähigkeit“ B5 bauen (≈ 3–4 Arbeitstage zusammen mit dem Prioritäts-Kanban, F-917); Schätzung wird Teil des Arbeitspakets (F-938). Bis dahin schätzt der Challenger je Workstream.
-Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Server-/Datenteil gebaut: Schätzung min–max je Workstream in der Akte, Zeitachse in AT ab heute aus Reihenfolge × Schätzung mit „frühestens ab AT x“ ohne Länge, Ist-Zone aus Abgenommen/Begonnen/Ist, „Plan gegen Ist“ (`src/workboard/roadmap-planung.ts`, GET /api/roadmap `zeitachse`/`kennzahlen`). Bewusst nicht: Standardwerte je Priorität für Findings (Sollvorgabe Stefan 01.10.2026: ohne Schätzung kein Balken). Restpunkt: Anzeige B5b-2.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Server-/Datenteil gebaut: Schätzung min–max je Workstream in der Akte, Zeitachse in AT ab heute aus Reihenfolge × Schätzung mit „frühestens ab AT x“ ohne Länge, Ist-Zone aus Abgenommen/Begonnen/Ist, „Plan gegen Ist“ (`src/workboard/roadmap-planung.ts`, GET /api/roadmap `zeitachse`/`kennzahlen`). Bewusst nicht: Standardwerte je Priorität für Findings (Sollvorgabe Stefan 01.10.2026: ohne Schätzung kein Balken). Restpunkt: Anzeige B5b-2. Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): Schätzungen sind im Leitstand schreibbar (PUT `…/planung`); Zeitachse und Kennzahlen unverändert, „Features abgenommen“ zählt ABGEBROCHEN nicht mehr zur Gesamtmenge. Restpunkt: Anzeige B5b-2.
 Feature/Run: Entscheidung Stefan, 01.10.2026 (Challenge F44 WS-5).
 
 **F-945** · `TECH_DEBT` · P3 · offen
@@ -7221,7 +7221,7 @@ Beschreibung: Workstreams stehen nur als Tabellen und Abschnitte in den Akten.
 Fundstelle: `features/<id>/feature.md` (Workstream-Tabellen); Roadmap und Detail (F46 D1, D3).
 Auswirkung: Mittel — Timeline, Plan gegen Ist und Workstream-Detail sind nur als „kommt“ möglich.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2/B5.
-Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Workstreams sind Daten — strenger Abschnitt „## Workstreams“ in der Akte (`src/workboard/feature-planung.ts`, Gate), F45 mit 53 Zeilen aus fixpaket §3, F30 mit leerer Tabelle; GET /api/roadmap liefert `workstreams[]` je Feature. Restpunkt: Anzeige B5b-2.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Workstreams sind Daten — strenger Abschnitt „## Workstreams“ in der Akte (`src/workboard/feature-planung.ts`, Gate), F45 mit 53 Zeilen aus fixpaket §3, F30 mit leerer Tabelle; GET /api/roadmap liefert `workstreams[]` je Feature. Restpunkt: Anzeige B5b-2. Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): Schätzungen je Workstream sind über PUT `…/planung` schreibbar (nur die Zelle „Schätzung AT“; Zeilen legt der Leitstand nicht an). Restpunkt: Anzeige B5b-2.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-979** · `PROCESS_IMPROVEMENT` · P3 · erledigt
@@ -7258,7 +7258,7 @@ Beschreibung: Priorität, Meilenstein, Schätzung und Reihenfolge lassen sich im
 Fundstelle: `docs/design/neu/03-roadmap--Main.webp`, `docs/design/neu/07-eintrag-detail--Main.webp`, `docs/design/neu/07-eintrag-detail--Bug.webp`; `docs/design/abgleich-f46.md`.
 Auswirkung: Mittel — Planungsänderungen gehen nur über Dateien und Git.
 Maßnahme: Fixpaket B5, zusammen mit E-F45-1.
-Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Datenteil gebaut (Priorität je Akte, Schätzungen in der Akte, `roadmap_hash` in GET /api/roadmap). Restpunkt: Schreibroute „Anpassen“ (PUT …/planung) in B5b-1b, Anzeige in B5b-2.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Datenteil gebaut (Priorität je Akte, Schätzungen in der Akte, `roadmap_hash` in GET /api/roadmap). Restpunkt: Schreibroute „Anpassen“ (PUT …/planung) in B5b-1b, Anzeige in B5b-2. Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): Schreibteil gebaut — PUT `…/features/<id>/planung` ändert Priorität, Schätzungen (Akte) und Meilenstein (roadmap.json) mit Pflichtbegründung, Hash-409 je Datei und Zeile unter „## Änderungen“ (`scripts/leitstand/routen-planung.mjs`, Gate `check-f45-b5b1b1-planung-schreiben`). Reihenfolge innerhalb eines Meilensteins bleibt ohne Schreibweg (E-B5-6 = B: Umordnen nur über „Anpassen“, kein Balken ziehen). Restpunkt: Anzeige „Anpassen“ in B5b-2.
 Feature/Run: Entdeckt: Design-Abgleich F46 D0b, 02.10.2026.
 
 **F-985** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -7294,7 +7294,7 @@ Beschreibung: Die Übersicht wählt das zuletzt abgenommene Feature nach der Rei
 Fundstelle: `public/leitstand/views/dashboard.js` (`letztesAbgenommenes`).
 Auswirkung: Gering — bei einer Abnahme außer der Reihe zeigt die Karte ein anderes Feature als das zeitlich letzte.
 Maßnahme: Fixpaket B5 (Planungs- und Statusfelder mit Datum).
-Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Datenteil gebaut: Zeile „Abgenommen: JJJJ-MM-TT“ in der Akte (Pflicht bei ABGESCHLOSSEN mit strengem Abschnitt) und Abgenommen je Workstream; GET /api/roadmap liefert `abgenommen` je Feature. Restpunkt: `letztesAbgenommenes` in der Anzeige (B5b-2).
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Datenteil gebaut: Zeile „Abgenommen: JJJJ-MM-TT“ in der Akte (Pflicht bei ABGESCHLOSSEN mit strengem Abschnitt) und Abgenommen je Workstream; GET /api/roadmap liefert `abgenommen` je Feature. Restpunkt: `letztesAbgenommenes` in der Anzeige (B5b-2). Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): kein neuer Schreibweg für „Abgenommen:“ (setzt erst die Bereinigung B5b-1b-2 bzw. B5b-3). Restpunkt unverändert: Anzeige B5b-2.
 Feature/Run: Entdeckt: F46 D1, Prüfpass qa 10.
 
 **F-991** · `BUG` · P2 · erledigt
@@ -7384,7 +7384,7 @@ Beschreibung: docs/projekt/roadmap.json führt F30 ohne Akte (Anzeige „keine_a
 Fundstelle: docs/projekt/roadmap.json, features/*/feature.md (Status), scripts/check-akte-meilenstein.mjs, scripts/leitstand/routen-roadmap.mjs.
 Auswirkung: Mittel — die Roadmap zeigt einen anderen Stand als die Akten.
 Maßnahme: F45 B5b: Gate Akte ↔ Roadmap, Bereinigungsliste zur Bestätigung durch Stefan.
-Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): R1 ist jetzt Gate (`src/workboard/roadmap-regeln.ts` in `check-akte-meilenstein`): M3/F18 und M4/F20, F21, F22, F25 stehen als begründete Ausnahmen in `docs/projekt/roadmap-ausnahmen.json` („Bereinigung offen — Bestätigung Stefan (Bereinigungsliste)“); F30 hat eine Akte (ENTWURF), AF-F001 bleibt Ausnahme ohne_meilenstein. Rest: Bereinigungsliste mit Bestätigung je Eintrag (B5b-1b) und Anzeige (B5b-2).
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): R1 ist jetzt Gate (`src/workboard/roadmap-regeln.ts` in `check-akte-meilenstein`): M3/F18 und M4/F20, F21, F22, F25 stehen als begründete Ausnahmen in `docs/projekt/roadmap-ausnahmen.json` („Bereinigung offen — Bestätigung Stefan (Bereinigungsliste)“); F30 hat eine Akte (ENTWURF), AF-F001 bleibt Ausnahme ohne_meilenstein. Rest: Bereinigungsliste mit Bestätigung je Eintrag (B5b-1b) und Anzeige (B5b-2). Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): B5b-1b geteilt; die Bereinigungsliste mit Bestätigung je Eintrag kommt mit B5b-1b-2 („Meilenstein → LAEUFT“ nur bei genau einer R1-Abweichung, B4). PUT `…/planung` blockiert jedes Verschieben, das R1 neu verletzt (422 „erst bereinigen“), siehe F-1187.
 Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
 
 **F-1011** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8768,5 +8768,37 @@ Beschreibung: (cr H2) Dritte Kopie eines sha256-über-Bytes-Helfers (`routen-roa
 Fundstelle: `scripts/leitstand/routen-roadmap.mjs`, `src/workboard/roadmap-planung.ts`, `src/workboard/feature-planung.ts`, `scripts/check-akte-meilenstein.mjs`, `features/F45/feature.md` (## Workstreams).
 Auswirkung: Gering — keine falschen Daten im Bestand; Grenzen sind im Code DEKLARIERT.
 Maßnahme: Helfer-Zwillinge mit W2 zusammenführen; R1/ABGEBROCHEN/Meilenstein-Zählung mit B5b-1b (Bereinigung) bzw. B5b-2 (Anzeige) entscheiden.
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): ABGEBROCHEN ist entschieden (zählt nicht zur Gesamtmenge „Features abgenommen“, Gegenprobe im Test); Meilenstein-Zählung bleibt wie gebaut. Übrige Punkte offen.
 Feature/Run: Entdeckt: F45 B5b-1a (Prüfpass code-reviewer, qa), 24.10.2026.
+
+**F-1186** · `BUG` · P2 · offen
+Titel: Zwei Tests mit Wartezeit fallen unter Last aus.
+Beschreibung: `scripts/leitstand-arbeitsordner.test.mjs:378` (wartet ≈ 17,8 s auf BEREIT) und `scripts/leitstand/routen-code.test.mjs:333` (git-Timeout ≈ 32 s) scheiterten im vollen `npm run check` (24.10.2026, B5b-1a), einzeln 26/26 grün; `routen-code` fiel bereits in B5a-2 so aus. Folge: der Commit-Block bricht ohne echten Fehler ab.
+Nachstellen: voller `npm run check` auf Stefans Rechner (erst die Gates, dann `node --test --test-concurrency=4` über alle Testdateien).
+Erwartet: beide Tests grün wie im Einzellauf.
+Tatsächlich: beide scheitern an ihrer festen Wartegrenze; einzeln 26/26 grün.
+Ursache: offen — vermutlich Last durch parallele Testdateien und Speicherdruck (Bezug zum Speicher-/Last-Finding), die feste Wartegrenze reicht dann nicht.
+Regressionstest: offen (Wartegrenzen über den Testlauf einstellbar, dann ein Lauf unter künstlicher Last).
+Fundstelle: `scripts/leitstand-arbeitsordner.test.mjs:378`, `scripts/leitstand/routen-code.test.mjs:333`, `package.json` (`test`: `--test-concurrency=4`).
+Auswirkung: Mittel — ein grüner Stand wirkt rot, der Commit-Block bricht ab, Stefan muss einzeln nachprüfen.
+Maßnahme: Wartegrenzen über den Testlauf einstellbar machen oder die beiden Dateien seriell laufen lassen; Bezug zum Speicher-/Last-Finding.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-1a (voller `npm run check` durch Stefan), 24.10.2026; eingetragen mit B5b-1b-1.
+
+**F-1187** · `TECH_DEBT` · P3 · offen
+Titel: Verschieben ist kein Bereinigungsweg.
+Beschreibung: PUT `…/features/<id>/planung` lehnt jedes Verschieben ab, das die Status-Regel R1 neu verletzt (422 „erst bereinigen“) — auch das Verschieben eines nicht abgeschlossenen Features aus einem ABGESCHLOSSEN-Meilenstein, dessen begründete Ausnahme dabei verwaisen würde (z. B. F25 aus M4 ins V1-Backlog, Advisor B5b-1 B6). Die Bereinigungsliste (B5b-1b-2) bietet nur „Feature → ABGESCHLOSSEN“ und „Meilenstein → LAEUFT“; der Weg „ins Backlog verschieben und Ausnahme entfernen“ geht heute nur von Hand.
+Fundstelle: `scripts/leitstand/routen-planung.mjs` (R1 vorher/nachher), `src/workboard/roadmap-regeln.ts`, `docs/projekt/roadmap-ausnahmen.json`.
+Auswirkung: Gering — die 422-Meldung nennt den Handweg (Ausnahme von Hand entfernen, dann verschieben); nichts wird falsch geschrieben.
+Maßnahme: in B5b-1b-2 oder B5b-2 entscheiden, ob „Verschieben mit Entfernen der Ausnahme“ als dritter Vorschlag der Bereinigungsliste kommt (Stefan).
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass B5b-1b (`features/F45/advisor-b5b1b.md` B6), 24.10.2026.
+
+**F-1188** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B5b-1b-1 (Prüfpass code-reviewer und qa nach der Korrekturrunde).
+Beschreibung: (cr 10) roadmap.json wird in der Route und in `verschiebeFeature` je einmal geparst und gegen das Schema geprüft (vertretbar: die Route liefert eigene Meldungen mit `verstoesse`). (qa 5, Rest) ungetestet: Zelle mit Tab-Rand, Status-Zeile als letzte Zeile ohne Zeilenende zusammen mit neuer Priorität und fehlendem „## Änderungen“, Meilenstein-ID mit Unicode-Escape im Text; `-0` wird als „0“ geschrieben (unschädlich). (qa 9) Hinweise für die Anzeige B5b-2: Schätzwerte aus dem Eingabetext parsen statt rechnen (sonst 400 „höchstens zwei Nachkommastellen“), die 409-Fälle am Schlüssel unterscheiden, Akte-Hash aus GET …/akte. Die Akte-Route aus B5a-1 löst eine ID mit falscher Groß-/Kleinschreibung auf Windows weiter auf (qa 6 nur für …/planung behoben).
+Fundstelle: `scripts/leitstand/routen-planung.mjs`, `src/workboard/roadmap-schreiben.ts`, `src/feature-auftrag/planung-schreiben.test.ts`, `scripts/leitstand/routen-f35.mjs` (`loeseFeatureAktePfadAuf`).
+Auswirkung: Gering — keine falschen Schreibvorgänge; Grenzen im Code DEKLARIERT bzw. im Abschnitt „Stand B5b-1b-1“ der F45-Akte als Antwortvertrag festgehalten.
+Maßnahme: Tests mit B5b-1b-2 nachziehen; Hinweise in B5b-2 beachten; Ordnername-Prüfung für …/akte mit W2.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-1b-1 (Prüfpass code-reviewer, qa), 24.10.2026.

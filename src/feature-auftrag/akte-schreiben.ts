@@ -21,6 +21,8 @@
  *   unverändert tragen und das Feature-Akte-Gate bestehen (pruefeFeatureAkteInhalt) — sonst 422, nichts geschrieben.
  *
  * Wird aufgerufen von: scripts/leitstand/routen-f35.mjs, src/product-coach/index.ts (Normalisierung, Bullet-Zeilen),
+ * src/feature-auftrag/planung-schreiben.ts (pruefeGrund, pruefeAkteGate, wendeAn, hinterLetzterZeile, erkenneZeilenende,
+ *   STATUS_NICHT_BEARBEITBAR, SHA256_MUSTER, Ersetzung — F45 B5b-1b-1),
  * src/feature-auftrag/akte-schreiben.test.ts, scripts/check-f45-b5a1-akte.mjs.
  *
  * Wichtig — bekannte Grenzen (DEKLARIERT): Eine Überschrift in einem Code-Fence vor dem echten Abschnitt und
@@ -57,7 +59,7 @@ const UEBERSCHRIFT_ZEILE_MUSTER = /^##(?:\s|$)/
 const ZEILE_UNZULAESSIG_MUSTER = /^(?:#|Status:)/
 /** Wie der Leser (AK_ID_PRAEFIX_MUSTER: `AK\d+`) — sonst scheiterte der Rundlauf an Bestandsakten mit AK0 (F29, qa 3). */
 const AK_ID_MUSTER = /^AK[0-9]+$/
-const SHA256_MUSTER = /^[0-9a-f]{64}$/
+export const SHA256_MUSTER = /^[0-9a-f]{64}$/
 /** Inhalt eines leeren Listenabschnitts, den der Schreiber erzeugt bzw. zulässt. */
 const LEER_ZEILEN = new Set(['keine', '(keine)'])
 
@@ -138,6 +140,34 @@ export function erkenneZeilenende(inhalt: string): '\r\n' | '\n' {
 }
 
 /**
+ * Feature-Akte-Gate auf dem neuen Stand — eine Regel für jeden Schreiber der Akte (B5a-1, B5b-1b-1): JEDER Befund blockiert;
+ * stehen alle schon vorher, sagt die Meldung „schon vor der Bearbeitung“ (qa 5, B5a-1).
+ * @param verstoesseVorher - pruefeFeatureAkteInhalt der Akte vor der Bearbeitung
+ * @param neu - bearbeiteter Text
+ * @returns { grund, verstoesse } (HTTP 422) oder null, wenn die neue Akte besteht
+ */
+export function pruefeAkteGate(verstoesseVorher: string[], neu: string): { grund: string; verstoesse: string[] } | null {
+  const verstoesse = pruefeFeatureAkteInhalt(neu)
+  if (verstoesse.length === 0) return null
+  const schonVorher = verstoesse.every((v) => verstoesseVorher.includes(v))
+  const grund = schonVorher ? 'Die Akte besteht das Feature-Akte-Gate schon vor der Bearbeitung nicht — die Verstöße in der Akte von Hand beheben, dann erneut speichern' : 'Die bearbeitete Akte bestünde das Feature-Akte-Gate nicht — nichts geschrieben'
+  return { grund, verstoesse }
+}
+
+/**
+ * Prüft und normalisiert die Pflichtbegründung einer Änderung (PUT …/akte und F45 B5b-1b-1 PUT …/planung — eine Regel).
+ * @param wert - Rohwert von 'grund'
+ * @returns { ok: true, wert } (Leerraum zu einem Leerzeichen) oder { ok: false, grund } (HTTP 400)
+ */
+export function pruefeGrund(wert: unknown): { ok: true; wert: string } | { ok: false; grund: string } {
+  if (typeof wert !== 'string' || wert.trim() === '') return { ok: false, grund: "'grund' fehlt oder ist leer — jede Änderung braucht eine Begründung" }
+  if (enthaeltSteuerzeichen(wert)) return { ok: false, grund: "'grund' enthält ein Steuerzeichen" }
+  const normal = wert.replace(/\s+/g, ' ').trim()
+  if (normal.length > AKTE_GRUND_OBERGRENZE) return { ok: false, grund: `'grund' ist länger als ${AKTE_GRUND_OBERGRENZE} Zeichen` }
+  return { ok: true, wert: normal }
+}
+
+/**
  * Prüft und normalisiert den Körper von PUT …/features/<id>/akte (genau { ziel, nicht_ziele, akzeptanzkriterien, grund, hash }).
  * @param daten - geparster Körper
  * @returns { ok: true, aenderung, hash } oder { ok: false, grund } (HTTP 400)
@@ -152,10 +182,9 @@ export function pruefeAkteAenderung(daten: unknown): AkteAenderungPruefung {
   const fehlend = erlaubt.filter((k) => !(k in obj))
   if (fehlend.length > 0) return fehler(`Felder fehlen: ${fehlend.join(', ')}`)
 
-  if (typeof obj.grund !== 'string' || obj.grund.trim() === '') return fehler("'grund' fehlt oder ist leer — jede Änderung braucht eine Begründung")
-  if (enthaeltSteuerzeichen(obj.grund)) return fehler("'grund' enthält ein Steuerzeichen")
-  const grund = obj.grund.replace(/\s+/g, ' ').trim()
-  if (grund.length > AKTE_GRUND_OBERGRENZE) return fehler(`'grund' ist länger als ${AKTE_GRUND_OBERGRENZE} Zeichen`)
+  const grundPruefung = pruefeGrund(obj.grund)
+  if (!grundPruefung.ok) return fehler(grundPruefung.grund)
+  const grund = grundPruefung.wert
   if (typeof obj.hash !== 'string' || !SHA256_MUSTER.test(obj.hash)) return fehler("'hash' muss ein sha256 (64 Hex-Zeichen, klein) sein — der Hash der gelesenen Akte")
 
   const zielFehler = pruefeAkteText('ziel', obj.ziel, 'fliesstext')
@@ -241,7 +270,7 @@ const ABSCHNITTE: AbschnittRegel[] = [
 ]
 
 /** Eine Textänderung an der Originalfassung: [start, ende) wird durch text ersetzt (ende = start: Einfügen). */
-interface Ersetzung {
+export interface Ersetzung {
   start: number
   ende: number
   text: string
@@ -283,7 +312,7 @@ function unzulaessigeListenZeile(koerper: string): string | null {
  * @param bis - Ende des Bereichs (exklusiv)
  * @returns Index oder null, wenn der Bereich nur Leerraum trägt
  */
-function hinterLetzterZeile(inhalt: string, von: number, bis: number): number | null {
+export function hinterLetzterZeile(inhalt: string, von: number, bis: number): number | null {
   let i = bis
   while (i > von && /\s/.test(inhalt[i - 1])) i -= 1
   if (i === von) return null
@@ -300,7 +329,7 @@ function hinterLetzterZeile(inhalt: string, von: number, bis: number): number | 
  * @param ersetzungen - nicht überlappende Ersetzungen in der gewünschten Textreihenfolge
  * @returns neuer Text
  */
-function wendeAn(inhalt: string, ersetzungen: Ersetzung[]): string {
+export function wendeAn(inhalt: string, ersetzungen: Ersetzung[]): string {
   let text = inhalt
   const geordnet = ersetzungen.map((e, rang) => ({ ...e, rang })).sort((a, b) => b.start - a.start || b.rang - a.rang)
   for (const e of geordnet) text = text.slice(0, e.start) + e.text + text.slice(e.ende)
@@ -371,12 +400,8 @@ export function bearbeiteFeatureAkte(inhalt: string, featureId: string, aenderun
 
   // Rundlauf-Probe (Advisor B5): genau die normalisierten Werte, Status unverändert, Gate bestanden.
   const gelesen = leseFeatureAkteAnzeige(neu, featureId)
-  const verstoesse = pruefeFeatureAkteInhalt(neu)
-  if (verstoesse.length > 0) {
-    const schonVorher = verstoesse.every((v) => verstoesseVorher.includes(v))
-    const grund = schonVorher ? 'Die Akte besteht das Feature-Akte-Gate schon vor der Bearbeitung nicht — die Verstöße in der Akte von Hand beheben, dann erneut speichern' : 'Die bearbeitete Akte bestünde das Feature-Akte-Gate nicht — nichts geschrieben'
-    return { ok: false, grund, verstoesse }
-  }
+  const gate = pruefeAkteGate(verstoesseVorher, neu)
+  if (gate !== null) return { ok: false, ...gate }
   const gleich =
     gelesen.ok &&
     normalisiereZiel(gelesen.ziel) === aenderung.ziel &&

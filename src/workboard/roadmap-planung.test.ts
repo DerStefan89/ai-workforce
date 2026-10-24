@@ -3,7 +3,7 @@
  *
  * Zweck: node:test für Zeitachse und Kennzahlen (F45 B5b-1a): Balken aus Schätzungen, „Schätzung fehlt“ ohne Länge,
  * nach_unbekannt, Ist-Zone in Arbeitstagen, abgeschlossene Meilensteine ohne offene Arbeit, R2, R5 (berechenbar/nicht
- * berechenbar inkl. leerer Tabelle), Plan gegen Ist.
+ * berechenbar inkl. leerer Tabelle), Plan gegen Ist; seit B5b-1b-1 ABGEBROCHEN nicht in der Gesamtmenge „Features abgenommen“.
  *
  * Wird aufgerufen von: `npm test` (node --test).
  */
@@ -136,4 +136,15 @@ test('Kennzahlen: R2 gegen die Akten, R5 nicht berechenbar bei fehlender Schätz
     { meilenstein: 'V1', berechenbar: false, min: null, max: null, ohne_schaetzung: 2 },
   ])
   assert.deepEqual(k.plan_gegen_ist, { anzahl: 1, plan_min: 0.3, plan_max: 0.4, ist: 0.5, eintraege: [{ feature: 'F3', workstream: 'A', plan: { min: 0.3, max: 0.4 }, ist: 0.5 }] })
+})
+
+test('Kennzahlen: ein ABGEBROCHEN-Feature zählt nicht zur Gesamtmenge „Features abgenommen“, Meilensteine bleiben (F45 B5b-1b-1)', () => {
+  const mit = (status: string): PlanungMeilenstein[] => [
+    { id: 'M1', status: 'ABGESCHLOSSEN', features: [{ id: 'F1', status: 'ABGESCHLOSSEN', workstreams: null }] },
+    { id: 'V1', status: 'GEPLANT', features: [{ id: 'F2', status, workstreams: null }] },
+  ]
+  assert.deepEqual(berechneKennzahlen(mit('ABGEBROCHEN')).features_abgenommen, { abgenommen: 1, gesamt: 1 })
+  // Gegenprobe: derselbe Bestand mit einem offenen Feature zählt es mit.
+  assert.deepEqual(berechneKennzahlen(mit('ENTWURF')).features_abgenommen, { abgenommen: 1, gesamt: 2 })
+  assert.deepEqual(berechneKennzahlen(mit('ABGEBROCHEN')).meilensteine, { abgeschlossen: 1, gesamt: 2, mit_abweichung: 0 })
 })

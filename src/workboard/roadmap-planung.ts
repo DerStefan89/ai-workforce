@@ -18,8 +18,8 @@
  * - Eine Tabelle mit Formfehlern (workstreams_fehlerhaft) trägt zusätzlich einen Eintrag ohne Schätzung (qa 1).
  * - Kennzahlen: R2 Meilensteine abgeschlossen/gesamt nach dem Status in roadmap.json, dazu mit_abweichung (abgeschlossen,
  *   aber ein Feature laut Akte nicht ABGESCHLOSSEN — offene Bereinigung, qa 2); Features abgenommen/gesamt gegen die Akten
- *   (Aktenstatus ABGESCHLOSSEN; jede Roadmap-Zeile zählt in gesamt, auch ABGEBROCHEN und Meilensteine wie F19-bridge oder
- *   V1-Backlog); R5 bis_fertig je nicht abgeschlossenem Meilenstein (kumuliert, nicht berechenbar sobald ein offener Eintrag
+ *   (Aktenstatus ABGESCHLOSSEN; jede Roadmap-Zeile zählt in gesamt, auch Meilensteine wie F19-bridge oder
+ *   V1-Backlog — nur Features mit Status ABGEBROCHEN nicht, Entscheidung Challenger 24.10.2026, F45 B5b-1b-1); R5 bis_fertig je nicht abgeschlossenem Meilenstein (kumuliert, nicht berechenbar sobald ein offener Eintrag
  *   ohne Schätzung ist, dann mit Anzahl); plan_gegen_ist über erledigte Zeilen mit Schätzung und Ist.
  *
  * Wird aufgerufen von: scripts/leitstand/routen-roadmap.mjs, scripts/check-f45-b5b1a-planung.mjs,
@@ -228,7 +228,7 @@ export function berechneKennzahlen(meilensteine: PlanungMeilenstein[]): Kennzahl
       gesamt: meilensteine.length,
       mit_abweichung: meilensteine.filter((m) => m.status === 'ABGESCHLOSSEN' && m.features.some((f) => f.status !== 'ABGESCHLOSSEN')).length,
     },
-    features_abgenommen: { abgenommen: features.filter((f) => f.status === 'ABGESCHLOSSEN').length, gesamt: features.length },
+    features_abgenommen: { abgenommen: features.filter((f) => f.status === 'ABGESCHLOSSEN').length, gesamt: features.filter((f) => f.status !== 'ABGEBROCHEN').length },
     bis_fertig: bisFertig,
     plan_gegen_ist: {
       anzahl: planGegenIst.length,
