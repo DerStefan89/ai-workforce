@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
+import { skaliert } from '../_zeitfaktor.ts'
 import { erzeugeRequestHandler } from '../leitstand-server.mjs'
 import {
   baueCodeDiff,
@@ -24,6 +25,7 @@ import {
   baueStartvorlageAuszug,
   DIFF_MAX_BYTES,
   fuehreGitAus,
+  GIT_ZEITGRENZE_MS,
   githubWebUrl,
   parseNumstat,
   parseStatus,
@@ -47,6 +49,19 @@ function gZeit(repo, zeit, ...args) {
     encoding: 'utf8',
     env: { ...process.env, GIT_COMMITTER_DATE: zeit, GIT_AUTHOR_DATE: zeit },
   })
+}
+
+/**
+ * fuehreGitAus mit skalierter Zeitgrenze (AIW_TEST_ZEITFAKTOR, F45 T, F-1186) — bewusst nur in den beiden Tests,
+ * die unter Last real an der Zeitgrenze je Git-Aufruf scheiterten („Sichern ausgeführt (PowerShell)“, „node_modules
+ * bis zur Ableitung“); die übrigen behalten die feste Grenze, die Route selbst immer GIT_ZEITGRENZE_MS.
+ * @param repo - Repo-Wurzel
+ * @param args - git-Argumente
+ * @param optionen - Optionen von fuehreGitAus
+ * @returns Ergebnis von fuehreGitAus
+ */
+function gitSkaliert(repo, args, optionen = {}) {
+  return fuehreGitAus(repo, args, { ...optionen, zeitgrenzeMs: skaliert(optionen.zeitgrenzeMs ?? GIT_ZEITGRENZE_MS) })
 }
 
 /** Dateiname mit HTML-Zeichen (unter Windows sind < und > im Dateinamen verboten). */
@@ -341,7 +356,7 @@ test('Sichern ausgeführt (PowerShell): git add der Leseroute staged alles — U
     // Zusätzlich: gestagte Löschung (git rm) und Namen mit Leerzeichen, Umlaut, Apostroph, führendem „-“, Glob-Zeichen.
     g(repo, 'rm', '-q', 'zweite.txt')
     for (const name of ['leer zeichen.txt', 'ä.txt', "o'k.txt", '-x.txt', 'a[1].txt', 'x’y.txt']) writeFileSync(join(repo, name), 'n\n')
-    const p = await baueCodeProjektion({ repoWurzel: repo })
+    const p = await baueCodeProjektion({ repoWurzel: repo, git: gitSkaliert })
     const befehle = sicherBefehle(p)
     assert.ok(Array.isArray(befehle.bloecke), JSON.stringify(befehle))
     // F45 B2a-3b (F-959), Blockform B2b-4a-2a: der echte Block (ohne Commit-Zeile) bringt PowerShell aus einem fremden Ordner
@@ -417,16 +432,16 @@ test('node_modules bis zur Ableitung (F-1157 (1), qa 9): nur node_modules offen 
     mkdirSync(join(repo, 'node_modules', 'pkg'), { recursive: true })
     writeFileSync(join(repo, 'node_modules', 'pkg', 'index.js'), 'x')
     const lage = (p) => leiteSichernLageAb({ workflowStatus: 'ABGESCHLOSSEN', bedarf: 'pflicht', projektion: p })
-    const nur = await baueCodeProjektion({ repoWurzel: repo })
+    const nur = await baueCodeProjektion({ repoWurzel: repo, git: gitSkaliert })
     assert.deepEqual([nur.dateien.anzahl, nur.dateien.nodeModules, lage(nur).grund], [0, 1, 'nichtsOffen'])
     writeFileSync(join(repo, 'b.txt'), 'b\n')
     g(repo, 'add', 'b.txt')
     g(repo, 'commit', '-q', '-m', 'ablauf')
-    const voraus = await baueCodeProjektion({ repoWurzel: repo })
+    const voraus = await baueCodeProjektion({ repoWurzel: repo, git: gitSkaliert })
     const s = lage(voraus)
     assert.deepEqual([s.bereit, s.art], [true, 'push'])
     g(repo, 'remote', 'add', 'origin', 'git@github.com:besitzer/repo-name.git')
-    const mitOrigin = await baueCodeProjektion({ repoWurzel: repo })
+    const mitOrigin = await baueCodeProjektion({ repoWurzel: repo, git: gitSkaliert })
     const befehle = ablaufSicherBefehle({ ...mitOrigin, ablauf: { workflowId: 'ablauf-1', bedarf: 'pflicht', workflowStatus: 'ABGESCHLOSSEN', arbeitsordner: { pfad: repo, branch: 'wf/ablauf-1' }, sichern: lage(mitOrigin) } })
     assert.deepEqual([befehle.bloecke.map((b) => b.art), befehle.hinweise], [['push'], ['nodeModules']])
   } finally {

@@ -1,0 +1,266 @@
+ok    16.9 s     59 MB  Δ   295 MB  npm run lint
+ok     1.2 s     59 MB  Δ   197 MB  npm run typecheck
+ok     1.9 s     74 MB  Δ    25 MB  node scripts/check-docs.mjs
+ok     0.2 s     66 MB  Δ     1 MB  node scripts/check-status-akten.mjs
+ok     2.2 s     61 MB  Δ    41 MB  node scripts/check-rules.mjs
+ok     0.1 s     50 MB  Δ     0 MB  node scripts/check-contract.mjs
+ok     0.2 s     67 MB  Δ     0 MB  node scripts/check-feature.mjs
+ok     0.3 s     67 MB  Δ    23 MB  node scripts/check-akte-meilenstein.mjs
+ok     0.1 s     50 MB  Δ     0 MB  node scripts/check-datenformate.mjs
+ok     0.2 s     71 MB  Δ     3 MB  node scripts/check-checkpoint-store.mjs
+ok     0.2 s     72 MB  Δ     0 MB  node scripts/check-lineage-registry.mjs
+ok     0.2 s     72 MB  Δ     1 MB  node scripts/check-f1b-wirkungsmarke.mjs
+ok     2.1 s     73 MB  Δ    36 MB  node scripts/check-f3-authorization-boundary.mjs
+ok     0.2 s     72 MB  Δ    41 MB  node scripts/check-f9-human-transport.mjs
+ok     0.2 s     72 MB  Δ    41 MB  node scripts/check-f5-context-builder.mjs
+ok     3.7 s     71 MB  Δ    52 MB  node scripts/check-f4-invocation-policy.mjs
+ok     0.3 s     79 MB  Δ    31 MB  node scripts/check-f6a-claude-code-gateway.mjs
+ok     0.3 s     75 MB  Δ    33 MB  node scripts/check-f7-result-evaluator.mjs
+ok     0.2 s     49 MB  Δ     0 MB  node scripts/check-f8-execution-controller.mjs
+ok     1.6 s    118 MB  Δ   122 MB  node scripts/check-f10-leitstand.mjs
+ok     0.6 s     90 MB  Δ   149 MB  node scripts/check-f11-auftrag.mjs
+ok     1.0 s    114 MB  Δ   204 MB  node scripts/check-f12-leitstand-ansicht.mjs
+ok     1.5 s    114 MB  Δ   109 MB  node scripts/check-f13-entscheiden.mjs
+ok    10.2 s    114 MB  Δ   330 MB  node scripts/check-f14-abbruch.mjs
+ok    95.3 s    270 MB  Δ    66 MB  node scripts/check-f15-workflow.mjs
+ok     0.8 s     52 MB  Δ    26 MB  node scripts/check-f15-workflow-oberflaeche.mjs
+ok     2.6 s     90 MB  Δ    99 MB  node scripts/check-f15-instanzlock.mjs
+ok    24.5 s    114 MB  Δ   100 MB  node scripts/check-f15-automat-real.mjs
+ok     0.5 s     87 MB  Δ    51 MB  node scripts/check-f16-codex-gateway.mjs
+ok     1.6 s    114 MB  Δ    72 MB  node scripts/check-f17-rollenvertrag.mjs
+ok     0.2 s     65 MB  Δ     0 MB  node scripts/check-f18-router.mjs
+ok     0.2 s     69 MB  Δ    29 MB  node scripts/check-f19-ressourcen.mjs
+ok     0.2 s     68 MB  Δ    35 MB  node scripts/check-f20-design-tokens.mjs
+ok     0.2 s     70 MB  Δ    32 MB  node scripts/check-f44-i18n.mjs
+ok     0.2 s     49 MB  Δ     0 MB  node scripts/check-f46-bestand.mjs
+ok    10.0 s    112 MB  Δ    69 MB  node scripts/check-f20-zustand-poll.mjs
+ok     0.5 s    118 MB  Δ    68 MB  node scripts/check-f21-workboard.mjs
+ok     0.9 s     58 MB  Δ    29 MB  node scripts/check-f21-ws2-workboard-oberflaeche.mjs
+ok     0.5 s    112 MB  Δ    51 MB  node scripts/check-f22-click-to-work.mjs
+ok     3.6 s    112 MB  Δ    66 MB  node scripts/check-f23-abnahme.mjs
+ok     0.2 s     70 MB  Δ    24 MB  node scripts/check-f24-capabilities.mjs
+ok     0.5 s    115 MB  Δ    60 MB  node scripts/check-f27-scout.mjs
+ok     0.8 s    113 MB  Δ    57 MB  node scripts/check-f25-projekte.mjs
+ok     0.7 s    111 MB  Δ    56 MB  node scripts/check-f26-jarvis.mjs
+ok     0.5 s     99 MB  Δ    53 MB  node scripts/check-f28-persona.mjs
+ok     0.7 s    113 MB  Δ    47 MB  node scripts/check-f31-gedaechtnis.mjs
+ok     0.3 s     78 MB  Δ    36 MB  node scripts/check-f32-verbrauch.mjs
+ok     0.5 s    113 MB  Δ    57 MB  node scripts/check-f32-verbrauch-ansicht.mjs
+ok     0.6 s    113 MB  Δ    60 MB  node scripts/check-f33-projektkontext.mjs
+ok     0.5 s     97 MB  Δ    61 MB  node scripts/check-f33-roadmap-projektion.mjs
+ok     1.2 s    115 MB  Δ    56 MB  node scripts/check-f34-product-coach.mjs
+ok     1.7 s    115 MB  Δ    65 MB  node scripts/check-f39-architekt.mjs
+ok    15.0 s    112 MB  Δ   116 MB  node scripts/check-f652-pruefschritt.mjs
+ok    12.2 s    111 MB  Δ    55 MB  node scripts/check-f656-pruefung-wiederholen.mjs
+ok     3.5 s    114 MB  Δ    71 MB  node scripts/check-f659-review-korrektur-begruendung.mjs
+ok     0.6 s     68 MB  Δ    36 MB  node scripts/check-f40-lagebild.mjs
+ok     1.1 s    113 MB  Δ    86 MB  node scripts/check-fix-zustand-poll-kosten.mjs
+ok     0.5 s    112 MB  Δ    45 MB  node scripts/check-fix-f588-sammle-laeufe.mjs
+ok     0.2 s     65 MB  Δ     0 MB  node scripts/check-fix-f639-schema-strict-modus.mjs
+ok     7.8 s    111 MB  Δ    51 MB  node scripts/check-f41-projekt-anlegen.mjs
+ok     0.5 s     86 MB  Δ    54 MB  node scripts/check-fix-f676-installwurzel.mjs
+ok    10.4 s    114 MB  Δ    75 MB  node scripts/check-f42-projekt-harness.mjs
+ok     0.2 s     76 MB  Δ    41 MB  node scripts/check-skelett-herkunft.mjs
+ok     0.5 s    112 MB  Δ    42 MB  node scripts/check-f35-ws1-feature-auftrag.mjs
+ok     8.1 s    113 MB  Δ   101 MB  node scripts/check-f35-ws2-urteil-je-ak.mjs
+ok    11.7 s    114 MB  Δ    93 MB  node scripts/check-f35-ws3-adjust-automatik.mjs
+ok    16.9 s     66 MB  Δ    64 MB  node scripts/check-zustand-sichern.mjs
+ok     0.7 s     84 MB  Δ    33 MB  node scripts/check-git-starter.mjs
+ok    20.2 s    111 MB  Δ   113 MB  node scripts/check-fixpaket-f30-vorbedingungen.mjs
+ok    12.8 s    112 MB  Δ    76 MB  node scripts/check-fixpaket-f35-reallauf.mjs
+ok     2.7 s    115 MB  Δ    64 MB  node scripts/check-f36-ws2-laufzeit.mjs
+ok    16.0 s    118 MB  Δ   109 MB  node scripts/check-f36-ws3-empfehlung.mjs
+ok    10.7 s    120 MB  Δ    92 MB  node scripts/check-f36-ws5a-installation.mjs
+ok    31.7 s    118 MB  Δ   191 MB  node scripts/check-f36-ws5b-skill.mjs
+ok     1.9 s     91 MB  Δ    46 MB  node scripts/check-f45-f1-faehigkeiten.mjs
+ok     0.4 s     92 MB  Δ    33 MB  node scripts/check-f45-f2b-sammlung.mjs
+ok     7.8 s    120 MB  Δ   167 MB  node scripts/check-f45-f2b2-pruefung.mjs
+ok     3.5 s    117 MB  Δ    70 MB  node scripts/check-f45-b2a1-projektkarte.mjs
+ok     7.2 s    114 MB  Δ    76 MB  node scripts/check-f45-b2a2-arbeitspaket.mjs
+ok    13.0 s    127 MB  Δ    76 MB  node scripts/check-f45-b2a3-codex-review.mjs
+ok    25.4 s    108 MB  Δ   116 MB  node scripts/check-f45-b2a3b-review-stand.mjs
+ok     0.9 s    113 MB  Δ    56 MB  node scripts/check-f45-f3a-plugins.mjs
+ok     0.7 s    134 MB  Δ    76 MB  node scripts/check-f45-f3a2-anzeige.mjs
+ok     5.1 s    169 MB  Δ   152 MB  node scripts/check-f45-f3b1-freigabe.mjs
+ok     1.5 s    106 MB  Δ    36 MB  node scripts/check-f45-f3b2-lauf.mjs
+ok    22.1 s    113 MB  Δ   148 MB  node scripts/check-f45-b2b1-rueckweg.mjs
+ok    43.7 s    113 MB  Δ    76 MB  node scripts/check-f45-b2b2-pruefer.mjs
+ok    18.3 s    119 MB  Δ   107 MB  node scripts/check-f45-b2b3c-budget.mjs
+ok    12.3 s    113 MB  Δ   101 MB  node scripts/check-f45-b2b3d-umfang.mjs
+ok    15.8 s    113 MB  Δ    69 MB  node scripts/check-f45-b2b3b1-rueckfrage.mjs
+ok     3.5 s    116 MB  Δ    86 MB  node scripts/check-f45-b2b3b1b-auswertung.mjs
+ok     4.4 s    115 MB  Δ    79 MB  node scripts/check-f45-b2b3b2a-absicherung.mjs
+ok     4.7 s    120 MB  Δ    75 MB  node scripts/check-f45-b2b3b2b1a-rest.mjs
+ok     6.1 s    113 MB  Δ    55 MB  node scripts/check-f45-b2b3b2b1b-r1.mjs
+ok     9.7 s    115 MB  Δ   194 MB  node scripts/check-f45-b2b3b2b2a-einschalten.mjs
+ok     0.9 s    113 MB  Δ    58 MB  node scripts/check-f45-b2b3b2b2a2-anzeige.mjs
+ok     0.9 s    115 MB  Δ    69 MB  node scripts/check-f45-b2b3b2b2a3-abnahme.mjs
+ok     0.5 s     87 MB  Δ    46 MB  node scripts/check-f45-b2b3b2b2b1-nachweis.mjs
+ok     0.3 s     74 MB  Δ    49 MB  node scripts/check-f45-b2b3b2b2b2a-crlf.mjs
+ok     7.6 s    111 MB  Δ    64 MB  node scripts/check-f45-b2b3b2b2b2b1-projekt-cli.mjs
+ok     0.3 s     54 MB  Δ     7 MB  node scripts/check-f45-b2b3e1-pfade.mjs
+ok     0.4 s     97 MB  Δ    35 MB  node scripts/check-f45-b2b3e2-formular.mjs
+ok    11.1 s    113 MB  Δ    79 MB  node scripts/check-f45-b2b4a1-sichern.mjs
+ok     5.1 s     76 MB  Δ    71 MB  node scripts/check-f45-b2b4a2a-blockform.mjs
+ok     2.0 s     75 MB  Δ    60 MB  node scripts/check-f45-b2b4a2b1-regeln.mjs
+ok     1.9 s     86 MB  Δ    44 MB  node scripts/check-f45-b2b4a2b2-anzeige.mjs
+ok     0.7 s    116 MB  Δ    63 MB  node scripts/check-f45-b2b4b-jarvis.mjs
+ok     5.2 s    115 MB  Δ    84 MB  node scripts/check-f45-fb1-faehigkeit-vorschlag.mjs
+ok    36.8 s    134 MB  Δ   125 MB  node scripts/check-f45-fb1b-faehigkeit-uebernehmen.mjs
+ok     1.4 s    106 MB  Δ    53 MB  node scripts/check-f45-fb2-faehigkeit-anzeige.mjs
+ok     0.5 s    115 MB  Δ    45 MB  node scripts/check-f45-b5a1-akte.mjs
+ok     0.2 s     85 MB  Δ    39 MB  node scripts/check-f45-b5a2-akte-anzeige.mjs
+ok     1.1 s     79 MB  Δ    62 MB  node scripts/check-f45-b5b1a-planung.mjs
+ok     0.7 s    115 MB  Δ    59 MB  node scripts/check-f45-b5b1b1-planung-schreiben.mjs
+ok     2.4 s    116 MB  Δ    71 MB  node scripts/check-f45-b5b1b2-bereinigung.mjs
+ok     3.4 s    120 MB  Δ    65 MB  node scripts/check-f813-csrf.mjs
+ok     4.9 s    100 MB  Δ   124 MB  node scripts/check-f814-host.mjs
+ok     8.4 s    113 MB  Δ    99 MB  node scripts/check-fixpaket-f36-nachlauf.mjs
+ok    17.1 s    110 MB  Δ   127 MB  node scripts/check-f43-projekt-aufrufen.mjs
+ok     0.8 s     55 MB  Δ    13 MB  node scripts/check-wachstumsbremse-server.mjs
+ok     2.0 s     65 MB  Δ    28 MB  node scripts/check-f45-k-kontext.mjs
+ok     0.1 s     49 MB  Δ     0 MB  node scripts/check-secrets.mjs
+ok     0.8 s     67 MB  Δ    47 MB  features/F45/nachweise/b2b1b/schwaerze.test.mjs
+ok     0.5 s     58 MB  Δ    42 MB  public/leitstand/ablauf-code-stand.test.mjs
+ok     0.3 s     51 MB  Δ    28 MB  public/leitstand/ak-entwurf.test.mjs
+ok     0.3 s     59 MB  Δ    34 MB  public/leitstand/akte-bearbeiten.test.mjs
+ok     0.3 s     57 MB  Δ    27 MB  public/leitstand/arbeitspaket-felder.test.mjs
+ok     0.2 s     54 MB  Δ    32 MB  public/leitstand/attention-daten.test.mjs
+ok     0.2 s     53 MB  Δ    31 MB  public/leitstand/auswahl-bremse.test.mjs
+ok     0.3 s     59 MB  Δ    31 MB  public/leitstand/befehlsblock.test.mjs
+ok     0.2 s     52 MB  Δ    30 MB  public/leitstand/beobachtung-zeile.test.mjs
+ok     0.3 s     59 MB  Δ    17 MB  public/leitstand/chat-anzeige.test.mjs
+ok     0.3 s     59 MB  Δ    24 MB  public/leitstand/chat-laufstand.test.mjs
+ok     0.3 s     54 MB  Δ    15 MB  public/leitstand/code-daten-ablauf.test.mjs
+ok     0.3 s     59 MB  Δ    29 MB  public/leitstand/code-daten.test.mjs
+ok     0.3 s     58 MB  Δ    12 MB  public/leitstand/eintrag-bausteine.test.mjs
+ok     0.4 s     80 MB  Δ    13 MB  public/leitstand/empfehlung-anzeige.test.mjs
+ok     0.3 s     59 MB  Δ     9 MB  public/leitstand/empfehlung-installation.test.mjs
+ok     0.3 s     61 MB  Δ    14 MB  public/leitstand/entscheidungen-zaehler.test.mjs
+ok     0.3 s     56 MB  Δ    13 MB  public/leitstand/entwicklung-daten.test.mjs
+ok     0.3 s     65 MB  Δ    17 MB  public/leitstand/faehigkeit-vorschlag-anzeige.test.mjs
+ok     0.3 s     53 MB  Δ     8 MB  public/leitstand/faehigkeiten-anzeige.test.mjs
+ok     0.3 s     63 MB  Δ    15 MB  public/leitstand/faehigkeiten-projekt-anzeige.test.mjs
+ok     0.3 s     53 MB  Δ     7 MB  public/leitstand/fokus-daten.test.mjs
+ok     0.3 s     61 MB  Δ    27 MB  public/leitstand/harness-abgleich-anzeige.test.mjs
+ok     0.3 s     53 MB  Δ    20 MB  public/leitstand/harness-anzeige.test.mjs
+ok     0.3 s     62 MB  Δ    17 MB  public/leitstand/i18n.test.mjs
+ok     0.3 s     58 MB  Δ    27 MB  public/leitstand/kommt.test.mjs
+ok     0.3 s     57 MB  Δ    14 MB  public/leitstand/kopf-werkzeuge.test.mjs
+ok     0.3 s     59 MB  Δ     7 MB  public/leitstand/live-chip.test.mjs
+ok     0.3 s     53 MB  Δ    23 MB  public/leitstand/live-daten.test.mjs
+ok     0.3 s     53 MB  Δ     9 MB  public/leitstand/nutzung-daten.test.mjs
+ok     0.5 s     81 MB  Δ    51 MB  public/leitstand/plugins-anzeige.test.mjs
+ok     0.6 s     85 MB  Δ    57 MB  public/leitstand/plugins-workforce-anzeige.test.mjs
+ok     0.3 s     62 MB  Δ    25 MB  public/leitstand/produkte-anzeige.test.mjs
+ok     3.0 s     85 MB  Δ    62 MB  public/leitstand/projekt-wechsel.test.mjs
+ok     0.3 s     56 MB  Δ    17 MB  public/leitstand/projektakte-anzeige.test.mjs
+ok     0.3 s     59 MB  Δ    27 MB  public/leitstand/pruefung-anzeige.test.mjs
+ok     0.3 s     51 MB  Δ    15 MB  public/leitstand/render.test.mjs
+ok     0.3 s     53 MB  Δ    27 MB  public/leitstand/roadmap-anzeige.test.mjs
+ok     0.3 s     71 MB  Δ    43 MB  public/leitstand/rollen-anzeige.test.mjs
+ok     0.3 s     59 MB  Δ    24 MB  public/leitstand/rollen-kreis.test.mjs
+ok     0.2 s     52 MB  Δ    36 MB  public/leitstand/router.test.mjs
+ok     0.4 s     81 MB  Δ    36 MB  public/leitstand/rueckfrage-abnahme.test.mjs
+ok     0.3 s     63 MB  Δ    45 MB  public/leitstand/rueckfrage-anzeige.test.mjs
+ok     0.2 s     53 MB  Δ    31 MB  public/leitstand/rueckfrage-daten.test.mjs
+ok     0.4 s     83 MB  Δ    36 MB  public/leitstand/sammlung-anzeige.test.mjs
+ok     0.2 s     58 MB  Δ    30 MB  public/leitstand/start-hinweis.test.mjs
+ok     0.3 s     58 MB  Δ    33 MB  public/leitstand/typ-chip.test.mjs
+ok     0.3 s     63 MB  Δ    18 MB  public/leitstand/views/ablauf-sichern-anzeige.test.mjs
+ok     0.3 s     63 MB  Δ    31 MB  public/leitstand/views/arbeitsordner-anzeige.test.mjs
+ok     0.3 s     63 MB  Δ    26 MB  public/leitstand/views/auftrag-umgebung.test.mjs
+ok     0.4 s     69 MB  Δ    31 MB  public/leitstand/views/capabilities.test.mjs
+ok     0.5 s     64 MB  Δ    40 MB  public/leitstand/views/faehigkeiten-projekt.test.mjs
+ok     1.8 s     66 MB  Δ    52 MB  public/leitstand/views/lauf-detail.test.mjs
+ok     0.3 s     63 MB  Δ    12 MB  public/leitstand/views/live-anzeige.test.mjs
+ok     0.4 s     66 MB  Δ     8 MB  public/leitstand/views/nutzung.test.mjs
+ok     1.5 s     65 MB  Δ    48 MB  public/leitstand/views/projekt.test.mjs
+ok     1.8 s     72 MB  Δ    56 MB  public/leitstand/views/runs-dialog.test.mjs
+ok     0.3 s     58 MB  Δ    27 MB  public/leitstand/views/runs.test.mjs
+ok     0.3 s     70 MB  Δ    33 MB  public/leitstand/views/workboard-detail.test.mjs
+ok     0.3 s     71 MB  Δ    32 MB  public/leitstand/views/workflow-abnahme.test.mjs
+ok     0.3 s     59 MB  Δ    28 MB  public/leitstand/views/workflow-detail.test.mjs
+ok     0.3 s     63 MB  Δ    30 MB  public/leitstand/views/workflow-eingriffe.test.mjs
+ok     0.3 s     65 MB  Δ    31 MB  public/leitstand/views/workflow-entscheiden.test.mjs
+ok     1.8 s     74 MB  Δ    49 MB  public/leitstand/views/workflows-dialog.test.mjs
+ok     2.6 s     65 MB  Δ    49 MB  public/leitstand/views/workflows-sichern.test.mjs
+ok     0.4 s     68 MB  Δ    14 MB  public/leitstand/views/workforce.test.mjs
+ok     0.3 s     53 MB  Δ    10 MB  public/leitstand/vormerken-auftrag.test.mjs
+ok     0.3 s     66 MB  Δ    33 MB  scripts/_aufraeumen.test.ts
+ok     0.3 s     65 MB  Δ    14 MB  scripts/_mode.test.ts
+ok     0.3 s     65 MB  Δ    22 MB  scripts/_zeitfaktor.test.ts
+ok     0.3 s     65 MB  Δ    23 MB  scripts/aufraeumen-nachlauf.test.mjs
+ok     0.3 s     70 MB  Δ    10 MB  scripts/check-akte-meilenstein.test.mjs
+ok     1.1 s     90 MB  Δ    90 MB  scripts/check-f20-leitstand-shell.test.mjs
+ok     2.3 s     73 MB  Δ    56 MB  scripts/check-f45-k-kontext.test.mjs
+ok     0.3 s     53 MB  Δ    29 MB  scripts/check-f46-bestand.test.mjs
+ok     0.5 s     77 MB  Δ    60 MB  scripts/check-git-starter.test.mjs
+ok     0.4 s     67 MB  Δ    39 MB  scripts/check-secrets.test.mjs
+ok     3.7 s     77 MB  Δ    41 MB  scripts/check-skelett-herkunft.test.mjs
+ok     0.9 s     58 MB  Δ    31 MB  scripts/check-wachstumsbremse-server.test.mjs
+ok     4.1 s     68 MB  Δ    56 MB  scripts/commit-guard.test.mjs
+ok     0.5 s     72 MB  Δ    36 MB  scripts/erzeuge-invocation-policy-nachweise.test.mjs
+ok     0.8 s     88 MB  Δ    47 MB  scripts/leitstand-abgelehnte-befehle.test.mjs
+ok     0.9 s    113 MB  Δ    58 MB  scripts/leitstand-abnahme-stand.test.mjs
+ok    28.8 s    112 MB  Δ   118 MB  scripts/leitstand-arbeitsordner.test.mjs
+ok     1.0 s    114 MB  Δ    77 MB  scripts/leitstand-chat-misserfolg.test.mjs
+ok     0.8 s     89 MB  Δ    57 MB  scripts/leitstand-laufakte-projektion.test.mjs
+ok     0.6 s     92 MB  Δ    47 MB  scripts/leitstand-nicht-gestartet.test.mjs
+ok     0.3 s     53 MB  Δ     8 MB  scripts/leitstand/ablauf-sichern.test.mjs
+ok     0.3 s     51 MB  Δ    10 MB  scripts/leitstand/automat-ausgang.test.mjs
+ok     0.4 s     53 MB  Δ    20 MB  scripts/leitstand/cli-version.test.mjs
+ok     0.5 s     53 MB  Δ    36 MB  scripts/leitstand/event-loop-messung.test.mjs
+ok     0.3 s     73 MB  Δ    19 MB  scripts/leitstand/f35-ws3-adjust-automatik.test.mjs
+ok     0.3 s     51 MB  Δ    13 MB  scripts/leitstand/freigabe-abschwaechung.test.mjs
+ok     0.3 s     59 MB  Δ     2 MB  scripts/leitstand/geheimnisse-maskieren.test.mjs
+ok     0.3 s     53 MB  Δ    13 MB  scripts/leitstand/jarvis-orte.test.mjs
+ok     0.3 s     51 MB  Δ     8 MB  scripts/leitstand/kennung.test.mjs
+ok     0.9 s    113 MB  Δ    57 MB  scripts/leitstand/lauf-aktivitaet.test.mjs
+ok     0.6 s     78 MB  Δ    54 MB  scripts/leitstand/nachweis-rueckfrage-auswerten.test.mjs
+ok     6.9 s    115 MB  Δ    35 MB  scripts/leitstand/review-beobachtung.test.mjs
+ok     0.5 s     52 MB  Δ    32 MB  scripts/leitstand/routen-arbeitsordner.test.mjs
+ok    41.4 s    107 MB  Δ   103 MB  scripts/leitstand/routen-code.test.mjs
+ok     0.5 s     77 MB  Δ    40 MB  scripts/leitstand/routen-f35.test.mjs
+ok     0.3 s     70 MB  Δ    44 MB  scripts/leitstand/routen-f39.test.mjs
+ok    28.8 s     95 MB  Δ   116 MB  scripts/leitstand/routen-faehigkeit-vorschlag.test.mjs
+ok    18.5 s    121 MB  Δ     0 MB  scripts/leitstand/routen-faehigkeiten.test.mjs
+ok    17.5 s    115 MB  Δ   234 MB  scripts/leitstand/routen-harness-abgleich.test.mjs
+ok     1.2 s    120 MB  Δ    75 MB  scripts/leitstand/routen-harness.test.mjs
+ok     1.9 s     77 MB  Δ    51 MB  scripts/leitstand/routen-plugin-freigabe.test.mjs
+ok     0.6 s    114 MB  Δ    50 MB  scripts/leitstand/routen-projektakte.test.mjs
+ok     0.5 s     80 MB  Δ    42 MB  scripts/leitstand/routen-pruefung.test.mjs
+ok     1.0 s    116 MB  Δ    78 MB  scripts/leitstand/routen-sammlung.test.mjs
+ok     0.3 s     65 MB  Δ     9 MB  scripts/leitstand/rueckfrage-einschalten.test.mjs
+ok     0.8 s     76 MB  Δ     6 MB  scripts/leitstand/rueckfrage-protokoll.test.mjs
+ok     0.7 s     74 MB  Δ    43 MB  scripts/leitstand/rueckfrage-vermittlung.test.mjs
+ok     0.8 s     86 MB  Δ    93 MB  scripts/leitstand/startvorlage-wahl.test.mjs
+ok     0.7 s     87 MB  Δ    61 MB  scripts/leitstand/text-auszug.test.mjs
+ok     0.4 s     75 MB  Δ    27 MB  scripts/leitstand/umfang-stand.test.mjs
+ok     0.8 s    111 MB  Δ    50 MB  scripts/leitstand/zustand-caches.test.mjs
+ok     0.3 s     54 MB  Δ     0 MB  scripts/neutrale-umgebung.test.mjs
+ok     1.3 s     76 MB  Δ    71 MB  scripts/projekt-nachruesten.test.mjs
+ok     0.3 s     53 MB  Δ    38 MB  scripts/render-pfadprobe.test.mjs
+ok     2.2 s     68 MB  Δ    68 MB  scripts/skelett-check-gates.test.mjs
+ok     2.7 s     68 MB  Δ    52 MB  scripts/skelett-hooks.test.mjs
+ok     2.8 s     77 MB  Δ    69 MB  scripts/teste.test.mjs
+ok     0.3 s     67 MB  Δ    11 MB  scripts/zustand-sichern.test.mjs
+ok     7.7 s     71 MB  Δ   127 MB  src/aenderungsuebersicht/aenderungsuebersicht.test.ts
+ok     0.3 s     66 MB  Δ    19 MB  src/ak-pruefung/ak-pruefung.test.ts
+ok    58.5 s     76 MB  Δ   446 MB  src/arbeitsordner/arbeitsordner.test.ts
+ok     0.5 s     75 MB  Δ    43 MB  src/architecture-advisor/architecture-advisor.test.ts
+ok     0.4 s     77 MB  Δ    10 MB  src/architekt/architekt.test.ts
+ok     0.4 s     71 MB  Δ     8 MB  src/auftrag/auftrag.test.ts
+ok     0.3 s     67 MB  Δ     2 MB  src/ausfuehrung-vorbedingung/ausfuehrung-vorbedingung.test.ts
+ok     7.0 s     70 MB  Δ    49 MB  src/authorization-boundary/authorization-boundary.test.ts
+ok     0.3 s     67 MB  Δ    11 MB  src/budget/budget.test.ts
+ok     0.3 s     71 MB  Δ    19 MB  src/capabilities-ansicht/capabilities-ansicht.test.ts
+ok     0.4 s     71 MB  Δ    24 MB  src/checkpoint-store/checkpoint-store.test.ts
+ok     0.6 s     76 MB  Δ    38 MB  src/claude-code-gateway/beobachtung.test.ts
+ok    26.0 s    182 MB  Δ   357 MB  src/claude-code-gateway/claude-code-gateway.test.ts
+ok     6.6 s     76 MB  Δ    83 MB  src/claude-code-gateway/stream-json.test.ts
+ok     0.7 s     72 MB  Δ    48 MB  src/claude-plugins/plugins.test.ts
+ok     0.8 s     70 MB  Δ    51 MB  src/claude-plugins/text-fakten.test.ts
+ok     4.2 s     78 MB  Δ   165 MB  src/codex-gateway/codex-gateway.test.ts
+ok     0.4 s     71 MB  Δ    13 MB  src/context-builder/context-builder.test.ts
+ok     0.3 s     68 MB  Δ    11 MB  src/entscheidung/entscheidung.test.ts
