@@ -35,7 +35,10 @@
  * public/leitstand/code-daten.js). Ausnahme „Feature-Akte im Projektordner“: ARCHITECTURE.md §2,
  * docs/architektur/arbeitsordner.md.
  *
- * Wird aufgerufen von: scripts/leitstand-server.mjs,
+ * F45 B5b-1b-1: loeseFeatureAktePfadAuf, sha256, lokalesDatum, antwort und baueGitBlock (Pfadliste) sind exportiert — die
+ * Planungsroute (scripts/leitstand/routen-planung.mjs) nutzt dieselben Helfer statt Kopien.
+ *
+ * Wird aufgerufen von: scripts/leitstand-server.mjs, scripts/leitstand/routen-planung.mjs,
  * scripts/check-f35-ws1-feature-auftrag.mjs, scripts/check-f45-b5a1-akte.mjs, scripts/leitstand/routen-f35.test.mjs.
  *
  * Wichtig: Ab dem Lesen der Akte bis zum Schreiben läuft alles synchron (kein await) — zwei gleichzeitige PUTs lösen sich
@@ -73,7 +76,7 @@ const AKTE_ROUTE = /^\/api\/features\/([^/]+)\/akte$/
  * geprüften FEATURE_ID_MUSTER) je ungeprüft ankäme.
  * @returns absoluter Pfad, oder null, wenn er außerhalb von <repoWurzel>/features/ läge
  */
-function loeseFeatureAktePfadAuf(featureId, repoWurzel) {
+export function loeseFeatureAktePfadAuf(featureId, repoWurzel) {
   const featuresWurzel = resolve(repoWurzel, 'features')
   const pfad = resolve(featuresWurzel, featureId, 'feature.md')
   const liegtUnterFeaturesWurzel = pfad === featuresWurzel || pfad.startsWith(featuresWurzel + sep)
@@ -190,29 +193,30 @@ export function leseFeatureAkteFuerAnzeige(featureId, repoWurzel) {
 }
 
 /** sha256 hex über Bytes. @param bytes - Buffer @returns Hash */
-function sha256(bytes) {
+export function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex')
 }
 
 /** Lokales Datum JJJJ-MM-TT (Änderungszeile). @param jetzt - Zeitpunkt @returns Datum */
-function lokalesDatum(jetzt = new Date()) {
+export function lokalesDatum(jetzt = new Date()) {
   const zwei = (zahl) => String(zahl).padStart(2, '0')
   return `${jetzt.getFullYear()}-${zwei(jetzt.getMonth() + 1)}-${zwei(jetzt.getDate())}`
 }
 
 /** Antwort. @param status - HTTP-Status @param grund - Grund @param felder - weitere Felder @returns { status, koerper } */
-const antwort = (status, grund, felder = {}) => ({ status, koerper: { grund, ...felder } })
+export const antwort = (status, grund, felder = {}) => ({ status, koerper: { grund, ...felder } })
 
 /**
- * Git-Block als Text (nichts ausgeführt, F-1000 unberührt): benannten Pfad stagen und committen, in der Blockform des Leitstands.
+ * Git-Block als Text (nichts ausgeführt, F-1000 unberührt): benannte Pfade stagen und committen, in der Blockform des Leitstands.
+ * F45 B5b-1b-1 (Advisor B5b-1 C4): eine Pfadliste — PUT …/planung ändert Akte und roadmap.json.
  * @param repoWurzel - Projektwurzel
- * @param featureId - geprüfte Feature-id
+ * @param pfade - repo-relative Pfade (nicht leer)
  * @param nachricht - Commit-Nachricht (`"` wird zu `'` — PowerShell 5.1 reicht `"` an native Programme verstümmelt weiter)
  * @returns Zeilen oder null, wenn kein absoluter Pfad bestimmbar ist
  */
-function baueGitBlock(repoWurzel, featureId, nachricht) {
-  const pfadArgument = gitPfadArgument(`features/${featureId}/feature.md`)
-  // Commit nur dieses Pfads (qa 8): sonst nähme er mit, was Stefan schon gestaged hat.
+export function baueGitBlock(repoWurzel, pfade, nachricht) {
+  const pfadArgument = pfade.map((pfad) => gitPfadArgument(pfad)).join(' ')
+  // Commit nur dieser Pfade (qa 8): sonst nähme er mit, was Stefan schon gestaged hat.
   return befehlsBlock(resolve(repoWurzel), [`git add -- ${pfadArgument}`, `git commit -m ${psArgument(nachricht.replace(/"/g, "'"))} -- ${pfadArgument}`])
 }
 
@@ -300,7 +304,7 @@ async function bearbeiteAkte(featureId, koerper, kontext) {
     return antwort(500, `features/${featureId}/feature.md nicht geschrieben: ${fehler.message} — Akte prüfen (git diff)`)
   }
   const nachricht = `${featureId}: Akte bearbeitet (${ergebnis.geaendert.join(', ')}) — ${pruefung.aenderung.grund}`
-  return { status: 200, koerper: { status: 'ok', id: featureId, hash: sha256(neu), geaendert: ergebnis.geaendert, git: baueGitBlock(kontext.repoWurzel, featureId, nachricht) } }
+  return { status: 200, koerper: { status: 'ok', id: featureId, hash: sha256(neu), geaendert: ergebnis.geaendert, git: baueGitBlock(kontext.repoWurzel, [`features/${featureId}/feature.md`], nachricht) } }
 }
 
 /**
@@ -340,7 +344,7 @@ function legeAkteAn(koerper, kontext) {
     console.error(`[akte] Anlage von ${featureId} gescheitert:`, fehler)
     return antwort(500, `features/${featureId}/feature.md nicht angelegt: ${fehler.message}`)
   }
-  return { status: 201, koerper: { status: 'ok', id: featureId, hash: sha256(neu), git: baueGitBlock(kontext.repoWurzel, featureId, `${featureId}: Akte angelegt aus Coach-Scope`) } }
+  return { status: 201, koerper: { status: 'ok', id: featureId, hash: sha256(neu), git: baueGitBlock(kontext.repoWurzel, [`features/${featureId}/feature.md`], `${featureId}: Akte angelegt aus Coach-Scope`) } }
 }
 
 /**

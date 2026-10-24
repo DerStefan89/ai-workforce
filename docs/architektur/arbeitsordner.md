@@ -12,7 +12,8 @@ Thema berührt.
   Git-Worktree eines schreibenden Ablaufs ausschließlich über git an und entfernt ihn ebenso (Git-Starter), führt
   darin `npm ci --ignore-scripts` aus und löscht nach einem Lauf der Rolle `ausfuehrung` ausschließlich geprüfte
   reguläre Dateien aus dessen Löschliste — nur innerhalb des Arbeitsordners, nie unter `.git`, `.claude/` oder
-  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — einzige Ausnahme die Feature-Akte (nächster Punkt).
+  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — Ausnahmen nur die Feature-Akte und die Roadmap
+  (nächste zwei Punkte).
 - Feature-Akte im Projektordner (F45 B5a-1, E-F45-1, F-912; Entscheidung Stefan 23.10.2026 nach dem Advisor-Pass
   `features/F45/advisor-b5a1.md` A1/A2; `scripts/leitstand/routen-f35.mjs`, Plan `features/F45/plan-b5a1-v2.md`): der Server
   schreibt auf direkte Eingabe ausschließlich `features/<id>/feature.md` der `repoWurzel` des Projekts — PUT
@@ -29,6 +30,20 @@ Thema berührt.
   Workflow-Kette fehlt in der Ablaufliste und sperrt nicht, einer mit unlesbarem Auftrag sperrt dagegen jede Akte des
   Projekts (fail-closed, 409 nennt die Ablauf-ID). Voraussetzung: schreibende
   Läufe arbeiten im eigenen Worktree (E-F45-3), deshalb gilt die globale Laufsperre hier nicht.
+- Roadmap im Projektordner (F45 B5b-1b-1, R6, F-984; Entscheidung A2 Challenger 24.10.2026 nach den Advisor-Pässen
+  `features/F45/advisor-b5b1.md` und `features/F45/advisor-b5b1b.md`; `scripts/leitstand/routen-planung.mjs`, Plan
+  `features/F45/plan-b5b1b-v2.md`): PUT `…/features/<id>/planung` schreibt auf direkte Eingabe Priorität und Schätzungen in die
+  Akte (Regeln des vorigen Punkts) und verschiebt bei einem Meilenstein-Wechsel die ID in `docs/projekt/roadmap.json` (bzw. dem
+  `roadmapPfad` der Instanz) ans Ende des Ziel-Meilensteins. ERZWUNGEN (Gate f45-b5b1b1): Pflichtgrund (400), Sperre (409), Hash
+  der Akte und `roadmap_hash` der Roadmap getrennt (409), CRLF in `roadmap.json` ⇒ 422 (A3: §7 bleibt, der Kern schreibt die
+  Roadmap LF und ersetzt nur die beiden `features`-Literale, Rest bytegleich), Rundlauf (ganze Struktur gleich der erwarteten,
+  `validiereRoadmapDaten`, ID genau einmal und im Ziel), R1 (`src/workboard/roadmap-regeln.ts`) auf dem neuen Stand — nur neue
+  Befunde blockieren (422 „erst bereinigen“), das Akte-Gate blockiert jeden Befund wie B5a-1; Rücklesen je Datei; scheitert ein
+  Schreiben oder Rücklesen, werden alle Dateien bis einschließlich der scheiternden auf die alten Bytes zurückgesetzt (500 nennt
+  je Pfad das Ergebnis und „git diff prüfen“). Kein Commit — Git-Block mit allen geänderten Pfaden. DEKLARIERT: Rückbau best
+  effort (nichts ist committet), ein Prozessabbruch zwischen zwei Schreibvorgängen bleibt ohne Rückbau, nicht atomar, „nur auf
+  Eingabe“ wie beim vorigen Punkt; Ausplanen (`meilenstein: null`) nicht unterstützt; die Ausnahmen-Datei
+  `roadmap-ausnahmen.json` liegt neben `roadmapPfad` und wird hier nur gelesen (Schreiben erst B5b-1b-2).
 - Fähigkeit-Vorschläge (F45 FB-1b, F-1167, E-FB1-2/-3, `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`, Plan
   `features/F45/plan-fb1b-v2.md`): außerdem bewegt bzw. löscht der Server auf direkte Eingabe (POST
   `…/workflows/<id>/faehigkeit-vorschlag/uebernehmen|verwerfen { typ, name, hash }`) einen Vorschlag des Laufs. Übernehmen

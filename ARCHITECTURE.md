@@ -92,9 +92,9 @@ Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, i
   Einzige Ausnahme: der Arbeitsordner je Ablauf — Worktree nur über git angelegt und entfernt, `npm ci --ignore-scripts`;
   nach einem Lauf der Rolle `ausfuehrung` löscht der Kern ausschließlich geprüfte reguläre Dateien der Löschliste, nur
   innerhalb, nie unter `.git`, `.claude/` oder `kontrollzustand/`; außerdem übernimmt bzw. verwirft er Fähigkeit-Vorschläge
-  nur auf Klick (`.claude/`; DEKLARIERT, Pfadprüfung ERZWUNGEN, Gate f45-fb1b); im Projektordner bleibt der Kern lesend,
-  außer der Feature-Akte auf Eingabe (F45 B5a-1, Gate f45-b5a1). Der Fingerabdruck des Review-Stands schreibt weder Index
-  noch `.git/objects` und startet keinen Filter-Treiber (Gate f45-b2a3b (a)). Einzelheiten: `docs/architektur/arbeitsordner.md`.
+  nur auf Klick (`.claude/`; DEKLARIERT, Pfadprüfung ERZWUNGEN); im Projektordner bleibt der Kern lesend, außer der
+  Feature-Akte und `docs/projekt/roadmap.json` auf Eingabe (F45 B5a-1, B5b-1b-1). Der Fingerabdruck des Review-Stands
+  schreibt weder Index noch `.git/objects` und startet keinen Filter-Treiber. Einzelheiten: `docs/architektur/arbeitsordner.md`.
 - Stefans Claude-Code-Bestand liest der Leitstand nur lesend; unser Code schreibt dort nie (Gate f45-f3a (b)). Eine Abweichung
   im Plugin-Datenordner nach einem Lauf ist ein Befund, kein Abbruch.
 - Pauschales Stagen ist in allen Git-Schritten ausgeschlossen.

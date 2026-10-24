@@ -227,12 +227,15 @@ try {
     const hash = createHash('sha256').update(readFileSync('docs/projekt/roadmap.json')).digest('hex')
     // Kennzahlen an den echten Daten, unabhängig nachgezählt (qa Lücke (i)) — strukturell, nicht als feste Zahl.
     const roadmapFeatures = projektion.meilensteine.flatMap((m) => m.features)
-    const abgenommen = roadmapFeatures.filter((f) => existsSync(join('features', f.id, 'feature.md')) && leseFeatureStatus(readFileSync(join('features', f.id, 'feature.md'), 'utf8')) === 'ABGESCHLOSSEN').length
+    const aktenStatus = (f) => (existsSync(join('features', f.id, 'feature.md')) ? leseFeatureStatus(readFileSync(join('features', f.id, 'feature.md'), 'utf8')) : null)
+    const abgenommen = roadmapFeatures.filter((f) => aktenStatus(f) === 'ABGESCHLOSSEN').length
+    // F45 B5b-1b-1 (Entscheidung Challenger, Advisor C5): ABGEBROCHEN zählt nicht zur Gesamtmenge.
+    const gesamt = roadmapFeatures.filter((f) => aktenStatus(f) !== 'ABGEBROCHEN').length
     const k = projektion.kennzahlen
     const m5 = k.bis_fertig.find((b) => b.meilenstein === 'M5')
     const kennzahlenOk =
       k.features_abgenommen.abgenommen === abgenommen &&
-      k.features_abgenommen.gesamt === roadmapFeatures.length &&
+      k.features_abgenommen.gesamt === gesamt &&
       k.meilensteine.mit_abweichung === new Set(ausnahmen.map((a) => a.meilenstein)).size &&
       m5 !== undefined &&
       m5.berechenbar === ((p30.workstreams?.length ?? 0) > 0 && m5.ohne_schaetzung === 0) &&
@@ -240,7 +243,7 @@ try {
     pruefe(
       kennzahlenOk,
       `(i2) echte Kennzahlen: Features abgenommen ${k.features_abgenommen.abgenommen}/${k.features_abgenommen.gesamt} = Akten nachgezählt, Meilensteine ${k.meilensteine.abgeschlossen}/${k.meilensteine.gesamt} (${k.meilensteine.mit_abweichung} mit offener Bereinigung = Ausnahmen-Meilensteine), „Bis M5“ ${m5?.berechenbar ? 'berechenbar' : `nicht berechenbar (${m5?.ohne_schaetzung} ohne Schätzung)`}, prioritaet je Feature.`,
-      `(i2) ${JSON.stringify({ k: { ...k, plan_gegen_ist: undefined }, abgenommen, gesamt: roadmapFeatures.length })}`
+      `(i2) ${JSON.stringify({ k: { ...k, plan_gegen_ist: undefined }, abgenommen, gesamt })}`
     )
     pruefe(
       p45.befunde.length === 0 &&

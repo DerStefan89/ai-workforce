@@ -571,6 +571,8 @@ import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } f
 import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, erkenneAkteRoute, fuehreAkteRouteDurch } from './leitstand/routen-f35.mjs'
+import { erkennePlanungRoute, fuehrePlanungRouteDurch } from './leitstand/routen-planung.mjs'
+import { findeQaSchritt, findeReviewSchritt, findeReviewVorQa } from './leitstand/workflow-schritte.mjs'
 import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
 import {
   findeWorkflowEntscheidungFuerSchritt,
@@ -2052,43 +2054,6 @@ const STOPPBARE_WORKFLOW_STATUS = new Set(['OFFEN', 'LAEUFT', 'WARTET_FREIGABE',
 function findeAusfuehrungsSchritt(workflowDaten) {
   if (!Array.isArray(workflowDaten?.schritte)) return null
   return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.rolle === 'ausfuehrung') ?? null
-}
-
-/**
- * Der Post-Build-Review-Schritt einer Fassung (F23 WS-2a). Kopplung an
- * output_schema 'ergebnis-code-reviewer', NICHT an rolle — dieselbe Kopplung
- * wie Regel 1b in ermittleNaechstenSchritt (D5, kein zweiter Regelsatz; siehe
- * dort und F-381 zur bewussten Entkopplung von rolle). Robustheitsanforderung
- * an workflowDaten wie bei findeAusfuehrungsSchritt (siehe dort).
- * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
- * @returns der Schritt, oder null
- */
-function findeReviewSchritt(workflowDaten) {
-  if (!Array.isArray(workflowDaten?.schritte)) return null
-  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.output_schema === 'ergebnis-code-reviewer') ?? null
-}
-
-/**
- * F45 B2b-2b-1 (F-820): der qa-Schritt einer Fassung — Kopplung an output_schema 'ergebnis-qa' (Muster findeReviewSchritt,
- * Regel 1q). Robust gegen ungültige Daten wie findeAusfuehrungsSchritt.
- * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
- * @returns der Schritt, oder null
- */
-function findeQaSchritt(workflowDaten) {
-  if (!Array.isArray(workflowDaten?.schritte)) return null
-  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.output_schema === 'ergebnis-qa') ?? null
-}
-
-/**
- * F45 B2b-2b-1 (Delta-Advisor D4): der Review, dessen nachfolger der qa-Schritt ist — dieselbe Beziehung wie der Aufschub
- * (qaNachfolgerStartbereit, src/workflow). Von ihm stammt die vorpruefung der Regel 1q.
- * @param workflowDaten - Workflow-Daten
- * @param qaSchritt - der qa-Schritt
- * @returns der Review-Schritt, oder null (qa ohne Review davor)
- */
-function findeReviewVorQa(workflowDaten, qaSchritt) {
-  if (!Array.isArray(workflowDaten?.schritte) || qaSchritt === null) return null
-  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.nachfolger === qaSchritt.schritt_id && s.output_schema === 'ergebnis-code-reviewer') ?? null
 }
 
 /**
@@ -9531,6 +9496,17 @@ export function erzeugeRequestHandler(optionen = {}) {
       const koerper = lesen ? null : await leseJsonBegrenzt(req, 65536)
       const kontext = { repoWurzel, workflows: () => sammleWorkflows(basisVerzeichnis), auftraege: () => sammleAuftraege(basisVerzeichnis), bestehendeIds: () => sammleBestehendeIds(repoWurzel, roadmapPfad) }
       const antwort = await fuehreAkteRouteDurch({ ...akteRoute, aktion: lesen ? 'lesen' : akteRoute.art === 'akte' ? 'bearbeiten' : 'anlegen' }, koerper, kontext)
+      sendeJson(res, antwort.status, antwort.koerper)
+      return
+    }
+
+    // F45 B5b-1b-1 (Zwischenmuster F-1131): Planung schreiben (PUT …/features/<id>/planung, R6) — Erkennung und Ablauf in
+    // scripts/leitstand/routen-planung.mjs, hier die Methode hinter dem zentralen CSRF-Haken und die Rückrufe.
+    const planungRoute = erkennePlanungRoute(pfad)
+    if (planungRoute !== null) {
+      if (req.method !== 'PUT') return sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+      const kontext = { repoWurzel, roadmapPfad, workflows: () => sammleWorkflows(basisVerzeichnis), auftraege: () => sammleAuftraege(basisVerzeichnis) }
+      const antwort = await fuehrePlanungRouteDurch(planungRoute, await leseJsonBegrenzt(req, 65536), kontext)
       sendeJson(res, antwort.status, antwort.koerper)
       return
     }
