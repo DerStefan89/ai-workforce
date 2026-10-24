@@ -1,0 +1,3 @@
+| Aktion | Bearbeiten | Formular | Speichern gesperrt | Warnhinweis | Auftrag vorbereiten gesperrt | Entscheidungen | Als Feature anlegen | Feature angelegt | weitere Live-Region (darf nicht) | Meldung | Fokus-id | Fokus-Aktion | Grund | Ziel | Sperre Auftrag | Coach-Ergebnis | waagerechter Überlauf | scrollWidth/clientWidth | Seite geladen | Pfadprobe |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 20 Coach-Entwurf mit „Als Feature anlegen“ — en-1440-hell | false | false | false | false | false | false | true | false | false | (fehlt) | (fehlt) | (fehlt) | (fehlt) | (fehlt) | (fehlt) | (fehlt) | false | 1440/1440 | true | sauber |

@@ -71,6 +71,9 @@ console.log('\n=== F28-Check (Persona: Design-Tokens, Zustandsableitung, WS-2 Bi
     { name: 'idle: leeres Aggregat', eingabe: LEER, erwartet: 'idle' },
     { name: 'thinking: aktiverLauf.aktiv === true', eingabe: { ...LEER, aktiverLauf: { aktiv: true, laufId: 'x' } }, erwartet: 'thinking' },
     { name: 'waiting_for_human: ein Workflow mit haltFreigabe', eingabe: { ...LEER, workflows: [AUFMERKSAMKEIT_WORKFLOW] }, erwartet: 'waiting_for_human' },
+    // F45 B5a-2 (F-991): eine offene Abnahme wartet auf Stefan wie eine Freigabe; Gegenprobe abnahme.offen false.
+    { name: 'waiting_for_human: ein Workflow mit offener Abnahme (F-991)', eingabe: { ...LEER, workflows: [{ workflowId: 'w', status: 'ABGESCHLOSSEN', naechster: { art: 'fertig' }, abnahme: { offen: true, status: 'nicht_vorhanden' } }] }, erwartet: 'waiting_for_human' },
+    { name: 'idle: Abnahme entschieden (abnahme.offen false, Gegenprobe F-991)', eingabe: { ...LEER, workflows: [{ workflowId: 'w', status: 'ABGESCHLOSSEN', naechster: { art: 'fertig' }, abnahme: { offen: false, status: 'ok' } }] }, erwartet: 'idle' },
     { name: 'error: zustand.fehler nicht leer', eingabe: { ...LEER, fehler: [{ quelle: 'laeufe', grund: 'x' }] }, erwartet: 'error' },
     { name: 'error: zustand.startfehler nicht leer', eingabe: { ...LEER, startfehler: [{ laufId: 'x' }] }, erwartet: 'error' },
     { name: 'error: ein fehlgeschlagener, nicht kenntnisgenommener Lauf', eingabe: { ...LEER, laeufe: [AUFMERKSAMKEIT_LAUF] }, erwartet: 'error' },

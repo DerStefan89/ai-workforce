@@ -44,6 +44,12 @@ test('Regel b) braucht_dich: ein verknüpfter Workflow wartet auf Freigabe oder 
   assert.equal(spalteVon(feature('F1', 'IN_ARBEIT'), laufend), 'in_arbeit')
 })
 
+test('Regel b) braucht_dich: F45 B5a-2 (F-991) — ein verknüpfter Workflow mit offener Abnahme; Gegenprobe offen:false', () => {
+  const mit = (offen) => baueVerknuepfung([{ ...workflow('w1', 'a1', 'ABGESCHLOSSEN', 'fertig'), abnahme: { offen, status: 'nicht_vorhanden' } }], [auftrag('a1', 'workitem:feature:F1')])
+  assert.equal(spalteVon(feature('F1', 'IN_ARBEIT'), mit(true)), 'braucht_dich')
+  assert.equal(spalteVon(feature('F1', 'IN_ARBEIT'), mit(false)), 'in_arbeit')
+})
+
 test('Regel c) in_arbeit: Feature IN_ARBEIT oder WORKSTREAM_SCHNITT_GENEHMIGT', () => {
   assert.equal(spalteVon(feature('F1', 'IN_ARBEIT'), ohneWorkflows), 'in_arbeit')
   assert.equal(spalteVon(feature('F2', 'WORKSTREAM_SCHNITT_GENEHMIGT'), ohneWorkflows), 'in_arbeit')

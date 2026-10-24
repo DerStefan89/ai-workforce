@@ -50,7 +50,8 @@ Umsetzung: `src/projekt-aufruf/` (Ausführung und Vorschau, nutzt
 - Kein Kernartefakt für das Aufrufergebnis (kein neues Schema); das
   Ergebnis bleibt flüchtig im Speicher der Serverinstanz.
 - Kein HTML-Rendern von Projektinhalt; keine Vorschau im Leitstand selbst
-  (nur Link in neuem Tab).
+  (nur Link in neuem Tab). — „Keine Vorschau im Leitstand selbst“: aufgehoben
+  durch E-VORSCHAU-1 = A (Stefan, 24.10.2026), Umsetzung F45 V1 Vorschau.
 - Kein Eintragen von `vorschau_url`/`startbefehl` über die Oberfläche —
   die Hinweise nennen Feld und Ort.
 - Keine Änderung an `docs/projekt/zielfassung.md` (kein Gate verlangt sie).

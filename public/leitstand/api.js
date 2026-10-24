@@ -18,7 +18,8 @@
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js (F46 D2 zusätzlich holeProjektAufruf für „Produkt öffnen“)
  * - public/leitstand/views/attention.js (F21 WS-2: holeWorkitems über attention-daten.js; F46 D2: holeAuftraegeBegrenzt für „Zum Eintrag“)
- * - public/leitstand/views/workboard.js (F22 WS-2; F44 WS-3b Detail: holeFeatureAkte, holeRoadmap, holeAbnahme)
+ * - public/leitstand/views/workboard.js (F22 WS-2; F44 WS-3b Detail: holeFeatureAkte, holeRoadmap, holeAbnahme; F45 B5a-2:
+ *   speichereFeatureAkte)
  * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems; F46 D1: holeFeatureAkte)
  * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems; F46 D1: holeAuftraege, holeLaufDetail,
  *   holeProjektakte — nur lesend)
@@ -30,7 +31,7 @@
  * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
  * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a; F44 WS-6a: holeProjektRoadmap, holeProjektZustand,
  *   holeProjektOffeneWorkitems mit expliziter id)
- * - public/leitstand/views/chat.js (F26 WS-2a)
+ * - public/leitstand/views/chat.js (F26 WS-2a; F45 B5a-2: legeFeatureAn)
  * - public/leitstand/projekt-kontext.js (F25 WS-2a, setzeAktivesProjektPraefix)
  * - public/leitstand/rueckfrage-kanal.js (F45 B2b-3b-2b-2a-2: holeProjekteBegrenzt, holeRueckfragen, sendeRueckfrageAntwort —
  *   einziger Aufrufer der Antwort, Gate f21-ws2 (f))
@@ -323,6 +324,15 @@ export const sendeFaehigkeitFreigabe = (eintrag, hash, stand) => fetch(mitPraefi
 // { status: 'ok' | 'unvollstaendig' }; 400/404/500 werfen (holeJsonOderWirf), die Ansicht zeigt
 // dann den Fehlerzustand (scripts/leitstand/routen-f35.mjs leseFeatureAkteFuerAnzeige).
 export const holeFeatureAkte = (featureId) => holeJsonOderWirf(mitPraefix(`/features/${encodeURIComponent(featureId)}/akte`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+
+// F45 B5a-2 (E-F45-1): Akte bearbeiten — Körper { ziel, nicht_ziele, akzeptanzkriterien, grund, hash } (baueAkteKoerper,
+// akte-bearbeiten.js). Rohe Response: 200 { hash, git }, 400, 409 { hash } bzw. { workflowId }, 422 { grund, verstoesse? }
+// (scripts/leitstand/routen-f35.mjs bearbeiteAkte). Aufrufer: views/workboard.js.
+export const speichereFeatureAkte = (featureId, koerper) => fetch(mitPraefix(`/features/${encodeURIComponent(featureId)}/akte`), { method: 'PUT', body: JSON.stringify(koerper) })
+
+// F45 B5a-2 (F-912): Coach legt eine Akte (Status ENTWURF) aus einem Scope an — 201 { id, hash, git }, 400, 409, 422
+// (routen-f35.mjs legeAkteAn). Aufrufer: views/chat.js.
+export const legeFeatureAn = (scope) => fetch(mitPraefix('/features'), { method: 'POST', body: JSON.stringify({ scope }) })
 
 // F32 WS-2: Verbrauchsprojektion für die Karte "Verbrauch" (seit F44 WS-2b views/nutzung.js) — nur
 // beim Öffnen der View und bei Zeitraumwechsel abgerufen, NICHT im 2s-Poll (Muster holeRoadmap:

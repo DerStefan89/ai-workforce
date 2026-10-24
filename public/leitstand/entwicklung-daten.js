@@ -10,7 +10,7 @@
  *   a) abgenommen:   Feature ABGESCHLOSSEN, Finding ERLEDIGT.
  *   b) braucht_dich: Feature FEATURE_GATE oder BLOCKIERT, oder ein verknüpfter Workflow wartet auf
  *                    den Menschen (filtereAttentionWorkflows aus attention-daten.js — keine zweite
- *                    Regel).
+ *                    Regel) oder hat eine offene Abnahme (filtereOffeneAbnahmen, F45 B5a-2, F-991).
  *   c) in_arbeit:    Feature IN_ARBEIT oder WORKSTREAM_SCHNITT_GENEHMIGT, oder ein verknüpfter
  *                    Workflow ist nicht terminal.
  *   d) geplant:      Feature ENTWURF oder READY_FOR_TECH, Finding OFFEN.
@@ -40,7 +40,7 @@
  *   workflowPhase und waehleFeatureInArbeit (Feature in Arbeit für den Rollen-Kreis).
  */
 
-import { baueEntscheidungen, filtereAttentionWorkflows } from './attention-daten.js'
+import { baueEntscheidungen, filtereAttentionWorkflows, filtereOffeneAbnahmen } from './attention-daten.js'
 
 /** Die vier Spalten des Status-Kanbans in Anzeigereihenfolge. */
 export const SPALTEN = ['geplant', 'in_arbeit', 'braucht_dich', 'abgenommen']
@@ -149,7 +149,7 @@ export function spalteVon(workitem, verknuepfung) {
   const workflows = verknuepfung?.jeReferenz.get(workitemReferenz(workitem)) ?? []
 
   if ((istFeature && FEATURE_ABGENOMMEN.has(status)) || (istFinding && status === 'ERLEDIGT')) return 'abgenommen'
-  if ((istFeature && FEATURE_BRAUCHT_DICH.has(status)) || filtereAttentionWorkflows(workflows).length > 0) return 'braucht_dich'
+  if ((istFeature && FEATURE_BRAUCHT_DICH.has(status)) || filtereAttentionWorkflows(workflows).length > 0 || filtereOffeneAbnahmen(workflows).length > 0) return 'braucht_dich'
   if ((istFeature && FEATURE_IN_ARBEIT.has(status)) || workflows.some((w) => NICHT_TERMINALE_WORKFLOW_STATUS.has(w?.status))) return 'in_arbeit'
   if ((istFeature && FEATURE_GEPLANT.has(status)) || (istFinding && status === 'OFFEN')) return 'geplant'
   return 'ausserhalb'

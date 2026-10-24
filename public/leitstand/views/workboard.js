@@ -54,6 +54,18 @@
  * Einstieg ist gesperrt (disabled, aria-disabled, Hinweis, „Ablauf öffnen“), solange ein
  * verknüpfter Workflow nicht terminal ist oder eine Abnahme offen ist (auftragsSperre).
  *
+ * F45 B5a-2 „Akte anzeigen“ (features/F45/plan-b5a2-v2.md, E-F45-1): „Bearbeiten“ im Detail eines Features öffnet das Formular
+ * (akte-bearbeiten.js) in #workboard-akte-formular — ein eigener Container vor dem Inhalt, weil der Inhalt bei jedem Poll-Tick mit
+ * geändertem HTML neu geschrieben wird; „Das Was“ tritt so lange zurück. Getippte Werte gehen nach jeder Eingabe in den Zustand
+ * (merkeAkteEingabe) — auch ein Neuschreiben nach Verlassen und Rückkehr auf die Seite zeigt sie wieder; ein Wechsel zu einem anderen
+ * Detail oder Projekt verwirft das Formular. Bekannte Grenze: wird das Formular während des Speicherns verworfen, steht der Erfolg nur
+ * im Log (die Datei ist trotzdem geschrieben). Der Akte-Link im Warnhinweis wird beim Öffnen eingefroren (kann bis zum erneuten Öffnen
+ * ohne vollen Projektpfad bleiben). „Speichern“ sendet PUT …/akte mit dem beim Öffnen gelesenen Hash (Doppelklick-Sperre im Zustand); 409 Hash bleibt mit den Eingaben stehen bis
+ * „Neu laden“, 409 Sperre nennt den Ablauf, 400/422 Grund und Verstöße wörtlich; nach 200 lädt die Akte neu (Ladezähler akteLadung,
+ * eine überholte Antwort wird verworfen) und der Git-Block steht da. Solange das Formular offen ist, ist „Auftrag vorbereiten“
+ * gesperrt (auftragsSperre, Grund 'akte'). Findet ein Deep-Link die ID in der geladenen Liste nicht (etwa eine eben im Coach angelegte
+ * Akte), lädt ladeDetail die Workitems einmal neu (Board kurz „lädt“).
+ *
  * F44 WS-3a: Das Bento (Aktueller Fokus, Letzter Projektstand, Schnellzugriff, AI Workflow,
  * Projekt Fortschritt, Roadmap) ist entfernt (F-892) — die Übersicht (#/dashboard) und die
  * Roadmap-Seite zeigen diese Inhalte nach Vorlage. Mit ihm entfiel die Abnahme-Vorauswahl
@@ -66,10 +78,11 @@
  * - Projektinhalte (Titel, IDs, Statuswerte, Parser-Meldungen, Akten- und Servertexte) werden nicht
  *   übersetzt und immer escaped; alle übrigen Texte über t() (tx = escapt). Die feste Begründung der
  *   Freigabe (F-375) ist Serverinhalt und bleibt deutsch.
- * - Kein schreibender Request außer über die api.js-Bausteine von Click-to-Work (Gate f21-ws2 (f)).
+ * - Kein schreibender Request außer über die api.js-Bausteine von Click-to-Work und speichereFeatureAkte (Gate f21-ws2 (f)).
  */
 
-import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, holeRoadmap, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, holeRoadmap, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe, speichereFeatureAkte } from '../api.js'
+import { AKTE_HASH_MUSTER, akteFormularHtml, akteGespeichertHtml, baueAkteFormular, baueAkteKoerper, darfSpeichern, deuteAkteAntwort, mitNeuemAk } from '../akte-bearbeiten.js'
 import { baueAkEntwurf, baueAkzeptanzkriterien } from '../ak-entwurf.js'
 import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
 import { abonniereAblaufCodeStand, ladeAblaufCodeStand, stelleAblaufCodeStandSicher } from '../ablauf-code-stand.js'
@@ -95,6 +108,7 @@ import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import {
   DETAIL_KREIS_PRAEFIX,
+  darfAkteBearbeiten,
   FEATURE_ENDSTATUS,
   detailEyebrowHtml,
   detailInhaltHtml,
@@ -110,6 +124,7 @@ import {
   statusKategorie,
   titelVon,
   typBezeichnung,
+  vsCodeLink,
   WAS_REITER,
 } from './workboard-detail.js'
 
@@ -216,6 +231,17 @@ let letztesListenHtml = ''
  * dasselbe Finding anzulegen. Wechselt ladeDetail auf ein ANDERES Workitem, wird zurückgesetzt.
  */
 let bearbeitungsZustand = null
+
+/**
+ * F45 B5a-2: Formular „Akte bearbeiten“ des offenen Features, oder null. { featureId, projektId, phase: 'offen' | 'speichert' |
+ * 'konflikt' | 'gesperrt' | 'abgelehnt' | 'fehler' | 'gespeichert', hash (beim Öffnen gelesen), werte (baueAkteFormular),
+ * unvollstaendig ({ grund } oder null), meldung (deuteAkteAntwort), git, geaendert }. 'gespeichert' zeigt nur noch das Ergebnis —
+ * „Das Was“ ist dann wieder sichtbar und „Auftrag vorbereiten“ frei.
+ */
+let akteBearbeitung = null
+
+/** Zuletzt geschriebenes HTML von #workboard-akte-formular (geschrieben wird nur bei geändertem Inhalt — Eingaben bleiben). */
+let letztesAkteFormularHtml = ''
 
 /** Letztes Zustands-Aggregat aus dem Poll (zustand.js): workflows für das Board, startfehler für Click-to-Work (AK3-Zustand "routet…" endet auch bei einem Startfehler zu genau diesem Lauf). undefined vor dem ersten Tick. */
 let letzterZustand
@@ -732,8 +758,6 @@ function findeWorkitem(id) {
   return letzteWorkitems.find((w) => w.id === id) ?? (Array.isArray(alleWorkitems) ? alleWorkitems.find((w) => w.id === id) : undefined) ?? null
 }
 
-/** Feature-Status, unter denen kein Bau-Auftrag mehr angelegt werden kann (F35 WS-1 AK6). */
-
 /** true, wenn aus workitem (Feature-Akte) noch ein Bau-Auftrag angelegt werden darf (F35 WS-1 AK6). @param workitem - ein Feature-Workitem */
 function istFeatureBaubar(workitem) {
   return !FEATURE_ENDSTATUS.has(workitem.status)
@@ -895,9 +919,10 @@ function renderBearbeitungsInhalt(workitem, zustand) {
  * aus dem Poll — dieselbe Angabe wie „Ergebnis prüfen“ im Jetzt-Band). Solange die Verknüpfung noch
  * lädt, bleibt der Einstieg ebenfalls gesperrt — sonst ließe ein Deep-Link vor dem ersten Poll-Tick
  * einen zweiten Auftrag zu. Ist eine Quelle nicht verfügbar (null), bleibt er frei (Server-Regel D13
- * gilt weiter).
+ * gilt weiter). F45 B5a-2: zuletzt 'akte', solange das Formular „Akte bearbeiten“ dieses Features offen ist — sonst entstünde der
+ * Auftrag aus dem alten Stand der Akte (die stärkeren Gründe davor behalten ihren Link „Ablauf öffnen“).
  * @param workitem - das Workitem des offenen Details
- * @returns null (frei) oder { grund: 'laeuft' | 'abnahme' | 'laedt', workflowId: Ziel von „Ablauf öffnen“ oder null }
+ * @returns null (frei) oder { grund: 'laeuft' | 'abnahme' | 'laedt' | 'akte', workflowId: Ziel von „Ablauf öffnen“ oder null }
  */
 function auftragsSperre(workitem) {
   const verknuepfung = baueVerknuepfung(letzterZustand?.workflows, auftraege)
@@ -906,6 +931,7 @@ function auftragsSperre(workitem) {
   if (laufend !== null) return { grund: 'laeuft', workflowId: laufend.workflowId }
   const massgeblich = verknuepfterWorkflow(workitem, verknuepfung)
   if (massgeblich?.abnahme?.offen === true) return { grund: 'abnahme', workflowId: massgeblich.workflowId }
+  if (akteFormularOffen(workitem)) return { grund: 'akte', workflowId: null }
   return null
 }
 
@@ -1288,25 +1314,33 @@ async function aktualisiereBearbeitungsZustand() {
 
 /**
  * Prüft die Antwort von GET …/features/<id>/akte auf die erwartete Form (Server- und Aktentexte
- * bleiben roh, escaped wird beim Rendern).
+ * bleiben roh, escaped wird beim Rendern). F45 B5a-2: hash (null, wenn kein sha256), featureStatus und
+ * entscheidungen (nur { id, text }-Strings; null, wenn keine Liste) auch bei 'unvollstaendig'.
  * @param antwort - geparster Körper
- * @returns { status: 'ok', … } | { status: 'unvollstaendig', grund } | { status: 'fehler', meldung }
+ * @returns { status: 'ok', … } | { status: 'unvollstaendig', grund, featureStatus, hash, entscheidungen } | { status: 'fehler', meldung }
  */
 function pruefeAkte(antwort) {
   const istAk = (ak) => typeof ak?.id === 'string' && typeof ak.text === 'string'
-  if (antwort?.status === 'ok' && typeof antwort.ziel === 'string' && Array.isArray(antwort.akzeptanzkriterien) && antwort.akzeptanzkriterien.every(istAk) && Array.isArray(antwort.nicht_ziele) && antwort.nicht_ziele.every((z) => typeof z === 'string')) return antwort
-  if (antwort?.status === 'unvollstaendig') return { status: 'unvollstaendig', grund: String(antwort.grund ?? '') }
+  const zusatz = {
+    hash: typeof antwort?.hash === 'string' && AKTE_HASH_MUSTER.test(antwort.hash) ? antwort.hash : null,
+    featureStatus: typeof antwort?.featureStatus === 'string' ? antwort.featureStatus : null,
+    entscheidungen: Array.isArray(antwort?.entscheidungen) ? antwort.entscheidungen.filter(istAk) : null,
+  }
+  if (antwort?.status === 'ok' && typeof antwort.ziel === 'string' && Array.isArray(antwort.akzeptanzkriterien) && antwort.akzeptanzkriterien.every(istAk) && Array.isArray(antwort.nicht_ziele) && antwort.nicht_ziele.every((z) => typeof z === 'string')) return { ...antwort, ...zusatz }
+  if (antwort?.status === 'unvollstaendig') return { status: 'unvollstaendig', grund: String(antwort.grund ?? ''), ...zusatz }
   return { status: 'fehler', meldung: t('entwicklung.detail.akte.unerwartet') }
 }
 
 /**
- * Lädt Akte und Roadmap eines Features für das offene Detail (einmal je Öffnen). Eine überholte
- * Antwort (anderes Detail, Projektwechsel) wird verworfen.
+ * Lädt Akte und Roadmap eines Features für das offene Detail (beim Öffnen; F45 B5a-2 zusätzlich nach dem Speichern und bei
+ * „Neu laden“). Eine überholte Antwort (anderes Detail, Projektwechsel, inzwischen neuere Ladung — Zähler akteLadung wie
+ * ablaufLadung) wird verworfen.
  * @param nachtrag - der detailNachtrag, für den geladen wird
  */
 async function ladeAkteUndRoadmap(nachtrag) {
+  const ladung = ++nachtrag.akteLadung
   const [akte, roadmap] = await Promise.allSettled([holeFeatureAkte(nachtrag.id), holeRoadmap()])
-  if (detailNachtrag !== nachtrag) return
+  if (detailNachtrag !== nachtrag || nachtrag.akteLadung !== ladung) return
   if (akte.status === 'rejected') console.error('GET …/features/<id>/akte fehlgeschlagen:', akte.reason)
   if (roadmap.status === 'rejected') console.error('GET …/roadmap (Detail) fehlgeschlagen:', roadmap.reason)
   nachtrag.akte = akte.status === 'fulfilled' ? pruefeAkte(akte.value) : { status: 'fehler', meldung: meldungVon(akte.reason) }
@@ -1432,6 +1466,7 @@ function baueDetailSicht(workitem) {
     remoteWebUrl: pruefeGithubUrl(aktuellerCodeStand().daten?.remoteWebUrl?.url ?? null),
     kreisAuswahl: nachtrag?.kreisAuswahl ?? null,
     wasReiter: nachtrag?.wasReiter ?? null,
+    akteFormularOffen: akteFormularOffen(workitem),
   }
 }
 
@@ -1483,6 +1518,7 @@ function renderDetailSeite(workitem) {
   renderDetailJetzt(sicht)
   schreibeWennGeaendert('workboard-detail-inhalt', detailInhaltHtml(sicht))
   schreibeWennGeaendert('workboard-detail-spalte', detailSpalteHtml(sicht))
+  renderAkteFormular(workitem)
 }
 
 /**
@@ -1502,6 +1538,7 @@ function renderDetailOhneWorkitem(id) {
   document.getElementById('workboard-detail-jetzt').removeAttribute('data-zustand')
   schreibeWennGeaendert('workboard-detail-inhalt', html)
   schreibeBearbeitung('')
+  schreibeAkteFormular('')
 }
 
 /**
@@ -1552,11 +1589,16 @@ function ladeDetail(id) {
   if (bearbeitungsZustand !== null && bearbeitungsZustand.workitemId !== id) {
     bearbeitungsZustand = null
   }
-  detailNachtrag = { id, projektId: holeAktivesProjekt().id, akteGestartet: false, akte: undefined, roadmap: undefined, workflowBestimmt: false, workflowKennung: null, verknuepfungFehlt: false, workflowId: undefined, workflowEintrag: null, schritte: undefined, abnahme: undefined, ablaufLadung: 0, wasReiter: null, kreisAuswahl: null }
+  // F45 B5a-2: ein Formular gehört zu genau einem Feature; ein anderes Detail verwirft es (wie Click-to-Work).
+  if (akteBearbeitung !== null && akteBearbeitung.featureId !== id) akteBearbeitung = null
+  detailNachtrag = { id, projektId: holeAktivesProjekt().id, akteGestartet: false, akteLadung: 0, akte: undefined, roadmap: undefined, workflowBestimmt: false, workflowKennung: null, verknuepfungFehlt: false, workflowId: undefined, workflowEintrag: null, schritte: undefined, abnahme: undefined, ablaufLadung: 0, wasReiter: null, kreisAuswahl: null }
   letztesDetailHtml.clear()
   // F46 D4: „Pull Requests“ und der VS-Code-Pfad brauchen den Code-Stand — einmal laden, falls keiner da ist.
   if (aktuellerCodeStand().zustand === 'leer') void ladeCodeStand()
   zeigeDetail(true)
+  // F45 B5a-2 (B6): eine ID, die die geladene Liste nicht kennt (etwa eine eben im Coach angelegte Akte), lädt die Workitems
+  // einmal je Öffnen neu — bis dahin „lädt“ statt „nicht gefunden“.
+  if (Array.isArray(alleWorkitems) && findeWorkitem(id) === null) void ladeAlleWorkitems()
   renderDetailInhalt(id)
   const titel = document.getElementById('workboard-detail-titel')
   titel.focus({ preventScroll: true })
@@ -1657,6 +1699,11 @@ function initDetailBedienung() {
     // Fehlerzustand des Details: „Erneut laden“ holt die Workitems neu (der Knopf der Übersicht ist ausgeblendet).
     if (ereignis.target.closest('[data-workboard-detail-erneut]') !== null) {
       void ladeAlleWorkitems()
+      return
+    }
+    // F45 B5a-2: „Bearbeiten“ der Akte (im Kopf von „Das Was“ bzw. im Hinweis einer unvollständigen Akte).
+    if (ereignis.target.closest('[data-akte-bearbeiten]') !== null) {
+      oeffneAkteBearbeitung()
       return
     }
     const was = ereignis.target.closest('[data-was-reiter]')
@@ -1800,6 +1847,198 @@ function initBearbeitungBedienung() {
   })
 }
 
+// ─── F45 B5a-2: Akte bearbeiten (E-F45-1) ────────────────────────────────────
+
+/** true, solange das Formular (nicht das Ergebnis) für workitem offen ist. @param workitem - ein Workitem */
+function akteFormularOffen(workitem) {
+  return akteBearbeitung !== null && akteBearbeitung.featureId === workitem?.id && workitem?.quelle === 'feature' && akteBearbeitung.projektId === holeAktivesProjekt().id && akteBearbeitung.phase !== 'gespeichert'
+}
+
+/**
+ * Schreibt #workboard-akte-formular nur bei geändertem HTML (ein Poll-Tick zerstört keine Eingabe). Lag der Fokus im Bereich,
+ * geht er auf die Meldung des neuen Zustands, sonst auf dasselbe Feld wie vorher (gleiche id), sonst auf den Titel.
+ * @param html - neuer Inhalt
+ */
+function schreibeAkteFormular(html) {
+  if (html === letztesAkteFormularHtml) return
+  letztesAkteFormularHtml = html
+  const container = document.getElementById('workboard-akte-formular')
+  const hatteFokus = document.activeElement !== null && container.contains(document.activeElement)
+  const fokusId = hatteFokus ? document.activeElement.id : ''
+  container.innerHTML = html
+  container.hidden = html === ''
+  if (!hatteFokus) return
+  const vorher = fokusId !== '' ? document.getElementById(fokusId) : null
+  ;(container.querySelector('[data-akte-fokus]') ?? (vorher !== null && container.contains(vorher) ? vorher : null) ?? container.querySelector('[data-akte-fokus-titel]'))?.focus()
+}
+
+/** HTML des Formulars bzw. Ergebnisses für workitem ('' ohne eigenes). @param workitem - Workitem des offenen Details @returns HTML */
+function akteFormularInhalt(workitem) {
+  const z = akteBearbeitung
+  if (z === null || z.featureId !== workitem.id || z.projektId !== holeAktivesProjekt().id) return ''
+  if (z.phase === 'gespeichert') return akteGespeichertHtml({ featureId: z.featureId, git: z.git, geaendert: z.geaendert })
+  return akteFormularHtml({ featureId: z.featureId, phase: z.phase, werte: z.werte, unvollstaendig: z.unvollstaendig, meldung: z.meldung, akteLinkHtml: z.akteLinkHtml })
+}
+
+/** Rendert das Formular des offenen Details (Teil von renderDetailSeite). @param workitem - Workitem des offenen Details */
+function renderAkteFormular(workitem) {
+  schreibeAkteFormular(akteFormularInhalt(workitem))
+}
+
+/**
+ * Übernimmt die getippten Werte aus dem DOM in den Zustand — nur, wenn das Formular genau dieses Features im DOM steht.
+ * @param zustand - akteBearbeitung
+ * @returns true, wenn gelesen wurde
+ */
+function uebernimmAkteWerte(zustand) {
+  const container = document.getElementById('workboard-akte-formular')
+  if (container.querySelector('[data-akte-feld="ziel"]') === null || container.querySelector('[data-akte-id]')?.getAttribute('data-akte-id') !== zustand.featureId) return false
+  const wert = (feld) => [...container.querySelectorAll(`[data-akte-feld="${feld}"]`)].map((el) => el.value)
+  zustand.werte = { ...zustand.werte, ziel: wert('ziel')[0] ?? '', grund: wert('grund')[0] ?? '', nichtZiele: wert('nicht'), aks: zustand.werte.aks.map((ak, i) => ({ id: ak.id, text: wert('ak')[i] ?? ak.text })) }
+  return true
+}
+
+/**
+ * Nach jeder Eingabe (Prüfpass B5a-2 cr K1, qa 1): Werte in den Zustand und das gemerkte HTML auf denselben Stand — so schreibt ein
+ * späteres Rendern (Poll, Code-Stand, Rückkehr auf die Seite nach „lädt“) das Formular mit den getippten Werten statt mit dem Stand
+ * beim Öffnen, und ein Rendern ohne Änderung schreibt gar nicht.
+ */
+function merkeAkteEingabe() {
+  const zustand = akteBearbeitung
+  if (zustand === null || gewaehlteId !== zustand.featureId || !uebernimmAkteWerte(zustand)) return
+  const workitem = findeWorkitem(gewaehlteId)
+  if (workitem !== null) letztesAkteFormularHtml = akteFormularInhalt(workitem)
+}
+
+/** Rendert Detail, Click-to-Work-Bereich (Sperre 'akte') und Formular nach einem Zustandswechsel des Formulars. */
+function renderNachAkteWechsel() {
+  if (gewaehlteId === null) return
+  const workitem = findeWorkitem(gewaehlteId)
+  if (workitem === null) return
+  renderDetailSeite(workitem)
+  renderBearbeitungsAbschnitt(workitem)
+}
+
+/** „Bearbeiten“: öffnet das Formular mit der gelesenen Akte (darfAkteBearbeiten) und legt den Fokus auf seinen Titel. */
+function oeffneAkteBearbeitung() {
+  const akte = detailNachtrag?.akte
+  if (gewaehlteId === null || detailNachtrag?.id !== gewaehlteId || !darfAkteBearbeiten(akte)) return
+  const workitem = findeWorkitem(gewaehlteId)
+  // Der Akte-Link wird beim Öffnen eingefroren (cr K1): ein später eintreffender Code-Stand schreibt das Formular nicht neu.
+  const akteLinkHtml = vsCodeLink(detailRepoPfad(), workitem?.pfad ?? `features/${gewaehlteId}/feature.md`, null, t('eintrag.was.ganzeAkte'))
+  akteBearbeitung = { featureId: gewaehlteId, projektId: holeAktivesProjekt().id, phase: 'offen', hash: akte.hash, werte: baueAkteFormular(akte), unvollstaendig: akte.status === 'unvollstaendig' ? { grund: akte.grund } : null, meldung: null, git: null, geaendert: [], akteLinkHtml }
+  renderNachAkteWechsel()
+  document.getElementById('akte-formular-titel')?.focus()
+}
+
+/** Schließt Formular bzw. Ergebnis; der Fokus geht zurück auf „Bearbeiten“ (erst nach dem Neuschreiben des Inhalts). */
+function schliesseAkteBearbeitung() {
+  akteBearbeitung = null
+  renderNachAkteWechsel()
+  ;(document.getElementById('akte-bearbeiten') ?? document.getElementById('workboard-detail-titel'))?.focus()
+}
+
+/** „Neu laden“ nach einem Hash-409: verwirft Formular und Eingaben und lädt die Akte neu. */
+function ladeAkteNachKonflikt() {
+  const nachtrag = detailNachtrag
+  akteBearbeitung = null
+  if (nachtrag !== null && nachtrag.id === gewaehlteId) {
+    nachtrag.akte = undefined
+    void ladeAkteUndRoadmap(nachtrag)
+  }
+  renderNachAkteWechsel()
+  document.getElementById('workboard-detail-titel')?.focus()
+}
+
+/**
+ * „Speichern“: PUT …/akte mit dem beim Öffnen gelesenen Hash. Die Sperre gegen Doppelklick steht im Zustand (darfSpeichern prüft
+ * die Phase 'speichert'), nicht nur am Knopf. Eine Antwort für ein inzwischen verworfenes Formular wird verworfen.
+ */
+async function speichereAkte() {
+  const zustand = akteBearbeitung
+  if (zustand === null || zustand.featureId !== gewaehlteId || zustand.projektId !== holeAktivesProjekt().id) return
+  uebernimmAkteWerte(zustand)
+  if (!darfSpeichern(zustand.werte, zustand.phase)) return
+  zustand.phase = 'speichert'
+  zustand.meldung = null
+  renderNachAkteWechsel()
+  let deutung
+  try {
+    const antwort = await speichereFeatureAkte(zustand.featureId, baueAkteKoerper(zustand.werte, zustand.hash))
+    deutung = deuteAkteAntwort(antwort.status, await antwort.json().catch(() => ({})))
+  } catch (fehler) {
+    console.error('PUT …/features/<id>/akte fehlgeschlagen:', fehler)
+    deutung = { art: 'fehler', status: 0, grund: t('entwicklung.fehler.anfrage', { meldung: meldungVon(fehler) }) }
+  }
+  if (akteBearbeitung !== zustand || zustand.projektId !== holeAktivesProjekt().id) {
+    // Bekannte Grenze (cr V1, qa 5): Formular inzwischen verworfen (anderes Detail oder Projekt) — die Datei kann trotzdem
+    // geschrieben sein; ohne Anzeige bleibt wenigstens die Spur im Log.
+    if (deutung.art === 'ok') console.info(`[akte] ${zustand.featureId} gespeichert (${deutung.geaendert.join(', ')}), Formular inzwischen geschlossen — Akte nicht committet`)
+    return
+  }
+  if (deutung.art === 'ok') {
+    zustand.phase = 'gespeichert'
+    zustand.git = deutung.git
+    zustand.geaendert = deutung.geaendert
+    // Der aktuelle Nachtrag (cr V2): wurde dasselbe Feature während des PUT neu geöffnet, lädt dessen Akte neu.
+    const nachtrag = detailNachtrag
+    if (nachtrag !== null && nachtrag.id === zustand.featureId) {
+      nachtrag.akte = undefined
+      void ladeAkteUndRoadmap(nachtrag)
+    }
+  } else {
+    zustand.phase = deutung.art
+    zustand.meldung = deutung
+  }
+  renderNachAkteWechsel()
+}
+
+/**
+ * Bedienung von #workboard-akte-formular: Zeilen hinzufügen/entfernen, Speichern, Abbrechen, Neu laden, Schließen, Kopieren im
+ * Git-Block; „Speichern“ wird beim Tippen des Grunds freigegeben, ohne den Bereich neu zu schreiben (der Fokus bleibt im Feld).
+ */
+function initAkteBedienung() {
+  const container = document.getElementById('workboard-akte-formular')
+  container.addEventListener('click', (ereignis) => {
+    const kopieren = ereignis.target.closest('[data-befehl-kopieren]')
+    if (kopieren !== null) {
+      void kopiereBefehlsblock(kopieren)
+      return
+    }
+    const knopf = ereignis.target.closest('[data-akte-aktion]')
+    if (knopf === null || knopf.disabled) return
+    const zustand = akteBearbeitung
+    const aktion = knopf.dataset.akteAktion
+    if (aktion === 'speichern') void speichereAkte()
+    else if (aktion === 'abbrechen' || aktion === 'schliessen') schliesseAkteBearbeitung()
+    else if (aktion === 'neu-laden') ladeAkteNachKonflikt()
+    else if ((aktion === 'hinzu' || aktion === 'entfernen') && zustand !== null && zustand.phase !== 'speichert') {
+      uebernimmAkteWerte(zustand)
+      const art = knopf.dataset.akteArt
+      const index = Number(knopf.dataset.index)
+      if (aktion === 'hinzu') zustand.werte = art === 'ak' ? mitNeuemAk(zustand.werte) : { ...zustand.werte, nichtZiele: [...zustand.werte.nichtZiele, ''] }
+      else if (art === 'ak') zustand.werte = { ...zustand.werte, aks: zustand.werte.aks.filter((_, i) => i !== index) }
+      else zustand.werte = { ...zustand.werte, nichtZiele: zustand.werte.nichtZiele.filter((_, i) => i !== index) }
+      renderNachAkteWechsel()
+      // Fokus: nach „hinzufügen“ auf die neue Zeile, nach „Entfernen“ auf die nachrückende bzw. letzte Zeile (cr V5), sonst „hinzufügen“.
+      const felder = [...container.querySelectorAll(`[data-akte-feld="${art}"]`)]
+      const ziel = aktion === 'hinzu' ? felder.at(-1) : (felder[Math.min(index, felder.length - 1)] ?? container.querySelector(`[data-akte-aktion="hinzu"][data-akte-art="${art}"]`))
+      ;(ziel ?? container.querySelector('[data-akte-fokus-titel]'))?.focus()
+    }
+  })
+  container.addEventListener('input', (ereignis) => {
+    if (akteBearbeitung === null || (ereignis.target.closest?.('[data-akte-feld]') ?? null) === null) return
+    merkeAkteEingabe()
+    if (ereignis.target.closest('[data-akte-feld="grund"]') === null) return
+    const speichern = container.querySelector('[data-akte-aktion="speichern"]')
+    if (speichern === null) return
+    const frei = darfSpeichern({ grund: ereignis.target.value }, akteBearbeitung.phase)
+    speichern.disabled = !frei
+    if (frei) speichern.removeAttribute('aria-disabled')
+    else speichern.setAttribute('aria-disabled', 'true')
+  })
+}
+
 /**
  * Initialisiert die Seite „Entwicklung“ einmalig beim Bootstrap: feste Bedienelemente, Register,
  * eigene Routen (Muster views/runs.js — app.js registriert #/workboard NICHT zentral), Poll-Abo
@@ -1816,6 +2055,7 @@ export function initWorkboardView() {
   initListenBedienung()
   initDetailBedienung()
   initBearbeitungBedienung()
+  initAkteBedienung()
 
   registriere(/^#\/workboard$/, 'workboard', () => {
     const vorher = gewaehlteId
@@ -1892,6 +2132,9 @@ function ladeNachProjektWechsel() {
   // Unbedingt leeren, auch wenn der Zwischenspeicher schon leer meint (etwa nach einem fremden Eingriff in den Bereich).
   letztesBearbeitungsHtml = null
   schreibeBearbeitung('')
+  akteBearbeitung = null
+  letztesAkteFormularHtml = null
+  schreibeAkteFormular('')
   letzterZustand = undefined
   letzteWorkitems = []
   renderBefunde(null)

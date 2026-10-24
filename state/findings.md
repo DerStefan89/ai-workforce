@@ -6872,13 +6872,13 @@ Maßnahme: Fixpaket Arbeitsfähigkeit, B3.
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
-**F-912** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-912** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Der Coach legt in bestehenden Projekten keine Feature-Akte an; der Scope wird direkt zum Auftrag.
 Beschreibung: Im bestehenden Projekt macht der Coach aus dem Scope direkt einen Auftrag (`baueAuftragAusScope`), ohne eine Feature-Akte anzulegen.
 Fundstelle: `src/product-coach/index.ts` (baueAuftragAusScope), `public/leitstand/auftrag-aus-scope.js`.
 Auswirkung: Coach-Ideen erscheinen nicht als Feature im Board, AK werden nicht in einer Akte gepflegt, und F35 „Bauen aus der Akte“ greift nicht.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B5.
-Status: offen — Server in B5a-1, Anzeige in B5a-2. Nachtrag 23.10.2026 (F45 B5a-1): POST /api/features legt aus einem Coach-Scope eine Akte mit Status ENTWURF an (`baueFeatureAkteAusScope`, `src/product-coach/index.ts`; Route in `scripts/leitstand/routen-f35.mjs`); der Knopf im Coach folgt mit B5a-2.
+Status: erledigt durch F45 B5a-2 (24.10.2026) — Server in B5a-1 (POST /api/features legt aus einem Coach-Scope eine Akte mit Status ENTWURF an, `baueFeatureAkteAusScope`), Anzeige in B5a-2: „Als Feature anlegen“ unter jedem Coach-Entwurf (`public/leitstand/views/chat.js` `renderFeatureAnlage`, `legeFeatureAn` in `api.js`), Ergebnis mit neuer ID, Link ins Detail und Git-Block, 400/409/422 wörtlich; der Auftragsweg bleibt unverändert. Rest: Rückverweis Turn → Akte (Doppelanlage nach Neuladen) F-1182.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-915** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -7297,13 +7297,13 @@ Maßnahme: Fixpaket B5 (Planungs- und Statusfelder mit Datum).
 Status: offen.
 Feature/Run: Entdeckt: F46 D1, Prüfpass qa 10.
 
-**F-991** · `BUG` · P2 · offen
+**F-991** · `BUG` · P2 · erledigt
 Titel: Persona, Startfläche und Entwicklung zählen offene Abnahmen nicht.
 Beschreibung: Seit F46 D2 stehen offene Abnahmen unter „Deine Entscheidungen“, im Zähler der Seitenleiste, in der Kennzahl der Übersicht und in Jarvis' „was braucht mich“. Der Persona-Zustand („wartet auf dich“), der Warte-Hinweis der Startfläche und die Spalte „Braucht dich“ der Entwicklung lesen weiter nur `filtereAttentionWorkflows` (Freigabe, Rückfrage).
 Fundstelle: `public/leitstand/persona-state.js:36`, `public/leitstand/views/start.js:66`, `public/leitstand/entwicklung-daten.js:149`.
 Auswirkung: Mittel — der Zähler zeigt eine wartende Abnahme, die Persona meldet „nichts“.
 Maßnahme: dieselbe Auswahl über `filtereOffeneAbnahmen` bzw. `baueEntscheidungen`; Gate f28-persona und Tests mitziehen. Bewusst nicht in D2 (Umfang: Liste, Zähler, Entscheiden-Seite).
-Status: offen.
+Status: erledigt durch F45 B5a-2 (24.10.2026) — `zaehleWartendeAufStefan` (`attention-daten.js`, Freigaben, Rückfragen und offene Abnahmen aus `baueEntscheidungen`) zählt für Persona (`persona-state.js`) und Wartezeile der Startfläche (`views/start.js`); `spalteVon` (`entwicklung-daten.js`) setzt bei `filtereOffeneAbnahmen` „Braucht dich“; Gate `check-f28-persona` (2) mit Fall und Gegenprobe, Gate `check-f45-b5a2-akte-anzeige` (e), Tests in `attention-daten.test.mjs` und `entwicklung-daten.test.mjs`.
 Feature/Run: Entdeckt: F46 D2, Prüfpass qa 5 / code-reviewer 2.
 
 **F-992** · `TECH_DEBT` · P3 · offen
@@ -7333,13 +7333,13 @@ Maßnahme: Befundzahl in das Zustands-Aggregat aufnehmen (eine Quelle) oder den 
 Status: offen.
 Feature/Run: Entdeckt: F46 D2.
 
-**F-995** · `TECH_DEBT` · P3 · offen
+**F-995** · `TECH_DEBT` · P3 · erledigt
 Titel: Die Leseroute der Feature-Akte liefert die Entscheidungen nicht.
 Beschreibung: Das Detail eines Features soll unter „Verlauf“ die Entscheidungen der Akte (E-…) zeigen (abgleich-f46.md §4.6). GET …/features/<id>/akte liefert nur Titel, Status, Ziel, Nicht-Ziele und AKs; D3 durfte den Server nicht ändern. Die Kachel steht deshalb als „kommt“.
 Fundstelle: `scripts/leitstand/routen-f35.mjs` (`leseFeatureAkteFuerAnzeige`), `src/feature-auftrag/index.ts` (`leseFeatureAkteAnzeige`); Anzeige `public/leitstand/views/workboard-detail.js` (`verlaufBlock`).
 Auswirkung: Gering — die Entscheidungen bleiben über „Akte in VS Code öffnen“ erreichbar.
 Maßnahme: Die lesende Projektion um den Abschnitt „Entscheidungen“ (Zeilen mit E-…) erweitern, eine Regel mit dem Bau-Auftrag; dann die Kachel echt (D4 oder Fixpaket).
-Status: offen — Server in B5a-1, Anzeige in B5a-2. Nachtrag 23.10.2026 (F45 B5a-1): GET …/akte liefert zusätzlich `entscheidungen[]` (Bullets, die mit einer E-Kennung beginnen, aus „## Entscheidungen“; `leseFeatureEntscheidungen`, `src/feature-auftrag/index.ts`) und `hash`; die Kachel „Verlauf“ folgt mit B5a-2.
+Status: erledigt durch F45 B5a-2 (24.10.2026) — Server in B5a-1 (GET …/akte liefert `entscheidungen[]` und `hash`), Anzeige in B5a-2: Kachel „Entscheidungen“ in „Verlauf“ (`views/workboard-detail.js` `entscheidungenInhalt`): Zahl, die letzten fünf in Aktenreihenfolge (Kennung als Code, Text ohne Fettung), Link auf die ganze Akte; leer ⇒ „Die Akte nennt noch keine Entscheidungen.“, nie mehr „kommt“.
 Feature/Run: Entdeckt: F46 D3.
 
 **F-998** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8696,5 +8696,59 @@ Beschreibung: (qa 4) Der Körper `unvollstaendig` von GET …/akte trägt seit d
 Fundstelle: `scripts/leitstand/routen-f35.mjs` (`leseFeatureAkteFuerAnzeige`, `findeSperrendenAblauf`, `loeseFeatureAktePfadAuf`, `legeAkteAn`), `src/feature-auftrag/akte-schreiben.ts`, `src/feature-auftrag/index.ts` (`AK_ID_PRAEFIX_MUSTER`), `scripts/check-f45-b5a1-akte.mjs`.
 Auswirkung: Gering bis mittel für B5a-2 (Vorbelegung, Platz neuer Abschnitte, eindeutige 409-Form); sonst gering.
 Maßnahme: qa 4 und die 409-Form mit B5a-2 entscheiden (Teilwerte additiv, Einfügen hinter „## Ziel“); qa 10 mit B5b-1 (Akten-Bereinigung); übrige mit dem nächsten Paket an `routen-f35.mjs`.
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5a-2, `features/F45/plan-b5a2-v2.md`, Advisor B1): qa 4 im Client entschieden als Weg (b) — das Formular startet bei einer unvollständigen Akte leer und trägt fest den Warnhinweis „Speichern ersetzt diese Abschnitte … bzw. legt fehlende neu an“ mit Link auf die Akte; Gate b5a2 (h) belegt an einer Kopie der echten F45-Akte, dass ein unverändert übernommenes Ziel bytegleich bleibt. Teilwerte (additiv, Server) und der Platz neuer Abschnitte bleiben hier offen (B5b-1). Die 409-Form trennt der Client über den Schlüssel (`hash` bzw. `workflowId`); ein Feld `art` bleibt wünschenswert.
 Feature/Run: Entdeckt: F45 B5a-1 (Prüfpass code-reviewer, qa), 23.10.2026.
+
+**F-1178** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Live-Vorschau des Projekts im Leitstand.
+Beschreibung: Die Produktübersicht lädt im Feld „Rolle im Detail · Builder“ die laufende App des gewählten Projekts über `vorschau_url` (iframe mit `sandbox`, CSP `frame-src` nur die geprüfte localhost-URL, Erreichbarkeit aus der F43-Prüfung, keine neue Route, kein Poll), sonst „Start Building“ mit Weg zu „Auftrag & Start“/Coach; „Neu laden“, „In neuem Tab öffnen“; die App startet Stefan selbst. E-VORSCHAU-1 = A (Stefan, 24.10.2026): eigenes Paket „V1 Vorschau (Stufe 1)“ nach B5b-3, vor B3. Hebt das F43-Nicht-Ziel „keine Vorschau im Leitstand selbst“ auf; „kein Start/Stopp dauerlaufender Prozesse“ bleibt. Stufe 2 (Start/Stopp, Auswahl main/Arbeitsordner) nach R.
+Fundstelle: `features/F43/feature.md` (Nicht-Ziele), Produktübersicht (`public/leitstand/views/projekte-uebersicht.js`).
+Auswirkung: Mittel — Stefan sieht das gebaute Ergebnis heute nur in einem eigenen Tab.
+Maßnahme: F45 V1 Vorschau (Stufe 1), `docs/projekt/fixpaket-f45.md`.
+Status: entschieden, offen.
+Feature/Run: Entdeckt: Stefan, 24.10.2026.
+
+**F-1179** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Kein Klärungsinterview vor „Fähigkeit bauen“.
+Beschreibung: Ob vor dem Bau einer Fähigkeit gefragt wird, hängt allein am Modell; Auslöser, Gut-/Schlecht-Beispiele, Grenzen und Erfolgskriterium fragt niemand gezielt ab.
+Fundstelle: `src/product-coach/index.ts` (`baueFeatureRolleninstruktion`).
+Auswirkung: Mittel — eine Fähigkeit ohne geklärten Auslöser und Grenzen greift zu oft oder nie.
+Maßnahme: Klärungsleitfaden im Coach (F45 B5a-2 Punkt 7); verwerfen, wenn R zeigt, dass die Fragen des Architekten reichen.
+Status: offen — umgesetzt in F45 B5a-2 (24.10.2026) als Zeile der Rolleninstruktion des Coachs (`baueFeatureRolleninstruktion`, `src/product-coach/index.ts`; nur Prompt-Ebene, kein Schema-, Lauf- oder Routenwechsel; Test in `product-coach.test.ts`): betrifft das Vorhaben eine Fähigkeit, fragt der Coach vor dem Scope-Entwurf nacheinander Auslöser, Gut-/Schlecht-Beispiel, Grenzen und Erfolgskriterium ab und trägt sie in den Scope ein. Wirkung offen bis R.
+Feature/Run: Entdeckt: Frage Stefan, 23.10.2026.
+
+**F-1180** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Sollvorgabe Roadmap (Entscheidungen Stefan 01.10.2026) nicht in der Challenge B5.
+Beschreibung: Der erste Schnitt von B5b-2 nannte die Roadmap-Sollvorgabe nicht (Ebenen inkl. Spur „Pflege & Fixes“, Zeitachse in AT mit Ist-Zone und Heute-Linie, Farbe = Ebene/Füllung = Status als Tokens, Marker „Schätzung fehlt“, feste linke Spalte, Werkzeugleiste, Detailpanel mit „Anpassen“ und Pflichtbegründung, Kennzahlen R5).
+Fundstelle: `docs/projekt/fixpaket-f45.md` (Zeilen B5b-1, B5b-2).
+Auswirkung: Mittel — ohne Sollvorgabe im Bauauftrag entsteht eine Roadmap, die Stefans Entscheidungen verfehlt.
+Maßnahme: Jeder Bauauftrag B5b-1/B5b-2 trägt die Sollvorgabe im Volltext.
+Status: offen.
+Feature/Run: Entdeckt: Frage Stefan, 23.10.2026.
+
+**F-1181** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: „Auftrag vorbereiten“ direkt auf der Kanban-Karte eines Features.
+Beschreibung: Empfehlung Challenger im Bauauftrag F45 B5a-2 (Punkt 5): den Einstieg „Auftrag vorbereiten“ (`starteBauenFeature`) auch auf der Karte des Boards anbieten. In B5a-2 bewusst weggelassen (Advisor B4): die Karte ist ein `<a class="board-item">` mit eigener Klick-, Fokus- und CSS-Logik (`fokussiereEintrag`, Board-CSS), ein Knopf im Link ist ungültig, `starteBauenFeature` prüft die Sperre nicht selbst, und die Vorlage V10 zeigt keinen solchen Knopf.
+Fundstelle: `public/leitstand/views/workboard.js` (`boardKarte`, `starteBauenFeature`, `auftragsSperre`).
+Auswirkung: Gering — der Einstieg bleibt einen Klick entfernt im Detail.
+Maßnahme: mit B5b (Board) prüfen: Karte als Rahmen mit Link und Knopf, Sperre über `auftragsSperre` beim Klick, design-guardian.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Bauauftrag F45 B5a-2, 24.10.2026.
+
+**F-1182** · `TECH_DEBT` · P3 · offen
+Titel: Coach „Als Feature anlegen“ ohne Rückverweis Turn → Akte — nach Neuladen entsteht eine zweite Akte.
+Beschreibung: Das Ergebnis von „Als Feature anlegen“ lebt nur im Modulspeicher von `views/chat.js` (`featureAnlagen`). Nach einem Neuladen der Seite oder einem Projektwechsel steht der Knopf wieder da; ein zweiter Klick legt mit der nächsten freien Nummer eine weitere Akte an (der Server überschreibt nie, 409 nur im Wettlauf). Ein Erfolg, dessen Antwort nach einem Projektwechsel eintrifft, bleibt unsichtbar. Für Aufträge löst das der Rückverweis F-625 (`verknuepfeSparringAuftrag`) — für Akten braucht es dasselbe auf dem Server.
+Fundstelle: `public/leitstand/views/chat.js` (`renderFeatureAnlage`, `legeFeatureAusEintragAn`), `scripts/leitstand/routen-f35.mjs` (`legeAkteAn`), `scripts/leitstand/routen-sparring.mjs`.
+Auswirkung: Gering — eine doppelte Akte ist eine neue, nicht committete Datei und fällt in `git status` auf.
+Maßnahme: Rückverweis Turn → Akte (Muster F-625) mit dem nächsten Server-Paket an den Akte-Routen; danach „bereits angelegt“ statt Knopf.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5a-2 (Advisor offener Punkt 4, Prüfpass qa 2), 24.10.2026.
+
+**F-1183** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B5a-2 (Prüfpass code-reviewer, qa und design-guardian nach der Korrekturrunde).
+Beschreibung: (qa 6) PUT …/akte ohne Zeitlimit — hängt der Server, bleibt das Formular in „Wird gespeichert …“ (bewusst ohne Abbruch: ein abgebrochener PUT kann trotzdem schreiben). (qa 8) Indizes in Servermeldungen (`akzeptanzkriterien[1]`) zählen die gesendete Liste ohne leere Zeilen, nicht die Zeilen im Formular. (qa 9) „Bearbeiten“ steht auch, während ein verknüpfter Ablauf läuft — erst „Speichern“ meldet 409 Sperre mit Link. (qa 10) „Abbrechen“ verwirft Eingaben ohne Rückfrage. (qa 11) Eine sonst lesbare Akte mit ungültigem Hash zeigt „Bearbeiten“ ohne Erklärung nicht. (qa 12, design 4) „Kurz gesagt“ sagt bei offenem Formular weiter „Du kannst unten einen Auftrag vorbereiten“ bzw. bei unvollständiger Akte „(siehe „Das Was“)“, obwohl der Einstieg gesperrt bzw. die Karte ausgeblendet ist. (cr V1) Wird das Formular während des Speicherns verworfen (anderes Detail/Projekt), steht der Erfolg nur im Log. (Nachweis) Der Ladezähler `akteLadung` ist nur statisch belegt (Gate b5a2 (b6)); der Render-Helfer kann zwei zeitversetzte, verschiedene Antworten auf dieselbe Route nicht nachstellen.
+Fundstelle: `public/leitstand/views/workboard.js` (Abschnitt „Akte bearbeiten“), `public/leitstand/akte-bearbeiten.js`, `public/leitstand/views/workboard-detail.js` (`detailKurzHtml`, `naechstesHtml`), `public/leitstand/api.js` (`speichereFeatureAkte`).
+Auswirkung: Gering — Bedienkomfort und Rückmeldung, kein Datenverlust.
+Maßnahme: mit B5b-1 (Akte und Planung) bündeln — die Kurztexte (qa 12, design 4) zuerst, sie berühren das Leitprinzip; übrige spätestens mit B5c (Aufräumen).
+Status: offen.
+Feature/Run: Entdeckt: F45 B5a-2 (Prüfpass code-reviewer, qa, design-guardian), 24.10.2026.

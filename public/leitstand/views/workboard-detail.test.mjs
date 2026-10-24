@@ -16,6 +16,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   behebungsSchritte,
+  darfAkteBearbeiten,
   detailEyebrowHtml,
   detailInhaltHtml,
   detailJetzt,
@@ -23,6 +24,7 @@ import {
   detailKurzHtml,
   detailSpalteHtml,
   detailStatusBlockHtml,
+  entscheidungText,
   jarvisEntwurf,
   kartenStatus,
   phaseHtml,
@@ -147,7 +149,9 @@ test('Code & Doku Review und Verlauf: Doku echt, Befunde nur laut Feld „Entdec
   assert.match(inhalt, /Änderungen<\/span><\/p><p><a class="text-link" href="#\/code">Im Code-Reiter ansehen/)
   assert.match(inhalt, /ganzen Repos, nicht nur dieses Eintrags/)
   assert.match(inhalt, /Prüfungen[\s\S]*F-962/)
-  assert.match(inhalt, /Entscheidungen[\s\S]*kommt-badge[\s\S]*F-995/)
+  // F45 B5a-2 (F-995): Entscheidungen aus der Akte — ohne Liste „nicht verfügbar“, nie mehr „kommt“.
+  assert.match(inhalt, /Entscheidungen<\/span><\/p><p class="subtle">Die Akte konnte nicht gelesen werden\./)
+  assert.doesNotMatch(inhalt, /F-995/)
   assert.match(inhalt, /<p class="eintrag-zahl">1 <span class="subtle">offen von 2<\/span><\/p>/)
   assert.match(inhalt, /laut Feld „Entdeckt“ im Register/)
   assert.match(inhalt, /href="#\/workboard\/F-11">F-11<\/a> <a class="text-link" href="#\/workboard\/F-10">F-10<\/a>/, 'neueste zuerst, F-12 (F70) nicht')
@@ -348,4 +352,30 @@ test('F45 B2a-2 (F-938): AK-Entwurf wartet auf Stefan — Jetzt-Band „dran-ver
   assert.equal(jetzt.zustand, 'dran-verbunden')
   assert.match(jetzt.html, /Akzeptanzkriterien bestätigen\?/)
   assert.doesNotMatch(jetzt.html, /button primary/)
+})
+
+test('F45 B5a-2 (F-995): Kachel „Entscheidungen“ — letzte fünf in Aktenreihenfolge, Kennung einmal, escaped; leer ruhig', () => {
+  const entscheidungen = Array.from({ length: 7 }, (_, i) => ({ id: `E-F7-${i + 1}`, text: `**E-F7-${i + 1} = A** (Stefan) — Regel <${i + 1}>` }))
+  const inhalt = detailInhaltHtml(sicht({ akte: { ...akte, hash: 'a'.repeat(64), entscheidungen } }))
+  const kachel = inhalt.slice(inhalt.indexOf('eintrag-kachel-entscheidungen'), inhalt.indexOf('Befunde aus diesem Feature'))
+  assert.match(kachel, /<p class="eintrag-zahl">7 /)
+  assert.doesNotMatch(kachel, /E-F7-2</, 'nur die letzten fünf')
+  assert.match(kachel, /<code>E-F7-3<\/code> <span>= A \(Stefan\) — Regel &lt;3&gt;<\/span>/)
+  assert.doesNotMatch(kachel, /kommt-badge|\*\*/)
+  assert.match(detailInhaltHtml(sicht({ akte: { ...akte, entscheidungen: [] } })), /Die Akte nennt noch keine Entscheidungen\./)
+  assert.equal(entscheidungText({ id: 'E-1', text: '**E-1 = B** gilt' }), '= B gilt')
+})
+
+test('F45 B5a-2 (E-F45-1): „Bearbeiten“ nur mit Hash und nicht abgeschlossenem Status aus der Akte; offenes Formular blendet „Das Was“ aus', () => {
+  const mitHash = { ...akte, hash: 'b'.repeat(64), entscheidungen: [] }
+  const unvollstaendig = { status: 'unvollstaendig', grund: 'Ziel fehlt', featureStatus: 'ENTWURF', hash: 'c'.repeat(64), entscheidungen: [] }
+  assert.equal(darfAkteBearbeiten(mitHash), true)
+  assert.equal(darfAkteBearbeiten({ ...mitHash, hash: null }), false)
+  assert.equal(darfAkteBearbeiten({ ...mitHash, featureStatus: 'ABGESCHLOSSEN' }), false)
+  assert.equal(darfAkteBearbeiten(unvollstaendig), true)
+  assert.equal(darfAkteBearbeiten({ status: 'fehler', meldung: 'x' }), false)
+  assert.match(detailInhaltHtml(sicht({ akte: mitHash })), /data-akte-bearbeiten/)
+  assert.doesNotMatch(detailInhaltHtml(sicht({ akte: { ...mitHash, featureStatus: 'ABGEBROCHEN' } })), /data-akte-bearbeiten/)
+  assert.doesNotMatch(detailInhaltHtml(sicht({ akte: mitHash, akteFormularOffen: true })), /id="was-titel"|data-akte-bearbeiten/)
+  assert.match(detailInhaltHtml(sicht({ akte: unvollstaendig })), /Ziel fehlt[\s\S]*data-akte-bearbeiten/)
 })

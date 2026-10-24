@@ -32,6 +32,7 @@
  * - public/leitstand/entwicklung-daten.js (F44 WS-3a: Spalte „Braucht dich“ über filtereAttentionWorkflows;
  *   F44 WS-3b: verknüpfter Ablauf und Phase Freigabe/Rückfrage über baueEntscheidungen)
  * - public/leitstand/views/projekte-uebersicht.js (F44 WS-6a: waehleP0P1 und baueEntscheidungen je Produktkarte)
+ * - public/leitstand/persona-state.js, public/leitstand/views/start.js (F45 B5a-2, F-991: zaehleWartendeAufStefan)
  * - public/leitstand/attention-daten.test.mjs (node:test, baueEntscheidungen)
  */
 
@@ -320,4 +321,17 @@ export function zaehleOffeneEntscheidungen(zustand) {
   const listen = [gruppen.workflows, gruppen.abnahmen, gruppen.laeufe, gruppen.startfehler]
   if (!listen.every(Array.isArray)) return null
   return listen.reduce((summe, liste) => summe + liste.length, 0)
+}
+
+/**
+ * F45 B5a-2 (F-991): Abläufe, die auf Stefan warten — Freigaben, Rückfragen und offene Abnahmen, dieselbe Auswahl wie
+ * „Deine Entscheidungen“ (baueEntscheidungen). Persona („wartet auf dich“) und Wartezeile der Startfläche zählen damit;
+ * Lauf-Fehler und Startprobleme sind dort der Zustand „error“.
+ * @param zustand - Aggregat aus dem Poll, oder null vor dem ersten Tick
+ * @returns Anzahl; eine defekte Quelle (null) zählt nicht
+ */
+export function zaehleWartendeAufStefan(zustand) {
+  if (zustand === null || zustand === undefined) return 0
+  const { gruppen } = baueEntscheidungen(zustand, [])
+  return (Array.isArray(gruppen.workflows) ? gruppen.workflows.length : 0) + (Array.isArray(gruppen.abnahmen) ? gruppen.abnahmen.length : 0)
 }
