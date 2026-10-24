@@ -9500,13 +9500,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
-    // F45 B5b-1b-1 (Zwischenmuster F-1131): Planung schreiben (PUT …/features/<id>/planung, R6) — Erkennung und Ablauf in
-    // scripts/leitstand/routen-planung.mjs, hier die Methode hinter dem zentralen CSRF-Haken und die Rückrufe.
+    // F45 B5b-1b-1/-1b-2 (Zwischenmuster F-1131): PUT …/features/<id>/planung, GET /api/roadmap/bereinigung, POST …/bestaetigen —
+    // Erkennung, erlaubte Methode (verb) und Ablauf in scripts/leitstand/routen-planung.mjs, hier der Vergleich hinter dem CSRF-Haken.
     const planungRoute = erkennePlanungRoute(pfad)
     if (planungRoute !== null) {
-      if (req.method !== 'PUT') return sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
+      if (req.method !== planungRoute.verb) return sendeJson(res, 405, { grund: `Methode ${req.method} für ${pfad} nicht erlaubt` })
       const kontext = { repoWurzel, roadmapPfad, workflows: () => sammleWorkflows(basisVerzeichnis), auftraege: () => sammleAuftraege(basisVerzeichnis) }
-      const antwort = await fuehrePlanungRouteDurch(planungRoute, await leseJsonBegrenzt(req, 65536), kontext)
+      const antwort = await fuehrePlanungRouteDurch(planungRoute, planungRoute.verb === 'GET' ? null : await leseJsonBegrenzt(req, 65536), kontext)
       sendeJson(res, antwort.status, antwort.koerper)
       return
     }

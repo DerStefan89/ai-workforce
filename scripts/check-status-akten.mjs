@@ -13,7 +13,9 @@
  *     (Anlassfall: F19 „FEATURE_GATE“ statt „ABGESCHLOSSEN“) und zeigt auf
  *     eine existierende Akte.
  *
- * Wird aufgerufen von: npm run check (package.json, direkt nach check-docs).
+ * Wird aufgerufen von: npm run check (package.json, direkt nach check-docs);
+ * scripts/check-f45-b5b1b2-bereinigung.mjs (als Prozess in der Attrappe).
+ * Die Standardform liegt seit F45 B5b-1b-2 in src/workboard/status-md.ts.
  *
  * Wichtig — bekannte Grenzen:
  * - Varianten der Standardform erkennt das Gate nicht: „Status: `X`“ mit
@@ -40,13 +42,14 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { sammleStatusMdAngaben } from '../src/workboard/status-md.ts'
 
 const statusPfad = process.argv[2] ?? 'docs/STATUS.md'
 const featuresDir = 'features'
 const pflichtStatus = new Set(['IN_ARBEIT', 'FEATURE_GATE', 'ABGESCHLOSSEN'])
 
-// Standardform; \s* erlaubt die Umbrüche, mit denen STATUS.md Fließtext umbricht.
-const standardForm = /features\/([A-Za-z0-9-]+)\/\s*feature\.md`,?\s*Status\s*`([A-Z_]+)`/g
+// Standardform und Zeilenzählung (Beginn des Treffers): eine Regel mit der Bereinigungsliste (F45 B5b-1b-2,
+// sammleStatusMdAngaben in src/workboard/status-md.ts).
 
 console.log('\n=== STATUS-Akten-Check ===\n')
 
@@ -62,26 +65,12 @@ function leseAktenStatus(inhalt) {
   return treffer ? treffer[1] : null
 }
 
-/**
- * Sammelt alle Standardform-Angaben aus STATUS.md.
- * @param {string} text Inhalt von STATUS.md
- * @returns {{ id: string, genannt: string, zeile: number }[]} je Angabe ID,
- *   genannter Status und 1-basierte Zeilennummer
- */
-function sammleAngaben(text) {
-  return [...text.matchAll(standardForm)].map((t) => ({
-    id: t[1],
-    genannt: t[2],
-    zeile: text.slice(0, t.index).split('\n').length,
-  }))
-}
-
 const befunde = []
 
 if (!existsSync(statusPfad)) {
   befunde.push(`${statusPfad} fehlt`)
 } else {
-  const angaben = sammleAngaben(readFileSync(statusPfad, 'utf-8'))
+  const angaben = sammleStatusMdAngaben(readFileSync(statusPfad, 'utf-8'))
   const akten = existsSync(featuresDir)
     ? readdirSync(featuresDir, { withFileTypes: true })
         .filter((e) => e.isDirectory() && existsSync(join(featuresDir, e.name, 'feature.md')))

@@ -93,8 +93,8 @@ Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, i
   nach einem Lauf der Rolle `ausfuehrung` löscht der Kern ausschließlich geprüfte reguläre Dateien der Löschliste, nur
   innerhalb, nie unter `.git`, `.claude/` oder `kontrollzustand/`; außerdem übernimmt bzw. verwirft er Fähigkeit-Vorschläge
   nur auf Klick (`.claude/`; DEKLARIERT, Pfadprüfung ERZWUNGEN); im Projektordner bleibt der Kern lesend, außer der
-  Feature-Akte und `docs/projekt/roadmap.json` auf Eingabe (F45 B5a-1, B5b-1b-1). Der Fingerabdruck des Review-Stands
-  schreibt weder Index noch `.git/objects` und startet keinen Filter-Treiber. Einzelheiten: `docs/architektur/arbeitsordner.md`.
+  Feature-Akte, `docs/projekt/roadmap.json`, `roadmap-ausnahmen.json` und `docs/STATUS.md` (Status-Wort) auf Eingabe (F45 B5). Der Fingerabdruck des Review-Stands
+  schreibt weder Index noch `.git/objects`, startet keinen Filter-Treiber. Einzelheiten: `docs/architektur/arbeitsordner.md`.
 - Stefans Claude-Code-Bestand liest der Leitstand nur lesend; unser Code schreibt dort nie (Gate f45-f3a (b)). Eine Abweichung
   im Plugin-Datenordner nach einem Lauf ist ein Befund, kein Abbruch.
 - Pauschales Stagen ist in allen Git-Schritten ausgeschlossen.

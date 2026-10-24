@@ -17,7 +17,8 @@
  * (i2) echte Kennzahlen unabhängig nachgezählt: Features abgenommen gegen die Akten, Meilensteine mit offener Bereinigung =
  *     Meilensteine der Ausnahmen, „Bis M5“ nur berechenbar, wenn F30 geschnitten und alles geschätzt ist, prioritaet je Feature;
  * (i) echte Daten: F45 und F30 tragen einen gültigen strengen Abschnitt, F30 ist ENTWURF, die Ausnahme ohne_akte F30 ist weg,
- *     roadmap-ausnahmen.json trägt genau die fünf R1-Ausnahmen, GET /api/roadmap liefert roadmap_hash = sha256 der Datei;
+ *     roadmap-ausnahmen.json trägt nur Ausnahmen aus den fünf der Migration (Teilmenge — B5b-1b-2 entfernt je Bestätigung eine,
+ *     Advisor features/F45/advisor-b5b1b2.md B1; Rot-Nachweis: ein fremdes Paar), GET /api/roadmap liefert roadmap_hash = sha256;
  * (j) Bullet-Altakten bleiben gültig (workstreams null) — keine echte Akte mit Bullet-Abschnitt hat einen Planungsbefund;
  * (k) Server unverändert: scripts/leitstand-server.mjs ruft keine Planungslogik (B5b-1a schreibt nichts).
  * Randfälle der reinen Funktionen belegen src/workboard/feature-planung.test.ts, roadmap-regeln.test.ts,
@@ -223,6 +224,9 @@ try {
     const p30 = lesePlanung(f30)
     const ausnahmen = JSON.parse(readFileSync('docs/projekt/roadmap-ausnahmen.json', 'utf8')).status_ausnahmen
     const paare = ausnahmen.map((a) => `${a.meilenstein}/${a.feature}`).sort()
+    // B5b-1b-2 (Advisor B1): Teilmenge der fünf migrierten Ausnahmen, je mit dem Migrationsgrund — Stefans Bestätigungen entfernen sie.
+    const MIGRIERT = ['M3/F18', 'M4/F20', 'M4/F21', 'M4/F22', 'M4/F25']
+    const nurMigrierte = (liste) => liste.every((a) => MIGRIERT.includes(`${a.meilenstein}/${a.feature}`) && a.grund === GRUND_BEREINIGUNG_OFFEN)
     const projektion = baueRoadmapProjektion({ repoWurzel: process.cwd(), roadmapPfad: 'docs/projekt/roadmap.json' })
     const hash = createHash('sha256').update(readFileSync('docs/projekt/roadmap.json')).digest('hex')
     // Kennzahlen an den echten Daten, unabhängig nachgezählt (qa Lücke (i)) — strukturell, nicht als feste Zahl.
@@ -254,10 +258,10 @@ try {
         pruefeFeatureAkteInhalt(f45).length === 0 &&
         pruefeFeatureAkteInhalt(f30).length === 0 &&
         !AUSNAHMEN.some((a) => a.id === 'F30') &&
-        JSON.stringify(paare) === JSON.stringify(['M3/F18', 'M4/F20', 'M4/F21', 'M4/F22', 'M4/F25']) &&
-        ausnahmen.every((a) => a.grund === GRUND_BEREINIGUNG_OFFEN) &&
+        nurMigrierte(ausnahmen) &&
+        !nurMigrierte([...ausnahmen, { meilenstein: 'M5', feature: 'F45', grund: GRUND_BEREINIGUNG_OFFEN }]) &&
         projektion.roadmap_hash === hash,
-      `(i) echte Daten: F45 (${p45.workstreams?.length} Zeilen) und F30 (ENTWURF, ${p30.workstreams?.length} Zeilen) streng und gültig, keine Ausnahme ohne_akte F30, fünf R1-Ausnahmen, roadmap_hash = sha256 der Datei.`,
+      `(i) echte Daten: F45 (${p45.workstreams?.length} Zeilen) und F30 (ENTWURF, ${p30.workstreams?.length} Zeilen) streng und gültig, keine Ausnahme ohne_akte F30, ${paare.length} R1-Ausnahme(n) ⊆ der fünf migrierten (fremdes Paar ⇒ rot), roadmap_hash = sha256 der Datei.`,
       `(i) F45 ${JSON.stringify(p45.befunde)}, F30 ${JSON.stringify(p30.befunde)} ${JSON.stringify(p30.workstreams)}, Ausnahmen ${JSON.stringify(paare)}, Hash ${projektion.roadmap_hash} ≠ ${hash}?`
     )
   }

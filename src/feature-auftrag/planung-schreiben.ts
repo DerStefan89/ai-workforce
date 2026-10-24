@@ -28,8 +28,7 @@
 
 import { leseFeatureStatus, pruefeFeatureAkteInhalt } from '../workboard/feature-akte-pruefung.ts'
 import { type AktenPrioritaet, lesePlanung, PRIORITAETEN, type Schaetzung, WORKSTREAM_SPALTEN } from '../workboard/feature-planung.ts'
-import { type Ersetzung, erkenneZeilenende, hinterLetzterZeile, pruefeAkteGate, pruefeGrund, SHA256_MUSTER, STATUS_NICHT_BEARBEITBAR, wendeAn } from './akte-schreiben.ts'
-import { findeAbschnitt } from './index.ts'
+import { type Ersetzung, erkenneZeilenende, haengeAenderungAn, pruefeAkteGate, pruefeGrund, SHA256_MUSTER, STATUS_NICHT_BEARBEITBAR, wendeAn } from './akte-schreiben.ts'
 
 /** Obergrenzen (Advisor C3: ohne Grenze schriebe String(n) Exponenten). */
 export const PLANUNG_WORKSTREAM_OBERGRENZE = 100
@@ -228,15 +227,7 @@ export function bearbeitePlanungInAkte(inhalt: string, aenderung: PlanungAenderu
 
   if (geaendert.length === 0) return { ok: false, grund: 'Keine Änderung an Priorität, Meilenstein oder Schätzungen — nichts geschrieben' }
 
-  const aenderungsZeile = `- ${datum} · ${felder.join(', ')} · ${aenderung.grund}`
-  const aenderungen = findeAbschnitt(inhalt, 'Änderungen', true)
-  if (aenderungen === null) {
-    const vorlauf = inhalt.length === 0 || inhalt.endsWith('\n') ? '' : eol
-    ersetzungen.push({ start: inhalt.length, ende: inhalt.length, text: `${vorlauf}${eol}## Änderungen${eol}${aenderungsZeile}${eol}` })
-  } else {
-    const punkt = hinterLetzterZeile(inhalt, aenderungen.kopfEnde, aenderungen.koerperEnde) ?? aenderungen.kopfEnde
-    ersetzungen.push({ start: punkt, ende: punkt, text: `${eol}${aenderungsZeile}` })
-  }
+  ersetzungen.push(haengeAenderungAn(inhalt, `- ${datum} · ${felder.join(', ')} · ${aenderung.grund}`, eol))
   const neu = wendeAn(inhalt, ersetzungen)
 
   // Akte-Gate wie B5a-1 (Advisor B1): jeder Befund blockiert, „schon vorher“ ändert nur die Meldung — dieselbe Funktion.

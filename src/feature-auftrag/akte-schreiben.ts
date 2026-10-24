@@ -21,8 +21,9 @@
  *   unverändert tragen und das Feature-Akte-Gate bestehen (pruefeFeatureAkteInhalt) — sonst 422, nichts geschrieben.
  *
  * Wird aufgerufen von: scripts/leitstand/routen-f35.mjs, src/product-coach/index.ts (Normalisierung, Bullet-Zeilen),
- * src/feature-auftrag/planung-schreiben.ts (pruefeGrund, pruefeAkteGate, wendeAn, hinterLetzterZeile, erkenneZeilenende,
- *   STATUS_NICHT_BEARBEITBAR, SHA256_MUSTER, Ersetzung — F45 B5b-1b-1),
+ * src/feature-auftrag/planung-schreiben.ts (pruefeGrund, pruefeAkteGate, wendeAn, erkenneZeilenende,
+ *   STATUS_NICHT_BEARBEITBAR, SHA256_MUSTER, Ersetzung — F45 B5b-1b-1; haengeAenderungAn seit B5b-1b-2),
+ * src/feature-auftrag/akte-abschliessen.ts (F45 B5b-1b-2),
  * src/feature-auftrag/akte-schreiben.test.ts, scripts/check-f45-b5a1-akte.mjs.
  *
  * Wichtig — bekannte Grenzen (DEKLARIERT): Eine Überschrift in einem Code-Fence vor dem echten Abschnitt und
@@ -312,7 +313,7 @@ function unzulaessigeListenZeile(koerper: string): string | null {
  * @param bis - Ende des Bereichs (exklusiv)
  * @returns Index oder null, wenn der Bereich nur Leerraum trägt
  */
-export function hinterLetzterZeile(inhalt: string, von: number, bis: number): number | null {
+function hinterLetzterZeile(inhalt: string, von: number, bis: number): number | null {
   let i = bis
   while (i > von && /\s/.test(inhalt[i - 1])) i -= 1
   if (i === von) return null
@@ -334,6 +335,25 @@ export function wendeAn(inhalt: string, ersetzungen: Ersetzung[]): string {
   const geordnet = ersetzungen.map((e, rang) => ({ ...e, rang })).sort((a, b) => b.start - a.start || b.rang - a.rang)
   for (const e of geordnet) text = text.slice(0, e.start) + e.text + text.slice(e.ende)
   return text
+}
+
+/**
+ * Ersetzung für eine neue Zeile unter '## Änderungen' (exakte Überschrift, qa 6 B5a-1): hinter der letzten nicht-leeren Zeile des
+ * Abschnitts bzw. hinter der Überschrift; fehlt der Abschnitt, wird er am Dateiende angelegt. Eine Regel für PUT …/planung und die
+ * Bereinigungsliste (F45 B5b-1b-2, Advisor B5); bearbeiteFeatureAkte bleibt eigen, weil es fehlende Abschnitte davor einfügt.
+ * @param inhalt - Originaltext
+ * @param aenderungsZeile - fertige Zeile `- <datum> · <Felder> · <grund>` ohne Zeilenende
+ * @param eol - Zeilenende der Akte
+ * @returns Ersetzung an der Originalfassung
+ */
+export function haengeAenderungAn(inhalt: string, aenderungsZeile: string, eol: string): Ersetzung {
+  const aenderungen = findeAbschnitt(inhalt, 'Änderungen', true)
+  if (aenderungen === null) {
+    const vorlauf = inhalt.length === 0 || inhalt.endsWith('\n') ? '' : eol
+    return { start: inhalt.length, ende: inhalt.length, text: `${vorlauf}${eol}## Änderungen${eol}${aenderungsZeile}${eol}` }
+  }
+  const punkt = hinterLetzterZeile(inhalt, aenderungen.kopfEnde, aenderungen.koerperEnde) ?? aenderungen.kopfEnde
+  return { start: punkt, ende: punkt, text: `${eol}${aenderungsZeile}` }
 }
 
 /**
@@ -391,9 +411,8 @@ export function bearbeiteFeatureAkte(inhalt: string, featureId: string, aenderun
     ersetzungen.push({ start: inhalt.length, ende: inhalt.length, text: `${vorlauf}${eol}${fehlendeBloecke.join('')}${mitEol(['## Änderungen', aenderungsZeile])}` })
   } else {
     if (fehlendeBloecke.length > 0) ersetzungen.push({ start: aenderungen.kopfStart, ende: aenderungen.kopfStart, text: fehlendeBloecke.join('') })
-    // Hinter der letzten nicht-leeren Zeile des Abschnitts (vor deren Zeilenende), sonst hinter der Überschrift.
-    const punkt = hinterLetzterZeile(inhalt, aenderungen.kopfEnde, aenderungen.koerperEnde) ?? aenderungen.kopfEnde
-    ersetzungen.push({ start: punkt, ende: punkt, text: `${eol}${aenderungsZeile}` })
+    // Hinter der letzten nicht-leeren Zeile des Abschnitts (vor deren Zeilenende), sonst hinter der Überschrift (cr 2 B5b-1b-2).
+    ersetzungen.push(haengeAenderungAn(inhalt, aenderungsZeile, eol))
   }
 
   const neu = wendeAn(inhalt, ersetzungen)

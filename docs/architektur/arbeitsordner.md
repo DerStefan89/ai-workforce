@@ -12,8 +12,8 @@ Thema berührt.
   Git-Worktree eines schreibenden Ablaufs ausschließlich über git an und entfernt ihn ebenso (Git-Starter), führt
   darin `npm ci --ignore-scripts` aus und löscht nach einem Lauf der Rolle `ausfuehrung` ausschließlich geprüfte
   reguläre Dateien aus dessen Löschliste — nur innerhalb des Arbeitsordners, nie unter `.git`, `.claude/` oder
-  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — Ausnahmen nur die Feature-Akte und die Roadmap
-  (nächste zwei Punkte).
+  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — Ausnahmen nur die Feature-Akte, die Roadmap und
+  die Bereinigungsliste (nächste drei Punkte).
 - Feature-Akte im Projektordner (F45 B5a-1, E-F45-1, F-912; Entscheidung Stefan 23.10.2026 nach dem Advisor-Pass
   `features/F45/advisor-b5a1.md` A1/A2; `scripts/leitstand/routen-f35.mjs`, Plan `features/F45/plan-b5a1-v2.md`): der Server
   schreibt auf direkte Eingabe ausschließlich `features/<id>/feature.md` der `repoWurzel` des Projekts — PUT
@@ -43,7 +43,24 @@ Thema berührt.
   je Pfad das Ergebnis und „git diff prüfen“). Kein Commit — Git-Block mit allen geänderten Pfaden. DEKLARIERT: Rückbau best
   effort (nichts ist committet), ein Prozessabbruch zwischen zwei Schreibvorgängen bleibt ohne Rückbau, nicht atomar, „nur auf
   Eingabe“ wie beim vorigen Punkt; Ausplanen (`meilenstein: null`) nicht unterstützt; die Ausnahmen-Datei
-  `roadmap-ausnahmen.json` liegt neben `roadmapPfad` und wird hier nur gelesen (Schreiben erst B5b-1b-2).
+  `roadmap-ausnahmen.json` liegt neben `roadmapPfad` und wird hier nur gelesen.
+- Bereinigungsliste (F45 B5b-1b-2, F-1010, R1; Entscheidungen A2/B6/B4 und „Bereinigung nur bestätigt“ in `features/F45/feature.md`,
+  Advisor `features/F45/advisor-b5b1b2.md`, Plan `features/F45/plan-b5b1b2-v2.md`; `scripts/leitstand/routen-planung.mjs`): GET
+  `/api/roadmap/bereinigung` listet nur lesend jede Abweichung der Status-Regel R1 mit den erlaubten Entscheidungen, der Quelle und
+  den Hashes der vier betroffenen Dateien. POST `/api/roadmap/bereinigung/bestaetigen { eintrag, entscheidung, grund, hashes }`
+  schreibt auf direkte Eingabe genau einen Eintrag: „Feature → ABGESCHLOSSEN“ setzt in der Akte das Status-Wort, die Zeile
+  `Abgenommen: <Tag der Bestätigung>` und eine Zeile unter `## Änderungen` (Regeln der Feature-Akte), in `docs/STATUS.md` nur das
+  Status-Wort genau einer Standardform „`features/<id>/feature.md`, Status `<WERT>`“ (Regel von `scripts/check-status-akten.mjs`)
+  und entfernt die Ausnahme-Zeile aus `roadmap-ausnahmen.json`; „Meilenstein → LAEUFT“ (nur bei genau einer Abweichung im
+  Meilenstein) setzt nur den Status-Wert des Meilensteins in `roadmap.json` und entfernt die Ausnahme — ohne Änderungszeile, der
+  Grund steht in der Commit-Nachricht des Git-Blocks. ERZWUNGEN (Gate f45-b5b1b2): genau ein Eintrag (400), Pflichtgrund (400),
+  Sperre (409), Hash je Datei (409), CRLF in jedem Schreibziel außer der Akte ⇒ 422 (A3; §7 bleibt), STATUS.md mehrdeutig oder
+  ohne Angabe der ID bei vorhandener Konvention ⇒ 422 „STATUS.md von Hand“, R1 vor dem Schreiben auf dem neuen Stand (nur neue
+  Befunde blockieren, der Eintrag ist danach keine Abweichung), Akte-Gate wie B5a-1, Rest jeder Datei bytegleich, Rücklesen und
+  Rückbau wie beim vorigen Punkt; Git-Block mit allen geänderten Pfaden. DEKLARIERT: fehlt STATUS.md oder trägt sie keine einzige
+  Standardform (Fremdprojekt), wird sie übersprungen (Hinweis in der Antwort); ein Abbruch zwischen zwei Schreibvorgängen
+  hinterlässt einen R1-roten, sichtbaren Teilstand; die Sperre gilt auch für „Meilenstein → LAEUFT“; Überschriften und Freitext
+  in STATUS.md bleiben Handarbeit; Rückbau best effort, nicht atomar, „nur auf Eingabe“.
 - Fähigkeit-Vorschläge (F45 FB-1b, F-1167, E-FB1-2/-3, `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`, Plan
   `features/F45/plan-fb1b-v2.md`): außerdem bewegt bzw. löscht der Server auf direkte Eingabe (POST
   `…/workflows/<id>/faehigkeit-vorschlag/uebernehmen|verwerfen { typ, name, hash }`) einen Vorschlag des Laufs. Übernehmen
