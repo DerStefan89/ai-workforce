@@ -27,6 +27,7 @@ import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-reg
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { skaliert } from './_zeitfaktor.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 
 /** git für Testaufbauten (Tests liegen außerhalb des Git-Starter-Gates). */
@@ -34,8 +35,8 @@ function git(cwd, argumente) {
   return execFileSync('git', argumente, { cwd, encoding: 'utf8' })
 }
 
-/** Wartet, bis pruefen() einen Wert ungleich null/false liefert. */
-async function warteBis(pruefen, maxMs = 15000) {
+/** Wartet, bis pruefen() einen Wert ungleich null/false liefert (Grenze skalierbar, AIW_TEST_ZEITFAKTOR). */
+async function warteBis(pruefen, maxMs = skaliert(15000)) {
   const start = Date.now()
   let wert = await pruefen()
   while (!wert && Date.now() - start < maxMs) {
@@ -71,7 +72,7 @@ function baueUmgebung({ pruefSkript = null, packageJson = null } = {}) {
     `require('fs').appendFileSync(${JSON.stringify(cwdDatei)}, process.cwd() + '\\n'); process.exit(0)`
   const basisVorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
   const startvorlagePfad = join(basis, 'startvorlage.json')
-  writeFileSync(startvorlagePfad, JSON.stringify({ ...basisVorlage, pruefbefehl: [process.execPath, '-e', skript.replaceAll('ZAEHLER', JSON.stringify(zaehler)).replaceAll('CWDDATEI', JSON.stringify(cwdDatei))], pruefZeitgrenzeMs: 20000 }, null, 2))
+  writeFileSync(startvorlagePfad, JSON.stringify({ ...basisVorlage, pruefbefehl: [process.execPath, '-e', skript.replaceAll('ZAEHLER', JSON.stringify(zaehler)).replaceAll('CWDDATEI', JSON.stringify(cwdDatei))], pruefZeitgrenzeMs: skaliert(20000) }, null, 2))
   const basisVerzeichnis = join(basis, 'kontrollzustand')
   return { basis, repoWurzel, startvorlagePfad, basisVerzeichnis, cwdDatei, vorlage: ladeStartvorlage(startvorlagePfad) }
 }

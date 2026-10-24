@@ -3950,7 +3950,7 @@ riskanter zu ändern; String-Match-Gates brechen bei jeder Restrukturierung,
 unabhängig davon, ob funktional etwas kaputt ist.
 Maßnahme: Aufteilungsentscheidung spätestens vor F25 treffen, nicht in
 F22.
-Status: offen. Nachtrag F45 W1 (16.10.2026, Entscheidung Stefan E-WART-1 = A): P2 → P1. Stand: 13 455 Zeilen (nächstgrößte Datei ≈ 3 500). Ausgelagert ist bisher nur Logik (`scripts/leitstand/routen-f39.mjs` als erste, dazu weitere `routen-*.mjs` mit Projektionen und Formprüfungen); der Dispatch liegt weiter vollständig im Server. **W1 erledigt:** Gate `scripts/check-wachstumsbremse-server.mjs` mit straffer Ratsche — Zeilen = Grenze (13 455), Grenze und Routen-Bestand (`scripts/wachstumsbremse-server.json`, 38/8/14/5 Literale je Art) dürfen gegenüber main nur sinken, neue Routen-Literale nur in `scripts/leitstand/routen-*.mjs`; Regel und Durchsetzungsgrad in ARCHITECTURE.md §1; die CI checkt mit `fetch-depth: 0` aus und prüft so auch das Anheben von Grenze und Bestand gegen main ((a2)/(b2)); Rot-Nachweis (a2)/(b2) mit echtem git als Challenger-Cloud-Prüfung nach dem Push (`features/F45/nachweise/w1/rot-nachweis.md`), (a1)/(a3)/(b1)/(b3) rot gegen Kopien. Maßnahme: Aufteilung im Aufräumpaket **W2** (nach B3, vor R; fixpaket-f45 §3): Server in Module, Obergrenze je Datei als Gate, Invariante `starteWorkflowSchritt(`/F-228 über alle Routen-Module neu definieren.
+Status: offen. Nachtrag F45 W1 (16.10.2026, Entscheidung Stefan E-WART-1 = A): P2 → P1. Stand: 13 455 Zeilen (nächstgrößte Datei ≈ 3 500). Ausgelagert ist bisher nur Logik (`scripts/leitstand/routen-f39.mjs` als erste, dazu weitere `routen-*.mjs` mit Projektionen und Formprüfungen); der Dispatch liegt weiter vollständig im Server. **W1 erledigt:** Gate `scripts/check-wachstumsbremse-server.mjs` mit straffer Ratsche — Zeilen = Grenze (13 455), Grenze und Routen-Bestand (`scripts/wachstumsbremse-server.json`, 38/8/14/5 Literale je Art) dürfen gegenüber main nur sinken, neue Routen-Literale nur in `scripts/leitstand/routen-*.mjs`; Regel und Durchsetzungsgrad in ARCHITECTURE.md §1; die CI checkt mit `fetch-depth: 0` aus und prüft so auch das Anheben von Grenze und Bestand gegen main ((a2)/(b2)); Rot-Nachweis (a2)/(b2) mit echtem git als Challenger-Cloud-Prüfung nach dem Push (`features/F45/nachweise/w1/rot-nachweis.md`), (a1)/(a3)/(b1)/(b3) rot gegen Kopien. Maßnahme: Aufteilung im Aufräumpaket **W2** (nach B3, vor R; fixpaket-f45 §3): Server in Module, Obergrenze je Datei als Gate, Invariante `starteWorkflowSchritt(`/F-228 über alle Routen-Module neu definieren. Nachtrag 24.10.2026 (F45 T): Stand 13 240 Zeilen (nach den Auslagerungen bis B5b-1b-1). Folgen: in einer Sitzung nicht als Ganzes lesbar; Pakete stören sich an derselben Datei (jedes Paket bezahlt neue Zeilen durch Auslagern, W1-Ratsche); Prüfer (Advisor, code-reviewer, qa) sehen nur Ausschnitte. Maßnahme unverändert W2: Routen nach Bereichen in Module schneiden, schreibende Aufrufe gebündelt (F-228).
 Feature/Run: F22-Challenge, 14.09.2026.
 
 **F-372** · `TECH_DEBT` · P2 · offen
@@ -8465,8 +8465,8 @@ Beschreibung: Am 18.10.2026 brach `npm run check` in der Claude-Code-Sitzung in 
 Fundstelle: `package.json` (Skripte „check“, „check:gates“, „test“).
 Auswirkung: Mittel — die volle Kette läuft in der Bausitzung nicht verlässlich; Bauaufträge fahren deshalb nur betroffene Gates, den vollen Lauf fährt Stefan im Commit-Block.
 Maßnahme: Speicherspitze und Laufzeit je Teil messen (Gates einzeln, Testlauf mit `--test-concurrency` 4/2/1), danach eine kleinere Grenze nur für die Sitzung (eigenes Skript) oder schwere Gates entkoppeln. Nur Eintrag, nicht umgesetzt (Auftrag B2b-4a-1).
-Status: offen.
-Feature/Run: Entdeckt: F45 B2b-3b-2b-2b-2b-2 (Commit-Block), 18.10.2026; eingetragen F45 B2b-4a-1, 19.10.2026.
+Status: offen — nur noch „Umgebung reicht nicht“. Nachtrag 24.10.2026 (F45 T, Messung `features/F45/nachweise/t/messung.md`): strikt seriell gemessen (`scripts/messe-check.mjs`, jeder Befehl einzeln) 266 von ≈ 321 Befehlen (alle 122 Gates, 144 von 199 Testdateien), alle grün; kein Node-Prozess über 270 MB (`check-f15-workflow.mjs`), größter Anstieg des Systemverbrauchs ≈ 450 MB (`src/arbeitsordner/arbeitsordner.test.ts`). Trotzdem beendete Claude Code die Messung, weil der Rechner im Leerlauf der Sitzung zu wenig freien Speicher hatte. Befund: der Speicherdruck kommt aus der Umgebung (Sitzung, Subagenten, Rechner), nicht aus einzelnen Gates — kein Gate wird dafür umgebaut. Maßnahme neu: der volle Lauf gehört grundsätzlich ins frische Terminal (Commit-Block, E-PRUEF-1 = A, F-1194); in der Sitzung nur Einzel-Gates und `npm run test`. Seit F45 T laufen die schweren Testdateien seriell (`scripts/teste.mjs`, F-1186), die Testsuche über git spart ≈ 95 s (F-1193).
+Feature/Run: Entdeckt: F45 B2b-3b-2b-2b-2b-2 (Commit-Block), 18.10.2026; eingetragen F45 B2b-4a-1, 19.10.2026; gemessen F45 T, 24.10.2026.
 
 **F-1155** · `TECH_DEBT` · P3 · offen
 Titel: „Noch nicht auf main“ ist nicht „ungepusht“ — gepusht und gemergt werden lokal nicht erkannt.
@@ -8771,7 +8771,7 @@ Maßnahme: Helfer-Zwillinge mit W2 zusammenführen; R1/ABGEBROCHEN/Meilenstein-Z
 Status: offen. Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): ABGEBROCHEN ist entschieden (zählt nicht zur Gesamtmenge „Features abgenommen“, Gegenprobe im Test); Meilenstein-Zählung bleibt wie gebaut. Übrige Punkte offen.
 Feature/Run: Entdeckt: F45 B5b-1a (Prüfpass code-reviewer, qa), 24.10.2026.
 
-**F-1186** · `BUG` · P2 · offen
+**F-1186** · `BUG` · P2 · offen (behoben durch serielle Gruppe, Bestätigung über Stefans Läufe offen)
 Titel: Zwei Tests mit Wartezeit fallen unter Last aus.
 Beschreibung: `scripts/leitstand-arbeitsordner.test.mjs:378` (wartet ≈ 17,8 s auf BEREIT) und `scripts/leitstand/routen-code.test.mjs:333` (git-Timeout ≈ 32 s) scheiterten im vollen `npm run check` (24.10.2026, B5b-1a), einzeln 26/26 grün; `routen-code` fiel bereits in B5a-2 so aus. Folge: der Commit-Block bricht ohne echten Fehler ab.
 Nachstellen: voller `npm run check` auf Stefans Rechner (erst die Gates, dann `node --test --test-concurrency=4` über alle Testdateien).
@@ -8782,8 +8782,8 @@ Regressionstest: offen (Wartegrenzen über den Testlauf einstellbar, dann ein La
 Fundstelle: `scripts/leitstand-arbeitsordner.test.mjs:378`, `scripts/leitstand/routen-code.test.mjs:333`, `package.json` (`test`: `--test-concurrency=4`).
 Auswirkung: Mittel — ein grüner Stand wirkt rot, der Commit-Block bricht ab, Stefan muss einzeln nachprüfen.
 Maßnahme: Wartegrenzen über den Testlauf einstellbar machen oder die beiden Dateien seriell laufen lassen; Bezug zum Speicher-/Last-Finding.
-Status: offen.
-Feature/Run: Entdeckt: F45 B5b-1a (voller `npm run check` durch Stefan), 24.10.2026; eingetragen mit B5b-1b-1.
+Status: behoben durch serielle Gruppe, Bestätigung über Stefans Läufe offen. Nachtrag 24.10.2026 (F45 T): dieselbe Art Ausfall auch in B5b-1b-1 und B5b-1b-2 — `scripts/leitstand/routen-code.test.mjs:409` (git-Zeitgrenze, Testdauer ≈ 21–32 s, danach „Cannot read properties of undefined (reading 'anzahl')“: `baueCodeProjektion` liefert bei Zeitüberschreitung `nicht_verfuegbar` ohne `dateien`) und `scripts/leitstand/routen-harness-abgleich.test.mjs:211` (fetch failed, ECONNRESET nach ≈ 16 s); voller Lauf 5,8 → 7,8 min. Ursache: Last durch parallele Testdateien; einzeln laufen alle grün (Messung `features/F45/nachweise/t/messung.md`). Behebung: `npm run test` = `scripts/teste.mjs` — sechs schwere Dateien (die drei hier plus `src/arbeitsordner/arbeitsordner.test.ts`, `scripts/leitstand/routen-faehigkeit-vorschlag.test.mjs`, `src/claude-code-gateway/claude-code-gateway.test.ts`, explizite Liste) laufen nach der parallelen Gruppe seriell; die Wartegrenzen der drei Tests sind über `AIW_TEST_ZEITFAKTOR` skalierbar (`scripts/_zeitfaktor.ts`, Standard 1, kein Faktor gesetzt). Regressionstest: `scripts/teste.test.mjs`, `scripts/_zeitfaktor.test.ts`; die Bestätigung unter Last sind Stefans drei volle Läufe (P4) im frischen Terminal.
+Feature/Run: Entdeckt: F45 B5b-1a (voller `npm run check` durch Stefan), 24.10.2026; eingetragen mit B5b-1b-1; behoben F45 T, 24.10.2026.
 
 **F-1187** · `TECH_DEBT` · P3 · offen
 Titel: Verschieben ist kein Bereinigungsweg.
@@ -8811,3 +8811,48 @@ Auswirkung: Gering — nichts wird falsch geschrieben; ein angebotener Vorschlag
 Maßnahme: in B5b-2 (Anzeige) Vorprüfung je Vorschlag, Hinweise zu Datum und Freitext, Unterscheidung offen/begründet entscheiden; Sperr-Meldung je Ziel mit W2.
 Status: offen.
 Feature/Run: Entdeckt: F45 B5b-1b-2 (Prüfpass code-reviewer, qa), 24.10.2026.
+
+**F-1190** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Gates prüfen Codeform statt Verhalten; voller Lauf zu schwer.
+Beschreibung: 121 Prüfskripte (`scripts/check-*.mjs`, 122 Befehle in `check:gates`); der volle Lauf dauert ≈ 6–8 min (5,8 → 7,8 min über B5b-1a bis B5b-1b-2). Einzeln gemessen tragen die Gates ≈ 704 s, 144 Testdateien ≈ 335 s (Messung `features/F45/nachweise/t/messung.md`). Ein Teil der Gates erzwingt eine Codeform statt ein Verhalten, z. B. Gate b5b1b1 (m) „routen-planung.mjs wertet die Methode nicht aus“ (`.methode` nicht im Routen-Modul) oder Muster auf einfache Anführungszeichen (F-1161: ein Formatierer-Lauf bricht sie, ohne dass etwas kaputt ist). Solche Gates machen Umbauten (W2) teuer: jeder Schnitt kostet Gate-Pflege statt Prüfung.
+Fundstelle: `package.json` (`check:gates`), `scripts/check-f45-b5b1b1-planung-schreiben.mjs` (m), F-1161.
+Auswirkung: Mittel — langer Commit-Block; Umbauten werden durch Formvorgaben gebremst.
+Maßnahme: W2 — Inventur je Gate (Verhalten / Struktur-Invariante bewusst / Codeform ersetzen), Codeform-Gates durch Verhaltensprüfungen ersetzen, Gates mit eigenem Server bündeln; Ziel voller Lauf ≤ 3 min.
+Status: offen.
+Feature/Run: Entdeckt: F45 T (Auftrag Challenger), 24.10.2026.
+
+**F-1191** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: ARCHITECTURE.md am Deckel — §2 als Liste wächst je Schreibweg.
+Beschreibung: ARCHITECTURE.md hat 17 798 von 17 800 B (Deckel aus F45 K, Gate `scripts/check-f45-k-kontext.mjs` (a1)/(a2)) und wurde dreimal gekürzt, um Platz für neue Schreibwege in §2 zu schaffen (B5a-1, B5b-1b-1, B5b-1b-2). §2 zählt jede erlaubte Schreibstelle einzeln auf; jeder neue Schreibweg kostet Bytes im Kern.
+Fundstelle: `ARCHITECTURE.md` §2, `scripts/check-f45-k-kontext.mjs`.
+Auswirkung: Mittel — jedes Paket mit neuem Schreibweg muss den Kern kürzen; der nächste Schreibweg passt nicht mehr ohne Streichung.
+Maßnahme: W2 — §2 auf den Grundsatz und einen Verweis auf eine abschließende Liste in `docs/architektur/arbeitsordner.md` kürzen; ein Gate prüft jede Schreibstelle im Code gegen diese Liste.
+Status: offen.
+Feature/Run: Entdeckt: F45 T (Auftrag Challenger), 24.10.2026.
+
+**F-1192** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Vendorte Fremd-Skills veralten unbemerkt.
+Beschreibung: `.claude/skills/ponytail/` steht auf v4.8.4, upstream ist v5.3.2 (Angabe Challenger, `git ls-remote` 24.10.2026). Es gibt keine Prüfspur über den Skill `werkzeug-auswahl` (`state/tooling.md` Z. 20: „[Annahme] vor diesem Programm übernommen“) und keinen Abgleich, der eine neue Version meldet.
+Fundstelle: `.claude/skills/ponytail/`, `state/tooling.md` Z. 20.
+Auswirkung: Gering — die alte Version wirkt weiter; Fehlerbehebungen und Änderungen upstream fehlen unbemerkt.
+Maßnahme: Update über den Skill `werkzeug-auswahl` in einem eigenen Auftrag. **Entscheidung Stefan offen:** monatlicher Versionsabgleich vendorter Skills ja/nein.
+Status: offen.
+Feature/Run: Entdeckt: F45 T (Auftrag Challenger), 24.10.2026.
+
+**F-1193** · `TECH_DEBT` · P3 · offen
+Titel: Gitignorierte Restordner verlangsamen Werkzeuge.
+Beschreibung: Im Repo-Baum liegen gitignoriert `kontrollzustand-roh/` (12 784 Dateien, echte Rohströme der Läufe — NICHT löschbar, der Kontrollzustand verweist über Inhalts-Hash darauf) und 18 Ordner `kontrollzustand-test-*` (Testreste, F-590). Jedes Werkzeug, das den Baum durchläuft, zahlt dafür: die eigene Dateisuche von `node --test` brauchte ≈ 96 s, bevor ein Test lief (`kontrollzustand-roh/` ≈ 44 s, die neun `kontrollzustand-test-f1x-*` je ≈ 6 s; Messung `features/F45/nachweise/t/messung.md`). Der Testlauf umgeht das seit F45 T (`scripts/teste.mjs` sucht über `git ls-files`, 1,2 s); andere Baumläufe bleiben betroffen, und der Rohstrom-Ordner wächst je echtem Lauf.
+Fundstelle: `kontrollzustand-roh/`, `kontrollzustand-test-*` (Repo-Wurzel, `.gitignore`), `scripts/_aufraeumen.ts` (F-590).
+Auswirkung: Gering bis mittel — Laufzeit lokaler Werkzeuge wächst mit jedem Lauf.
+Maßnahme: W2 — Testreste aufräumen bzw. den Aufräumpfad reparieren (F-590); Rohströme bleiben, ggf. Ablage außerhalb des Repo-Baums prüfen.
+Status: offen.
+Feature/Run: Entdeckt: F45 T (Messung), 24.10.2026.
+
+**F-1194** · `PROCESS_IMPROVEMENT` · P2 · erledigt (Prozess festgelegt, E-PRUEF-1 = A)
+Titel: Challenger-Prüfung vor dem Merge war ausgedünnt.
+Beschreibung: Bei B5b-1a bis B5b-1b-2 wurde ohne Hinweis an Stefan auf die volle Cloud-Prüfung des Challengers verzichtet. Die PR-CI kann der Challenger mangels API-Zugriff nicht sehen. Aufgefallen durch Nachfrage Stefans, 24.10.2026. Bezug F-956 (Merge vor der Challenger-Prüfung, F44).
+Fundstelle: Merge-Ablauf B5b-1a (#376), B5b-1b-1 (#377), B5b-1b-2 (#378); `docs/projekt/fixpaket-f45.md` §3 (Prüfmodus).
+Auswirkung: Mittel — die vereinbarte Prüftiefe vor dem Merge war nicht mehr gegeben, ohne dass Stefan es wusste.
+Maßnahme: E-PRUEF-1 = A (Stefan, 24.10.2026) — vor jedem Merge gelten genau: (1) Stefans lokaler voller Lauf im Commit-Block, (2) inhaltliche Prüfung des gepushten Diffs durch den Challenger (Dateiliste, Kernstellen gegen Auftrag, Invarianten), (3) grüne PR-CI (`.github/workflows/ci.yml`: `npm run check` auf ubuntu-latest mit Node 24 + gitleaks). Der Cloud-Testlauf des Challengers entfällt. Festgehalten in `features/F45/feature.md` (Entscheidungen) und `docs/projekt/fixpaket-f45.md` §3.
+Status: erledigt (Prozess festgelegt).
+Feature/Run: Entdeckt: Nachfrage Stefan, 24.10.2026; festgelegt F45 T.

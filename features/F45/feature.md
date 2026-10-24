@@ -62,6 +62,7 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **B5b-1b-2 ohne Schnitt** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel; Advisor `features/F45/advisor-b5b1b2.md` B6) — ein Durchgang mit den Kürzungen des Advisors (F-1188-Restfälle draußen, Ausnahme zeilenbasiert entfernen, gemeinsamer Helfer für die Änderungszeile); Schätzung 0,45–0,6 AT.
 - **A1 B5b-1b-2 = Weg (b)** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — CRLF in `docs/STATUS.md` ⇒ 422 „von Hand“ (analog A3); keine Ausnahme in ARCHITECTURE.md §7, nur die §2-Ergänzung um `roadmap-ausnahmen.json` und `docs/STATUS.md` (Deckel 17 800 B eingehalten).
 - **A2 B5b-1b-2 = dynamisch** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — „Meilenstein → LAEUFT“ wird angeboten, sobald der Meilenstein im aktuellen Stand genau eine R1-Abweichung hat (auch M4 nach drei Einzelbestätigungen); kein Sonderverbot.
+- **E-PRUEF-1 = A** (Stefan, 24.10.2026) — Vor jedem Merge gelten genau drei Prüfungen: (1) Stefans lokaler voller Lauf im Commit-Block, (2) inhaltliche Prüfung des gepushten Diffs durch den Challenger (Dateiliste, Kernstellen gegen Auftrag, Invarianten), (3) grüne PR-CI (`.github/workflows/ci.yml`: `npm run check` auf ubuntu-latest mit Node 24 + gitleaks). Der Cloud-Testlauf des Challengers entfällt. Anlass: bei B5b-1a bis B5b-1b-2 war die Prüfung ohne Hinweis an Stefan ausgedünnt; Finding F-1194.
 
 ## Scope
 
@@ -142,6 +143,7 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | B5b-1a | fixpaket | Planungsdaten lesen | erledigt | 0,4–0,5 | – | 2026-10-24 | 2026-10-24 | B5b-1 (0,6–0,8) geteilt nach dem Advisor-Pass (A1, Challenger 24.10.2026); gemergt #376 |
 | B5b-1b-1 | fixpaket | Planung schreiben | erledigt | 0,3–0,4 | – | 2026-10-24 | 2026-10-24 | B5b-1b (0,35–0,45) geteilt nach dem Advisor-Pass (`advisor-b5b1b.md` A1, Challenger 24.10.2026); gemergt #377 |
 | B5b-1b-2 | fixpaket | Bereinigungsliste | laeuft | 0,45–0,6 | – | 2026-10-24 | – | aus B5b-1b geteilt (A1); vorher 0,3–0,4, korrigiert nach dem Advisor-Pass (`advisor-b5b1b2.md` B6, ohne Schnitt) |
+| T | fixpaket | Tests stabil | laeuft | 0,2–0,3 | – | 2026-10-24 | – | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154) |
 | B5b-2 | fixpaket | Roadmap-Anzeige | geplant | 1–1,4 | – | – | – | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“ |
 | B5b-3 | fixpaket | R7: Ist nach Abnahme | geplant | 0,3 | – | – | – | |
 | V1 | workstream | Live-Vorschau des Projekts im Leitstand | geplant | 0,3–0,5 | – | – | – | E-VORSCHAU-1 = A |
