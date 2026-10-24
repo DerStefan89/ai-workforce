@@ -91,6 +91,27 @@ test('parseFindings: leerer Inhalt liefert leere Listen, keinen Wurf', () => {
   assert.deepStrictEqual(parseFindings(''), { workitems: [], befunde: [] })
 })
 
+test('parseFindings: optionale Bug-Felder (F45 B5b-1a, F-975) — gesetzt, mehrzeilig, fehlend = null', () => {
+  const text = [
+    '**F-1** · `BUG` · P1 · offen',
+    'Titel: Fehler.',
+    'Nachstellen: Schritt 1',
+    'Schritt 2',
+    'Erwartet: A',
+    'Tatsächlich: B',
+    'Ursache: C',
+    'Regressionstest: `x.test.ts`',
+    '',
+    '**F-2** · `BUG` · P2 · offen',
+    'Titel: ohne Felder.',
+  ].join('\n')
+  const { workitems, befunde } = parseFindings(text)
+  assert.deepStrictEqual(befunde, [])
+  assert.equal(workitems[0].nachstellen, 'Schritt 1\nSchritt 2')
+  assert.deepStrictEqual([workitems[0].erwartet, workitems[0].tatsaechlich, workitems[0].ursache, workitems[0].regressionstest], ['A', 'B', 'C', '`x.test.ts`'])
+  assert.deepStrictEqual([workitems[1].nachstellen, workitems[1].erwartet, workitems[1].tatsaechlich, workitems[1].ursache, workitems[1].regressionstest], [null, null, null, null, null])
+})
+
 // ─── normalisiereStatus ─────────────────────────────────────────────────────
 
 test('normalisiereStatus: OFFEN/ERLEDIGT/SONSTIGES-Zuordnung', () => {

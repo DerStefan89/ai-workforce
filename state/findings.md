@@ -6905,7 +6905,7 @@ Beschreibung: Der Auftrag WS-3a verlangt „Kanban · Priorität“ als „kommt
 Fundstelle: `public/leitstand/views/workboard.js` (baueFesteBedienung, `#workboard-modi`); `docs/design/abgleich-f725.md` §4 Punkt 4.
 Auswirkung: Mittel — ohne Entscheidung bleibt eine dokumentierte Zusage unerfüllt; die Daten lädt die Seite bereits.
 Maßnahme: Stefan entscheidet: (a) in WS-3b ein lesendes Prioritäts-Kanban (Spalten P0–P4 und „ohne Priorität“ aus den ungefilterten Workitems, Ziehen und Auswahlfelder „kommt“) oder (b) §4 Punkt 4 anpassen und E2 bleibt „kommt“.
-Status: entschieden (Stefan, 01.10.2026): E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert, keine Daten). Ein nur lesendes Prioritäts-Kanban ist Kandidat für das Fixpaket „Arbeitsfähigkeit“ (Baustein B5 Feature-Fluss) — dort neu bewerten. Vermerk in `docs/design/abgleich-f725.md` §4 Punkt 4 und `features/F44/feature.md` (Stand WS-3a). Vermerk (01.10.2026): entschieden: wird gebaut (Stefan, 01.10.2026), Fixpaket ‚Arbeitsfähigkeit‘ Baustein B5. Erst lesend, dann Ziehen = Prioritätsänderung mit Pflichtbegründung; Features bekommen ein Prioritätsfeld in der Akte.
+Status: entschieden (Stefan, 01.10.2026): E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert, keine Daten). Ein nur lesendes Prioritäts-Kanban ist Kandidat für das Fixpaket „Arbeitsfähigkeit“ (Baustein B5 Feature-Fluss) — dort neu bewerten. Vermerk in `docs/design/abgleich-f725.md` §4 Punkt 4 und `features/F44/feature.md` (Stand WS-3a). Vermerk (01.10.2026): entschieden: wird gebaut (Stefan, 01.10.2026), Fixpaket ‚Arbeitsfähigkeit‘ Baustein B5. Erst lesend, dann Ziehen = Prioritätsänderung mit Pflichtbegründung; Features bekommen ein Prioritätsfeld in der Akte. Vermerk 24.10.2026 (E-KANBAN = A, Challenger, Bauauftrag B5b-1): erfüllt (a) — lesendes Prioritäts-Kanban P0–P4 + „ohne Priorität“ in B5b-2, erweitert: Features erscheinen mit ihrer Zeile „Priorität:“ aus der Akte (Daten seit B5b-1a); Ziehen bleibt Teil 2 (B5b′).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian), 01.10.2026.
 
 **F-918** · `TECH_DEBT` · P3 · entschieden
@@ -7059,7 +7059,7 @@ Beschreibung: Jedes Feature, jeder Workstream, jedes Finding und jeder Meilenste
 Fundstelle: Feature-Akten (Pakettabelle), `state/findings.md`, Roadmap-Ansicht.
 Auswirkung: Mittel — ohne Schätzungen keine belastbare Planung bis V0.9/V1.0.
 Maßnahme: im Fixpaket „Arbeitsfähigkeit“ B5 bauen (≈ 3–4 Arbeitstage zusammen mit dem Prioritäts-Kanban, F-917); Schätzung wird Teil des Arbeitspakets (F-938). Bis dahin schätzt der Challenger je Workstream.
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Server-/Datenteil gebaut: Schätzung min–max je Workstream in der Akte, Zeitachse in AT ab heute aus Reihenfolge × Schätzung mit „frühestens ab AT x“ ohne Länge, Ist-Zone aus Abgenommen/Begonnen/Ist, „Plan gegen Ist“ (`src/workboard/roadmap-planung.ts`, GET /api/roadmap `zeitachse`/`kennzahlen`). Bewusst nicht: Standardwerte je Priorität für Findings (Sollvorgabe Stefan 01.10.2026: ohne Schätzung kein Balken). Restpunkt: Anzeige B5b-2.
 Feature/Run: Entscheidung Stefan, 01.10.2026 (Challenge F44 WS-5).
 
 **F-945** · `TECH_DEBT` · P3 · offen
@@ -7212,7 +7212,7 @@ Beschreibung: Ein Bug ist Fließtext im Register. Es fehlen Nachstellen, Erwarte
 Fundstelle: `state/findings.md` (Format der Einträge); Eintrag im Detail (F46 D3).
 Auswirkung: Gering — die Bug-Ansicht kann nur Text zeigen, Vollständigkeit ist nicht prüfbar.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“ B5.
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Server-/Datenteil erledigt: der Findings-Parser erkennt optional Nachstellen, Erwartet, Tatsächlich, Ursache, Regressionstest (E-B5-5: keine Pflicht, keine Rückmigration); /api/workitems liefert sie. Restpunkt: Anzeige B5b-2.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-976** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -7221,7 +7221,7 @@ Beschreibung: Workstreams stehen nur als Tabellen und Abschnitte in den Akten.
 Fundstelle: `features/<id>/feature.md` (Workstream-Tabellen); Roadmap und Detail (F46 D1, D3).
 Auswirkung: Mittel — Timeline, Plan gegen Ist und Workstream-Detail sind nur als „kommt“ möglich.
 Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2/B5.
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Workstreams sind Daten — strenger Abschnitt „## Workstreams“ in der Akte (`src/workboard/feature-planung.ts`, Gate), F45 mit 53 Zeilen aus fixpaket §3, F30 mit leerer Tabelle; GET /api/roadmap liefert `workstreams[]` je Feature. Restpunkt: Anzeige B5b-2.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-979** · `PROCESS_IMPROVEMENT` · P3 · erledigt
@@ -7258,7 +7258,7 @@ Beschreibung: Priorität, Meilenstein, Schätzung und Reihenfolge lassen sich im
 Fundstelle: `docs/design/neu/03-roadmap--Main.webp`, `docs/design/neu/07-eintrag-detail--Main.webp`, `docs/design/neu/07-eintrag-detail--Bug.webp`; `docs/design/abgleich-f46.md`.
 Auswirkung: Mittel — Planungsänderungen gehen nur über Dateien und Git.
 Maßnahme: Fixpaket B5, zusammen mit E-F45-1.
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Datenteil gebaut (Priorität je Akte, Schätzungen in der Akte, `roadmap_hash` in GET /api/roadmap). Restpunkt: Schreibroute „Anpassen“ (PUT …/planung) in B5b-1b, Anzeige in B5b-2.
 Feature/Run: Entdeckt: Design-Abgleich F46 D0b, 02.10.2026.
 
 **F-985** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -7294,7 +7294,7 @@ Beschreibung: Die Übersicht wählt das zuletzt abgenommene Feature nach der Rei
 Fundstelle: `public/leitstand/views/dashboard.js` (`letztesAbgenommenes`).
 Auswirkung: Gering — bei einer Abnahme außer der Reihe zeigt die Karte ein anderes Feature als das zeitlich letzte.
 Maßnahme: Fixpaket B5 (Planungs- und Statusfelder mit Datum).
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Datenteil gebaut: Zeile „Abgenommen: JJJJ-MM-TT“ in der Akte (Pflicht bei ABGESCHLOSSEN mit strengem Abschnitt) und Abgenommen je Workstream; GET /api/roadmap liefert `abgenommen` je Feature. Restpunkt: `letztesAbgenommenes` in der Anzeige (B5b-2).
 Feature/Run: Entdeckt: F46 D1, Prüfpass qa 10.
 
 **F-991** · `BUG` · P2 · erledigt
@@ -7380,11 +7380,11 @@ Feature/Run: Entdeckt: F46 D6, Prüfpass (code-reviewer 4/8, qa B13/B14, design-
 
 **F-1010** · `BUG` · P2 · offen
 Titel: Roadmap und Akten widersprechen sich.
-Beschreibung: docs/projekt/roadmap.json führt F30 ohne Akte (Anzeige „keine_akte“), die Akte AF-F001 fehlt in der Roadmap, und M3/M4 stehen auf ABGESCHLOSSEN, obwohl F18, F20, F21, F22 und F25 auf FEATURE_GATE stehen — die Kennzahl „Features abgenommen“ passt nicht zum Meilensteinstatus. Kein Gate prüft diese Übereinstimmung.
+Beschreibung: docs/projekt/roadmap.json führt F30 ohne Akte (Anzeige „keine_akte“), die Akte AF-F001 fehlt in der Roadmap, und M3/M4 stehen auf ABGESCHLOSSEN, obwohl F18, F20, F21, F22 und F25 auf FEATURE_GATE stehen — die Kennzahl „Features abgenommen“ passt nicht zum Meilensteinstatus. Die IDs (jede Akte in genau einem Meilenstein, jeder Roadmap-Eintrag mit Akte) prüft seit F46 D0 `scripts/check-akte-meilenstein.mjs`; offen war nur die Status-Regel R1 (Meilensteinstatus gegen den Status der Akten) — Satz berichtigt 24.10.2026 (F-1175; vorher: „Kein Gate prüft diese Übereinstimmung.“).
 Fundstelle: docs/projekt/roadmap.json, features/*/feature.md (Status), scripts/check-akte-meilenstein.mjs, scripts/leitstand/routen-roadmap.mjs.
 Auswirkung: Mittel — die Roadmap zeigt einen anderen Stand als die Akten.
 Maßnahme: F45 B5b: Gate Akte ↔ Roadmap, Bereinigungsliste zur Bestätigung durch Stefan.
-Status: offen.
+Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): R1 ist jetzt Gate (`src/workboard/roadmap-regeln.ts` in `check-akte-meilenstein`): M3/F18 und M4/F20, F21, F22, F25 stehen als begründete Ausnahmen in `docs/projekt/roadmap-ausnahmen.json` („Bereinigung offen — Bestätigung Stefan (Bereinigungsliste)“); F30 hat eine Akte (ENTWURF), AF-F001 bleibt Ausnahme ohne_meilenstein. Rest: Bereinigungsliste mit Bestätigung je Eintrag (B5b-1b) und Anzeige (B5b-2).
 Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
 
 **F-1011** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8672,13 +8672,13 @@ Maßnahme: einen sicher langsamen Aufruf bzw. einen injizierbaren Starter verwen
 Status: offen.
 Feature/Run: Entdeckt: Challenger, 23.10.2026 (FB-2-Prüfung).
 
-**F-1175** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-1175** · `PROCESS_IMPROVEMENT` · P3 · erledigt
 Titel: Text von F-1010 „Kein Gate prüft“ ist überholt.
 Beschreibung: F-1010 sagt „Kein Gate prüft diese Übereinstimmung“. `scripts/check-akte-meilenstein.mjs` prüft seit F46 D0 die IDs (Akte ↔ Meilenstein); offen ist nur die Status-Regel R1 (Meilensteinstatus gegen den Status der Akten).
 Fundstelle: `state/findings.md` (F-1010), `scripts/check-akte-meilenstein.mjs`.
 Auswirkung: Gering — der Befund beschreibt einen größeren Rest, als offen ist.
 Maßnahme: in B5b-1 F-1010 berichtigen (offen nur R1).
-Status: offen.
+Status: erledigt (24.10.2026, F45 B5b-1a): F-1010 berichtigt — „Kein Gate prüft …“ ersetzt durch den Stand (IDs seit F46 D0, R1 seit B5b-1a).
 Feature/Run: Entdeckt: Challenger, 23.10.2026 (Bauauftrag F45 B5a-1).
 
 **F-1176** · `BUG` · P3 · erledigt
@@ -8696,7 +8696,7 @@ Beschreibung: (qa 4) Der Körper `unvollstaendig` von GET …/akte trägt seit d
 Fundstelle: `scripts/leitstand/routen-f35.mjs` (`leseFeatureAkteFuerAnzeige`, `findeSperrendenAblauf`, `loeseFeatureAktePfadAuf`, `legeAkteAn`), `src/feature-auftrag/akte-schreiben.ts`, `src/feature-auftrag/index.ts` (`AK_ID_PRAEFIX_MUSTER`), `scripts/check-f45-b5a1-akte.mjs`.
 Auswirkung: Gering bis mittel für B5a-2 (Vorbelegung, Platz neuer Abschnitte, eindeutige 409-Form); sonst gering.
 Maßnahme: qa 4 und die 409-Form mit B5a-2 entscheiden (Teilwerte additiv, Einfügen hinter „## Ziel“); qa 10 mit B5b-1 (Akten-Bereinigung); übrige mit dem nächsten Paket an `routen-f35.mjs`.
-Status: offen. Nachtrag 24.10.2026 (F45 B5a-2, `features/F45/plan-b5a2-v2.md`, Advisor B1): qa 4 im Client entschieden als Weg (b) — das Formular startet bei einer unvollständigen Akte leer und trägt fest den Warnhinweis „Speichern ersetzt diese Abschnitte … bzw. legt fehlende neu an“ mit Link auf die Akte; Gate b5a2 (h) belegt an einer Kopie der echten F45-Akte, dass ein unverändert übernommenes Ziel bytegleich bleibt. Teilwerte (additiv, Server) und der Platz neuer Abschnitte bleiben hier offen (B5b-1). Die 409-Form trennt der Client über den Schlüssel (`hash` bzw. `workflowId`); ein Feld `art` bleibt wünschenswert.
+Status: offen. Nachtrag 24.10.2026 (F45 B5a-2, `features/F45/plan-b5a2-v2.md`, Advisor B1): qa 4 im Client entschieden als Weg (b) — das Formular startet bei einer unvollständigen Akte leer und trägt fest den Warnhinweis „Speichern ersetzt diese Abschnitte … bzw. legt fehlende neu an“ mit Link auf die Akte; Gate b5a2 (h) belegt an einer Kopie der echten F45-Akte, dass ein unverändert übernommenes Ziel bytegleich bleibt. Teilwerte (additiv, Server) und der Platz neuer Abschnitte bleiben hier offen (B5b-1). Die 409-Form trennt der Client über den Schlüssel (`hash` bzw. `workflowId`); ein Feld `art` bleibt wünschenswert. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Weg (b) bestätigt (Challenger, 24.10.2026); Umbau auf Weg (a) (nur Link), wenn in R Text verloren geht. qa 10 (`**AK1** …` als Kennung) bleibt offen — keine Akten-Bereinigung in B5b-1a, Kandidat B5b-1b.
 Feature/Run: Entdeckt: F45 B5a-1 (Prüfpass code-reviewer, qa), 23.10.2026.
 
 **F-1178** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8752,3 +8752,21 @@ Auswirkung: Gering — Bedienkomfort und Rückmeldung, kein Datenverlust.
 Maßnahme: mit B5b-1 (Akte und Planung) bündeln — die Kurztexte (qa 12, design 4) zuerst, sie berühren das Leitprinzip; übrige spätestens mit B5c (Aufräumen).
 Status: offen.
 Feature/Run: Entdeckt: F45 B5a-2 (Prüfpass code-reviewer, qa, design-guardian), 24.10.2026.
+
+**F-1184** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Freigabe „Merge nach grüner CI“ ohne Schritt „PR eröffnen“.
+Beschreibung: Für F45 B5a-2 gab es keinen PR — der Branch `f45/b5a2-akte-anzeige` lag gepusht, aber ohne PR, und `main` enthielt B5a-2 nicht. Der Folgeauftrag B5b-1 startete deshalb auf falscher Grundlage (Branch `f45/b5b1-planungsdaten` nicht vorhanden, Basis ohne B5a-2); der Abbruch nach CLAUDE.md („passt es nicht, wird abgebrochen statt gewechselt“) hat es aufgefangen.
+Fundstelle: Commit-Block B5a-2 (Bericht der Bausitzung), Skill `git-flow`; Start B5b-1 (`git merge-base --is-ancestor 9998cb4 main` ⇒ nicht enthalten, `gh pr list --head f45/b5a2-akte-anzeige` ⇒ leer).
+Auswirkung: Gering bis mittel — ein Folgeauftrag kann auf veralteter Basis bauen; Konflikte bei Finding-IDs und Akte.
+Maßnahme: Jeder Commit-Block endet mit compare-Link und ausdrücklichem Schritt „PR eröffnen“; jeder Folgeauftrag prüft zuerst lesend Branch und Basis.
+Status: offen.
+Feature/Run: Entdeckt: B5b-1-Start, 24.10.2026.
+
+**F-1185** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B5b-1a (Prüfpass code-reviewer und qa nach der Korrekturrunde).
+Beschreibung: (cr H2) Dritte Kopie eines sha256-über-Bytes-Helfers (`routen-roadmap.mjs`, `routen-f35.mjs`, `sha256Hex` nur für Text) und `heuteIso` als Zwilling von `lokalesDatum` (`routen-f35.mjs`). (qa R1 verdeckt) `scripts/check-akte-meilenstein.mjs` prüft R1 nur, wenn die ID-Prüfung sauber ist — bei einem ID-Befund bleiben R1-Verstöße unsichtbar (das Gate ist dann ohnehin rot). (qa 6) Daten in der Zukunft (Abgenommen/Begonnen) prüft der Leser nicht; die Ist-Zone läge rechts von heute. (qa 8) ABGEBROCHEN zählt in `features_abgenommen.gesamt` und braucht in einem ABGESCHLOSSEN-Meilenstein dauerhaft eine R1-Ausnahme — Definition offen (Stefan). (qa 2) Ob F19-bridge und V1-Backlog als „Meilensteine“ in R2 zählen, entscheidet Stefan (heute 5/7 inkl. beider). (qa Hinweis B5b-2) `bis_fertig` nennt nur die Anzahl der Einträge ohne Schätzung, nicht welche — B5b-2 leitet sie aus `zeitachse` ab. (cr H7) Die Workstream-ID „B2b-3b-2b-2b Lauf“ enthält ein Leerzeichen; für Routen/Schlüssel in B5b-1b kodieren. (F-1177 qa 10) `**AK1** …` als Kennung weiter offen.
+Fundstelle: `scripts/leitstand/routen-roadmap.mjs`, `src/workboard/roadmap-planung.ts`, `src/workboard/feature-planung.ts`, `scripts/check-akte-meilenstein.mjs`, `features/F45/feature.md` (## Workstreams).
+Auswirkung: Gering — keine falschen Daten im Bestand; Grenzen sind im Code DEKLARIERT.
+Maßnahme: Helfer-Zwillinge mit W2 zusammenführen; R1/ABGEBROCHEN/Meilenstein-Zählung mit B5b-1b (Bereinigung) bzw. B5b-2 (Anzeige) entscheiden.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-1a (Prüfpass code-reviewer, qa), 24.10.2026.

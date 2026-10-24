@@ -8,7 +8,9 @@
  * Status — auch fehlend oder unbekannt — bleibt der Meilenstein Pflicht. Steht eine ENTWURF-Akte in
  * einem Meilenstein, gilt dort weiter „genau einmal“. Anlassfall F-953: F42 und F44 fehlten in M5, Roadmap-
  * Ansicht und Fortschrittsring zählten sie nicht mit — niemand hat es bemerkt, weil keine Prüfung
- * die beiden Quellen gegeneinander hält.
+ * die beiden Quellen gegeneinander hält. Seit F45 B5b-1a zusätzlich die Status-Regel R1 (fixpaket-f45.md §2): ein
+ * Meilenstein steht nur auf ABGESCHLOSSEN, wenn jedes seiner Features ABGESCHLOSSEN ist oder eine begründete Ausnahme in
+ * docs/projekt/roadmap-ausnahmen.json trägt (Regel und Datei: src/workboard/roadmap-regeln.ts; verwaiste Ausnahme = Befund).
  *
  * Ausnahmen nur über AUSNAHMEN unten, je mit Art und Begründung:
  * - art 'ohne_meilenstein': die Akte darf in keinem Meilenstein stehen;
@@ -27,9 +29,9 @@
  * Wichtig — bekannte Grenzen:
  * - Akte heißt: Ordner unter features/ MIT feature.md. Ein Ordner ohne feature.md ist Sache von
  *   scripts/check-feature.mjs, nicht dieses Gates.
- * - Das Gate vergleicht IDs; den Status der Akte nur für E-B5-2 (ENTWURF ohne Meilenstein), nicht
- *   gegen den Meilensteinstatus (eine ABGESCHLOSSEN-Akte in einem LAEUFT-Meilenstein ist zulässig;
- *   die Status-Regel R1 ist F-1010/F-1175, B5b-1) und nicht die Reihenfolge innerhalb eines Meilensteins.
+ * - Das Gate vergleicht IDs; den Status der Akte für E-B5-2 (ENTWURF ohne Meilenstein) und für R1 (nur
+ *   ABGESCHLOSSEN-Meilensteine; eine ABGESCHLOSSEN-Akte in einem LAEUFT-Meilenstein ist zulässig), nicht die
+ *   Reihenfolge innerhalb eines Meilensteins.
  * - Die Form von roadmap.json (Schema v0) prüft scripts/check-f33-projektkontext.mjs; hier nur so
  *   viel, wie für den Abgleich nötig ist (meilensteine[].features[] als Strings).
  *
@@ -41,6 +43,10 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { leseFeatureStatus } from '../src/workboard/feature-akte-pruefung.ts'
+import { leseStatusAusnahmen, pruefeMeilensteinStatus } from '../src/workboard/roadmap-regeln.ts'
+
+/** Ausnahmen der Status-Regel R1 (F45 B5b-1a, O1) — Daten neben roadmap.json. */
+export const STATUS_AUSNAHMEN_PFAD = 'docs/projekt/roadmap-ausnahmen.json'
 
 /**
  * Begründete Ausnahmen. Form: { id, art: 'ohne_meilenstein' | 'ohne_akte', grund }.
@@ -50,11 +56,6 @@ export const AUSNAHMEN = [
     id: 'AF-F001',
     art: 'ohne_meilenstein',
     grund: 'Harness-Grundlage „Feature-Akte im Repo“ aus der Vertragsschiene vor Meilenstein 1 (state/plan-v2-af-f001-feature-akte.md); kein Produktfeature eines Meilensteins.',
-  },
-  {
-    id: 'F30',
-    art: 'ohne_akte',
-    grund: 'F30 Dogfooding steht seit E-M5-15 in M5; die Akte entsteht mit dem Beginn von F30 nach dem Fixpaket „Arbeitsfähigkeit“ (E-M5-18, geändert 02.10.2026). Entfällt, sobald features/F30/feature.md existiert.',
   },
 ]
 
@@ -159,18 +160,36 @@ if (istDirekterAufruf) {
   console.log('\n=== Akte↔Meilenstein-Check (features/ gegen docs/projekt/roadmap.json) ===\n')
   const aktenIds = leseAktenIds('features')
   let befunde
+  let statusAusnahmen = []
   if (aktenIds.length === 0) {
     // Falsches Arbeitsverzeichnis darf nicht still grün sein (Muster check-status-akten).
     befunde = ['keine Akte unter features/ gefunden — falsches Arbeitsverzeichnis?']
   } else {
     try {
-      befunde = pruefeAkteMeilenstein(aktenIds, JSON.parse(readFileSync('docs/projekt/roadmap.json', 'utf-8')), AUSNAHMEN, leseAktenStatus('features', aktenIds))
+      const roadmap = JSON.parse(readFileSync('docs/projekt/roadmap.json', 'utf-8'))
+      const aktenStatus = leseAktenStatus('features', aktenIds)
+      befunde = pruefeAkteMeilenstein(aktenIds, roadmap, AUSNAHMEN, aktenStatus)
+      // R1 (F45 B5b-1a): nur mit gültiger Struktur — Formfehler meldet pruefeAkteMeilenstein schon.
+      if (befunde.length === 0) {
+        let text = null
+        try {
+          text = existsSync(STATUS_AUSNAHMEN_PFAD) ? readFileSync(STATUS_AUSNAHMEN_PFAD, 'utf-8') : null
+        } catch (fehler) {
+          // Eigene Meldung (code-reviewer H8): sonst hieße es „roadmap.json nicht lesbar“.
+          throw new Error(`${STATUS_AUSNAHMEN_PFAD} nicht lesbar: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+        }
+        const ausnahmen = leseStatusAusnahmen(text)
+        statusAusnahmen = ausnahmen.ausnahmen
+        befunde = [...ausnahmen.befunde, ...pruefeMeilensteinStatus(roadmap, aktenStatus, ausnahmen.ausnahmen).befunde]
+      }
     } catch (fehler) {
-      befunde = [`docs/projekt/roadmap.json nicht lesbar: ${fehler instanceof Error ? fehler.message : String(fehler)}`]
+      const meldung = fehler instanceof Error ? fehler.message : String(fehler)
+      befunde = [meldung.startsWith(STATUS_AUSNAHMEN_PFAD) ? meldung : `docs/projekt/roadmap.json nicht lesbar: ${meldung}`]
     }
   }
   if (befunde.length === 0) {
     for (const ausnahme of AUSNAHMEN) console.log(`  Ausnahme ${ausnahme.id} (${ausnahme.art}): ${ausnahme.grund}`)
+    for (const ausnahme of statusAusnahmen) console.log(`  R1-Ausnahme ${ausnahme.meilenstein}/${ausnahme.feature}: ${ausnahme.grund}`)
     console.log(`✓ ${aktenIds.length} Akte(n) gegen die Roadmap geprüft, keine Befunde.\n`)
     process.exit(0)
   }

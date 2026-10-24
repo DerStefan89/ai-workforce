@@ -9,7 +9,7 @@ Fixpaket Arbeitsfähigkeit
 ## Status
 Status: IN_ARBEIT
 
-B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). B2a-2 gemergt #330 (`a6d3411`). B2a-3 nach dem Advisor-Pass geteilt (Stefan, 13.10.2026) in B2a-3a/B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut (Branch `f45/b2a3-codex-review`, Basis `a6d3411`, nicht committet; Abschnitt „Stand B2a-3a“). B2a-3a gemergt #331 (`2fd1ac5`). B2a-3b „Geprüfter Stand und Review veraltet, Befehlsblöcke im Leitstand“ gebaut (Branch `f45/b2a3b-review-stand`, Basis `2fd1ac5`, nicht committet; Abschnitt „Stand B2a-3b“). B2a gilt als abgeschlossen, wenn auch B2a-3b gemergt ist. Stand der Pakete nach F-3b-1 bis B2b-3b-2 (gemergt bis #365): `docs/projekt/fixpaket-f45.md` und `docs/STATUS.md`. B2b-4 geteilt (Challenger, 19.10.2026) in B2b-4a-1/-4a-2/-4b; B2b-4a-1 „Bereit zum Sichern, Server-Teil“ gemergt #366 (`7a56d86`; Abschnitt „Stand B2b-4a-1“). B2b-4a-2 geteilt (Challenger, 19.10.2026) in 4a-2a/4a-2b; B2b-4a-2a „Blockform“ gebaut (Branch `f45/b2b4a2-anzeige`, Basis `7a56d86`, nicht committet; Abschnitt „Stand B2b-4a-2a“). B2b-4a-2a gemergt #367 (`0bf84ff`). B2b-4a-2b geteilt (Challenger, 20.10.2026) in 4a-2b-1/4a-2b-2; B2b-4a-2b-1 „Regeln und node_modules“ gebaut (Branch `f45/b2b4a2b-anzeige`, Basis `0bf84ff`, nicht committet; Abschnitt „Stand B2b-4a-2b-1“). B2b-4a-2b-1 gemergt #368 (`fabb6a1`). B2b-4a-2b-2 „Anzeige“ gebaut (Branch `f45/b2b4a2b2-anzeige`, Basis `fabb6a1`, nicht committet; Abschnitt „Stand B2b-4a-2b-2“); B2b-4a damit abgeschlossen, offen in B2b-4 nur B2b-4b. B5a/B5b geteilt (Challenger, 23.10.2026) in B5a-1, B5a-2, B5b-1, B5b-2, B5b-3; B5a-1 „Akte schreiben“ gemergt #374 (`5c23bfb`; Abschnitt „Stand B5a-1“). B5a-2 „Akte anzeigen“ gebaut (Branch `f45/b5a2-akte-anzeige`, Basis `5c23bfb`, nicht committet; Abschnitt „Stand B5a-2“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
+B0 gemergt #316 (`9bdfc1a`; Abschnitt „Stand B0“). P gemergt #317 (`8e5adf9`; Abschnitt „Stand P“). S gemergt #318 (`387f1a3`; Abschnitt „Stand S“). B1a-1 gemergt #319 (`fde3b06`; Abschnitt „Stand B1a-1“). B1a-2 gemergt #320 (`cf433fd`; Abschnitt „Stand B1a-2“). B1b-1 gemergt #321 (`febcc86`; Abschnitt „Stand B1b-1“). B1b-2 gemergt #322 (`581269a`; Abschnitt „Stand B1b-2“). F-1 gemergt #323 (`849fda5`; Abschnitt „Stand F-1“). F-2a gemergt #324 (`83a576c`; Abschnitt „Stand F-2a“). F-2b-1 gemergt #325 (`1985e9b`; Abschnitt „Stand F-2b-1“). F-2b-2 nach dem Delta-Advisor-Pass geteilt: F-2b-2a (Prüflauf, Prüfbericht, Freigabe nur mit Bericht) gemergt #326 (`2af1b54`; Abschnitt „Stand F-2b-2a“). F-2b-2b (npm-Strukturfix Variante C, F-1075) gebaut (Branch `f45/f2b2b-npm-strukturfix`, Basis `2af1b54`, nicht committet; Abschnitt „Stand F-2b-2b“); nach dem Advisor-Pass geteilt. F-2b-2b gemergt #327 (`ec4ad21`). F-2b-2c (Sammlung → Katalog, „Eignung prüfen“, Detailzeile, Stand der lokalen Datei über Neustarts, F-1078 (b)) gebaut (Branch `f45/f2b2c-sammlung-katalog`, Basis `ec4ad21`, nicht committet; Abschnitt „Stand F-2b-2c“). F-2b-2c gemergt #328 (`c62e7e7`). B2a geteilt (Challenger, 13.10.2026) in B2a-1/-2/-3; B2a-1 „Projektkarte“ gebaut (Branch `f45/b2a1-projektkarte`, Basis `c62e7e7`, nicht committet; Abschnitt „Stand B2a-1“). B2a-1 gemergt #329 (`b3fcbf9`). B2a-2 „Arbeitspaket“ gebaut (Branch `f45/b2a2-arbeitspaket`, Basis `b3fcbf9`, nicht committet; Abschnitt „Stand B2a-2“). B2a-2 gemergt #330 (`a6d3411`). B2a-3 nach dem Advisor-Pass geteilt (Stefan, 13.10.2026) in B2a-3a/B2a-3b; B2a-3a „Codex-Review-Spec + Ausgaberegel“ gebaut (Branch `f45/b2a3-codex-review`, Basis `a6d3411`, nicht committet; Abschnitt „Stand B2a-3a“). B2a-3a gemergt #331 (`2fd1ac5`). B2a-3b „Geprüfter Stand und Review veraltet, Befehlsblöcke im Leitstand“ gebaut (Branch `f45/b2a3b-review-stand`, Basis `2fd1ac5`, nicht committet; Abschnitt „Stand B2a-3b“). B2a gilt als abgeschlossen, wenn auch B2a-3b gemergt ist. Stand der Pakete nach F-3b-1 bis B2b-3b-2 (gemergt bis #365): `docs/projekt/fixpaket-f45.md` und `docs/STATUS.md`. B2b-4 geteilt (Challenger, 19.10.2026) in B2b-4a-1/-4a-2/-4b; B2b-4a-1 „Bereit zum Sichern, Server-Teil“ gemergt #366 (`7a56d86`; Abschnitt „Stand B2b-4a-1“). B2b-4a-2 geteilt (Challenger, 19.10.2026) in 4a-2a/4a-2b; B2b-4a-2a „Blockform“ gebaut (Branch `f45/b2b4a2-anzeige`, Basis `7a56d86`, nicht committet; Abschnitt „Stand B2b-4a-2a“). B2b-4a-2a gemergt #367 (`0bf84ff`). B2b-4a-2b geteilt (Challenger, 20.10.2026) in 4a-2b-1/4a-2b-2; B2b-4a-2b-1 „Regeln und node_modules“ gebaut (Branch `f45/b2b4a2b-anzeige`, Basis `0bf84ff`, nicht committet; Abschnitt „Stand B2b-4a-2b-1“). B2b-4a-2b-1 gemergt #368 (`fabb6a1`). B2b-4a-2b-2 „Anzeige“ gebaut (Branch `f45/b2b4a2b2-anzeige`, Basis `fabb6a1`, nicht committet; Abschnitt „Stand B2b-4a-2b-2“); B2b-4a damit abgeschlossen, offen in B2b-4 nur B2b-4b. B5a/B5b geteilt (Challenger, 23.10.2026) in B5a-1, B5a-2, B5b-1, B5b-2, B5b-3; B5a-1 „Akte schreiben“ gemergt #374 (`5c23bfb`; Abschnitt „Stand B5a-1“). B5a-2 „Akte anzeigen“ gebaut (Branch `f45/b5a2-akte-anzeige`, Basis `5c23bfb`, nicht committet; Abschnitt „Stand B5a-2“). B5a-2 gemergt #375 (`e750e94`). B5b-1 nach dem Advisor-Pass geteilt (Challenger, 24.10.2026) in B5b-1a/B5b-1b; B5b-1a „Planungsdaten lesen“ gebaut (Branch `f45/b5b1-planungsdaten`, Basis `e750e94`, nicht committet; Abschnitt „Stand B5b-1a“). Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -43,34 +43,117 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-B5-1 = A** (Stefan, 23.10.2026) — Planungsdaten (Workstreams mit Schätzung min–max, Ist, Datum; Priorität) liegen in der Feature-Akte (strenger Abschnitt ## Workstreams, Zeile Priorität:); docs/projekt/roadmap.json behält nur die Struktur (Meilenstein → Features, Reihenfolge). Umsetzung B5b-1.
 - **E-B5-2** (Challenger, 23.10.2026) — Akte mit Status ENTWURF darf ohne Meilenstein sein (Noch nicht eingeplant); ab READY_FOR_TECH Pflicht. Umsetzung B5a-1.
 - **E-VORSCHAU-1 = A** (Stefan, 24.10.2026) — Eigenes Paket „V1 Vorschau (Stufe 1)“ nach B5b-3, vor B3: Live-Vorschau des gewählten Projekts in der Produktübersicht über `vorschau_url` (iframe mit sandbox, CSP frame-src nur die geprüfte localhost-URL, keine neue Route, kein Poll); hebt das F43-Nicht-Ziel „keine Vorschau im Leitstand selbst“ auf, „kein Start/Stopp dauerlaufender Prozesse“ bleibt; Stufe 2 nach R. Finding F-1178.
+- **E-B5-3** (Challenger, Bauauftrag B5b-1, 24.10.2026) — Jede Planungsänderung schreibt eine Zeile unter „## Änderungen“ der Akte (Datum · Felder · Grund), wie B5a-1. Ausnahme nach O5: „Meilenstein → LAEUFT“ in der Bereinigungsliste ohne Änderungszeile in den Akten, der Grund steht in der Commit-Nachricht des Git-Blocks (B5b-1b).
+- **E-B5-5** (Challenger, Bauauftrag B5b-1, 24.10.2026) — Bug-Felder (Nachstellen, Erwartet, Tatsächlich, Ursache, Regressionstest) sind optional: keine Pflicht, keine Rückmigration. Umsetzung B5b-1a (Findings-Parser).
+- **E-B5-6 = B** (Challenger, Bauauftrag B5b-1, 24.10.2026) — „Balken ziehen“ kommt nicht (Teil 2); Umordnen nur über „Anpassen“ mit Begründung.
+- **E-KANBAN = A** (Challenger, Bauauftrag B5b-1, 24.10.2026) — Prioritäts-Kanban lesend in B5b-2; B5b-1 liefert nur die Daten (Zeile „Priorität:“ je Akte). E-KANBAN = A ersetzt F-917 nicht, sondern erfüllt F-917 (a) (lesendes Kanban P0–P4 + „ohne Priorität“), erweitert: Features erscheinen mit ihrer Priorität aus der Akte.
+- **B5b-1 geteilt** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel; Advisor `features/F45/advisor-b5b1.md` A1) — B5b-1a „Planungsdaten lesen“ (Format, Gate R1 mit Datendatei, Migration F45, Akte F30, Bug-Felder, Projektion, Zeitachse und Kennzahlen als reine Funktionen; Server unverändert, der Kern schreibt nichts; ≈ 0,4–0,5 AT) → B5b-1b „Planungsdaten schreiben“ (PUT planung, Bereinigungsliste; ≈ 0,35–0,45 AT). „Pflege & Fixes“ und Kanban nicht in die Projektion (P2): B5b-2 leitet sie aus den Workitems ab.
+- **A2 B5b-1** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — Der Kern darf `docs/projekt/roadmap.json` und `docs/projekt/roadmap-ausnahmen.json` schreiben, aber erst in B5b-1b; dort zuerst die Ausnahme in ARCHITECTURE.md §2 (Muster B5a-1: nur auf Eingabe Stefans, Hash-409, Pflichtgrund, kein Commit, Git-Block; Rückbau über mehrere Dateien best effort, zulässig, weil nichts committet wird).
+- **A3 B5b-1** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — CRLF in `roadmap.json` ⇒ 422 „von Hand bearbeiten“; keine neue Ausnahme in ARCHITECTURE.md §7.
+- **A4/O3 B5b-1** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — Die F45-Workstreams kommen aus `docs/projekt/fixpaket-f45.md` §3 (fehlende Zeilen W1, K, W2, V1; Teilpakete statt Grobzeilen; Reihenfolge ab W1); Schätzungen nur, wo dort eine Zahl oder Spanne steht, sonst „–“.
+- **O1 B5b-1** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — Ausnahmen der Status-Regel R1 als Datendatei `docs/projekt/roadmap-ausnahmen.json`.
+- **O2 B5b-1** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — „Abgenommen: <ISO-Datum>“ am Zeilenanfang, F35-Zeile umformatiert; Prosa-Zeilen „Abgenommen durch Stefan am …“ (F32, F33, F36, F40, F42) bleiben unberührt.
+- **B6 B5b-1** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel; für B5b-1b) — Die Bereinigung auf ABGESCHLOSSEN schreibt die passende Zeile in `docs/STATUS.md` mit; ist sie maschinell nicht eindeutig, 422 „STATUS.md von Hand“, nichts geschrieben.
 
 ## Scope
 
-| WS | Inhalt | Findings | Abhängig von | Prüfmodus | Schätzung AT | Ist |
-|---|---|---|---|---|---|---|
-| B0 | Chat zuverlässig und schnell: Messskript, eigene Chat-Zeitgrenze, Chat-Worker fest, Fehler-Eintrag bei jedem Misserfolg, Neuladen verfolgt Lauf, Start-Hinweis bei falschem Ordner (E-188 bleibt streng), Event-Loop-Messung, Chat-Reiter; Akte F45 | F-987, F-986 a, F-971, F-544, F-1007, F-1008 | – | vor Merge | 0,75 | ≈ 1 AT, gemergt #316 (9bdfc1a) |
-| P | Performance: /api/zustand im Langlauf, Event-Loop-Blockaden beseitigen, Seitenwechsel messen, f16-Restordner | F-556, F-999 | B0 (Messskript) | vor Merge | 0,5 | ≈ 1,25 AT + ≈ 6 h Messung (Bau, nicht gemergt) |
-| S | Härtung klein: ein Git-Starter für alle Aufrufe, Geheimnis-Maskierung (Live-Aktivität, env im Harness-Detail), Abbruch-Formulierung | F-1000, F-1005, F-1003 | – | vor Merge | 0,3 | |
-| B1a | Lauf-Umgebung: Branch/Worktree je Lauf (Gültigkeitsschlüssel misst die Einstellungen des Lauf-Ordners), Vorlage nachziehen (513), Mindest-Gates im Skelett, check:template, Standard-Startvorlage aus dem Register, Löschen im Lauf, Kontrollzustand in Fremdprojekten | F-954, F-939, F-701, F-1009, F-715, F-766 | E-F45-3 | Advisor-Pass, vor Merge | 1–1,25 | |
-| B1b | Harness im Lauf, geschnitten am 11.10.2026: **B1b-1** Hintergrund-Ausführung abschalten und als unvollständig werten, Lauf-Härtung (npm-Installationsskripte aus, Schreiben nur im Arbeitsordner), Hooks im -p-Lauf belegen, commit-guard härten, „vorgesehen gegen benutzt“ ans Review, Vorstart-Scan; **B1b-2** Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce, Kurzliste der benutzten Fähigkeiten an die Abnahme. Verschoben: Projekt-Agents/-Skills im Lauf und Freigabe nach Inhalt (F-815/F-816 → F), Codex-Harness-Regeln (F-929 → B2a), /lessons (F-933 → Teil 2) | B1b-1: F-1026, F-1027, F-1035, F-818, F-932, F-937 (Review); B1b-2: F-937 (Abnahme), Beleg 12 | B1a | vor Merge | 0,75 | |
-| F-1 | Fähigkeiten im Lauf (Server): Aktivierung je Projekt (E-F45-6/7/8), Projekt-Agents/-Skills nach Inhalt und Opt-in, Agent-Sperre, Init-Gate, Laufakte aktiv/benutzt, Endpunkte | F-815, F-816, F-1012 (Server), F-910 (teilweise) | B1b | Advisor-Pass, vor Merge | Teil von 1,25–1,5 (Zeile F bis 12.10.2026) | gemergt #323 (849fda5) |
-| F-2a | Fähigkeiten-Oberfläche: Seite Workforce, Bindung an die Anzeige, Gründe der Empfehlung, Lauf-Detail, Beleg 13 | F-1054, F-1012 (Oberfläche), F-1055 (1) Anzeige | F-1 | Advisor-Pass, vor Merge | Teil von 1,25–1,5 | |
-| F-2b-1 | Sammlung im Leitstand (Unterreiter „Sammlung“: Urteil, Lizenz, Kosten, Stand, Zuordnung, Typ, Auswahlgrund), Scout liest die Sammlung, voller Hash im Lauf-Detail | F-1057 (K21), F-1060 (6) | F-2a | Advisor-Pass, vor Merge | ≈ 0,6 | |
-| F-2b-2 | „Auswählen“ → Eignungsprüfung (Prüfbericht) → Katalog, Freigabe nur mit Bericht, Stand der lokalen Datei über Neustarts — geteilt in F-2b-2a (Prüflauf, #326), F-2b-2b (npm-Strukturfix Variante C, F-1075) und F-2b-2c (Vormerken/Katalog, „Eignung prüfen“, Detail als volle Zeile, F-1061 (1)) | F-1056 (K20), F-1061 (1), F-1075 | F-2b-1 | Advisor-Pass, vor Merge | ≈ 1–1,25 | |
-| F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge | Schätzung fehlt | F-3a-1 ≈ 0,5, F-3a-2 ≈ 0,4, F-3b-1 ≈ 0,95 AT (beauftragt 0,5; Grund: Advisor-Auflagen) |
-| B2a-1 | Projektkarte (geteilt am 13.10.2026): `src/projektkarte`, Zuschnitt je Rolle an Architekt, Advisor, Code-Reviewer (Claude und Codex gleich, als Text), Hash in der Laufakte; Architekt im Feature-Modus mit Karte, Capability-Auszug, Lese-Anweisung; ARCHITECTURE.md Pflicht beim Stack-Entscheid; DoD/Checkliste mit Urteil je Punkt; Beobachtungsblock nur claude-code | F-936, F-1064 (K26), F-1065 (K27), F-1066 (K28), F-929, F-931, F-829, F-1062 (K24) | B1b | Advisor-Pass, vor Merge | ≈ 0,6–0,7 | |
-| B2a-2 | Arbeitspaket: Auftrag v0 additiv (DoD-Verweis, betroffene Bereiche, Risiko/Kontrolltiefe, „Einrichtung durch Stefan“, Feature-Bezug), AK-Entwurf aus der Finding-Maßnahme, Server rendert den Prompt, Gate Pflichtfelder, Einrichtungsliste vor dem Bau | F-938, F-989, F-1071 (K31) | B2a-1 | Advisor-Pass, vor Merge | ≈ 0,5–0,6 | |
-| B2a-3a | Codex-Review-Spec (`docs/projekt/codex-review-spec.md`), Review-Policy (`src/review-policy`), Review-Schema v2 additiv, Regel 1k und Fehlerfälle sichtbar, Jarvis „direkt ausführbar“ mit cd-Pfad und „Deine Schritte“ (geteilt am 13.10.2026) | F-1063 (K25) teilweise, F-959 (Jarvis), F-998 | B2a-1 | Advisor-Pass, design-guardian, vor Merge | ≈ 0,4 (Ist ≈ 0,5) | |
-| B2a-3b | Geprüfter Stand und „Review veraltet“, Befehlsblöcke im Leitstand mit cd und getrennten Blöcken | F-1063 (Rest), F-959 (Rest) | B2a-3a | Advisor-Pass, design-guardian, vor Merge | Schätzung fehlt | |
-| B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011, F-1072 (K32, aus B2a am 13.10.2026) | B2a | Advisor-Pass, vor Merge | 1,25–1,5 (ohne F-1072) | |
-| Fähigkeit bauen | Neuer Baustein (E-F45-12 = A): Vorschlagsordner + Übernahme per Knopf, Form-Empfehlung durch den Architekten | F-1069, F-1096 (K39) | B2b | Advisor-Pass, design-guardian, vor Merge | ≈ 0,5–0,75 | |
-| B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge | 0,75 | |
-| B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge | 0,75–1 | |
-| B3 | Design & Motion in Fremdprojekten (E-F45-10): impeccable, design-guardian und Token-Gate im Skelett; Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung | F-911, F-1058 (K22), F-1059 (K23) | B1a, B2b, F-2b | nach Merge | ≈ 1,4–1,55 | |
-| R | Referenzauftrag in einem Fremdprojekt (Vorschlag: haushaltsbuch2; nicht F30, damit die F30-Messcheckliste unberührt bleibt), Belege 1–14, eine Fixrunde, Abschluss F45 | F-980 | alle | echter Lauf | 1–2 | |
-| R2 | Motion im Leitstand der Workforce (E-F45-11 = A): Bewegungs-Tokens, `prefers-reduced-motion` Pflicht, Bewegung mit Zweck, kein Ruckeln beim Poll, design-guardian und Render-Nachweis mit Bewegung, Bau im eigenen Worktree; 3D-Element entfällt vorerst; Beleg 15 | F-1059 (K23) | R, B3 | design-guardian, Render-Nachweis, vor Merge | ≈ 1 | |
+| WS | Inhalt | Findings | Abhängig von | Prüfmodus |
+|---|---|---|---|---|
+| B0 | Chat zuverlässig und schnell: Messskript, eigene Chat-Zeitgrenze, Chat-Worker fest, Fehler-Eintrag bei jedem Misserfolg, Neuladen verfolgt Lauf, Start-Hinweis bei falschem Ordner (E-188 bleibt streng), Event-Loop-Messung, Chat-Reiter; Akte F45 | F-987, F-986 a, F-971, F-544, F-1007, F-1008 | – | vor Merge |
+| P | Performance: /api/zustand im Langlauf, Event-Loop-Blockaden beseitigen, Seitenwechsel messen, f16-Restordner | F-556, F-999 | B0 (Messskript) | vor Merge |
+| S | Härtung klein: ein Git-Starter für alle Aufrufe, Geheimnis-Maskierung (Live-Aktivität, env im Harness-Detail), Abbruch-Formulierung | F-1000, F-1005, F-1003 | – | vor Merge |
+| B1a | Lauf-Umgebung: Branch/Worktree je Lauf (Gültigkeitsschlüssel misst die Einstellungen des Lauf-Ordners), Vorlage nachziehen (513), Mindest-Gates im Skelett, check:template, Standard-Startvorlage aus dem Register, Löschen im Lauf, Kontrollzustand in Fremdprojekten | F-954, F-939, F-701, F-1009, F-715, F-766 | E-F45-3 | Advisor-Pass, vor Merge |
+| B1b | Harness im Lauf, geschnitten am 11.10.2026: **B1b-1** Hintergrund-Ausführung abschalten und als unvollständig werten, Lauf-Härtung (npm-Installationsskripte aus, Schreiben nur im Arbeitsordner), Hooks im -p-Lauf belegen, commit-guard härten, „vorgesehen gegen benutzt“ ans Review, Vorstart-Scan; **B1b-2** Harness-Abgleich-Tabelle (Beleg 12) in Laufakte und auf der Seite Workforce, Kurzliste der benutzten Fähigkeiten an die Abnahme. Verschoben: Projekt-Agents/-Skills im Lauf und Freigabe nach Inhalt (F-815/F-816 → F), Codex-Harness-Regeln (F-929 → B2a), /lessons (F-933 → Teil 2) | B1b-1: F-1026, F-1027, F-1035, F-818, F-932, F-937 (Review); B1b-2: F-937 (Abnahme), Beleg 12 | B1a | vor Merge |
+| F-1 | Fähigkeiten im Lauf (Server): Aktivierung je Projekt (E-F45-6/7/8), Projekt-Agents/-Skills nach Inhalt und Opt-in, Agent-Sperre, Init-Gate, Laufakte aktiv/benutzt, Endpunkte | F-815, F-816, F-1012 (Server), F-910 (teilweise) | B1b | Advisor-Pass, vor Merge |
+| F-2a | Fähigkeiten-Oberfläche: Seite Workforce, Bindung an die Anzeige, Gründe der Empfehlung, Lauf-Detail, Beleg 13 | F-1054, F-1012 (Oberfläche), F-1055 (1) Anzeige | F-1 | Advisor-Pass, vor Merge |
+| F-2b-1 | Sammlung im Leitstand (Unterreiter „Sammlung“: Urteil, Lizenz, Kosten, Stand, Zuordnung, Typ, Auswahlgrund), Scout liest die Sammlung, voller Hash im Lauf-Detail | F-1057 (K21), F-1060 (6) | F-2a | Advisor-Pass, vor Merge |
+| F-2b-2 | „Auswählen“ → Eignungsprüfung (Prüfbericht) → Katalog, Freigabe nur mit Bericht, Stand der lokalen Datei über Neustarts — geteilt in F-2b-2a (Prüflauf, #326), F-2b-2b (npm-Strukturfix Variante C, F-1075) und F-2b-2c (Vormerken/Katalog, „Eignung prüfen“, Detail als volle Zeile, F-1061 (1)) | F-1056 (K20), F-1061 (1), F-1075 | F-2b-1 | Advisor-Pass, vor Merge |
+| F-3 | Plugins (E-F45-9): Katalogtyp plugin, gepinnte Installation, Bestandteile einzeln, Hooks je Hash freigegeben, Init-Gate; extern_lesend-MCPs (aus F-2b verschoben) | F-910, F-1052 | F-2b-2, B2a | Advisor-Pass, vor Merge |
+| B2a-1 | Projektkarte (geteilt am 13.10.2026): `src/projektkarte`, Zuschnitt je Rolle an Architekt, Advisor, Code-Reviewer (Claude und Codex gleich, als Text), Hash in der Laufakte; Architekt im Feature-Modus mit Karte, Capability-Auszug, Lese-Anweisung; ARCHITECTURE.md Pflicht beim Stack-Entscheid; DoD/Checkliste mit Urteil je Punkt; Beobachtungsblock nur claude-code | F-936, F-1064 (K26), F-1065 (K27), F-1066 (K28), F-929, F-931, F-829, F-1062 (K24) | B1b | Advisor-Pass, vor Merge |
+| B2a-2 | Arbeitspaket: Auftrag v0 additiv (DoD-Verweis, betroffene Bereiche, Risiko/Kontrolltiefe, „Einrichtung durch Stefan“, Feature-Bezug), AK-Entwurf aus der Finding-Maßnahme, Server rendert den Prompt, Gate Pflichtfelder, Einrichtungsliste vor dem Bau | F-938, F-989, F-1071 (K31) | B2a-1 | Advisor-Pass, vor Merge |
+| B2a-3a | Codex-Review-Spec (`docs/projekt/codex-review-spec.md`), Review-Policy (`src/review-policy`), Review-Schema v2 additiv, Regel 1k und Fehlerfälle sichtbar, Jarvis „direkt ausführbar“ mit cd-Pfad und „Deine Schritte“ (geteilt am 13.10.2026) | F-1063 (K25) teilweise, F-959 (Jarvis), F-998 | B2a-1 | Advisor-Pass, design-guardian, vor Merge |
+| B2a-3b | Geprüfter Stand und „Review veraltet“, Befehlsblöcke im Leitstand mit cd und getrennten Blöcken | F-1063 (Rest), F-959 (Rest) | B2a-3a | Advisor-Pass, design-guardian, vor Merge |
+| B2b | Kette und Grenzen: Advisor-Schema, Plan v2, Rückweg ≤ 1 je Stufe, qa-Schritt, design-guardian-Schritt mit Render-Nachweis im Lauf, Budget je Arbeitspaket mit Halt, Umfangs-Abgleich, Rückfrage während des Baus, Rechte-Rückfrage bei Befehlen außerhalb des Werkzeugsatzes (Spike zuerst: --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Codex-Nutzen messen, „Bereit zum Sichern“ | F-909, F-203, F-820, F-980, F-981, F-978, F-982, F-979, F-1011, F-1072 (K32, aus B2a am 13.10.2026) | B2a | Advisor-Pass, vor Merge |
+| Fähigkeit bauen | Neuer Baustein (E-F45-12 = A): Vorschlagsordner + Übernahme per Knopf, Form-Empfehlung durch den Architekten | F-1069, F-1096 (K39) | B2b | Advisor-Pass, design-guardian, vor Merge |
+| B5a | Feature-Fluss: Coach legt Akte an, Akte im Leitstand bearbeiten (E-F45-1), Planung änderbar mit Datum, Bugs mit Feldern, Workstreams als Daten, Entscheidungen in der Akte-Leseroute, offene Abnahmen überall gezählt | F-912, F-984, F-990, F-975, F-976, F-995, F-991 | B2a | vor Merge |
+| B5b | Roadmap richtig: Roadmap-Schema v1 (Workstreams mit Schätzung, Ist, Datum), Gate Akte ↔ Roadmap, Gantt-Zeilen und -Balken, Kennzahlen „Bis M5 fertig“ und „Plan gegen Ist“, Datenbereinigung als eine Bestätigungsliste für Stefan (kein Status ohne Stefan auf ABGESCHLOSSEN) | F-944, F-976 (Anzeige), F-990, F-1010 | B5a, B2b | vor Merge |
+| B3 | Design & Motion in Fremdprojekten (E-F45-10): impeccable, design-guardian und Token-Gate im Skelett; Bibliotheken je Projekt aus der Sammlung, Design-Referenzen als Eingabe mit Empfehlung, Motion-Skills über den F-Weg, Render-Nachweis mit Bewegung | F-911, F-1058 (K22), F-1059 (K23) | B1a, B2b, F-2b | nach Merge |
+| R | Referenzauftrag in einem Fremdprojekt (Vorschlag: haushaltsbuch2; nicht F30, damit die F30-Messcheckliste unberührt bleibt), Belege 1–14, eine Fixrunde, Abschluss F45 | F-980 | alle | echter Lauf |
+| R2 | Motion im Leitstand der Workforce (E-F45-11 = A): Bewegungs-Tokens, `prefers-reduced-motion` Pflicht, Bewegung mit Zweck, kein Ruckeln beim Poll, design-guardian und Render-Nachweis mit Bewegung, Bau im eigenen Worktree; 3D-Element entfällt vorerst; Beleg 15 | F-1059 (K23) | R, B3 | design-guardian, Render-Nachweis, vor Merge |
 
-Die Spalte „Ist“ trägt der Challenger nach Abschluss eines Workstreams nach.
+Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B5-1 = A, keine zweite Kopie derselben Zahlen); diese Tabelle bleibt Prosa (Inhalt, Findings, Abhängigkeiten, Prüfmodus).
+
+## Workstreams
+
+| ID | Art | Titel | Status | Schätzung AT | Ist AT | Begonnen | Abgenommen | Notiz |
+|---|---|---|---|---|---|---|---|---|
+| B0 | workstream | Chat zuverlässig und schnell | erledigt | 0,75 | 1 | – | 2026-10-10 | gemergt #316; Ist aus der alten Scope-Spalte: „≈ 1 AT, gemergt #316 (9bdfc1a)“ |
+| P | workstream | Performance | erledigt | 0,5 | – | – | 2026-10-11 | gemergt #317; alte Scope-Spalte „≈ 1,25 AT + ≈ 6 h Messung (Bau, nicht gemergt)“ (Stand vor dem Merge) |
+| S | workstream | Härtung klein | erledigt | 0,3 | – | – | 2026-10-11 | gemergt #318 |
+| B1a | workstream | Lauf-Umgebung | erledigt | 1–1,25 | – | – | 2026-10-11 | gemergt #319 (B1a-1), #320 (B1a-2) |
+| B1b | workstream | Harness im Lauf | erledigt | 0,75 | – | – | 2026-10-11 | gemergt #321 (B1b-1), #322 (B1b-2) |
+| F-1 | fixpaket | Fähigkeiten im Lauf (Server) | erledigt | – | – | – | 2026-10-12 | Schätzung „Teil von 1,25–1,5 (Zeile F bis 12.10.2026)“; gemergt #323 (849fda5) |
+| F-2a | fixpaket | Fähigkeiten-Oberfläche | erledigt | – | – | – | 2026-10-12 | Schätzung „Teil von 1,25–1,5“; gemergt #324 |
+| F-2b-1 | fixpaket | Sammlung im Leitstand | erledigt | 0,6 | – | – | 2026-10-12 | gemergt #325 |
+| F-2b-2a | fixpaket | „Auswählen“ → Eignungsprüfung der gepinnten Version | erledigt | 1,1–1,2 | – | – | 2026-10-12 | gemergt #326 |
+| F-2b-2b | fixpaket | F-1075-Rest nach Variante C „Prüfen, was npm selbst schreibt“ | erledigt | 0,3 | – | – | 2026-10-13 | gemergt #327 |
+| F-2b-2c | fixpaket | Katalog über den Vormerken-Weg | erledigt | 0,3 | 0,5 | – | 2026-10-13 | gemergt #328 |
+| F-3a-1 | fixpaket | Plugins aus Stefans Claude Code lesen | erledigt | – | 0,5 | – | 2026-10-14 | Zelle „Ist ≈ 0,5“ ohne Schätzung; gemergt #333 |
+| F-3a-2 | fixpaket | Leitstand: Reiter „Plugins aus deinem Claude Code“ | erledigt | – | 0,4 | – | 2026-10-14 | Zelle „Ist ≈ 0,4“ ohne Schätzung; gemergt #334 |
+| F-3b-1 | fixpaket | Plugins freigeben | erledigt | 0,5 | 0,95 | – | 2026-10-14 | „≈ 0,5 (Auftrag); Ist ≈ 0,95 (1a ≈ 0,6, 1b ≈ 0,35) — Grund: Auflagen des Advisor-Passes (16 + Delta)“; gemergt #335 |
+| F-3b-2 | fixpaket | Plugins im Lauf | erledigt | – | – | – | 2026-10-14 | „Auftrag ≈ 0,45; nach Advisor-Pass ≈ 0,6; nach Delta-Advisor v3 ≈ 0,9–1,0 (2a Server/Gate/Beleg, 2b Oberfläche)“; gemergt #336 |
+| B2a-1 | fixpaket | Projektkarte | erledigt | 0,6–0,7 | – | – | 2026-10-13 | gemergt #329 |
+| B2a-2 | fixpaket | Arbeitspaket | erledigt | 0,5–0,6 | – | – | 2026-10-13 | gemergt #330 |
+| B2a-3a | fixpaket | Codex-Review-Spec und Ausgaberegel | erledigt | 0,4 | 0,5 | – | 2026-10-13 | gemergt #331 |
+| B2a-3b | fixpaket | Geprüfter Stand und „Review veraltet“ | erledigt | – | 0,5 | – | 2026-10-13 | „Schätzung fehlt (Ist ≈ 0,5)“; gemergt #332 |
+| B2b-1a | fixpaket | Rückweg, Bau-Stufe | erledigt | 0,5 | – | – | 2026-10-14 | „(nach Advisor 0,75; Ist siehe Bericht)“; gemergt #338 |
+| B2b-1b-1 | fixpaket | Advisor-Schema | erledigt | 0,5 | – | – | 2026-10-14 | gemergt #339 |
+| B2b-1b-2a | fixpaket | Plan v2, Kern | erledigt | 0,75 | – | – | 2026-10-14 | gemergt #340 |
+| B2b-1b-2b | fixpaket | Plan v2, Anzeige | erledigt | 0,75 | – | – | 2026-10-15 | gemergt #341 |
+| B2b-2a | fixpaket | Review vollständig | erledigt | 0,5 | – | – | 2026-10-15 | gemergt #342 |
+| B2b-2b-1 | fixpaket | qa-Schritt, Kern | erledigt | 0,5 | 0,6 | – | 2026-10-15 | gemergt #344 |
+| B2b-2b-2 | fixpaket | qa-Schritt live | erledigt | 0,4–0,5 | 0,6 | – | 2026-10-15 | gemergt #345 |
+| B2b-3c | fixpaket | Budget je Arbeitspaket | erledigt | 0,6–0,75 | – | – | 2026-10-16 | „(nach Advisor)“; gemergt #347 |
+| B2b-3d | fixpaket | Umfangs-Abgleich | erledigt | 0,4–0,5 | – | – | 2026-10-16 | „(nach Advisor)“; gemergt #348 |
+| B2b-3b-1a | fixpaket | Rückfrage-Kanal „Kanal“, ausgeschaltet | erledigt | 0,45–0,5 | – | – | 2026-10-16 | „(nach Advisor)“; gemergt #349 |
+| B2b-3b-1b | fixpaket | Rückfrage-Kanal „Auswertung“ | erledigt | 0,35–0,45 | – | – | 2026-10-16 | „(nach Advisor)“; gemergt #350 |
+| B2b-3e | fixpaket | Eingabefeld „Budget (Tokens, leer = Standard der Kontrolltiefe)“ | erledigt | 0,15–0,2 | – | – | 2026-10-16 | gemergt #351 (B2b-3e-1), #352 (B2b-3e-2) |
+| W1 | workstream | Wachstumsbremse Leitstand-Server | erledigt | 0,3 | – | – | 2026-10-16 | gemergt #353 |
+| B2b-3b-2b-2a-1 | fixpaket | Rückfrage-Kanal einschalten | erledigt | 0,3 | – | – | 2026-10-17 | gemergt #357 |
+| B2b-3b-2b-2a-2 | fixpaket | Anzeige im Leitstand, Teil A Warteschlange | erledigt | 0,3 | – | – | 2026-10-17 | gemergt #358 |
+| B2b-3b-2b-2a-3 | fixpaket | Anzeige im Leitstand, Teil B Abnahme | erledigt | 0,3 | – | – | 2026-10-17 | gemergt #359 |
+| B2b-3b-2b-2b-1 | fixpaket | Vorbereitung des echten Nachweislaufs | erledigt | 0,3 | – | – | 2026-10-17 | gemergt #360 |
+| B2b-3b-2b-2b Lauf | fixpaket | Stefan fährt den Nachweislauf nach Anleitung | erledigt | 0,1 | – | – | 2026-10-18 | kein Code; Datum = Merge der Auswertungen `features/F45/nachweise/b2b3b2b2b/` mit #362 — gefahren vor K (K hängt davon ab, gemergt 2026-10-17), Widerspruch nur im Datum |
+| K | workstream | Kontext-Diät | erledigt | 0,3 | – | – | 2026-10-17 | gemergt #361 |
+| B2b-3b-2b-2b-2 | fixpaket | Kanal standardmäßig an | erledigt | 0,2 | – | – | 2026-10-18 | gemergt #362 (B2b-3b-2b-2b-2a), #363 (B2b-3b-2b-2b-2b-1), #365 (B2b-3b-2b-2b-2b-2); #364 Startfreigabe erneuert |
+| B2b | workstream | Kette und Grenzen | erledigt | 1,25–1,5 | – | – | 2026-10-21 | Sammelzeile aus §3, trägt kein Ist (sonst doppelt in „Plan gegen Ist“); Teilpakete ohne eigene Zeile dort: B2b-3a (#346), B2b-3b-2a (#354), B2b-3b-2b-1a (#355), B2b-3b-2b-1b (#356), B2b-4a-1 (#366), B2b-4a-2a (#367), B2b-4a-2b-1 (#368), B2b-4a-2b-2 (#369), B2b-4b (#370) |
+| FB-1 | fixpaket | Fähigkeit bauen: Daten | erledigt | – | – | – | 2026-10-23 | „FB-1a ≈ 0,3; FB-1b ≈ 0,35“; gemergt #371 (FB-1a), #372 (FB-1b) |
+| FB-2 | fixpaket | Fähigkeit bauen: Anzeige | erledigt | 0,25 | – | – | 2026-10-23 | gemergt #373 |
+| B5a-1 | fixpaket | Akte schreiben | erledigt | 0,5–0,6 | – | – | 2026-10-24 | gemergt #374 |
+| B5a-2 | fixpaket | Akte im Leitstand | erledigt | 0,4–0,5 | – | – | 2026-10-24 | gemergt #375 |
+| B5b-1a | fixpaket | Planungsdaten lesen | laeuft | 0,4–0,5 | – | 2026-10-24 | – | B5b-1 (0,6–0,8) geteilt nach dem Advisor-Pass (A1, Challenger 24.10.2026) |
+| B5b-1b | fixpaket | Planungsdaten schreiben | geplant | 0,35–0,45 | – | – | – | aus B5b-1 geteilt (A1) |
+| B5b-2 | fixpaket | Roadmap-Anzeige | geplant | 1–1,4 | – | – | – | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“ |
+| B5b-3 | fixpaket | R7: Ist nach Abnahme | geplant | 0,3 | – | – | – | |
+| V1 | workstream | Live-Vorschau des Projekts im Leitstand | geplant | 0,3–0,5 | – | – | – | E-VORSCHAU-1 = A |
+| B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
+| W2 | workstream | Aufräumpaket | geplant | 1,5–3 | – | – | – | |
+| R | workstream | Referenzauftrag in einem Fremdprojekt | geplant | 1–2 | – | – | – | |
+| R2 | design | Motion im Leitstand der Workforce | geplant | 1 | – | – | – | |
+
+Planungsdaten nach E-B5-1 = A (F45 B5b-1a, 24.10.2026; Format und Gate `src/workboard/feature-planung.ts`). Zeilen und
+Schätzungen aus `docs/projekt/fixpaket-f45.md` §3 in deren Reihenfolge (Entscheidung A4/O3; die offenen Zeilen folgen der
+Reihenfolge ab W1): Schätzung nur, wo die Zelle mit einer Zahl oder Spanne beginnt (≈ entfällt), sonst „–“; Zusätze wörtlich
+in der Notiz. Ist nur, wo eine einzelne AT-Zahl als Ist steht. Status und Abgenommen aus git (Datum des Merge-Commits auf
+`main`, PR in der Notiz) — „Abgenommen = Merge-Datum“ ist eine Deutung, kein Abnahmeprotokoll (DEKLARIERT). Begonnen ist nur
+bekannt, wo es eine Quelle gibt. Art: `workstream` = ungeteilter Baustein oder Sammelzeile, `fixpaket` = Teilpaket eines
+geteilten Bausteins, `design` = Design- und Motion-Paket. Die Sammelzeile B2b bleibt, weil §3 nicht alle B2b-Teilpakete als
+eigene Zeile führt; sie ist erledigt und ohne Ist, zählt also weder in „Bis M5 fertig“ noch in „Plan gegen Ist“. Ist pflegt bis
+B5b-3 der Challenger nach Abschluss eines Eintrags nach.
+
+Grobschätzungen der alten Scope-Tabelle ohne eigene Zeile hier (wörtlich, Stand vor B5b-1a): F-2b-2 „≈ 1–1,25“; F-3
+„Schätzung fehlt“, Ist „F-3a-1 ≈ 0,5, F-3a-2 ≈ 0,4, F-3b-1 ≈ 0,95 AT (beauftragt 0,5; Grund: Advisor-Auflagen)“; B2b
+„1,25–1,5 (ohne F-1072)“; Fähigkeit bauen „≈ 0,5–0,75“; B5a „0,75“; B5b „0,75–1“.
 
 ## Stand B0
 Branch `feat/f45-b0-chat` (Basis `d10f9be`, gleich `origin/main` beim Start), nicht committet. Bau 10.10.2026.
@@ -1286,3 +1369,43 @@ nachgebildet (qa 2: zweite Akte F22, 409 nur im Wettlauf). Rest → F-1182, F-11
 
 **Register:** neu F-1178 (Live-Vorschau, E-VORSCHAU-1 = A), F-1179 (Klärungsinterview, umgesetzt, Wirkung offen bis R), F-1180 (Sollvorgabe
 Roadmap), F-1181 (Kanban-Knopf), F-1182, F-1183; erledigt F-912, F-991, F-995; Nachtrag F-1177 (qa 4 als Weg b).
+
+## Stand B5b-1a
+
+**Auftrag:** B5b-1 „Planungsdaten“ (Challenger, 24.10.2026; E-B5-1 = A, E-B5-3, E-B5-5, E-B5-6 = B, E-KANBAN = A; F-976, F-944,
+F-990, F-984, F-1010, F-975). Verlauf: `plan-b5b1.md` → `advisor-b5b1.md` (Nicht freigegeben: A1 Zuschnitt, A2 §2, A3 §7, A4
+Migrationsquelle, B1 Event-Loop, B2 `roadmap_hash`, B6 STATUS.md) → Stopp und Bericht → Entscheidungen Challenger (Schnitt A1,
+A2–A5, O1, O2, O5, B6) → `plan-b5b1-v2.md` (B5b-1a; kein zweiter Advisor-Pass, Regel 3a).
+
+**Gebaut:** `src/workboard/feature-planung.ts` (Priorität, Abgenommen, strenger Abschnitt „## Workstreams“ nur als Tabelle; in
+`pruefeFeatureAkteInhalt` eingebunden ⇒ `check-feature` und PUT/POST Akte prüfen dieselbe Regel); `src/workboard/roadmap-regeln.ts`
+(Status-Regel R1, Ausnahmen-Datei `docs/projekt/roadmap-ausnahmen.json` mit den fünf Ausnahmen M3/F18, M4/F20, F21, F22, F25,
+verwaiste Ausnahme = Befund) und Aufruf in `scripts/check-akte-meilenstein.mjs` (Ausnahme `ohne_akte` F30 entfernt);
+`src/workboard/roadmap-planung.ts` (Zeitachse in AT ab heute, „frühestens ab AT x“ ohne Länge, Ist-Zone in Arbeitstagen, Kennzahlen
+R2/R5, Plan gegen Ist; abgeschlossene Meilensteine tragen keine offene Arbeit); `scripts/leitstand/routen-roadmap.mjs` additiv
+(`prioritaet`, `abgenommen`, `workstreams`, `planung_befunde` je Feature; `roadmap_hash`, `zeitachse`, `kennzahlen`; Status über
+`leseFeatureStatus`); Bug-Felder im Findings-Parser (`src/workboard/findings.ts`, `types.ts`). Migration: Abschnitt „## Workstreams“
+dieser Akte (53 Zeilen aus `fixpaket-f45.md` §3, Status/Abgenommen aus git), Scope-Tabelle ohne Schätzung/Ist; `features/F30/feature.md`
+als ENTWURF; F35 „Abgenommen: 2026-09-28 (…)“. Server unverändert (13.264 Zeilen), der Kern schreibt nichts.
+
+**Tests/Gates:** neu `scripts/check-f45-b5b1a-planung.mjs` (a)–(k) in `check:gates` (Formfehler, min > max, erledigt ohne Datum,
+R1 ohne Ausnahme und verwaiste Ausnahme über das echte Gate in einer Kopie, „Schätzung fehlt“ ohne Länge, „Bis M5“ nicht berechenbar,
+LF/CRLF, echte Daten, Bullet-Altakten, Server ohne Planungslogik); neu `feature-planung.test.ts`, `roadmap-regeln.test.ts`,
+`roadmap-planung.test.ts`; erweitert `workboard.test.ts` (Bug-Felder), `check-akte-meilenstein.test.mjs` (F30-Ausnahme weg).
+
+**Abweichung vom Plan v2 (bewusst, DEKLARIERT):** Features in einem ABGESCHLOSSEN-Meilenstein tragen keine offene Arbeit in Zeitachse
+und „Bis fertig“ — eine R1-Abweichung dort (F18, F20, F21, F22, F25) ist ein Datenfall der Bereinigungsliste; sonst wäre jede Prognose
+unberechenbar (code-reviewer H1). Eine Zeile mit Formfehler lässt das Feature zusätzlich als „Schätzung fehlt“ zählen (qa 1).
+
+**Prüfpass:** code-reviewer und qa je „Freigegeben mit Hinweisen“. Eine Korrekturrunde: Planungsbefunde über die Tabellenzeile statt die
+Dateizeile verortet, damit PUT …/akte einen schon vorhandenen Befund als solchen meldet (cr M1, qa 7; Test in `akte-schreiben.test.ts`);
+Formfehler verkürzt die Prognose nicht mehr still (qa 1, Gate (f2)); Befund bei unterbrochener Tabelle (qa 3, cr H3) und bei Begonnen nach
+Abgenommen (qa 6); `kennzahlen.meilensteine.mit_abweichung` (qa 2); Arbeitstage in O(1) (cr H4); Grenzen im Kopf von `roadmap-planung.ts`
+und `feature-planung.ts` (qa 4, 5, 8, 11, cr H2, H5); eigene Meldung für eine nicht lesbare Ausnahmen-Datei (cr H8); Titel der Migration
+wörtlich aus §3, Notizen präzisiert (qa 10, cr H7); F-713 in der F30-Akte als behoben (qa 9); Gate (i2) zählt die echten Kennzahlen
+unabhängig nach. Rest → F-1185.
+
+**Stand der echten Daten (24.10.2026):** Meilensteine 5/7 abgeschlossen laut `roadmap.json`, davon 2 (M3, M4) mit offener Bereinigung;
+Features abgenommen 39/48 (gegen die Akten); „Bis M5 fertig“
+nicht berechenbar (1 Eintrag ohne Schätzung: F30, Workstreams noch nicht geschnitten); Plan gegen Ist über 6 erledigte Zeilen mit
+Schätzung und Ist: Plan 2,85–2,95 AT, Ist 4,15 AT.

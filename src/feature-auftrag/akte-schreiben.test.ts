@@ -254,6 +254,13 @@ test('qa 5: Gate-Verstoß, der schon vorher bestand, wird als solcher gemeldet',
   assert.ok(!r.ok && /schon vor der Bearbeitung/.test(r.grund) && (r.verstoesse?.length ?? 0) > 0, JSON.stringify(r))
 })
 
+test('F45 B5b-1a (code-reviewer M1): kaputte Workstream-Zeile, PUT ändert die Zeilenzahl davor ⇒ „schon vor der Bearbeitung“', () => {
+  const tabelle = ['## Workstreams', '', '| ID | Art | Titel | Status | Schätzung AT | Ist AT | Begonnen | Abgenommen | Notiz |', '|---|---|---|---|---|---|---|---|---|', '| A | workstream | t | geplant | 2–1 | – | – | – | |', ''].join('\n')
+  const inhalt = AKTE.replace('## Stand X', `${tabelle}\n## Stand X`)
+  const r = bearbeiteFeatureAkte(inhalt, 'F9', aenderung({ akzeptanzkriterien: [...aenderung().akzeptanzkriterien, { id: 'AK3', text: 'Drei\nZeilen\nlang.' }] }), '2026-10-24')
+  assert.ok(!r.ok && /schon vor der Bearbeitung/.test(r.grund) && (r.verstoesse ?? []).some((v) => v.includes('min > max')), JSON.stringify(r))
+})
+
 test('erkenneZeilenende: erstes Vorkommen', () => {
   assert.equal(erkenneZeilenende('a\r\nb\n'), '\r\n')
   assert.equal(erkenneZeilenende('a\nb\r\n'), '\n')

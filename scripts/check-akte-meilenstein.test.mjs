@@ -80,11 +80,11 @@ test('rot: Ausnahme ohne ID und doppelte Ausnahme', () => {
   assert.ok(befunde.some((b) => b.startsWith('Ausnahme ohne ID')), befunde.join(' | '))
 })
 
-test('realer Repo-Stand ist grün (Ausnahmen AF-F001, F30 greifen)', () => {
+test('realer Repo-Stand ist grün (Ausnahme AF-F001 greift; F30 hat seit F45 B5b-1a eine Akte)', () => {
   const echt = JSON.parse(readFileSync('docs/projekt/roadmap.json', 'utf-8'))
   const ids = leseAktenIds('features')
   assert.deepEqual(pruefeAkteMeilenstein(ids, echt, AUSNAHMEN, leseAktenStatus('features', ids)), [])
-  assert.deepEqual(AUSNAHMEN.map((a) => a.id), ['AF-F001', 'F30'])
+  assert.deepEqual(AUSNAHMEN.map((a) => a.id), ['AF-F001'])
 })
 
 test('E-B5-2 grün: Akte mit Status ENTWURF darf ohne Meilenstein sein', () => {
