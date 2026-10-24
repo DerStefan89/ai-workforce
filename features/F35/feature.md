@@ -9,7 +9,7 @@ Feature bauen aus Akte
 ## Status
 Status: ABGESCHLOSSEN
 
-Abgenommen: Stefan, 28.09.2026 (Reallauf-Nachweis features/F35/nachweis-reallauf.md, Review-Pass features/F35/review-pass.md, K1 behoben)
+Abgenommen: 2026-09-28 (Stefan; Reallauf-Nachweis features/F35/nachweis-reallauf.md, Review-Pass features/F35/review-pass.md, K1 behoben)
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 

@@ -23,6 +23,12 @@ export interface FindingWorkitem {
   auswirkung: string | null
   massnahme: string | null
   featureRun: string | null
+  /** F45 B5b-1a (F-975, E-B5-5): optionale Bug-Felder, null = nicht angegeben. */
+  nachstellen: string | null
+  erwartet: string | null
+  tatsaechlich: string | null
+  ursache: string | null
+  regressionstest: string | null
   zeile: number
 }
 

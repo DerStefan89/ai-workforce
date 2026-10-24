@@ -8,13 +8,15 @@
  * Abhängigkeitsrichtung bleibt scripts/ → src/ (Muster feature-status.ts).
  *
  * Wird aufgerufen von: scripts/check-feature.mjs, scripts/check-akte-meilenstein.mjs,
- * scripts/leitstand/routen-f35.mjs, src/workboard/feature-akte-pruefung.test.ts.
+ * scripts/leitstand/routen-f35.mjs, scripts/leitstand/routen-roadmap.mjs (leseFeatureStatus), src/feature-auftrag/akte-schreiben.ts,
+ * src/workboard/feature-akte-pruefung.test.ts.
  *
  * Wichtig: Die Status-Zeile wird nur innerhalb einer Zeile gelesen (`[ \t]*`, nicht `\s*` — sonst
  * griffe sie über ein Zeilenende auf das nächste Wort).
  */
 
 import { pruefeOptionaleAbschnitte } from './feature-abschnitte.ts'
+import { pruefePlanung } from './feature-planung.ts'
 import { gueltigeStatusWerte } from './feature-status.ts'
 
 const STATUS_ZEILE_MUSTER = /^Status:[ \t]*(\S+)/m
@@ -41,7 +43,7 @@ export function leseFeatureStatus(inhalt: string): string | null {
 /**
  * Prüft eine Akte nach den Regeln des Feature-Akte-Gates: Status vorhanden und gültig (sonst nur
  * dieser Befund), bei READY_FOR_TECH die vier Pflichtabschnitte, unabhängig vom Status die optionalen
- * technischen Abschnitte (pruefeOptionaleAbschnitte).
+ * technischen Abschnitte (pruefeOptionaleAbschnitte) und die Planungsdaten (pruefePlanung, F45 B5b-1a).
  * @param inhalt - Text der Akte
  * @returns Befunde ohne Pfad-Präfix; leer = die Akte besteht
  */
@@ -55,5 +57,7 @@ export function pruefeFeatureAkteInhalt(inhalt: string): string[] {
     }
   }
   befunde.push(...pruefeOptionaleAbschnitte(inhalt))
+  // F45 B5b-1a: Priorität, Abgenommen und strenger Abschnitt „## Workstreams“ (src/workboard/feature-planung.ts).
+  befunde.push(...pruefePlanung(inhalt, status))
   return befunde
 }

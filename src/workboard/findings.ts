@@ -15,8 +15,11 @@
  * erkannt; eine Zeile ohne erkanntes Label ist Fortsetzung des zuletzt
  * offenen Feldes (die Fundstelle in F-221/F-222 zeigt, dass auch
  * Nicht-Standard-Label wie "Empfohlene Maßnahme:" real vorkommen — nur die
- * sechs benannten Label werden erkannt, alles andere bleibt Fortsetzungstext
+ * benannten Label (sechs, seit F45 B5b-1a elf) werden erkannt, alles andere bleibt Fortsetzungstext
  * des vorherigen Feldes statt eigenes Feld, F-369).
+ *
+ * F45 B5b-1a (F-975, E-B5-5): zusätzlich die optionalen Bug-Felder Nachstellen, Erwartet, Tatsächlich, Ursache und
+ * Regressionstest — ein Eintrag ohne sie trägt null.
  */
 
 import type { Befund, FindingWorkitem, ParseErgebnis, Prioritaet, WorkitemStatus } from './types.ts'
@@ -24,14 +27,21 @@ import type { Befund, FindingWorkitem, ParseErgebnis, Prioritaet, WorkitemStatus
 const HEADER_MUSTER = /^\*\*F-(\d+)\*\* · `([A-Z_]+)` · (P[0-4]) · (.+)$/
 /** Erkennt einen Kopfzeilen-VERSUCH (für die Meldung "nicht parsebare Kopfzeile") — bewusst lockerer als HEADER_MUSTER. */
 const HEADER_VERSUCH_MUSTER = /^\*\*F-/
-const FELD_MUSTER = /^(Titel|Beschreibung|Fundstelle|Auswirkung|Maßnahme|Feature\/Run):\s*(.*)$/
-const FELD_NAME_ZU_SCHLUESSEL: Record<string, keyof Pick<FindingWorkitem, 'titel' | 'beschreibung' | 'fundstelle' | 'auswirkung' | 'massnahme' | 'featureRun'>> = {
+const FELD_MUSTER = /^(Titel|Beschreibung|Fundstelle|Auswirkung|Maßnahme|Feature\/Run|Nachstellen|Erwartet|Tatsächlich|Ursache|Regressionstest):\s*(.*)$/
+type FeldSchluessel = keyof Pick<FindingWorkitem, 'titel' | 'beschreibung' | 'fundstelle' | 'auswirkung' | 'massnahme' | 'featureRun' | 'nachstellen' | 'erwartet' | 'tatsaechlich' | 'ursache' | 'regressionstest'>
+const FELD_NAME_ZU_SCHLUESSEL: Record<string, FeldSchluessel> = {
   Titel: 'titel',
   Beschreibung: 'beschreibung',
   Fundstelle: 'fundstelle',
   Auswirkung: 'auswirkung',
   Maßnahme: 'massnahme',
   'Feature/Run': 'featureRun',
+  // F45 B5b-1a (F-975, E-B5-5): optionale Bug-Felder, keine Pflicht, keine Rückmigration.
+  Nachstellen: 'nachstellen',
+  Erwartet: 'erwartet',
+  Tatsächlich: 'tatsaechlich',
+  Ursache: 'ursache',
+  Regressionstest: 'regressionstest',
 }
 
 const ERLEDIGT_WOERTER = ['gelöst', 'behoben', 'erledigt', 'korrigiert']
@@ -50,8 +60,8 @@ interface OffenerEintrag {
   prioritaet: Prioritaet
   statusRoh: string
   zeile: number
-  felder: Partial<Record<'titel' | 'beschreibung' | 'fundstelle' | 'auswirkung' | 'massnahme' | 'featureRun', string>>
-  offenesFeld: 'titel' | 'beschreibung' | 'fundstelle' | 'auswirkung' | 'massnahme' | 'featureRun' | null
+  felder: Partial<Record<FeldSchluessel, string>>
+  offenesFeld: FeldSchluessel | null
 }
 
 function schliesseEintrag(eintrag: OffenerEintrag, gesehen: Map<string, number>, workitems: FindingWorkitem[], befunde: Befund[]): void {
@@ -79,6 +89,11 @@ function schliesseEintrag(eintrag: OffenerEintrag, gesehen: Map<string, number>,
     auswirkung: eintrag.felder.auswirkung?.trim() ?? null,
     massnahme: eintrag.felder.massnahme?.trim() ?? null,
     featureRun: eintrag.felder.featureRun?.trim() ?? null,
+    nachstellen: eintrag.felder.nachstellen?.trim() ?? null,
+    erwartet: eintrag.felder.erwartet?.trim() ?? null,
+    tatsaechlich: eintrag.felder.tatsaechlich?.trim() ?? null,
+    ursache: eintrag.felder.ursache?.trim() ?? null,
+    regressionstest: eintrag.felder.regressionstest?.trim() ?? null,
     zeile: eintrag.zeile,
   })
 }
