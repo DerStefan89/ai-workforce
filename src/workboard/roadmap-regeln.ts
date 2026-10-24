@@ -6,8 +6,11 @@
  * begründete Ausnahme trägt. Die Ausnahmen sind Daten (`docs/projekt/roadmap-ausnahmen.json`, O1), nicht Code: B5b-1b entfernt
  * eine Ausnahme beim Bestätigen in der Bereinigungsliste, und Fremdprojekte haben kein Gate-Skript. Rein, kein I/O, wirft nicht.
  *
- * Wird aufgerufen von: scripts/check-akte-meilenstein.mjs, scripts/check-f45-b5b1a-planung.mjs,
- * src/workboard/roadmap-regeln.test.ts.
+ * Seit F45 B5b-1b-2 auch die Bereinigungsliste (bereinigungsEintraege, pruefeEintrag) und der Vergleich alter/neuer Stand
+ * (neueR1Befunde) — features/F45/plan-b5b1b2-v2.md §2.3.
+ *
+ * Wird aufgerufen von: scripts/check-akte-meilenstein.mjs, scripts/check-f45-b5b1a-planung.mjs, scripts/leitstand/routen-planung.mjs,
+ * src/workboard/roadmap-schreiben.ts (leseStatusAusnahmen), src/workboard/roadmap-regeln.test.ts.
  *
  * Wichtig: Eine Ausnahme, die nicht mehr greift (Meilenstein fehlt oder ist nicht ABGESCHLOSSEN, das Feature steht nicht darin
  * oder ist inzwischen ABGESCHLOSSEN), ist selbst ein Befund — sonst bliebe sie still als Freibrief stehen (Muster AUSNAHMEN in
@@ -118,4 +121,95 @@ export function pruefeMeilensteinStatus(roadmap: RoadmapStruktur, aktenStatus: M
     else if (aktenStatus.get(ausnahme.feature) === 'ABGESCHLOSSEN') befunde.push(`${wo}: Feature ist ABGESCHLOSSEN`)
   }
   return { abweichungen, befunde }
+}
+
+/** Ein Stand, gegen den R1 geprüft wird. */
+export interface R1Stand {
+  roadmap: RoadmapStruktur
+  aktenStatus: Map<string, string>
+  ausnahmen: StatusAusnahme[]
+}
+
+/**
+ * R1-Befunde, die eine Änderung neu verursacht: Befundtext auf dem neuen Stand, der auf dem alten fehlt (Advisor B5b-1b B1,
+ * B5b-1b-2 B3). Altbefunde blockieren nicht — sie können außerhalb der Änderung liegen. Eine Regel für PUT …/planung und die
+ * Bereinigungsliste; alter und neuer Stand dürfen verschiedene Ausnahmen tragen.
+ * @param alt - Stand vor der Änderung
+ * @param neu - Stand nach der Änderung
+ * @returns neue Befunde (leer = R1 lässt die Änderung zu)
+ */
+export function neueR1Befunde(alt: R1Stand, neu: R1Stand): string[] {
+  const vorher = pruefeMeilensteinStatus(alt.roadmap, alt.aktenStatus, alt.ausnahmen).befunde
+  return pruefeMeilensteinStatus(neu.roadmap, neu.aktenStatus, neu.ausnahmen).befunde.filter((befund) => !vorher.includes(befund))
+}
+
+/** Eine Entscheidung der Bereinigungsliste (F45 B5b-1b-2). */
+export type BereinigungsEntscheidung = 'feature_abgeschlossen' | 'meilenstein_laeuft'
+
+/** Ein angebotener Vorschlag mit Anzeigetext und Nebenwirkungen. */
+export interface BereinigungsVorschlag {
+  entscheidung: BereinigungsEntscheidung
+  text: string
+  nebenwirkung: string
+}
+
+/** Ein Eintrag der Bereinigungsliste: eine R1-Abweichung mit ihren erlaubten Entscheidungen. */
+export interface BereinigungsEintrag extends StatusAbweichung {
+  eintrag: string
+  /** Abweichungen im selben Meilenstein (qa 1): „Meilenstein → LAEUFT“ gibt es erst bei 1 — die Anzeige kann das ankündigen. */
+  abweichungen_im_meilenstein: number
+  vorschlaege: BereinigungsVorschlag[]
+}
+
+/** Steuerzeichen oder `/` in einer Meilenstein-ID: nicht adressierbar bzw. nicht in eine Akte zu schreiben (cr 8, qa 3). */
+const NICHT_ADRESSIERBAR = /[\/\u0000-\u001f\u007f\u2028\u2029]/
+
+/**
+ * Baut die Bereinigungsliste aus den R1-Abweichungen (F45 B5b-1b-2, features/F45/plan-b5b1b2-v2.md §2.3; auch Abweichungen ohne
+ * Ausnahme). „Feature → ABGESCHLOSSEN“ nur bei einer Akte mit Status ≠ ABGEBROCHEN (der Text nennt den heutigen Status, Advisor
+ * B5b-1b C11); „Meilenstein → LAEUFT“ nur, wenn der Meilenstein im aktuellen Stand genau eine Abweichung hat (B4, A2 = dynamisch:
+ * auch M4 nach drei Einzelbestätigungen). Kein Verschieben (F-1187). Keine Sammel-Bestätigung: jeder Vorschlag betrifft genau
+ * diesen Eintrag.
+ * @param abweichungen - pruefeMeilensteinStatus(...).abweichungen
+ * @returns Einträge in der Reihenfolge der Abweichungen
+ */
+export function bereinigungsEintraege(abweichungen: StatusAbweichung[]): BereinigungsEintrag[] {
+  const jeMeilenstein = new Map<string, number>()
+  for (const a of abweichungen) jeMeilenstein.set(a.meilenstein, (jeMeilenstein.get(a.meilenstein) ?? 0) + 1)
+  return abweichungen.map((a) => {
+    const ausnahme = a.ausnahme === null ? '' : `; die Ausnahme ${a.meilenstein}/${a.feature} in roadmap-ausnahmen.json entfällt`
+    const vorschlaege: BereinigungsVorschlag[] = []
+    const anzahl = jeMeilenstein.get(a.meilenstein) ?? 0
+    // Eine Meilenstein-ID mit `/` oder Steuerzeichen ist nicht adressierbar: gelistet, aber ohne Vorschlag (von Hand).
+    if (NICHT_ADRESSIERBAR.test(a.meilenstein)) return { eintrag: `${a.meilenstein}/${a.feature}`, ...a, abweichungen_im_meilenstein: anzahl, vorschlaege }
+    if (a.featureStatus !== null && a.featureStatus !== 'ABGEBROCHEN') {
+      vorschlaege.push({
+        entscheidung: 'feature_abgeschlossen',
+        text: `${a.feature} → ABGESCHLOSSEN (heute ${a.featureStatus})`,
+        nebenwirkung: `Akte: Status ABGESCHLOSSEN, „Abgenommen: <Tag der Bestätigung>“ und eine Zeile unter „## Änderungen“; docs/STATUS.md: Status-Wort der Angabe zu ${a.feature}${ausnahme}`,
+      })
+    }
+    if (anzahl === 1) {
+      vorschlaege.push({
+        entscheidung: 'meilenstein_laeuft',
+        text: `${a.meilenstein} → LAEUFT`,
+        nebenwirkung: `roadmap.json: ${a.meilenstein} steht wieder auf LAEUFT — steht ${a.meilenstein} vor dem heute laufenden Meilenstein, zeigt die Anzeige ${a.meilenstein} als aktuellen Meilenstein (sie nimmt den ersten laufenden); seine Features zählen wieder in der Prognose (ohne Schätzung erhöhen sie „ohne Schätzung“ späterer Meilensteine); zurück auf ABGESCHLOSSEN nur von Hand in roadmap.json (qa 2); keine Änderungszeile in Akten, der Grund steht in der Commit-Nachricht${ausnahme}; Überschriften in docs/STATUS.md bleiben Handarbeit`,
+      })
+    }
+    return { eintrag: `${a.meilenstein}/${a.feature}`, ...a, abweichungen_im_meilenstein: anzahl, vorschlaege }
+  })
+}
+
+/**
+ * Zerlegt einen Eintrag `<Meilenstein>/<Feature-ID>` (genau ein `/`; Meilenstein-IDs mit `/` sind nicht adressierbar —
+ * DEKLARIERT, Advisor C8).
+ * @param wert - Rohwert von 'eintrag'
+ * @param featureIdMuster - Muster der Feature-ID (FEATURE_ID_MUSTER, vom Aufrufer — die Regel bleibt ohne Importe)
+ * @returns { meilenstein, feature } oder null
+ */
+export function pruefeEintrag(wert: unknown, featureIdMuster: RegExp): { meilenstein: string; feature: string } | null {
+  if (typeof wert !== 'string') return null
+  const teile = wert.split('/')
+  if (teile.length !== 2 || teile[0].trim() === '' || NICHT_ADRESSIERBAR.test(teile[0]) || !featureIdMuster.test(teile[1])) return null
+  return { meilenstein: teile[0], feature: teile[1] }
 }
