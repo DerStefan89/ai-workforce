@@ -39,7 +39,7 @@ import { t } from '../i18n.js'
 import { registriere, navigiere, unterdrueckeFolgendesHashchange } from '../router.js'
 import { abonniere } from '../zustand.js'
 import { leitePersonaZustandAb } from '../persona-state.js'
-import { filtereAttentionLaeufe, filtereAttentionWorkflows } from '../attention-daten.js'
+import { filtereAttentionLaeufe, zaehleWartendeAufStefan } from '../attention-daten.js'
 import { escapeHtml } from '../render.js'
 
 const SESSION_SCHLUESSEL = 'leitstand-start-gezeigt'
@@ -63,7 +63,8 @@ function ermittleWarteText(zustand) {
     return anzahl > 0 ? t('start.warte.aufmerksamkeit', { anzahl }) : t('start.warte.fehlgeschlagen')
   }
   if (persona === 'waiting_for_human') {
-    const anzahl = filtereAttentionWorkflows(zustand.workflows ?? null)?.length ?? 0
+    // F45 B5a-2 (F-991): Freigaben, Rückfragen und offene Abnahmen (eine Auswahl mit „Deine Entscheidungen“).
+    const anzahl = zaehleWartendeAufStefan(zustand)
     return t('start.warte.entscheidungen', { anzahl })
   }
   if (persona === 'thinking') return t('start.warte.lauf')

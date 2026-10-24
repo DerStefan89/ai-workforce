@@ -12,7 +12,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueEntscheidungen, baueReferenzJeAuftrag, filtereAttentionWorkflows, laeuftGerade, passtZuFilter, zaehleJeFilter, zaehleOffeneEntscheidungen } from './attention-daten.js'
+import { baueEntscheidungen, baueReferenzJeAuftrag, filtereAttentionWorkflows, laeuftGerade, passtZuFilter, zaehleJeFilter, zaehleOffeneEntscheidungen, zaehleWartendeAufStefan } from './attention-daten.js'
 
 const ZUSTAND = {
   workflows: [
@@ -257,4 +257,15 @@ test('F45 B2b-3b-2b-2a-2 (Advisor V1): Kanal-Gruppe zuerst; wartende Rückfrage 
   assert.equal(defekt.defekt, true)
   assert.equal(zaehleJeFilter(defekt).get('rueckfrage'), null)
   assert.equal(zaehleJeFilter(defekt).get('freigabe'), 0, 'andere Filter bleiben gezählt')
+})
+
+test('F45 B5a-2 (F-991): zaehleWartendeAufStefan zählt Freigaben, Rückfragen und offene Abnahmen; defekte Quelle 0', () => {
+  const freigabe = { workflowId: 'w1', status: 'WARTET_FREIGABE', naechster: { art: 'haltFreigabe' } }
+  const abnahme = { workflowId: 'w2', status: 'ABGESCHLOSSEN', naechster: { art: 'fertig' }, abnahme: { offen: true, status: 'nicht_vorhanden' } }
+  const entschieden = { workflowId: 'w3', status: 'ABGESCHLOSSEN', naechster: { art: 'fertig' }, abnahme: { offen: false, status: 'ok' } }
+  assert.equal(zaehleWartendeAufStefan({ workflows: [freigabe, abnahme, entschieden] }), 2)
+  assert.equal(zaehleWartendeAufStefan({ workflows: [abnahme] }), 1)
+  assert.equal(zaehleWartendeAufStefan({ workflows: [entschieden] }), 0)
+  assert.equal(zaehleWartendeAufStefan({ workflows: null }), 0)
+  assert.equal(zaehleWartendeAufStefan(null), 0)
 })

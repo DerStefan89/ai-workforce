@@ -7088,6 +7088,70 @@ th {
   gap: 6px 10px;
 }
 
+/* F45 B5a-2: Kachel „Entscheidungen“ (aus der Akte) — Kennung als Code, Text bricht um. */
+#view-workboard .eintrag-entscheidungen {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+#view-workboard .eintrag-entscheidungen li {
+  overflow-wrap: anywhere;
+}
+
+/* F45 B5a-2: Formular „Akte bearbeiten“ (akte-bearbeiten.js) — Felder wie der AK-Entwurf (.wb-ak-*), nur bestehende Tokens.
+   Kein display auf #workboard-akte-formular: das hidden-Attribut bleibt wirksam (F-622). */
+#view-workboard .eintrag-karte-kopf .akte-bearbeiten {
+  margin-left: auto;
+}
+
+#view-workboard .akte-formular .akte-feld {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+#view-workboard .akte-formular .akte-label {
+  padding: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .akte-formular .akte-gruppe {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#view-workboard .akte-formular .wb-ak-liste {
+  margin: 8px 0 0;
+}
+
+#view-workboard .akte-formular .action-row {
+  margin-top: 8px;
+}
+
+#view-workboard .akte-formular .note {
+  margin: 0;
+}
+
+#view-workboard .akte-formular .note p,
+#view-workboard .akte-formular .note code {
+  overflow-wrap: anywhere;
+}
+
+.akte-verstoesse {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
 #view-workboard .eintrag-verlauf {
   display: flex;
   flex-direction: column;
@@ -9718,6 +9782,27 @@ th {
 
 .chat-entwurf-titel {
   overflow-wrap: anywhere;
+}
+
+/* F45 B5a-2 (F-912): „Als Feature anlegen“ unter dem Coach-Entwurf — Ergebnis mit Link und Git-Block, lange Gründe brechen um. */
+.chat-feature-anlage {
+  margin: 10px 0 0;
+}
+
+.chat-feature-anlage p {
+  margin: 0 0 6px;
+}
+
+.chat-feature-ergebnis,
+.chat-feature-ergebnis code {
+  overflow-wrap: anywhere;
+}
+
+/* Link im Satz statt großer Serifen-Link (Muster .sichern-satz .text-link). */
+.v10-seite .chat-feature-ergebnis .text-link {
+  display: inline;
+  padding: 0;
+  font: inherit;
 }
 
 /* Befehlsblock (befehlsblock.js): Kopfzeile mit Etikett, Anzahl, Platzhalter-Chip und „Kopieren“,

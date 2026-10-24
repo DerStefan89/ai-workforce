@@ -140,6 +140,12 @@ test('baueCoachAuftragstext: nennt alle drei art-Enum-Werte und verbietet Codez�
   assert.ok(text.includes('kein Codezaun'))
 })
 
+test('baueCoachAuftragstext: F45 B5a-2 (F-1179) — Klärungsleitfaden Fähigkeit mit vier Punkten nur im Feature-Modus', () => {
+  const text = baueCoachAuftragstext('Ich möchte einen Skill bauen')
+  for (const teil of ['Klärungsleitfaden Fähigkeit', 'Auslöser', 'ein gutes und ein schlechtes Beispiel', 'Grenzen', 'Erfolgskriterium', 'je Turn höchstens EINE Frage']) assert.ok(text.includes(teil), teil)
+  assert.ok(!baueCoachAuftragstext('x', [], 'projekt').includes('Klärungsleitfaden Fähigkeit'))
+})
+
 test('baueCoachAuftragstext: leerer Verlauf enthält keinen Verlaufsblock', () => {
   const text = baueCoachAuftragstext('x', [])
   assert.ok(!text.includes('Bisheriger Gesprächsverlauf'))

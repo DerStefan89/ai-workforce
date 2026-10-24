@@ -45,6 +45,13 @@
  * ein frisch angelegter Auftrag ist kein Workboard-Workitem im F21-Sinn,
  * s. "Bekannte Grenzen" in features/F34/feature.md).
  *
+ * F45 B5a-2 (F-912, features/F45/plan-b5a2-v2.md): unter jedem Coach-Entwurf (art 'scope_entwurf') steht unabhängig von der
+ * Auftrag-Brücke (auch bei offenem Dialog oder schon angelegtem Auftrag) „Als Feature anlegen“ — POST /api/features { scope }
+ * (legeFeatureAn) legt eine Akte mit Status ENTWURF an; Ergebnis (neue ID mit Link ins Detail, Git-Block bzw. Grund und Verstöße
+ * wörtlich) aus akte-bearbeiten.js. Doppelklick-Sperre je Eintrag (featureAnlagen). Bekannte Grenze: das Ergebnis lebt nur im
+ * Modulspeicher — nach einem Neuladen der Seite steht der Knopf wieder da, ein zweiter Klick legt eine weitere Akte mit neuer ID an
+ * (der Server überschreibt nie; Rückverweis Turn → Akte braucht Server-Code, F-1182). Der Auftragsweg bleibt unverändert.
+ *
  * Der persistierte Verlauf (GET /api/chat bzw. GET /api/sparring, Checkpoint-Kette
  * 'lineage-chat-<projektId>' bzw. 'lineage-sparring-<projektId>') des angezeigten Modus wird beim
  * Bootstrap (initChatView), bei jedem Betreten von '#/chat' und seit F44 WS-8a nach jedem
@@ -250,7 +257,8 @@
  *     Poll (zustand.startHinweis, start-hinweis.js). Senden bleibt möglich.
  */
 
-import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeProjektRoadmap, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
+import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeProjektRoadmap, holeSparringVerlauf, legeAuftragAn, legeFeatureAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
+import { deuteFeatureAnlage, featureAnlageHtml } from '../akte-bearbeiten.js'
 import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { registriere } from '../router.js'
@@ -432,6 +440,14 @@ const ungeleseneUntermodi = new Set()
  * @type {{ modus: string, schluessel: string, titel: string, auftragstext: string, gesperrt: boolean, fehler: string, erfolgAuftragId: string | null } | null}
  */
 let offenerAuftragDialog = null
+
+/**
+ * F45 B5a-2 (F-912): „Als Feature anlegen“ je Verlaufseintrag (Schlüssel wie offenerAuftragDialog): { gesperrt, deutung } —
+ * gesperrt, solange POST /api/features unterwegs ist (Doppelklick-Sperre), danach das Ergebnis (deuteFeatureAnlage). Ein
+ * Projektwechsel leert die Liste.
+ * @type {Map<string, { gesperrt: boolean, deutung: object | null }>}
+ */
+const featureAnlagen = new Map()
 
 /**
  * Task "Jarvis-Chat-Latenz senken" (state/), Schritt 1: reine Diagnose, kein
@@ -937,6 +953,55 @@ function renderAuftragBruecke(modus, schluessel, kandidat, auftragErstelltId) {
   </div>`
 }
 
+/**
+ * F45 B5a-2 (F-912): „Als Feature anlegen“ unter einem Coach-Entwurf — Knopf, „wird angelegt …“ oder das Ergebnis; nach einem
+ * Fehler steht der Knopf wieder da (erneuter Versuch).
+ * @param schluessel - eintrag.schluessel
+ * @returns HTML
+ */
+function renderFeatureAnlage(schluessel) {
+  const stand = featureAnlagen.get(schluessel)
+  if (stand?.deutung?.art === 'ok') return `<div class="chat-feature-anlage" tabindex="-1" data-feature-anlage="${escapeHtml(schluessel)}">${featureAnlageHtml(stand.deutung)}</div>`
+  const fehler = stand?.deutung ? featureAnlageHtml(stand.deutung) : ''
+  const knopf = `<button type="button" class="button chat-feature-anlegen-btn" data-feature-anlegen="${escapeHtml(schluessel)}"${stand?.gesperrt ? ' disabled aria-disabled="true"' : ''}>${tHtml('chat.feature.anlegen')}</button>`
+  // Keine eigene Live-Region (genau eine: die Persona); nach dem Ergebnis geht der Fokus auf diesen Bereich.
+  const laeuft = stand?.gesperrt ? ` <span class="subtle">${tHtml('chat.feature.legtAn')}</span>` : ''
+  return `<div class="chat-feature-anlage" tabindex="-1" data-feature-anlage="${escapeHtml(schluessel)}">${fehler}<p>${knopf}${laeuft}</p><p class="subtle">${tHtml('chat.feature.hinweis')}</p></div>`
+}
+
+/**
+ * F45 B5a-2 (F-912): Klick auf „Als Feature anlegen“ — POST /api/features mit dem Scope des Eintrags. Die Sperre steht im Zustand
+ * (nicht nur am Knopf); Schlüssel und Projekt werden vor dem await eingefroren, eine Antwort für ein inzwischen anderes Projekt wird
+ * verworfen.
+ * @param schluessel - eintrag.schluessel
+ */
+async function legeFeatureAusEintragAn(schluessel) {
+  if (featureAnlagen.get(schluessel)?.gesperrt === true || featureAnlagen.get(schluessel)?.deutung?.art === 'ok') return
+  const eintrag = baueAnzeigeListe('sparring').find((e) => e.schluessel === schluessel)
+  const scope = eintrag?.antwort?.art === 'scope_entwurf' ? eintrag.antwort.scope : null
+  if (scope === null || scope === undefined) return
+  const projektId = holeAktivesProjekt().id
+  const stand = { gesperrt: true, deutung: null }
+  featureAnlagen.set(schluessel, stand)
+  renderVerlauf()
+  try {
+    const antwort = await legeFeatureAn(scope)
+    stand.deutung = deuteFeatureAnlage(antwort.status, await antwort.json().catch(() => ({})))
+  } catch (fehler) {
+    console.error('POST …/features fehlgeschlagen:', fehler)
+    stand.deutung = { art: 'fehler', status: 0, grund: t('chat.fehler.anfrage', { grund: fehler instanceof Error ? fehler.message : String(fehler) }) }
+  }
+  stand.gesperrt = false
+  if (holeAktivesProjekt().id !== projektId || featureAnlagen.get(schluessel) !== stand) return
+  // Prüfpass B5a-2 (cr V4, Nachpass N2): renderVerlauf schreibt den Verlauf neu — ging der Fokus dabei verloren (er lag auf dem
+  // ersetzten Knopf), geht er auf das Ergebnis; wer inzwischen anderswo tippt, behält seinen Fokus.
+  const fokusVorher = document.activeElement
+  const fokusLagHier = fokusVorher === null || fokusVorher === document.body || fokusVorher.closest?.('[data-feature-anlage]')?.getAttribute('data-feature-anlage') === schluessel
+  renderVerlauf()
+  if (!fokusLagHier) return
+  for (const bereich of document.querySelectorAll('#chat-verlauf [data-feature-anlage]')) if (bereich.getAttribute('data-feature-anlage') === schluessel) bereich.focus()
+}
+
 /** Ein Verlaufseintrag als zwei Sprechblasen-Zeilen (Nutzerfrage + Antwort bzw. Tippindikator, solange sie aussteht). F31 WS-2: ein Zusammenfassungs-Turn (istZusammenfassung) bekommt zusätzlich einen zentrierten Trenner davor, die Nutzerzeile ("[Zusammenfassung angefordert]") tritt dezent zurück. F34 WS-2: art-abhängiger Inhalt (Text/Alternativen-Liste/strukturierter Scope) plus ggf. die Auftrag-Brücke. @param modus - 'jarvis' | 'sparring' @param eintrag - aus baueAnzeigeListe() @returns HTML-Block */
 function renderEintrag(modus, eintrag) {
   const zeitHtml = eintrag.zeitstempel ? ` <span class="chat-bubble-zeit">${escapeHtml(formatiereUhrzeit(eintrag.zeitstempel) ?? '')}</span>` : ''
@@ -958,6 +1023,7 @@ function renderEintrag(modus, eintrag) {
   if (art === 'scope_entwurf') inhaltHtml += renderScope(eintrag.antwort?.scope)
   if (art === 'projekt_entwurf') inhaltHtml += renderProjekt(eintrag.antwort?.projekt)
   inhaltHtml += renderAuftragBruecke(modus, eintrag.schluessel, leseAuftragKandidat(modus, eintrag.antwort), eintrag.auftragErstelltId ?? null)
+  if (modus === 'sparring' && art === 'scope_entwurf' && eintrag.antwort?.scope) inhaltHtml += renderFeatureAnlage(eintrag.schluessel)
   const jarvisZeile = chatBubbleReihe(label, zeitHtml, inhaltHtml, 'jarvis', eintrag.quelle === 'fehler' ? 'fehler' : null)
   return trennerHtml + nutzerZeile + jarvisZeile
 }
@@ -1860,6 +1926,12 @@ function initAuftragBruecke() {
     if (ereignis.target.id === 'chat-auftrag-text') offenerAuftragDialog.auftragstext = ereignis.target.value
   })
   document.getElementById('chat-verlauf').addEventListener('click', async (ereignis) => {
+    // F45 B5a-2 (F-912): „Als Feature anlegen“ — eigener Weg, unabhängig vom Auftragsdialog.
+    const featureBtn = ereignis.target.closest('[data-feature-anlegen]')
+    if (featureBtn) {
+      if (aktiverModus === 'sparring' && !featureBtn.disabled) void legeFeatureAusEintragAn(featureBtn.dataset.featureAnlegen)
+      return
+    }
     const oeffnenBtn = ereignis.target.closest('[data-auftrag-oeffnen]')
     if (oeffnenBtn) {
       const modus = aktiverModus
@@ -1943,6 +2015,7 @@ function setzeChatZustandZurueck() {
   fremdeLaufVersuche.clear()
   ungeleseneUntermodi.clear()
   offenerAuftragDialog = null
+  featureAnlagen.clear()
   zeigeChatFehler('')
   // Sende-/Abbrechen-Zustand braucht keinen eigenen Reset mehr: neuerModusZustand() liefert bereits
   // sendenLaeuft:false/ausstehenderLauf:null, renderVerlauf() leitet die Buttons daraus ab (s. dort).

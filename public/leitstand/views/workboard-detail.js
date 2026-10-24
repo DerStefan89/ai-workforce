@@ -12,6 +12,7 @@
  *    · Fertig, wenn), Fortschritt (Rollen-Kreis), Code & Doku Review, Verlauf; Befund: Fehlerbild,
  *    Behebung in Schritten, Verlauf des Befunds. Rechte Spalte „Deine Planung“ bzw. „Einordnung“ mit
  *    Links. Was keine Quelle hat, steht als „kommt“ (kommt.js) mit Ziel, nie mit Beispielwerten.
+ *    F45 B5a-2: „Bearbeiten“ der Akte (darfAkteBearbeiten) und die Kachel „Entscheidungen“ aus der Akte (F-995).
  *
  * Reine Render-Funktionen: Sie bekommen eine „Sicht“ und liefern HTML. Laden, Zustand, Click-to-Work
  * und Routen bleiben in views/workboard.js — dieses Modul kennt weder fetch noch DOM.
@@ -23,7 +24,10 @@
  *     schritte: undefined (lädt) | null (nicht ladbar) | Schritte aus GET …/workflows/<id>,
  *     abnahme: undefined (lädt bzw. kein Ablauf) | null (nicht ladbar) | Antwort von GET …/abnahme,
  *     akte: undefined (lädt, nur Features) | { status: 'ok', titel, featureStatus, ziel, nicht_ziele,
- *           akzeptanzkriterien } | { status: 'unvollstaendig', grund } | { status: 'fehler', meldung },
+ *           akzeptanzkriterien, hash, entscheidungen } | { status: 'unvollstaendig', grund, featureStatus, hash,
+ *           entscheidungen } | { status: 'fehler', meldung } (hash null, wenn ungültig; entscheidungen [{ id, text }]),
+ *     akteFormularOffen: true, solange das Formular „Akte bearbeiten“ (F45 B5a-2) offen ist — „Das Was“ tritt dann
+ *          zurück, das Formular steht an seiner Stelle (#workboard-akte-formular, views/workboard.js),
  *     roadmap: undefined (lädt, nur Features) | Projektion von GET …/roadmap | { status: 'fehler' },
  *     workitems: alle Workitems (für Befunde je Feature und die Zahl offener Befunde) | null | undefined,
  *     ctw: Click-to-Work-Stand — 'frei' | 'gesperrt' | 'laedt' (Einstieg sichtbar), 'vorschlag'
@@ -38,6 +42,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/workboard.js
  * - public/leitstand/views/workboard-detail.test.mjs (node:test)
+ * - scripts/check-f45-b5a2-akte-anzeige.mjs (detailInhaltHtml, Kachel „Entscheidungen“)
  *
  * Wichtig:
  * - Import-sicher: kein Zugriff auf DOM oder Storage beim Import.
@@ -148,6 +153,24 @@ export function detailEyebrowHtml(workitem) {
   return chip !== '' ? chip : escapeHtml(`${typBezeichnung(workitem.typ)} · ${workitem.id}`)
 }
 
+/**
+ * F45 B5a-2 (E-F45-1): true, wenn die gelesene Akte im Leitstand bearbeitet werden darf — lesbar (auch unvollständig) mit
+ * gültigem Hash und einem Feature-Status aus der Datei, der nicht abgeschlossen oder abgebrochen ist (FEATURE_ENDSTATUS,
+ * dieselbe Menge wie STATUS_NICHT_BEARBEITBAR im Server; der Server bleibt die Durchsetzung, 422). Ohne Status-Zeile (featureStatus
+ * null) ist Bearbeiten erlaubt — wie im Server (status !== null).
+ * @param akte - sicht.akte
+ * @returns boolean
+ */
+export function darfAkteBearbeiten(akte) {
+  return (akte?.status === 'ok' || akte?.status === 'unvollstaendig') && typeof akte.hash === 'string' && !FEATURE_ENDSTATUS.has(akte.featureStatus)
+}
+
+/** Knopf „Bearbeiten“ der Akte, wenn erlaubt und kein Formular offen ist. @param sicht - siehe Dateikopf @returns HTML */
+function bearbeitenKnopf(sicht) {
+  if (sicht.akteFormularOffen === true || !darfAkteBearbeiten(sicht.akte)) return ''
+  return `<button type="button" class="button akte-bearbeiten" id="akte-bearbeiten" data-akte-bearbeiten>${tHtml('akteForm.bearbeiten')}</button>`
+}
+
 /** true, wenn die Abnahme des verknüpften Ablaufs offen ist (Kopfdatum abnahme.offen). @param sicht - siehe Dateikopf */
 function abnahmeOffen(sicht) {
   return sicht.workflow?.abnahme?.offen === true
@@ -176,7 +199,7 @@ function schrittStatusText(status) {
  * @param text - sichtbarer Text (übersetzt)
  * @returns HTML
  */
-function vsCodeLink(repoPfad, relPfad, zeile, text) {
+export function vsCodeLink(repoPfad, relPfad, zeile, text) {
   const link = typeof repoPfad === 'string' && repoPfad !== '' ? baueVsCodeLink(`${repoPfad.replace(/[\\/]+$/, '')}/${relPfad}${zeile !== null ? `:${zeile}` : ''}`) : null
   if (link === null) return `<a class="text-link" role="link" tabindex="0" aria-disabled="true" title="${tHtml('kopf.vscodeOhne')}">${escapeHtml(text)}</a>`
   return `<a class="text-link" href="${escapeHtml(link)}">${escapeHtml(text)}</a>`
@@ -219,7 +242,7 @@ function kommtInhalt(zielSchluessel) {
  */
 function akteHinweis(sicht) {
   const pfad = `<p><code>${escapeHtml(sicht.workitem.pfad ?? `features/${sicht.workitem.id}/feature.md`)}</code></p>`
-  if (sicht.akte?.status === 'unvollstaendig') return `<div class="note amber"><strong>${tHtml('entwicklung.detail.akte.unvollstaendig')}</strong><p>${escapeHtml(sicht.akte.grund ?? '')}</p>${pfad}</div>`
+  if (sicht.akte?.status === 'unvollstaendig') return `<div class="note amber"><strong>${tHtml('entwicklung.detail.akte.unvollstaendig')}</strong><p>${escapeHtml(sicht.akte.grund ?? '')}</p>${pfad}${bearbeitenKnopf(sicht)}</div>`
   return `<div class="note red"><strong>${tHtml('entwicklung.detail.akte.fehler')}</strong><p><code>${escapeHtml(sicht.akte?.meldung ?? '')}</code></p>${pfad}</div>`
 }
 
@@ -512,12 +535,14 @@ export function wasReiterVon(sicht) {
 /**
  * „Das Was“ (Register, Muster role=tablist mit Pfeiltasten — verdrahtet in workboard.js):
  * Auftrag (Ziel der Akte und Link auf die ganze Akte), Abnahmekriterien mit Urteil, Nicht-Ziele,
- * „Fertig, wenn“ (kommt, Fixpaket B2).
+ * „Fertig, wenn“ (kommt, Fixpaket B2). F45 B5a-2: im Kopf „Bearbeiten“ (darfAkteBearbeiten); bei offenem Formular tritt die
+ * Karte zurück (das Formular steht an ihrer Stelle).
  * @param sicht - siehe Dateikopf
  * @returns HTML
  */
 function wasBlock(sicht) {
-  const kopf = (reiterHtml) => `<div class="eintrag-karte-kopf"><h2 id="was-titel">${tHtml('eintrag.was.titel')}</h2>${reiterHtml}</div>`
+  if (sicht.akteFormularOffen === true) return ''
+  const kopf = (reiterHtml) => `<div class="eintrag-karte-kopf"><h2 id="was-titel">${tHtml('eintrag.was.titel')}</h2>${reiterHtml}${sicht.akte?.status === 'ok' ? bearbeitenKnopf(sicht) : ''}</div>`
   if (sicht.akte === undefined) return `<section class="eintrag-karte" aria-labelledby="was-titel">${kopf('')}<p class="subtle">${tHtml('entwicklung.detail.akte.laedt')}</p></section>`
   if (sicht.akte.status !== 'ok') return `<section class="eintrag-karte" aria-labelledby="was-titel">${kopf('')}${akteHinweis(sicht)}</section>`
   const { akte, workitem } = sicht
@@ -688,8 +713,42 @@ function reviewBlock(sicht) {
 /** Höchstzahl der Befund-Links in „Befunde aus diesem Feature“ (die neuesten). */
 const BEFUNDE_LINKS = 6
 
+/** Höchstzahl der Entscheidungen in der Kachel (die letzten in Aktenreihenfolge, F45 B5a-2). */
+const ENTSCHEIDUNGEN_ZEILEN = 5
+
 /**
- * „Verlauf“ (Feature): Entscheidungen „kommt“ (die Leseroute der Akte liefert den Abschnitt nicht),
+ * Text einer Entscheidung ohne Markdown-Fettung und ohne die führende Kennung (sie steht schon als <code> davor).
+ * @param eintrag - { id, text } aus GET …/akte
+ * @returns Text
+ */
+export function entscheidungText(eintrag) {
+  const ohneFett = String(eintrag.text ?? '').replace(/\*\*/g, '').trim()
+  return ohneFett.startsWith(eintrag.id) ? ohneFett.slice(eintrag.id.length).trim() : ohneFett
+}
+
+/**
+ * Inhalt der Kachel „Entscheidungen“ (F45 B5a-2, F-995): lädt, nicht lesbar, ruhiger Leersatz, sonst Zahl und die letzten
+ * ENTSCHEIDUNGEN_ZEILEN in Aktenreihenfolge (gekürzt, escaped) mit Link auf die ganze Akte.
+ * @param sicht - siehe Dateikopf
+ * @returns HTML
+ */
+function entscheidungenInhalt(sicht) {
+  if (sicht.akte === undefined) return `<p class="subtle">${tHtml('entwicklung.laedt')}</p>`
+  const liste = sicht.akte.entscheidungen
+  if (!Array.isArray(liste)) return `<p class="subtle">${tHtml('entwicklung.detail.akte.fehler')}</p>`
+  if (liste.length === 0) return `<p class="subtle">${tHtml('eintrag.verlauf.entscheidungenLeer')}</p>`
+  const zeilen = liste
+    .slice(-ENTSCHEIDUNGEN_ZEILEN)
+    .map((e) => `<li><code>${escapeHtml(e.id)}</code> <span>${escapeHtml(kuerzeText(entscheidungText(e), 90) ?? '')}</span></li>`)
+    .join('')
+  const akte = sicht.workitem.pfad ?? `features/${sicht.workitem.id}/feature.md`
+  return `<p class="eintrag-zahl">${escapeHtml(formatiereZahl(liste.length))} <span class="subtle">${tHtml('eintrag.verlauf.entscheidungenInAkte')}</span></p>
+      <ul class="eintrag-entscheidungen">${zeilen}</ul>
+      <p>${vsCodeLink(sicht.repoPfad, akte, null, t('eintrag.verlauf.entscheidungenAlle'))}</p>`
+}
+
+/**
+ * „Verlauf“ (Feature): Entscheidungen aus der Akte (F45 B5a-2, F-995; entscheidungenInhalt),
  * Befunde aus diesem Feature laut Feld „Entdeckt“ (Feature/Run), Verbrauch „kommt“.
  * @param sicht - siehe Dateikopf
  * @returns HTML
@@ -713,7 +772,7 @@ function verlaufBlock(sicht) {
   return `<section class="eintrag-verlauf" aria-labelledby="verlauf-titel">
       <h2 id="verlauf-titel">${tHtml('eintrag.verlauf.titel')}</h2>
       <div class="eintrag-kacheln eintrag-kacheln-3">
-        ${kachel(t('eintrag.verlauf.entscheidungen'), kommtInhalt('eintrag.verlauf.entscheidungenKommt'), { klasse: 'eintrag-kachel-flaeche' })}
+        ${kachel(t('eintrag.verlauf.entscheidungen'), entscheidungenInhalt(sicht), { klasse: 'eintrag-kachel-flaeche eintrag-kachel-entscheidungen' })}
         ${kachel(t('eintrag.verlauf.befunde'), befundInhalt, { klasse: 'eintrag-kachel-flaeche' })}
         ${kachel(t('eintrag.verlauf.verbrauch'), kommtInhalt('eintrag.verlauf.verbrauchKommt'), { klasse: 'eintrag-kachel-flaeche' })}
       </div>
