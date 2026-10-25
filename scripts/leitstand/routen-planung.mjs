@@ -20,9 +20,14 @@
  *
  * Seit F45 B5b-1b-2 „Bereinigungsliste“ (F-1010; features/F45/plan-b5b1b2-v2.md, Advisor features/F45/advisor-b5b1b2.md) zusätzlich:
  * - GET /api/roadmap/bereinigung (liest nur): 200 { status: 'ok', befunde, eintraege: [{ eintrag: 'M3/F18', meilenstein, feature,
- *   featureStatus, ausnahme, vorschlaege: [{ entscheidung, text, nebenwirkung }], quelle: { roadmap, akte, ausnahme, status_md },
- *   hashes: { roadmap, ausnahmen, akte, status_md } }] } (immer vier Hash-Schlüssel, null = Datei fehlt); fehlende bzw. ungültige
- *   Roadmap oder Ausnahmen-Datei ⇒ 200 { status: 'nicht_vorhanden' | 'ungueltig', fehler? }.
+ *   featureStatus, ausnahme, vorschlaege: [{ entscheidung, text, nebenwirkung, moeglich, grund }], quelle: { roadmap, akte,
+ *   ausnahme, status_md }, hashes: { roadmap, ausnahmen, akte, status_md } }] } (immer vier Hash-Schlüssel, null = Datei fehlt);
+ *   fehlende bzw. ungültige Roadmap oder Ausnahmen-Datei ⇒ 200 { status: 'nicht_vorhanden' | 'ungueltig', fehler? }.
+ *   Seit F45 B5b-2b-2 (F-1189 qa3; features/F45/plan-b5b2b2-v2.md, Advisor features/F45/advisor-b5b2b2.md): `moeglich`/`grund`
+ *   (string | null) je Vorschlag aus derselben reinen Vorprüfung wie der POST (bereiteBestaetigungVor) — `moeglich: false` ⇔ der
+ *   POST antwortete jetzt 422 mit genau diesem Grund. Nicht vorgeprüft (DEKLARIERT): Sperre durch einen offenen Ablauf und
+ *   Hash-Abweichung (beide nur im POST, 409); eine Meilenstein-ID nur aus Leerraum bietet der GET an, der POST lehnt sie mit 400
+ *   ab (pruefeEintrag; Advisor B5b-2b-2 B2).
  * - POST /api/roadmap/bereinigung/bestaetigen { eintrag, entscheidung, grund, hashes }: genau ein Eintrag (Liste/zweites Feld ⇒ 400),
  *   400 Körper/Grund → 409 Sperre (Feature des Eintrags, beide Entscheidungen) → synchron: Stand lesen, Hash je Datei 409
  *   { hashes, abweichend }, Eintrag/Entscheidung aktuell (422), „Feature → ABGESCHLOSSEN“: Akte (src/feature-auftrag/
@@ -368,6 +373,29 @@ function leseEintragsAkte(featureId, repoWurzel) {
  */
 const eintragsHashes = (stand, akteRoh) => ({ roadmap: sha256(stand.roadmap.roh), ausnahmen: hashOderNull(stand.ausnahmen.roh), akte: hashOderNull(akteRoh), status_md: hashOderNull(stand.statusMd.roh) })
 
+/** Grund-Platzhalter der Vorprüfung im GET (O1: der Grund steht nur in der Änderungszeile und ändert das Ergebnis nicht). */
+const GRUND_VORPRUEFUNG = 'Vorprüfung'
+
+/**
+ * moeglich/grund eines Vorschlags für den GET (F-1189 qa3). Ein Wurf sperrt nur diesen Vorschlag, nicht die Liste (Advisor
+ * B5b-2b-2 B4).
+ * @param stand - leseBereinigungsStand (art 'ok')
+ * @param akte - leseEintragsAkte (ok)
+ * @param eintrag - Eintrag aus bereinigungsEintraege
+ * @param entscheidung - Entscheidung des Vorschlags
+ * @param datum - Tag der Vorprüfung
+ * @returns { moeglich: boolean, grund: string | null }
+ */
+function vorpruefe(stand, akte, eintrag, entscheidung, datum) {
+  try {
+    const vor = bereiteBestaetigungVor(stand, akte, eintrag, entscheidung, GRUND_VORPRUEFUNG, datum)
+    return vor.ok ? { moeglich: true, grund: null } : { moeglich: false, grund: vor.antwort.koerper.grund }
+  } catch (fehler) {
+    console.error(`[bereinigung] Vorprüfung ${eintrag.eintrag} ${entscheidung} gescheitert:`, fehler)
+    return { moeglich: false, grund: `Vorprüfung gescheitert (${meldung(fehler)}) — von Hand` }
+  }
+}
+
 /**
  * GET /api/roadmap/bereinigung — liest nur. Fehlende oder ungültige Roadmap bzw. Ausnahmen-Datei sind Fachergebnisse (200, Muster
  * Projektion), kein 500.
@@ -382,6 +410,7 @@ function listeBereinigung(kontext) {
   const statusMdText = stand.statusMd.roh === null ? null : alsText(stand.statusMd.roh)
   const angaben = statusMdText === null ? [] : sammleStatusMdAngaben(statusMdText)
   const eintraege = []
+  const datum = kontext.datum ?? lokalesDatum()
   for (const eintrag of bereinigungsEintraege(stand.abweichungen)) {
     const akte = leseEintragsAkte(eintrag.feature, kontext.repoWurzel)
     if (!akte.ok) return akte.antwort
@@ -392,7 +421,8 @@ function listeBereinigung(kontext) {
       ausnahme: eintrag.ausnahme === null ? null : stand.ausnahmen.rel,
       status_md: statusZeilen.length === 1 ? `${STATUS_MD}:${statusZeilen[0].zeile}` : null,
     }
-    eintraege.push({ ...eintrag, quelle, hashes: eintragsHashes(stand, akte.roh) })
+    const vorschlaege = eintrag.vorschlaege.map((v) => ({ ...v, ...vorpruefe(stand, akte, eintrag, v.entscheidung, datum) }))
+    eintraege.push({ ...eintrag, vorschlaege, quelle, hashes: eintragsHashes(stand, akte.roh) })
   }
   return { status: 200, koerper: { status: 'ok', befunde: stand.befunde, eintraege } }
 }
@@ -461,53 +491,9 @@ async function bestaetigeBereinigung(koerper, kontext) {
 
   const eintrag = bereinigungsEintraege(stand.abweichungen).find((e) => e.meilenstein === b.meilenstein && e.feature === b.feature)
   if (eintrag === undefined) return antwort(422, `${eintragsId} ist keine aktuelle R1-Abweichung — Bereinigungsliste neu laden`)
-  if (!eintrag.vorschlaege.some((v) => v.entscheidung === b.entscheidung)) {
-    const anzahl = stand.abweichungen.filter((a) => a.meilenstein === b.meilenstein).length
-    const warum =
-      b.entscheidung === 'meilenstein_laeuft'
-        ? `„${b.meilenstein} → LAEUFT“ gibt es nur, wenn ${b.meilenstein} genau eine R1-Abweichung hat (heute ${anzahl}) — erst die übrigen Einträge von ${b.meilenstein} einzeln bestätigen oder von Hand (B4)`
-        : `„${b.feature} → ABGESCHLOSSEN“ gibt es nur für eine Akte mit Status ≠ ABGEBROCHEN (heute ${eintrag.featureStatus ?? 'keine Akte bzw. kein Status'}) — von Hand`
-    return antwort(422, warum, { vorschlaege: eintrag.vorschlaege.map((v) => v.entscheidung) })
-  }
-
-  const datum = kontext.datum ?? lokalesDatum()
-  const ziele = []
-  const neu = { roadmap: stand.daten, aktenStatus: new Map(stand.aktenStatus), ausnahmen: stand.ausnahmenListe }
-  let hinweis
-  if (b.entscheidung === 'feature_abgeschlossen') {
-    if (akte.roh === null) return antwort(422, `${akte.rel} nicht gefunden (Groß-/Kleinschreibung der ID beachten) — von Hand`)
-    const akteText = alsText(akte.roh)
-    if (akteText === null) return keinUtf8(akte.rel)
-    const akteNeu = setzeAkteAbgeschlossen(akteText, { datum, grund: b.grund, meilenstein: b.meilenstein })
-    if (!akteNeu.ok) return antwort(422, akteNeu.grund, akteNeu.verstoesse === undefined ? {} : { verstoesse: akteNeu.verstoesse })
-    ziele.push({ pfad: akte.pfad, rel: akte.rel, alt: akte.roh, neu: Buffer.from(akteNeu.inhalt, 'utf8') })
-    const statusMdText = stand.statusMd.roh === null ? null : alsText(stand.statusMd.roh)
-    if (stand.statusMd.roh !== null && statusMdText === null) return keinUtf8(STATUS_MD)
-    const statusMd = setzeStatusMdStatus(statusMdText, b.feature, 'ABGESCHLOSSEN')
-    if (!statusMd.ok) return antwort(422, statusMd.grund)
-    if (statusMd.geaendert) ziele.push({ pfad: stand.statusMd.pfad, rel: STATUS_MD, alt: stand.statusMd.roh, neu: Buffer.from(statusMd.text, 'utf8') })
-    else hinweis = statusMd.hinweis
-    neu.aktenStatus.set(b.feature, 'ABGESCHLOSSEN')
-  } else {
-    if (stand.roadmap.text.includes('\r')) return crlf(stand.roadmap.rel)
-    const roadmapNeu = setzeMeilensteinStatus(stand.roadmap.text, b.meilenstein, 'LAEUFT')
-    if (!roadmapNeu.ok) return antwort(422, roadmapNeu.grund)
-    ziele.push({ pfad: stand.roadmap.pfad, rel: stand.roadmap.rel, alt: stand.roadmap.roh, neu: Buffer.from(roadmapNeu.text, 'utf8') })
-    neu.roadmap = JSON.parse(roadmapNeu.text)
-  }
-  if (eintrag.ausnahme !== null) {
-    if (stand.ausnahmen.text.includes('\r')) return crlf(stand.ausnahmen.rel)
-    const ausnahmenNeu = entferneStatusAusnahme(stand.ausnahmen.text, b.meilenstein, b.feature)
-    if (!ausnahmenNeu.ok) return antwort(422, ausnahmenNeu.grund)
-    ziele.push({ pfad: stand.ausnahmen.pfad, rel: stand.ausnahmen.rel, alt: stand.ausnahmen.roh, neu: Buffer.from(ausnahmenNeu.text, 'utf8') })
-    neu.ausnahmen = leseStatusAusnahmen(ausnahmenNeu.text).ausnahmen
-  }
-
-  // Gate vor dem Schreiben (Advisor B3): nur neue R1-Befunde blockieren; der Eintrag ist danach keine Abweichung mehr. Eine
-  // verwaiste Ausnahme im Meilenstein ändert bei LAEUFT ihren Befundtext und blockiert damit (fail-closed, DEKLARIERT).
-  const neueBefunde = neueR1Befunde({ roadmap: stand.daten, aktenStatus: stand.aktenStatus, ausnahmen: stand.ausnahmenListe }, neu)
-  const bleibt = pruefeMeilensteinStatus(neu.roadmap, neu.aktenStatus, neu.ausnahmen).abweichungen.some((a) => a.meilenstein === b.meilenstein && a.feature === b.feature)
-  if (neueBefunde.length > 0 || bleibt) return antwort(422, `Die Bestätigung von ${eintragsId} verletzte die Status-Regel R1 — nichts geschrieben, erst von Hand bereinigen`, { verstoesse: bleibt ? [...neueBefunde, `${eintragsId} bliebe eine Abweichung`] : neueBefunde })
+  const vor = bereiteBestaetigungVor(stand, akte, eintrag, b.entscheidung, b.grund, kontext.datum ?? lokalesDatum())
+  if (!vor.ok) return vor.antwort
+  const { ziele, hinweis } = vor
 
   // Feste Reihenfolge Akte → STATUS.md → roadmap.json → Ausnahmen; ein Abbruch dazwischen hinterlässt einen R1-roten, sichtbaren
   // Teilstand (DEKLARIERT, Advisor B4).
@@ -525,6 +511,73 @@ async function bestaetigeBereinigung(koerper, kontext) {
     status: 200,
     koerper: { status: 'ok', eintrag: eintragsId, entscheidung: b.entscheidung, geschrieben: pfade, hashes: nachher, ...(hinweis === undefined ? {} : { hinweis }), git: baueGitBlock(kontext.repoWurzel, pfade, `${eintragsId}: Bereinigung ${was} — ${b.grund}`) },
   }
+}
+
+/**
+ * Vorprüfung einer Bestätigung (F45 B5b-2b-2, F-1189 qa3; features/F45/plan-b5b2b2-v2.md) — eine Regel für GET (moeglich/grund je
+ * Vorschlag) und POST (danach schreiben). Rein: liest und schreibt nichts, alle Bytes kommen aus leseBereinigungsStand bzw.
+ * leseEintragsAkte; wirft nicht (die Module werfen nicht). Nicht hier (DEKLARIERT): Sperre durch einen offenen Ablauf und
+ * Hash-Abweichung — beide prüft nur der POST (409).
+ * @param stand - leseBereinigungsStand (art 'ok')
+ * @param akte - leseEintragsAkte (ok)
+ * @param eintrag - aktueller Eintrag aus bereinigungsEintraege
+ * @param entscheidung - 'feature_abgeschlossen' | 'meilenstein_laeuft'
+ * @param grund - geprüfter Grund (GET: Platzhalter — er steht nur in der Änderungszeile und ändert das Ergebnis nicht)
+ * @param datum - Tag der Bestätigung (JJJJ-MM-TT)
+ * @returns { ok: true, ziele: [{ pfad, rel, alt, neu }], hinweis? } | { ok: false, antwort } (422)
+ */
+function bereiteBestaetigungVor(stand, akte, eintrag, entscheidung, grund, datum) {
+  const nein = (a) => ({ ok: false, antwort: a })
+  const { meilenstein, feature } = eintrag
+  const eintragsId = `${meilenstein}/${feature}`
+  if (!eintrag.vorschlaege.some((v) => v.entscheidung === entscheidung)) {
+    const anzahl = stand.abweichungen.filter((a) => a.meilenstein === meilenstein).length
+    const warum =
+      entscheidung === 'meilenstein_laeuft'
+        ? `„${meilenstein} → LAEUFT“ gibt es nur, wenn ${meilenstein} genau eine R1-Abweichung hat (heute ${anzahl}) — erst die übrigen Einträge von ${meilenstein} einzeln bestätigen oder von Hand (B4)`
+        : `„${feature} → ABGESCHLOSSEN“ gibt es nur für eine Akte mit Status ≠ ABGEBROCHEN (heute ${eintrag.featureStatus ?? 'keine Akte bzw. kein Status'}) — von Hand`
+    return nein(antwort(422, warum, { vorschlaege: eintrag.vorschlaege.map((v) => v.entscheidung) }))
+  }
+
+  const ziele = []
+  const neu = { roadmap: stand.daten, aktenStatus: new Map(stand.aktenStatus), ausnahmen: stand.ausnahmenListe }
+  let hinweis
+  if (entscheidung === 'feature_abgeschlossen') {
+    if (akte.roh === null) return nein(antwort(422, `${akte.rel} nicht gefunden (Groß-/Kleinschreibung der ID beachten) — von Hand`))
+    const akteText = alsText(akte.roh)
+    if (akteText === null) return nein(keinUtf8(akte.rel))
+    const akteNeu = setzeAkteAbgeschlossen(akteText, { datum, grund, meilenstein })
+    if (!akteNeu.ok) return nein(antwort(422, akteNeu.grund, akteNeu.verstoesse === undefined ? {} : { verstoesse: akteNeu.verstoesse }))
+    ziele.push({ pfad: akte.pfad, rel: akte.rel, alt: akte.roh, neu: Buffer.from(akteNeu.inhalt, 'utf8') })
+    const statusMdText = stand.statusMd.roh === null ? null : alsText(stand.statusMd.roh)
+    if (stand.statusMd.roh !== null && statusMdText === null) return nein(keinUtf8(STATUS_MD))
+    const statusMd = setzeStatusMdStatus(statusMdText, feature, 'ABGESCHLOSSEN')
+    if (!statusMd.ok) return nein(antwort(422, statusMd.grund))
+    if (statusMd.geaendert) ziele.push({ pfad: stand.statusMd.pfad, rel: STATUS_MD, alt: stand.statusMd.roh, neu: Buffer.from(statusMd.text, 'utf8') })
+    else hinweis = statusMd.hinweis
+    neu.aktenStatus.set(feature, 'ABGESCHLOSSEN')
+  } else {
+    if (stand.roadmap.text.includes('\r')) return nein(crlf(stand.roadmap.rel))
+    const roadmapNeu = setzeMeilensteinStatus(stand.roadmap.text, meilenstein, 'LAEUFT')
+    if (!roadmapNeu.ok) return nein(antwort(422, roadmapNeu.grund))
+    ziele.push({ pfad: stand.roadmap.pfad, rel: stand.roadmap.rel, alt: stand.roadmap.roh, neu: Buffer.from(roadmapNeu.text, 'utf8') })
+    neu.roadmap = JSON.parse(roadmapNeu.text)
+  }
+  if (eintrag.ausnahme !== null) {
+    if (stand.ausnahmen.text.includes('\r')) return nein(crlf(stand.ausnahmen.rel))
+    const ausnahmenNeu = entferneStatusAusnahme(stand.ausnahmen.text, meilenstein, feature)
+    if (!ausnahmenNeu.ok) return nein(antwort(422, ausnahmenNeu.grund))
+    ziele.push({ pfad: stand.ausnahmen.pfad, rel: stand.ausnahmen.rel, alt: stand.ausnahmen.roh, neu: Buffer.from(ausnahmenNeu.text, 'utf8') })
+    neu.ausnahmen = leseStatusAusnahmen(ausnahmenNeu.text).ausnahmen
+  }
+
+  // Gate vor dem Schreiben (Advisor B3): nur neue R1-Befunde blockieren; der Eintrag ist danach keine Abweichung mehr. Eine
+  // verwaiste Ausnahme im Meilenstein ändert bei LAEUFT ihren Befundtext und blockiert damit (fail-closed, DEKLARIERT).
+  const neueBefunde = neueR1Befunde({ roadmap: stand.daten, aktenStatus: stand.aktenStatus, ausnahmen: stand.ausnahmenListe }, neu)
+  const bleibt = pruefeMeilensteinStatus(neu.roadmap, neu.aktenStatus, neu.ausnahmen).abweichungen.some((a) => a.meilenstein === meilenstein && a.feature === feature)
+  if (neueBefunde.length > 0 || bleibt) return nein(antwort(422, `Die Bestätigung von ${eintragsId} verletzte die Status-Regel R1 — nichts geschrieben, erst von Hand bereinigen`, { verstoesse: bleibt ? [...neueBefunde, `${eintragsId} bliebe eine Abweichung`] : neueBefunde }))
+
+  return { ok: true, ziele, hinweis }
 }
 
 /**

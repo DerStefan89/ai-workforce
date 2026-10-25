@@ -17,6 +17,9 @@
  *   mit „Frag Jarvis dazu“ und aufklappbarem „Anpassen“ (F45 B5b-2b-1, features/F45/plan-b5b2b-v2.md: Priorität und
  *   Meilenstein an der Feature-Zeile, Schätzung Min/Max an Workstream/Fixpaket/Design über PUT …/planung; Bausteine in
  *   roadmap-anpassen.js); Balken ziehen und „+ Eintrag erfassen“ bleiben „kommt“.
+ * - Bereinigung (n) (F45 B5b-2b-2, features/F45/plan-b5b2b2-v2.md): R1-Abweichungen aus GET /api/roadmap/bereinigung mit
+ *   Vorschlägen (nicht mögliche deaktiviert, Grund sichtbar), Pflicht-Begründung, Bestätigungsschritt und POST …/bestaetigen für
+ *   genau einen Eintrag; Zähler als Sprungknopf an der Trennzeile. Bausteine in roadmap-bereinigung.js.
  *   Alle Rechnungen in roadmap-anzeige.js bzw. roadmap-anpassen.js; hier wird nur gerendert und verdrahtet.
  * - Entwicklungsstand mit Filter Alle · Features · Bugs · Harness · Tech Debt (zieht aus der
  *   Produktübersicht hierher): offene P0–P2-Befunde und offene Features des aktuellen Meilensteins.
@@ -34,7 +37,8 @@
  *   Anfragezähler. Die Akte eines gewählten Features lädt einmal je ID (holeFeatureAkte).
  * - „Frag Jarvis dazu“ nutzt chat-dock.js oeffneChatMitEntwurf (F44 WS-8b): Dock öffnen, Eingabe
  *   befüllen — nie senden; Jarvis füllt nichts in „Anpassen“.
- * - Einzige Schreibaktion: „Änderung speichern“ in „Anpassen“ (Begründung Pflicht, Hash frisch vor dem Speichern gelesen,
+ * - Schreibaktionen: „Jetzt schreiben“ in der Bereinigung (genau ein Eintrag, hashes aus dem GET; nach jeder Antwort Liste neu, nach
+ *   200 auch die Roadmap; Erfolge samt Git-Block bleiben bis „Schließen“) und „Änderung speichern“ in „Anpassen“ (Begründung Pflicht, Hash frisch vor dem Speichern gelesen,
  *   Doppelklick-Sperre über die Phase im Zustand). Nach 200 Git-Block (nur Text, nichts ausgeführt), Roadmap neu ohne
  *   „Lädt“-Zwischenstand, Auswahl bleibt (nach einem Meilenstein-Wechsel auf dem Feature im aufgeklappten Ziel); nach
  *   409/400/422 Servertext und „Neu laden“, die Eingaben bleiben. Eingaben schreiben in den Zustand, ohne die Seite neu zu
@@ -46,7 +50,7 @@
  *   Fragefeld werden dabei über data-Attribute bzw. den Wert erhalten.
  */
 
-import { holeFeatureAkte, holeRoadmap, holeWorkitems, speicherePlanung } from '../api.js'
+import { bestaetigeBereinigung, holeBereinigung, holeFeatureAkte, holeRoadmap, holeWorkitems, SCHREIB_ZEITLIMIT_MS, speicherePlanung } from '../api.js'
 import { kopiereBefehlsblock } from '../befehlsblock.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
@@ -54,6 +58,20 @@ import { kommtKnopf } from '../kommt.js'
 import { planungsRegister, zurueckZurUebersicht } from '../produktplanung-kopf.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
+import {
+  baueBestaetigung,
+  bereinigungHinweis,
+  bereinigungHtml,
+  bereinigungsAnzahl,
+  darfBestaetigen,
+  darfSchreiben,
+  deuteBereinigung,
+  deuteBestaetigungAntwort,
+  gewaehlterVorschlag,
+  neuerEintragsStand,
+  trennzeileBereinigungHtml,
+  zeigeBereinigung,
+} from '../roadmap-bereinigung.js'
 import { anpassbar, anpassenHinweis, anpassenHtml, anpassenWerte, baueAnpassenKoerper, darfAnpassenSpeichern, deutePlanungAntwort, meilensteinZiele, nichtAnpassbarHtml, offenNachWechsel, pruefeAnpassen } from '../roadmap-anpassen.js'
 import {
   aktuellerMeilenstein,
@@ -117,6 +135,23 @@ let roadmapVeraltet = false
 
 /** Nachlauf eines gescheiterten Neuladens (Auswahl nach Meilenstein-Wechsel), den „Erneut laden“ nachholt (Prüfpass qa 3). */
 let ausstehendNachRoadmap = null
+
+/**
+ * Bereinigungsliste (F45 B5b-2b-2): { laden: 'laedt' | 'ok' | 'fehler', fehlerGrund, liste (deuteBereinigung oder null), staende:
+ * Map<eintrag, Formularstand> (neuerEintragsStand), oben ({ eintrag, meldung } eines nach dem Neuladen verschwundenen bzw. nicht
+ * angezeigten Eintrags), sendet (Eintrag mit laufendem POST oder null), neuLaden (Liste lädt mit altem Stand) }. Verworfen beim
+ * Projektwechsel.
+ */
+const bereinigung = leereBereinigung()
+
+/**
+ * Erfolge samt Git-Block je Projekt-ID (neueste zuerst, bis „Schließen“). Überstehen den Projektwechsel (Prüfpass qa 3: geschrieben,
+ * nicht committet — der Block darf nicht verloren gehen); eine Antwort 200 nach einem Wechsel landet beim Projekt des POST.
+ */
+const erfolgeJeProjekt = new Map()
+
+/** Überholschutz für ladeBereinigung. */
+let bereinigungAnfrageZaehler = 0
 
 /** Workitem-Typen je Filter des Entwicklungsstands (null = alle). */
 const STAND_FILTER = Object.freeze({ alle: null, features: ['FEATURE'], bugs: ['BUG'], harness: ['HARNESS_IMPROVEMENT'], techdebt: ['TECH_DEBT', 'PROCESS_IMPROVEMENT'] })
@@ -584,6 +619,7 @@ function gesamteRoadmap() {
       : `<li class="rm-ausgeblendet">
         <span aria-hidden="true">✓</span>
         <span>${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.abgeschlossenSichtbar' : 'roadmap.baum.abgeschlossenAus', { anzahl: trenner.anzahl, zahl: formatiereZahl(trenner.anzahl), abgenommen: formatiereZahl(trenner.abgenommen), gesamt: formatiereZahl(trenner.gesamt) })}</span>
+        ${trennzeileBereinigungHtml(bereinigungsAnzahl(bereinigung.liste))}
         <button type="button" class="button" data-roadmap-abgeschlossene aria-pressed="${abgeschlosseneSichtbar}">${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.ausblenden' : 'roadmap.baum.einblenden')}</button>
       </li>`
   const einblenden =
@@ -763,6 +799,7 @@ function hauptteil() {
       </div>
       ${gesamteRoadmap()}
     </section>
+    ${bereinigungAbschnitt()}
     ${entwicklungsstand()}
     ${nichtEingeplantAbschnitt()}`
 }
@@ -805,10 +842,10 @@ function render() {
  */
 function fokusSchluessel(element) {
   if (element.id === 'roadmap-jarvis-eingabe') return '#roadmap-jarvis-eingabe'
-  for (const attribut of ['data-roadmap-klappe', 'data-roadmap-waehlen', 'data-roadmap-zoom', 'data-roadmap-stand', 'data-roadmap-jarvis-frage', 'data-roadmap-anpassen-feld', 'data-roadmap-anpassen-aktion']) {
+  for (const attribut of ['data-roadmap-klappe', 'data-roadmap-waehlen', 'data-roadmap-zoom', 'data-roadmap-stand', 'data-roadmap-jarvis-frage', 'data-roadmap-anpassen-feld', 'data-roadmap-anpassen-aktion', 'data-roadmap-bereinigung-fokus']) {
     if (element.hasAttribute(attribut)) return `[${attribut}="${CSS.escape(element.getAttribute(attribut))}"]`
   }
-  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-abgeschlossene-kopf', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf', 'data-roadmap-erneut-behalten']) {
+  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-abgeschlossene-kopf', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf', 'data-roadmap-erneut-behalten', 'data-roadmap-zur-bereinigung']) {
     if (element.hasAttribute(attribut)) return `[${attribut}]`
   }
   return null
@@ -840,6 +877,9 @@ async function ladeRoadmap(optionen = {}) {
     ausstehendNachRoadmap = null
   }
   roadmapVeraltet = false
+  // Ein Ladeweg für die Bereinigungsliste (Advisor B5b-2b-2 B9): mit der Roadmap, scheitert für sich. Vor dem render(), damit die
+  // Sperre „wird neu geladen“ schon im ersten Bild steht (Prüfpass cr 3); das synchrone Stück setzt nur die Flags.
+  const bereinigungAbruf = ladeBereinigung({ behalten: bereinigung.liste !== null, anzeigen: false })
   render()
   const roadmapAbruf = holeRoadmap().then(
     (antwort) => {
@@ -872,7 +912,7 @@ async function ladeRoadmap(optionen = {}) {
       render()
     }
   )
-  await Promise.all([roadmapAbruf, workitemsAbruf])
+  await Promise.all([roadmapAbruf, workitemsAbruf, bereinigungAbruf])
   if (optionen.fokus === true && aktuell()) document.querySelector('#view-roadmap h1')?.focus()
 }
 
@@ -1008,6 +1048,260 @@ async function speichereAnpassen({ zeile, zustand }) {
   fokusAufAnpassen()
 }
 
+// ─── Bereinigungsliste (F45 B5b-2b-2) ───────────────────────────────────────
+
+/** Leerer Zustand der Bereinigungsliste (ohne Erfolge — die liegen je Projekt in erfolgeJeProjekt). @returns Zustand */
+function leereBereinigung() {
+  return { laden: 'laedt', fehlerGrund: null, liste: null, staende: new Map(), oben: null, sendet: null, neuLaden: false }
+}
+
+/**
+ * Erfolge eines Projekts (legt die Liste beim ersten Mal an).
+ * @param projektId - Projekt-ID (Standard: das aktive)
+ * @returns Liste, neueste zuerst
+ */
+function erfolgeVon(projektId = holeAktivesProjekt().id) {
+  let liste = erfolgeJeProjekt.get(projektId)
+  if (liste === undefined) {
+    liste = []
+    erfolgeJeProjekt.set(projektId, liste)
+  }
+  return liste
+}
+
+/**
+ * Sperre aller Einträge (genau ein Eintrag je Klick): eine Bestätigung läuft, die Liste lädt neu, oder ein Git-Block ist noch offen
+ * (Prüfpass qa 2: STATUS.md und roadmap-ausnahmen.json gehören zu jeder Bestätigung — zwei offene landeten in einem Commit).
+ * @returns null | 'sendet' | 'laedt' | 'erfolg'
+ */
+function bereinigungSperre() {
+  if (bereinigung.sendet !== null) return 'sendet'
+  if (bereinigung.neuLaden) return 'laedt'
+  return erfolgeVon().length > 0 ? 'erfolg' : null
+}
+
+/** Heutiges Datum (Ortszeit, JJJJ-MM-TT) für den Datumshinweis (qa6; Server und Browser laufen auf demselben Rechner). @returns Text */
+function heute() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Abschnitt „Bereinigung (n)“ zwischen Gesamter Roadmap und Entwicklungsstand (Advisor B12).
+ * @returns HTML ('' wenn zeigeBereinigung nein sagt)
+ */
+function bereinigungAbschnitt() {
+  const stand = { ...bereinigung, erfolge: erfolgeVon() }
+  return zeigeBereinigung(stand) ? bereinigungHtml({ ...stand, sperre: bereinigungSperre(), datum: heute() }) : ''
+}
+
+/**
+ * Lädt die Bereinigungsliste (mit der Roadmap, nach jeder Bestätigung, über „Erneut laden“). Mit behalten bzw. nach einem Ladefehler
+ * bleibt der alte Stand bis zur Antwort stehen, alle Einträge bzw. „Erneut laden“ sind solange gesperrt (Prüfpass cr 4, qa 5). Danach:
+ * Zustände verschwundener Einträge verworfen (ihre Meldung wandert nach oben), eine nicht mehr mögliche Wahl zurückgesetzt; ein Stand
+ * mit laufendem POST bleibt (Prüfpass cr 2). Scheitert das Laden, wandert die Meldung eines Eintrags ebenfalls nach oben (cr 1: sonst
+ * wäre gerade der Zeitlimit- bzw. 500-Text unsichtbar). Überholte Antworten und Antworten für ein anderes Projekt werden verworfen.
+ * @param optionen - { behalten, anzeigen (Standard true: sofort mit Sperre neu zeichnen; ladeRoadmap zeichnet selbst) }
+ */
+async function ladeBereinigung(optionen = {}) {
+  const nummer = ++bereinigungAnfrageZaehler
+  const projektId = holeAktivesProjekt().id
+  const gilt = () => nummer === bereinigungAnfrageZaehler && holeAktivesProjekt().id === projektId
+  if ((optionen.behalten === true && bereinigung.liste !== null) || bereinigung.laden === 'fehler') bereinigung.neuLaden = true
+  else {
+    bereinigung.laden = 'laedt'
+    bereinigung.liste = null
+  }
+  if (optionen.anzeigen !== false) render()
+  try {
+    const antwort = await holeBereinigung()
+    if (!gilt()) return
+    bereinigung.liste = deuteBereinigung(antwort)
+    bereinigung.laden = 'ok'
+    bereinigung.fehlerGrund = null
+  } catch (fehler) {
+    if (!gilt()) return
+    console.error('GET …/roadmap/bereinigung fehlgeschlagen:', fehler)
+    bereinigung.laden = 'fehler'
+    bereinigung.fehlerGrund = fehler instanceof Error ? fehler.message : String(fehler)
+    bereinigung.liste = null
+  }
+  bereinigung.neuLaden = false
+  const eintraege = new Map((bereinigung.liste?.zustand === 'ok' ? bereinigung.liste.eintraege : []).map((e) => [e.eintrag, e]))
+  for (const [id, stand] of bereinigung.staende) {
+    if (stand.phase === 'sendet') continue
+    const eintrag = eintraege.get(id)
+    if (eintrag === undefined) {
+      if (stand.meldung !== null) bereinigung.oben = { eintrag: id, meldung: stand.meldung }
+      if (bereinigung.laden === 'ok') bereinigung.staende.delete(id)
+      else stand.meldung = null
+    } else if (gewaehlterVorschlag(eintrag, stand) === null) {
+      stand.wahl = null
+      stand.schritt = 'auswahl'
+      stand.haekchen = false
+    }
+  }
+  render()
+}
+
+/**
+ * Formularzustand eines Eintrags (legt ihn beim ersten Mal an).
+ * @param id - Eintrag '<M>/<F>'
+ * @returns Zustand
+ */
+function bereinigungsStand(id) {
+  let stand = bereinigung.staende.get(id)
+  if (stand === undefined) {
+    stand = neuerEintragsStand()
+    bereinigung.staende.set(id, stand)
+  }
+  return stand
+}
+
+/** Aktueller Eintrag der Liste oder undefined. @param id - Eintrag @returns Eintrag */
+const bereinigungsEintrag = (id) => (bereinigung.liste?.zustand === 'ok' ? bereinigung.liste.eintraege.find((e) => e.eintrag === id) : undefined)
+
+/**
+ * Eingabe in der Bereinigungsliste: Wahl, Begründung, Häkchen in den Zustand; Knöpfe (disabled, aria-disabled, primary — dg 2) und
+ * Hinweis direkt schalten (kein Neuschreiben — Advisor B5b-2b-2 O2; input und change feuern bei Radios beide, das Schalten ist
+ * idempotent).
+ * @param feld - Element mit data-roadmap-bereinigung-feld
+ */
+function beiBereinigungEingabe(feld) {
+  const id = feld.getAttribute('data-roadmap-bereinigung-eintrag-id')
+  const eintrag = id === null ? undefined : bereinigungsEintrag(id)
+  if (eintrag === undefined) return
+  const stand = bereinigungsStand(id)
+  if (stand.phase === 'sendet') return
+  const art = feld.getAttribute('data-roadmap-bereinigung-feld')
+  if (art === 'wahl' && feld.checked === true) stand.wahl = feld.value
+  else if (art === 'grund') stand.grund = feld.value
+  else if (art === 'haekchen') stand.haekchen = feld.checked === true
+  const container = document.getElementById('view-roadmap')
+  const gesperrt = bereinigungSperre() !== null
+  for (const [aktion, frei] of [
+    ['bestaetigen', darfBestaetigen(eintrag, stand, gesperrt)],
+    ['schreiben', darfSchreiben(eintrag, stand, gesperrt)],
+  ]) {
+    const knopf = container?.querySelector(`[data-roadmap-bereinigung-aktion="${aktion}"][data-roadmap-bereinigung-eintrag-id="${CSS.escape(id)}"]`) ?? null
+    if (knopf === null) continue
+    knopf.disabled = !frei
+    knopf.classList.toggle('primary', frei)
+    if (frei) knopf.removeAttribute('aria-disabled')
+    else knopf.setAttribute('aria-disabled', 'true')
+  }
+  const hinweis = container?.querySelector(`[data-roadmap-bereinigung-hinweis="${CSS.escape(id)}"]`) ?? null
+  if (hinweis !== null) hinweis.textContent = bereinigungHinweis(eintrag, stand, bereinigungSperre())
+}
+
+/**
+ * Setzt den Fokus auf ein Element der Bereinigung (Schlüssel data-roadmap-bereinigung-fokus, Prüfpass qa 1 — dieselben Schlüssel findet
+ * fokusSchluessel beim nächsten Neuschreiben wieder). Ohne Treffer der Reihe nach: Meldung oben (cr 5), neuester Erfolg, Ladefehler,
+ * Titel des Abschnitts, Seitentitel (cr 7: nach dem letzten „Schließen“ bei n = 0 gibt es den Abschnitt nicht mehr).
+ * @param schluessel - bevorzugter Schlüssel ('<M>/<F>|pruefen', '<M>/<F>|meldung' …) oder null
+ */
+function fokusAufBereinigung(schluessel) {
+  const finde = (s) => document.querySelector(`#view-roadmap [data-roadmap-bereinigung-fokus="${CSS.escape(s)}"]`)
+  for (const s of [schluessel, 'oben|meldung', 'erfolg-0|ziel', 'liste|fehler', 'liste|titel']) {
+    const ziel = s === null ? null : finde(s)
+    if (ziel !== null) {
+      ziel.focus()
+      return
+    }
+  }
+  document.querySelector('#view-roadmap h1')?.focus()
+}
+
+/**
+ * Knöpfe der Bereinigungsliste: Bestätigen … (Bestätigungsschritt), Zurück, Jetzt schreiben, Erfolg bzw. Meldung oben schließen,
+ * Erneut laden.
+ * @param knopf - Element mit data-roadmap-bereinigung-aktion
+ */
+function beiBereinigungAktion(knopf) {
+  const aktion = knopf.getAttribute('data-roadmap-bereinigung-aktion')
+  if (aktion === 'laden') {
+    void ladeBereinigung().then(() => fokusAufBereinigung(null))
+    return
+  }
+  if (aktion === 'erfolg-schliessen' || aktion === 'oben-schliessen') {
+    if (aktion === 'oben-schliessen') bereinigung.oben = null
+    else erfolgeVon().splice(Number(knopf.getAttribute('data-roadmap-bereinigung-index')), 1)
+    render()
+    fokusAufBereinigung(null)
+    return
+  }
+  const id = knopf.getAttribute('data-roadmap-bereinigung-eintrag-id')
+  const eintrag = id === null ? undefined : bereinigungsEintrag(id)
+  if (eintrag === undefined) return
+  const stand = bereinigungsStand(id)
+  if (aktion === 'bestaetigen' && darfBestaetigen(eintrag, stand, bereinigungSperre() !== null)) {
+    stand.schritt = 'pruefen'
+    stand.haekchen = false
+    stand.meldung = null
+    bereinigung.oben = null
+    render()
+    fokusAufBereinigung(`${id}|pruefen`)
+  } else if (aktion === 'zurueck' && stand.phase !== 'sendet') {
+    stand.schritt = 'auswahl'
+    stand.haekchen = false
+    render()
+    fokusAufBereinigung(`${id}|bestaetigen`)
+  } else if (aktion === 'schreiben') void schreibeBereinigung(eintrag, stand)
+}
+
+/**
+ * „Jetzt schreiben“: POST genau dieses einen Eintrags mit den Hashes aus dem GET. Solange er läuft, sind alle Einträge gesperrt.
+ * Nach 200 Erfolg oben (beim Projekt des POST, bleibt bis „Schließen“, sperrt bis dahin weitere Bestätigungen), Roadmap und Liste neu
+ * (ein Ladeweg, Advisor B9); nach 409/400/422/Fehler Meldung am Eintrag (bzw. oben, wenn er danach weg ist) und Liste neu — der
+ * nächste Versuch beginnt wieder mit „Bestätigen …“. Gilt der Zustand nach der Antwort nicht mehr (Projektwechsel, auch A→B→A —
+ * Prüfpass cr 2, qa 4), wird nur ein Erfolg beim Projekt des POST abgelegt und geloggt.
+ * @param eintrag - Eintrag
+ * @param stand - Formularzustand
+ */
+async function schreibeBereinigung(eintrag, stand) {
+  if (!darfSchreiben(eintrag, stand, bereinigungSperre() !== null)) return
+  const vorschlag = gewaehlterVorschlag(eintrag, stand)
+  const projektId = holeAktivesProjekt().id
+  const gilt = () => bereinigung.staende.get(eintrag.eintrag) === stand && holeAktivesProjekt().id === projektId
+  stand.phase = 'sendet'
+  stand.meldung = null
+  bereinigung.sendet = eintrag.eintrag
+  bereinigung.oben = null
+  render()
+  // Der fokussierte Knopf ist jetzt gesperrt neu geschrieben — Fokus auf den Bestätigungsschritt (Prüfpass cr 7).
+  fokusAufBereinigung(`${eintrag.eintrag}|pruefen`)
+  let deutung
+  try {
+    const antwort = await bestaetigeBereinigung(baueBestaetigung(eintrag, vorschlag.entscheidung, stand.grund))
+    deutung = deuteBestaetigungAntwort(antwort.status, await antwort.json().catch(() => ({})))
+  } catch (fehler) {
+    console.error(`POST …/roadmap/bereinigung/bestaetigen ${eintrag.eintrag} fehlgeschlagen:`, fehler)
+    // Zeitlimit: die Dateien können trotzdem geschrieben sein — der Text sagt es.
+    const zeitlimit = fehler instanceof Error && fehler.name === 'TimeoutError'
+    deutung = { art: 'fehler', status: 0, grund: zeitlimit ? t('roadmap.bereinigung.zeitlimit', { sekunden: formatiereZahl(SCHREIB_ZEITLIMIT_MS / 1000) }) : t('roadmap.bereinigung.fehlerAnfrage', { meldung: fehler instanceof Error ? fehler.message : String(fehler) }) }
+  }
+  if (deutung.art === 'ok') erfolgeVon(projektId).unshift({ ...deutung, text: vorschlag.text })
+  else console.warn(`[bereinigung] ${eintrag.eintrag} ${vorschlag.entscheidung}: ${deutung.status} ${deutung.grund}`)
+  if (!gilt()) {
+    if (deutung.art === 'ok') console.info(`[bereinigung] ${eintrag.eintrag} geschrieben (${deutung.geschrieben.join(', ')}), Zustand inzwischen gewechselt — Git-Block beim Projekt ${projektId}, nicht committet`)
+    return
+  }
+  bereinigung.sendet = null
+  stand.phase = 'offen'
+  if (deutung.art === 'ok') {
+    bereinigung.staende.delete(eintrag.eintrag)
+    akten.delete(eintrag.feature)
+    await ladeRoadmap({ behalten: true })
+    fokusAufBereinigung(null)
+    return
+  }
+  stand.meldung = deutung
+  stand.schritt = 'auswahl'
+  stand.haekchen = false
+  await ladeBereinigung({ behalten: true })
+  fokusAufBereinigung(`${eintrag.eintrag}|meldung`)
+}
+
 /**
  * Klick-Behandlung der Seite (Delegation).
  * @param ereignis - Klick
@@ -1026,6 +1320,18 @@ function beiKlick(ereignis) {
   const kopieren = ziel.closest('[data-befehl-kopieren]')
   if (kopieren !== null) {
     void kopiereBefehlsblock(kopieren)
+    return
+  }
+  const bereinigen = ziel.closest('[data-roadmap-bereinigung-aktion]')
+  if (bereinigen !== null && !bereinigen.disabled) {
+    beiBereinigungAktion(bereinigen)
+    return
+  }
+  if (ziel.closest('[data-roadmap-zur-bereinigung]') !== null) {
+    // Kein Hash-Link: der Router nutzt den Hash.
+    const titel = document.getElementById('rm-bereinigung-titel')
+    titel?.scrollIntoView({ block: 'start' })
+    titel?.focus({ preventScroll: true })
     return
   }
   const aktion = ziel.closest('[data-roadmap-anpassen-aktion]')
@@ -1102,8 +1408,13 @@ export function initRoadmapView() {
       document.querySelector('[data-roadmap-jarvis-fragen]')?.click()
     }
   })
-  container?.addEventListener('input', beiAnpassenEingabe)
-  container?.addEventListener('change', beiAnpassenEingabe)
+  const beiEingabe = (ereignis) => {
+    const feld = ereignis.target instanceof Element ? ereignis.target.closest('[data-roadmap-bereinigung-feld]') : null
+    if (feld !== null) beiBereinigungEingabe(feld)
+    else beiAnpassenEingabe(ereignis)
+  }
+  container?.addEventListener('input', beiEingabe)
+  container?.addEventListener('change', beiEingabe)
   // toggle steigt nicht auf — Erfassung in der Capture-Phase.
   container?.addEventListener(
     'toggle',
@@ -1122,6 +1433,7 @@ export function initRoadmapView() {
   })
   abonniereProjektWechsel(() => {
     anpassenStaende.clear()
+    Object.assign(bereinigung, leereBereinigung())
     auswahl = null
     aufgeklappt = null
     abgeschlosseneSichtbar = false
