@@ -6509,6 +6509,54 @@ th {
   grid-template-columns: minmax(0, 600px);
 }
 
+/* F45 B5b-2c-1: Kanban · Priorität mit fünf Spalten (P0–P3, ohne Priorität), Filtergruppen statt Ansicht-Chips — nur vorhandene
+   Tokens; schmal wie das Status-Board (2 bzw. 1 Spalte über die Container-Regeln unten). */
+#view-workboard .pm-board.prioritaets-board {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* Fünf schmale Spalten: Titel etwas kleiner und mit Silbentrennung statt Bruch mitten im Wort (Prüfpass dg 3); einspaltig mobil
+   gilt wieder die Größe des Status-Boards. */
+#view-workboard .prioritaets-board .board-item-titel {
+  font-size: 15px;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+#view-workboard .board-filter.kanban-filter {
+  gap: 10px 24px;
+}
+
+#view-workboard .board-filter-gruppe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+#view-workboard .board-filter-gruppe > span {
+  margin-right: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .board-filter-chip[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#view-workboard .board-kanban-hinweis,
+#view-workboard .board-kanban-p4 {
+  margin: 0 0 14px;
+  font-size: 12px;
+}
+
+@container entwicklung (max-width: 1000px) {
+  #view-workboard .pm-board.prioritaets-board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 #view-workboard .board-column {
   min-width: 0;
   min-height: 320px;
@@ -6695,7 +6743,8 @@ th {
 }
 
 @container entwicklung (max-width: 900px) {
-  #view-workboard .pm-board {
+  #view-workboard .pm-board,
+  #view-workboard .pm-board.prioritaets-board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -6706,7 +6755,8 @@ th {
 
 @container entwicklung (max-width: 560px) {
   #view-workboard .pm-board,
-  #view-workboard .pm-board.filtered-board {
+  #view-workboard .pm-board.filtered-board,
+  #view-workboard .pm-board.prioritaets-board {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -6724,7 +6774,8 @@ th {
   }
 
   /* Vorlage ≤ 700 px: größerer Kartentitel, Meta/Phase/Owner 13 px. */
-  #view-workboard .board-item-titel {
+  #view-workboard .board-item-titel,
+  #view-workboard .prioritaets-board .board-item-titel {
     font-size: 21px;
   }
 
@@ -7673,6 +7724,12 @@ th {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* F45 B5b-2c-1: Bug-Felder aus dem Register — mehrzeilig, lange Pfade brechen. */
+#view-workboard .eintrag-bugfeld {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 #view-workboard .eintrag-beschreibung {

@@ -4,7 +4,8 @@
  * Zweck: Reine Regeln der Seite „Entwicklung“ (F44 WS-3a, Abgleich F-725 E1, E4, E5; Vorlage
  * d_arbeit_board.png). baueBoard ordnet die Workitems den vier Spalten des Status-Kanbans zu
  * (Geplant · In Arbeit · Braucht dich · Abgenommen), begrenzt und sortiert die Karten je Spalte;
- * sucheWorkitems ist die clientseitige Suche der Listen. Kein DOM, kein I/O.
+ * sucheWorkitems ist die clientseitige Suche der Listen. Kein DOM, kein I/O. Seit F45 B5b-2c-1 (features/F45/plan-b5b2c1-v2.md)
+ * zusätzlich das Prioritäts-Kanban lesend (baueKanbanPrioritaet, featurePrioritaeten; Regeln an der Funktion).
  *
  * Zuordnung in dieser Prüfreihenfolge (die erste zutreffende Zeile gewinnt):
  *   a) abgenommen:   Feature ABGESCHLOSSEN, Finding ERLEDIGT.
@@ -41,6 +42,7 @@
  */
 
 import { baueEntscheidungen, filtereAttentionWorkflows, filtereOffeneAbnahmen } from './attention-daten.js'
+import { offenerP02Befund, roadmapIds, zuordnungVon } from './befund-zuordnung.js'
 
 /** Die vier Spalten des Status-Kanbans in Anzeigereihenfolge. */
 export const SPALTEN = ['geplant', 'in_arbeit', 'braucht_dich', 'abgenommen']
@@ -305,4 +307,95 @@ export function sucheWorkitems(liste, text) {
   const suche = typeof text === 'string' ? text.trim().toLowerCase() : ''
   if (suche === '') return liste
   return liste.filter((w) => `${w?.id ?? ''}\n${w?.titel ?? ''}`.toLowerCase().includes(suche))
+}
+
+// ─── Kanban · Priorität (F45 B5b-2c-1, E-KANBAN = A, F-917 (a)) ────────────────
+
+/** Spalten des Prioritäts-Kanbans in Anzeigereihenfolge (Vorlage d_arbeit_prioritaeten.png, dazu „ohne Priorität“). */
+export const PRIORITAETS_SPALTEN = Object.freeze(['P0', 'P1', 'P2', 'P3', 'ohne'])
+
+/** Prioritäten einer Akte (src/workboard/feature-planung.ts PRIORITAETEN) — P4 gibt es dort nicht. */
+const AKTEN_PRIORITAETEN = new Set(['P0', 'P1', 'P2', 'P3'])
+
+/** Feature-Status ohne offene Arbeit: stehen nicht im Prioritäts-Kanban. */
+const FEATURE_ERLEDIGT = new Set(['ABGESCHLOSSEN', 'ABGEBROCHEN'])
+
+/**
+ * Prioritäten der Features aus GET …/roadmap (`features[].prioritaet`, Zeile „Priorität:“ der Akte, F45 B5b-1a) — die Projektion
+ * liefert die Zeile schon; Kanban und Zuordnung rechnet sie nicht (Advisor B5b-1 P2, advisor-b5b2c.md A4).
+ * @param roadmap - Antwort von GET …/roadmap
+ * @returns Map<featureId, 'P0'..'P3'> (nur gesetzte Prioritäten) oder null ohne gültige Projektion
+ */
+export function featurePrioritaeten(roadmap) {
+  if (roadmap === null || typeof roadmap !== 'object' || roadmap.status !== 'ok' || !Array.isArray(roadmap.meilensteine)) return null
+  const prioritaeten = new Map()
+  for (const m of roadmap.meilensteine) {
+    for (const f of Array.isArray(m?.features) ? m.features : []) if (typeof f?.id === 'string' && AKTEN_PRIORITAETEN.has(f.prioritaet)) prioritaeten.set(f.id, f.prioritaet)
+  }
+  return prioritaeten
+}
+
+/**
+ * Spalte einer Karte im Prioritäts-Kanban: Features nach ihrer Akten-Priorität, Findings nach ihrer Priorität, P4 (Alt-Bestand,
+ * Gate f21 (5)) in „P3“ (advisor-b5b2c.md A2: keine Spalte für eine nicht mehr vergebbare Priorität), sonst „ohne“.
+ * @param workitem - ein offenes Workitem
+ * @param prioritaeten - featurePrioritaeten oder null
+ * @returns Spaltenschlüssel aus PRIORITAETS_SPALTEN
+ */
+function prioritaetsSpalte(workitem, prioritaeten) {
+  const prioritaet = workitem.quelle === 'feature' ? (prioritaeten?.get(workitem.id) ?? null) : workitem.prioritaet
+  if (prioritaet === 'P4') return 'P3'
+  return AKTEN_PRIORITAETEN.has(prioritaet) ? prioritaet : 'ohne'
+}
+
+/**
+ * Offene Workitems im Sinn des Prioritäts-Kanbans: Feature-Akte nicht ABGESCHLOSSEN/ABGEBROCHEN (auch ein unbekannter Status zählt als
+ * offen), Finding mit Status OFFEN.
+ * @param workitems - Workitem-Liste
+ * @returns offene Workitems in Quellreihenfolge
+ */
+const offeneKanbanItems = (workitems) => workitems.filter((w) => (w?.quelle === 'feature' ? !FEATURE_ERLEDIGT.has(w.status) : w?.quelle === 'finding' && w.status === 'OFFEN'))
+
+/**
+ * Typen der offenen Karten für die Typ-Chips (vor allen Filtern) — eigene Funktion, damit die Chips nicht das ganze Kanban rechnen
+ * (Prüfpass cr 4).
+ * @param workitems - GET …/workitems ungefiltert, oder null/undefined
+ * @returns sortierte Typen ([] ohne Liste)
+ */
+export function kanbanTypen(workitems) {
+  if (!Array.isArray(workitems)) return []
+  return [...new Set(offeneKanbanItems(workitems).map((w) => w.typ).filter((typ) => typeof typ === 'string'))].sort()
+}
+
+/**
+ * Ordnet die offenen Workitems den Spalten des Prioritäts-Kanbans zu (nur lesend, kein Ziehen).
+ * Offen = Feature-Akte nicht ABGESCHLOSSEN/ABGEBROCHEN, Finding mit Status OFFEN. Je Spalte Features zuerst, dann Findings (P3 vor
+ * P4), sonst die Quellreihenfolge; höchstens KARTEN_JE_SPALTE Karten, außer die Spalte ist aufgeklappt.
+ * Filter: typ ('' = alle); pflege = true zeigt nur offene P0–P2-Findings ohne Feature-/Meilenstein-Bezug (befund-zuordnung.js) —
+ * P3 und „ohne“ stehen dann leer (advisor-b5b2c.md A3); ohne gültige Roadmap ist der Filter wirkungslos (die View sperrt ihn).
+ * @param workitems - GET …/workitems ungefiltert (null bei defekter Quelle, undefined solange er lädt)
+ * @param roadmap - Antwort von GET …/roadmap (Feature-Prioritäten und IDs für die Zuordnung), oder null/undefined
+ * @param optionen - { typ: string, pflege: boolean, voll: Set<Spaltenschlüssel> (aufgeklappte Spalten) }
+ * @returns null ohne Workitem-Liste; sonst { spalten: je Spalte { karten, anzahl, weitere: Karten über der Grenze — bleibt auch in einer
+ *   aufgeklappten Spalte > 0 (die View zeigt dann „Weniger zeigen“), p4 }, typen: kanbanTypen, prioritaeten: true, wenn die
+ *   Feature-Prioritäten gelesen werden konnten }
+ */
+export function baueKanbanPrioritaet(workitems, roadmap, optionen = {}) {
+  if (!Array.isArray(workitems)) return null
+  const prioritaeten = featurePrioritaeten(roadmap)
+  const ids = optionen.pflege === true ? roadmapIds(roadmap) : null
+  const offen = offeneKanbanItems(workitems)
+  const typen = kanbanTypen(workitems)
+  const typ = typeof optionen.typ === 'string' ? optionen.typ : ''
+  const gezeigt = offen.filter((w) => (typ === '' || w.typ === typ) && (ids === null || (offenerP02Befund(w) && zuordnungVon(w, ids).art === 'pflege')))
+  const jeSpalte = Object.fromEntries(PRIORITAETS_SPALTEN.map((spalte) => [spalte, []]))
+  gezeigt.forEach((workitem, index) => jeSpalte[prioritaetsSpalte(workitem, prioritaeten)].push({ workitem, index }))
+  const reihe = (w) => (w.quelle === 'feature' ? 0 : w.prioritaet === 'P4' ? 2 : 1)
+  const spalten = {}
+  for (const spalte of PRIORITAETS_SPALTEN) {
+    const sortiert = jeSpalte[spalte].sort((a, b) => reihe(a.workitem) - reihe(b.workitem) || a.index - b.index).map(({ workitem }) => workitem)
+    const karten = optionen.voll instanceof Set && optionen.voll.has(spalte) ? sortiert : sortiert.slice(0, KARTEN_JE_SPALTE)
+    spalten[spalte] = { karten, anzahl: sortiert.length, weitere: sortiert.length - Math.min(sortiert.length, KARTEN_JE_SPALTE), p4: sortiert.filter((w) => w.quelle === 'finding' && w.prioritaet === 'P4').length }
+  }
+  return { spalten, typen, prioritaeten: prioritaeten !== null }
 }

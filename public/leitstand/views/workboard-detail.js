@@ -54,7 +54,7 @@
  */
 
 import { befundeAusFeature, findeFundstellenPfad, fundstelleHtml, jetztBandHtml, kuerzeText, kurzGesagtHtml, statusBlockHtml } from '../eintrag-bausteine.js'
-import { istNichtTerminal, schrittFortschritt, workflowPhase } from '../entwicklung-daten.js'
+import { featurePrioritaeten, istNichtTerminal, schrittFortschritt, workflowPhase } from '../entwicklung-daten.js'
 import { schrittFolge } from '../fokus-daten.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
@@ -258,6 +258,20 @@ function meilensteinText(sicht) {
   if (zustand !== 'ok') return tHtml('entwicklung.detail.planung.nichtVerfuegbar')
   const meilenstein = sicht.roadmap.meilensteine.find((m) => m.features.some((f) => f?.id === sicht.workitem.id))
   return meilenstein === undefined ? tHtml('entwicklung.detail.planung.nichtEingeplant') : escapeHtml(meilenstein.titel ?? meilenstein.id ?? '')
+}
+
+/**
+ * Priorität eines Features aus derselben Roadmap-Projektion wie der Meilenstein (F45 B5b-2c-1, advisor-b5b2c.md A4 — eine Quelle
+ * mit dem Kanban · Priorität): Zeile „Priorität:“ der Akte, sonst „Ohne Priorität“; ein Feature außerhalb der Roadmap steht ohne.
+ * @param sicht - siehe Dateikopf
+ * @returns HTML
+ */
+function featurePrioritaetText(sicht) {
+  const zustand = sicht.roadmap === undefined ? 'laedt' : roadmapZustand(sicht.roadmap)
+  if (zustand === 'laedt') return tHtml('entwicklung.laedt')
+  if (zustand !== 'ok' && zustand !== 'nicht_vorhanden') return tHtml('entwicklung.detail.planung.nichtVerfuegbar')
+  const prioritaet = featurePrioritaeten(sicht.roadmap)?.get(sicht.workitem.id) ?? null
+  return prioritaet === null ? tHtml('entwicklung.detail.planung.ohnePrioritaet') : escapeHtml(prioritaet)
 }
 
 // ─── Ebene 2: Kurz gesagt (nur aus Daten) ────────────────────────────────────
@@ -791,9 +805,19 @@ function feldHtml(wert) {
 }
 
 /**
+ * Ein Bug-Feld aus dem Register (F45 B5b-2c-1, F-975): Text escaped mit erhaltenen Zeilenumbrüchen, fehlend „fehlt“ (E-B5-5 — ein
+ * Befund ohne diese Felder ist erlaubt, keine Rückmigration).
+ * @param wert - Feldwert (nachstellen, erwartet, tatsaechlich, ursache, regressionstest) oder null
+ * @returns HTML
+ */
+function bugFeldHtml(wert) {
+  return typeof wert === 'string' && wert.trim() !== '' ? `<span class="eintrag-bugfeld">${escapeHtml(wert)}</span>` : `<span class="subtle eintrag-bugfeld-fehlt">${tHtml('eintrag.befund.fehlt')}</span>`
+}
+
+/**
  * „Fehlerbild“ (Bug) bzw. „Worum es geht“ (übrige Typen). Bug: Nachstellen, Erwartet/Tatsächlich und
- * Ursache „kommt“ (strukturierte Felder, F-975, Fixpaket B5); Fundstelle und vorgeschlagene
- * Behebung (Maßnahme) aus dem Register. Übrige Typen: Beschreibung, Fundstelle, Behebung. Darunter
+ * Ursache aus den Bug-Feldern des Registers (F45 B5b-2c-1, F-975; fehlend „fehlt“), Fundstelle und
+ * vorgeschlagene Behebung (Maßnahme). Übrige Typen: Beschreibung, Fundstelle, Behebung. Darunter
  * aufklappbar der ganze Registereintrag (alle Felder ungekürzt — kein heutiges Feld fällt weg).
  * @param sicht - siehe Dateikopf
  * @returns HTML
@@ -805,12 +829,16 @@ function fehlerbildBlock(sicht) {
   const behebung = kachel(t('eintrag.befund.behebungVorschlag'), `<p>${feldHtml(workitem.massnahme)}</p>`)
   const oben = bug
     ? `<div class="eintrag-fehlerbild">
-        <div><p class="eintrag-eyebrow">${tHtml('eintrag.befund.nachstellen')}</p>${kommtInhalt('eintrag.befund.feldKommt')}</div>
-        <dl class="eintrag-felder"><dt>${tHtml('eintrag.befund.erwartet')}</dt><dd>${kommtBadge()}</dd><dt>${tHtml('eintrag.befund.tatsaechlich')}</dt><dd>${kommtBadge()}</dd></dl>
+        <div><p class="eintrag-eyebrow">${tHtml('eintrag.befund.nachstellen')}</p><p>${bugFeldHtml(workitem.nachstellen)}</p></div>
+        <dl class="eintrag-felder"><dt>${tHtml('eintrag.befund.erwartet')}</dt><dd>${bugFeldHtml(workitem.erwartet)}</dd><dt>${tHtml('eintrag.befund.tatsaechlich')}</dt><dd>${bugFeldHtml(workitem.tatsaechlich)}</dd></dl>
       </div>`
     : `<p class="eintrag-beschreibung">${feldHtml(workitem.beschreibung)}</p>`
-  const kacheln = bug ? `${kachel(t('eintrag.befund.ursache'), kommtInhalt('eintrag.befund.feldKommt'))}${fundstelle}${behebung}` : `${fundstelle}${behebung}${kachel(t('entwicklung.detail.finding.auswirkung'), `<p>${feldHtml(workitem.auswirkung)}</p>`)}`
-  const felder = ['fundstelle', 'auswirkung', 'massnahme', 'featureRun'].map((f) => `<dt>${tHtml(`entwicklung.detail.finding.${f}`)}</dt><dd>${f === 'fundstelle' && workitem.fundstelle ? fundstelleHtml(workitem.fundstelle) : feldHtml(workitem[f])}</dd>`).join('')
+  const kacheln = bug ? `${kachel(t('eintrag.befund.ursache'), `<p>${bugFeldHtml(workitem.ursache)}</p>`)}${fundstelle}${behebung}` : `${fundstelle}${behebung}${kachel(t('entwicklung.detail.finding.auswirkung'), `<p>${feldHtml(workitem.auswirkung)}</p>`)}`
+  // Bug-Felder im ganzen Eintrag: beim Bug alle fünf, bei den übrigen Typen nur vorhandene (kein Feld fällt weg, kein Bug-Gerüst).
+  const bugFelder = ['nachstellen', 'erwartet', 'tatsaechlich', 'ursache', 'regressionstest'].filter((f) => bug || (typeof workitem[f] === 'string' && workitem[f].trim() !== ''))
+  // Bug-Felder auch hier über bugFeldHtml: „fehlt“ und Zeilenumbrüche wie oben (Prüfpass dg 4).
+  const wert = (f) => (f === 'fundstelle' && workitem.fundstelle ? fundstelleHtml(workitem.fundstelle) : bugFelder.includes(f) ? bugFeldHtml(workitem[f]) : feldHtml(workitem[f]))
+  const felder = ['fundstelle', 'auswirkung', 'massnahme', 'featureRun', ...bugFelder].map((f) => `<dt>${tHtml(`entwicklung.detail.finding.${f}`)}</dt><dd>${wert(f)}</dd>`).join('')
   const ganz = `<details class="eintrag-ganz" data-klappe="ganz"><summary>${tHtml('eintrag.befund.ganzerEintrag')}</summary><p class="eintrag-beschreibung">${workitem.beschreibung ? escapeHtml(workitem.beschreibung) : tHtml('entwicklung.detail.finding.keineBeschreibung')}</p><dl class="eintrag-felder">${felder}</dl></details>`
   return `<section class="eintrag-karte" aria-labelledby="fehlerbild-titel">
       <div class="eintrag-karte-kopf"><h2 id="fehlerbild-titel">${tHtml(bug ? 'eintrag.befund.fehlerbild' : 'eintrag.befund.worum')}</h2></div>
@@ -891,7 +919,7 @@ function behebungInfo(sicht, id) {
 
 /**
  * „Behebung“ (Bug) bzw. „Umsetzung“: die Schritte (behebungsSchritte), darunter Regressionstest
- * („kommt“), Änderungen (→ Code-Reiter #/code, F46 D4) und Auftrag (Ablauf des Eintrags oder der
+ * (Bug-Feld des Registers, fehlend „fehlt“, F45 B5b-2c-1), Änderungen (→ Code-Reiter #/code, F46 D4) und Auftrag (Ablauf des Eintrags oder der
  * Hinweis, dass Click-to-Work ihn anlegt); aufklappbar die Schritte des Ablaufs im Einzelnen.
  * @param sicht - siehe Dateikopf
  * @returns HTML
@@ -913,7 +941,7 @@ function behebungBlock(sicht) {
       <ol class="behebung-schritte">${liste}</ol>
       ${urteileNichtLadbar(sicht)}
       <div class="eintrag-kacheln eintrag-kacheln-3">
-        ${bug ? kachel(t('eintrag.behebung.regressionstest'), kommtInhalt('eintrag.befund.feldKommt')) : ''}
+        ${bug ? kachel(t('eintrag.behebung.regressionstest'), `<p>${bugFeldHtml(sicht.workitem.regressionstest)}</p>`) : ''}
         ${kachel(t('eintrag.review.aenderungen'), aenderungenInhalt())}
         ${kachel(t('eintrag.behebung.auftrag'), auftrag)}
       </div>
@@ -945,7 +973,7 @@ export function detailInhaltHtml(sicht) {
 }
 
 /**
- * Rechte Spalte: Feature „Deine Planung“ (Priorität keine, Meilenstein echt; Schätzung und Speichern
+ * Rechte Spalte: Feature „Deine Planung“ (Priorität und Meilenstein aus der Roadmap-Projektion, F45 B5b-2c-1; Schätzung und Speichern
  * „kommt“, Fixpaket B5), Befund „Einordnung“ (Priorität echt; Zuordnung, Schätzung, Speichern
  * „kommt“). Darunter die Links: Akte bzw. Fundstelle (nur bei eindeutigem Pfad) und Registereintrag
  * in VS Code, Pull Requests (F46 D4: <remoteWebUrl>/pulls in neuem Tab, ohne GitHub-Remote gesperrt), Roadmap,
@@ -957,7 +985,7 @@ export function detailSpalteHtml(sicht) {
   const { workitem } = sicht
   const feature = workitem.quelle === 'feature'
   const felder = feature
-    ? `<dt>${tHtml('entwicklung.detail.planung.prioritaet')}</dt><dd>${tHtml('entwicklung.detail.planung.ohnePrioritaet')}</dd><dt>${tHtml('entwicklung.detail.planung.meilenstein')}</dt><dd>${meilensteinText(sicht)}</dd><dt>${tHtml('eintrag.spalte.schaetzungRest')}</dt><dd>${kommtBadge()}</dd>`
+    ? `<dt>${tHtml('entwicklung.detail.planung.prioritaet')}</dt><dd>${featurePrioritaetText(sicht)}</dd><dt>${tHtml('entwicklung.detail.planung.meilenstein')}</dt><dd>${meilensteinText(sicht)}</dd><dt>${tHtml('eintrag.spalte.schaetzungRest')}</dt><dd>${kommtBadge()}</dd>`
     : `<dt>${tHtml('entwicklung.detail.planung.prioritaet')}</dt><dd>${escapeHtml(workitem.prioritaet ?? '–')}</dd><dt>${tHtml('eintrag.spalte.zugeordnet')}</dt><dd>${kommtBadge()}</dd><dt>${tHtml('eintrag.spalte.schaetzung')}</dt><dd>${kommtBadge()}</dd>`
   const links = []
   if (feature) {
