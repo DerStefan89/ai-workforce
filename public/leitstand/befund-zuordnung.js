@@ -19,6 +19,8 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/entwicklung-daten.js (Filter „Pflege & Fixes“ im Kanban · Priorität)
+ * - public/leitstand/views/roadmap.js (F45 B5b-2c-2-AB: ordneBefundeZu für Zähler und Zeile „Pflege & Fixes“ im Gantt)
+ * - public/leitstand/views/workboard-detail.js (F45 B5b-2c-2-AB: zuordnungAnzeige für „Zugeordnet zu“ im Befund-Detail)
  * - public/leitstand/befund-zuordnung.test.mjs (node:test)
  *
  * Wichtig:
@@ -84,6 +86,25 @@ export function zuordnungVon(befund, ids) {
  */
 export function offenerP02Befund(w) {
   return w?.quelle === 'finding' && w.status === 'OFFEN' && P02.has(w.prioritaet)
+}
+
+/**
+ * „Zugeordnet zu“ im Befund-Detail (F45 B5b-2c-2-AB, F-1208 qa 6, Advisor `advisor-b5b2c2.md` A3): dieselbe Regel wie im Dateikopf,
+ * für jeden Befund — jede Priorität, jeder Status. Nur ein offener P0–P2-Befund ohne Bezug steht auch in der Spur „Pflege & Fixes“.
+ * @param befund - Finding ({ featureRun, status, prioritaet, quelle })
+ * @param roadmap - Antwort von GET …/roadmap
+ * @returns { art: 'feature' | 'meilenstein', id, titel, status } | { art: 'ohne', spur: boolean } oder null ohne gültige Projektion
+ *   (status: Status des Features bzw. Meilensteins aus der Projektion, z. B. keine_akte — dann ohne Link, Prüfpass cr 3/qa 7)
+ */
+export function zuordnungAnzeige(befund, roadmap) {
+  const ids = roadmapIds(roadmap)
+  if (ids === null) return null
+  const ziel = zuordnungVon(befund, ids)
+  if (ziel.art === 'pflege') return { art: 'ohne', spur: offenerP02Befund(befund) }
+  const meilensteine = roadmap.meilensteine.filter((m) => m !== null && typeof m === 'object')
+  const eintrag = ziel.art === 'feature' ? meilensteine.flatMap((m) => (Array.isArray(m.features) ? m.features : [])).find((f) => f?.id === ziel.id) : meilensteine.find((m) => m.id === ziel.id)
+  const titel = typeof eintrag?.titel === 'string' && eintrag.titel.trim() !== '' ? eintrag.titel : ziel.id
+  return { art: ziel.art, id: ziel.id, titel, status: typeof eintrag?.status === 'string' ? eintrag.status : null }
 }
 
 /**

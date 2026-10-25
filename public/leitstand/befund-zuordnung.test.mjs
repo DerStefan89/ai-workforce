@@ -3,7 +3,8 @@
  *
  * Zweck: node:test für die Zuordnung Befund → Feature / Meilenstein / „Pflege & Fixes“ (befund-zuordnung.js, F45 B5b-2c-1):
  * Token-Grenzen an echten Grenzfällen aus state/findings.md (F-002, AF-F001, F6b/F6a, M3-Challenge, S-M3-01b, M1/M10), „erste
- * gewinnt“, nur offene P0–P2, Sortierung, und ein Rauchtest gegen den Arbeitsbaum (state/findings.md + docs/projekt/roadmap.json).
+ * gewinnt“, nur offene P0–P2, Sortierung, und ein Rauchtest gegen den Arbeitsbaum (state/findings.md + docs/projekt/roadmap.json);
+ * seit F45 B5b-2c-2-AB „Zugeordnet zu“ (zuordnungAnzeige).
  *
  * Wird aufgerufen von: npm run test (node --test)
  */
@@ -13,7 +14,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { parseFindings } from '../../src/workboard/findings.ts'
-import { offenerP02Befund, ordneBefundeZu, roadmapIds, zuordnungVon } from './befund-zuordnung.js'
+import { offenerP02Befund, ordneBefundeZu, roadmapIds, zuordnungAnzeige, zuordnungVon } from './befund-zuordnung.js'
 
 /** Projektion wie GET …/roadmap (nur die Felder, die die Zuordnung liest). */
 function projektion(meilensteine) {
@@ -114,4 +115,18 @@ test('Rauchtest Arbeitsbaum: jeder offene P0–P2-Befund landet genau einmal, ni
   for (const w of z.pflege) assert.equal(zuordnungVon(w, roadmapIds(roadmap)).art, 'pflege')
   // Nie ein Feature außerhalb der Roadmap.
   for (const id of z.jeFeature.keys()) assert.ok(roadmapIds(roadmap).features.has(id), id)
+})
+
+test('B5b-2c-2-AB zuordnungAnzeige: Feature bzw. Meilenstein mit Titel, sonst „ohne“ — Spur nur bei offen P0–P2 (Advisor A3)', () => {
+  const mitTitel = { status: 'ok', meilensteine: [{ id: 'M5', titel: 'Fixpaket', status: 'LAEUFT', features: [{ id: 'F45', titel: 'Fixpaket F45', status: 'IN_ARBEIT' }] }] }
+  assert.deepEqual(zuordnungAnzeige(befund('F45 B5b-2c-1'), mitTitel), { art: 'feature', id: 'F45', titel: 'Fixpaket F45', status: 'IN_ARBEIT' })
+  assert.deepEqual(zuordnungAnzeige(befund('M5-Schnitt'), mitTitel), { art: 'meilenstein', id: 'M5', titel: 'Fixpaket', status: 'LAEUFT' })
+  assert.deepEqual(zuordnungAnzeige(befund('F45', { status: 'ERLEDIGT', prioritaet: 'P3' }), mitTitel), { art: 'feature', id: 'F45', titel: 'Fixpaket F45', status: 'IN_ARBEIT' }, 'jede Priorität, jeder Status')
+  assert.deepEqual(zuordnungAnzeige(befund('Harness'), mitTitel), { art: 'ohne', spur: true })
+  assert.deepEqual(zuordnungAnzeige(befund('Harness', { prioritaet: 'P3' }), mitTitel), { art: 'ohne', spur: false })
+  assert.deepEqual(zuordnungAnzeige(befund(undefined, { status: 'ERLEDIGT' }), mitTitel), { art: 'ohne', spur: false })
+  // Ohne Titel: die ID.
+  assert.deepEqual(zuordnungAnzeige(befund('F1'), ROADMAP), { art: 'feature', id: 'F1', titel: 'F1', status: 'IN_ARBEIT' })
+  assert.equal(zuordnungAnzeige(befund('F45'), { status: 'nicht_vorhanden' }), null)
+  assert.equal(zuordnungAnzeige(befund('F45'), null), null)
 })

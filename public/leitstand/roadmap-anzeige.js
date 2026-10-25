@@ -7,7 +7,9 @@
  * welche Features in keinem Meilenstein stehen, und in welchem Zustand die Antwort ist. Seit F45 B5b-2a zusätzlich der
  * Gantt lesend (features/F45/plan-b5b2a-v2.md): Achse je Zoom, Formen je Zeile (baueSpur), Zeilenliste Meilenstein → Feature
  * → Workstream/Fixpaket/Design mit Gruppen der erledigten Kinder (ganttZeilen), Kennzahlen „Bis <M> fertig“ und „Plan
- * gegen Ist“ aus kennzahlen der Projektion.
+ * gegen Ist“ aus kennzahlen der Projektion. Seit F45 B5b-2c-2-AB (features/F45/plan-b5b2c2-v2.md) mit optionaler Zuordnung der
+ * Befunde (befund-zuordnung.js ordneBefundeZu, berechnet von der View): Zähler „offene Befunde (P0–P2)“ je Feature und Meilenstein,
+ * an der Trennzeile, und die Zeile „Pflege & Fixes“ mit bis zu PFLEGE_MAX Befund-Zeilen.
  * Eine Stelle für diese Regeln, damit #/roadmap und in WS-2b der aktuelle Meilenstein und der
  * Fortschrittsring der Übersicht nicht auseinanderlaufen.
  *
@@ -258,6 +260,9 @@ const RESERVE_SPALTEN = 5
 const LABEL_KIPP_AB_PX = IST_BREITE + 6 * SPALTE_PX
 const LABEL_LINKS_PX = 200
 
+/** Höchstzahl der Befund-Zeilen unter „Pflege & Fixes“; der Rest steht als Zahl an der Pflege-Zeile (Feld weitere). */
+export const PFLEGE_MAX = 20
+
 /** Status einer offenen Workstream-Zeile (geplant/laeuft) und einer erledigten (erledigt/verworfen). */
 const ZEILE_OFFEN = new Set(['geplant', 'laeuft'])
 const ZEILE_ERLEDIGT = new Set(['erledigt', 'verworfen'])
@@ -387,17 +392,30 @@ function istSumme(zeilen) {
  * Bei einer nicht abgeschlossenen Elternzeile stehen die erledigten Kinder in einer Gruppenzeile vorn (eine Regel für
  * „Erledigt in M5“ und „n erledigt“). Liefert auch die eingeklappten Zeilen (sichtbar = false) — die Anzeige filtert, das
  * Detailpanel findet so jede Auswahl. Der aktuelle Meilenstein steht oben, abgeschlossene unter der Trennzeile.
+ * Mit zustand.zuordnung (F45 B5b-2c-2-AB): Feature-Zeilen tragen befundeOffen (Befunde an diesem Feature), Meilenstein-Zeilen
+ * befundeOffen = direkt am Meilenstein + Summe seiner Features und befundeDirekt; ein Feature in zwei Meilensteinen zählt an beiden
+ * (DEKLARIERT, wie zaehleRoadmap — derselbe Befund kann so in der Trennzeile zweimal zählen). Am Ende von `oben` steht die Zeile
+ * „Pflege & Fixes“ (art 'pflege', Standard zu, leere Spur, Status 'geplant' wie die Vorlage) mit höchstens PFLEGE_MAX Kindern
+ * (art 'befund', Farbe 'bug' bei Typ BUG, sonst 'befund') in der Reihenfolge der Zuordnung; der Rest steht als weitere an der
+ * Pflege-Zeile, nicht als Zeile. Pflege- und Befund-Zeilen haben kein „danach“ (Advisor B2). Ohne Zuordnung (Workitems laden oder
+ * fehlen) wie bisher: keine Pflege-Zeile, befundeOffen null.
  * @param roadmap - Antwort von GET …/roadmap
- * @param zustand - { aufgeklappt: Set der Zeilenschlüssel oder null = Standard, abgeschlosseneSichtbar, achse }
- * @returns { oben: Zeile[], unten: Zeile[], trenner: { anzahl, abgenommen, gesamt } | null, standardOffen: Set }
+ * @param zustand - { aufgeklappt: Set der Zeilenschlüssel oder null = Standard, abgeschlosseneSichtbar, achse, zuordnung: Ergebnis von
+ *   ordneBefundeZu oder null/undefined }
+ * @returns { oben: Zeile[], unten: Zeile[], trenner: { anzahl, abgenommen, gesamt, befunde? } | null, standardOffen: Set }
  *   Zeile = { schluessel, eltern, ebene, art, farbe, id, titel, status, kategorie, hatKinder, offen, sichtbar, istAt, schaetzung,
- *   notiz, anzahl, hinweise: string[], spur, bezug: { meilenstein, feature, workstream }, danach }
+ *   notiz, anzahl, hinweise: string[], spur, bezug: { meilenstein, feature, workstream }, danach, befundeOffen (Feature, Meilenstein),
+ *   befundeDirekt (Meilenstein), weitere (Pflege), typ und prioritaet (Befund) }
  */
 export function ganttZeilen(roadmap, zustand) {
   const meilensteine = meilensteineVon(roadmap)
   const aktueller = aktuellerMeilenstein(roadmap)
   const eintraege = zeitachseVon(roadmap)
   const achse = zustand.achse ?? baueAchse(eintraege, 'tage')
+  const zuordnung = zustand.zuordnung ?? null
+  /** Offene P0–P2-Befunde an einem Feature bzw. direkt an einem Meilenstein (null ohne Zuordnung). */
+  const befundeAnFeature = (id) => (zuordnung === null ? null : (zuordnung.jeFeature.get(id)?.length ?? 0))
+  const befundeAnMeilenstein = (id) => (zuordnung === null ? null : (zuordnung.jeMeilenstein.get(id)?.length ?? 0))
   const jeFeature = new Map()
   for (const e of eintraege) {
     const schluessel = zeilenSchluessel(e.meilenstein, e.feature)
@@ -505,6 +523,7 @@ export function ganttZeilen(roadmap, zustand) {
         istAt: istSumme(workstreams),
         prioritaet: f.prioritaet ?? null,
         befunde: Array.isArray(f.planung_befunde) ? f.planung_befunde : [],
+        befundeOffen: befundeAnFeature(f.id),
         hinweise,
         spur: baueSpur(eigene, { istBand: kategorie === 'abgenommen' || eigene.some((e) => istZahl(e.ist_ende_at)), laeuft: kategorie === 'in_arbeit', ohneLage: hinweise.includes('ohne_lage') }, achse),
         bezug: { meilenstein: m.id, feature: f.id, workstream: null },
@@ -520,6 +539,7 @@ export function ganttZeilen(roadmap, zustand) {
     const abgeschlossen = m.status === ABGESCHLOSSEN
     const eigene = eintraege.filter((e) => e.meilenstein === m.id)
     const istAt = istSumme(features.flatMap((f) => (Array.isArray(f.workstreams) ? f.workstreams : [])))
+    const befundeDirekt = befundeAnMeilenstein(m.id)
     return neu(
       {
         schluessel,
@@ -534,6 +554,8 @@ export function ganttZeilen(roadmap, zustand) {
         istAt,
         aktuell: m === aktueller,
         zaehler: zaehleMeilenstein(m),
+        befundeDirekt,
+        befundeOffen: befundeDirekt === null ? null : features.reduce((summe, f) => summe + befundeAnFeature(f.id), befundeDirekt),
         // R1-Abweichung (abgeschlossen, aber ein Feature nicht): ein Fall der Bereinigungsliste, sichtbar an der Zeile (qa 4).
         hinweise: abgeschlossen && features.some((f) => f.status !== ABGESCHLOSSEN) ? ['abweichung'] : [],
         spur: baueSpur(eigene, { istBand: abgeschlossen || eigene.some((e) => istZahl(e.ist_ende_at)), laeuft: statusKategorie(m.status) === 'in_arbeit' }, achse),
@@ -575,12 +597,13 @@ export function ganttZeilen(roadmap, zustand) {
   const offen = [...(aktueller === null ? [] : [aktueller]), ...meilensteine.filter((m) => m !== aktueller && m.status !== ABGESCHLOSSEN)]
   const abgeschlossen = meilensteine.filter((m) => m !== aktueller && m.status === ABGESCHLOSSEN)
   for (const m of offen) meilensteinZeile(m, true)
+  if (zuordnung !== null) pflegeZeile(zuordnung.pflege, neu, achse)
   const grenze = zeilen.length
   for (const m of abgeschlossen) meilensteinZeile(m, zustand.abgeschlosseneSichtbar === true)
   // „danach“: die nächste Zeile derselben Elternzeile (Gruppen übersprungen), wie im Design-Detail.
   const geschwister = new Map()
   for (const z of zeilen) {
-    if (z.art === 'gruppe') continue
+    if (z.art === 'gruppe' || z.art === 'pflege' || z.art === 'befund') continue
     if (!geschwister.has(z.eltern)) geschwister.set(z.eltern, [])
     geschwister.get(z.eltern).push(z)
   }
@@ -588,12 +611,58 @@ export function ganttZeilen(roadmap, zustand) {
   geschwister.get(null)?.sort((a, b) => meilensteine.findIndex((m) => m.id === a.id) - meilensteine.findIndex((m) => m.id === b.id))
   for (const liste of geschwister.values()) liste.forEach((z, i) => (z.danach = liste[i + 1] ?? null))
   const zaehler = zaehleRoadmap({ status: 'ok', meilensteine: abgeschlossen })
+  // Befunde an abgeschlossenen Meilensteinen bleiben dort; die Trennzeile nennt ihre Summe — nur mit Zuordnung (Advisor B3).
+  const befunde = zuordnung === null ? null : zeilen.slice(grenze).filter((z) => z.art === 'meilenstein').reduce((summe, z) => summe + z.befundeOffen, 0)
   return {
     oben: zeilen.slice(0, grenze),
     unten: zeilen.slice(grenze),
-    trenner: abgeschlossen.length === 0 ? null : { anzahl: abgeschlossen.length, ...zaehler },
+    trenner: abgeschlossen.length === 0 ? null : { anzahl: abgeschlossen.length, ...zaehler, ...(befunde === null ? {} : { befunde }) },
     standardOffen,
   }
+}
+
+/**
+ * Hängt die Zeile „Pflege & Fixes“ samt ihrer Befund-Zeilen an (Teil von ganttZeilen). Leere Spur — Befunde tragen keine Schätzung;
+ * bei 0 Befunden nicht aufklappbar. bezug ist überall null (Advisor B1: gewaehlteZeile, Detailpanel und featureZeileVon lesen ihn).
+ * @param befunde - zuordnung.pflege (sortiert P0 → P2, dann Quelle)
+ * @param neu - Zeilenbauer aus ganttZeilen
+ * @param achse - aus baueAchse
+ */
+function pflegeZeile(befunde, neu, achse) {
+  const bezug = { meilenstein: null, feature: null, workstream: null }
+  const schluessel = zeilenSchluessel('p')
+  const sichtbare = befunde.slice(0, PFLEGE_MAX)
+  const basis = { schluessel, eltern: null, ebene: 0, art: 'pflege', farbe: 'pflege', id: '', titel: '', status: 'geplant', kategorie: 'geplant' }
+  neu(
+    { ...basis, anzahl: befunde.length, weitere: befunde.length - sichtbare.length, spur: baueSpur([], {}, achse), bezug },
+    true,
+    befunde.length === 0
+      ? null
+      : (kinderSichtbar) => {
+          for (const w of sichtbare) {
+            const id = String(w.id ?? '')
+            neu(
+              {
+                schluessel: zeilenSchluessel('b', id),
+                eltern: schluessel,
+                ebene: 1,
+                art: 'befund',
+                farbe: w.typ === 'BUG' ? 'bug' : 'befund',
+                id,
+                titel: typeof w.titel === 'string' && w.titel.trim() !== '' ? w.titel : id,
+                status: 'geplant',
+                kategorie: 'geplant',
+                typ: w.typ ?? null,
+                prioritaet: w.prioritaet ?? null,
+                spur: baueSpur([], {}, achse),
+                bezug,
+              },
+              kinderSichtbar,
+              null
+            )
+          }
+        }
+  )
 }
 
 /**

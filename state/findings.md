@@ -7248,7 +7248,7 @@ Beschreibung: Ob die Befunde des Reviewers (Codex) über die der Claude-Prüfer 
 Fundstelle: Review-Schritt (Rolle code-reviewer, Worker codex) in den Workflow-Vorlagen.
 Auswirkung: Gering — Kosten und Nutzen des zweiten Workers sind nicht belegt.
 Maßnahme: Fixpaket: Befunde je Review (bestätigt/verworfen) gegen die Claude-Prüfer auswerten.
-Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; die Messung läuft in F30-M1 (`docs/projekt/fixpaket-f45.md` §3, R). Klärung Challenger, ob das Messfenster damit feststeht.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; die Messung läuft in F30-M1 (`docs/projekt/fixpaket-f45.md` §3, R). Klärung Challenger, ob das Messfenster damit feststeht. Nachtrag 25.10.2026 (F45 B5b-2c-2-AB, Klärung Challenger [EMPFEHLUNG] in `features/F45/feature.md` „Folgen von E-BRAIN-2 und E-R-1 = A“): Messfenster für den Codex-Nutzen = die Läufe von F30-M1.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 Zugeordnet: F45 R — die Messung braucht echte Läufe (E-B2b-1 = A, 14.10.2026).
 
@@ -7378,13 +7378,13 @@ Maßnahme: (a) gemeinsamer Helfer in scripts/leitstand; (b) Dispatcher-Test, Sym
 Status: offen.
 Feature/Run: Entdeckt: F46 D6, Prüfpass (code-reviewer 4/8, qa B13/B14, design-guardian 6d/7), 03.10.2026.
 
-**F-1010** · `BUG` · P2 · offen
+**F-1010** · `BUG` · P2 · erledigt
 Titel: Roadmap und Akten widersprechen sich.
 Beschreibung: docs/projekt/roadmap.json führt F30 ohne Akte (Anzeige „keine_akte“), die Akte AF-F001 fehlt in der Roadmap, und M3/M4 stehen auf ABGESCHLOSSEN, obwohl F18, F20, F21, F22 und F25 auf FEATURE_GATE stehen — die Kennzahl „Features abgenommen“ passt nicht zum Meilensteinstatus. Die IDs (jede Akte in genau einem Meilenstein, jeder Roadmap-Eintrag mit Akte) prüft seit F46 D0 `scripts/check-akte-meilenstein.mjs`; offen war nur die Status-Regel R1 (Meilensteinstatus gegen den Status der Akten) — Satz berichtigt 24.10.2026 (F-1175; vorher: „Kein Gate prüft diese Übereinstimmung.“).
 Fundstelle: docs/projekt/roadmap.json, features/*/feature.md (Status), scripts/check-akte-meilenstein.mjs, scripts/leitstand/routen-roadmap.mjs.
 Auswirkung: Mittel — die Roadmap zeigt einen anderen Stand als die Akten.
 Maßnahme: F45 B5b: Gate Akte ↔ Roadmap, Bereinigungsliste zur Bestätigung durch Stefan.
-Status: offen. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): R1 ist jetzt Gate (`src/workboard/roadmap-regeln.ts` in `check-akte-meilenstein`): M3/F18 und M4/F20, F21, F22, F25 stehen als begründete Ausnahmen in `docs/projekt/roadmap-ausnahmen.json` („Bereinigung offen — Bestätigung Stefan (Bereinigungsliste)“); F30 hat eine Akte (ENTWURF), AF-F001 bleibt Ausnahme ohne_meilenstein. Rest: Bereinigungsliste mit Bestätigung je Eintrag (B5b-1b) und Anzeige (B5b-2). Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): B5b-1b geteilt; die Bereinigungsliste mit Bestätigung je Eintrag kommt mit B5b-1b-2 („Meilenstein → LAEUFT“ nur bei genau einer R1-Abweichung, B4). PUT `…/planung` blockiert jedes Verschieben, das R1 neu verletzt (422 „erst bereinigen“), siehe F-1187. Nachtrag 24.10.2026 (F45 B5b-1b-2, `features/F45/plan-b5b1b2-v2.md`): Mechanik erledigt — GET `/api/roadmap/bereinigung` listet jede R1-Abweichung mit den erlaubten Entscheidungen, POST `/api/roadmap/bereinigung/bestaetigen` bestätigt genau einen Eintrag („Feature → ABGESCHLOSSEN“: Akte, Status-Wort in STATUS.md, Ausnahme entfernt; „Meilenstein → LAEUFT“ nur bei genau einer Abweichung, dynamisch), Gate `check-f45-b5b1b2-bereinigung`. Status bleibt offen (Advisor `features/F45/advisor-b5b1b2.md` C5): die fünf Einträge bestätigt Stefan einzeln, die Anzeige kommt mit B5b-2.
+Status: erledigt (F45 B5b-2c-2-AB, 25.10.2026). Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): R1 ist jetzt Gate (`src/workboard/roadmap-regeln.ts` in `check-akte-meilenstein`): M3/F18 und M4/F20, F21, F22, F25 stehen als begründete Ausnahmen in `docs/projekt/roadmap-ausnahmen.json` („Bereinigung offen — Bestätigung Stefan (Bereinigungsliste)“); F30 hat eine Akte (ENTWURF), AF-F001 bleibt Ausnahme ohne_meilenstein. Rest: Bereinigungsliste mit Bestätigung je Eintrag (B5b-1b) und Anzeige (B5b-2). Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): B5b-1b geteilt; die Bereinigungsliste mit Bestätigung je Eintrag kommt mit B5b-1b-2 („Meilenstein → LAEUFT“ nur bei genau einer R1-Abweichung, B4). PUT `…/planung` blockiert jedes Verschieben, das R1 neu verletzt (422 „erst bereinigen“), siehe F-1187. Nachtrag 24.10.2026 (F45 B5b-1b-2, `features/F45/plan-b5b1b2-v2.md`): Mechanik erledigt — GET `/api/roadmap/bereinigung` listet jede R1-Abweichung mit den erlaubten Entscheidungen, POST `/api/roadmap/bereinigung/bestaetigen` bestätigt genau einen Eintrag („Feature → ABGESCHLOSSEN“: Akte, Status-Wort in STATUS.md, Ausnahme entfernt; „Meilenstein → LAEUFT“ nur bei genau einer Abweichung, dynamisch), Gate `check-f45-b5b1b2-bereinigung`. Status bleibt offen (Advisor `features/F45/advisor-b5b1b2.md` C5): die fünf Einträge bestätigt Stefan einzeln, die Anzeige kommt mit B5b-2. Erledigt 25.10.2026: die R1-Bereinigung M3/F18, M4/F20, F21, F22, F25 hat Stefan bestätigt (#383, `docs/projekt/roadmap-ausnahmen.json` leer); F30 hat seit B5b-1a eine Akte (ENTWURF), AF-F001 bleibt eine deklarierte Ausnahme ohne Meilenstein (Gate `check-akte-meilenstein`); die Bereinigungsliste ist gebaut (B5b-1b-2, B5b-2b-2) und schlägt „Feature → ABGESCHLOSSEN“ als Standard vor, wenn möglich (B5b-2c-2-AB).
 Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
 
 **F-1011** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -7636,7 +7636,7 @@ Beschreibung: Neue Projekte bekommen beim Anlegen die Baseline von ai-workforce 
 Fundstelle: `harness-abgleich/standard.json` (Bindung an Hash und Matcher), `src/projekt-anlegen/index.ts` (kopiereBaseline), `vorlagen/projekt-skelett/.claude/` (F-1038).
 Auswirkung: Mittel — im Referenzlauf R (Vorschlag haushaltsbuch2) kann Beleg 12 so nicht bestehen; die Anzeige sagt das richtig.
 Maßnahme: Vor R entscheiden (Stefan): (a) Baseline des R-Projekts auf den heutigen Stand ziehen (settings.json und Hooks, dann E-183/Startfreigabe des Projekts neu) oder (b) eine Projektdatei der Zuordnung (`harnessZuordnungPfad`) mit eigenem, realem Hook-Nachweis für die Projekt-Fassung. Template-Repo: F-1038.
-Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; „vor R entscheiden“ und die Baseline des R-Projekts (haushaltsbuch2) verlieren ihren Bezug; beim neu angelegten F30-Repo vermutlich gegenstandslos — Klärung Challenger.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; „vor R entscheiden“ und die Baseline des R-Projekts (haushaltsbuch2) verlieren ihren Bezug; beim neu angelegten F30-Repo vermutlich gegenstandslos — Klärung Challenger. Nachtrag 25.10.2026 (F45 B5b-2c-2-AB, Klärung Challenger [EMPFEHLUNG] in `features/F45/feature.md` „Folgen von E-BRAIN-2 und E-R-1 = A“): Die Baseline gilt für das F30-Projekt bei seiner Anlage über F41/F42.
 Feature/Run: Entdeckt: F45 B1b-2 (QA-Pass, gegen haushaltsbuch2 nachgerechnet), 11.10.2026.
 
 **F-1048** · `TECH_DEBT` · P3 · offen
@@ -7664,7 +7664,7 @@ Beschreibung: Ob Codex als Reviewer Befunde liefert, die die Claude-Prüfer nich
 Fundstelle: Laufakte des Review-Schritts (kein Feld dafür).
 Auswirkung: Mittel — Codex läuft in jeder Kette mit, ohne belegten Nutzen.
 Maßnahme: Die Laufakte zählt je Review bestätigte Befunde „nur Codex“ / „nur Claude-Prüfer“ / „beide“. Codex bleibt Reviewer, wenn er in R plus der ersten F30-Woche ≥ 1 bestätigten Befund findet, den die Claude-Prüfer nicht fanden; sonst nur noch bei Kontrolltiefe „hoch“. Voraussetzung F-829/F-929 (B2a).
-Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; das Messfenster „R plus erste F30-Woche“ wird zu „F30-M1“ — Klärung Challenger.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; das Messfenster „R plus erste F30-Woche“ wird zu „F30-M1“ — Klärung Challenger. Nachtrag 25.10.2026 (F45 B5b-2c-2-AB, Klärung Challenger [EMPFEHLUNG] in `features/F45/feature.md` „Folgen von E-BRAIN-2 und E-R-1 = A“): Messfenster für den Codex-Nutzen = die Läufe von F30-M1 (statt „R plus erste F30-Woche“).
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Nachtrag (Stefan, 14.10.2026): Codex prüft heute schon im Review-Schritt (Vorlagen standard/hoch). Der Nutzen wird in B2b gemessen (Codex-Review-Spec §11): nur Codex / nur Claude / beide, Fehlalarme, Kosten.
 Zugeordnet: F45 R statt B2b — die Messung braucht echte Läufe (E-B2b-1 = A, 14.10.2026).
@@ -8584,7 +8584,7 @@ Beschreibung: R2 (Motion) läuft seit E-F45-11 im Leitstand der Workforce; eine 
 Fundstelle: `docs/projekt/fixpaket-f45.md` (Zeilen B3, R2, E-F45-10/E-F45-11).
 Auswirkung: Mittel — B3 gälte als belegt, ohne dass ein Fremdprojekt mit sichtbarer Bewegung gebaut wurde.
 Maßnahme: R-Auftrag in haushaltsbuch2 mit sichtbarer Bewegung. Entscheidung Stefan 23.10.2026: B3 bleibt vollständig vor R.
-Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; damit fehlt der Lauf in einem Fremdprojekt, der den B3-Render-Nachweis mit Bewegung erbringen sollte („B3 bleibt vollständig vor R“) — Klärung Challenger, ob F30-M1 das trägt.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; damit fehlt der Lauf in einem Fremdprojekt, der den B3-Render-Nachweis mit Bewegung erbringen sollte („B3 bleibt vollständig vor R“) — Klärung Challenger, ob F30-M1 das trägt. Nachtrag 25.10.2026 (F45 B5b-2c-2-AB, Klärung Challenger [EMPFEHLUNG] in `features/F45/feature.md` „Folgen von E-BRAIN-2 und E-R-1 = A“): Den Render-Nachweis mit Bewegung im Fremdprojekt erbringt F30-M1, falls der Scanner eine Oberfläche hat; sonst bringt B3 einen eigenen Nachweis an einer Wegwerf-Kopie des Projekt-Skeletts. Beleg 15 bleibt bei Brain Stufe 1.
 Feature/Run: Bauauftrag F45 FB-1, 23.10.2026.
 
 **F-1166** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8962,7 +8962,7 @@ Beschreibung: (dg 3) Der Nebenwirkungstext steht in der Auswahl und im Bestätig
 Fundstelle: `public/leitstand/views/roadmap.js` (Bereinigung), `public/leitstand/roadmap-bereinigung.js`, `scripts/leitstand/routen-planung.mjs` (`vorpruefe`), `features/F45/nachweise/b5b2b2/`.
 Auswirkung: Gering — nichts wird falsch geschrieben.
 Maßnahme: View-Test zusammen mit F-1199/F-1203; Nebenwirkung in der Auswahl kürzen mit 2c bzw. W2; `NICHT_ADRESSIERBAR` um „nur Leerraum“ erweitern mit W2.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-AB): dg 3 erledigt — die Folgen (Nebenwirkung) stehen nur noch im Bestätigungsschritt, nicht mehr in der Auswahl (`public/leitstand/roadmap-bereinigung.js` optionHtml, Test `roadmap-bereinigung.test.mjs`); offen bleiben der View-Test und `NICHT_ADRESSIERBAR` (W2).
 Feature/Run: Entdeckt: F45 B5b-2b-2 (Prüfpass), 25.10.2026.
 
 **F-1207** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -8980,7 +8980,7 @@ Beschreibung: (cr 3) Die Gültigkeitsprüfung der Roadmap-Projektion steht dreim
 Fundstelle: `public/leitstand/befund-zuordnung.js`, `public/leitstand/entwicklung-daten.js`, `public/leitstand/views/workboard.js`, `public/leitstand/views/workboard-detail.js` (`detailSpalteHtml`), `features/F45/nachweise/b5b2c1/erzeuge-nachweis.mjs`.
 Auswirkung: Gering — nichts wird falsch angezeigt oder geschrieben.
 Maßnahme: qa 6 mit B5b-2c-2 (Zuordnung im Befund-Detail aus derselben Regel); View-Test zusammen mit F-1199/F-1203/F-1206; cr 3 und cr 9 mit W2; cr 5 und dg 6 bei Bedarf.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-AB): qa 6 erledigt — „Zugeordnet zu“ im Befund-Detail aus derselben Regel (`befund-zuordnung.js` zuordnungAnzeige, `views/workboard-detail.js` zuordnungText; Feature bzw. Meilenstein, sonst „ohne Feature-/Meilenstein-Bezug“, „(Spur Pflege & Fixes)“ nur bei offen P0–P2); qa 9 (Verdrahtung des Kanban-Vormerkers) hat einen Test in `projekt-wechsel.test.mjs`. Offen: View-Test, cr 3/cr 9 (W2), cr 5/dg 6.
 Feature/Run: Entdeckt: F45 B5b-2c-1 (Prüfpass), 25.10.2026.
 
 **F-1209** · `BUG` · P2 · offen (behoben durch serielle Gruppe, Bestätigung über Stefans Läufe offen)
@@ -8997,16 +8997,25 @@ Maßnahme: `src/git-starter/git-starter.test.ts` in die serielle Gruppe von `scr
 Status: offen (behoben durch serielle Gruppe, F45 B5b-2c-2-C; Bestätigung über Stefans volle Läufe offen — wie F-1186, Kopf beginnt mit „offen“, damit der Eintrag im Leitstand offen bleibt; Advisor `features/F45/advisor-b5b2c2.md` A2, Prüfpass cr 2/qa 1).
 Feature/Run: Entdeckt: F45 B5b-2c-1 (voller `npm run test` durch Stefan), 25.10.2026; behoben F45 B5b-2c-2-C, 25.10.2026.
 
-**F-1210** · `BUG` · P2 · offen
+**F-1210** · `BUG` · P2 · offen (behoben durch serielle Gruppe, Bestätigung über Stefans Läufe offen)
 Titel: Test „im echten Worktree (git worktree add) wie im Repo“ in `src/faehigkeiten/vorschlag.test.ts` fällt unter Last aus.
 Beschreibung: Im vollen `npm run test` (Claude-Code-Sitzung, 25.10.2026, F45 B5b-2c-2-C) scheiterte `src/faehigkeiten/vorschlag.test.ts:277` in der parallelen Gruppe: `pruefeZielIgnoriert` lieferte `null` statt `false`/`true` (Testdauer ≈ 8,4 s, Suite ≈ 21 s); einzeln 20/20 grün (1 übersprungen). Dieselbe Fehlerklasse wie F-1186 und F-1209 (git-Kindprozesse unter Last, F-1205).
 Nachstellen: voller `npm run test` neben einer laufenden Claude-Code-Sitzung.
 Erwartet: grün wie im Einzellauf.
 Tatsächlich: AssertionError in `vorschlag.test.ts:289` — `[['pruefen', null], …, ['leser', null]]` statt `false`/`true`.
 Ursache: offen — vermutlich Zeitgrenze von git check-ignore unter Last, die als „unbestimmt“ (`null`) endet.
-Regressionstest: offen.
+Regressionstest: `scripts/teste.test.mjs` (jeder Eintrag in SERIELL ist eine echte Testdatei); Bestätigung unter Last über Stefans volle Läufe.
 Fundstelle: `src/faehigkeiten/vorschlag.test.ts:277`, `scripts/teste.mjs` (parallele Gruppe).
 Auswirkung: Mittel — ein grüner Stand wirkt rot.
-Maßnahme: mit F-1205 (W2) entscheiden: Datei in SERIELL oder parallele Gruppe in der Sitzung begrenzen; nicht ohne Auftrag in SERIELL gelegt.
+Maßnahme: `src/faehigkeiten/vorschlag.test.ts` in die serielle Gruppe von `scripts/teste.mjs` (F45 B5b-2c-2-AB, 25.10.2026, Auftrag Challenger); fällt er dort erneut aus, die Zeitgrenze von git check-ignore im Test prüfen. Kein Test schützt den Eintrag gegen Entfernen (`teste.test.mjs` prüft nur Existenz und Eindeutigkeit).
+Status: offen (behoben durch serielle Gruppe, F45 B5b-2c-2-AB, Auftrag Challenger 25.10.2026; Bestätigung über Stefans volle Läufe offen — wie F-1186 und F-1209, Kopf beginnt mit „offen“, damit der Eintrag im Leitstand offen bleibt).
+Feature/Run: Entdeckt: F45 B5b-2c-2-C (`npm run test` in der Claude-Code-Sitzung), 25.10.2026; behoben F45 B5b-2c-2-AB, 25.10.2026.
+
+**F-1211** · `TECH_DEBT` · P3 · offen
+Titel: Reste aus dem Prüfpass F45 B5b-2c-2-AB (Roadmap „Pflege & Fixes“).
+Beschreibung: Prüfpass B5b-2c-2-AB (code-reviewer, qa, design-guardian je „Freigegeben mit Hinweisen“), nicht in der Korrekturrunde behoben: (cr 7) der neutrale Chip für unbekannte Workitem-Typen steht dreimal (`views/roadmap.js` standZeile und pflegeDetail, `views/dashboard.js`), und `befundTyp` (Schlüssel `typ.*`) ist ein zweiter Weg neben `typBezeichnung` (`entwicklung.typ.*`) im Eintrag-Detail; (qa 6, cr 8) kein View-Test für `views/roadmap.js` (Position von „+ n weitere“, Trennzeilentext, Feld „Offene Befunde“ lädt/nicht verfügbar, Legende) — belegt nur im Render-Nachweis; (qa 8) Befund-Zeilen und Befund-Detail zeigen die Status-Pille „Geplant“ (wie die Vorlage), obwohl der Befund offen ist; (qa 9) Reste aus B5b-2c-2-C außerhalb des Auftrags: `features/F30/feature.md` „beginnt nach dem Fixpaket“ gegen Klärung Challenger (1) „nach Brain Stufe 3“, alte Reihenfolge und Summe in `docs/projekt/fixpaket-f45.md` §3, Kurzinfo „1–2 AT“ an der verworfenen Zeile R; (dg 3) neutraler Chip zeigt ein hohles Quadrat, die Zeile ein gefülltes; (dg 5) Blass-Mischung von `--muted` in `style.css` außerhalb des Token-Blocks (Präzedenz vorhanden).
+Fundstelle: `public/leitstand/views/roadmap.js`, `public/leitstand/views/dashboard.js`, `public/leitstand/style.css`, `features/F30/feature.md`, `docs/projekt/fixpaket-f45.md`, `features/F45/feature.md` (Workstreams, Zeile R).
+Auswirkung: Gering — nichts wird falsch geschrieben; Doppelungen und eine missverständliche Status-Pille.
+Maßnahme: cr 7, qa 6, dg 3, dg 5 mit W2; qa 8 mit Stefan klären (Pille „Offen“ statt „Geplant“?); qa 9 mit dem nächsten Doku-Auftrag des Challengers (F30-Akte, fixpaket §3).
 Status: offen.
-Feature/Run: Entdeckt: F45 B5b-2c-2-C (`npm run test` in der Claude-Code-Sitzung), 25.10.2026.
+Feature/Run: Entdeckt: F45 B5b-2c-2-AB (Prüfpass), 25.10.2026.

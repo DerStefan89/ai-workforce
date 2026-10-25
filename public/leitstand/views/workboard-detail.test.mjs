@@ -415,3 +415,22 @@ test('F45 B5a-2 (E-F45-1): „Bearbeiten“ nur mit Hash und nicht abgeschlossen
   assert.doesNotMatch(detailInhaltHtml(sicht({ akte: mitHash, akteFormularOffen: true })), /id="was-titel"|data-akte-bearbeiten/)
   assert.match(detailInhaltHtml(sicht({ akte: unvollstaendig })), /Ziel fehlt[\s\S]*data-akte-bearbeiten/)
 })
+
+test('B5b-2c-2-AB Bug: „Zugeordnet zu“ aus der Roadmap der Seite — Feature, Meilenstein, ohne Bezug (Spur nur offen P0–P2), lädt, keine Roadmap, nicht verfügbar', () => {
+  const zugeordnet = (s) => detailSpalteHtml(s).match(/<dt>Zugeordnet zu<\/dt><dd>([\s\S]*?)<\/dd>/)?.[1]
+  const mitTitel = { status: 'ok', meilensteine: [{ id: 'M5', titel: 'Fix <paket>', status: 'LAEUFT', features: [{ id: 'F7', titel: 'Sieben <b>', status: 'IN_ARBEIT' }] }] }
+  assert.equal(zugeordnet(sicht({ workitem: bug, zuordnungRoadmap: mitTitel })), '<a class="text-link" href="#/workboard/F7">F7 · Sieben &lt;b&gt;</a>')
+  assert.equal(zugeordnet(sicht({ workitem: { ...bug, featureRun: 'M5-Schnitt' }, zuordnungRoadmap: mitTitel })), 'M5 · Fix &lt;paket&gt; (Meilenstein)')
+  assert.equal(zugeordnet(sicht({ workitem: { ...bug, featureRun: 'Harness' }, zuordnungRoadmap: mitTitel })), 'ohne Feature-/Meilenstein-Bezug <span class="subtle">(Spur Pflege &amp; Fixes)</span>')
+  assert.equal(zugeordnet(sicht({ workitem: { ...bug, featureRun: 'Harness', prioritaet: 'P3' }, zuordnungRoadmap: mitTitel })), 'ohne Feature-/Meilenstein-Bezug', 'P3 steht nicht in der Spur (A3)')
+  assert.equal(zugeordnet(sicht({ workitem: bug, zuordnungRoadmap: undefined })), 'Lädt…')
+  assert.equal(zugeordnet(sicht({ workitem: bug, zuordnungRoadmap: { status: 'nicht_vorhanden' } })), 'Keine Roadmap angelegt')
+  assert.equal(zugeordnet(sicht({ workitem: bug, zuordnungRoadmap: { status: 'fehler' } })), 'Roadmap nicht verfügbar')
+  assert.doesNotMatch(detailSpalteHtml(sicht({ workitem: bug, zuordnungRoadmap: mitTitel })), /<dt>Zugeordnet zu<\/dt><dd><span class="kommt-badge/)
+})
+
+test('B5b-2c-2-AB Prüfpass cr 3/qa 7: „Zugeordnet zu“ ohne Link bei einem Feature ohne Akte', () => {
+  const ohneAkte = { status: 'ok', meilensteine: [{ id: 'M5', titel: 'M', status: 'LAEUFT', features: [{ id: 'F7', titel: 'Sieben', status: 'keine_akte' }] }] }
+  const spalte = detailSpalteHtml(sicht({ workitem: bug, zuordnungRoadmap: ohneAkte }))
+  assert.match(spalte, /<dt>Zugeordnet zu<\/dt><dd>F7 · Sieben<\/dd>/)
+})

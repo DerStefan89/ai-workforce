@@ -20,6 +20,13 @@
  * - Bereinigung (n) (F45 B5b-2b-2, features/F45/plan-b5b2b2-v2.md): R1-Abweichungen aus GET /api/roadmap/bereinigung mit
  *   Vorschlägen (nicht mögliche deaktiviert, Grund sichtbar), Pflicht-Begründung, Bestätigungsschritt und POST …/bestaetigen für
  *   genau einen Eintrag; Zähler als Sprungknopf an der Trennzeile. Bausteine in roadmap-bereinigung.js.
+ * - Pflege & Fixes (F45 B5b-2c-2-AB, features/F45/plan-b5b2c2-v2.md): offene P0–P2-Befunde aus den Workitems nach der Regel in
+ *   befund-zuordnung.js — Zähler je Feature und Meilenstein (Kurzinfo und Detailfeld „Offene Befunde“), an der Trennzeile, und die
+ *   Zeile „Pflege & Fixes“ (grau wie die Vorlage, Standard zu) mit bis zu 20 Befund-Zeilen und „+ n weitere“ samt Link ins Kanban ·
+ *   Priorität mit vorgemerktem Filter (views/workboard.js oeffneKanbanPrioritaet). Laden die Workitems nach der Roadmap, erscheint die
+ *   Zeile später; ein „Alles aufklappen“ dazwischen lässt sie zu (DEKLARIERT, Advisor B6). Ebenfalls DEKLARIERT (Prüfpass qa 4,
+ *   cr 4): scheitern die Workitems, fehlen Pflege-Zeile und Zähler im Gantt — „nicht verfügbar“ steht im Detailfeld „Offene
+ *   Befunde“ und im Entwicklungsstand; eine Roadmap ohne Meilensteine zeigt keinen Gantt und damit auch keine Pflege-Zeile.
  *   Alle Rechnungen in roadmap-anzeige.js bzw. roadmap-anpassen.js; hier wird nur gerendert und verdrahtet.
  * - Entwicklungsstand mit Filter Alle · Features · Bugs · Harness · Tech Debt (zieht aus der
  *   Produktübersicht hierher): offene P0–P2-Befunde und offene Features des aktuellen Meilensteins.
@@ -52,6 +59,7 @@
 
 import { bestaetigeBereinigung, holeBereinigung, holeFeatureAkte, holeRoadmap, holeWorkitems, SCHREIB_ZEITLIMIT_MS, speicherePlanung } from '../api.js'
 import { kopiereBefehlsblock } from '../befehlsblock.js'
+import { ordneBefundeZu } from '../befund-zuordnung.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtKnopf } from '../kommt.js'
@@ -93,6 +101,7 @@ import {
 } from '../roadmap-anzeige.js'
 import { registriere } from '../router.js'
 import { chipTypVonWorkitem, typChip } from '../typ-chip.js'
+import { oeffneKanbanPrioritaet } from './workboard.js'
 
 /** Letzte Roadmap-Antwort: null = lädt, { status: 'fehler', grund } nach einem Wurf, sonst die Projektion. */
 let roadmap = null
@@ -204,13 +213,26 @@ function idListe(ids) {
 
 // ─── Abgeleitete Lage ─────────────────────────────────────────────────────────
 
+/** Zwischenspeicher der Befund-Zuordnung je (workitems, roadmap) — eine Rechnung je Datenstand, nicht je Render (Advisor B6). */
+let zuordnungSpeicher = { workitems: undefined, roadmap: null, wert: null }
+
 /**
- * Gantt-Lage für den aktuellen Anzeigezustand (Achse je Zoom, alle Zeilen samt eingeklappter).
+ * Zuordnung der offenen P0–P2-Befunde (befund-zuordnung.js) zum aktuellen Datenstand, null solange die Workitems laden oder fehlen.
+ * @returns Ergebnis von ordneBefundeZu oder null
+ */
+function befundZuordnung() {
+  if (zuordnungSpeicher.workitems !== workitems || zuordnungSpeicher.roadmap !== roadmap) zuordnungSpeicher = { workitems, roadmap, wert: ordneBefundeZu(workitems, roadmap) }
+  return zuordnungSpeicher.wert
+}
+
+/**
+ * Gantt-Lage für den aktuellen Anzeigezustand (Achse je Zoom, alle Zeilen samt eingeklappter, mit Befund-Zuordnung — eine Stelle für
+ * Render und Handler, Advisor B6).
  * @returns { achse, oben, unten, trenner, standardOffen, alle: Zeile[], jeSchluessel: Map }
  */
 function ganttLage() {
   const achse = baueAchse(zeitachseVon(roadmap), massstab)
-  const lage = ganttZeilen(roadmap, { aufgeklappt, abgeschlosseneSichtbar, achse })
+  const lage = ganttZeilen(roadmap, { aufgeklappt, abgeschlosseneSichtbar, achse, zuordnung: befundZuordnung() })
   const alle = [...lage.oben, ...lage.unten]
   return { achse, ...lage, alle, jeSchluessel: new Map(alle.map((z) => [z.schluessel, z])) }
 }
@@ -333,8 +355,19 @@ function kennzahlen() {
  * @returns Rohtext
  */
 function zeilenName(zeile) {
+  if (zeile.art === 'pflege') return t('roadmap.pflege.titel')
   if (zeile.art !== 'gruppe') return zeile.art === 'meilenstein' || zeile.art === 'feature' ? `${zeile.id} · ${zeile.titel}` : zeile.titel
   return zeile.farbe === 'feature' ? t('roadmap.gruppe.features', { id: zeile.id }) : t('roadmap.gruppe.zeilen')
+}
+
+/**
+ * Übersetzter Typ eines Befunds (Workitem-Typ über typ-chip.js; ein unbekannter Typ steht roh, Advisor B4).
+ * @param typ - workitem.typ
+ * @returns Rohtext
+ */
+function befundTyp(typ) {
+  const chipTyp = chipTypVonWorkitem(typ)
+  return chipTyp === null ? String(typ ?? '') : t(`typ.${chipTyp}`)
 }
 
 /**
@@ -343,6 +376,8 @@ function zeilenName(zeile) {
  * @returns Rohtext
  */
 function kurzinfo(zeile) {
+  if (zeile.art === 'pflege') return zeile.anzahl === 0 ? t('roadmap.pflege.keine') : t('roadmap.pflege.info', { anzahl: zeile.anzahl, zahl: formatiereZahl(zeile.anzahl) })
+  if (zeile.art === 'befund') return [zeile.id, befundTyp(zeile.typ), zeile.prioritaet ?? ''].filter((teil) => teil !== '').join(' · ')
   const teile = []
   if (zeile.art === 'meilenstein') teile.push(t('roadmap.meilenstein.abgenommen', { abgenommen: formatiereZahl(zeile.zaehler.abgenommen), gesamt: formatiereZahl(zeile.zaehler.gesamt) }))
   else if (zeile.art === 'gruppe') teile.push(t(zeile.farbe === 'feature' ? 'roadmap.gruppe.featuresInfo' : 'roadmap.gruppe.zeilenInfo', { anzahl: zeile.anzahl, zahl: formatiereZahl(zeile.anzahl) }))
@@ -357,6 +392,7 @@ function kurzinfo(zeile) {
     else if (zeile.status === 'geplant' || zeile.status === 'laeuft') teile.push(t('roadmap.info.ohneSchaetzung'))
   }
   if (zeile.istAt !== null) teile.push(t('roadmap.info.ist', { wert: zahl(zeile.istAt) }))
+  if (typeof zeile.befundeOffen === 'number' && zeile.befundeOffen > 0) teile.push(t('roadmap.befunde.info', { anzahl: zeile.befundeOffen, zahl: formatiereZahl(zeile.befundeOffen) }))
   if (zeile.hinweise.includes('fehlerhaft')) teile.push(t('roadmap.info.fehlerhaft'))
   if (zeile.hinweise.includes('befunde')) teile.push(t('roadmap.info.befunde'))
   if (zeile.hinweise.includes('ohne_lage')) teile.push(t('roadmap.info.ohneLage'))
@@ -418,6 +454,40 @@ function ganttZeile(zeile, gewaehlt) {
       <div class="rm-links" style="--rm-einzug: ${zeile.ebene}">${klappe}${waehlen}<span class="rm-status">${statusText(zeile.status)}</span></div>
       ${spurHtml(zeile.spur)}
     </li>`
+}
+
+/**
+ * Nicht wählbare Zeile „+ n weitere“ hinter dem letzten Befund unter „Pflege & Fixes“ mit dem Link ins Kanban · Priorität (Advisor
+ * B5b-2c B3: keine Zeile in der Lage).
+ * @param weitere - Zahl der nicht gezeigten Befunde
+ * @returns HTML
+ */
+function weitereZeile(weitere) {
+  return `<li class="rm-zeile rm-ebene-1 rm-weitere" data-farbe="befund">
+      <div class="rm-links" style="--rm-einzug: 1"><span class="rm-klappe-platz" aria-hidden="true"></span><span class="rm-weitere-text">${tHtml('roadmap.pflege.weitere', { anzahl: weitere, zahl: formatiereZahl(weitere) })}</span>${entwicklungsLink()}</div>
+      <div class="rm-spur"></div>
+    </li>`
+}
+
+/**
+ * Knopf „In der Entwicklung ansehen →“ (öffnet Kanban · Priorität mit vorgemerktem Filter „Pflege & Fixes“; kein Hash-Link, der
+ * Vormerker braucht den Aufruf).
+ * @returns HTML
+ */
+function entwicklungsLink() {
+  return `<button type="button" class="text-link" data-roadmap-entwicklung>${tHtml('roadmap.pflege.entwicklung')} <span aria-hidden="true">→</span></button>`
+}
+
+/**
+ * Detailfeld „Offene Befunde“ einer Feature- bzw. Meilenstein-Zeile (P0–P2 nach befund-zuordnung.js; am Meilenstein samt Features).
+ * @param zeile - Feature- oder Meilenstein-Zeile
+ * @returns HTML
+ */
+function befundeFeld(zeile) {
+  if (typeof zeile.befundeOffen !== 'number') return `<span class="subtle">${tHtml(workitems === undefined ? 'roadmap.laedt' : 'uebersicht.nichtVerfuegbar')}</span>`
+  if (zeile.befundeOffen === 0) return tHtml('roadmap.befunde.keine')
+  const zahlen = { anzahl: zeile.befundeOffen, zahl: formatiereZahl(zeile.befundeOffen) }
+  return zeile.art === 'meilenstein' && zeile.befundeDirekt > 0 ? tHtml('roadmap.befunde.wertDirekt', { ...zahlen, direkt: formatiereZahl(zeile.befundeDirekt) }) : tHtml('roadmap.befunde.wert', zahlen)
 }
 
 /**
@@ -485,6 +555,7 @@ function detailHinweise(zeile) {
  */
 function detailPanel(gewaehlt, lage) {
   if (gewaehlt === null) return `<aside class="rm-detail" aria-label="${tHtml('roadmap.detail.titel')}"><p class="subtle">${tHtml('roadmap.detail.nichtsSichtbar')}</p></aside>`
+  if (gewaehlt.art === 'pflege' || gewaehlt.art === 'befund') return pflegeDetail(gewaehlt)
   const istFeature = gewaehlt.art === 'feature'
   const felder = [
     [t('roadmap.detail.id'), `<code>${escapeHtml(gewaehlt.id)}</code>`],
@@ -496,6 +567,7 @@ function detailPanel(gewaehlt, lage) {
     felder.push([t('roadmap.detail.inhalt'), tHtml('roadmap.detail.meilensteinInhalt', { anzahl: gesamt, abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) })])
   } else felder.push([t('roadmap.detail.inhalt'), escapeHtml(gewaehlt.notiz.trim() === '' ? gewaehlt.titel : `${gewaehlt.titel} — ${gewaehlt.notiz}`)])
   felder.push([t('roadmap.detail.schaetzung'), detailSchaetzung(gewaehlt)])
+  if (istFeature || gewaehlt.art === 'meilenstein') felder.push([t('roadmap.befunde.detail'), befundeFeld(gewaehlt)])
   felder.push([t('roadmap.detail.ist'), gewaehlt.istAt === null ? '–' : tHtml('roadmap.detail.istWert', { wert: zahl(gewaehlt.istAt) })])
   felder.push([t('roadmap.detail.danach'), gewaehlt.danach === null ? '–' : escapeHtml(zeilenName(gewaehlt.danach))])
   const hinweise = detailHinweise(gewaehlt)
@@ -503,7 +575,6 @@ function detailPanel(gewaehlt, lage) {
   const featureId = gewaehlt.bezug.feature
   const featureZeile = featureId === null ? null : lage.jeSchluessel.get(zeilenSchluessel('f', gewaehlt.bezug.meilenstein, featureId))
   const link = featureZeile !== null && featureZeile !== undefined && featureZeile.kategorie !== 'ohne_akte' ? `<a class="text-link" href="#/workboard/${encodeURIComponent(featureId)}">${tHtml(istFeature ? 'roadmap.detail.oeffnen' : 'roadmap.detail.zumFeature')} <span aria-hidden="true">→</span></a>` : ''
-  const chips = ['reihenfolge', 'blockiert', 'schaetzung'].map((f) => `<button type="button" class="rm-frage-chip" data-roadmap-jarvis-frage="${f}">${tHtml(`roadmap.jarvis.frage.${f}`)}</button>`).join('')
   const anpassenTeil = anpassenBereich(gewaehlt, featureZeile ?? null)
   return `<aside class="rm-detail" aria-labelledby="rm-detail-titel">
       <div class="rm-detail-kopf">
@@ -511,18 +582,76 @@ function detailPanel(gewaehlt, lage) {
         <h3 id="rm-detail-titel">${escapeHtml(gewaehlt.titel)}</h3>
         ${statusText(gewaehlt.status)}
       </div>
-      <dl class="rm-detail-felder">${felder.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${v}</dd>`).join('')}</dl>
+      ${felderHtml(felder)}
       ${link}
-      <div class="rm-jarvis">
+      ${jarvisBlock(!anpassenTeil.offen)}
+      ${anpassenTeil.html}
+    </aside>`
+}
+
+/**
+ * Detailfelder als Definitionsliste (Schlüssel escaped, Werte schon HTML).
+ * @param felder - [[Beschriftung, HTML], …]
+ * @returns HTML
+ */
+function felderHtml(felder) {
+  return `<dl class="rm-detail-felder">${felder.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${v}</dd>`).join('')}</dl>`
+}
+
+/**
+ * „Frag Jarvis dazu“ im Detailpanel: Fragechips, Eingabe, „Fragen“ (Hauptknopf nur ohne offenes „Anpassen“, design-guardian B2).
+ * @param primaer - „Fragen“ als Hauptknopf
+ * @returns HTML
+ */
+function jarvisBlock(primaer) {
+  const chips = ['reihenfolge', 'blockiert', 'schaetzung'].map((f) => `<button type="button" class="rm-frage-chip" data-roadmap-jarvis-frage="${f}">${tHtml(`roadmap.jarvis.frage.${f}`)}</button>`).join('')
+  return `<div class="rm-jarvis">
         <label class="eyebrow" for="roadmap-jarvis-eingabe">${tHtml('roadmap.jarvis.titel')}</label>
         <div class="rm-frage-chips">${chips}</div>
         <div class="rm-frage-zeile">
           <input id="roadmap-jarvis-eingabe" type="text" placeholder="${tHtml('roadmap.jarvis.platzhalter')}" />
-          <button type="button" class="button${anpassenTeil.offen ? '' : ' primary'}" data-roadmap-jarvis-fragen>${tHtml('roadmap.jarvis.fragen')}</button>
+          <button type="button" class="button${primaer ? ' primary' : ''}" data-roadmap-jarvis-fragen>${tHtml('roadmap.jarvis.fragen')}</button>
         </div>
         <p class="subtle">${tHtml('roadmap.jarvis.hinweis')}</p>
+      </div>`
+}
+
+/**
+ * Detailpanel der Zeile „Pflege & Fixes“ bzw. eines Befunds darunter (F45 B5b-2c-2-AB): kein „Anpassen“ (anpassbar ⇒ nein ohne
+ * Grund), kein „danach“. Chip der Spur neutral mit festem Text (Advisor B4: typChip kennt 'pflege' nicht), am Befund Typ und
+ * Priorität (unbekannter Typ: neutraler Chip mit dem Rohwert).
+ * @param zeile - Pflege- oder Befund-Zeile
+ * @returns HTML
+ */
+function pflegeDetail(zeile) {
+  const pflege = zeile.art === 'pflege'
+  let chip = `<span class="typ-chip typ-chip-neutral"><span class="typ-chip-punkt" aria-hidden="true"></span>${tHtml('roadmap.pflege.chip')}</span>`
+  if (!pflege) {
+    const chipTyp = chipTypVonWorkitem(zeile.typ)
+    chip = chipTyp === null ? `<span class="typ-chip typ-chip-neutral">${escapeHtml([String(zeile.typ ?? ''), zeile.prioritaet ?? ''].filter((s) => s !== '').join(' · '))}</span>` : typChip(chipTyp, { zusatz: zeile.prioritaet ?? '' })
+  }
+  const felder = pflege
+    ? [
+        [t('roadmap.detail.teilVon'), tHtml('roadmap.detail.roadmap')],
+        [t('roadmap.detail.inhalt'), `${tHtml('roadmap.pflege.inhalt', { anzahl: zeile.anzahl, zahl: formatiereZahl(zeile.anzahl) })} <span class="subtle">${tHtml('roadmap.pflege.regel')}</span>`],
+        [t('roadmap.detail.schaetzung'), '–'],
+      ]
+    : [
+        [t('roadmap.detail.id'), `<code>${escapeHtml(zeile.id)}</code>`],
+        [t('roadmap.detail.teilVon'), tHtml('roadmap.pflege.titel')],
+        [t('roadmap.detail.inhalt'), escapeHtml(zeile.titel)],
+        [t('roadmap.detail.schaetzung'), tHtml('roadmap.befund.schaetzung')],
+      ]
+  const link = pflege ? entwicklungsLink() : `<a class="text-link" href="#/workboard/${encodeURIComponent(zeile.id)}">${tHtml('roadmap.befund.oeffnen')} <span aria-hidden="true">→</span></a>`
+  return `<aside class="rm-detail" aria-labelledby="rm-detail-titel">
+      <div class="rm-detail-kopf">
+        ${chip}
+        <h3 id="rm-detail-titel">${escapeHtml(pflege ? t('roadmap.pflege.titel') : zeile.titel)}</h3>
+        ${statusText(zeile.status)}
       </div>
-      ${anpassenTeil.html}
+      ${felderHtml(felder)}
+      ${link}
+      ${jarvisBlock(true)}
     </aside>`
 }
 
@@ -595,7 +724,9 @@ function anpassenBereich(zeile, featureZeile) {
  * @returns HTML
  */
 function legende() {
-  const ebenen = ['meilenstein', 'feature', 'workstream', 'fixpaket', 'design'].map((e) => `<span class="rm-leg" data-farbe="${e}"><span class="rm-leg-ebene" aria-hidden="true"></span>${tHtml(`typ.${e}`)}</span>`)
+  const ebenen = ['meilenstein', 'feature', 'workstream', 'fixpaket', 'design', 'bug'].map((e) => `<span class="rm-leg" data-farbe="${e}"><span class="rm-leg-ebene" aria-hidden="true"></span>${tHtml(`typ.${e}`)}</span>`)
+  // „Pflege & Fixes“ mit festem Schlüssel (typ.pflege gibt es nicht; das i18n-Gate prüft dynamische Schlüssel nicht — Advisor B4).
+  ebenen.push(`<span class="rm-leg" data-farbe="pflege"><span class="rm-leg-ebene" aria-hidden="true"></span>${tHtml('roadmap.legende.pflege')}</span>`)
   const formen = ['laeuft', 'ist', 'geplant', 'max', 'ohne'].map((f) => `<span class="rm-leg"><span class="rm-leg-form rm-leg-${f}" aria-hidden="true"></span>${tHtml(`roadmap.legende.${f}`)}</span>`)
   return `${ebenen.join('')}<span class="rm-legende-trenner" aria-hidden="true"></span>${formen.join('')}`
 }
@@ -618,7 +749,7 @@ function gesamteRoadmap() {
       ? ''
       : `<li class="rm-ausgeblendet">
         <span aria-hidden="true">✓</span>
-        <span>${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.abgeschlossenSichtbar' : 'roadmap.baum.abgeschlossenAus', { anzahl: trenner.anzahl, zahl: formatiereZahl(trenner.anzahl), abgenommen: formatiereZahl(trenner.abgenommen), gesamt: formatiereZahl(trenner.gesamt) })}</span>
+        <span>${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.abgeschlossenSichtbar' : 'roadmap.baum.abgeschlossenAus', { anzahl: trenner.anzahl, zahl: formatiereZahl(trenner.anzahl), abgenommen: formatiereZahl(trenner.abgenommen), gesamt: formatiereZahl(trenner.gesamt) })}${(trenner.befunde ?? 0) > 0 ? ` ${tHtml('roadmap.baum.befunde', { anzahl: trenner.befunde, zahl: formatiereZahl(trenner.befunde) })}` : ''}</span>
         ${trennzeileBereinigungHtml(bereinigungsAnzahl(bereinigung.liste))}
         <button type="button" class="button" data-roadmap-abgeschlossene aria-pressed="${abgeschlosseneSichtbar}">${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.ausblenden' : 'roadmap.baum.einblenden')}</button>
       </li>`
@@ -628,7 +759,15 @@ function gesamteRoadmap() {
       : `<button type="button" class="button" data-roadmap-abgeschlossene-kopf aria-pressed="${abgeschlosseneSichtbar}">${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.abgeschlosseneAus' : 'roadmap.baum.abgeschlosseneEin', { zahl: formatiereZahl(trenner.anzahl) })}</button>`
   const zoom = ['tage', 'wochen'].map((z) => `<button type="button" class="rm-zoom" data-roadmap-zoom="${z}" aria-pressed="${massstab === z}">${tHtml(`roadmap.massstab.${z}`)}</button>`).join('')
   const spalten = achse.spalten.map((s) => `<span class="rm-achse-spalte" style="left: ${s.links}px">${tHtml(achse.massstab === 'wochen' ? 'roadmap.achse.woche' : 'roadmap.achse.at', { n: formatiereZahl(s.nummer) })}</span>`).join('')
-  const zeilen = (liste) => liste.filter((z) => z.sichtbar).map((z) => ganttZeile(z, gewaehlt)).join('')
+  // Hinter dem letzten sichtbaren Befund einer offenen Pflege-Zeile mit Rest: „+ n weitere“ (keine Zeile der Lage).
+  const zeilen = (liste) =>
+    liste
+      .filter((z) => z.sichtbar)
+      .map((z, i, sichtbar) => {
+        const pflege = z.art === 'befund' && sichtbar[i + 1]?.art !== 'befund' ? lage.jeSchluessel.get(z.eltern) : null
+        return `${ganttZeile(z, gewaehlt)}${pflege?.weitere > 0 ? weitereZeile(pflege.weitere) : ''}`
+      })
+      .join('')
   return `<div class="rm-werkzeuge">
       <div class="rm-legende" role="group" aria-label="${tHtml('roadmap.legende')}">${legende()}</div>
       <div class="rm-knoepfe">
@@ -845,7 +984,7 @@ function fokusSchluessel(element) {
   for (const attribut of ['data-roadmap-klappe', 'data-roadmap-waehlen', 'data-roadmap-zoom', 'data-roadmap-stand', 'data-roadmap-jarvis-frage', 'data-roadmap-anpassen-feld', 'data-roadmap-anpassen-aktion', 'data-roadmap-bereinigung-fokus']) {
     if (element.hasAttribute(attribut)) return `[${attribut}="${CSS.escape(element.getAttribute(attribut))}"]`
   }
-  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-abgeschlossene-kopf', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf', 'data-roadmap-erneut-behalten', 'data-roadmap-zur-bereinigung']) {
+  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-abgeschlossene-kopf', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf', 'data-roadmap-erneut-behalten', 'data-roadmap-zur-bereinigung', 'data-roadmap-entwicklung']) {
     if (element.hasAttribute(attribut)) return `[${attribut}]`
   }
   return null
@@ -924,7 +1063,9 @@ async function ladeRoadmap(optionen = {}) {
 function jarvisEntwurf(frage) {
   const gewaehlt = roadmapZustand(roadmap) === 'ok' && roadmap.meilensteine.length > 0 ? gewaehlteZeile(roadmap, ganttLage(), auswahl) : null
   if (gewaehlt === null) return frage
-  return t('roadmap.jarvis.entwurf', { frage, typ: t(`typ.${gewaehlt.art}`), id: gewaehlt.id, titel: gewaehlt.titel }).trim()
+  if (gewaehlt.art === 'pflege') return t('roadmap.jarvis.entwurfPflege', { frage }).trim()
+  const typ = gewaehlt.art === 'befund' ? befundTyp(gewaehlt.typ) : t(`typ.${gewaehlt.art}`)
+  return t('roadmap.jarvis.entwurf', { frage, typ, id: gewaehlt.id, titel: gewaehlt.titel }).trim()
 }
 
 /**
@@ -1152,7 +1293,8 @@ async function ladeBereinigung(optionen = {}) {
 function bereinigungsStand(id) {
   let stand = bereinigung.staende.get(id)
   if (stand === undefined) {
-    stand = neuerEintragsStand()
+    // Mit dem Eintrag: Standard-Vorauswahl wie in der Anzeige (Advisor B7); ohne ihn keine.
+    stand = neuerEintragsStand(bereinigungsEintrag(id))
     bereinigung.staende.set(id, stand)
   }
   return stand
@@ -1325,6 +1467,10 @@ function beiKlick(ereignis) {
   const bereinigen = ziel.closest('[data-roadmap-bereinigung-aktion]')
   if (bereinigen !== null && !bereinigen.disabled) {
     beiBereinigungAktion(bereinigen)
+    return
+  }
+  if (ziel.closest('[data-roadmap-entwicklung]') !== null) {
+    oeffneKanbanPrioritaet({ pflege: true })
     return
   }
   if (ziel.closest('[data-roadmap-zur-bereinigung]') !== null) {

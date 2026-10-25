@@ -4,7 +4,8 @@
  * Zweck: node:test für die reinen Roadmap-Anzeigeregeln (roadmap-anzeige.js, F44 WS-2a):
  * Anzeigezustand (F-854: ein Serverfehler ist nie „keine Roadmap“), aktueller Meilenstein,
  * Zähler, Statuskategorie, offene/eingeklappte Meilensteine und „Noch nicht eingeplant“; seit F45 B5b-2a
- * der Gantt (Achse, Spur, Zeilen, Gruppen, Aufklappen) und die Kennzahlen „Bis <M> fertig“ und „Plan gegen Ist“.
+ * der Gantt (Achse, Spur, Zeilen, Gruppen, Aufklappen) und die Kennzahlen „Bis <M> fertig“ und „Plan gegen Ist“; seit F45
+ * B5b-2c-2-AB die Zeile „Pflege & Fixes“ und die Befund-Zähler je Feature, Meilenstein und Trennzeile.
  *
  * Wird aufgerufen von: npm run check (node --test)
  */
@@ -24,6 +25,7 @@ import {
   MASSSTAB_PX,
   meilensteinOffen,
   nichtEingeplant,
+  PFLEGE_MAX,
   planGegenIst,
   roadmapZustand,
   STATUS_KATEGORIEN,
@@ -526,4 +528,100 @@ test('B5b-2a Prüfpass: Plan gegen Ist knapp neben der Spanne nie „0 %“ (cr 
   const mit = (ist) => ({ ...roadmap(['M1', 'LAEUFT']), kennzahlen: { plan_gegen_ist: { anzahl: 1, plan_min: 100, plan_max: 100, ist } } })
   assert.equal(planGegenIst(mit(100.2)).prozent, 1)
   assert.equal(planGegenIst(mit(99.8)).prozent, -1)
+})
+
+// ─── F45 B5b-2c-2-AB: Pflege & Fixes und Befund-Zähler ───────────────────────────────────────────────
+
+/** Befund wie aus GET …/workitems (nur die Felder, die die Zeilen lesen). */
+function befund(id, typ = 'BUG', prioritaet = 'P1') {
+  return { quelle: 'finding', id, typ, titel: `Befund ${id}`, status: 'OFFEN', prioritaet }
+}
+
+/** Zuordnung in der Form von ordneBefundeZu: zwei an F3, einer an F1 (M1 abgeschlossen), einer direkt an M2, n in der Pflege. */
+function zuordnung(nPflege = 22) {
+  return {
+    jeFeature: new Map([
+      ['F3', [befund('F-1'), befund('F-2')]],
+      ['F1', [befund('F-3')]],
+    ]),
+    jeMeilenstein: new Map([['M2', [befund('F-4')]]]),
+    pflege: Array.from({ length: nPflege }, (_, i) => befund(`F-${100 + i}`, i % 2 === 0 ? 'BUG' : 'TECH_DEBT', 'P2')),
+  }
+}
+
+test('B5b-2c-2-AB ganttZeilen ohne Zuordnung: keine Pflege-Zeile, Zähler null, Trennzeile ohne befunde (Advisor B3)', () => {
+  const lage = ganttZeilen(planung(), { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: null })
+  assert.equal([...lage.oben, ...lage.unten].some((z) => z.art === 'pflege' || z.art === 'befund'), false)
+  assert.equal(zeile(lage, 'f', 'M2', 'F3').befundeOffen, null)
+  assert.equal(zeile(lage, 'm', 'M2').befundeOffen, null)
+  assert.deepEqual(lage.trenner, { anzahl: 1, abgenommen: 1, gesamt: 1 })
+})
+
+test('B5b-2c-2-AB ganttZeilen: Zähler je Feature und Meilenstein (direkt + Features, F1), Trennzeile mit Summe', () => {
+  const lage = ganttZeilen(planung(), { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung() })
+  assert.equal(zeile(lage, 'f', 'M2', 'F3').befundeOffen, 2)
+  assert.equal(zeile(lage, 'f', 'M2', 'F4').befundeOffen, 0)
+  assert.equal(zeile(lage, 'm', 'M2').befundeOffen, 3)
+  assert.equal(zeile(lage, 'm', 'M2').befundeDirekt, 1)
+  assert.equal(zeile(lage, 'm', 'M3').befundeOffen, 0)
+  assert.equal(zeile(lage, 'm', 'M1').befundeOffen, 1)
+  assert.deepEqual(lage.trenner, { anzahl: 1, abgenommen: 1, gesamt: 1, befunde: 1 })
+})
+
+test('B5b-2c-2-AB ganttZeilen: ein Feature in zwei Meilensteinen zählt an beiden (DEKLARIERT, wie zaehleRoadmap)', () => {
+  const p = roadmap(['M1', 'ABGESCHLOSSEN', [{ id: 'F1', status: 'ABGESCHLOSSEN' }]], ['M2', 'LAEUFT', [{ id: 'F1', status: 'ABGESCHLOSSEN' }]])
+  const lage = ganttZeilen(p, { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung(0) })
+  assert.equal(zeile(lage, 'm', 'M1').befundeOffen, 1)
+  assert.equal(zeile(lage, 'm', 'M2').befundeOffen, 2, 'F1 plus der direkte Befund an M2')
+  assert.equal(lage.trenner.befunde, 1)
+})
+
+test('B5b-2c-2-AB Pflege-Zeile: am Ende von oben, Standard zu, höchstens PFLEGE_MAX Kinder, Rest als weitere, Farbe je Typ', () => {
+  const zu = ganttZeilen(planung(), { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung() })
+  const pflege = zu.oben.find((z) => z.art === 'pflege')
+  assert.equal(zu.oben.filter((z) => z.art !== 'befund').at(-1), pflege, 'nach den offenen Meilensteinen')
+  assert.deepEqual([pflege.ebene, pflege.farbe, pflege.status, pflege.kategorie, pflege.anzahl, pflege.weitere], [0, 'pflege', 'geplant', 'geplant', 22, 2])
+  assert.deepEqual([pflege.hatKinder, pflege.offen, pflege.sichtbar], [true, false, true])
+  assert.equal(zu.standardOffen.has(pflege.schluessel), false)
+  assert.deepEqual([pflege.spur.plan, pflege.spur.marke, pflege.spur.label], [null, null, null], 'leere Spur — Befunde tragen keine Schätzung')
+  const kinder = zu.oben.filter((z) => z.art === 'befund')
+  assert.equal(kinder.length, PFLEGE_MAX)
+  assert.equal(kinder.every((z) => !z.sichtbar && z.eltern === pflege.schluessel && z.ebene === 1), true)
+  assert.deepEqual(kinder.slice(0, 2).map((z) => [z.id, z.farbe, z.typ, z.prioritaet, z.status]), [
+    ['F-100', 'bug', 'BUG', 'P2', 'geplant'],
+    ['F-101', 'befund', 'TECH_DEBT', 'P2', 'geplant'],
+  ])
+  assert.equal(kinder.every((z) => z.bezug.meilenstein === null && z.bezug.feature === null), true, 'bezug vorhanden (Advisor B1)')
+  // „Alles aufklappen“ nimmt die Pflege-Zeile mit (Advisor B6); aufgeklappt sind die Kinder sichtbar.
+  assert.ok(aufklappbareSchluessel(zu, false).includes(pflege.schluessel))
+  const auf = ganttZeilen(planung(), { aufgeklappt: new Set([pflege.schluessel]), abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung() })
+  assert.equal(auf.oben.filter((z) => z.art === 'befund' && z.sichtbar).length, PFLEGE_MAX)
+})
+
+test('B5b-2c-2-AB Pflege-Zeile: kein „danach“ für Pflege und Befunde, Meilenstein-Reihenfolge unberührt (Advisor B2)', () => {
+  const lage = ganttZeilen(planung(), { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung() })
+  assert.equal(lage.oben.filter((z) => z.art === 'pflege' || z.art === 'befund').every((z) => z.danach === null), true)
+  assert.equal(zeile(lage, 'm', 'M1').danach.id, 'M2')
+  assert.equal(zeile(lage, 'm', 'M2').danach.id, 'M3')
+  assert.equal(zeile(lage, 'm', 'M3').danach, null)
+})
+
+test('B5b-2c-2-AB Pflege-Zeile ohne Befunde: Kurzinfo-Fall „keine“, nicht aufklappbar; Auswahl eines eingeklappten Befunds fällt auf die Pflege-Zeile', () => {
+  const leer = ganttZeilen(planung(), { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung(0) })
+  const pflege = leer.oben.find((z) => z.art === 'pflege')
+  assert.deepEqual([pflege.anzahl, pflege.weitere, pflege.hatKinder], [0, 0, false])
+  assert.equal(aufklappbareSchluessel(leer, false).includes(pflege.schluessel), false)
+  const lage = ganttZeilen(planung(), { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung() })
+  assert.equal(gewaehlteZeile(planung(), lage, zeilenSchluessel('b', 'F-100')).art, 'pflege')
+})
+
+test('B5b-2c-2-AB Prüfpass qa 6: Grenze PFLEGE_MAX — 20 Befunde ohne Rest, 21 mit einem weiteren', () => {
+  for (const [n, kinder, weitere] of [
+    [PFLEGE_MAX, PFLEGE_MAX, 0],
+    [PFLEGE_MAX + 1, PFLEGE_MAX, 1],
+  ]) {
+    const lage = ganttZeilen(planung(), { aufgeklappt: null, abgeschlosseneSichtbar: false, achse: ACHSE, zuordnung: zuordnung(n) })
+    assert.equal(lage.oben.filter((z) => z.art === 'befund').length, kinder)
+    assert.equal(lage.oben.find((z) => z.art === 'pflege').weitere, weitere)
+  }
 })

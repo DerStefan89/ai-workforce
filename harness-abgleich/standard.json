@@ -42,7 +42,7 @@
         "rolle": "code-reviewer"
       },
       "fehlt_im_ablauf": {
-        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag R nicht zulässig"
+        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
       },
       "begruendung": "Review und qa sind eigene Workflow-Schritte mit frischem Kontext (Vorlagen standard und hoch; qa seit F45 B2b-2b-2, F-820); der Abgleich bindet diesen Punkt an den Review-Schritt, die Prüfung aus Nutzersicht belegt ihr eigener Eintrag. design-guardian als Schritt erst mit B3."
     },
@@ -55,7 +55,7 @@
         "rolle": "code-reviewer"
       },
       "fehlt_im_ablauf": {
-        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag R nicht zulässig"
+        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
       },
       "begruendung": "Review und qa sind eigene Workflow-Schritte mit frischem Kontext (Vorlagen standard und hoch; qa seit F45 B2b-2b-2, F-820); der Abgleich bindet diesen Punkt an den Review-Schritt, die Prüfung aus Nutzersicht belegt ihr eigener Eintrag. design-guardian als Schritt erst mit B3."
     },
@@ -165,7 +165,7 @@
         "rolle": "code-reviewer"
       },
       "fehlt_im_ablauf": {
-        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag R nicht zulässig"
+        "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
       },
       "begruendung": "Eigener Workflow-Schritt (Vorlagen standard und hoch) statt Subagent im Lauf."
     },
@@ -189,7 +189,7 @@
         "rolle": "qa"
       },
       "fehlt_im_ablauf": {
-        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag R nicht zulässig"
+        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
       },
       "begruendung": "Eigener Workflow-Schritt „Prüfung aus Nutzersicht“ nach dem Review (Vorlagen standard und hoch, F45 B2b-2b-2) statt Subagent im Lauf; Urteil, Befunde und Testfälle nach ergebnis-qa."
     },
