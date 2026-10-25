@@ -4,7 +4,7 @@
  * Zweck: Testlauf von `npm run test` (F45 T „Tests stabil“) in zwei Gruppen: alle Testdateien parallel
  * (`--test-concurrency=4`, wie bisher), danach die schweren Dateien aus SERIELL einzeln nacheinander
  * (`--test-concurrency=1`). Schwer heißt: die Datei startet einen echten Server, Worktree oder viele
- * git-/Kindprozesse und fiel unter Last an einer festen Wartegrenze aus (F-1186) oder gehört in der Messung
+ * git-/Kindprozesse und fiel unter Last an einer festen Wartegrenze aus (F-1186, F-1209) oder gehört in der Messung
  * zu den teuersten (features/F45/nachweise/t/messung.md).
  *
  * Wird aufgerufen von:
@@ -45,6 +45,9 @@ export const SERIELL = [
   'src/arbeitsordner/arbeitsordner.test.ts',
   'scripts/leitstand/routen-faehigkeit-vorschlag.test.mjs',
   'src/claude-code-gateway/claude-code-gateway.test.ts',
+  // Ausfall unter Last (F-1209): Test „fuehreGitAsync … Node-execFile-Wettlauf“ brach am 25.10.2026 zweimal nach 30 s ab,
+  // einzeln ≈ 6 s.
+  'src/git-starter/git-starter.test.ts',
 ]
 
 /** Standardmuster von `node --test` (Node 24, Typ-Entfernung an): test, test/**, test-*, *.test, *-test, *_test. */
