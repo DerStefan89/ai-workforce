@@ -63,6 +63,9 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **A1 B5b-1b-2 = Weg (b)** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — CRLF in `docs/STATUS.md` ⇒ 422 „von Hand“ (analog A3); keine Ausnahme in ARCHITECTURE.md §7, nur die §2-Ergänzung um `roadmap-ausnahmen.json` und `docs/STATUS.md` (Deckel 17 800 B eingehalten).
 - **A2 B5b-1b-2 = dynamisch** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — „Meilenstein → LAEUFT“ wird angeboten, sobald der Meilenstein im aktuellen Stand genau eine R1-Abweichung hat (auch M4 nach drei Einzelbestätigungen); kein Sonderverbot.
 - **E-PRUEF-1 = A** (Stefan, 24.10.2026) — Vor jedem Merge gelten genau drei Prüfungen: (1) Stefans lokaler voller Lauf im Commit-Block, (2) inhaltliche Prüfung des gepushten Diffs durch den Challenger (Dateiliste, Kernstellen gegen Auftrag, Invarianten), (3) grüne PR-CI (`.github/workflows/ci.yml`: `npm run check` auf ubuntu-latest mit Node 24 + gitleaks). Der Cloud-Testlauf des Challengers entfällt. Anlass: bei B5b-1a bis B5b-1b-2 war die Prüfung ohne Hinweis an Stefan ausgedünnt; Finding F-1194.
+- **E-BRAIN-1 = B** (Stefan, 25.10.2026) — R2 wird „Brain Stufe 1: Produktzyklus lesend, mit Motion“ (≈ 1,5–2 AT). Beleg 15 (Motion mit Zweck, Bewegungs-Tokens, `prefers-reduced-motion`, Render-Nachweis mit Bewegung, design-guardian, eigener Worktree) wird an der Zyklus-Seite erbracht; ersetzt den Inhalt von E-F45-11. Stufen 2/3 nach F30 (F-1202).
+- **Bug-Felder nach 2c** ([EMPFEHLUNG] Challenger 25.10.2026) — gleiche Datenquelle (Workitems) wie Pflege & Fixes; 2b nur Schreibwege.
+- **B5b-2b geteilt** (Challenger, 25.10.2026, Advisor `features/F45/advisor-b5b2b.md` O4) — B5b-2b-1 „Anpassen“ (ohne Serveränderung, mit F-1197, eigener Nachweis) → B5b-2b-2 „Bereinigungsliste“ (Vorprüfung `moeglich`/`grund` mit Tests, Gate (a), F-1189-Reste, eigener Nachweis). Körperform maßgeblich `pruefePlanungAenderung` (`workstreams: [{ id, schaetzung_min, schaetzung_max }]`). F-1197: Status als Pille, Auswahl als neutraler Streifen (`--ink`/`--line`), kein Gold, kein Mint. qa8 = Variante (a): „Dauerhaft begründete Ausnahmen sind heute nicht vorgesehen“, qa8 → W2, Gate b5b1a (i) unverändert.
 
 ## Scope
 
@@ -150,7 +153,7 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
 | W2 | workstream | Aufräumpaket | geplant | 1,5–3 | – | – | – | |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | geplant | 1–2 | – | – | – | |
-| R2 | design | Motion im Leitstand der Workforce | geplant | 1 | – | – | – | |
+| R2 | design | Brain Stufe 1: Produktzyklus lesend, mit Motion | geplant | 1,5–2 | – | – | – | E-BRAIN-1 = B (Stefan, 25.10.2026); vorher „Motion im Leitstand der Workforce“, 1 |
 
 Planungsdaten nach E-B5-1 = A (F45 B5b-1a, 24.10.2026; Format und Gate `src/workboard/feature-planung.ts`). Zeilen und
 Schätzungen aus `docs/projekt/fixpaket-f45.md` §3 in deren Reihenfolge (Entscheidung A4/O3; die offenen Zeilen folgen der
@@ -1504,8 +1507,9 @@ Skala, Formel Plan gegen Ist, eine Gruppenregel; kein zweiter Advisor-Pass, Rege
 | Paket | Inhalt | Stand |
 |---|---|---|
 | 2a | Gantt rein lesend auf GET /api/roadmap: Zeilen Meilenstein → Feature → Workstream/Fixpaket/Design je `art`, Zeitachse AT ab heute mit Ist-Band und Heute-Linie, Zoom Tage/Wochen, Farbe = Ebene, Form = Status, Marke ohne Schätzung, sticky linke Spalte, Werkzeugleiste, Trennzeile, Detailpanel lesend, Kennzahlen „Bis <M> fertig“ und „Plan gegen Ist“ | dieser Stand |
-| 2b | „Anpassen“ (PUT /api/features/<id>/planung), Bereinigungsliste (GET/POST /api/roadmap/bereinigung[/bestaetigen]), F-1189-Restpunkte, Bug-Felder im Detail | offen |
-| 2c | Spur „Pflege & Fixes“ und Kanban · Priorität (Entwicklung, E2), beide aus den Workitems | offen |
+| 2b-1 | „Anpassen“ im Detailpanel (PUT /api/features/<id>/planung), F-1197 (Status-Pille, neutrale Auswahl), F-1201; ohne Serveränderung (Schnitt nach Advisor `advisor-b5b2b.md` O4, Challenger 25.10.2026) | siehe „Stand B5b-2b-1“ |
+| 2b-2 | Bereinigungsliste (GET/POST /api/roadmap/bereinigung[/bestaetigen]) mit Vorprüfung `moeglich`/`grund`, Gate (a), F-1189-Restpunkte | offen |
+| 2c | Spur „Pflege & Fixes“ und Kanban · Priorität (Entwicklung, E2), Bug-Felder im Detail (verschoben aus 2b, [EMPFEHLUNG] Challenger 25.10.2026 — gleiche Datenquelle (Workitems) wie Pflege & Fixes; 2b nur Schreibwege), alle aus den Workitems | offen |
 
 **Gebaut:** reine Funktionen in `public/leitstand/roadmap-anzeige.js` (`zeitachseVon`, `baueAchse`, `xVonAt`, `baueSpur`, `ganttZeilen`,
 `aufklappbareSchluessel`, `gewaehlteZeile`, `featuresAbgenommen`, `bisFertig`, `planGegenIst`; `statusKategorie` um die Workstream-Status);
@@ -1518,3 +1522,42 @@ Element und fünf Reservespalten (dg 2, qa 6), Features x/y aus `kennzahlen.feat
 statt „Daten fehlen“ (cr 4, qa 2), Planungsbefunde und Abweichung an der Zeile sichtbar (cr 2, qa 4), eigener Ist-Schlüssel (cr 5),
 Mindestprozent (cr 10), Literale über `ERLEDIGT_STATUS` (cr 7), Aufklapp-Schlüssel aus der Lage (cr 11), „Alles aufklappen“ ohne Ziel
 gesperrt. Rest → F-1197..F-1199. Render-Nachweis `nachweise/b5b2a/` (7 Lagen inkl. tr und 200 %, Seite an Seite mit dem Design).
+
+## Stand B5b-2b-1
+
+**Auftrag:** B5b-2b „Roadmap: Anpassen + Bereinigungsliste“ (Challenger, 25.10.2026; Sollvorgabe Stefan §5 Punkt 7). Verlauf:
+`plan-b5b2b.md` → `advisor-b5b2b.md` (Nicht freigegeben, weiterer Schnitt) → Entscheidungen Challenger 25.10.2026 („B5b-2b geteilt“,
+„Bug-Felder nach 2c“, E-BRAIN-1) → `plan-b5b2b-v2.md` nur für 2b-1 (kein zweiter Advisor-Pass, Regel 3a; Vorarbeit A1/A2 für 2b-2 in
+§6 dort). Keine Serveränderung; ARCHITECTURE.md unverändert (F-1191); kein neues Gate (F-1190).
+
+**Gebaut:** reine Bausteine `public/leitstand/roadmap-anpassen.js` (`anpassbar`, `anpassenWerte`, `leseSchaetzzahl`, `pruefeAnpassen`,
+`darfAnpassenSpeichern`, `anpassenHinweis`, `baueAnpassenKoerper`, `deutePlanungAntwort`, `meilensteinZiele`, `offenNachWechsel`,
+HTML) mit Test (auch gegen die echte `pruefePlanungAenderung`); `speicherePlanung` in `api.js` (Zeitlimit 30 s); Verdrahtung in
+`views/roadmap.js` (Formularzustand je Zeile, Hash frisch vor dem PUT, Projektprüfung nach jedem Abruf, Neuladen ohne „Lädt“ mit
+Nachlauf für die Auswahl nach Meilenstein-Wechsel, Hinweis bei gescheitertem Neuladen); `akte-bearbeiten.js` exportiert die
+Antwort- und Meldungsbausteine (kein Doppelcode). F-1197: Status-Pille im Detailkopf, Auswahl neutral, Detailrahmen `--line`.
+F-1201: beide Nachweisskripte warten auf das Ladeende. Texte de/en/tr/ru.
+
+**Abweichungen (begründet):**
+- Körper je Workstream `{ id, schaetzung_min, schaetzung_max }` statt `{ id, schaetzung }` — `pruefePlanungAenderung` ist maßgeblich
+  (Challenger 25.10.2026: Auftragstext war falsch).
+- Status-Pille nur im Detailkopf, in den Zeilen schlanker Text (design-guardian B1): so zeigt es der Canvas; mit Pille kürzte die feste
+  linke Spalte die Namen deutlich.
+- Auswahlfläche `--button-hover-bg` statt `--note-bg` (Plan v2 §3): `--note-bg` trägt schon der aktuelle Meilenstein; Streifen `--ink`.
+- Kein eigener Satz „Jarvis schlägt nur vor“ im Formular: er steht bereits unter „Frag Jarvis dazu“ (`roadmap.jarvis.hinweis`).
+- Bei offenem „Anpassen“ ist „Fragen“ kein Hauptknopf (design-guardian B2, ein Hauptknopf je Handlung).
+- `deutePlanungAntwort` liefert im Erfolg weder `hash` noch `roadmap_hash` (Plan v2 §2): nichts nutzt sie, die View lädt neu.
+- Der Formularzustand gilt je Zeile und übersteht Auswahlwechsel und Zuklappen (Prüfpass cr 1/qa 1) — statt „andere Auswahl verwirft“
+  aus Plan v2; ein Erfolg samt Git-Block geht so nicht verloren, er steht beim Zurückkehren auf der Zeile.
+
+**Prüfpass:** design-guardian, code-reviewer, qa je „Freigegeben mit Hinweisen“. Eine Korrekturrunde: Zustand je Zeile statt
+Überschreiben beim Rendern (cr 1, qa 1), Erfolg nach Auswahlwechsel bleibt und lädt neu (cr 2), Projektprüfung zwischen den Abrufen
+(qa 2), „Erneut laden“ holt den Nachlauf nach (qa 3), unberührte Werte folgen neuen Daten (cr 3), Meldungssatz ohne „Neu laden“ bei
+Fehlern (cr 4), Zeitlimit mit ehrlichem Text (qa 6), hängende Akte-Abrufe beim Neuladen (cr 10), Pille nur im Detailkopf (dg B1),
+„Fragen“ zurückgestuft (dg B2), Fußnote (dg B3), Kommentare (cr 6, dg B6), Tests für Sperre/422/Randfälle (qa 7), Nachweis mit
+Feature-PUT samt Meilenstein-Wechsel, tr/ru, 200 % mit reduzierter Bewegung und Basis-Commit in der Kopie (dg B4, qa 4/5), Startfehler
+wartet auf das Prozessende, `-z`, `--no-hardlinks` (cr 7–9). Rest → F-1203.
+
+**Render-Nachweis** `nachweise/b5b2b/` (1,5 MB WebP, 28 Bilder, Klicktabelle in `protokoll.json`): nur gegen eine selbst angelegte
+Wegwerf-Kopie unter os.tmpdir() mit eigenem Leitstand-Prozess; Kopie danach gelöscht, Arbeitsbaum unberührt. Der 409 ist im Browser
+beantwortet (frischer Hash, echter Konflikt nur im Millisekundenfenster).

@@ -4186,13 +4186,15 @@ th {
   border-top: 0;
 }
 
+/* Auswahl neutral (F-1197, Challenger 25.10.2026): Fläche --button-hover-bg, Streifen --ink — Gold ist die Ebene Meilenstein,
+   Mint die Ebene Design bzw. ein Status. */
 #view-roadmap .rm-zeile.gewaehlt,
 #view-roadmap .rm-zeile.gewaehlt .rm-links {
-  background: linear-gradient(var(--note-amber-bg), var(--note-amber-bg)), var(--bg);
+  background: linear-gradient(var(--button-hover-bg), var(--button-hover-bg)), var(--bg);
 }
 
 #view-roadmap .rm-zeile.gewaehlt .rm-links {
-  box-shadow: inset 3px 0 0 var(--amber);
+  box-shadow: inset 3px 0 0 var(--ink);
 }
 
 #view-roadmap .rm-zeile.aktuell:not(.gewaehlt) .rm-links {
@@ -4309,6 +4311,20 @@ th {
 #view-roadmap .rm-status {
   flex-shrink: 0;
   font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Status als Pille wie im Canvas 03-roadmap--Main (F-1197): Rahmen aus der Kategoriefarbe, keine neue Farbe. Wie im Canvas nur
+   im Detailkopf — in den Zeilen bleibt der Status schlanker Text, sonst kürzt die Pille die Namen der linken Spalte (dg B1). */
+#view-roadmap .rm-detail-kopf .roadmap-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px 1px 5px;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.5;
   white-space: nowrap;
 }
 
@@ -4434,7 +4450,8 @@ th {
   gap: 14px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--amber) 33%, transparent);
+  /* F-1197 (F45 B5b-2b-1): neutraler Rahmen — Gold ist die Ebene Meilenstein. */
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--bg);
 }
@@ -4534,6 +4551,102 @@ th {
 #view-roadmap .rm-anpassen {
   padding-top: 12px;
   border-top: 1px solid var(--track);
+}
+
+/* „Anpassen“ (F45 B5b-2b-1): aufklappbar, Felder untereinander, nur vorhandene Tokens. */
+#view-roadmap .rm-anpassen > summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+#view-roadmap .rm-anpassen-inhalt,
+#view-roadmap .rm-anpassen[data-phase="gespeichert"] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#view-roadmap .rm-anpassen-inhalt {
+  padding-top: 8px;
+}
+
+#view-roadmap .rm-anpassen-feld,
+#view-roadmap .rm-anpassen-zahl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+#view-roadmap .rm-anpassen-schaetzung {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  font-size: 12px;
+}
+
+#view-roadmap .rm-anpassen-schaetzung legend {
+  padding: 0 0 4px;
+}
+
+#view-roadmap .rm-anpassen-zahlen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#view-roadmap .rm-anpassen select,
+#view-roadmap .rm-anpassen input,
+#view-roadmap .rm-anpassen textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+#view-roadmap .rm-anpassen textarea {
+  resize: vertical;
+}
+
+#view-roadmap .rm-anpassen .subtle,
+#view-roadmap .rm-anpassen-hinweis {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+#view-roadmap .rm-anpassen-hinweis {
+  color: var(--muted);
+}
+
+#view-roadmap .rm-anpassen-hinweis:empty {
+  display: none;
+}
+
+#view-roadmap .rm-anpassen .note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-anpassen .note p {
+  margin: 6px 0 0;
+}
+
+#view-roadmap .rm-anpassen-nein {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 #view-roadmap .rm-entwicklungsstand {

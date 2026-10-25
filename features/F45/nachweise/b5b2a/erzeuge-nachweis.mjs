@@ -13,12 +13,16 @@
  * docs/design/neu/03-roadmap--Main.webp.
  *
  * Wird aufgerufen von: Hand — `node features/F45/nachweise/b5b2a/erzeuge-nachweis.mjs [basisUrl]` (Standard
- * http://127.0.0.1:4431). Nicht Teil von `npm run check`.
+ * http://127.0.0.1:4431). Nicht Teil von `npm run check`. Liest nur (kein PUT/POST).
+ *
+ * F-1201 (F45 B5b-2b-1): die erste Aufnahme wartet, bis „Entwicklungsstand“ und „Noch nicht eingeplant“ geladen sind (kein
+ * „Lädt…“ der Lagensprache mehr auf der Seite) — vorher fest 600 ms.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
+import { WOERTERBUECHER } from '../../../../public/leitstand/i18n.js'
 
 const BASIS = process.argv[2] ?? 'http://127.0.0.1:4431'
 const ZIEL = import.meta.dirname
@@ -101,7 +105,11 @@ for (const lage of LAGEN) {
   seite.on('pageerror', (f) => fehler.push(String(f)))
   await seite.goto(`${BASIS}/#/roadmap`)
   await seite.waitForSelector('.rm-gantt')
-  await seite.waitForTimeout(600)
+  await seite.waitForFunction((laedt) => {
+    const view = document.querySelector('#view-roadmap')
+    return view !== null && document.querySelector('.rm-entwicklungsstand') !== null && document.querySelector('.roadmap-nicht-eingeplant') !== null && !view.textContent.includes(laedt)
+  }, WOERTERBUECHER[lage.sprache ?? 'de']['roadmap.laedt'])
+  await seite.waitForTimeout(150)
   /**
    * Misst jeden Schritt ins Protokoll; ein Bild nur für Schritte mit eigener Aussage (Ausgangslage ganze Seite, sonst nur
    * „Gesamte Roadmap“ mit Detailpanel). Die übrigen Schritte belegt allein protokoll.json.
