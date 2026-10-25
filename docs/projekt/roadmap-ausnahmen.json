@@ -1,6 +1,5 @@
 {
   "schema": "v0",
   "status_ausnahmen": [
-    { "meilenstein": "M4", "feature": "F25", "grund": "Bereinigung offen — Bestätigung Stefan (Bereinigungsliste)" }
   ]
 }

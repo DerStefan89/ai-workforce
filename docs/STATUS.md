@@ -498,7 +498,7 @@ Feature unter `features/F2x/`):
   Akte `features/F24/feature.md`, Status `ABGESCHLOSSEN`. Nach F20,
   unabhängig.
 - ✅ **F25** — Projekte v1 (Register, Handler je Projekt, Health, Import).
-  Akte `features/F25/feature.md`, Status `FEATURE_GATE` (WS-1/WS-2a erfüllt;
+  Akte `features/F25/feature.md`, Status `ABGESCHLOSSEN` (WS-1/WS-2a erfüllt;
   WS-2b/WS-3 — Health, Import — noch offen). Nach F20, unabhängig.
 - ✅ **F26** — Jarvis Chat v1 (Rolle `jarvis`). Akte `features/F26/
   feature.md`, Status `ABGESCHLOSSEN` (WS-1/WS-2a/WS-2b + F-423-Nachzug
