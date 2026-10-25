@@ -334,6 +334,16 @@ export const speichereFeatureAkte = (featureId, koerper) => fetch(mitPraefix(`/f
 // (routen-f35.mjs legeAkteAn). Aufrufer: views/chat.js.
 export const legeFeatureAn = (scope) => fetch(mitPraefix('/features'), { method: 'POST', body: JSON.stringify({ scope }) })
 
+// F45 B5b-2b-1: „Anpassen“ auf der Roadmap — Körper { prioritaet?, meilenstein?, workstreams?: [{ id, schaetzung_min, schaetzung_max }],
+// grund, hash, roadmap_hash? } (baueAnpassenKoerper, roadmap-anpassen.js). Rohe Response: 200 { hash, roadmap_hash?, geaendert, git },
+// 400, 409 { hash } | { roadmap_hash } | { workflowId }, 422 { grund, verstoesse? } (scripts/leitstand/routen-planung.mjs).
+// Aufrufer: views/roadmap.js. Zeitlimit SCHREIB_ZEITLIMIT_MS (Prüfpass qa 6): eine hängende Anfrage sperrt das Formular nicht
+// dauerhaft; die Ansicht sagt dann, dass die Datei trotzdem geschrieben sein kann.
+export const speicherePlanung = (featureId, koerper) => fetch(mitPraefix(`/features/${encodeURIComponent(featureId)}/planung`), { method: 'PUT', body: JSON.stringify(koerper), signal: AbortSignal.timeout(SCHREIB_ZEITLIMIT_MS) })
+
+/** Zeitlimit eines schreibenden Aufrufs von „Anpassen“ (großzügig gegenüber Sperrprüfung, Lesen, Schreiben und Rücklesen). */
+const SCHREIB_ZEITLIMIT_MS = 30000
+
 // F32 WS-2: Verbrauchsprojektion für die Karte "Verbrauch" (seit F44 WS-2b views/nutzung.js) — nur
 // beim Öffnen der View und bei Zeitraumwechsel abgerufen, NICHT im 2s-Poll (Muster holeRoadmap:
 // die Laufakten ändern sich nicht durch einen laufenden Poll-Tick, sondern nur durch neue,

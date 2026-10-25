@@ -16,6 +16,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/workboard.js (Formular, Speichern)
  * - public/leitstand/views/chat.js (Ergebnis von „Als Feature anlegen“)
+ * - public/leitstand/roadmap-anpassen.js (F45 B5b-2b-1: grundVon, verstoesseVon, gitVon, grundUndVerstoesse, gitBlockHtml)
  * - public/leitstand/akte-bearbeiten.test.mjs, scripts/check-f45-b5a2-akte-anzeige.mjs
  *
  * Wichtig:
@@ -85,14 +86,14 @@ export function baueAkteKoerper(werte, hash) {
   }
 }
 
-/** Grund einer Antwort als Text (Servertext, roh). @param koerper - geparster Körper @returns Text */
-const grundVon = (koerper) => (typeof koerper?.grund === 'string' ? koerper.grund : '')
+/** Grund einer Antwort als Text (Servertext, roh; auch roadmap-anpassen.js). @param koerper - geparster Körper @returns Text */
+export const grundVon = (koerper) => (typeof koerper?.grund === 'string' ? koerper.grund : '')
 
 /** Verstöße einer Antwort (nur Strings). @param koerper - geparster Körper @returns Liste */
-const verstoesseVon = (koerper) => (Array.isArray(koerper?.verstoesse) ? koerper.verstoesse.filter((v) => typeof v === 'string') : [])
+export const verstoesseVon = (koerper) => (Array.isArray(koerper?.verstoesse) ? koerper.verstoesse.filter((v) => typeof v === 'string') : [])
 
 /** Git-Block einer Antwort (Zeilen) oder null. @param koerper - geparster Körper @returns Zeilen oder null */
-const gitVon = (koerper) => (Array.isArray(koerper?.git) && koerper.git.length > 0 && koerper.git.every((z) => typeof z === 'string') ? koerper.git : null)
+export const gitVon = (koerper) => (Array.isArray(koerper?.git) && koerper.git.length > 0 && koerper.git.every((z) => typeof z === 'string') ? koerper.git : null)
 
 /**
  * Deutet die Antwort von PUT …/akte.
@@ -125,19 +126,20 @@ export function deuteFeatureAnlage(status, koerper) {
 /**
  * Git-Block (Text, nichts ausgeführt) oder der Satz, dass keiner bestimmbar ist.
  * @param git - Zeilen oder null
+ * @param hinweisSchluessel - i18n-Schlüssel des Satzes über dem Block (F45 B5b-2b-1: Anpassen nennt mehrere Pfade)
  * @returns HTML
  */
-export function gitBlockHtml(git) {
+export function gitBlockHtml(git, hinweisSchluessel = 'akteForm.gitHinweis') {
   if (git === null) return `<p class="subtle">${tHtml('akteForm.gitOhne')}</p>`
-  return `<p class="subtle">${tHtml('akteForm.gitHinweis')}</p>${renderBefehlsblock({ sprache: 'powershell', zeilen: git }, { echteWerte: true })}`
+  return `<p class="subtle">${tHtml(hinweisSchluessel)}</p>${renderBefehlsblock({ sprache: 'powershell', zeilen: git }, { echteWerte: true })}`
 }
 
 /**
- * Grund und Verstöße einer abgelehnten oder gescheiterten Anfrage, wörtlich.
- * @param deutung - Ergebnis von deuteAkteAntwort/deuteFeatureAnlage
+ * Grund und Verstöße einer abgelehnten oder gescheiterten Anfrage, wörtlich (auch roadmap-anpassen.js, F45 B5b-2b-1).
+ * @param deutung - Ergebnis von deuteAkteAntwort/deuteFeatureAnlage/deutePlanungAntwort
  * @returns HTML
  */
-function grundUndVerstoesse(deutung) {
+export function grundUndVerstoesse(deutung) {
   // Ohne HTTP-Status (Netzwerkfehler, status 0) steht nur der Grund da.
   const kopf = deutung.status > 0 ? `${deutung.status}${deutung.grund !== '' ? ': ' : ''}` : ''
   const grund = `<p><code>${escapeHtml(`${kopf}${deutung.grund}`)}</code></p>`

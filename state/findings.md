@@ -8809,7 +8809,7 @@ Beschreibung: (qa 3, Rest) GET bietet „Feature → ABGESCHLOSSEN“ auch an, w
 Fundstelle: `scripts/leitstand/routen-planung.mjs`, `src/workboard/roadmap-regeln.ts` (`bereinigungsEintraege`), `scripts/leitstand/routen-f35.mjs` (`findeSperrendenAblauf`), `scripts/check-f45-b5b1a-planung.mjs` (i), `docs/STATUS.md`.
 Auswirkung: Gering — nichts wird falsch geschrieben; ein angebotener Vorschlag kann mit 422 „von Hand“ enden, der Text sagt warum.
 Maßnahme: in B5b-2 (Anzeige) Vorprüfung je Vorschlag, Hinweise zu Datum und Freitext, Unterscheidung offen/begründet entscheiden; Sperr-Meldung je Ziel mit W2.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2b, Schnitt nach Advisor `features/F45/advisor-b5b2b.md` O4): qa2, qa3, qa6, qa7 gehen in **B5b-2b-2** (Vorprüfung `moeglich`/`grund` mit Tests, Gate (a); Vorarbeit A1/A2 in `features/F45/plan-b5b2b-v2.md` §6 — „STATUS.md ohne Standardform“ ist kein Sperrgrund, sperrend ist „Konvention vorhanden, 0 bzw. 2 Angaben für die ID“). qa8 = Variante (a) (Challenger 25.10.2026): Text „Dauerhaft begründete Ausnahmen sind heute nicht vorgesehen“, Gate b5b1a (i) unverändert, Unterscheidung offen/begründet → **W2**. qa9 (Sperr-Meldung je Ziel) → **W2**. B5b-2b-1 hat nichts davon gebaut.
 Feature/Run: Entdeckt: F45 B5b-1b-2 (Prüfpass code-reviewer, qa), 24.10.2026.
 
 **F-1190** · `HARNESS_IMPROVEMENT` · P2 · offen
@@ -8875,13 +8875,13 @@ Maßnahme: W2 — Ablage klären (gesammelt committen oder außerhalb des Arbeit
 Status: offen.
 Feature/Run: Entdeckt: F45 B5b-2a (Basisprüfung), 25.10.2026.
 
-**F-1197** · `TECH_DEBT` · P3 · offen
+**F-1197** · `TECH_DEBT` · P3 · erledigt (F45 B5b-2b-1)
 Titel: Roadmap-Gantt: Auswahl in Gold, Status ohne Chip-Form.
 Beschreibung: Die gewählte Gantt-Zeile trägt Streifen und Fläche in `--amber` (Bestand seit F46 D1), das Detailpanel einen Amber-Rahmen; Gold ist laut Sollvorgabe die Ebenenfarbe „Meilenstein“, die Auswahl liest sich so wie eine Ebene. Der Status in den Zeilen ist Symbol + Text ohne Pillenform, die Sollvorgabe nennt „Status-Chip“ (design-guardian B5b-2a, Nr. 3 und 4).
 Fundstelle: `public/leitstand/style.css` (`#view-roadmap .rm-zeile.gewaehlt`, `.rm-detail`, `.rm-status`).
 Auswirkung: Gering — lesbar, aber nicht ganz designtreu.
 Maßnahme: Stefan entscheidet: Auswahl neutral (`--note-bg`/`--line`) und Status als Pille, oder Bestand bestätigen. Kandidat für B5b-2b.
-Status: offen.
+Status: erledigt 25.10.2026 (F45 B5b-2b-1, Entscheidung Challenger: Status als Pille wie im Canvas, Auswahl als neutraler Streifen, kein Gold, kein Mint, keine neue Farbe): Pille `.rm-status .roadmap-status` und `.rm-detail-kopf .roadmap-status` (Rahmen aus der Kategoriefarbe über `color-mix`), Auswahl Fläche `--button-hover-bg` und Streifen `--ink`, Detailpanel-Rahmen `--line`; Nachweis `features/F45/nachweise/b5b2b/` (dunkel/hell, 1440/390).
 Feature/Run: Entdeckt: F45 B5b-2a (design-guardian), 25.10.2026.
 
 **F-1198** · `TECH_DEBT` · P3 · offen
@@ -8890,7 +8890,7 @@ Beschreibung: Die sticky linke Spalte (254 px, Phone 172 px) kürzt Namen mit El
 Fundstelle: `public/leitstand/views/roadmap.js` (`ganttZeile`), `public/leitstand/style.css` (`.rm-name-text`).
 Auswirkung: Gering.
 Maßnahme: Mit B5b-2b prüfen (z. B. zweizeiliger Name oder breitere Spalte ab 1440 px).
-Status: offen.
+Status: offen. Nachtrag 25.10.2026: in B5b-2b-1 bewusst nicht enthalten (Plan v2 §1, Advisor A6) — die linke Spalte bleibt unverändert; Kandidat für 2c bzw. W2.
 Feature/Run: Entdeckt: F45 B5b-2a (qa), 25.10.2026.
 
 **F-1199** · `TECH_DEBT` · P3 · offen
@@ -8899,5 +8899,41 @@ Beschreibung: Die reinen Funktionen sind getestet; die View-Seite nicht: `fokusS
 Fundstelle: `public/leitstand/views/roadmap.js`, `public/leitstand/projekt-wechsel.test.mjs`.
 Auswirkung: Gering — Rückschritt würde erst im Browser auffallen.
 Maßnahme: Mit B5b-2b einen View-Test im Muster `projekt-wechsel.test.mjs` ergänzen.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026: in B5b-2b-1 bewusst nicht enthalten (Plan v2 §1, Advisor A6); die reinen Bausteine von „Anpassen“ sind getestet (`public/leitstand/roadmap-anpassen.test.mjs`), das Verhalten der View belegt der Render-Nachweis `nachweise/b5b2b/`. Kandidat für B5b-2b-2.
 Feature/Run: Entdeckt: F45 B5b-2a (qa, design-guardian), 25.10.2026.
+
+**F-1200** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Keine Größengrenze für Render-Nachweise (B5b-2a: 40 MB PNG).
+Beschreibung: Render-Nachweise haben keine Obergrenze je Ordner und kein festes Bildformat; B5b-2a erzeugte zunächst 40 MB PNG, erst eine Nacharbeit brachte 4,5 MB WebP. Der Commit-Block warnt nicht.
+Fundstelle: `features/*/nachweise/`, `scripts/render-nachweis.mjs`, Commit-Block (Skill `git-flow`).
+Auswirkung: Gering bis mittel — das Repo wächst unnötig, Pushes werden langsam.
+Maßnahme: W2 — Obergrenze je Nachweis-Ordner, WebP als Standard, Warnung im Commit-Block.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2a (Challenger), 25.10.2026.
+
+**F-1201** · `TECH_DEBT` · P3 · erledigt (F45 B5b-2b-1)
+Titel: Nachweis B5b-2a nimmt auf, bevor Entwicklungsstand/Noch nicht eingeplant geladen sind.
+Beschreibung: `features/F45/nachweise/b5b2a/erzeuge-nachweis.mjs` wartete nach dem Gantt fest 600 ms; Entwicklungsstand und „Noch nicht eingeplant“ standen in den Bildern teils noch auf „Lädt…“.
+Fundstelle: `features/F45/nachweise/b5b2a/erzeuge-nachweis.mjs`.
+Auswirkung: Gering — Bilder zeigten einen Zwischenstand.
+Maßnahme: Warten, bis beide Abschnitte da sind und kein „Lädt…“ der Lagensprache mehr auf der Seite steht.
+Status: erledigt 25.10.2026 (F45 B5b-2b-1): beide Nachweisskripte (`b5b2a`, `b5b2b`) warten mit `waitForFunction` auf das Ladeende.
+Feature/Run: Entdeckt: F45 B5b-2a (Challenger), 25.10.2026.
+
+**F-1202** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Produkt-Brain: Produktzyklus, Knowledge Library, Fragen mit Quelle, Graph.
+Beschreibung: Produkt-Brain: Produktzyklus (Ideate–Plan–Deliver und DevOps, beide Linsen immer wählbar, Vorauswahl nach Produktphase — E-ZYKLUS-1 = A), Knowledge Library, Fragen mit Quelle, Graph (Design Brain); aus dem Repo erzeugt, jederzeit neu aufbaubar, keine zweite Wahrheit. Stufe 1 (Zyklus lesend + Motion) ersetzt R2, Stufen 2/3 nach F30 mit K2 (F-930). Erfolgskriterien vor Stufe 2: Warum-Frage < 1 min mit Quelle; Tokens je Rolle messbar gesenkt.
+Fundstelle: `features/F45/feature.md` (E-BRAIN-1, Workstream R2), `docs/projekt/fixpaket-f45.md` §3 (R2).
+Auswirkung: Mittel — Grundlage für schnellere, belegte Antworten der Rollen.
+Maßnahme: Stufe 1 als R2 (E-BRAIN-1 = B, ≈ 1,5–2 AT, Beleg 15 an der Zyklus-Seite); Stufen 2/3 nach F30.
+Status: offen.
+Feature/Run: Entdeckt: Stefan, 25.10.2026.
+
+**F-1203** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B5b-2b-1 „Roadmap: Anpassen“ (Prüfpass design-guardian, code-reviewer, qa).
+Beschreibung: (dg B5) Die schwebende Persona „Frag Jarvis“ überdeckt den rechten Rand neben „Änderung speichern“ bzw. „Schließen“, wenn das Detailpanel am unteren Bildrand steht; der Knopf bleibt frei, bei längeren Texten kann die Knopfzeile darunter rutschen. (qa 4, Rest) Dass der Caret beim Neuschreiben während des Tippens erhalten bleibt, ist im Browser nicht belegt (kein Neuschreiben auslösbar, ohne den Fokus zu bewegen); ebenso Doppelklick, 422 und Sperre mit Ablauf-Link nur als reine Funktion getestet. (qa 1, Rest) Ein Erfolg nach Auswahlwechsel steht erst beim Zurückkehren auf der Zeile sichtbar da — die Roadmap lädt sofort neu, ein Hinweis an der neuen Zeile fehlt (DEKLARIERT in `speichereAnpassen`). (qa 7, Rest) Die Verdrahtung der View hat keinen eigenen Test (vgl. F-1199).
+Fundstelle: `public/leitstand/views/roadmap.js` (`speichereAnpassen`, `render`), `public/leitstand/style.css` (`.rm-detail`), `features/F45/nachweise/b5b2b/`.
+Auswirkung: Gering.
+Maßnahme: Mit B5b-2b-2 einen View-Test im Muster `projekt-wechsel.test.mjs` (F-1199) und Freihaltung unter der Persona prüfen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2b-1 (Prüfpass), 25.10.2026.

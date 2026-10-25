@@ -14,8 +14,10 @@
  *   Farbe = Ebene, Form = Status, punktierte Marke ohne Schätzung. Der aktuelle Meilenstein steht
  *   oben und ist aufgeklappt, abgeschlossene sind ausgeblendet („Einblenden“), „Alles aufklappen“.
  *   Daneben das Detailpanel lesend (Typ, Status, Teil von, Inhalt, Schätzung, Ist, danach, Hinweise)
- *   mit „Frag Jarvis dazu“; „Anpassen“, Balken ziehen und „+ Eintrag erfassen“ bleiben „kommt“ (B5b-2b).
- *   Alle Rechnungen in roadmap-anzeige.js; hier wird nur gerendert.
+ *   mit „Frag Jarvis dazu“ und aufklappbarem „Anpassen“ (F45 B5b-2b-1, features/F45/plan-b5b2b-v2.md: Priorität und
+ *   Meilenstein an der Feature-Zeile, Schätzung Min/Max an Workstream/Fixpaket/Design über PUT …/planung; Bausteine in
+ *   roadmap-anpassen.js); Balken ziehen und „+ Eintrag erfassen“ bleiben „kommt“.
+ *   Alle Rechnungen in roadmap-anzeige.js bzw. roadmap-anpassen.js; hier wird nur gerendert und verdrahtet.
  * - Entwicklungsstand mit Filter Alle · Features · Bugs · Harness · Tech Debt (zieht aus der
  *   Produktübersicht hierher): offene P0–P2-Befunde und offene Features des aktuellen Meilensteins.
  * - Noch nicht eingeplant (F44 D3, bleibt).
@@ -31,20 +33,28 @@
  * - Laden nur beim Betreten und bei einem Projektwechsel, nie aus dem Poll; Überholschutz über den
  *   Anfragezähler. Die Akte eines gewählten Features lädt einmal je ID (holeFeatureAkte).
  * - „Frag Jarvis dazu“ nutzt chat-dock.js oeffneChatMitEntwurf (F44 WS-8b): Dock öffnen, Eingabe
- *   befüllen — nie senden. Keine Schreibaktion auf dieser Seite.
+ *   befüllen — nie senden; Jarvis füllt nichts in „Anpassen“.
+ * - Einzige Schreibaktion: „Änderung speichern“ in „Anpassen“ (Begründung Pflicht, Hash frisch vor dem Speichern gelesen,
+ *   Doppelklick-Sperre über die Phase im Zustand). Nach 200 Git-Block (nur Text, nichts ausgeführt), Roadmap neu ohne
+ *   „Lädt“-Zwischenstand, Auswahl bleibt (nach einem Meilenstein-Wechsel auf dem Feature im aufgeklappten Ziel); nach
+ *   409/400/422 Servertext und „Neu laden“, die Eingaben bleiben. Eingaben schreiben in den Zustand, ohne die Seite neu zu
+ *   schreiben; der Speichern-Knopf und der Hinweis darunter werden direkt geschaltet. Der Formularzustand gilt je Zeile
+ *   (anpassenStaende) und übersteht Auswahlwechsel und Zuklappen; verworfen nur durch „Schließen“ und den Projektwechsel.
  * - Projektinhalte (Name, Titel, IDs, Statuswerte, Ziel, Regelverstöße) werden nicht übersetzt und
  *   immer escaped; alle übrigen Texte über t().
  * - Die Seite wird bei jeder Zustandsänderung ganz neu geschrieben (kein Poll); Fokus und der Text im
  *   Fragefeld werden dabei über data-Attribute bzw. den Wert erhalten.
  */
 
-import { holeFeatureAkte, holeRoadmap, holeWorkitems } from '../api.js'
+import { holeFeatureAkte, holeRoadmap, holeWorkitems, speicherePlanung } from '../api.js'
+import { kopiereBefehlsblock } from '../befehlsblock.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtKnopf } from '../kommt.js'
 import { planungsRegister, zurueckZurUebersicht } from '../produktplanung-kopf.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
+import { anpassbar, anpassenHinweis, anpassenHtml, anpassenWerte, baueAnpassenKoerper, darfAnpassenSpeichern, deutePlanungAntwort, meilensteinZiele, nichtAnpassbarHtml, offenNachWechsel, pruefeAnpassen } from '../roadmap-anpassen.js'
 import {
   aktuellerMeilenstein,
   aufklappbareSchluessel,
@@ -92,6 +102,21 @@ let massstab = 'tage'
 
 /** Filter des Entwicklungsstands. */
 let standFilter = 'alle'
+
+/**
+ * Formularzustände „Anpassen“ je Zeile, Schlüssel anpassenSchluessel (Projekt, Feature, Workstream — nicht der Zeilenschlüssel, der
+ * sich beim Meilenstein-Wechsel ändert): { schluessel, projektId, featureId, offen, phase: 'offen' | 'speichert' | 'gespeichert' |
+ * 'konflikt' | 'gesperrt' | 'abgelehnt' | 'fehler', werte, ausgang, meldung, ergebnis }. Ein Zustand übersteht Auswahlwechsel,
+ * Zuklappen und Neuschreiben (Prüfpass cr 1/qa 1: kein Erfolg samt Git-Block geht verloren); verworfen nur durch „Schließen“ und
+ * den Projektwechsel.
+ */
+const anpassenStaende = new Map()
+
+/** true, wenn das Neuladen nach „Anpassen“ scheiterte und die Anzeige den Stand davor zeigt. */
+let roadmapVeraltet = false
+
+/** Nachlauf eines gescheiterten Neuladens (Auswahl nach Meilenstein-Wechsel), den „Erneut laden“ nachholt (Prüfpass qa 3). */
+let ausstehendNachRoadmap = null
 
 /** Workitem-Typen je Filter des Entwicklungsstands (null = alle). */
 const STAND_FILTER = Object.freeze({ alle: null, features: ['FEATURE'], bugs: ['BUG'], harness: ['HARNESS_IMPROVEMENT'], techdebt: ['TECH_DEBT', 'PROCESS_IMPROVEMENT'] })
@@ -417,7 +442,8 @@ function detailHinweise(zeile) {
 }
 
 /**
- * Das Detailpanel der gewählten Zeile, lesend, mit „Frag Jarvis dazu“ und „Anpassen“ („kommt“, B5b-2b).
+ * Das Detailpanel der gewählten Zeile mit „Frag Jarvis dazu“ und aufklappbarem „Anpassen“ (B5b-2b-1). Ist „Anpassen“ offen, ist
+ * „Fragen“ kein Hauptknopf (ein Hauptknopf je Handlung, design-guardian B2).
  * @param gewaehlt - gewählte Zeile oder null
  * @param lage - aus ganttLage
  * @returns HTML
@@ -443,6 +469,7 @@ function detailPanel(gewaehlt, lage) {
   const featureZeile = featureId === null ? null : lage.jeSchluessel.get(zeilenSchluessel('f', gewaehlt.bezug.meilenstein, featureId))
   const link = featureZeile !== null && featureZeile !== undefined && featureZeile.kategorie !== 'ohne_akte' ? `<a class="text-link" href="#/workboard/${encodeURIComponent(featureId)}">${tHtml(istFeature ? 'roadmap.detail.oeffnen' : 'roadmap.detail.zumFeature')} <span aria-hidden="true">→</span></a>` : ''
   const chips = ['reihenfolge', 'blockiert', 'schaetzung'].map((f) => `<button type="button" class="rm-frage-chip" data-roadmap-jarvis-frage="${f}">${tHtml(`roadmap.jarvis.frage.${f}`)}</button>`).join('')
+  const anpassenTeil = anpassenBereich(gewaehlt, featureZeile ?? null)
   return `<aside class="rm-detail" aria-labelledby="rm-detail-titel">
       <div class="rm-detail-kopf">
         ${typChip(gewaehlt.art)}
@@ -456,12 +483,76 @@ function detailPanel(gewaehlt, lage) {
         <div class="rm-frage-chips">${chips}</div>
         <div class="rm-frage-zeile">
           <input id="roadmap-jarvis-eingabe" type="text" placeholder="${tHtml('roadmap.jarvis.platzhalter')}" />
-          <button type="button" class="button primary" data-roadmap-jarvis-fragen>${tHtml('roadmap.jarvis.fragen')}</button>
+          <button type="button" class="button${anpassenTeil.offen ? '' : ' primary'}" data-roadmap-jarvis-fragen>${tHtml('roadmap.jarvis.fragen')}</button>
         </div>
         <p class="subtle">${tHtml('roadmap.jarvis.hinweis')}</p>
       </div>
-      <div class="rm-anpassen">${kommtKnopf(t('roadmap.detail.anpassen'))}</div>
+      ${anpassenTeil.html}
     </aside>`
+}
+
+/**
+ * Schlüssel des Formularzustands einer Zeile (Projekt, Feature, Workstream bzw. null an der Feature-Zeile).
+ * @param zeile - Feature- oder Workstream-Zeile
+ * @returns Text
+ */
+function anpassenSchluessel(zeile) {
+  return JSON.stringify([holeAktivesProjekt().id, zeile.bezug.feature, zeile.art === 'feature' ? null : zeile.bezug.workstream])
+}
+
+/**
+ * true, wenn zwei Formularstände bis auf die Begründung gleich sind.
+ * @param a - Formularstand
+ * @param b - Formularstand
+ * @returns boolean
+ */
+function gleicheWerte(a, b) {
+  const schluessel = new Set([...Object.keys(a), ...Object.keys(b)])
+  schluessel.delete('grund')
+  return [...schluessel].every((k) => a[k] === b[k])
+}
+
+/**
+ * Formularzustand einer Zeile; legt ihn beim ersten Mal an. Unberührte Werte folgen neuen Daten (Prüfpass cr 3: nach „Schließen“
+ * vor dem Ende des Neuladens entstünde sonst eine Scheinänderung zurück auf den alten Stand); eigene Eingaben bleiben.
+ * @param zeile - Feature- oder Workstream-Zeile
+ * @returns Zustand
+ */
+function anpassenZustand(zeile) {
+  const schluessel = anpassenSchluessel(zeile)
+  const ausgang = anpassenWerte(zeile)
+  let zustand = anpassenStaende.get(schluessel)
+  if (zustand === undefined) {
+    zustand = { schluessel, projektId: holeAktivesProjekt().id, featureId: zeile.bezug.feature, offen: false, phase: 'offen', werte: ausgang, ausgang, meldung: null, ergebnis: null }
+    anpassenStaende.set(schluessel, zustand)
+  } else if (zustand.phase === 'offen' && gleicheWerte(zustand.werte, zustand.ausgang) && !gleicheWerte(ausgang, zustand.ausgang)) {
+    zustand.werte = { ...ausgang, grund: zustand.werte.grund }
+    zustand.ausgang = ausgang
+  }
+  return zustand
+}
+
+/**
+ * Feature-Zeile über einer Zeile (bei einer Feature-Zeile sie selbst) oder null.
+ * @param zeile - Zeile
+ * @param lage - aus ganttLage
+ * @returns Zeile oder null
+ */
+function featureZeileVon(zeile, lage) {
+  return zeile.bezug.feature === null ? null : (lage.jeSchluessel.get(zeilenSchluessel('f', zeile.bezug.meilenstein, zeile.bezug.feature)) ?? null)
+}
+
+/**
+ * „Anpassen“ der gewählten Zeile: Formular, Hinweis („nicht möglich, weil …“) oder nichts (Meilenstein).
+ * @param zeile - gewählte Zeile
+ * @param featureZeile - Feature-Zeile darüber oder null
+ * @returns { html, offen }
+ */
+function anpassenBereich(zeile, featureZeile) {
+  const moeglich = anpassbar(zeile, featureZeile)
+  if (moeglich.art === 'nein') return { html: moeglich.grund === null ? '' : nichtAnpassbarHtml(moeglich.grund), offen: false }
+  const zustand = anpassenZustand(zeile)
+  return { html: anpassenHtml({ ...zustand, zeile, ziele: zeile.art === 'feature' ? meilensteinZiele(roadmap, zeile.bezug.meilenstein) : [] }), offen: zustand.offen }
 }
 
 /**
@@ -663,7 +754,8 @@ function hauptteil() {
         <button type="button" class="button" data-roadmap-erneut>${tHtml('roadmap.fehler.erneut')}</button>
       </div>`
   }
-  return `${kennzahlen()}
+  const veraltet = roadmapVeraltet ? `<div class="note amber roadmap-fehler"><p>${tHtml('roadmap.anpassen.veraltet')}</p><button type="button" class="button" data-roadmap-erneut-behalten>${tHtml('roadmap.fehler.erneut')}</button></div>` : ''
+  return `${veraltet}${kennzahlen()}
     <section class="rm-gesamt" aria-labelledby="rm-gesamt-titel">
       <div class="rm-gesamt-kopf">
         <h2 id="rm-gesamt-titel">${tHtml('roadmap.gesamt.titel')}</h2>
@@ -690,6 +782,8 @@ function render() {
   const aktiv = document.activeElement
   // Element fehlt außerhalb des Browsers (node:test mit Schein-DOM) — dort gibt es keinen Fokus.
   const fokusSelektor = typeof Element !== 'undefined' && aktiv instanceof Element && container.contains(aktiv) ? fokusSchluessel(aktiv) : null
+  // Caret eines Textfelds in „Anpassen“ überlebt ein Neuschreiben während des Tippens (z. B. Akte lädt nach; Advisor B3).
+  const caret = fokusSelektor !== null && typeof aktiv.selectionStart === 'number' ? [aktiv.selectionStart, aktiv.selectionEnd] : null
   // Querscroll des Gantt überlebt das Neuschreiben (Prüfpass cr 1/qa 1); nach einem Zoom-Wechsel passt er ohnehin nicht mehr.
   const gantt = container.querySelector('.rm-gantt')
   const quer = gantt !== null && gantt.getAttribute('data-massstab') === massstab ? gantt.scrollLeft : 0
@@ -698,7 +792,10 @@ function render() {
   if (neuerGantt !== null && quer > 0) neuerGantt.scrollLeft = quer
   const neueEingabe = document.getElementById('roadmap-jarvis-eingabe')
   if (neueEingabe !== null) neueEingabe.value = text
-  if (fokusSelektor !== null) container.querySelector(fokusSelektor)?.focus()
+  if (fokusSelektor === null) return
+  const neu = container.querySelector(fokusSelektor)
+  neu?.focus()
+  if (caret !== null && typeof neu?.setSelectionRange === 'function') neu.setSelectionRange(caret[0], caret[1])
 }
 
 /**
@@ -708,10 +805,10 @@ function render() {
  */
 function fokusSchluessel(element) {
   if (element.id === 'roadmap-jarvis-eingabe') return '#roadmap-jarvis-eingabe'
-  for (const attribut of ['data-roadmap-klappe', 'data-roadmap-waehlen', 'data-roadmap-zoom', 'data-roadmap-stand', 'data-roadmap-jarvis-frage']) {
+  for (const attribut of ['data-roadmap-klappe', 'data-roadmap-waehlen', 'data-roadmap-zoom', 'data-roadmap-stand', 'data-roadmap-jarvis-frage', 'data-roadmap-anpassen-feld', 'data-roadmap-anpassen-aktion']) {
     if (element.hasAttribute(attribut)) return `[${attribut}="${CSS.escape(element.getAttribute(attribut))}"]`
   }
-  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-abgeschlossene-kopf', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf']) {
+  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-abgeschlossene-kopf', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf', 'data-roadmap-erneut-behalten']) {
     if (element.hasAttribute(attribut)) return `[${attribut}]`
   }
   return null
@@ -723,25 +820,42 @@ function fokusSchluessel(element) {
  * Lädt Roadmap und Workitems neu (beim Betreten, bei Projektwechsel, über „Erneut laden“). Beide
  * Abrufe laufen parallel, scheitern unabhängig und rendern je für sich. Eine überholte Antwort wird
  * verworfen; Auswahl und Aufklappzustand bleiben nur innerhalb desselben Projekts.
- * @param optionen - { fokus: true } setzt danach den Fokus auf die Überschrift
+ * @param optionen - { fokus: true } setzt danach den Fokus auf die Überschrift; { behalten: true } (nach „Anpassen“) zeigt bis
+ *   zur Antwort den bisherigen Stand statt „Lädt“ und behält ihn bei einem Abruffehler mit Hinweis (das Ergebnis samt Git-Block
+ *   bleibt sichtbar); { nachRoadmap } läuft nach dem Eintreffen der neuen Projektion, vor dem Rendern (Auswahl nach Wechsel);
+ *   scheitert das Neuladen, holt das nächste Laden mit behalten den Nachlauf nach (Prüfpass qa 3)
  */
 async function ladeRoadmap(optionen = {}) {
   const meineAnfrageNummer = ++roadmapAnfrageZaehler
   const aktuell = () => meineAnfrageNummer === roadmapAnfrageZaehler
-  roadmap = null
-  workitems = undefined
-  akten.clear()
+  const behalten = optionen.behalten === true && roadmapZustand(roadmap) === 'ok'
+  if (behalten) {
+    ausstehendNachRoadmap = optionen.nachRoadmap ?? ausstehendNachRoadmap
+    // Ein laufender Akte-Abruf wird durch den neuen Zähler verworfen — sonst bliebe sein Eintrag auf „lädt“ (Prüfpass cr 10).
+    for (const [id, akte] of akten) if (akte.status === 'laedt') akten.delete(id)
+  } else {
+    roadmap = null
+    workitems = undefined
+    akten.clear()
+    ausstehendNachRoadmap = null
+  }
+  roadmapVeraltet = false
   render()
   const roadmapAbruf = holeRoadmap().then(
     (antwort) => {
       if (!aktuell()) return
       roadmap = antwort
+      if (roadmapZustand(roadmap) === 'ok' && ausstehendNachRoadmap !== null) {
+        ausstehendNachRoadmap()
+        ausstehendNachRoadmap = null
+      }
       render()
     },
     (fehler) => {
       if (!aktuell()) return
       console.error('GET …/roadmap fehlgeschlagen:', fehler)
-      roadmap = { status: 'fehler', grund: fehler instanceof Error ? fehler.message : String(fehler) }
+      if (behalten) roadmapVeraltet = true
+      else roadmap = { status: 'fehler', grund: fehler instanceof Error ? fehler.message : String(fehler) }
       render()
     }
   )
@@ -774,6 +888,127 @@ function jarvisEntwurf(frage) {
 }
 
 /**
+ * Gewählte Zeile und ihr Formularzustand, wenn die Zeile angepasst werden kann.
+ * @returns { zeile, zustand } oder null
+ */
+function gewaehltesAnpassen() {
+  if (roadmapZustand(roadmap) !== 'ok' || roadmap.meilensteine.length === 0) return null
+  const lage = ganttLage()
+  const zeile = gewaehlteZeile(roadmap, lage, auswahl)
+  if (zeile === null || anpassbar(zeile, featureZeileVon(zeile, lage)).art === 'nein') return null
+  const zustand = anpassenStaende.get(anpassenSchluessel(zeile))
+  return zustand === undefined ? null : { zeile, zustand }
+}
+
+/**
+ * Eingabe im Formular: Wert in den Zustand, Speichern-Knopf und Hinweis direkt schalten (kein Neuschreiben — Fokus und Caret
+ * bleiben im Feld).
+ * @param ereignis - input oder change
+ */
+function beiAnpassenEingabe(ereignis) {
+  const feld = ereignis.target instanceof Element ? ereignis.target.closest('[data-roadmap-anpassen-feld]') : null
+  const gewaehlt = feld === null ? null : gewaehltesAnpassen()
+  if (gewaehlt === null || gewaehlt.zustand.phase === 'speichert') return
+  const { zeile, zustand } = gewaehlt
+  zustand.werte = { ...zustand.werte, [feld.getAttribute('data-roadmap-anpassen-feld')]: feld.value }
+  const container = document.getElementById('view-roadmap')
+  const knopf = container?.querySelector('[data-roadmap-anpassen-aktion="speichern"]') ?? null
+  if (knopf !== null) {
+    const frei = darfAnpassenSpeichern(zustand.werte, zeile, zustand.phase)
+    knopf.disabled = !frei
+    if (frei) knopf.removeAttribute('aria-disabled')
+    else knopf.setAttribute('aria-disabled', 'true')
+  }
+  const hinweis = container?.querySelector('[data-roadmap-anpassen-hinweis]') ?? null
+  if (hinweis !== null) hinweis.textContent = anpassenHinweis(zustand.werte, zeile)
+}
+
+/**
+ * Knöpfe in „Anpassen“: speichern, neu laden (Eingaben bleiben), schließen (nach dem Erfolg; der nächste Stand entsteht aus den
+ * dann aktuellen Daten).
+ * @param aktion - Wert von data-roadmap-anpassen-aktion
+ */
+function beiAnpassenAktion(aktion) {
+  const gewaehlt = gewaehltesAnpassen()
+  if (gewaehlt === null) return
+  const { zustand } = gewaehlt
+  if (aktion === 'speichern') void speichereAnpassen(gewaehlt)
+  else if (aktion === 'neu-laden' && zustand.phase !== 'speichert') {
+    zustand.phase = 'offen'
+    zustand.meldung = null
+    akten.delete(zustand.featureId)
+    void ladeRoadmap({ behalten: true })
+  } else if (aktion === 'schliessen') {
+    anpassenStaende.delete(zustand.schluessel)
+    render()
+  }
+}
+
+/**
+ * Setzt den Fokus nach dem Neuschreiben auf Meldung bzw. Ergebnis des Formulars.
+ */
+function fokusAufAnpassen() {
+  document.querySelector('#view-roadmap [data-roadmap-anpassen-fokus]')?.focus?.()
+}
+
+/**
+ * „Änderung speichern“: Hash frisch lesen (Akte; mit Meilenstein-Wechsel auch roadmap_hash), PUT …/planung. Die Sperre gegen
+ * Doppelklick steht in der Phase. Nach jedem Abruf wird geprüft, ob Projekt und Formularzustand noch gelten (Prüfpass qa 2: kein PUT
+ * mit dem Hash des alten Projekts an das neue). Ein Erfolg bleibt im Zustand der Zeile, auch wenn inzwischen eine andere Zeile
+ * gewählt ist — zurück auf der Zeile stehen Ergebnis und Git-Block da; die Roadmap lädt in jedem Fall neu (Prüfpass cr 2/qa 1).
+ * Verworfen wird eine Antwort nur nach einem Projektwechsel (geloggt).
+ * @param gewaehlt - { zeile, zustand } aus gewaehltesAnpassen
+ */
+async function speichereAnpassen({ zeile, zustand }) {
+  if (!darfAnpassenSpeichern(zustand.werte, zeile, zustand.phase)) return
+  const projektId = zustand.projektId
+  const gilt = () => anpassenStaende.get(zustand.schluessel) === zustand && holeAktivesProjekt().id === projektId
+  const wechsel = pruefeAnpassen(zustand.werte, zeile).aenderungen.includes('meilenstein') ? zustand.werte.meilenstein : null
+  zustand.phase = 'speichert'
+  zustand.meldung = null
+  render()
+  let deutung = null
+  try {
+    const akte = await holeFeatureAkte(zustand.featureId)
+    const roadmapHash = !gilt() || wechsel === null ? null : ((await holeRoadmap())?.roadmap_hash ?? null)
+    if (gilt()) {
+      const antwort = await speicherePlanung(zustand.featureId, baueAnpassenKoerper(zustand.werte, zeile, akte?.hash ?? null, roadmapHash))
+      deutung = deutePlanungAntwort(antwort.status, await antwort.json().catch(() => ({})))
+    }
+  } catch (fehler) {
+    console.error(`PUT …/features/${zustand.featureId}/planung fehlgeschlagen:`, fehler)
+    // Zeitlimit: die Datei kann trotzdem geschrieben sein — der Text sagt es (Prüfpass qa 6).
+    const zeitlimit = fehler instanceof Error && fehler.name === 'TimeoutError'
+    deutung = { art: 'fehler', status: 0, grund: zeitlimit ? t('roadmap.anpassen.zeitlimit') : t('roadmap.anpassen.fehlerAnfrage', { meldung: fehler instanceof Error ? fehler.message : String(fehler) }) }
+  }
+  if (deutung === null || !gilt()) {
+    if (deutung?.art === 'ok') console.info(`[planung] ${zustand.featureId} gespeichert (${deutung.geaendert.join(', ')}), Projekt inzwischen gewechselt — nicht committet`)
+    return
+  }
+  if (deutung.art === 'ok') {
+    zustand.phase = 'gespeichert'
+    zustand.ergebnis = deutung
+    zustand.offen = true
+    akten.delete(zustand.featureId)
+    // Advisor A5: nach einem Meilenstein-Wechsel bleibt die Auswahl auf dem Feature (sofern noch gewählt), das Ziel wird aufgeklappt.
+    const auswahlVorher = auswahl
+    const nachRoadmap =
+      wechsel === null
+        ? undefined
+        : () => {
+            if (auswahl === auswahlVorher) auswahl = zeilenSchluessel('f', wechsel, zustand.featureId)
+            aufgeklappt = offenNachWechsel(ganttLage().standardOffen, aufgeklappt, wechsel)
+          }
+    void ladeRoadmap({ behalten: true, nachRoadmap }).then(fokusAufAnpassen)
+  } else {
+    zustand.phase = deutung.art
+    zustand.meldung = deutung
+  }
+  render()
+  fokusAufAnpassen()
+}
+
+/**
  * Klick-Behandlung der Seite (Delegation).
  * @param ereignis - Klick
  */
@@ -782,6 +1017,20 @@ function beiKlick(ereignis) {
   const ziel = ereignis.target
   if (ziel.closest('[data-roadmap-erneut]') !== null) {
     void ladeRoadmap({ fokus: true })
+    return
+  }
+  if (ziel.closest('[data-roadmap-erneut-behalten]') !== null) {
+    void ladeRoadmap({ behalten: true })
+    return
+  }
+  const kopieren = ziel.closest('[data-befehl-kopieren]')
+  if (kopieren !== null) {
+    void kopiereBefehlsblock(kopieren)
+    return
+  }
+  const aktion = ziel.closest('[data-roadmap-anpassen-aktion]')
+  if (aktion !== null && !aktion.disabled) {
+    beiAnpassenAktion(aktion.getAttribute('data-roadmap-anpassen-aktion'))
     return
   }
   const kopf = ziel.closest('[data-roadmap-jarvis-kopf]')
@@ -811,6 +1060,7 @@ function beiKlick(ereignis) {
   }
   const waehlen = ziel.closest('[data-roadmap-waehlen]')
   if (waehlen !== null) {
+    // Der Formularzustand der bisherigen Zeile bleibt (anpassenStaende) — zurück auf der Zeile stehen Eingaben bzw. Ergebnis da.
     auswahl = waehlen.getAttribute('data-roadmap-waehlen')
     render()
     return
@@ -852,10 +1102,26 @@ export function initRoadmapView() {
       document.querySelector('[data-roadmap-jarvis-fragen]')?.click()
     }
   })
+  container?.addEventListener('input', beiAnpassenEingabe)
+  container?.addEventListener('change', beiAnpassenEingabe)
+  // toggle steigt nicht auf — Erfassung in der Capture-Phase.
+  container?.addEventListener(
+    'toggle',
+    (ereignis) => {
+      if (!(ereignis.target instanceof Element) || !ereignis.target.hasAttribute('data-roadmap-anpassen-details')) return
+      const gewaehlt = gewaehltesAnpassen()
+      if (gewaehlt === null) return
+      gewaehlt.zustand.offen = ereignis.target.open === true
+      // Ein Hauptknopf je Handlung (design-guardian B2): bei offenem „Anpassen“ ist „Fragen“ kein Hauptknopf.
+      document.querySelector('#view-roadmap [data-roadmap-jarvis-fragen]')?.classList.toggle('primary', !gewaehlt.zustand.offen)
+    },
+    true
+  )
   registriere(/^#\/roadmap$/, 'roadmap', () => {
     void ladeRoadmap()
   })
   abonniereProjektWechsel(() => {
+    anpassenStaende.clear()
     auswahl = null
     aufgeklappt = null
     abgeschlosseneSichtbar = false
