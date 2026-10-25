@@ -10,7 +10,8 @@ Router v1 (Klassifikation eines Auftrags zu Kontrolltiefe und Workflow-Vorlage)
 
 ## Status
 
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+Abgenommen: 2026-10-25
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -134,3 +135,6 @@ zielfassung.md` §13.4, E-M3-2.
 - F1B/F7 — `stelleLaufstatusFest`, Rohstrom-Lesepfad (Muster für
   `scripts/route-auftrag.mjs`).
 - F2 — `ladeArtefaktVersion` (`src/lineage-registry/index.ts`).
+
+## Änderungen
+- 2026-10-25 · Status ABGESCHLOSSEN (Bereinigung M3) · erledigt

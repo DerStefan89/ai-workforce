@@ -8,7 +8,8 @@ Projektregister, Handler-Instanzen, cwd-Threading (WS-1); Projekte-
 Übersicht, Kontext-Kopfzeile, Projekt-Workspace-Umschaltung (WS-2a)
 
 ## Status
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+Abgenommen: 2026-10-25
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -386,3 +387,6 @@ wieder durch direkte `'/api/...'`-Literale ersetzen (Default-Verhalten
 für `ai-workforce` bliebe dabei unverändert, da der Präfix-Default
 bereits `/api` ist) — der `GET /api/projekte`-Endpunkt ist rein additiv
 und kann unabhängig entfernt werden.
+
+## Änderungen
+- 2026-10-25 · Status ABGESCHLOSSEN (Bereinigung M4) · WS-1/WS-2a geliefert; WS-2b/WS-3 laut E-M5-17 im V1-Backlog

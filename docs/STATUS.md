@@ -418,7 +418,7 @@ Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
 - ✅ **F17** — Rollenvertrag. **Erledigt**, siehe oben
   (`features/F17/feature.md`, Status `ABGESCHLOSSEN`).
 - ✅ **F18** — Router v1 (WS-1–WS-3). **Erledigt**, siehe oben
-  (`features/F18/feature.md`, Status `FEATURE_GATE`, AK1–AK7 erfüllt).
+  (`features/F18/feature.md`, Status `ABGESCHLOSSEN`, AK1–AK7 erfüllt).
 
 Stand der §13.4-Bestehensbedingung (drei Sätze):
 
@@ -478,18 +478,18 @@ Elf Features, Reihenfolge nach frühestem sichtbaren Closed Loop
 Feature unter `features/F2x/`):
 
 - ✅ **F20** — Jarvis Shell v1 (Navigation, Routing, Tokens,
-  `GET /api/zustand`). Akte `features/F20/feature.md`, Status `FEATURE_GATE`,
+  `GET /api/zustand`). Akte `features/F20/feature.md`, Status `ABGESCHLOSSEN`,
   AK1–AK7 erfüllt. WS-1 (PR #149) gemergt. WS-2 (Aggregat-Endpunkt,
   Poll-Konsolidierung, Gate-Kalibrierung, Biome-Scope) gebaut. AK7: ACCEPT,
   14.09.2026 (Stefan, echter manueller Durchklick — siehe
   `features/F20/feature.md` AK7).
 - ✅ **F21** — Workboard + Attention v1 (Projektion über Findings,
   Feature-Akten, Failed Runs, Capability Gaps). Akte `features/F21/
-  feature.md`, Status `FEATURE_GATE`, AK1–AK8 erfüllt. WS-1 (PR #152) und
+  feature.md`, Status `ABGESCHLOSSEN`, AK1–AK8 erfüllt. WS-1 (PR #152) und
   WS-2 (PR #153) gemergt. AK8: ACCEPT, 14.09.2026 (Stefan, Realtest).
 - ✅ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
   Kernartefakt, Vorschlag → Freigabe → Kette). Akte `features/F22/
-  feature.md`, Status `FEATURE_GATE`. Nach F21.
+  feature.md`, Status `ABGESCHLOSSEN`. Nach F21.
 - ✅ **F23** — Abnahme + ADJUST-Loop (Entscheidungs-Schema,
   Post-Build-Prüfschritt, `BLOCKIERT`-Wirkung, Folge-Workflow). Akte
   `features/F23/feature.md`, Status `ABGESCHLOSSEN` seit E-M5-1 (Stefan,
@@ -498,7 +498,7 @@ Feature unter `features/F2x/`):
   Akte `features/F24/feature.md`, Status `ABGESCHLOSSEN`. Nach F20,
   unabhängig.
 - ✅ **F25** — Projekte v1 (Register, Handler je Projekt, Health, Import).
-  Akte `features/F25/feature.md`, Status `FEATURE_GATE` (WS-1/WS-2a erfüllt;
+  Akte `features/F25/feature.md`, Status `ABGESCHLOSSEN` (WS-1/WS-2a erfüllt;
   WS-2b/WS-3 — Health, Import — noch offen). Nach F20, unabhängig.
 - ✅ **F26** — Jarvis Chat v1 (Rolle `jarvis`). Akte `features/F26/
   feature.md`, Status `ABGESCHLOSSEN` (WS-1/WS-2a/WS-2b + F-423-Nachzug
