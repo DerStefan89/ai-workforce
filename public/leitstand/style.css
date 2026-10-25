@@ -4649,6 +4649,168 @@ th {
   gap: 6px;
 }
 
+/* Bereinigung (n) (F45 B5b-2b-2): Karten je Eintrag, Vorschläge als Optionen, Bestätigungsschritt inline — nur vorhandene Tokens. */
+#view-roadmap .rm-bereinigung {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+#view-roadmap .rm-bereinigung .section-label p {
+  margin: 4px 0 0;
+}
+
+#view-roadmap .rm-bereinigung .note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-bereinigung .note p {
+  margin: 6px 0 0;
+}
+
+#view-roadmap .rm-bereinigung .note .action-row {
+  margin-top: 8px;
+}
+
+#view-roadmap .rm-bereinigung-befunde {
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-bereinigung-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  gap: 12px;
+}
+
+#view-roadmap .rm-bereinigung-eintrag {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-bereinigung-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+#view-roadmap .rm-bereinigung-vorschlaege {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#view-roadmap .rm-bereinigung-vorschlaege legend {
+  padding: 0 0 4px;
+  font-size: 12px;
+}
+
+#view-roadmap .rm-bereinigung-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--track);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#view-roadmap .rm-bereinigung-option:has(input:checked) {
+  border-color: var(--ink);
+}
+
+#view-roadmap .rm-bereinigung-option.aus {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-bereinigung-option input,
+#view-roadmap .rm-bereinigung-haekchen input {
+  accent-color: var(--mint);
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+}
+
+#view-roadmap .rm-bereinigung-option > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+#view-roadmap .rm-bereinigung-option small {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-bereinigung-grund {
+  color: var(--ink);
+}
+
+#view-roadmap .rm-bereinigung-eintrag textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  resize: vertical;
+}
+
+#view-roadmap .rm-bereinigung-eintrag .subtle {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+#view-roadmap .rm-bereinigung-pruefen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--track);
+}
+
+#view-roadmap .rm-bereinigung-haekchen {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+#view-roadmap .rm-zur-bereinigung {
+  min-height: 36px;
+  font-size: 12px;
+}
+
 #view-roadmap .rm-entwicklungsstand {
   margin-top: 36px;
 }

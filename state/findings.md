@@ -8803,13 +8803,13 @@ Maßnahme: Tests mit B5b-1b-2 nachziehen; Hinweise in B5b-2 beachten; Ordnername
 Status: offen. Nachtrag 24.10.2026 (F45 B5b-1b-2): die Restfälle bleiben bewusst draußen (Entscheidung Challenger „B5b-1b-2 ohne Schnitt“, Kürzung des Advisors `features/F45/advisor-b5b1b2.md` B6); die Route …/bereinigung prüft den Ordnernamen exakt wie …/planung.
 Feature/Run: Entdeckt: F45 B5b-1b-1 (Prüfpass code-reviewer, qa), 24.10.2026.
 
-**F-1189** · `TECH_DEBT` · P3 · offen
+**F-1189** · `TECH_DEBT` · P3 · offen (teilweise erledigt)
 Titel: Restpunkte von F45 B5b-1b-2 „Bereinigungsliste“ (Prüfpass code-reviewer und qa nach der Korrekturrunde).
 Beschreibung: (qa 3, Rest) GET bietet „Feature → ABGESCHLOSSEN“ auch an, wenn der POST sicher 422 liefert (unbekannter Akten-Status, vorhandene `Abgenommen:`-Zeile, STATUS.md mit 0 oder 2 Standardformen — dann `quelle.status_md` null bei vorhandenem Hash —, CRLF in STATUS.md bzw. Ausnahmen-Datei); eine Vorprüfung je Vorschlag (`moeglich`, `grund`) fehlt. (qa 4, Rest) kein maschinenlesbares Feld `aktion` (neu laden / von Hand) in 4xx — der Antwortvertrag im Abschnitt „Stand B5b-1b-2“ der F45-Akte regelt „nach jedem 409/422 neu laden“. (qa 2, Rest) „Meilenstein → LAEUFT“ hat keinen Rückweg im Leitstand (nur von Hand in roadmap.json). (qa 6) `Abgenommen:` trägt den Tag der Bestätigung, nicht der fachlichen Abnahme (F20 ACCEPT 14.09.2026) — DEKLARIERT, B5b-2 nennt es im Bestätigungsdialog. (qa 7) Freitext in STATUS.md (z. B. F25 „WS-2b/WS-3 noch offen“, Überschrift „Meilenstein 3 — abgeschlossen“) bleibt nach der Bestätigung stehen; ein Hinweis „STATUS.md:<zeile> Freitext prüfen“ auch bei Erfolg fehlt. (qa 8) Eine dauerhaft begründete Ausnahme (z. B. ABGEBROCHEN-Feature im abgeschlossenen Meilenstein) ist faktisch nicht möglich: b5b1a (i) lässt nur die fünf migrierten Ausnahmen mit `GRUND_BEREINIGUNG_OFFEN` zu, B5b-2 müsste „offen“ von „begründet“ unterscheiden. (qa 9) Die Sperr-Meldung sagt bei „Meilenstein → LAEUFT“ „Akte erst nach dessen Ende bearbeiten“, obwohl roadmap.json betroffen ist.
 Fundstelle: `scripts/leitstand/routen-planung.mjs`, `src/workboard/roadmap-regeln.ts` (`bereinigungsEintraege`), `scripts/leitstand/routen-f35.mjs` (`findeSperrendenAblauf`), `scripts/check-f45-b5b1a-planung.mjs` (i), `docs/STATUS.md`.
 Auswirkung: Gering — nichts wird falsch geschrieben; ein angebotener Vorschlag kann mit 422 „von Hand“ enden, der Text sagt warum.
 Maßnahme: in B5b-2 (Anzeige) Vorprüfung je Vorschlag, Hinweise zu Datum und Freitext, Unterscheidung offen/begründet entscheiden; Sperr-Meldung je Ziel mit W2.
-Status: offen. Nachtrag 25.10.2026 (F45 B5b-2b, Schnitt nach Advisor `features/F45/advisor-b5b2b.md` O4): qa2, qa3, qa6, qa7 gehen in **B5b-2b-2** (Vorprüfung `moeglich`/`grund` mit Tests, Gate (a); Vorarbeit A1/A2 in `features/F45/plan-b5b2b-v2.md` §6 — „STATUS.md ohne Standardform“ ist kein Sperrgrund, sperrend ist „Konvention vorhanden, 0 bzw. 2 Angaben für die ID“). qa8 = Variante (a) (Challenger 25.10.2026): Text „Dauerhaft begründete Ausnahmen sind heute nicht vorgesehen“, Gate b5b1a (i) unverändert, Unterscheidung offen/begründet → **W2**. qa9 (Sperr-Meldung je Ziel) → **W2**. B5b-2b-1 hat nichts davon gebaut.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2b, Schnitt nach Advisor `features/F45/advisor-b5b2b.md` O4): qa2, qa3, qa6, qa7 gehen in **B5b-2b-2** (Vorprüfung `moeglich`/`grund` mit Tests, Gate (a); Vorarbeit A1/A2 in `features/F45/plan-b5b2b-v2.md` §6 — „STATUS.md ohne Standardform“ ist kein Sperrgrund, sperrend ist „Konvention vorhanden, 0 bzw. 2 Angaben für die ID“). qa8 = Variante (a) (Challenger 25.10.2026): Text „Dauerhaft begründete Ausnahmen sind heute nicht vorgesehen“, Gate b5b1a (i) unverändert, Unterscheidung offen/begründet → **W2**. qa9 (Sperr-Meldung je Ziel) → **W2**. B5b-2b-1 hat nichts davon gebaut. Nachtrag 25.10.2026 (F45 B5b-2b-2; Kopfzeile „offen (teilweise erledigt)“, damit der Workitem-Parser den Rest nicht als ERLEDIGT zählt): **teilweise erledigt, qa9/qa8 → W2.** Erledigt: qa3 (GET trägt je Vorschlag `moeglich`/`grund` aus derselben reinen Vorprüfung wie der POST, `bereiteBestaetigungVor` in `routen-planung.mjs`; Tests `scripts/leitstand/routen-planung-vorpruefung.test.mjs` je Sperrgrund „GET nicht möglich ⇔ POST 422“, „möglich ⇒ 200“, Sperre „GET möglich, POST 409“), qa2 (Bestätigungsschritt „im Leitstand nicht zurücknehmbar, nur von Hand in roadmap.json“ mit Pflicht-Häkchen), qa6 (Datumshinweis im Bestätigungsschritt), qa7 (fester Hinweis „Freitext und Überschriften in docs/STATUS.md von Hand prüfen“ plus `hinweis` der Antwort), qa8 Variante (a) (Satz in der Liste). qa4 (Feld `aktion`) bleibt über den Antwortvertrag geregelt: die Anzeige lädt nach jeder Antwort neu.
 Feature/Run: Entdeckt: F45 B5b-1b-2 (Prüfpass code-reviewer, qa), 24.10.2026.
 
 **F-1190** · `HARNESS_IMPROVEMENT` · P2 · offen
@@ -8937,3 +8937,39 @@ Auswirkung: Gering.
 Maßnahme: Mit B5b-2b-2 einen View-Test im Muster `projekt-wechsel.test.mjs` (F-1199) und Freihaltung unter der Persona prüfen.
 Status: offen.
 Feature/Run: Entdeckt: F45 B5b-2b-1 (Prüfpass), 25.10.2026.
+
+**F-1204** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Challenger-Bauauftrag B5b-2b mit falscher Körperform (workstreams) und einer im Repo nicht vergebenen ID (F-1201).
+Beschreibung: Der Bauauftrag B5b-2b nannte für PUT …/planung je Workstream `{ id, schaetzung: { min, max } }`; maßgeblich ist `pruefePlanungAenderung` mit `{ id, schaetzung_min, schaetzung_max }`. Er verwies außerdem auf F-1201, das zu diesem Zeitpunkt im Repo nicht vergeben war (`state/findings.md` endete bei F-1199).
+Fundstelle: Bauauftrag B5b-2b (Challenger), `features/F45/advisor-b5b2b.md` (A6), `src/feature-auftrag/planung-schreiben.ts` (`pruefePlanungAenderung`).
+Auswirkung: Gering — vom Advisor gefangen, kostete aber einen STOPP und eine Rückfrage.
+Maßnahme: Körperformen im Auftrag aus der Prüffunktion lesen (Datei:Zeile nennen); Finding-IDs nur über Claude Code vergeben (nächste freie ID aus `state/findings.md`).
+Status: offen.
+Feature/Run: Entdeckt: Advisor-STOPP B5b-2b, 25.10.2026.
+
+**F-1205** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: npm run test in der Claude-Code-Sitzung bricht bei Speichermangel ab (11 Fehlschläge in git-lastigen Dateien, im frischen Terminal grün).
+Beschreibung: In B5b-2b-1 scheiterte `npm run test` in der Claude-Code-Sitzung mit 11 Fehlschlägen in Testdateien, die viele git-Prozesse starten; derselbe Stand lief im frischen Terminal grün. Vermutete Ursache: Speicher der parallelen Gruppe (`scripts/teste.mjs`) neben der Sitzung.
+Fundstelle: `scripts/teste.mjs` (parallele Gruppe), Messung `features/F45/nachweise/t/`.
+Auswirkung: Mittel — ein roter Lauf ohne Codefehler kostet Zeit und verleitet zu falschen Reparaturen.
+Maßnahme: W2 — parallele Gruppe in der Sitzung begrenzen (z. B. über eine Umgebungsvariable) oder freien Speicher vor dem Lauf prüfen und melden.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2b-1, 25.10.2026.
+
+**F-1206** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B5b-2b-2 „Roadmap: Bereinigungsliste“ (Prüfpass design-guardian, code-reviewer, qa).
+Beschreibung: (dg 3) Der Nebenwirkungstext steht in der Auswahl und im Bestätigungsschritt vollständig, bei „M → LAEUFT“ rund 12 Zeilen auf 390 px — in der Auswahl kürzen oder aufklappbar machen. (qa 10, Rest) Die Verdrahtung der View (Abgleich nach dem Neuladen, Sperren, Projektwechsel, Fokus) hat keinen eigenen Test; im Render-Nachweis fehlen 422, 409 mit Ablauf-Link, Ladefehler und „Bereinigung (0)“ nach der letzten Bestätigung; der `catch`-Zweig der GET-Vorprüfung (`vorpruefe`) ist ungetestet (die Module werfen nicht). (qa 4, Rest) Ein Projektwechsel während eines POST hebt die Sperre auf; ein zweiter POST im selben Projekt ist dann möglich — der Server fängt ihn über die Hashes (409). (Advisor B2) Eine Meilenstein-ID nur aus Leerraum bietet der GET an, der POST antwortet 400 (DEKLARIERT im Kopf von `routen-planung.mjs`).
+Fundstelle: `public/leitstand/views/roadmap.js` (Bereinigung), `public/leitstand/roadmap-bereinigung.js`, `scripts/leitstand/routen-planung.mjs` (`vorpruefe`), `features/F45/nachweise/b5b2b2/`.
+Auswirkung: Gering — nichts wird falsch geschrieben.
+Maßnahme: View-Test zusammen mit F-1199/F-1203; Nebenwirkung in der Auswahl kürzen mit 2c bzw. W2; `NICHT_ADRESSIERBAR` um „nur Leerraum“ erweitern mit W2.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2b-2 (Prüfpass), 25.10.2026.
+
+**F-1207** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: commit-guard sperrt Bash-Befehle, deren Daten (Heredoc, Strings) Commit-Wörter enthalten.
+Beschreibung: In B5b-2b-2 verweigerte der PreToolUse-Hook commit-guard einen Bash-Aufruf, der nur Wörterbuchtexte per Heredoc in ein Skript schrieb („… committet wird nichts“, „git status“). Der Hook prüft offenbar den ganzen Befehlstext, nicht den ausgeführten git-Befehl; die Sitzung musste auf eine Skriptdatei ausweichen.
+Fundstelle: `.claude/hooks/commit-guard.cjs` (eingebunden in den Projekteinstellungen), `state/freigabe-commit.md`. Zweite Beobachtung derselben Sitzung: ein Bash-Aufruf, der nur den Text einer Findings-Zeile per sed änderte, wurde wegen eines darin genannten Pfads der geteilten Einstellungsdatei gesperrt.
+Auswirkung: Gering — Umweg kostet Zeit; ein echter Commit bleibt geschützt.
+Maßnahme: W2 — den Hook nur auf ausgeführte git-Befehle (erstes Wort bzw. nach `&&`/`;`) anschlagen lassen, Heredoc-Inhalt ausnehmen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2b-2, 25.10.2026.

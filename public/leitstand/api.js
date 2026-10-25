@@ -20,7 +20,8 @@
  * - public/leitstand/views/attention.js (F21 WS-2: holeWorkitems über attention-daten.js; F46 D2: holeAuftraegeBegrenzt für „Zum Eintrag“)
  * - public/leitstand/views/workboard.js (F22 WS-2; F44 WS-3b Detail: holeFeatureAkte, holeRoadmap, holeAbnahme; F45 B5a-2:
  *   speichereFeatureAkte)
- * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems; F46 D1: holeFeatureAkte)
+ * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems; F46 D1: holeFeatureAkte; F45 B5b-2b-1:
+ *   speicherePlanung; F45 B5b-2b-2: holeBereinigung, bestaetigeBereinigung)
  * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems; F46 D1: holeAuftraege, holeLaufDetail,
  *   holeProjektakte — nur lesend)
  * - public/leitstand/views/projektakte.js (F46 D1: holeProjektakte, holeRoadmap)
@@ -342,7 +343,14 @@ export const legeFeatureAn = (scope) => fetch(mitPraefix('/features'), { method:
 export const speicherePlanung = (featureId, koerper) => fetch(mitPraefix(`/features/${encodeURIComponent(featureId)}/planung`), { method: 'PUT', body: JSON.stringify(koerper), signal: AbortSignal.timeout(SCHREIB_ZEITLIMIT_MS) })
 
 /** Zeitlimit eines schreibenden Aufrufs von „Anpassen“ (großzügig gegenüber Sperrprüfung, Lesen, Schreiben und Rücklesen). */
-const SCHREIB_ZEITLIMIT_MS = 30000
+export const SCHREIB_ZEITLIMIT_MS = 30000
+
+// F45 B5b-2b-2: Bereinigungsliste auf der Roadmap (scripts/leitstand/routen-planung.mjs). GET 200 { status: 'ok' | 'nicht_vorhanden'
+// | 'ungueltig', eintraege (je Vorschlag moeglich/grund), befunde }; Nicht-2xx wirft. POST { eintrag, entscheidung, grund, hashes }
+// (baueBestaetigung, roadmap-bereinigung.js), rohe Response: 200 { geschrieben, hashes, hinweis?, git }, 400, 409 { hashes, abweichend }
+// | { workflowId }, 422 { grund, verstoesse? }. Aufrufer: views/roadmap.js. Zeitlimit des POST wie speicherePlanung.
+export const holeBereinigung = () => holeJsonOderWirf(mitPraefix('/roadmap/bereinigung'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+export const bestaetigeBereinigung = (koerper) => fetch(mitPraefix('/roadmap/bereinigung/bestaetigen'), { method: 'POST', body: JSON.stringify(koerper), signal: AbortSignal.timeout(SCHREIB_ZEITLIMIT_MS) })
 
 // F32 WS-2: Verbrauchsprojektion für die Karte "Verbrauch" (seit F44 WS-2b views/nutzung.js) — nur
 // beim Öffnen der View und bei Zeitraumwechsel abgerufen, NICHT im 2s-Poll (Muster holeRoadmap:

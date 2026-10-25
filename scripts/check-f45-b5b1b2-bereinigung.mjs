@@ -9,8 +9,10 @@
  * ruft das Routen-Modul direkt (die Schreibfunktion ist nur dort ersetzbar, Advisor C6).
  * (v) vorher: check-akte-meilenstein und check-status-akten laufen in der Attrappe grün (sonst bewiese „danach grün“ nichts);
  * (a) GET listet genau die fünf Abweichungen, „Meilenstein → LAEUFT“ nur bei M3/F18, „Feature → ABGESCHLOSSEN“ bei allen fünf, vier
- *     Hash-Schlüssel = Dateien, Quelle mit STATUS.md-Zeile; echtes Repo (nur lesend): Einträge = Paare der Ausnahmen-Datei, LAEUFT
- *     genau bei Meilensteinen mit einer Abweichung (kein Zeitzünder nach Stefans Bestätigungen);
+ *     Hash-Schlüssel = Dateien, Quelle mit STATUS.md-Zeile, seit B5b-2b-2 jeder Vorschlag vorprüfend möglich (moeglich/grund; das
+ *     Verhalten je Sperrgrund belegt scripts/leitstand/routen-planung-vorpruefung.test.mjs); echtes Repo (nur lesend): Einträge =
+ *     Paare der Ausnahmen-Datei, LAEUFT genau bei Meilensteinen mit einer Abweichung, nur die Form von moeglich/grund (kein
+ *     Zeitzünder nach Stefans Bestätigungen);
  * (b) 400: grund leer, unbekannte Entscheidung, zweiter Eintrag (Liste bzw. Feld `eintraege`), Hash-Schlüssel fehlt;
  * (c) 409 Sperre (offener Ablauf an F21);
  * (d) 409 je Datei-Hash (roadmap, ausnahmen, akte, status_md einzeln) mit `abweichend`;
@@ -248,17 +250,21 @@ try {
     const abgeschlossen = e.every((x) => x.vorschlaege.some((v) => v.entscheidung === 'feature_abgeschlossen' && v.text.includes('heute FEATURE_GATE')))
     const f21 = e.find((x) => x.eintrag === 'M4/F21')
     const hashesOk = e.every((x) => JSON.stringify(x.hashes) === JSON.stringify(hashesVon(x.feature)))
+    // F45 B5b-2b-2 (Advisor B5b-2b A1): in der Attrappe sind alle Vorschläge vorprüfend möglich — F21 scheitert nur an der Sperre (c).
+    const alleMoeglich = e.every((x) => x.vorschlaege.every((v) => v.moeglich === true && v.grund === null))
     pruefe(
-      r.status === 200 && r.koerper.status === 'ok' && JSON.stringify(ids) === JSON.stringify(['M3/F18', 'M4/F20', 'M4/F21', 'M4/F22', 'M4/F25']) && JSON.stringify(laeuft) === '["M3/F18"]' && abgeschlossen && hashesOk && f21?.quelle.status_md === 'docs/STATUS.md:12' && f21?.quelle.ausnahme === 'docs/projekt/roadmap-ausnahmen.json' && f21?.quelle.akte === 'features/F21/feature.md',
-      '(a) GET (über den Präfix) listet genau die fünf Abweichungen, „Meilenstein → LAEUFT“ nur bei M3/F18, „Feature → ABGESCHLOSSEN“ mit heutigem Status bei allen, vier Hashes = Dateien, Quelle mit STATUS.md-Zeile (F21 umbrochen).',
-      `(a) ${JSON.stringify({ status: r.status, ids, laeuft, abgeschlossen, hashesOk, f21: f21?.quelle })}`
+      r.status === 200 && r.koerper.status === 'ok' && JSON.stringify(ids) === JSON.stringify(['M3/F18', 'M4/F20', 'M4/F21', 'M4/F22', 'M4/F25']) && JSON.stringify(laeuft) === '["M3/F18"]' && abgeschlossen && alleMoeglich && hashesOk && f21?.quelle.status_md === 'docs/STATUS.md:12' && f21?.quelle.ausnahme === 'docs/projekt/roadmap-ausnahmen.json' && f21?.quelle.akte === 'features/F21/feature.md',
+      '(a) GET (über den Präfix) listet genau die fünf Abweichungen, „Meilenstein → LAEUFT“ nur bei M3/F18, „Feature → ABGESCHLOSSEN“ mit heutigem Status bei allen, jeder Vorschlag vorprüfend möglich (moeglich true, grund null — auch F21 trotz Sperre), vier Hashes = Dateien, Quelle mit STATUS.md-Zeile (F21 umbrochen).',
+      `(a) ${JSON.stringify({ status: r.status, ids, laeuft, abgeschlossen, alleMoeglich, hashesOk, f21: f21?.quelle })}`
     )
     const echt = await fuehrePlanungRouteDurch({ art: 'bereinigung' }, null, { repoWurzel: process.cwd(), roadmapPfad: 'docs/projekt/roadmap.json' })
     const paare = JSON.parse(readFileSync('docs/projekt/roadmap-ausnahmen.json', 'utf8')).status_ausnahmen.map((x) => `${x.meilenstein}/${x.feature}`).sort()
     const echteIds = (echt.koerper.eintraege ?? []).map((x) => x.eintrag).sort()
     const zaehle = (m) => echt.koerper.eintraege.filter((x) => x.meilenstein === m).length
     const laeuftEcht = (echt.koerper.eintraege ?? []).every((x) => x.vorschlaege.some((v) => v.entscheidung === 'meilenstein_laeuft') === (zaehle(x.meilenstein) === 1))
-    pruefe(echt.status === 200 && echt.koerper.status === 'ok' && JSON.stringify(echteIds) === JSON.stringify(paare) && laeuftEcht, `(a) echtes Repo (nur lesend): ${echteIds.length} Einträge = Paare der Ausnahmen-Datei (${echteIds.join(', ')}), LAEUFT genau bei Meilensteinen mit einer Abweichung.`, `(a) echt ${JSON.stringify({ status: echt.status, echteIds, paare, laeuftEcht })}`)
+    // Nur die Form (kein Zeitzünder): moeglich boolean, grund genau dann ein nicht leerer Text, wenn nicht möglich.
+    const formEcht = (echt.koerper.eintraege ?? []).every((x) => x.vorschlaege.every((v) => typeof v.moeglich === 'boolean' && (v.moeglich ? v.grund === null : typeof v.grund === 'string' && v.grund !== '')))
+    pruefe(echt.status === 200 && echt.koerper.status === 'ok' && JSON.stringify(echteIds) === JSON.stringify(paare) && laeuftEcht && formEcht, `(a) echtes Repo (nur lesend): ${echteIds.length} Einträge = Paare der Ausnahmen-Datei (${echteIds.join(', ')}), LAEUFT genau bei Meilensteinen mit einer Abweichung, jeder Vorschlag mit moeglich/grund.`, `(a) echt ${JSON.stringify({ status: echt.status, echteIds, paare, laeuftEcht, formEcht })}`)
   }
 
   // ── (b) 400 ──────────────────────────────────────────────────────────────────────────────────────────────────────

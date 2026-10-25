@@ -1480,7 +1480,7 @@ Mutation (14 Mutationen, jede rot); neu `status-md.test.ts`, `akte-abschliessen.
 
 **Antwortvertrag (für B5b-2, qa 4):**
 - GET 200 `{ status: 'ok', befunde, eintraege: [{ eintrag, meilenstein, feature, featureStatus, ausnahme, abweichungen_im_meilenstein,
-  vorschlaege: [{ entscheidung, text, nebenwirkung }], quelle: { roadmap, akte, ausnahme, status_md }, hashes: { roadmap, ausnahmen,
+  vorschlaege: [{ entscheidung, text, nebenwirkung, moeglich, grund }] (moeglich/grund seit B5b-2b-2), quelle: { roadmap, akte, ausnahme, status_md }, hashes: { roadmap, ausnahmen,
   akte, status_md } }] }`; fehlende bzw. ungültige Roadmap oder Ausnahmen-Datei ⇒ 200 `{ status: 'nicht_vorhanden' | 'ungueltig' }`.
 - POST-Körper genau `{ eintrag, entscheidung, grund, hashes }`, `hashes` unverändert aus dem GET-Eintrag. 200 `{ status: 'ok', eintrag,
   entscheidung, geschrieben, hashes, hinweis?, git }`.
@@ -1508,7 +1508,7 @@ Skala, Formel Plan gegen Ist, eine Gruppenregel; kein zweiter Advisor-Pass, Rege
 |---|---|---|
 | 2a | Gantt rein lesend auf GET /api/roadmap: Zeilen Meilenstein → Feature → Workstream/Fixpaket/Design je `art`, Zeitachse AT ab heute mit Ist-Band und Heute-Linie, Zoom Tage/Wochen, Farbe = Ebene, Form = Status, Marke ohne Schätzung, sticky linke Spalte, Werkzeugleiste, Trennzeile, Detailpanel lesend, Kennzahlen „Bis <M> fertig“ und „Plan gegen Ist“ | dieser Stand |
 | 2b-1 | „Anpassen“ im Detailpanel (PUT /api/features/<id>/planung), F-1197 (Status-Pille, neutrale Auswahl), F-1201; ohne Serveränderung (Schnitt nach Advisor `advisor-b5b2b.md` O4, Challenger 25.10.2026) | siehe „Stand B5b-2b-1“ |
-| 2b-2 | Bereinigungsliste (GET/POST /api/roadmap/bereinigung[/bestaetigen]) mit Vorprüfung `moeglich`/`grund`, Gate (a), F-1189-Restpunkte | offen |
+| 2b-2 | Bereinigungsliste (GET/POST /api/roadmap/bereinigung[/bestaetigen]) mit Vorprüfung `moeglich`/`grund`, Gate (a), F-1189-Restpunkte | siehe „Stand B5b-2b-2“ |
 | 2c | Spur „Pflege & Fixes“ und Kanban · Priorität (Entwicklung, E2), Bug-Felder im Detail (verschoben aus 2b, [EMPFEHLUNG] Challenger 25.10.2026 — gleiche Datenquelle (Workitems) wie Pflege & Fixes; 2b nur Schreibwege), alle aus den Workitems | offen |
 
 **Gebaut:** reine Funktionen in `public/leitstand/roadmap-anzeige.js` (`zeitachseVon`, `baueAchse`, `xVonAt`, `baueSpur`, `ganttZeilen`,
@@ -1561,3 +1561,59 @@ wartet auf das Prozessende, `-z`, `--no-hardlinks` (cr 7–9). Rest → F-1203.
 **Render-Nachweis** `nachweise/b5b2b/` (1,5 MB WebP, 28 Bilder, Klicktabelle in `protokoll.json`): nur gegen eine selbst angelegte
 Wegwerf-Kopie unter os.tmpdir() mit eigenem Leitstand-Prozess; Kopie danach gelöscht, Arbeitsbaum unberührt. Der 409 ist im Browser
 beantwortet (frischer Hash, echter Konflikt nur im Millisekundenfenster).
+
+## Stand B5b-2b-2
+
+**Auftrag:** B5b-2b-2 „Roadmap: Bereinigungsliste“ (Challenger, 25.10.2026; zweites Teilpaket des Schnitts oben). Verlauf:
+`plan-b5b2b2.md` → `advisor-b5b2b2.md` (Freigegeben mit Hinweisen, kein weiterer Schnitt) → `plan-b5b2b2-v2.md` (A1–A4, B1–B12; kein
+zweiter Advisor-Pass, Regel 3a). Grundlage Server-Entwurf `advisor-b5b2b.md` (A1, A2). Kein neues Gate (F-1190), ARCHITECTURE.md
+unverändert (kein neuer Schreibweg, F-1191).
+
+**Gebaut:**
+- Server (einzige Änderung, `scripts/leitstand/routen-planung.mjs`): reine Vorprüfung `bereiteBestaetigungVor` (Block des POST ab
+  „Vorschlag vorhanden?“ bis zum R1-Gate, ausgelagert); der POST ruft sie nach Hash-409 und Eintragssuche auf und ist bitgleich (Gate
+  b5b1b2 (b)–(n) unverändert grün); der GET ergänzt je Vorschlag `moeglich`/`grund` (Grund-Platzhalter „Vorprüfung“, Wurf ⇒ nur dieser
+  Vorschlag nicht möglich). Nicht vorgeprüft (DEKLARIERT): Sperre durch einen offenen Ablauf und Hash (nur POST, 409); Meilenstein-ID
+  nur aus Leerraum (GET bietet an, POST 400; Advisor B2).
+- Tests `scripts/leitstand/routen-planung-vorpruefung.test.mjs` (14 Fälle, Temp-Repo, Modulaufruf): je Attrappe eine Schleife über
+  alle Vorschläge aller Einträge, jeder in frischer Kopie — `moeglich` ⇒ POST 200, sonst POST 422 mit genau dem GET-Grund und kein Byte
+  geschrieben; Sperrgründe: unbekannter Status, `Abgenommen:`, Akte kein UTF-8, Akte-Gate rot (Planungszeile), Akte fehlt bei
+  Groß-/Kleinschreibung (Äquivalenz), STATUS.md kein UTF-8/CRLF/2×/0×, roadmap.json CRLF und `"status"` vor `"id"`, Ausnahmen CRLF,
+  mehrzeiliges Paar und Rundlauf, R1 neu; ohne Sperre: STATUS.md fehlt, ohne Standardform, schon ABGESCHLOSSEN (200 mit hinweis);
+  Sperre: GET möglich, POST 409. Gegenprobe: Vorprüfung auf „immer möglich“ mutiert ⇒ 11 von 14 rot.
+- Gate b5b1b2 (a): jeder Vorschlag der Attrappe möglich (A1, auch F21 trotz Sperre); echtes Repo nur die Form.
+- Client: reine Bausteine `public/leitstand/roadmap-bereinigung.js` (+ Test) — Deutung fail-closed, Sperren, Körper mit Hashes aus dem
+  GET, Antworten (Rest über `deutePlanungAntwort`), Abschnitt, Bestätigungsschritt, Erfolg, Zähler; `holeBereinigung`,
+  `bestaetigeBereinigung` in `api.js`; Verdrahtung in `views/roadmap.js` (ein Ladeweg mit der Roadmap, eigener Anfragezähler,
+  Eingaben ohne Neuschreiben, genau ein Eintrag je Klick, nach jeder Antwort Liste neu, nach 200 auch die Roadmap). Texte de/en/tr/ru,
+  CSS nur mit vorhandenen Tokens.
+- F-1189: qa2 (nicht zurücknehmbar + Pflicht-Häkchen), qa3, qa6 (Datumshinweis), qa7 (fester STATUS.md-Hinweis + `hinweis`), qa8
+  Variante (a) (Satz in der Liste; Gate b5b1a (i) unverändert). Rest qa8/qa9 → W2.
+
+**Abweichungen (begründet):**
+- Bestätigung inline im Eintrag (`role="group"`, Fokus darauf) statt `<dialog>` — Entscheidung `advisor-b5b2b.md` O2 und
+  `plan-b5b2b-v2.md` §6: die Seite wird bei jeder Zustandsänderung neu geschrieben, ein Modal ginge dabei verloren.
+- Der Abschnitt steht auch bei n = 0, solange ein Erfolg samt Git-Block offen ist, eine Meldung oben steht, die Liste nicht ladbar oder
+  ungültig ist (Advisor A4); während des Ladens und ohne Roadmap steht nichts da.
+- Ein offener Erfolg samt Git-Block sperrt weitere Bestätigungen bis „Schließen“ (Prüfpass qa 2): STATUS.md und
+  roadmap-ausnahmen.json gehören zu jeder Bestätigung, zwei offene landeten sonst in einem Commit. Erfolge liegen je Projekt und
+  überstehen den Projektwechsel (qa 3).
+- Kein Vorauswahl-Vorschlag: Stefan wählt ausdrücklich. Hauptknopf je Eintrag nur freigegeben „primary“ (dg 2).
+- Nachweis ohne `git clean -fdx` (Plan v2 A3): es löschte `kontrollzustand/` samt Lock des laufenden Servers; der POST legt keine neuen
+  Dateien an (cr 8).
+
+**Prüfpass:** design-guardian, code-reviewer, qa je „Freigegeben mit Hinweisen“. Eine Korrekturrunde: stabile Fokusschlüssel für
+Bestätigungsschritt, Meldung, Erfolg, Ladefehler und Titel, Rückfall bis zum Seitentitel (qa 1, cr 5, cr 7, qa 5); Sperre bis
+„Schließen“ nach einem Erfolg (qa 2); Erfolge je Projekt (qa 3); Zustandsidentität statt nur Projekt-ID im POST, laufender POST bleibt
+beim Abgleich (cr 2, qa 4); Meldung bei gescheitertem Neuladen nach oben (cr 1); Sperre „lädt neu“ schon im ersten Bild (cr 3);
+„Erneut laden“ gesperrt mit „Lädt…“ (cr 4); Meldung oben mit „Schließen“ (cr 6); Texte je Lage — gesperrt, Eintrag weg, nach Fehler
+„vermutlich geschrieben“ (qa 6, qa 7), Zeitlimit aus `SCHREIB_ZEITLIMIT_MS` (qa 7), Ursache bei „Kein Vorschlag“ (qa 9);
+`aria-describedby` an Knopf und Begründung (dg 6, qa 8); Grund als Prosa (dg 5); `accent-color: var(--mint)` für Radio und Häkchen
+(dg 1); JSDoc (cr 9); Nachweis mit git-Wurzelprüfung, Lock nach der Pfadprüfung, Meldung bei gescheiterter Kopie (cr 8), 200 % mit
+reduzierter Bewegung (dg 4), Zähler-Klick und Sperre bis „Schließen“ (qa 10). Rest → F-1206.
+
+**Render-Nachweis** `nachweise/b5b2b2/` (1,7 MB WebP, 23 Bilder, Klicktabelle in `protokoll.json` mit Fokus je Schritt): nur gegen
+eine selbst angelegte Wegwerf-Kopie unter os.tmpdir() mit eigenem Leitstand-Prozess, STATUS.md der Kopie präpariert (F22 2× ⇒
+deaktiviert mit Grund), vor jeder Lage `git reset --hard` auf die Basis; echter POST „F20 → ABGESCHLOSSEN“ je de-Lage, „M3 → LAEUFT“
+nur bis zum Bestätigungsschritt; 409 im Browser beantwortet. Kopie danach gelöscht, Arbeitsbaum unberührt. Keine echte Abweichung im Arbeitsbaum bestätigt (F18, F20,
+F21, F22, F25 bestätigt Stefan nach dem Merge).
