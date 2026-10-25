@@ -418,7 +418,7 @@ Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
 - ✅ **F17** — Rollenvertrag. **Erledigt**, siehe oben
   (`features/F17/feature.md`, Status `ABGESCHLOSSEN`).
 - ✅ **F18** — Router v1 (WS-1–WS-3). **Erledigt**, siehe oben
-  (`features/F18/feature.md`, Status `FEATURE_GATE`, AK1–AK7 erfüllt).
+  (`features/F18/feature.md`, Status `ABGESCHLOSSEN`, AK1–AK7 erfüllt).
 
 Stand der §13.4-Bestehensbedingung (drei Sätze):
 
