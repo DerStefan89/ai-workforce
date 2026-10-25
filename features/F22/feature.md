@@ -11,7 +11,8 @@ Vorschlag -> Freigabe -> Kette)
 
 ## Status
 
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+Abgenommen: 2026-10-25
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -368,3 +369,6 @@ Finding→bestehender Auftrag) — ein reales Duplikat-Risiko bei
 Wiedereinstieg auf dasselbe Finding nach einem Seiten-Reload. Diese drei
 Punkte sind hier dokumentiert, damit sie nicht erneut entdeckt werden
 müssen, aber keiner davon ist in der gegebenen WS-2-SCOPE-Liste benannt.
+
+## Änderungen
+- 2026-10-25 · Status ABGESCHLOSSEN (Bereinigung M4) · done

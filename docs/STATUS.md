@@ -489,7 +489,7 @@ Feature unter `features/F2x/`):
   WS-2 (PR #153) gemergt. AK8: ACCEPT, 14.09.2026 (Stefan, Realtest).
 - ✅ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
   Kernartefakt, Vorschlag → Freigabe → Kette). Akte `features/F22/
-  feature.md`, Status `FEATURE_GATE`. Nach F21.
+  feature.md`, Status `ABGESCHLOSSEN`. Nach F21.
 - ✅ **F23** — Abnahme + ADJUST-Loop (Entscheidungs-Schema,
   Post-Build-Prüfschritt, `BLOCKIERT`-Wirkung, Folge-Workflow). Akte
   `features/F23/feature.md`, Status `ABGESCHLOSSEN` seit E-M5-1 (Stefan,
