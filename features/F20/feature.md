@@ -10,7 +10,8 @@ Jarvis Shell v1 (Navigation, Routing, Design-Tokens, Aggregat-Endpunkt)
 
 ## Status
 
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+Abgenommen: 2026-10-25
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -92,3 +93,6 @@ Keine harten Abhängigkeiten. Blockiert F21–F29. Setzt auf: `public/leitstand/
 
 Gate-Kopplung an IDs (F-352) · Poll-vs-Formular-Konflikt an drei bereits
 handgelösten Stellen in `app.js` · `public/` bisher außerhalb Lint/Typecheck.
+
+## Änderungen
+- 2026-10-25 · Status ABGESCHLOSSEN (Bereinigung M4) · done

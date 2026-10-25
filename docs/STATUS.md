@@ -478,7 +478,7 @@ Elf Features, Reihenfolge nach frühestem sichtbaren Closed Loop
 Feature unter `features/F2x/`):
 
 - ✅ **F20** — Jarvis Shell v1 (Navigation, Routing, Tokens,
-  `GET /api/zustand`). Akte `features/F20/feature.md`, Status `FEATURE_GATE`,
+  `GET /api/zustand`). Akte `features/F20/feature.md`, Status `ABGESCHLOSSEN`,
   AK1–AK7 erfüllt. WS-1 (PR #149) gemergt. WS-2 (Aggregat-Endpunkt,
   Poll-Konsolidierung, Gate-Kalibrierung, Biome-Scope) gebaut. AK7: ACCEPT,
   14.09.2026 (Stefan, echter manueller Durchklick — siehe
