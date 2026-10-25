@@ -7239,7 +7239,7 @@ Beschreibung: Stefan, 02.10.2026 (= A): Das Fixpaket „Arbeitsfähigkeit“ bes
 Fundstelle: `startvorlagen/ai-workforce.json` (werkzeugsaetze.schreibend); Workflow-Vorlagen.
 Auswirkung: Mittel — ohne diese fünf Punkte bleibt der Lauf hinter dem manuellen Ablauf zurück.
 Maßnahme: Fixpaket-Challenge.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (E-R-1 = A, Stefan; F45 B5b-2c-2-C): Referenzauftrag = F30-M1 — kein eigener Referenzauftrag R (haushaltsbuch2); der erste echte Workflow-Lauf im Opportunity Scanner (F30-M1) erbringt die Belege 1–14 der Bestehensbedingung, F45 schließt mit der ersten Abnahme in F30. Workstream R in `features/F45/feature.md` verworfen, `docs/projekt/fixpaket-f45.md` §2/§3 nachgezogen, Akte F30 (Nicht-Ziel ersetzt, C1–C6 bleiben Messung).
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-982** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -7248,7 +7248,7 @@ Beschreibung: Ob die Befunde des Reviewers (Codex) über die der Claude-Prüfer 
 Fundstelle: Review-Schritt (Rolle code-reviewer, Worker codex) in den Workflow-Vorlagen.
 Auswirkung: Gering — Kosten und Nutzen des zweiten Workers sind nicht belegt.
 Maßnahme: Fixpaket: Befunde je Review (bestätigt/verworfen) gegen die Claude-Prüfer auswerten.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; die Messung läuft in F30-M1 (`docs/projekt/fixpaket-f45.md` §3, R). Klärung Challenger, ob das Messfenster damit feststeht.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 Zugeordnet: F45 R — die Messung braucht echte Läufe (E-B2b-1 = A, 14.10.2026).
 
@@ -7636,7 +7636,7 @@ Beschreibung: Neue Projekte bekommen beim Anlegen die Baseline von ai-workforce 
 Fundstelle: `harness-abgleich/standard.json` (Bindung an Hash und Matcher), `src/projekt-anlegen/index.ts` (kopiereBaseline), `vorlagen/projekt-skelett/.claude/` (F-1038).
 Auswirkung: Mittel — im Referenzlauf R (Vorschlag haushaltsbuch2) kann Beleg 12 so nicht bestehen; die Anzeige sagt das richtig.
 Maßnahme: Vor R entscheiden (Stefan): (a) Baseline des R-Projekts auf den heutigen Stand ziehen (settings.json und Hooks, dann E-183/Startfreigabe des Projekts neu) oder (b) eine Projektdatei der Zuordnung (`harnessZuordnungPfad`) mit eigenem, realem Hook-Nachweis für die Projekt-Fassung. Template-Repo: F-1038.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; „vor R entscheiden“ und die Baseline des R-Projekts (haushaltsbuch2) verlieren ihren Bezug; beim neu angelegten F30-Repo vermutlich gegenstandslos — Klärung Challenger.
 Feature/Run: Entdeckt: F45 B1b-2 (QA-Pass, gegen haushaltsbuch2 nachgerechnet), 11.10.2026.
 
 **F-1048** · `TECH_DEBT` · P3 · offen
@@ -7664,7 +7664,7 @@ Beschreibung: Ob Codex als Reviewer Befunde liefert, die die Claude-Prüfer nich
 Fundstelle: Laufakte des Review-Schritts (kein Feld dafür).
 Auswirkung: Mittel — Codex läuft in jeder Kette mit, ohne belegten Nutzen.
 Maßnahme: Die Laufakte zählt je Review bestätigte Befunde „nur Codex“ / „nur Claude-Prüfer“ / „beide“. Codex bleibt Reviewer, wenn er in R plus der ersten F30-Woche ≥ 1 bestätigten Befund findet, den die Claude-Prüfer nicht fanden; sonst nur noch bei Kontrolltiefe „hoch“. Voraussetzung F-829/F-929 (B2a).
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; das Messfenster „R plus erste F30-Woche“ wird zu „F30-M1“ — Klärung Challenger.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Nachtrag (Stefan, 14.10.2026): Codex prüft heute schon im Review-Schritt (Vorlagen standard/hoch). Der Nutzen wird in B2b gemessen (Codex-Review-Spec §11): nur Codex / nur Claude / beide, Fehlalarme, Kosten.
 Zugeordnet: F45 R statt B2b — die Messung braucht echte Läufe (E-B2b-1 = A, 14.10.2026).
@@ -8584,7 +8584,7 @@ Beschreibung: R2 (Motion) läuft seit E-F45-11 im Leitstand der Workforce; eine 
 Fundstelle: `docs/projekt/fixpaket-f45.md` (Zeilen B3, R2, E-F45-10/E-F45-11).
 Auswirkung: Mittel — B3 gälte als belegt, ohne dass ein Fremdprojekt mit sichtbarer Bewegung gebaut wurde.
 Maßnahme: R-Auftrag in haushaltsbuch2 mit sichtbarer Bewegung. Entscheidung Stefan 23.10.2026: B3 bleibt vollständig vor R.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): R entfällt (E-R-1 = A) — der Referenzauftrag ist F30-M1; damit fehlt der Lauf in einem Fremdprojekt, der den B3-Render-Nachweis mit Bewegung erbringen sollte („B3 bleibt vollständig vor R“) — Klärung Challenger, ob F30-M1 das trägt.
 Feature/Run: Bauauftrag F45 FB-1, 23.10.2026.
 
 **F-1166** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -8782,7 +8782,7 @@ Regressionstest: offen (Wartegrenzen über den Testlauf einstellbar, dann ein La
 Fundstelle: `scripts/leitstand-arbeitsordner.test.mjs:378`, `scripts/leitstand/routen-code.test.mjs:333`, `package.json` (`test`: `--test-concurrency=4`).
 Auswirkung: Mittel — ein grüner Stand wirkt rot, der Commit-Block bricht ab, Stefan muss einzeln nachprüfen.
 Maßnahme: Wartegrenzen über den Testlauf einstellbar machen oder die beiden Dateien seriell laufen lassen; Bezug zum Speicher-/Last-Finding.
-Status: behoben durch serielle Gruppe, Bestätigung über Stefans Läufe offen. Nachtrag 24.10.2026 (F45 T): dieselbe Art Ausfall auch in B5b-1b-1 und B5b-1b-2 — `scripts/leitstand/routen-code.test.mjs:409` (git-Zeitgrenze, Testdauer ≈ 21–32 s, danach „Cannot read properties of undefined (reading 'anzahl')“: `baueCodeProjektion` liefert bei Zeitüberschreitung `nicht_verfuegbar` ohne `dateien`) und `scripts/leitstand/routen-harness-abgleich.test.mjs:211` (fetch failed, ECONNRESET nach ≈ 16 s); voller Lauf 5,8 → 7,8 min. Ursache: Last durch parallele Testdateien; einzeln laufen alle grün (Messung `features/F45/nachweise/t/messung.md`). Behebung: `npm run test` = `scripts/teste.mjs` — sechs schwere Dateien (die drei hier plus `src/arbeitsordner/arbeitsordner.test.ts`, `scripts/leitstand/routen-faehigkeit-vorschlag.test.mjs`, `src/claude-code-gateway/claude-code-gateway.test.ts`, explizite Liste) laufen nach der parallelen Gruppe seriell; die Wartegrenzen der drei Tests sind über `AIW_TEST_ZEITFAKTOR` skalierbar (`scripts/_zeitfaktor.ts`, Standard 1, kein Faktor gesetzt). Regressionstest: `scripts/teste.test.mjs`, `scripts/_zeitfaktor.test.ts`; die Bestätigung unter Last sind Stefans drei volle Läufe (P4) im frischen Terminal.
+Status: behoben durch serielle Gruppe, Bestätigung über Stefans Läufe offen. Nachtrag 24.10.2026 (F45 T): dieselbe Art Ausfall auch in B5b-1b-1 und B5b-1b-2 — `scripts/leitstand/routen-code.test.mjs:409` (git-Zeitgrenze, Testdauer ≈ 21–32 s, danach „Cannot read properties of undefined (reading 'anzahl')“: `baueCodeProjektion` liefert bei Zeitüberschreitung `nicht_verfuegbar` ohne `dateien`) und `scripts/leitstand/routen-harness-abgleich.test.mjs:211` (fetch failed, ECONNRESET nach ≈ 16 s); voller Lauf 5,8 → 7,8 min. Ursache: Last durch parallele Testdateien; einzeln laufen alle grün (Messung `features/F45/nachweise/t/messung.md`). Behebung: `npm run test` = `scripts/teste.mjs` — sechs schwere Dateien (die drei hier plus `src/arbeitsordner/arbeitsordner.test.ts`, `scripts/leitstand/routen-faehigkeit-vorschlag.test.mjs`, `src/claude-code-gateway/claude-code-gateway.test.ts`, explizite Liste) laufen nach der parallelen Gruppe seriell; die Wartegrenzen der drei Tests sind über `AIW_TEST_ZEITFAKTOR` skalierbar (`scripts/_zeitfaktor.ts`, Standard 1, kein Faktor gesetzt). Regressionstest: `scripts/teste.test.mjs`, `scripts/_zeitfaktor.test.ts`; die Bestätigung unter Last sind Stefans drei volle Läufe (P4) im frischen Terminal. Nachtrag 25.10.2026 (F45 B5b-2c-2-C): dieselbe Fehlerklasse traf `src/git-starter/git-starter.test.ts:159` (F-1209, jetzt ebenfalls seriell) — Status bleibt offen, bis Stefans Läufe als Beleg genannt sind (Advisor `features/F45/advisor-b5b2c2.md` A2).
 Feature/Run: Entdeckt: F45 B5b-1a (voller `npm run check` durch Stefan), 24.10.2026; eingetragen mit B5b-1b-1; behoben F45 T, 24.10.2026.
 
 **F-1187** · `TECH_DEBT` · P3 · offen
@@ -8926,7 +8926,7 @@ Beschreibung: Produkt-Brain: Produktzyklus (Ideate–Plan–Deliver und DevOps, 
 Fundstelle: `features/F45/feature.md` (E-BRAIN-1, Workstream R2), `docs/projekt/fixpaket-f45.md` §3 (R2).
 Auswirkung: Mittel — Grundlage für schnellere, belegte Antworten der Rollen.
 Maßnahme: Stufe 1 als R2 (E-BRAIN-1 = B, ≈ 1,5–2 AT, Beleg 15 an der Zyklus-Seite); Stufen 2/3 nach F30.
-Status: offen.
+Status: offen. Nachtrag 25.10.2026 (E-BRAIN-2, Stefan; F45 B5b-2c-2-C): Stufen 1–3 kommen vor F30 statt nach F30 — Reihenfolge B5b-2c → B5b-3 → V1 Live-Vorschau → B3 → W2 → Brain Stufe 1 (R2) → Brain Stufe 2 → Brain Stufe 3 → F30. Methoden: Stufe 2 = LLM-Wiki nach Karpathy (aus dem Repo kompiliert unter docs/brain/<produkt>/ mit index.md und Quellstand-Stempel, jeder Satz mit Quelle, Lint als Gate, inkrementell nach Commits), Workstream Brain-2 (1,5–2,5 AT); Stufe 3 = Brain-Graph aus Backlinks + Graphify als Codewissen nach Eignungsprüfung (Hook-Kollision mit dem Harness prüfen), Deploy/Operate/Monitor bis zum ersten Release nur Struktur und ehrlicher Leerzustand, Workstream Brain-3 (1–2 AT). Obsidian nur optionales Lesefenster, keine Integration. Die Erfolgskriterien (a) Warum-Frage < 1 min mit Quelle, (b) Tokens je Rolle messbar gesenkt (Richtwert −20 %) werden in F30 gemessen (E-R-1 = A); „Erfolgskriterien vor Stufe 2“ und die Maßnahme „Stufen 2/3 nach F30“ oben sind damit überholt. Quellen: `features/F45/feature.md` (E-BRAIN-2, Workstreams Brain-2/Brain-3), `docs/projekt/fixpaket-f45.md` §3.
 Feature/Run: Entdeckt: Stefan, 25.10.2026.
 
 **F-1203** · `TECH_DEBT` · P3 · offen
@@ -8982,3 +8982,31 @@ Auswirkung: Gering — nichts wird falsch angezeigt oder geschrieben.
 Maßnahme: qa 6 mit B5b-2c-2 (Zuordnung im Befund-Detail aus derselben Regel); View-Test zusammen mit F-1199/F-1203/F-1206; cr 3 und cr 9 mit W2; cr 5 und dg 6 bei Bedarf.
 Status: offen.
 Feature/Run: Entdeckt: F45 B5b-2c-1 (Prüfpass), 25.10.2026.
+
+**F-1209** · `BUG` · P2 · offen (behoben durch serielle Gruppe, Bestätigung über Stefans Läufe offen)
+Titel: Test „fuehreGitAsync … Node-execFile-Wettlauf“ bricht unter Last nach 30 s ab.
+Beschreibung: `src/git-starter/git-starter.test.ts:159` („fuehreGitAsync (F45 B2a-3b, Node-execFile-Wettlauf): Zeitgrenze wird nie als Erfolg mit leerer Ausgabe gemeldet“, `timeout: 30_000`) brach am 25.10.2026 im vollen `npm run test` zweimal nach 30 s ab; einzeln läuft er in ≈ 6 s grün. Dieselbe Fehlerklasse wie F-1186 (Last durch die parallele Gruppe, feste Wartegrenze).
+Nachstellen: voller `npm run test` (`scripts/teste.mjs`, parallele Gruppe mit `--test-concurrency=4`) auf Stefans Rechner.
+Erwartet: der Test läuft grün wie im Einzellauf (≈ 6 s).
+Tatsächlich: Abbruch an der Testzeitgrenze von 30 s, zweimal am 25.10.2026.
+Ursache: Last durch parallele Testdateien (wie F-1186); der Test startet echte git-Kindprozesse und wartet auf deren Zeitgrenze.
+Regressionstest: `scripts/teste.test.mjs` (jeder Eintrag in SERIELL ist eine echte Testdatei); Bestätigung unter Last über Stefans volle Läufe.
+Fundstelle: `src/git-starter/git-starter.test.ts:159`, `scripts/teste.mjs` (SERIELL).
+Auswirkung: Mittel — ein grüner Stand wirkt rot, der Commit-Block bricht ohne Codefehler ab.
+Maßnahme: `src/git-starter/git-starter.test.ts` in die serielle Gruppe von `scripts/teste.mjs` (F45 B5b-2c-2-C, 25.10.2026); fällt er dort erneut aus, seine feste Testzeitgrenze (`timeout: 30_000`) einstellbar machen (heute liest er `AIW_TEST_ZEITFAKTOR` nicht). Kein Test schützt den Eintrag gegen Entfernen (`teste.test.mjs` prüft nur Existenz und Eindeutigkeit).
+Status: offen (behoben durch serielle Gruppe, F45 B5b-2c-2-C; Bestätigung über Stefans volle Läufe offen — wie F-1186, Kopf beginnt mit „offen“, damit der Eintrag im Leitstand offen bleibt; Advisor `features/F45/advisor-b5b2c2.md` A2, Prüfpass cr 2/qa 1).
+Feature/Run: Entdeckt: F45 B5b-2c-1 (voller `npm run test` durch Stefan), 25.10.2026; behoben F45 B5b-2c-2-C, 25.10.2026.
+
+**F-1210** · `BUG` · P2 · offen
+Titel: Test „im echten Worktree (git worktree add) wie im Repo“ in `src/faehigkeiten/vorschlag.test.ts` fällt unter Last aus.
+Beschreibung: Im vollen `npm run test` (Claude-Code-Sitzung, 25.10.2026, F45 B5b-2c-2-C) scheiterte `src/faehigkeiten/vorschlag.test.ts:277` in der parallelen Gruppe: `pruefeZielIgnoriert` lieferte `null` statt `false`/`true` (Testdauer ≈ 8,4 s, Suite ≈ 21 s); einzeln 20/20 grün (1 übersprungen). Dieselbe Fehlerklasse wie F-1186 und F-1209 (git-Kindprozesse unter Last, F-1205).
+Nachstellen: voller `npm run test` neben einer laufenden Claude-Code-Sitzung.
+Erwartet: grün wie im Einzellauf.
+Tatsächlich: AssertionError in `vorschlag.test.ts:289` — `[['pruefen', null], …, ['leser', null]]` statt `false`/`true`.
+Ursache: offen — vermutlich Zeitgrenze von git check-ignore unter Last, die als „unbestimmt“ (`null`) endet.
+Regressionstest: offen.
+Fundstelle: `src/faehigkeiten/vorschlag.test.ts:277`, `scripts/teste.mjs` (parallele Gruppe).
+Auswirkung: Mittel — ein grüner Stand wirkt rot.
+Maßnahme: mit F-1205 (W2) entscheiden: Datei in SERIELL oder parallele Gruppe in der Sitzung begrenzen; nicht ohne Auftrag in SERIELL gelegt.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2c-2-C (`npm run test` in der Claude-Code-Sitzung), 25.10.2026.

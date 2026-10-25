@@ -27,7 +27,7 @@ frei und nimmt ab, ohne Inhalte zwischen Rollen zu kopieren.
 - F37 Besetzungs-Erklärung & Override und F38 Projektwissen-Index — V1-Backlog nach F30, gebaut bei erfülltem Auslöser (E-M5-16).
 - Kollege-Durchlauf in eigener Instanz, Import-Wizard (F25 WS-2b) und Health-Projektion (F25 WS-3) — V1-Backlog mit Auslöser,
   kein Teil der V1-Bestehensbedingung (E-M5-17).
-- Der Referenzauftrag R des Fixpakets läuft nicht in F30, damit die F30-Messcheckliste unberührt bleibt (`fixpaket-f45.md` §3, R).
+- F30-M1 ist zugleich der Referenzauftrag des Fixpakets (E-R-1 = A); C1–C6 bleiben Messung, kein Bestehenskriterium.
 
 ## Akzeptanzkriterien
 - AK1: Der Opportunity Scanner M1 liegt in einem eigenen Repo, ist über F41/F42 angelegt, über Coach und Architekt geplant und
@@ -44,11 +44,16 @@ Messung, kein Bestehenskriterium (Punkt 6): Die Punkte C1–C6 der F30-Messcheck
 Personendaten lokal als Entscheidung des Menschen, Stack-Frage mit `kategorie: "stack"`, lose Kopplung Befehl + Ergebnisdatei,
 Netzwerk/Kosten pro Lauf, nachvollziehbare Passungsbewertung) werden gemessen und dokumentiert.
 
+Messpunkt Brain (E-R-1 = A, Stefan 25.10.2026; Messung in F30, kein Bestehenskriterium von F30): (a) Warum-Frage < 1 min mit
+Quelle, (b) Tokens je Rolle messbar gesenkt (Richtwert −20 %). Stefan hält während F30 parallel fest, was ihn stört; Auswertung
+nach F30-M1.
+
 ## Dependencies
 - F43 „Projekt aufrufen/anzeigen“ (E-F30-3; `features/F43/feature.md`) — Grundlage für AK4.
 - F41 „Neues Projekt anlegen“ und F42 „Projekt-Harness“ — Grundlage für AK1.
-- F45 Fixpaket „Arbeitsfähigkeit“ — F30 beginnt danach (E-M5-18); E-F45-2 (Teil 2 vor F30 über Challenger-Bauaufträge oder
-  als erste Aufträge der Workforce an sich selbst) ist offen, fällig nach R.
+- F45 Fixpaket „Arbeitsfähigkeit“ — F30 beginnt danach (E-M5-18); F45 schließt mit der ersten Abnahme in F30 (E-R-1 = A).
+  E-F45-2 (Teil 2 vor F30 über Challenger-Bauaufträge oder als erste Aufträge der Workforce an sich selbst) ist offen; „fällig
+  nach R“ hat keinen Bezugspunkt mehr, weil R entfällt — neuer Zeitpunkt offen.
 - F-713 (P1) — blockierte F30 laut Bestehensbedingung Punkt 5; inzwischen behoben (`state/findings-archiv.md`, Fixpaket).
 
 ## Offene Punkte
