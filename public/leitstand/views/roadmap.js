@@ -6,14 +6,16 @@
  * - Kopf: Rücklink, Eyebrow, „<Projekt> · Roadmap“, aktueller Meilenstein; „Jarvis zur Roadmap
  *   fragen“ (öffnet den Chat mit vorbefüllter Eingabe, sendet nie selbst) und „+ Eintrag erfassen“
  *   als „kommt“; Register Überblick · Roadmap · Projektakte (produktplanung-kopf.js).
- * - Kennzahlen: Meilensteine x / y abgeschlossen, Features x / y abgenommen, „Bis <M> fertig“ (noch
- *   nicht berechenbar, Zahl der offenen Einträge ohne Schätzung), Plan gegen Ist („kommt“).
- * - Gesamte Roadmap: Baum Meilenstein → Feature aus roadmap.json v0. Der aktuelle Meilenstein steht
+ * - Kennzahlen: Meilensteine x / y abgeschlossen, Features x / y abgenommen, „Bis <M> fertig“ und
+ *   „Plan gegen Ist“ aus kennzahlen der Projektion (F45 B5b-2a; fehlt das Feld: „nicht verfügbar“).
+ * - Gesamte Roadmap (F45 B5b-2a, features/F45/plan-b5b2a-v2.md): Gantt lesend — Zeilen Meilenstein →
+ *   Feature → Workstream/Fixpaket/Design, erledigte Kinder in einer Gruppenzeile, linke Spalte steht
+ *   beim Scrollen, Zeitachse in AT ab heute mit Ist-Band links und Heute-Linie, Zoom Tage/Wochen,
+ *   Farbe = Ebene, Form = Status, punktierte Marke ohne Schätzung. Der aktuelle Meilenstein steht
  *   oben und ist aufgeklappt, abgeschlossene sind ausgeblendet („Einblenden“), „Alles aufklappen“.
- *   Workstream-Zeilen, Balken, Zeitachse und Tage/Wochen sind „kommt“ (Fixpaket B2/B5) — es gibt
- *   keine Schätzfelder, deshalb keine Balken. Daneben das Detailpanel des gewählten Eintrags (Typ,
- *   Name, Status, Teil von, Inhalt; bei Features das Ziel aus der Akte) mit „Frag Jarvis dazu“ und
- *   „Anpassen“ („kommt“).
+ *   Daneben das Detailpanel lesend (Typ, Status, Teil von, Inhalt, Schätzung, Ist, danach, Hinweise)
+ *   mit „Frag Jarvis dazu“; „Anpassen“, Balken ziehen und „+ Eintrag erfassen“ bleiben „kommt“ (B5b-2b).
+ *   Alle Rechnungen in roadmap-anzeige.js; hier wird nur gerendert.
  * - Entwicklungsstand mit Filter Alle · Features · Bugs · Harness · Tech Debt (zieht aus der
  *   Produktübersicht hierher): offene P0–P2-Befunde und offene Features des aktuellen Meilensteins.
  * - Noch nicht eingeplant (F44 D3, bleibt).
@@ -39,11 +41,28 @@
 import { holeFeatureAkte, holeRoadmap, holeWorkitems } from '../api.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
-import { kommtBadge, kommtKnopf } from '../kommt.js'
+import { kommtKnopf } from '../kommt.js'
 import { planungsRegister, zurueckZurUebersicht } from '../produktplanung-kopf.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
-import { aktuellerMeilenstein, nichtEingeplant, roadmapZustand, STATUS_KATEGORIEN, STATUS_SYMBOL, statusKategorie, waehleEntwicklungsstand, zaehleMeilenstein, zaehleRoadmap } from '../roadmap-anzeige.js'
+import {
+  aktuellerMeilenstein,
+  aufklappbareSchluessel,
+  baueAchse,
+  bisFertig,
+  featuresAbgenommen,
+  ganttZeilen,
+  gewaehlteZeile,
+  IST_BREITE,
+  nichtEingeplant,
+  planGegenIst,
+  roadmapZustand,
+  STATUS_SYMBOL,
+  statusKategorie,
+  waehleEntwicklungsstand,
+  zeilenSchluessel,
+  zeitachseVon,
+} from '../roadmap-anzeige.js'
 import { registriere } from '../router.js'
 import { chipTypVonWorkitem, typChip } from '../typ-chip.js'
 
@@ -59,14 +78,17 @@ const akten = new Map()
 /** Überholschutz für ladeRoadmap (Muster roadmapAnfrageZaehler in views/workboard.js). */
 let roadmapAnfrageZaehler = 0
 
-/** Gewählter Eintrag: { art: 'meilenstein' | 'feature', id, meilensteinId } oder null = vorgewählt. */
+/** Schlüssel der gewählten Gantt-Zeile (zeilenSchluessel) oder null = vorgewählt. */
 let auswahl = null
 
-/** Aufgeklappte Meilensteine (IDs); null = Standard (nur der aktuelle). */
+/** Aufgeklappte Zeilen (Schlüssel); null = Standard (aktueller Meilenstein und seine Features in Arbeit). */
 let aufgeklappt = null
 
 /** true, wenn die abgeschlossenen Meilensteine eingeblendet sind. */
 let abgeschlosseneSichtbar = false
+
+/** Zoom der Zeitachse: 'tage' | 'wochen' — nur im Speicher. */
+let massstab = 'tage'
 
 /** Filter des Entwicklungsstands. */
 let standFilter = 'alle'
@@ -123,44 +145,33 @@ function idListe(ids) {
 // ─── Abgeleitete Lage ─────────────────────────────────────────────────────────
 
 /**
- * Meilensteine in Anzeigereihenfolge: der aktuelle oben, dann die übrigen nicht abgeschlossenen in
- * Roadmap-Reihenfolge; die abgeschlossenen getrennt.
- * @returns { aktueller, offen: Meilenstein[], abgeschlossen: Meilenstein[] }
+ * Gantt-Lage für den aktuellen Anzeigezustand (Achse je Zoom, alle Zeilen samt eingeklappter).
+ * @returns { achse, oben, unten, trenner, standardOffen, alle: Zeile[], jeSchluessel: Map }
  */
-function reihenfolge() {
-  const aktueller = aktuellerMeilenstein(roadmap)
-  const alle = roadmap.meilensteine
-  const offen = [...(aktueller === null ? [] : [aktueller]), ...alle.filter((m) => m !== aktueller && m.status !== 'ABGESCHLOSSEN')]
-  return { aktueller, offen, abgeschlossen: alle.filter((m) => m !== aktueller && m.status === 'ABGESCHLOSSEN') }
+function ganttLage() {
+  const achse = baueAchse(zeitachseVon(roadmap), massstab)
+  const lage = ganttZeilen(roadmap, { aufgeklappt, abgeschlosseneSichtbar, achse })
+  const alle = [...lage.oben, ...lage.unten]
+  return { achse, ...lage, alle, jeSchluessel: new Map(alle.map((z) => [z.schluessel, z])) }
 }
 
 /**
- * Ob ein Meilenstein aufgeklappt ist.
- * @param meilenstein - Eintrag
- * @param aktueller - aktueller Meilenstein oder null
- * @returns true, wenn offen
+ * Zahl in Sprache des Leitstands, höchstens zwei Nachkommastellen.
+ * @param zahl - Wert
+ * @returns Text
  */
-function istAufgeklappt(meilenstein, aktueller) {
-  return aufgeklappt === null ? meilenstein === aktueller : aufgeklappt.has(meilenstein.id)
+function zahl(zahl) {
+  return formatiereZahl(zahl, { maximumFractionDigits: 2 })
 }
 
 /**
- * Der gewählte Eintrag; ohne Wahl das erste Feature „in Arbeit“ des aktuellen Meilensteins, sonst der
- * aktuelle Meilenstein, sonst der erste.
- * @returns { art, meilenstein, feature } oder null ohne Meilensteine
+ * Spanne „a–b“ bzw. „a“, wenn beide gleich sind.
+ * @param min - untere Grenze
+ * @param max - obere Grenze
+ * @returns Text
  */
-function gewaehlterEintrag() {
-  const meilensteine = roadmap.meilensteine
-  if (auswahl !== null) {
-    const meilenstein = meilensteine.find((m) => m.id === auswahl.meilensteinId) ?? null
-    if (meilenstein !== null && auswahl.art === 'meilenstein') return { art: 'meilenstein', meilenstein, feature: null }
-    const feature = meilenstein?.features.find((f) => f.id === auswahl.id) ?? null
-    if (feature !== null) return { art: 'feature', meilenstein, feature }
-  }
-  const aktueller = aktuellerMeilenstein(roadmap) ?? meilensteine[0] ?? null
-  if (aktueller === null) return null
-  const inArbeit = aktueller.features.find((f) => statusKategorie(f.status) === 'in_arbeit') ?? null
-  return inArbeit !== null ? { art: 'feature', meilenstein: aktueller, feature: inArbeit } : { art: 'meilenstein', meilenstein: aktueller, feature: null }
+function spanne(min, max) {
+  return min === max ? zahl(min) : `${zahl(min)}–${zahl(max)}`
 }
 
 // ─── Kopf und Kennzahlen ─────────────────────────────────────────────────────
@@ -204,10 +215,35 @@ function kennzahlen() {
   const alle = roadmap.meilensteine
   const abgeschlossen = alle.filter((m) => m.status === 'ABGESCHLOSSEN').length
   const aktueller = aktuellerMeilenstein(roadmap)
-  const { abgenommen, gesamt } = zaehleRoadmap(roadmap)
+  const { abgenommen, gesamt } = featuresAbgenommen(roadmap)
   const features = aktueller?.features ?? []
-  const idsMit = (kategorie) => features.filter((f) => statusKategorie(f.status) === kategorie).map((f) => f.id)
-  const offen = features.filter((f) => f.status !== 'ABGESCHLOSSEN' && f.status !== 'ABGEBROCHEN').length
+  const idsMit = (kategorie) => features.filter((f) => statusKategorie(f?.status) === kategorie).map((f) => f.id)
+  const bis = bisFertig(roadmap, aktueller?.id ?? null)
+  let bisWert = tHtml('roadmap.kennzahl.nichtVerfuegbar')
+  let bisUnter = tHtml('roadmap.kennzahl.nichtVerfuegbar.unter')
+  if (aktueller === null) {
+    // Kein offener Meilenstein: die Daten fehlen nicht, es gibt nur nichts mehr zu rechnen (Prüfpass qa 2/cr 4).
+    bisWert = tHtml('roadmap.kennzahl.bis.keinOffener')
+    bisUnter = tHtml('roadmap.kennzahl.bis.keinOffenerUnter')
+  } else if (bis?.berechenbar === true) {
+    bisWert = tHtml('roadmap.kennzahl.bis.spanne', { spanne: spanne(bis.min, bis.max) })
+    bisUnter = tHtml('roadmap.kennzahl.bis.berechnet')
+  } else if (bis !== null) {
+    bisWert = tHtml('roadmap.kennzahl.bis.wert')
+    bisUnter = tHtml('roadmap.kennzahl.bis.unter', { anzahl: bis.ohne_schaetzung, zahl: formatiereZahl(bis.ohne_schaetzung) })
+  }
+  const pgi = planGegenIst(roadmap)
+  let pgiWert = tHtml('roadmap.kennzahl.nichtVerfuegbar')
+  let pgiUnter = tHtml('roadmap.kennzahl.nichtVerfuegbar.unter')
+  if (pgi?.zustand === 'leer') {
+    pgiWert = tHtml('roadmap.kennzahl.planIst.leer')
+    pgiUnter = tHtml('roadmap.kennzahl.planIst.leerUnter')
+  } else if (pgi !== null) {
+    if (pgi.zustand === 'im_plan') pgiWert = tHtml('roadmap.kennzahl.planIst.imPlan')
+    else if (pgi.prozent === null) pgiWert = tHtml('roadmap.kennzahl.planIst.ueberOhne')
+    else pgiWert = tHtml(pgi.zustand === 'ueber' ? 'roadmap.kennzahl.planIst.ueber' : 'roadmap.kennzahl.planIst.unterPlan', { prozent: formatiereZahl(Math.abs(pgi.prozent)) })
+    pgiUnter = tHtml('roadmap.kennzahl.planIst.unter', { ist: zahl(pgi.ist), plan: spanne(pgi.plan_min, pgi.plan_max), anzahl: pgi.anzahl, zahl: formatiereZahl(pgi.anzahl) })
+  }
   return `<div class="roadmap-kennzahlen">
       ${kennzahl({
         eyebrow: t('roadmap.kennzahl.meilensteine'),
@@ -221,60 +257,106 @@ function kennzahlen() {
       })}
       ${kennzahl({
         eyebrow: aktueller !== null ? t('roadmap.kennzahl.bis', { id: aktueller.id }) : t('roadmap.kennzahl.bisOhne'),
-        wertHtml: tHtml('roadmap.kennzahl.bis.wert'),
-        unterHtml: `${tHtml('roadmap.kennzahl.bis.unter', { anzahl: offen, zahl: formatiereZahl(offen) })}`,
+        wertHtml: bisWert,
+        unterHtml: bisUnter,
         klasse: 'betont',
       })}
-      ${kennzahl({ eyebrow: t('roadmap.kennzahl.planIst'), wertHtml: kommtBadge(), unterHtml: tHtml('roadmap.kennzahl.planIst.unter'), klasse: 'kommt' })}
+      ${kennzahl({ eyebrow: t('roadmap.kennzahl.planIst'), wertHtml: pgiWert, unterHtml: pgiUnter })}
     </div>`
 }
 
-// ─── Baum und Detailpanel ─────────────────────────────────────────────────────
+// ─── Gantt und Detailpanel ────────────────────────────────────────────────────
 
 /**
- * Eine Feature-Zeile des Baums.
- * @param meilenstein - übergeordneter Meilenstein
- * @param feature - { id, titel?, status }
- * @param gewaehlt - gewählter Eintrag
- * @returns HTML
+ * Name einer Zeile (Gruppenzeilen tragen keinen eigenen Titel).
+ * @param zeile - aus ganttZeilen
+ * @returns Rohtext
  */
-function featureZeile(meilenstein, feature, gewaehlt) {
-  const istGewaehlt = gewaehlt?.art === 'feature' && gewaehlt.feature === feature
-  return `<li class="rm-zeile rm-feature${istGewaehlt ? ' gewaehlt' : ''}">
-      <span class="rm-einzug" aria-hidden="true"></span>
-      <button type="button" class="rm-waehlen" data-roadmap-waehlen="feature" data-meilenstein="${escapeHtml(meilenstein.id)}" data-id="${escapeHtml(feature.id)}" aria-pressed="${istGewaehlt}">
-        <span class="rm-name"><span class="rm-punkt rm-punkt-feature" aria-hidden="true"></span><span class="rm-name-text">${escapeHtml(titelVon(feature))}</span></span>
-        <small><code>${escapeHtml(feature.id)}</code> · ${tHtml('typ.feature')}</small>
-      </button>
-      <span class="rm-status">${statusText(feature.status)}</span>
-      <span class="rm-achse" aria-hidden="true"></span>
-    </li>`
+function zeilenName(zeile) {
+  if (zeile.art !== 'gruppe') return zeile.art === 'meilenstein' || zeile.art === 'feature' ? `${zeile.id} · ${zeile.titel}` : zeile.titel
+  return zeile.farbe === 'feature' ? t('roadmap.gruppe.features', { id: zeile.id }) : t('roadmap.gruppe.zeilen')
 }
 
 /**
- * Eine Meilensteingruppe des Baums: Kopfzeile mit Auf-/Zuklappen und Auswahl, darunter die Features.
- * @param meilenstein - Eintrag
- * @param aktueller - aktueller Meilenstein
- * @param gewaehlt - gewählter Eintrag
+ * Kurzinfo unter dem Namen (Zähler, Schätzung, Ist, Hinweise) — Projektinhalte escaped.
+ * @param zeile - aus ganttZeilen
+ * @returns Rohtext
+ */
+function kurzinfo(zeile) {
+  const teile = []
+  if (zeile.art === 'meilenstein') teile.push(t('roadmap.meilenstein.abgenommen', { abgenommen: formatiereZahl(zeile.zaehler.abgenommen), gesamt: formatiereZahl(zeile.zaehler.gesamt) }))
+  else if (zeile.art === 'gruppe') teile.push(t(zeile.farbe === 'feature' ? 'roadmap.gruppe.featuresInfo' : 'roadmap.gruppe.zeilenInfo', { anzahl: zeile.anzahl, zahl: formatiereZahl(zeile.anzahl) }))
+  else if (zeile.art === 'feature') {
+    teile.push(t('typ.feature'))
+    const dauer = zeile.spur.label?.dauer ?? null
+    if (dauer !== null) teile.push(t('roadmap.info.rest', { spanne: spanne(dauer.min, dauer.max) }))
+    else if (zeile.spur.marke !== null) teile.push(t('roadmap.info.ohneSchaetzung'))
+  } else {
+    teile.push(`${zeile.id} · ${t(`typ.${zeile.art}`)}`)
+    if (zeile.schaetzung !== null) teile.push(t('roadmap.info.schaetzung', { spanne: spanne(zeile.schaetzung.min, zeile.schaetzung.max) }))
+    else if (zeile.status === 'geplant' || zeile.status === 'laeuft') teile.push(t('roadmap.info.ohneSchaetzung'))
+  }
+  if (zeile.istAt !== null) teile.push(t('roadmap.info.ist', { wert: zahl(zeile.istAt) }))
+  if (zeile.hinweise.includes('fehlerhaft')) teile.push(t('roadmap.info.fehlerhaft'))
+  if (zeile.hinweise.includes('befunde')) teile.push(t('roadmap.info.befunde'))
+  if (zeile.hinweise.includes('ohne_lage')) teile.push(t('roadmap.info.ohneLage'))
+  if (zeile.hinweise.includes('abweichung')) teile.push(t('roadmap.info.abweichung'))
+  return teile.join(' · ')
+}
+
+/**
+ * Beschriftung hinter dem Balken bzw. der Marke (Plan v2 Nr. 3: „frühestens“ und „ohne Schätzung“ sichtbar).
+ * @param label - spur.label
+ * @returns Rohtext
+ */
+function spurText(label) {
+  if (label.dauer === null) return t('roadmap.spur.fehlt', { at: zahl(label.fruehestensAb) })
+  const teile = [t('roadmap.spur.dauer', { spanne: spanne(label.dauer.min, label.dauer.max) })]
+  if (label.fruehestensAb !== null) teile.unshift(t('roadmap.spur.fruehestens', { at: zahl(label.fruehestensAb) }))
+  if (label.ohneSchaetzung > 0) teile.push(t('roadmap.spur.ohne', { anzahl: label.ohneSchaetzung, zahl: formatiereZahl(label.ohneSchaetzung) }))
+  return teile.join(' · ')
+}
+
+/**
+ * Zeitspur einer Zeile: Ist-Band, Planbalken, Spanne bis Max., Marke und Beschriftung. Positionen als px aus baueSpur,
+ * Farben nur über Klassen (--ebene-* der Zeile).
+ * @param spur - aus baueSpur
  * @returns HTML
  */
-function meilensteinGruppe(meilenstein, aktueller, gewaehlt) {
-  const offen = istAufgeklappt(meilenstein, aktueller)
-  const { abgenommen, gesamt } = zaehleMeilenstein(meilenstein)
-  const istGewaehlt = gewaehlt?.art === 'meilenstein' && gewaehlt.meilenstein === meilenstein
-  const listenId = `rm-features-${escapeHtml(meilenstein.id)}`
-  const features = meilenstein.features.length === 0 ? `<li class="rm-leer">${tHtml('roadmap.meilenstein.leer')}</li>` : meilenstein.features.map((f) => featureZeile(meilenstein, f, gewaehlt)).join('')
-  return `<li class="rm-gruppe${meilenstein === aktueller ? ' aktuell' : ''}">
-      <div class="rm-zeile rm-meilenstein${istGewaehlt ? ' gewaehlt' : ''}">
-        <button type="button" class="rm-klappe" data-roadmap-klappe="${escapeHtml(meilenstein.id)}" aria-expanded="${offen}" aria-controls="${listenId}" aria-label="${tHtml(offen ? 'roadmap.baum.zuklappen' : 'roadmap.baum.aufklappen', { titel: titelVon(meilenstein) })}"><span aria-hidden="true">›</span></button>
-        <button type="button" class="rm-waehlen" data-roadmap-waehlen="meilenstein" data-meilenstein="${escapeHtml(meilenstein.id)}" data-id="${escapeHtml(meilenstein.id)}" aria-pressed="${istGewaehlt}">
-          <span class="rm-name">${meilenstein === aktueller ? `<span class="eyebrow">${tHtml('roadmap.meilenstein.aktuell')}</span>` : ''}<span class="rm-punkt rm-punkt-meilenstein" aria-hidden="true"></span><strong>${escapeHtml(titelVon(meilenstein))}</strong></span>
-          <small><code>${escapeHtml(meilenstein.id)}</code> · ${tHtml('typ.meilenstein')} · ${tHtml('roadmap.meilenstein.abgenommen', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) })}</small>
-        </button>
-        <span class="rm-status">${statusText(meilenstein.status)}</span>
-        <span class="rm-achse" aria-hidden="true"></span>
-      </div>
-      <ul class="rm-features" id="${listenId}"${offen ? '' : ' hidden'}>${features}</ul>
+function spurHtml(spur) {
+  const lage = (links, breite) => `left: ${links}px;${breite === undefined ? '' : ` width: ${breite}px;`}`
+  const teile = []
+  if (spur.istBand) teile.push('<span class="rm-ist-band" aria-hidden="true"></span>')
+  if (spur.plan !== null) teile.push(`<span class="rm-balken rm-${spur.plan.form}" style="${lage(spur.plan.links, spur.plan.breite)}" aria-hidden="true"></span>`)
+  if (spur.max !== null) teile.push(`<span class="rm-max" style="${lage(spur.max.links, spur.max.breite)}" aria-hidden="true"></span>`)
+  if (spur.marke !== null) teile.push(`<span class="rm-marke" style="${lage(spur.marke.links)}" aria-hidden="true"></span>`)
+  if (spur.label !== null) {
+    const klassen = ['rm-spur-text', spur.label.dauer === null ? 'rm-spur-fehlt' : '', spur.label.seite === 'links' ? 'rm-spur-links' : ''].filter(Boolean).join(' ')
+    teile.push(`<span class="${klassen}" style="${lage(spur.label.links)}">${escapeHtml(spurText(spur.label))}</span>`)
+  }
+  else if (spur.ohneLage) teile.push(`<span class="rm-spur-text" style="${lage(IST_BREITE + 8)}">${tHtml('roadmap.spur.ohneLage')}</span>`)
+  return `<div class="rm-spur">${teile.join('')}</div>`
+}
+
+/**
+ * Eine Zeile des Gantt: sticky linke Zelle (Pfeil, Farbquadrat, Name, Kurzinfo, Status) und Zeitspur.
+ * @param zeile - aus ganttZeilen
+ * @param gewaehlt - gewählte Zeile
+ * @returns HTML
+ */
+function ganttZeile(zeile, gewaehlt) {
+  const istGewaehlt = gewaehlt?.schluessel === zeile.schluessel
+  const name = zeilenName(zeile)
+  const schluessel = escapeHtml(zeile.schluessel)
+  const klappe = zeile.hatKinder
+    ? `<button type="button" class="rm-klappe" data-roadmap-klappe="${schluessel}" aria-expanded="${zeile.offen}" aria-label="${tHtml(zeile.offen ? 'roadmap.baum.zuklappen' : 'roadmap.baum.aufklappen', { titel: name })}"><span aria-hidden="true">›</span></button>`
+    : '<span class="rm-klappe-platz" aria-hidden="true"></span>'
+  const inhalt = `<span class="rm-name"><span class="rm-quadrat" aria-hidden="true"></span><span class="rm-name-text" title="${escapeHtml(name)}">${escapeHtml(name)}</span></span><small>${escapeHtml(kurzinfo(zeile))}</small>`
+  const waehlen = zeile.art === 'gruppe' ? `<span class="rm-waehlen rm-gruppe-name">${inhalt}</span>` : `<button type="button" class="rm-waehlen" data-roadmap-waehlen="${schluessel}" aria-pressed="${istGewaehlt}">${inhalt}</button>`
+  const klassen = ['rm-zeile', `rm-ebene-${zeile.ebene}`, istGewaehlt ? 'gewaehlt' : '', zeile.aktuell ? 'aktuell' : ''].filter(Boolean).join(' ')
+  return `<li class="${klassen}" data-farbe="${escapeHtml(zeile.farbe)}">
+      <div class="rm-links" style="--rm-einzug: ${zeile.ebene}">${klappe}${waehlen}<span class="rm-status">${statusText(zeile.status)}</span></div>
+      ${spurHtml(zeile.spur)}
     </li>`
 }
 
@@ -293,31 +375,79 @@ function featureInhalt(feature) {
 }
 
 /**
- * Das Detailpanel des gewählten Eintrags mit „Frag Jarvis dazu“ und „Anpassen“ („kommt“).
- * @param gewaehlt - gewählter Eintrag oder null
+ * „Teil von“ einer Zeile: Feature und Meilenstein darüber.
+ * @param zeile - gewählte Zeile
+ * @param lage - aus ganttLage
  * @returns HTML
  */
-function detailPanel(gewaehlt) {
-  if (gewaehlt === null) return `<aside class="rm-detail" aria-label="${tHtml('roadmap.detail.titel')}"><p class="subtle">${tHtml('roadmap.keineMeilensteine')}</p></aside>`
+function teilVon(zeile, lage) {
+  const meilenstein = lage.jeSchluessel.get(zeilenSchluessel('m', zeile.bezug.meilenstein)) ?? null
+  if (zeile.art === 'meilenstein' || meilenstein === null) return tHtml('roadmap.detail.roadmap')
+  const mText = `${meilenstein.id} · ${meilenstein.titel}`
+  if (zeile.art === 'feature') return escapeHtml(mText)
+  const feature = lage.jeSchluessel.get(zeilenSchluessel('f', zeile.bezug.meilenstein, zeile.bezug.feature)) ?? null
+  return escapeHtml(feature === null ? mText : `${feature.id} · ${feature.titel} · ${meilenstein.id}`)
+}
+
+/**
+ * Schätzung einer Zeile im Detail: Workstream min–max, sonst der Rest aus der Spur, sonst „fehlt“.
+ * @param zeile - gewählte Zeile
+ * @returns HTML
+ */
+function detailSchaetzung(zeile) {
+  if (zeile.art !== 'meilenstein' && zeile.art !== 'feature') return zeile.schaetzung === null ? tHtml('roadmap.detail.schaetzungFehlt') : tHtml('roadmap.info.schaetzung', { spanne: spanne(zeile.schaetzung.min, zeile.schaetzung.max) })
+  const label = zeile.spur.label
+  if (label === null) return '–'
+  return escapeHtml(label.dauer === null ? spurText(label) : [t('roadmap.info.rest', { spanne: spanne(label.dauer.min, label.dauer.max) }), ...(label.ohneSchaetzung > 0 ? [t('roadmap.spur.ohne', { anzahl: label.ohneSchaetzung, zahl: formatiereZahl(label.ohneSchaetzung) })] : [])].join(' · '))
+}
+
+/**
+ * Hinweise einer Zeile (nichts verstecken): Formfehler der Tabelle, Befunde der Planung, „nach unbekannt“, ohne Planlage.
+ * @param zeile - gewählte Zeile
+ * @returns Liste von HTML-Texten
+ */
+function detailHinweise(zeile) {
+  const hinweise = []
+  if (zeile.hinweise.includes('fehlerhaft')) hinweise.push(tHtml('roadmap.detail.fehlerhaft'))
+  for (const befund of zeile.befunde ?? []) hinweise.push(escapeHtml(String(befund)))
+  if (zeile.spur.label?.dauer && zeile.spur.label.fruehestensAb !== null) hinweise.push(tHtml('roadmap.detail.nachUnbekannt'))
+  if (zeile.hinweise.includes('ohne_lage')) hinweise.push(tHtml('roadmap.detail.ohneLage'))
+  if (zeile.hinweise.includes('abweichung')) hinweise.push(tHtml('roadmap.detail.abweichung'))
+  return hinweise
+}
+
+/**
+ * Das Detailpanel der gewählten Zeile, lesend, mit „Frag Jarvis dazu“ und „Anpassen“ („kommt“, B5b-2b).
+ * @param gewaehlt - gewählte Zeile oder null
+ * @param lage - aus ganttLage
+ * @returns HTML
+ */
+function detailPanel(gewaehlt, lage) {
+  if (gewaehlt === null) return `<aside class="rm-detail" aria-label="${tHtml('roadmap.detail.titel')}"><p class="subtle">${tHtml('roadmap.detail.nichtsSichtbar')}</p></aside>`
   const istFeature = gewaehlt.art === 'feature'
-  const eintrag = istFeature ? gewaehlt.feature : gewaehlt.meilenstein
   const felder = [
-    [t('roadmap.detail.id'), `<code>${escapeHtml(eintrag.id)}</code>`],
-    [t('roadmap.detail.teilVon'), istFeature ? escapeHtml(`${gewaehlt.meilenstein.id} · ${titelVon(gewaehlt.meilenstein)}`) : tHtml('roadmap.detail.roadmap')],
+    [t('roadmap.detail.id'), `<code>${escapeHtml(gewaehlt.id)}</code>`],
+    [t('roadmap.detail.teilVon'), teilVon(gewaehlt, lage)],
   ]
-  if (istFeature) felder.push([t('roadmap.detail.ziel'), featureInhalt(eintrag)])
-  else {
-    const { abgenommen, gesamt } = zaehleMeilenstein(eintrag)
+  if (istFeature) felder.push([t('roadmap.detail.ziel'), featureInhalt(gewaehlt)])
+  else if (gewaehlt.art === 'meilenstein') {
+    const { abgenommen, gesamt } = gewaehlt.zaehler
     felder.push([t('roadmap.detail.inhalt'), tHtml('roadmap.detail.meilensteinInhalt', { anzahl: gesamt, abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) })])
-  }
-  felder.push([t('roadmap.detail.schaetzung'), kommtBadge()])
-  const link = istFeature && statusKategorie(eintrag.status) !== 'ohne_akte' ? `<a class="text-link" href="#/workboard/${encodeURIComponent(eintrag.id)}">${tHtml('roadmap.detail.oeffnen')} <span aria-hidden="true">→</span></a>` : ''
+  } else felder.push([t('roadmap.detail.inhalt'), escapeHtml(gewaehlt.notiz.trim() === '' ? gewaehlt.titel : `${gewaehlt.titel} — ${gewaehlt.notiz}`)])
+  felder.push([t('roadmap.detail.schaetzung'), detailSchaetzung(gewaehlt)])
+  felder.push([t('roadmap.detail.ist'), gewaehlt.istAt === null ? '–' : tHtml('roadmap.detail.istWert', { wert: zahl(gewaehlt.istAt) })])
+  felder.push([t('roadmap.detail.danach'), gewaehlt.danach === null ? '–' : escapeHtml(zeilenName(gewaehlt.danach))])
+  const hinweise = detailHinweise(gewaehlt)
+  if (hinweise.length > 0) felder.push([t('roadmap.detail.hinweise'), `<ul class="rm-detail-hinweise">${hinweise.map((h) => `<li>${h}</li>`).join('')}</ul>`])
+  const featureId = gewaehlt.bezug.feature
+  const featureZeile = featureId === null ? null : lage.jeSchluessel.get(zeilenSchluessel('f', gewaehlt.bezug.meilenstein, featureId))
+  const link = featureZeile !== null && featureZeile !== undefined && featureZeile.kategorie !== 'ohne_akte' ? `<a class="text-link" href="#/workboard/${encodeURIComponent(featureId)}">${tHtml(istFeature ? 'roadmap.detail.oeffnen' : 'roadmap.detail.zumFeature')} <span aria-hidden="true">→</span></a>` : ''
   const chips = ['reihenfolge', 'blockiert', 'schaetzung'].map((f) => `<button type="button" class="rm-frage-chip" data-roadmap-jarvis-frage="${f}">${tHtml(`roadmap.jarvis.frage.${f}`)}</button>`).join('')
   return `<aside class="rm-detail" aria-labelledby="rm-detail-titel">
       <div class="rm-detail-kopf">
-        ${typChip(istFeature ? 'feature' : 'meilenstein')}
-        <h3 id="rm-detail-titel">${escapeHtml(titelVon(eintrag))}</h3>
-        ${statusText(eintrag.status)}
+        ${typChip(gewaehlt.art)}
+        <h3 id="rm-detail-titel">${escapeHtml(gewaehlt.titel)}</h3>
+        ${statusText(gewaehlt.status)}
       </div>
       <dl class="rm-detail-felder">${felder.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${v}</dd>`).join('')}</dl>
       ${link}
@@ -335,46 +465,70 @@ function detailPanel(gewaehlt) {
 }
 
 /**
- * Gesamte Roadmap: Werkzeugzeile, Baum, Zeile der ausgeblendeten Meilensteine, Detailpanel.
+ * Legende: Ebenen-Quadrate und Formen (Design 03-roadmap).
+ * @returns HTML
+ */
+function legende() {
+  const ebenen = ['meilenstein', 'feature', 'workstream', 'fixpaket', 'design'].map((e) => `<span class="rm-leg" data-farbe="${e}"><span class="rm-leg-ebene" aria-hidden="true"></span>${tHtml(`typ.${e}`)}</span>`)
+  const formen = ['laeuft', 'ist', 'geplant', 'max', 'ohne'].map((f) => `<span class="rm-leg"><span class="rm-leg-form rm-leg-${f}" aria-hidden="true"></span>${tHtml(`roadmap.legende.${f}`)}</span>`)
+  return `${ebenen.join('')}<span class="rm-legende-trenner" aria-hidden="true"></span>${formen.join('')}`
+}
+
+/**
+ * Gesamte Roadmap: Werkzeugleiste, Gantt (Kopf mit Achse, Heute-Linie, Zeilen, Trennzeile), Fußnote, Detailpanel.
  * @returns HTML
  */
 function gesamteRoadmap() {
   if (roadmap.meilensteine.length === 0) return `<p class="subtle">${tHtml('roadmap.keineMeilensteine')}</p>`
-  const { aktueller, offen, abgeschlossen } = reihenfolge()
-  const gewaehlt = gewaehlterEintrag()
-  if (gewaehlt?.art === 'feature') stelleAkteSicher(gewaehlt.feature)
-  const sichtbar = [...offen, ...(abgeschlosseneSichtbar ? abgeschlossen : [])]
-  const alleAuf = sichtbar.length > 0 && sichtbar.every((m) => istAufgeklappt(m, aktueller))
-  const zusammen = abgeschlossen.map(zaehleMeilenstein).reduce((s, z) => ({ abgenommen: s.abgenommen + z.abgenommen, gesamt: s.gesamt + z.gesamt }), { abgenommen: 0, gesamt: 0 })
-  const ausgeblendet =
-    abgeschlossen.length === 0
+  const lage = ganttLage()
+  const gewaehlt = gewaehlteZeile(roadmap, lage, auswahl)
+  if (gewaehlt?.art === 'feature') stelleAkteSicher(gewaehlt)
+  const aufklappbar = aufklappbareSchluessel(lage, abgeschlosseneSichtbar)
+  const offenSet = aufgeklappt ?? lage.standardOffen
+  const alleAuf = aufklappbar.length > 0 && aufklappbar.every((s) => offenSet.has(s))
+  const { trenner, achse } = lage
+  const trennzeile =
+    trenner === null
       ? ''
       : `<li class="rm-ausgeblendet">
         <span aria-hidden="true">✓</span>
-        <span>${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.abgeschlossenSichtbar' : 'roadmap.baum.abgeschlossenAus', { anzahl: abgeschlossen.length, zahl: formatiereZahl(abgeschlossen.length), abgenommen: formatiereZahl(zusammen.abgenommen), gesamt: formatiereZahl(zusammen.gesamt) })}</span>
+        <span>${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.abgeschlossenSichtbar' : 'roadmap.baum.abgeschlossenAus', { anzahl: trenner.anzahl, zahl: formatiereZahl(trenner.anzahl), abgenommen: formatiereZahl(trenner.abgenommen), gesamt: formatiereZahl(trenner.gesamt) })}</span>
         <button type="button" class="button" data-roadmap-abgeschlossene aria-pressed="${abgeschlosseneSichtbar}">${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.ausblenden' : 'roadmap.baum.einblenden')}</button>
       </li>`
-  const legende = `${typChip('meilenstein')}${typChip('feature')}<span class="rm-legende-trenner" aria-hidden="true"></span>${STATUS_KATEGORIEN.slice(0, 5)
-    .map((k) => `<span>${symbol(k)} ${tHtml(`roadmap.status.${k}`)}</span>`)
-    .join('')}`
+  const einblenden =
+    trenner === null
+      ? ''
+      : `<button type="button" class="button" data-roadmap-abgeschlossene-kopf aria-pressed="${abgeschlosseneSichtbar}">${tHtml(abgeschlosseneSichtbar ? 'roadmap.baum.abgeschlosseneAus' : 'roadmap.baum.abgeschlosseneEin', { zahl: formatiereZahl(trenner.anzahl) })}</button>`
+  const zoom = ['tage', 'wochen'].map((z) => `<button type="button" class="rm-zoom" data-roadmap-zoom="${z}" aria-pressed="${massstab === z}">${tHtml(`roadmap.massstab.${z}`)}</button>`).join('')
+  const spalten = achse.spalten.map((s) => `<span class="rm-achse-spalte" style="left: ${s.links}px">${tHtml(achse.massstab === 'wochen' ? 'roadmap.achse.woche' : 'roadmap.achse.at', { n: formatiereZahl(s.nummer) })}</span>`).join('')
+  const zeilen = (liste) => liste.filter((z) => z.sichtbar).map((z) => ganttZeile(z, gewaehlt)).join('')
   return `<div class="rm-werkzeuge">
-      <div class="rm-legende" role="group" aria-label="${tHtml('roadmap.legende')}">${legende}</div>
+      <div class="rm-legende" role="group" aria-label="${tHtml('roadmap.legende')}">${legende()}</div>
       <div class="rm-knoepfe">
-        <div class="rm-massstab" role="group" aria-label="${tHtml('roadmap.massstab')}">${kommtKnopf(t('roadmap.massstab.tage'))}${kommtKnopf(t('roadmap.massstab.wochen'))}</div>
-        <button type="button" class="button" data-roadmap-alles aria-pressed="${alleAuf}">${tHtml(alleAuf ? 'roadmap.baum.allesZu' : 'roadmap.baum.allesAuf')}</button>
+        <div class="rm-massstab" role="group" aria-label="${tHtml('roadmap.massstab')}">${zoom}</div>
+        <button type="button" class="button" data-roadmap-alles aria-pressed="${alleAuf}"${aufklappbar.length === 0 ? ' disabled' : ''}>${tHtml(alleAuf ? 'roadmap.baum.allesZu' : 'roadmap.baum.allesAuf')}</button>
+        ${einblenden}
       </div>
     </div>
     <div class="rm-raster">
-      <div class="rm-baum-rahmen">
-        <div class="rm-kopfzeile" aria-hidden="true"><span>${tHtml('roadmap.spalte.eintrag')}</span><span>${tHtml('roadmap.spalte.status')}</span><span class="rm-achse-kopf">${tHtml('roadmap.zeitachse')} ${kommtBadge()}</span></div>
-        <ul class="rm-baum" aria-label="${tHtml('roadmap.baum.titel')}">
-          ${offen.map((m) => meilensteinGruppe(m, aktueller, gewaehlt)).join('')}
-          ${ausgeblendet}
-          ${abgeschlosseneSichtbar ? abgeschlossen.map((m) => meilensteinGruppe(m, aktueller, gewaehlt)).join('') : ''}
-        </ul>
+      <div class="rm-gantt-rahmen">
+        <div class="rm-gantt" role="region" aria-label="${tHtml('roadmap.gantt.titel')}" tabindex="0" data-massstab="${massstab}">
+          <div class="rm-gantt-inhalt" style="--rm-spur-breite: ${achse.breite}px; --rm-ist-breite: ${IST_BREITE}px">
+            <div class="rm-gantt-kopf" aria-hidden="true">
+              <div class="rm-links">${tHtml('roadmap.spalte.eintrag')}</div>
+              <div class="rm-spur"><span class="rm-ist-kopf">${tHtml('roadmap.achse.ist')}</span>${spalten}</div>
+            </div>
+            <div class="rm-heute" aria-hidden="true"><span>${tHtml('roadmap.achse.heute')}</span></div>
+            <ul class="rm-zeilen" aria-label="${tHtml('roadmap.baum.titel')}">
+              ${zeilen(lage.oben)}
+              ${trennzeile}
+              ${abgeschlosseneSichtbar ? zeilen(lage.unten) : ''}
+            </ul>
+          </div>
+        </div>
         <p class="roadmap-fussnote">${tHtml('roadmap.zeitplanung.hinweis')}</p>
       </div>
-      ${detailPanel(gewaehlt)}
+      ${detailPanel(gewaehlt, lage)}
     </div>`
 }
 
@@ -536,7 +690,12 @@ function render() {
   const aktiv = document.activeElement
   // Element fehlt außerhalb des Browsers (node:test mit Schein-DOM) — dort gibt es keinen Fokus.
   const fokusSelektor = typeof Element !== 'undefined' && aktiv instanceof Element && container.contains(aktiv) ? fokusSchluessel(aktiv) : null
+  // Querscroll des Gantt überlebt das Neuschreiben (Prüfpass cr 1/qa 1); nach einem Zoom-Wechsel passt er ohnehin nicht mehr.
+  const gantt = container.querySelector('.rm-gantt')
+  const quer = gantt !== null && gantt.getAttribute('data-massstab') === massstab ? gantt.scrollLeft : 0
   container.innerHTML = `${seitenkopf()}${hauptteil()}`
+  const neuerGantt = container.querySelector('.rm-gantt')
+  if (neuerGantt !== null && quer > 0) neuerGantt.scrollLeft = quer
   const neueEingabe = document.getElementById('roadmap-jarvis-eingabe')
   if (neueEingabe !== null) neueEingabe.value = text
   if (fokusSelektor !== null) container.querySelector(fokusSelektor)?.focus()
@@ -549,11 +708,10 @@ function render() {
  */
 function fokusSchluessel(element) {
   if (element.id === 'roadmap-jarvis-eingabe') return '#roadmap-jarvis-eingabe'
-  for (const attribut of ['data-roadmap-klappe', 'data-roadmap-stand', 'data-roadmap-jarvis-frage']) {
+  for (const attribut of ['data-roadmap-klappe', 'data-roadmap-waehlen', 'data-roadmap-zoom', 'data-roadmap-stand', 'data-roadmap-jarvis-frage']) {
     if (element.hasAttribute(attribut)) return `[${attribut}="${CSS.escape(element.getAttribute(attribut))}"]`
   }
-  if (element.hasAttribute('data-roadmap-waehlen')) return `[data-roadmap-waehlen="${CSS.escape(element.getAttribute('data-roadmap-waehlen'))}"][data-id="${CSS.escape(element.getAttribute('data-id'))}"][data-meilenstein="${CSS.escape(element.getAttribute('data-meilenstein'))}"]`
-  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf']) {
+  for (const attribut of ['data-roadmap-alles', 'data-roadmap-abgeschlossene', 'data-roadmap-abgeschlossene-kopf', 'data-roadmap-jarvis-fragen', 'data-roadmap-jarvis-kopf']) {
     if (element.hasAttribute(attribut)) return `[${attribut}]`
   }
   return null
@@ -610,10 +768,9 @@ async function ladeRoadmap(optionen = {}) {
  * @returns Entwurf für die Chat-Eingabe
  */
 function jarvisEntwurf(frage) {
-  const gewaehlt = roadmapZustand(roadmap) === 'ok' ? gewaehlterEintrag() : null
+  const gewaehlt = roadmapZustand(roadmap) === 'ok' && roadmap.meilensteine.length > 0 ? gewaehlteZeile(roadmap, ganttLage(), auswahl) : null
   if (gewaehlt === null) return frage
-  const eintrag = gewaehlt.art === 'feature' ? gewaehlt.feature : gewaehlt.meilenstein
-  return t('roadmap.jarvis.entwurf', { frage, typ: t(`typ.${gewaehlt.art}`), id: eintrag.id, titel: titelVon(eintrag) }).trim()
+  return t('roadmap.jarvis.entwurf', { frage, typ: t(`typ.${gewaehlt.art}`), id: gewaehlt.id, titel: gewaehlt.titel }).trim()
 }
 
 /**
@@ -645,29 +802,34 @@ function beiKlick(ereignis) {
   }
   const klappe = ziel.closest('[data-roadmap-klappe]')
   if (klappe !== null && roadmapZustand(roadmap) === 'ok') {
-    const { aktueller } = reihenfolge()
-    if (aufgeklappt === null) aufgeklappt = new Set(aktueller === null ? [] : [aktueller.id])
-    const id = klappe.getAttribute('data-roadmap-klappe')
-    if (aufgeklappt.has(id)) aufgeklappt.delete(id)
-    else aufgeklappt.add(id)
+    if (aufgeklappt === null) aufgeklappt = new Set(ganttLage().standardOffen)
+    const schluessel = klappe.getAttribute('data-roadmap-klappe')
+    if (aufgeklappt.has(schluessel)) aufgeklappt.delete(schluessel)
+    else aufgeklappt.add(schluessel)
     render()
     return
   }
   const waehlen = ziel.closest('[data-roadmap-waehlen]')
   if (waehlen !== null) {
-    auswahl = { art: waehlen.getAttribute('data-roadmap-waehlen'), id: waehlen.getAttribute('data-id'), meilensteinId: waehlen.getAttribute('data-meilenstein') }
+    auswahl = waehlen.getAttribute('data-roadmap-waehlen')
+    render()
+    return
+  }
+  const zoom = ziel.closest('[data-roadmap-zoom]')
+  if (zoom !== null) {
+    massstab = zoom.getAttribute('data-roadmap-zoom') === 'wochen' ? 'wochen' : 'tage'
     render()
     return
   }
   if (ziel.closest('[data-roadmap-alles]') !== null && roadmapZustand(roadmap) === 'ok') {
-    const { aktueller, offen, abgeschlossen } = reihenfolge()
-    const sichtbar = [...offen, ...(abgeschlosseneSichtbar ? abgeschlossen : [])]
-    const alleAuf = sichtbar.every((m) => istAufgeklappt(m, aktueller))
-    aufgeklappt = new Set(alleAuf ? [] : sichtbar.map((m) => m.id))
+    const lage = ganttLage()
+    const aufklappbar = aufklappbareSchluessel(lage, abgeschlosseneSichtbar)
+    const offen = aufgeklappt ?? lage.standardOffen
+    aufgeklappt = new Set(aufklappbar.every((s) => offen.has(s)) ? [] : aufklappbar)
     render()
     return
   }
-  if (ziel.closest('[data-roadmap-abgeschlossene]') !== null) {
+  if (ziel.closest('[data-roadmap-abgeschlossene], [data-roadmap-abgeschlossene-kopf]') !== null) {
     abgeschlosseneSichtbar = !abgeschlosseneSichtbar
     render()
     return
@@ -697,6 +859,7 @@ export function initRoadmapView() {
     auswahl = null
     aufgeklappt = null
     abgeschlosseneSichtbar = false
+    massstab = 'tage'
     standFilter = 'alle'
     void ladeRoadmap()
   })

@@ -1,0 +1,1325 @@
+[
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "01-start",
+    "bild": "de-1440-dunkel-01-start.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "02-wochen",
+    "bild": "de-1440-dunkel-02-wochen.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 790,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Wochen"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "03-alles-auf",
+    "bild": "de-1440-dunkel-03-alles-auf.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "04-abgeschlossene",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 7,
+    "offen": 0,
+    "gewaehlt": "M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detail": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 2,
+    "balken": 1
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "05-workstream",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "06-quer",
+    "bild": "de-1440-dunkel-06-quer.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 284
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "07-quer-klick",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 284
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F32 · Verbrauch & Kontingent",
+    "detail": "Verbrauch & Kontingent",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "01-start",
+    "bild": "de-1440-hell-01-start.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "02-wochen",
+    "bild": "de-1440-hell-02-wochen.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 790,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Wochen"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "03-alles-auf",
+    "bild": "de-1440-hell-03-alles-auf.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "04-abgeschlossene",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 7,
+    "offen": 0,
+    "gewaehlt": "M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detail": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 2,
+    "balken": 1
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "05-workstream",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "06-quer",
+    "bild": "de-1440-hell-06-quer.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 284
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "07-quer-klick",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 284
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F32 · Verbrauch & Kontingent",
+    "detail": "Verbrauch & Kontingent",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "01-start",
+    "bild": "de-390-dunkel-01-start.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "02-wochen",
+    "bild": "de-390-dunkel-02-wochen.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 708,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Wochen"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "03-alles-auf",
+    "bild": "de-390-dunkel-03-alles-auf.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "04-abgeschlossene",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 7,
+    "offen": 0,
+    "gewaehlt": "M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detail": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 2,
+    "balken": 1
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "05-workstream",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "06-quer",
+    "bild": "de-390-dunkel-06-quer.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "07-quer-klick",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F32 · Verbrauch & Kontingent",
+    "detail": "Verbrauch & Kontingent",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "01-start",
+    "bild": "de-390-hell-01-start.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "02-wochen",
+    "bild": "de-390-hell-02-wochen.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 708,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Wochen"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "03-alles-auf",
+    "bild": "de-390-hell-03-alles-auf.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "04-abgeschlossene",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 7,
+    "offen": 0,
+    "gewaehlt": "M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detail": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 2,
+    "balken": 1
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "05-workstream",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "06-quer",
+    "bild": "de-390-hell-06-quer.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "07-quer-klick",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F32 · Verbrauch & Kontingent",
+    "detail": "Verbrauch & Kontingent",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-1440-dunkel",
+    "schritt": "01-start",
+    "bild": "tr-1440-dunkel-01-start.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "tr-1440-dunkel",
+    "schritt": "02-wochen",
+    "bild": "tr-1440-dunkel-02-wochen.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 790,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Haftalar"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "tr-1440-dunkel",
+    "schritt": "03-alles-auf",
+    "bild": "tr-1440-dunkel-03-alles-auf.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-1440-dunkel",
+    "schritt": "04-abgeschlossene",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 7,
+    "offen": 0,
+    "gewaehlt": "M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detail": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 2,
+    "balken": 1
+  },
+  {
+    "lage": "tr-1440-dunkel",
+    "schritt": "05-workstream",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-1440-dunkel",
+    "schritt": "06-quer",
+    "bild": "tr-1440-dunkel-06-quer.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 284
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-1440-dunkel",
+    "schritt": "07-quer-klick",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 770,
+      "inhalt": 1054,
+      "quer": 284
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F32 · Verbrauch & Kontingent",
+    "detail": "Verbrauch & Kontingent",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-390-hell",
+    "schritt": "01-start",
+    "bild": "tr-390-hell-01-start.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "tr-390-hell",
+    "schritt": "02-wochen",
+    "bild": "tr-390-hell-02-wochen.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 708,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Haftalar"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "tr-390-hell",
+    "schritt": "03-alles-auf",
+    "bild": "tr-390-hell-03-alles-auf.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-390-hell",
+    "schritt": "04-abgeschlossene",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 7,
+    "offen": 0,
+    "gewaehlt": "M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detail": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 2,
+    "balken": 1
+  },
+  {
+    "lage": "tr-390-hell",
+    "schritt": "05-workstream",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-390-hell",
+    "schritt": "06-quer",
+    "bild": "tr-390-hell-06-quer.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "tr-390-hell",
+    "schritt": "07-quer-klick",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 310,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Günler"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F32 · Verbrauch & Kontingent",
+    "detail": "Verbrauch & Kontingent",
+    "kennzahlen": [
+      "5 / 7 tamamlandı",
+      "39 / 48 kabul edildi",
+      "henüz hesaplanamıyor",
+      "plandan %41 fazla"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "01-start",
+    "bild": "de-720-200prozent-01-start.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 430,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "02-wochen",
+    "bild": "de-720-200prozent-02-wochen.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 430,
+      "inhalt": 708,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Wochen"
+    ],
+    "zeilen": 15,
+    "offen": 2,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 3,
+    "balken": 11
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "03-alles-auf",
+    "bild": "de-720-200prozent-03-alles-auf.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 430,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F45 · Fixpaket Arbeitsfähigkeit",
+    "detail": "Fixpaket Arbeitsfähigkeit",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "04-abgeschlossene",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 430,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 7,
+    "offen": 0,
+    "gewaehlt": "M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detail": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 2,
+    "balken": 1
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "05-workstream",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 430,
+      "inhalt": 972,
+      "quer": 0
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "06-quer",
+    "bild": "de-720-200prozent-06-quer.webp",
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 430,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "Chat zuverlässig und schnell",
+    "detail": "Chat zuverlässig und schnell",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "07-quer-klick",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "gantt": {
+      "sicht": 430,
+      "inhalt": 972,
+      "quer": 400
+    },
+    "linkeSpalteX": 0,
+    "zoom": [
+      "Tage"
+    ],
+    "zeilen": 75,
+    "offen": 5,
+    "gewaehlt": "F32 · Verbrauch & Kontingent",
+    "detail": "Verbrauch & Kontingent",
+    "kennzahlen": [
+      "5 / 7 abgeschlossen",
+      "39 / 48 abgenommen",
+      "noch nicht berechenbar",
+      "41 % über Plan"
+    ],
+    "marken": 5,
+    "balken": 11
+  }
+]

@@ -3835,10 +3835,11 @@ th {
 }
 
 /* ─────────────── Roadmap (F46 D1, Design 03-roadmap--Main; vorher F44 WS-2a) ───────────────
-   views/roadmap.js: Kennzahlen, Gesamte Roadmap als Baum Meilenstein → Feature mit Detailpanel,
-   Entwicklungsstand mit Filter, Noch nicht eingeplant. Keine Balken: die Zeitachse ist „kommt“
-   (Fixpaket B5); die Spalte zeigt nur das gedämpfte Raster. Farben nur über Tokens, Ebenen über
-   --ebene-* (D0). Umbrüche als Container-Query auf die Breite der Seite. */
+   views/roadmap.js: Kennzahlen, Gesamte Roadmap als Gantt Meilenstein → Feature → Workstream mit
+   Detailpanel (F45 B5b-2a), Entwicklungsstand mit Filter, Noch nicht eingeplant. Farben nur über
+   Tokens, Ebenen über --ebene-* (D0), je Zeile als --rm-farbe/--rm-blass über data-farbe. Positionen
+   der Balken kommen als px aus roadmap-anzeige.js (Inline left/width), nie Farben. Umbrüche als
+   Container-Query auf die Breite der Seite. */
 #view-roadmap {
   container: roadmap / inline-size;
 }
@@ -3957,7 +3958,102 @@ th {
   gap: 14px;
 }
 
-#view-roadmap .rm-baum-rahmen {
+/* Ebenenfarbe je Zeile bzw. Legendeneintrag (Farbe = Ebene). */
+#view-roadmap [data-farbe='meilenstein'] {
+  --rm-farbe: var(--ebene-meilenstein);
+  --rm-blass: var(--ebene-meilenstein-blass);
+}
+
+#view-roadmap [data-farbe='feature'] {
+  --rm-farbe: var(--ebene-feature);
+  --rm-blass: var(--ebene-feature-blass);
+}
+
+#view-roadmap [data-farbe='workstream'] {
+  --rm-farbe: var(--ebene-workstream);
+  --rm-blass: var(--ebene-workstream-blass);
+}
+
+#view-roadmap [data-farbe='fixpaket'] {
+  --rm-farbe: var(--ebene-fixpaket);
+  --rm-blass: var(--ebene-fixpaket-blass);
+}
+
+#view-roadmap [data-farbe='design'] {
+  --rm-farbe: var(--ebene-design);
+  --rm-blass: var(--ebene-design-blass);
+}
+
+#view-roadmap .rm-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#view-roadmap .rm-leg-ebene,
+#view-roadmap .rm-leg-form {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 3px;
+}
+
+#view-roadmap .rm-leg-ebene {
+  background: var(--rm-farbe);
+}
+
+#view-roadmap .rm-leg-laeuft {
+  background: var(--muted);
+}
+
+#view-roadmap .rm-leg-ist {
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+
+#view-roadmap .rm-leg-geplant {
+  border: 1px solid var(--muted);
+}
+
+#view-roadmap .rm-leg-max {
+  border: 1px dashed var(--muted);
+  border-left: 0;
+  border-radius: 0;
+}
+
+#view-roadmap .rm-leg-ohne {
+  width: 10px;
+  height: 10px;
+  border: 1px dotted var(--muted);
+  border-radius: 50%;
+}
+
+/* Zoom Tage/Wochen als Segmentschalter. */
+#view-roadmap .rm-massstab {
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#view-roadmap .rm-zoom {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+#view-roadmap .rm-zoom[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+#view-roadmap .rm-gantt-rahmen {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -3965,19 +4061,27 @@ th {
   overflow: hidden;
 }
 
-/* Spalten: Klappe · Eintrag · Status · Zeitachse („kommt“). Feature-Zeilen nutzen dieselbe Spur,
-   der Einzug steht in der ersten Spalte. */
-#view-roadmap .rm-kopfzeile,
-#view-roadmap .rm-zeile {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) minmax(130px, auto) minmax(90px, 0.5fr);
-  align-items: center;
-  gap: 0 10px;
+/* Nur der Gantt scrollt quer (Phone: keine Seiten-Querscrollleiste); die linke Spalte steht (sticky). */
+#view-roadmap .rm-gantt {
+  --rm-links: 254px;
+  container: rmgantt / inline-size;
+  overflow-x: auto;
 }
 
-#view-roadmap .rm-kopfzeile {
-  min-height: 40px;
-  padding-right: 10px;
+#view-roadmap .rm-gantt-inhalt {
+  position: relative;
+  width: calc(var(--rm-links) + var(--rm-spur-breite));
+  min-width: 100%;
+}
+
+#view-roadmap .rm-gantt-kopf,
+#view-roadmap .rm-zeile {
+  display: grid;
+  grid-template-columns: var(--rm-links) var(--rm-spur-breite);
+}
+
+#view-roadmap .rm-gantt-kopf {
+  height: 40px;
   border-bottom: 1px solid var(--line);
   font-size: 10.5px;
   letter-spacing: 0.12em;
@@ -3985,53 +4089,124 @@ th {
   color: var(--muted);
 }
 
-#view-roadmap .rm-kopfzeile > span:first-child {
-  grid-column: 1 / 3;
+#view-roadmap .rm-links {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 10px 0 calc(4px + var(--rm-einzug, 0) * 14px);
+  border-right: 1px solid var(--track);
+  background: var(--bg);
+}
+
+#view-roadmap .rm-gantt-kopf .rm-links {
   padding-left: 14px;
 }
 
-#view-roadmap .rm-achse-kopf {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  letter-spacing: 0;
-  text-transform: none;
+#view-roadmap .rm-spur {
+  position: relative;
+  min-width: 0;
+  background-image: repeating-linear-gradient(to right, var(--track) 0 1px, transparent 1px 44px);
+  background-position: var(--rm-ist-breite) 0;
 }
 
-#view-roadmap .rm-baum,
-#view-roadmap .rm-features {
+/* Ist-Zone links der Heute-Linie: eigene Fläche, keine Skala (Plan v2 Nr. 2). */
+#view-roadmap .rm-spur::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--rm-ist-breite);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 999px var(--soft);
+}
+
+#view-roadmap .rm-ist-kopf,
+#view-roadmap .rm-achse-spalte {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#view-roadmap .rm-ist-kopf {
+  left: 0;
+  width: var(--rm-ist-breite);
+  font-size: 9.5px;
+  line-height: 1.2;
+}
+
+#view-roadmap .rm-achse-spalte {
+  width: 44px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Heute-Linie: neutral hell, nicht gold (Sollvorgabe 2) — aus --ink abgeleitet, folgt dem Theme. */
+#view-roadmap .rm-heute {
+  position: absolute;
+  top: 40px;
+  bottom: 0;
+  left: calc(var(--rm-links) + var(--rm-ist-breite) - 1px);
+  z-index: 1;
+  width: 2px;
+  background: color-mix(in srgb, var(--ink) 70%, transparent);
+  pointer-events: none;
+}
+
+#view-roadmap .rm-heute span {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+#view-roadmap .rm-zeilen {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 #view-roadmap .rm-zeile {
-  min-height: 52px;
-  padding-right: 10px;
+  min-height: 48px;
   border-top: 1px solid var(--track);
 }
 
-#view-roadmap .rm-baum > li:first-child > .rm-zeile {
+#view-roadmap .rm-zeilen > .rm-zeile:first-child {
   border-top: 0;
 }
 
-#view-roadmap .rm-zeile.gewaehlt {
-  background: var(--note-amber-bg);
+#view-roadmap .rm-zeile.gewaehlt,
+#view-roadmap .rm-zeile.gewaehlt .rm-links {
+  background: linear-gradient(var(--note-amber-bg), var(--note-amber-bg)), var(--bg);
+}
+
+#view-roadmap .rm-zeile.gewaehlt .rm-links {
   box-shadow: inset 3px 0 0 var(--amber);
 }
 
-#view-roadmap .rm-gruppe.aktuell > .rm-meilenstein {
-  background: var(--note-bg);
+#view-roadmap .rm-zeile.aktuell:not(.gewaehlt) .rm-links {
+  background: linear-gradient(var(--note-bg), var(--note-bg)), var(--bg);
 }
 
-#view-roadmap .rm-gruppe.aktuell > .rm-meilenstein.gewaehlt {
-  background: var(--note-amber-bg);
+#view-roadmap .rm-klappe,
+#view-roadmap .rm-klappe-platz {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
 }
 
 #view-roadmap .rm-klappe {
-  width: 28px;
-  height: 28px;
-  margin-left: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4059,6 +4234,7 @@ th {
 }
 
 #view-roadmap .rm-waehlen {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -4066,26 +4242,61 @@ th {
   gap: 2px;
   min-width: 0;
   min-height: 44px;
-  padding: 4px 0;
+  padding: 2px 0;
   border: 0;
   background: none;
   color: inherit;
   font: inherit;
   text-align: left;
+}
+
+#view-roadmap button.rm-waehlen {
   cursor: pointer;
 }
 
-#view-roadmap .rm-feature .rm-waehlen {
-  padding-left: 16px;
-}
-
-#view-roadmap .rm-waehlen:hover .rm-name {
+#view-roadmap button.rm-waehlen:hover .rm-name-text {
   color: var(--mint);
 }
 
-#view-roadmap .rm-name-text {
-  flex: 1 1 0;
+#view-roadmap .rm-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
   min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+#view-roadmap .rm-ebene-0 .rm-name {
+  font: 14.5px var(--serif);
+}
+
+#view-roadmap .rm-ebene-1 .rm-name {
+  font-size: 13px;
+}
+
+#view-roadmap .rm-name-text,
+#view-roadmap .rm-waehlen small {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#view-roadmap .rm-waehlen small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-quadrat {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--rm-farbe);
 }
 
 #view-roadmap .rm-detail-ziel {
@@ -4095,71 +4306,90 @@ th {
   overflow: hidden;
 }
 
-#view-roadmap .rm-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  font-size: 13px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-#view-roadmap .rm-name strong {
-  flex: 1 1 0;
-  min-width: 0;
-  font: 15px var(--serif);
-  font-weight: 400;
-}
-
-#view-roadmap .rm-name .eyebrow {
-  flex-basis: 100%;
-  color: var(--mint);
-}
-
-#view-roadmap .rm-waehlen small {
-  font-size: 10.5px;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
-#view-roadmap .rm-waehlen code {
-  font-size: 10.5px;
-}
-
-#view-roadmap .rm-punkt {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-radius: 2px;
-}
-
-#view-roadmap .rm-punkt-meilenstein {
-  background: var(--ebene-meilenstein);
-}
-
-#view-roadmap .rm-punkt-feature {
-  background: var(--ebene-feature);
-}
-
 #view-roadmap .rm-status {
-  font-size: 12px;
+  flex-shrink: 0;
+  font-size: 11px;
   white-space: nowrap;
 }
 
-/* Zeitachse „kommt“: nur das gedämpfte Raster, keine Balken (Fixpaket B5). */
-#view-roadmap .rm-achse {
-  align-self: stretch;
-  background-image: repeating-linear-gradient(to right, var(--track) 0 1px, transparent 1px 44px);
-  opacity: 0.6;
+/* Formen der Zeitspur: gefüllt = läuft, blass = Ist, Umriss = geplant, gestrichelt = bis Max.,
+   punktierter Kreis = ohne Schätzung (Sollvorgabe 3). */
+#view-roadmap .rm-spur > span {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
 }
 
-#view-roadmap .rm-leer {
-  padding: 12px 14px 12px 48px;
-  border-top: 1px solid var(--track);
-  font-size: 12px;
+#view-roadmap .rm-ist-band,
+#view-roadmap .rm-balken,
+#view-roadmap .rm-max {
+  height: 8px;
+  margin-top: -4px;
+  box-sizing: border-box;
+  border-radius: 4px;
+}
+
+#view-roadmap .rm-ebene-0 .rm-ist-band,
+#view-roadmap .rm-ebene-0 .rm-balken,
+#view-roadmap .rm-ebene-0 .rm-max {
+  height: 10px;
+  margin-top: -5px;
+}
+
+#view-roadmap .rm-ist-band {
+  left: 8px;
+  width: calc(var(--rm-ist-breite) - 16px);
+  background: var(--rm-blass);
+  box-shadow: inset 0 0 0 1px var(--rm-blass);
+}
+
+#view-roadmap .rm-gefuellt {
+  background: var(--rm-farbe);
+}
+
+#view-roadmap .rm-umriss {
+  border: 1.5px solid var(--rm-farbe);
+}
+
+#view-roadmap .rm-max {
+  border: 1px dashed var(--rm-farbe);
+  border-left: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+#view-roadmap .rm-marke {
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  box-sizing: border-box;
+  border: 1.5px dotted var(--rm-farbe);
+  border-radius: 50%;
+}
+
+#view-roadmap .rm-spur-text {
+  transform: translateY(-50%);
+  font-size: 10.5px;
   color: var(--muted);
+  white-space: nowrap;
+}
+
+#view-roadmap .rm-spur-fehlt {
+  color: var(--ink);
+}
+
+/* Weit rechts steht die Beschriftung vor dem Element (baueSpur, seite 'links'): Ankerpunkt = rechte Kante des Texts. */
+#view-roadmap .rm-spur-links {
+  transform: translate(-100%, -50%);
+}
+
+/* Trennzeile im Rollbereich: steht links und ist so breit wie der sichtbare Gantt. */
+#view-roadmap .rm-zeilen > .rm-ausgeblendet {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 100cqw;
+  box-sizing: border-box;
+  background: linear-gradient(var(--soft), var(--soft)), var(--bg);
 }
 
 #view-roadmap .rm-ausgeblendet {
@@ -4492,25 +4722,24 @@ th {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Schmal: die Zeitachse („kommt“) fällt weg, Status rutscht unter den Namen. */
-  #view-roadmap .rm-kopfzeile,
-  #view-roadmap .rm-zeile {
-    grid-template-columns: 32px minmax(0, 1fr);
+  /* Schmal (Phone): linke Spalte schmaler, Status unter den Namen; der Gantt scrollt im eigenen Rahmen. */
+  #view-roadmap .rm-gantt {
+    --rm-links: 172px;
   }
 
-  #view-roadmap .rm-achse,
-  #view-roadmap .rm-kopfzeile > span:nth-child(n + 2) {
-    display: none;
+  #view-roadmap .rm-links {
+    flex-wrap: wrap;
+    gap: 0 4px;
+    padding: 4px 6px 4px calc(2px + var(--rm-einzug, 0) * 8px);
+  }
+
+  #view-roadmap .rm-waehlen {
+    flex-basis: calc(100% - 32px);
   }
 
   #view-roadmap .rm-status {
-    grid-column: 2;
-    padding-bottom: 8px;
-    white-space: normal;
-  }
-
-  #view-roadmap .rm-feature .rm-status {
-    padding-left: 16px;
+    flex-basis: 100%;
+    padding-left: 32px;
   }
 
   #view-roadmap .rm-frage-zeile {

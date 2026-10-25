@@ -1492,3 +1492,29 @@ Export `hinterLetzterZeile` (cr 1), `bearbeiteFeatureAkte` nutzt den Helfer (cr 
 Rundlauf-Test „status vor id“ (cr 6), JSDoc Zeile (cr 7), Steuerzeichen und `/` in Meilenstein-IDs nicht adressierbar (cr 8, qa 3),
 `abweichungen_im_meilenstein` (qa 1), Nebenwirkung „aktueller Meilenstein, zurück nur von Hand“ konkret (qa 2), Antwortvertrag (qa 4),
 unbekannter Status ⇒ 422 statt Abschließen. Rest → F-1189.
+
+## Stand B5b-2a
+
+**Auftrag:** B5b-2a „Roadmap: Gantt lesend“ (Challenger, 25.10.2026; Sollvorgabe Roadmap Stefan 01.10.2026). Verlauf:
+`plan-b5b2a.md` → `advisor-b5b2a.md` (Freigegeben mit Hinweisen, kein weiterer Schnitt) → `plan-b5b2a-v2.md` (Ist-Zone als Band statt
+Skala, Formel Plan gegen Ist, eine Gruppenregel; kein zweiter Advisor-Pass, Regel 3a).
+
+**Schnitt B5b-2 (Challenger):**
+
+| Paket | Inhalt | Stand |
+|---|---|---|
+| 2a | Gantt rein lesend auf GET /api/roadmap: Zeilen Meilenstein → Feature → Workstream/Fixpaket/Design je `art`, Zeitachse AT ab heute mit Ist-Band und Heute-Linie, Zoom Tage/Wochen, Farbe = Ebene, Form = Status, Marke ohne Schätzung, sticky linke Spalte, Werkzeugleiste, Trennzeile, Detailpanel lesend, Kennzahlen „Bis <M> fertig“ und „Plan gegen Ist“ | dieser Stand |
+| 2b | „Anpassen“ (PUT /api/features/<id>/planung), Bereinigungsliste (GET/POST /api/roadmap/bereinigung[/bestaetigen]), F-1189-Restpunkte, Bug-Felder im Detail | offen |
+| 2c | Spur „Pflege & Fixes“ und Kanban · Priorität (Entwicklung, E2), beide aus den Workitems | offen |
+
+**Gebaut:** reine Funktionen in `public/leitstand/roadmap-anzeige.js` (`zeitachseVon`, `baueAchse`, `xVonAt`, `baueSpur`, `ganttZeilen`,
+`aufklappbareSchluessel`, `gewaehlteZeile`, `featuresAbgenommen`, `bisFertig`, `planGegenIst`; `statusKategorie` um die Workstream-Status);
+`views/roadmap.js` rendert nur. Keine Server- oder Schreibänderung, kein neues Gate (F-1190), ARCHITECTURE.md unverändert (F-1191).
+Heute-Linie ohne neues Token aus `--ink` abgeleitet; Ebenenfarben nur über `--ebene-*`. Texte de/en/tr/ru.
+
+**Prüfpass:** design-guardian, code-reviewer, qa je „Freigegeben mit Hinweisen“. Eine Korrekturrunde: Querscroll bleibt beim Neuschreiben
+(cr 1, qa 1), Auswahl nur unter sichtbaren Zeilen mit Rückfall auf die Elternzeile (dg 1, qa 5), Beschriftung kippt weit rechts vor das
+Element und fünf Reservespalten (dg 2, qa 6), Features x/y aus `kennzahlen.features_abgenommen` (cr 3, qa 3), „kein offener Meilenstein“
+statt „Daten fehlen“ (cr 4, qa 2), Planungsbefunde und Abweichung an der Zeile sichtbar (cr 2, qa 4), eigener Ist-Schlüssel (cr 5),
+Mindestprozent (cr 10), Literale über `ERLEDIGT_STATUS` (cr 7), Aufklapp-Schlüssel aus der Lage (cr 11), „Alles aufklappen“ ohne Ziel
+gesperrt. Rest → F-1197..F-1199. Render-Nachweis `nachweise/b5b2a/` (7 Lagen inkl. tr und 200 %, Seite an Seite mit dem Design).
