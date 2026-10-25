@@ -14,9 +14,12 @@
  * - Kanban-Board (E1): Spalten Geplant · In Arbeit · Braucht dich · Abgenommen nach der Regel in
  *   entwicklung-daten.js (baueBoard), höchstens 12 Karten je Spalte, „Alle x anzeigen“ springt in den
  *   passenden Listen-Tab mit Spaltenfilter (F-919). Eine Karte mit verknüpftem Ablauf zeigt dessen
- *   Phase aus dem Aggregat (F-921, kein Zusatzabruf). „Kanban · Priorität“ (E2) und „Zeitleiste“ (E3) sind
- *   „kommt“ (aria-disabled, keine Beispieldaten). Ansicht-Chips Alles/Geplant/In Arbeit/Braucht
- *   dich/Abgenommen.
+ *   Phase aus dem Aggregat (F-921, kein Zusatzabruf). „Zeitleiste“ (E3) ist „kommt“ (aria-disabled, keine
+ *   Beispieldaten). Ansicht-Chips Alles/Geplant/In Arbeit/Braucht dich/Abgenommen.
+ * - Kanban · Priorität (E2, F45 B5b-2c-1, features/F45/plan-b5b2c1-v2.md, E-KANBAN = A): lesend, Spalten P0 · P1 · P2 · P3 · ohne
+ *   Priorität aus baueKanbanPrioritaet (entwicklung-daten.js) — offene Features mit der Priorität ihrer Akte (aus GET …/roadmap, die
+ *   Seite lädt sie dafür beim Betreten mit), offene Findings mit ihrer; P4 (Alt-Bestand) in „P3“. Statt der Ansicht-Chips Filter
+ *   Typ und „Pflege & Fixes“ (befund-zuordnung.js); „Alle n hier zeigen“ klappt eine Spalte auf. Kein Ziehen, keine Schreibroute.
  * - Listen-Tabs (E4): Serverfilter über holeWorkitems(filter) (Typ nur im Tab „Weitere“, Status,
  *   Priorität als Chips) plus clientseitige Suche (sucheWorkitems).
  * - Parser-Befunde (E6) stehen über Board und Listen.
@@ -96,12 +99,13 @@ import { typChip } from '../typ-chip.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
-import { baueBoard, baueVerknuepfung, LISTEN_TABS, laufenderWorkflow, SPALTEN, spalteVon, sucheWorkitems, verknuepfterWorkflow, workflowPhase } from '../entwicklung-daten.js'
+import { baueBoard, baueKanbanPrioritaet, baueVerknuepfung, kanbanTypen, LISTEN_TABS, laufenderWorkflow, PRIORITAETS_SPALTEN, SPALTEN, spalteVon, sucheWorkitems, verknuepfterWorkflow, workflowPhase } from '../entwicklung-daten.js'
 import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel, holeAktivesProjekt, projektAusListe } from '../projekt-kontext.js'
+import { roadmapZustand } from '../roadmap-anzeige.js'
 import { rollenName } from '../rollen-anzeige.js'
 import { naechsteKreisRolle } from '../rollen-kreis.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
@@ -204,6 +208,25 @@ let aktiverTab = 'board'
 
 /** Gewählter Ansicht-Chip des Boards. */
 let boardAnsicht = 'alle'
+
+/** F45 B5b-2c-1: Darstellung des Registers „Kanban-Board“ — 'status' (Kanban · Status) oder 'prioritaet' (Kanban · Priorität). */
+let boardModus = 'status'
+
+/** Filter des Prioritäts-Kanbans: Typ ('' = alle) und „Pflege & Fixes“ (nur offene P0–P2 ohne Feature-/Meilenstein-Bezug). */
+let kanbanTyp = ''
+let kanbanPflege = false
+
+/** Aufgeklappte Spalten des Prioritäts-Kanbans („Alle n hier zeigen“). */
+const kanbanVoll = new Set()
+
+/** Roadmap-Projektion für Feature-Prioritäten und Zuordnung (GET …/roadmap): undefined = lädt, sonst Antwort bzw. { status: 'fehler' }. */
+let kanbanRoadmap
+
+/** Überholschutz des Roadmap-Abrufs der Seite (Muster auftraegeAnfrageZaehler). */
+let kanbanRoadmapZaehler = 0
+
+/** Zuletzt geschriebenes HTML von #workboard-ansicht (Ansicht-Chips bzw. Filter des Prioritäts-Kanbans). */
+let letztesAnsichtHtml = ''
 
 /** Spaltenfilter eines Listen-Tabs nach „Alle x anzeigen“ (eine Spalte aus SPALTEN), oder null. */
 let listenSpalte = null
@@ -312,16 +335,70 @@ function renderKopf() {
   document.getElementById('workboard-liste').classList.toggle('techdebt-liste', aktiverTab === 'weitere')
 }
 
-/** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E2/E3 kommt), Ansicht-Chips und „Alle“-Chips der Filter. */
+/** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E3 kommt), Ansicht-Chips und „Alle“-Chips der Filter. */
 function baueFesteBedienung() {
   document.getElementById('workboard-erfassen').innerHTML = kommtKnopf(t('entwicklung.eintragErfassen'), { primaer: true, symbol: '+' })
-  document.getElementById('workboard-modi').innerHTML = `<button type="button" class="view-switch-knopf active" aria-pressed="true">${tHtml('entwicklung.modus.status')}</button>
-    <button type="button" class="view-switch-knopf" aria-disabled="true">${tHtml('entwicklung.modus.prioritaet')} ${kommtBadge()}</button>
-    <button type="button" class="view-switch-knopf" aria-disabled="true">${tHtml('entwicklung.modus.zeitleiste')} ${kommtBadge()}</button>`
-  document.getElementById('workboard-ansicht').innerHTML = `<span>${tHtml('entwicklung.ansicht')}</span>${ANSICHTEN.map(
-    (ansicht) => `<button type="button" class="board-filter-chip" data-ansicht="${ansicht}" aria-pressed="${ansicht === boardAnsicht}">${tHtml(`entwicklung.ansicht.${ansicht}`)}</button>`
-  ).join('')}`
+  renderModi()
+  renderAnsicht()
   for (const id of ['workboard-filter-typ', 'workboard-filter-status', 'workboard-filter-prioritaet']) fuelleChipGruppe(id, [])
+}
+
+/** Modus-Schalter: Kanban · Status, Kanban · Priorität (F45 B5b-2c-1), Zeitleiste „kommt“ (E3). */
+function renderModi() {
+  const knopf = (modus) => `<button type="button" class="view-switch-knopf${boardModus === modus ? ' active' : ''}" data-board-modus="${modus}" aria-pressed="${boardModus === modus}">${tHtml(`entwicklung.modus.${modus}`)}</button>`
+  document.getElementById('workboard-modi').innerHTML = `${knopf('status')}${knopf('prioritaet')}
+    <button type="button" class="view-switch-knopf" aria-disabled="true">${tHtml('entwicklung.modus.zeitleiste')} ${kommtBadge()}</button>`
+}
+
+/**
+ * Zustand der Roadmap der Seite fürs Prioritäts-Kanban (Prüfpass cr 1/qa 2: „keine roadmap.json“ ist ein erlaubter Leerzustand, kein
+ * Fehler — F-854).
+ * @returns 'laedt' | 'ok' | 'nicht_vorhanden' | 'fehler'
+ */
+function kanbanRoadmapZustand() {
+  if (kanbanRoadmap === undefined) return 'laedt'
+  const zustand = roadmapZustand(kanbanRoadmap)
+  return zustand === 'ok' || zustand === 'nicht_vorhanden' ? zustand : 'fehler'
+}
+
+/** Sperrgrund des Filters „Pflege & Fixes“ je Roadmap-Zustand (ohne gültige Roadmap kein Feature-/Meilenstein-Bezug prüfbar). */
+const PFLEGE_SPERRGRUND = { laedt: 'entwicklung.kanban.pflegeLaedt', nicht_vorhanden: 'entwicklung.kanban.pflegeOhneRoadmap', fehler: 'entwicklung.kanban.pflegeGesperrt' }
+
+/**
+ * Filter des Prioritäts-Kanbans: Typ (Alle + Typen der offenen Karten) und Zuordnung „Alle · Pflege & Fixes“ — ohne gültige Roadmap
+ * ist „Pflege & Fixes“ gesperrt (aria-disabled, bleibt per Tastatur erreichbar, Prüfpass dg 2), der Grund hängt per aria-describedby
+ * am Chip (advisor-b5b2c.md A3).
+ * @returns HTML
+ */
+function kanbanFilterHtml() {
+  const typen = [...new Set([...kanbanTypen(alleWorkitems), kanbanTyp].filter((typ) => typ !== ''))].sort()
+  const chip = (attr, wert, an, text, zusatz = '') => `<button type="button" class="board-filter-chip" data-${attr}="${escapeHtml(wert)}" aria-pressed="${an}"${zusatz}>${text}</button>`
+  const zustand = kanbanRoadmapZustand()
+  const pflegeAus = zustand !== 'ok'
+  const grund = pflegeAus ? `<span id="workboard-kanban-pflege-grund" class="subtle">${tHtml(PFLEGE_SPERRGRUND[zustand])}</span>` : ''
+  return `<div class="board-filter-gruppe" role="group" aria-label="${tHtml('entwicklung.filter.typ')}"><span>${tHtml('entwicklung.filter.typ')}</span>${chip('kanban-typ', '', kanbanTyp === '', tHtml('entwicklung.filter.alle'))}${typen.map((typ) => chip('kanban-typ', typ, kanbanTyp === typ, typText(typ))).join('')}</div>
+    <div class="board-filter-gruppe" role="group" aria-label="${tHtml('entwicklung.kanban.zuordnung')}"><span>${tHtml('entwicklung.kanban.zuordnung')}</span>${chip('kanban-pflege', 'aus', !kanbanPflege || pflegeAus, tHtml('entwicklung.filter.alle'))}${chip('kanban-pflege', 'an', kanbanPflege && !pflegeAus, tHtml('entwicklung.kanban.pflege'), pflegeAus ? ' aria-disabled="true" aria-describedby="workboard-kanban-pflege-grund"' : '')}${grund}</div>`
+}
+
+/**
+ * Schreibt #workboard-ansicht je Modus (Ansicht-Chips bzw. Filter des Prioritäts-Kanbans) — nur bei geändertem Inhalt; der Fokus
+ * bleibt auf demselben Chip (gleiches Attribut, gleicher Wert).
+ */
+function renderAnsicht() {
+  const container = document.getElementById('workboard-ansicht')
+  const html =
+    boardModus === 'prioritaet'
+      ? kanbanFilterHtml()
+      : `<span>${tHtml('entwicklung.ansicht')}</span>${ANSICHTEN.map((ansicht) => `<button type="button" class="board-filter-chip" data-ansicht="${ansicht}" aria-pressed="${ansicht === boardAnsicht}">${tHtml(`entwicklung.ansicht.${ansicht}`)}</button>`).join('')}`
+  if (html === letztesAnsichtHtml) return
+  const fokus = container.contains(document.activeElement) ? document.activeElement : null
+  const merkmal = fokus === null ? undefined : ['data-ansicht', 'data-kanban-typ', 'data-kanban-pflege'].find((a) => fokus.hasAttribute(a))
+  const wert = merkmal === undefined ? null : fokus.getAttribute(merkmal)
+  letztesAnsichtHtml = html
+  container.innerHTML = html
+  container.setAttribute('aria-label', t(boardModus === 'prioritaet' ? 'entwicklung.kanban.filter' : 'entwicklung.ansicht'))
+  container.classList.toggle('kanban-filter', boardModus === 'prioritaet')
+  if (wert !== null) container.querySelector(`[${merkmal}="${CSS.escape(wert)}"]`)?.focus()
 }
 
 // ─── Board (E1) ──────────────────────────────────────────────────────────────
@@ -398,12 +475,60 @@ function verknuepfungsHinweis(board) {
   return board.laedt.length > 0 ? `<p class="subtle board-verknuepfung-laedt">${tHtml('entwicklung.verknuepfung.laedt')}</p>` : ''
 }
 
-/** HTML des Board-Inhalts je Zustand (lädt, Fehler, Quelle defekt, Spalten). @returns HTML */
+// ─── Kanban · Priorität (E2, F45 B5b-2c-1) ───────────────────────────────────
+
+/**
+ * Eine Spalte des Prioritäts-Kanbans: Titel „P1 · Hoch“, Zahl, „davon n P4 (Alt-Bestand)“, Karten, Leerzustand, „Alle n hier zeigen“
+ * bzw. „Weniger zeigen“ (klappt die Spalte hier auf — anders als im Status-Board kein Sprung in einen Listen-Reiter).
+ * @param spalte - Schlüssel aus PRIORITAETS_SPALTEN
+ * @param daten - Spalte aus baueKanbanPrioritaet
+ * @param verknuepfung - baueVerknuepfung (Phase der Karten)
+ * @returns HTML
+ */
+function kanbanSpalte(spalte, daten, verknuepfung) {
+  // Bei aktivem Filter sagt der Leerzustand, dass der Filter leert (Prüfpass qa 3).
+  const leer = kanbanTyp !== '' || (kanbanPflege && kanbanRoadmapZustand() === 'ok') ? 'entwicklung.kanban.leerFilter' : 'entwicklung.kanban.leer'
+  const inhalt = daten.karten.length === 0 ? `<p class="board-empty">${tHtml(leer)}</p>` : daten.karten.map((workitem) => boardKarte(workitem, verknuepfung)).join('')
+  const p4 = daten.p4 > 0 ? `<p class="subtle board-kanban-p4">${tHtml('entwicklung.kanban.p4', { zahl: formatiereZahl(daten.p4) })}</p>` : ''
+  const voll = kanbanVoll.has(spalte)
+  const weitere =
+    daten.weitere > 0
+      ? `<p class="board-weitere-zeile"><button type="button" class="board-weitere" data-kanban-voll="${spalte}" aria-expanded="${voll}">${voll ? tHtml('entwicklung.kanban.weniger') : tHtml('entwicklung.kanban.alle', { zahl: formatiereZahl(daten.anzahl) })}</button></p>`
+      : ''
+  return `<section class="board-column board-prioritaet-${spalte}" aria-labelledby="workboard-kanban-${spalte}">
+      <div class="board-column-title"><h2 id="workboard-kanban-${spalte}">${tHtml(`entwicklung.kanban.spalte.${spalte}`)}</h2><span>${escapeHtml(formatiereZahl(daten.anzahl))}</span></div>
+      ${p4}
+      ${inhalt}
+      ${weitere}
+    </section>`
+}
+
+/**
+ * Prioritäts-Kanban: Satz „nur lesen“, Hinweis zu den Feature-Prioritäten (lädt bzw. nicht ladbar ⇒ Features unter „ohne
+ * Priorität“) und zum Filter „Pflege & Fixes“, dann die fünf Spalten.
+ * @returns HTML
+ */
+function kanbanHtml() {
+  const zustand = kanbanRoadmapZustand()
+  const roadmapOk = zustand === 'ok'
+  const kanban = baueKanbanPrioritaet(alleWorkitems, kanbanRoadmap, { typ: kanbanTyp, pflege: kanbanPflege && roadmapOk, voll: kanbanVoll })
+  if (kanban === null) return `<div class="note red"><strong>${tHtml('entwicklung.nichtVerfuegbar')}</strong></div>`
+  const hinweise = [`<p class="subtle board-kanban-hinweis">${tHtml('entwicklung.kanban.hinweis')}</p>`]
+  if (zustand === 'laedt') hinweise.push(`<p class="subtle board-kanban-hinweis">${tHtml('entwicklung.kanban.prioritaetenLaedt')}</p>`)
+  else if (zustand === 'nicht_vorhanden') hinweise.push(`<p class="subtle board-kanban-hinweis">${tHtml('entwicklung.kanban.keineRoadmap')}</p>`)
+  else if (zustand === 'fehler') hinweise.push(`<div class="note amber"><strong>${tHtml('entwicklung.kanban.prioritaetenFehlen.titel')}</strong><p>${tHtml('entwicklung.kanban.prioritaetenFehlen.text')}</p></div>`)
+  if (kanbanPflege && roadmapOk) hinweise.push(`<p class="subtle board-kanban-hinweis">${tHtml('entwicklung.kanban.pflegeHinweis')}</p>`)
+  const verknuepfung = baueVerknuepfung(letzterZustand?.workflows, auftraege)
+  return `${hinweise.join('')}<div class="pm-board prioritaets-board">${PRIORITAETS_SPALTEN.map((spalte) => kanbanSpalte(spalte, kanban.spalten[spalte], verknuepfung)).join('')}</div>`
+}
+
+/** HTML des Board-Inhalts je Zustand (lädt, Fehler, Quelle defekt, Spalten) und Modus. @returns HTML */
 function boardHtml() {
   if (alleFehler !== null) {
     return `<div class="note red"><strong>${tHtml('entwicklung.fehler.titel')}</strong><p><code>${escapeHtml(alleFehler)}</code></p><button type="button" class="button" data-workboard-erneut>${tHtml('entwicklung.fehler.erneut')}</button></div>`
   }
   if (alleWorkitems === undefined) return `<p class="subtle">${tHtml('entwicklung.laedt')}</p>`
+  if (boardModus === 'prioritaet') return kanbanHtml()
   const board = baueBoard(alleWorkitems, letzterZustand?.workflows, auftraege)
   if (board === null) return `<div class="note red"><strong>${tHtml('entwicklung.nichtVerfuegbar')}</strong></div>`
   const spalten = SPALTEN.filter((spalte) => boardAnsicht === 'alle' || boardAnsicht === spalte)
@@ -412,8 +537,9 @@ function boardHtml() {
   return `${verknuepfungsHinweis(board)}<div class="pm-board${boardAnsicht === 'alle' ? '' : ' filtered-board'}">${spalten.map((spalte) => boardSpalte(spalte, board.spalten[spalte], unvollstaendig, board.verknuepfung)).join('')}</div>${ausserhalb}`
 }
 
-/** Schreibt das Board, aber nur bei geändertem Inhalt (ein Poll-Tick zerstört keinen Fokus). */
+/** Schreibt das Board (samt Filtern des Prioritäts-Kanbans), aber nur bei geändertem Inhalt (ein Poll-Tick zerstört keinen Fokus). */
 function renderBoard() {
+  renderAnsicht()
   const html = boardHtml()
   if (html === letztesBoardHtml) return
   letztesBoardHtml = html
@@ -690,10 +816,35 @@ async function ladeAuftraege() {
   renderDetailNachtrag()
 }
 
+/**
+ * F45 B5b-2c-1: Lädt GET …/roadmap für das Prioritäts-Kanban (Feature-Prioritäten aus der Akte, IDs für „Pflege & Fixes“) — nie
+ * aus dem Poll; eine überholte Antwort wird verworfen (advisor-b5b2c.md B12). Scheitert sie, stehen die Features unter „ohne
+ * Priorität“ und der Filter „Pflege & Fixes“ ist gesperrt.
+ */
+async function ladeKanbanRoadmap() {
+  const meineAnfrageNummer = ++kanbanRoadmapZaehler
+  kanbanRoadmap = undefined
+  // Neu laden setzt „Pflege & Fixes“ zurück: während die Roadmap lädt, ist der Filter nicht prüfbar — kein stilles Wiedereinschalten
+  // und kein Springen des Boards zwischen allen und gefilterten Einträgen (Prüfpass cr 6, qa 4).
+  kanbanPflege = false
+  renderBoard()
+  try {
+    const antwort = await holeRoadmap()
+    if (meineAnfrageNummer !== kanbanRoadmapZaehler) return
+    kanbanRoadmap = antwort
+  } catch (fehler) {
+    if (meineAnfrageNummer !== kanbanRoadmapZaehler) return
+    console.error('GET …/roadmap (Kanban) fehlgeschlagen:', fehler)
+    kanbanRoadmap = { status: 'fehler' }
+  }
+  renderBoard()
+}
+
 /** Lädt alles, was die Seite außerhalb des Polls braucht (Betreten, „Neu laden“, Projektwechsel). */
 function ladeSeite() {
   void ladeAlleWorkitems()
   void ladeAuftraege()
+  void ladeKanbanRoadmap()
   void ladeListe()
 }
 
@@ -717,6 +868,10 @@ function wechsleTab(tab, spalte = null, laden = true) {
   tdArt = ''
   tdPrio = ''
   tdStatus = 'OFFEN'
+  // Auch die Filter des Prioritäts-Kanbans gehen auf „Alle“ (Prüfpass qa 5); der Modus selbst bleibt.
+  kanbanTyp = ''
+  kanbanPflege = false
+  kanbanVoll.clear()
   letztesTechDebtKopfHtml = ''
   document.getElementById('workboard-techdebt-kopf').innerHTML = ''
   const suche = document.getElementById('workboard-suche')
@@ -1627,11 +1782,22 @@ function initFilterBedienung() {
     // renderKopf schreibt die Register neu — der Fokus bleibt auf dem gewählten.
     document.getElementById('workboard-tabs').querySelector(`[data-tab="${knopf.dataset.tab}"]`)?.focus()
   })
+  document.getElementById('workboard-modi').addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target.closest('[data-board-modus]')
+    if (knopf === null || knopf.dataset.boardModus === boardModus) return
+    boardModus = knopf.dataset.boardModus === 'prioritaet' ? 'prioritaet' : 'status'
+    renderModi()
+    renderBoard()
+    document.getElementById('workboard-modi').querySelector(`[data-board-modus="${boardModus}"]`)?.focus()
+  })
   document.getElementById('workboard-ansicht').addEventListener('click', (ereignis) => {
-    const chip = ereignis.target.closest('[data-ansicht]')
-    if (chip === null) return
-    boardAnsicht = chip.dataset.ansicht
-    for (const geschwister of chip.parentElement.querySelectorAll('[data-ansicht]')) geschwister.setAttribute('aria-pressed', String(geschwister === chip))
+    const ansicht = ereignis.target.closest('[data-ansicht]')
+    const typ = ereignis.target.closest('[data-kanban-typ]')
+    const pflege = ereignis.target.closest('[data-kanban-pflege]')
+    if (ansicht !== null) boardAnsicht = ansicht.dataset.ansicht
+    else if (typ !== null) kanbanTyp = typ.dataset.kanbanTyp
+    else if (pflege !== null && pflege.getAttribute('aria-disabled') !== 'true') kanbanPflege = pflege.dataset.kanbanPflege === 'an'
+    else return
     renderBoard()
   })
   document.getElementById('workboard-board').addEventListener('click', (ereignis) => {
@@ -1641,6 +1807,15 @@ function initFilterBedienung() {
     if (karte !== null) {
       ereignis.preventDefault()
       navigiere(karte.getAttribute('href'))
+      return
+    }
+    const voll = ereignis.target.closest('[data-kanban-voll]')
+    if (voll !== null) {
+      const spalte = voll.dataset.kanbanVoll
+      if (kanbanVoll.has(spalte)) kanbanVoll.delete(spalte)
+      else kanbanVoll.add(spalte)
+      renderBoard()
+      document.querySelector(`#workboard-board [data-kanban-voll="${CSS.escape(spalte)}"]`)?.focus()
       return
     }
     const weitere = ereignis.target.closest('[data-weitere-tab]')
@@ -2141,9 +2316,11 @@ function ladeNachProjektWechsel() {
   if (!seiteAktiv) {
     alleAnfrageZaehler++
     auftraegeAnfrageZaehler++
+    kanbanRoadmapZaehler++
     alleWorkitems = undefined
     alleFehler = null
     auftraege = undefined
+    kanbanRoadmap = undefined
   }
   wechsleTab('board')
   if (seiteAktiv) ladeSeite()

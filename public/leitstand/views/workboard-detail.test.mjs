@@ -159,6 +159,38 @@ test('Code & Doku Review und Verlauf: Doku echt, Befunde nur laut Feld „Entdec
   assert.match(detailInhaltHtml(sicht({ workitems: undefined })), /Befunde aus diesem Feature<\/span><\/p><p class="subtle">Lädt…/)
 })
 
+test('B5b-2c-1 Bug: Bug-Felder aus dem Register escaped, mehrzeilig, im Fehlerbild, in der Kachel Regressionstest und im ganzen Eintrag', () => {
+  const mitFeldern = { ...bug, nachstellen: '1. Öffnen <a>\n2. Klicken', erwartet: 'Liste <ok>', tatsaechlich: 'Leer <x>', ursache: 'Cache <alt>', regressionstest: '`scripts/a.test.mjs` <r>' }
+  const inhalt = detailInhaltHtml(sicht({ workitem: mitFeldern, workflow: null, schritte: undefined, ctw: 'frei' }))
+  assert.match(inhalt, /So stellst du ihn nach<\/p><p><span class="eintrag-bugfeld">1\. Öffnen &lt;a&gt;\n2\. Klicken<\/span>/)
+  assert.match(inhalt, /<dt>Erwartet<\/dt><dd><span class="eintrag-bugfeld">Liste &lt;ok&gt;<\/span><\/dd><dt>Tatsächlich<\/dt><dd><span class="eintrag-bugfeld">Leer &lt;x&gt;<\/span>/)
+  assert.match(inhalt, /Ursache<\/span><\/p><p><span class="eintrag-bugfeld">Cache &lt;alt&gt;/)
+  assert.match(inhalt, /Regressionstest<\/span><\/p><p><span class="eintrag-bugfeld">`scripts\/a\.test\.mjs` &lt;r&gt;/)
+  assert.match(inhalt, /<dt>Regressionstest<\/dt><dd><span class="eintrag-bugfeld">`scripts\/a\.test\.mjs` &lt;r&gt;<\/span><\/dd>/)
+  assert.doesNotMatch(inhalt, /eintrag-bugfeld-fehlt/)
+  // Ein Feld mit nur Leerraum fehlt.
+  assert.match(detailInhaltHtml(sicht({ workitem: { ...mitFeldern, ursache: '  ' }, workflow: null, schritte: undefined, ctw: 'frei' })), /Ursache<\/span><\/p><p><span class="subtle eintrag-bugfeld-fehlt">fehlt/)
+  // Übrige Typen zeigen kein Fehlerbild, auch wenn Felder da sind.
+  assert.doesNotMatch(detailInhaltHtml(sicht({ workitem: { ...mitFeldern, typ: 'TECH_DEBT' }, workflow: null, schritte: undefined, ctw: 'frei' })), /So stellst du ihn nach/)
+  // … im ganzen Eintrag nur vorhandene Felder (kein Feld fällt weg, kein Bug-Gerüst).
+  const td = detailInhaltHtml(sicht({ workitem: { ...bug, typ: 'TECH_DEBT', ursache: 'Alt <u>' }, workflow: null, schritte: undefined, ctw: 'frei' }))
+  assert.match(td, /<dt>Ursache<\/dt><dd><span class="eintrag-bugfeld">Alt &lt;u&gt;<\/span><\/dd>/)
+  assert.doesNotMatch(td, /<dt>Nachstellen<\/dt>/)
+})
+
+test('B5b-2c-1 Rechte Spalte (Feature): Priorität aus der Roadmap-Projektion (A4), sonst „Ohne Priorität“; lädt, nicht verfügbar', () => {
+  const mitPrio = { ...roadmap, meilensteine: [{ ...roadmap.meilensteine[0], features: [{ id: 'F7', status: 'IN_ARBEIT', prioritaet: 'P1' }] }] }
+  assert.match(detailSpalteHtml(sicht({ roadmap: mitPrio })), /<dt>Priorität<\/dt><dd>P1<\/dd>/)
+  assert.match(detailSpalteHtml(sicht()), /<dt>Priorität<\/dt><dd>Ohne Priorität<\/dd>/)
+  assert.match(detailSpalteHtml(sicht({ roadmap: { status: 'nicht_vorhanden' } })), /<dt>Priorität<\/dt><dd>Ohne Priorität<\/dd>/)
+  assert.match(detailSpalteHtml(sicht({ roadmap: undefined })), /<dt>Priorität<\/dt><dd>Lädt…<\/dd>/)
+  assert.match(detailSpalteHtml(sicht({ roadmap: { status: 'fehler' } })), /<dt>Priorität<\/dt><dd>[^<]*nicht verfügbar[^<]*<\/dd>/i)
+  // ungültige Roadmap (Regelverstöße) wie ein Fehler: nicht verfügbar (qa 12).
+  assert.match(detailSpalteHtml(sicht({ roadmap: { status: 'ungueltig', fehler: ['x'] } })), /<dt>Priorität<\/dt><dd>[^<]*nicht verfügbar[^<]*<\/dd>/i)
+  // Bug: leere Felder im ganzen Eintrag ebenfalls „fehlt“ (dg 4).
+  assert.match(detailInhaltHtml(sicht({ workitem: bug, workflow: null, schritte: undefined, ctw: 'frei' })), /<dt>Nachstellen<\/dt><dd><span class="subtle eintrag-bugfeld-fehlt">fehlt<\/span><\/dd>/)
+})
+
 test('Rechte Spalte (Feature): Planung nur lesend, Speichern „kommt“, Pull Requests nach GitHub, Links Akte, Roadmap, Jarvis', () => {
   const spalte = detailSpalteHtml(sicht())
   assert.match(spalte, /<h2 id="eintrag-spalte-titel">Deine Planung<\/h2>/)
@@ -196,11 +228,15 @@ test('Bug offen: Kopf BUG · ID · Priorität, „gefunden“, Kurz gesagt aus d
   pruefeSauber(seite(s), 'Bug offen')
 })
 
-test('Bug: Fehlerbild mit „kommt“ für strukturierte Felder, Fundstelle und Behebung echt, ganzer Eintrag aufklappbar; Links', () => {
+test('Bug: Fehlerbild ohne Bug-Felder „fehlt“, Fundstelle und Behebung echt, ganzer Eintrag aufklappbar; Links', () => {
   const s = sicht({ workitem: bug, workflow: null, schritte: undefined, ctw: 'frei' })
   const inhalt = detailInhaltHtml(s)
-  assert.match(inhalt, /Fehlerbild[\s\S]*So stellst du ihn nach[\s\S]*kommt-badge[\s\S]*F-975/)
-  assert.match(inhalt, /<dt>Erwartet<\/dt><dd><span class="kommt-badge">kommt<\/span><\/dd><dt>Tatsächlich<\/dt>/)
+  // F45 B5b-2c-1 (E-B5-5): fehlende Bug-Felder heißen „fehlt“, nicht mehr „kommt“.
+  assert.match(inhalt, /Fehlerbild[\s\S]*So stellst du ihn nach<\/p><p><span class="subtle eintrag-bugfeld-fehlt">fehlt<\/span>/)
+  assert.match(inhalt, /<dt>Erwartet<\/dt><dd><span class="subtle eintrag-bugfeld-fehlt">fehlt<\/span><\/dd><dt>Tatsächlich<\/dt><dd><span class="subtle eintrag-bugfeld-fehlt">fehlt<\/span>/)
+  assert.match(inhalt, /Ursache<\/span><\/p><p><span class="subtle eintrag-bugfeld-fehlt">fehlt/)
+  assert.match(inhalt, /Regressionstest<\/span><\/p><p><span class="subtle eintrag-bugfeld-fehlt">fehlt/)
+  assert.doesNotMatch(inhalt, /F-975/)
   assert.match(inhalt, /Fundstelle<\/span><\/p><p><code>public\/leitstand\/shell\.js:12<\/code> \(initProjektAuswahl\)<\/p>/, 'Backticks als <code>, nicht als Zeichen')
   assert.match(inhalt, /Vorgeschlagene Behebung<\/span><\/p><p>Rückfrage &lt;einbauen&gt;\.<\/p>/)
   assert.match(inhalt, /<details class="eintrag-ganz" data-klappe="ganz"><summary>Ganzer Eintrag im Register<\/summary><p class="eintrag-beschreibung">Text &lt;script&gt;alert\(1\)&lt;\/script&gt; passiert\. Zweiter Satz\.<\/p>/)

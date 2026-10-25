@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueBoard, baueVerknuepfung, KARTEN_JE_SPALTE, SPALTEN, schrittFortschritt, spalteVon, sucheWorkitems, tabFuerTyp, verknuepfterWorkflow, waehleFeatureInArbeit, workflowPhase } from './entwicklung-daten.js'
+import { baueBoard, baueKanbanPrioritaet, baueVerknuepfung, featurePrioritaeten, KARTEN_JE_SPALTE, kanbanTypen, PRIORITAETS_SPALTEN, SPALTEN, schrittFortschritt, spalteVon, sucheWorkitems, tabFuerTyp, verknuepfterWorkflow, waehleFeatureInArbeit, workflowPhase } from './entwicklung-daten.js'
 
 const feature = (id, status, extra = {}) => ({ quelle: 'feature', typ: 'FEATURE', id, titel: `Feature ${id}`, status, ...extra })
 const finding = (id, status, prioritaet = 'P2', typ = 'BUG') => ({ quelle: 'finding', typ, id, titel: `Finding ${id}`, status, prioritaet })
@@ -335,4 +335,106 @@ test('F45 B2a-2 (F-989): baueVerknuepfung nutzt feature_ref vor der Referenzzeil
   const { jeReferenz } = baueVerknuepfung(workflows, auftraege)
   assert.deepEqual(jeReferenz.get('workitem:feature:F7')?.map((w) => w.workflowId), ['w1'])
   assert.deepEqual(jeReferenz.get('workitem:finding:F-9')?.map((w) => w.workflowId), ['w2'])
+})
+
+// ─── F45 B5b-2c-1: Kanban · Priorität ────────────────────────────────────────
+
+/** Projektion wie GET …/roadmap mit Feature-Prioritäten. */
+const ROADMAP_PRIO = {
+  status: 'ok',
+  meilensteine: [
+    { id: 'M3', status: 'ABGESCHLOSSEN', features: [{ id: 'F18', status: 'ABGESCHLOSSEN', prioritaet: null }] },
+    { id: 'M5', status: 'LAEUFT', features: [{ id: 'F45', status: 'IN_ARBEIT', prioritaet: 'P1' }, { id: 'F30', status: 'ENTWURF', prioritaet: null }, { id: 'F44', status: 'IN_ARBEIT', prioritaet: 'X' }] },
+  ],
+}
+const kFeature = (id, status = 'IN_ARBEIT') => ({ quelle: 'feature', typ: 'FEATURE', id, titel: id, status })
+const kFinding = (id, prioritaet, extra = {}) => ({ quelle: 'finding', typ: 'BUG', id, titel: id, status: 'OFFEN', prioritaet, featureRun: null, ...extra })
+
+test('B5b-2c-1 featurePrioritaeten: nur gesetzte P0–P3 der Projektion, ohne gültige Projektion null', () => {
+  assert.deepEqual([...featurePrioritaeten(ROADMAP_PRIO)], [['F45', 'P1']])
+  assert.equal(featurePrioritaeten({ status: 'fehler' }), null)
+  assert.equal(featurePrioritaeten(undefined), null)
+})
+
+test('B5b-2c-1 baueKanbanPrioritaet: Spalten, Features mit/ohne Priorität, P4 in P3, nur offene, Features zuerst', () => {
+  const workitems = [
+    kFinding('F-1', 'P1'),
+    kFinding('F-2', 'P3'),
+    kFinding('F-3', 'P4'),
+    kFinding('F-4', 'P2', { status: 'ERLEDIGT' }),
+    kFinding('F-5', 'P2', { status: 'SONSTIGES' }),
+    kFeature('F45'),
+    kFeature('F30', 'ENTWURF'),
+    kFeature('F44'),
+    kFeature('F18', 'ABGESCHLOSSEN'),
+    kFeature('F99', 'ABGEBROCHEN'),
+    kFeature('AF-F001', 'ENTWURF'),
+    kFinding('F-6', 'P3'),
+  ]
+  const k = baueKanbanPrioritaet(workitems, ROADMAP_PRIO)
+  assert.deepEqual(PRIORITAETS_SPALTEN, ['P0', 'P1', 'P2', 'P3', 'ohne'])
+  const ids = (spalte) => k.spalten[spalte].karten.map((w) => w.id)
+  assert.deepEqual(ids('P0'), [])
+  assert.deepEqual(ids('P1'), ['F45', 'F-1'])
+  assert.deepEqual(ids('P2'), [])
+  assert.deepEqual(ids('P3'), ['F-2', 'F-6', 'F-3'])
+  assert.equal(k.spalten.P3.p4, 1)
+  // Ohne bzw. ungültige Priorität, Feature außerhalb der Roadmap.
+  assert.deepEqual(ids('ohne'), ['F30', 'F44', 'AF-F001'])
+  assert.deepEqual(k.typen, ['BUG', 'FEATURE'])
+  assert.equal(k.prioritaeten, true)
+  assert.equal(baueKanbanPrioritaet(null, ROADMAP_PRIO), null)
+  assert.equal(baueKanbanPrioritaet(undefined, ROADMAP_PRIO), null)
+})
+
+test('B5b-2c-1 baueKanbanPrioritaet: ohne Roadmap alle Features unter „ohne“; Typfilter; Grenze und Aufklappen', () => {
+  const ohne = baueKanbanPrioritaet([kFeature('F45'), kFinding('F-1', 'P1')], { status: 'fehler' })
+  assert.deepEqual(ohne.spalten.ohne.karten.map((w) => w.id), ['F45'])
+  assert.equal(ohne.prioritaeten, false)
+  const nurBugs = baueKanbanPrioritaet([kFeature('F45'), kFinding('F-1', 'P1'), { ...kFinding('F-2', 'P1'), typ: 'TECH_DEBT' }], ROADMAP_PRIO, { typ: 'BUG' })
+  assert.deepEqual(nurBugs.spalten.P1.karten.map((w) => w.id), ['F-1'])
+  assert.deepEqual(nurBugs.typen, ['BUG', 'FEATURE', 'TECH_DEBT'])
+  const viele = Array.from({ length: KARTEN_JE_SPALTE + 3 }, (_, i) => kFinding(`F-${i}`, 'P2'))
+  const zu = baueKanbanPrioritaet(viele, ROADMAP_PRIO)
+  assert.equal(zu.spalten.P2.karten.length, KARTEN_JE_SPALTE)
+  assert.equal(zu.spalten.P2.anzahl, KARTEN_JE_SPALTE + 3)
+  assert.equal(zu.spalten.P2.weitere, 3)
+  const auf = baueKanbanPrioritaet(viele, ROADMAP_PRIO, { voll: new Set(['P2']) })
+  assert.equal(auf.spalten.P2.karten.length, KARTEN_JE_SPALTE + 3)
+  assert.equal(auf.spalten.P2.weitere, 3)
+})
+
+test('B5b-2c-1 baueKanbanPrioritaet: Filter „Pflege & Fixes“ nur offene P0–P2 ohne Feature-/Meilenstein-Bezug (A3)', () => {
+  const workitems = [
+    kFinding('F-1', 'P1', { featureRun: 'F45 B5b-2c' }),
+    kFinding('F-2', 'P2', { featureRun: 'M3-Challenge, 09.09.2026.' }),
+    kFinding('F-3', 'P2', { featureRun: 'Entdeckt: Stefan, 25.10.2026.' }),
+    kFinding('F-4', 'P0', { featureRun: null }),
+    kFinding('F-5', 'P3', { featureRun: 'frei' }),
+    kFinding('F-6', 'P4', { featureRun: 'frei' }),
+    kFeature('F30', 'ENTWURF'),
+  ]
+  const k = baueKanbanPrioritaet(workitems, ROADMAP_PRIO, { pflege: true })
+  assert.deepEqual(k.spalten.P0.karten.map((w) => w.id), ['F-4'])
+  assert.deepEqual(k.spalten.P1.karten.map((w) => w.id), [])
+  assert.deepEqual(k.spalten.P2.karten.map((w) => w.id), ['F-3'])
+  assert.equal(k.spalten.P3.anzahl, 0)
+  assert.equal(k.spalten.ohne.anzahl, 0)
+})
+
+test('B5b-2c-1 Prüfpass (qa 10, cr 8): Befund ohne/ungültige Priorität ⇒ „ohne“, Feature mit unbekanntem Status offen, Pflege ohne Roadmap wirkungslos, Pflege + Typ FEATURE leer, kanbanTypen', () => {
+  const workitems = [kFinding('F-1', 'PX'), kFinding('F-2', undefined), kFeature('F45', 'IRGENDWAS'), kFinding('F-3', 'P2', { featureRun: 'frei' })]
+  const k = baueKanbanPrioritaet(workitems, ROADMAP_PRIO)
+  assert.deepEqual(k.spalten.ohne.karten.map((w) => w.id), ['F-1', 'F-2'])
+  assert.deepEqual(k.spalten.P1.karten.map((w) => w.id), ['F45'])
+  const ohneRoadmap = baueKanbanPrioritaet(workitems, { status: 'nicht_vorhanden' })
+  assert.deepEqual(ohneRoadmap.spalten.ohne.karten.map((w) => w.id), ['F45', 'F-1', 'F-2'])
+  // Pflege ohne gültige Roadmap: Filter wirkt nicht (die View sperrt ihn).
+  assert.equal(baueKanbanPrioritaet(workitems, { status: 'fehler' }, { pflege: true }).spalten.P2.anzahl, 1)
+  assert.equal(baueKanbanPrioritaet(workitems, { status: 'fehler' }, { pflege: true }).spalten.ohne.anzahl, 3)
+  // Pflege + Typ FEATURE: Features gehören nie zu „Pflege & Fixes“ ⇒ alle Spalten leer.
+  const leer = baueKanbanPrioritaet(workitems, ROADMAP_PRIO, { pflege: true, typ: 'FEATURE' })
+  for (const spalte of PRIORITAETS_SPALTEN) assert.equal(leer.spalten[spalte].anzahl, 0, spalte)
+  assert.deepEqual(kanbanTypen(workitems), ['BUG', 'FEATURE'])
+  assert.deepEqual(kanbanTypen(null), [])
 })

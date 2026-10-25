@@ -1,0 +1,1558 @@
+[
+  {
+    "hinweis": "Wegwerf-Kopie unter os.tmpdir() mit Basis-Commit (Arbeitsbaum + Präparation: „Priorität: P1“ in F45, „Priorität: P2“ in F30), eigener Leitstand-Prozess, rein lesend (kein schreibender Klick).",
+    "uebersprungen": []
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "01-kanban",
+    "bild": "de-1440-dunkel-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "02-pflege",
+    "bild": "de-1440-dunkel-02-pflege.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "„Pflege & Fixes“ umfasst offene P0–P2-Befunde ohne Feature- oder Meilenstein-Bezug — P3 und „Ohne Priorität“ bleiben deshalb leer."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "16",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 16 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "46",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 46 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-pflege=\"an\" aria-pressed=\"true\">Pflege &amp; Fixes</button>"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "03-p2-aufgeklappt",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 264,
+        "p4": null,
+        "weitere": "Weniger zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-weitere\" data-kanban-voll=\"P2\" aria-expanded=\"true\">Weniger zeigen</button>"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "04-nur-features",
+    "bild": "de-1440-dunkel-04-nur-features.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Feature",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P2 · Normal": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-typ=\"FEATURE\" aria-pressed=\"true\">Feature</button>"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "04b-roadmap-fehler",
+    "bild": "de-1440-dunkel-04b-roadmap-fehler.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": true,
+    "pflegeGrund": "„Pflege & Fixes“ braucht die Roadmap — sie war nicht ladbar.",
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "Prioritäten der Features nicht ladbar.Die Roadmap war nicht lesbar — alle Features stehen bis zum nächsten Laden unter „Ohne Priorität“."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "51",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 51 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "263",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 263 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "5",
+        "karten": 5,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-pflege=\"an\" aria-pressed=\"false\" aria-disabled=\"true\" aria-d"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "04c-keine-roadmap",
+    "bild": "de-1440-dunkel-04c-keine-roadmap.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": true,
+    "pflegeGrund": "„Pflege & Fixes“ braucht eine Roadmap — dieses Projekt hat keine.",
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "Dieses Projekt hat keine Roadmap — alle Features stehen unter „Ohne Priorität“."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "51",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 51 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "263",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 263 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "5",
+        "karten": 5,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" id=\"workboard-neu-laden\" class=\"button\" data-i18n=\"entwicklung.neuLaden\">Neu laden</button>"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "04d-rueckweg",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<a class=\"board-item\" href=\"#/workboard/F45\" data-id=\"F45\">\n      <span class=\"board-item-meta\"><span><span aria-hidden="
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "05-bug-mit-feldern",
+    "bild": "de-1440-dunkel-05-bug-mit-feldern.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "fehlerbild": "So stellst du ihn nachvoller `npm run check` auf Stefans Rechner (erst die Gates, dann `node --test --test-concurrency=4` über alle Testdateien). Erwartetbeide Tests grün wie im Einzellauf.Tatsächlichbeide scheitern an ihrer festen Wartegrenze; einzeln 26/26 grün.",
+    "fehlt": 0,
+    "bugfelder": 10,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "06-bug-ohne-felder",
+    "bild": "de-1440-dunkel-06-bug-ohne-felder.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Roadmap und Akten widersprechen sich.",
+    "fehlerbild": "So stellst du ihn nachfehlt ErwartetfehltTatsächlichfehlt",
+    "fehlt": 10,
+    "bugfelder": 0,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "07-feature-prioritaet",
+    "bild": "de-1440-dunkel-07-feature-prioritaet.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Fixpaket Arbeitsfähigkeit",
+    "fehlerbild": null,
+    "fehlt": 0,
+    "bugfelder": 0,
+    "prioritaet": "P1",
+    "meilenstein": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "01-kanban",
+    "bild": "de-1440-hell-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "02-pflege",
+    "bild": "de-1440-hell-02-pflege.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "„Pflege & Fixes“ umfasst offene P0–P2-Befunde ohne Feature- oder Meilenstein-Bezug — P3 und „Ohne Priorität“ bleiben deshalb leer."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "16",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 16 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "46",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 46 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-pflege=\"an\" aria-pressed=\"true\">Pflege &amp; Fixes</button>"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "03-p2-aufgeklappt",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 264,
+        "p4": null,
+        "weitere": "Weniger zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-weitere\" data-kanban-voll=\"P2\" aria-expanded=\"true\">Weniger zeigen</button>"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "04-nur-features",
+    "bild": "de-1440-hell-04-nur-features.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Feature",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P2 · Normal": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-typ=\"FEATURE\" aria-pressed=\"true\">Feature</button>"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "04d-rueckweg",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<a class=\"board-item\" href=\"#/workboard/F45\" data-id=\"F45\">\n      <span class=\"board-item-meta\"><span><span aria-hidden="
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "05-bug-mit-feldern",
+    "bild": "de-1440-hell-05-bug-mit-feldern.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "fehlerbild": "So stellst du ihn nachvoller `npm run check` auf Stefans Rechner (erst die Gates, dann `node --test --test-concurrency=4` über alle Testdateien). Erwartetbeide Tests grün wie im Einzellauf.Tatsächlichbeide scheitern an ihrer festen Wartegrenze; einzeln 26/26 grün.",
+    "fehlt": 0,
+    "bugfelder": 10,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "06-bug-ohne-felder",
+    "bild": "de-1440-hell-06-bug-ohne-felder.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Roadmap und Akten widersprechen sich.",
+    "fehlerbild": "So stellst du ihn nachfehlt ErwartetfehltTatsächlichfehlt",
+    "fehlt": 10,
+    "bugfelder": 0,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "07-feature-prioritaet",
+    "bild": "de-1440-hell-07-feature-prioritaet.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Fixpaket Arbeitsfähigkeit",
+    "fehlerbild": null,
+    "fehlt": 0,
+    "bugfelder": 0,
+    "prioritaet": "P1",
+    "meilenstein": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "01-kanban",
+    "bild": "de-390-dunkel-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "02-pflege",
+    "bild": "de-390-dunkel-02-pflege.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "„Pflege & Fixes“ umfasst offene P0–P2-Befunde ohne Feature- oder Meilenstein-Bezug — P3 und „Ohne Priorität“ bleiben deshalb leer."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "16",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 16 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "46",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 46 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-pflege=\"an\" aria-pressed=\"true\">Pflege &amp; Fixes</button>"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "03-p2-aufgeklappt",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 264,
+        "p4": null,
+        "weitere": "Weniger zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-weitere\" data-kanban-voll=\"P2\" aria-expanded=\"true\">Weniger zeigen</button>"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "04-nur-features",
+    "bild": "de-390-dunkel-04-nur-features.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Feature",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P2 · Normal": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-typ=\"FEATURE\" aria-pressed=\"true\">Feature</button>"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "04b-roadmap-fehler",
+    "bild": "de-390-dunkel-04b-roadmap-fehler.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": true,
+    "pflegeGrund": "„Pflege & Fixes“ braucht die Roadmap — sie war nicht ladbar.",
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "Prioritäten der Features nicht ladbar.Die Roadmap war nicht lesbar — alle Features stehen bis zum nächsten Laden unter „Ohne Priorität“."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "51",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 51 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "263",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 263 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "5",
+        "karten": 5,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-pflege=\"an\" aria-pressed=\"false\" aria-disabled=\"true\" aria-d"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "04c-keine-roadmap",
+    "bild": "de-390-dunkel-04c-keine-roadmap.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": true,
+    "pflegeGrund": "„Pflege & Fixes“ braucht eine Roadmap — dieses Projekt hat keine.",
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "Dieses Projekt hat keine Roadmap — alle Features stehen unter „Ohne Priorität“."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "51",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 51 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "263",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 263 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "5",
+        "karten": 5,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" id=\"workboard-neu-laden\" class=\"button\" data-i18n=\"entwicklung.neuLaden\">Neu laden</button>"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "04d-rueckweg",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<a class=\"board-item\" href=\"#/workboard/F45\" data-id=\"F45\">\n      <span class=\"board-item-meta\"><span><span aria-hidden="
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "05-bug-mit-feldern",
+    "bild": "de-390-dunkel-05-bug-mit-feldern.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "fehlerbild": "So stellst du ihn nachvoller `npm run check` auf Stefans Rechner (erst die Gates, dann `node --test --test-concurrency=4` über alle Testdateien). Erwartetbeide Tests grün wie im Einzellauf.Tatsächlichbeide scheitern an ihrer festen Wartegrenze; einzeln 26/26 grün.",
+    "fehlt": 0,
+    "bugfelder": 10,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "06-bug-ohne-felder",
+    "bild": "de-390-dunkel-06-bug-ohne-felder.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Roadmap und Akten widersprechen sich.",
+    "fehlerbild": "So stellst du ihn nachfehlt ErwartetfehltTatsächlichfehlt",
+    "fehlt": 10,
+    "bugfelder": 0,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "07-feature-prioritaet",
+    "bild": "de-390-dunkel-07-feature-prioritaet.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Fixpaket Arbeitsfähigkeit",
+    "fehlerbild": null,
+    "fehlt": 0,
+    "bugfelder": 0,
+    "prioritaet": "P1",
+    "meilenstein": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "01-kanban",
+    "bild": "de-390-hell-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "02-pflege",
+    "bild": "de-390-hell-02-pflege.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt.",
+      "„Pflege & Fixes“ umfasst offene P0–P2-Befunde ohne Feature- oder Meilenstein-Bezug — P3 und „Ohne Priorität“ bleiben deshalb leer."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "16",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 16 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "46",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 46 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-pflege=\"an\" aria-pressed=\"true\">Pflege &amp; Fixes</button>"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "03-p2-aufgeklappt",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 264,
+        "p4": null,
+        "weitere": "Weniger zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-weitere\" data-kanban-voll=\"P2\" aria-expanded=\"true\">Weniger zeigen</button>"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "04-nur-features",
+    "bild": "de-390-hell-04-nur-features.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Feature",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P2 · Normal": {
+        "zahl": "1",
+        "karten": 1,
+        "p4": null,
+        "weitere": null
+      },
+      "P3 · Später": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"board-filter-chip\" data-kanban-typ=\"FEATURE\" aria-pressed=\"true\">Feature</button>"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "04d-rueckweg",
+    "bild": null,
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<a class=\"board-item\" href=\"#/workboard/F45\" data-id=\"F45\">\n      <span class=\"board-item-meta\"><span><span aria-hidden="
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "05-bug-mit-feldern",
+    "bild": "de-390-hell-05-bug-mit-feldern.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "fehlerbild": "So stellst du ihn nachvoller `npm run check` auf Stefans Rechner (erst die Gates, dann `node --test --test-concurrency=4` über alle Testdateien). Erwartetbeide Tests grün wie im Einzellauf.Tatsächlichbeide scheitern an ihrer festen Wartegrenze; einzeln 26/26 grün.",
+    "fehlt": 0,
+    "bugfelder": 10,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "06-bug-ohne-felder",
+    "bild": "de-390-hell-06-bug-ohne-felder.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Roadmap und Akten widersprechen sich.",
+    "fehlerbild": "So stellst du ihn nachfehlt ErwartetfehltTatsächlichfehlt",
+    "fehlt": 10,
+    "bugfelder": 0,
+    "prioritaet": "P2",
+    "meilenstein": null
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "07-feature-prioritaet",
+    "bild": "de-390-hell-07-feature-prioritaet.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Fixpaket Arbeitsfähigkeit",
+    "fehlerbild": null,
+    "fehlt": 0,
+    "bugfelder": 0,
+    "prioritaet": "P1",
+    "meilenstein": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding"
+  },
+  {
+    "lage": "tr-390-dunkel",
+    "schritt": "01-kanban",
+    "bild": "tr-390-dunkel-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Öncelik",
+    "zeitleiste": "Zaman çizelgesi yakında",
+    "filter": [
+      "Tümü",
+      "Tümü"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Yalnızca okuma: önceliğe göre açık kayıtlar. Özellikler dosyalarındaki önceliği taşır; yol haritası dışındaki özellikler “Öncelik yok” altında durur. Önceliği değiştirme yakında."
+    ],
+    "spalten": {
+      "P0 · Kritik": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Yüksek": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Tüm 52 kaydı burada göster"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Tüm 264 kaydı burada göster"
+      },
+      "P3 · Sonra": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "bunların 21 tanesi P4 (eski kayıt)",
+        "weitere": "Tüm 369 kaydı burada göster"
+      },
+      "Öncelik yok": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Önceli"
+  },
+  {
+    "lage": "ru-390-hell",
+    "schritt": "01-kanban",
+    "bild": "ru-390-hell-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Канбан · Приоритет",
+    "zeitleiste": "Временная шкала скоро",
+    "filter": [
+      "Все",
+      "Все"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Только чтение: открытые записи по приоритету. Функции несут приоритет из своего досье; функции вне дорожной карты стоят в «Без приоритета». Изменение приоритета — скоро."
+    ],
+    "spalten": {
+      "P0 · Критично": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Высокий": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Показать здесь все: 52"
+      },
+      "P2 · Обычный": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Показать здесь все: 264"
+      },
+      "P3 · Позже": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "из них P4 (старый фонд): 21",
+        "weitere": "Показать здесь все: 369"
+      },
+      "Без приоритета": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Канбан · Приори"
+  },
+  {
+    "lage": "ru-1440-hell",
+    "schritt": "01-kanban",
+    "bild": "ru-1440-hell-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Канбан · Приоритет",
+    "zeitleiste": "Временная шкала скоро",
+    "filter": [
+      "Все",
+      "Все"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Только чтение: открытые записи по приоритету. Функции несут приоритет из своего досье; функции вне дорожной карты стоят в «Без приоритета». Изменение приоритета — скоро."
+    ],
+    "spalten": {
+      "P0 · Критично": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Высокий": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Показать здесь все: 52"
+      },
+      "P2 · Обычный": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Показать здесь все: 264"
+      },
+      "P3 · Позже": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "из них P4 (старый фонд): 21",
+        "weitere": "Показать здесь все: 369"
+      },
+      "Без приоритета": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Канбан · Приори"
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "01-kanban",
+    "bild": "de-720-200prozent-01-kanban.webp",
+    "ueberlaufSeite": 0,
+    "modus": "Kanban · Priorität",
+    "zeitleiste": "Zeitleiste kommt",
+    "filter": [
+      "Alle",
+      "Alle"
+    ],
+    "pflegeGesperrt": false,
+    "pflegeGrund": null,
+    "hinweise": [
+      "Nur lesen: offene Einträge nach Priorität. Features tragen die Priorität ihrer Akte, Features außerhalb der Roadmap stehen unter „Ohne Priorität“. Priorität ändern kommt."
+    ],
+    "spalten": {
+      "P0 · Kritisch": {
+        "zahl": "0",
+        "karten": 0,
+        "p4": null,
+        "weitere": null
+      },
+      "P1 · Hoch": {
+        "zahl": "52",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 52 hier zeigen"
+      },
+      "P2 · Normal": {
+        "zahl": "264",
+        "karten": 12,
+        "p4": null,
+        "weitere": "Alle 264 hier zeigen"
+      },
+      "P3 · Später": {
+        "zahl": "369",
+        "karten": 12,
+        "p4": "davon 21 P4 (Alt-Bestand)",
+        "weitere": "Alle 369 hier zeigen"
+      },
+      "Ohne Priorität": {
+        "zahl": "3",
+        "karten": 3,
+        "p4": null,
+        "weitere": null
+      }
+    },
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  }
+]
