@@ -8856,3 +8856,48 @@ Auswirkung: Mittel — die vereinbarte Prüftiefe vor dem Merge war nicht mehr g
 Maßnahme: E-PRUEF-1 = A (Stefan, 24.10.2026) — vor jedem Merge gelten genau: (1) Stefans lokaler voller Lauf im Commit-Block, (2) inhaltliche Prüfung des gepushten Diffs durch den Challenger (Dateiliste, Kernstellen gegen Auftrag, Invarianten), (3) grüne PR-CI (`.github/workflows/ci.yml`: `npm run check` auf ubuntu-latest mit Node 24 + gitleaks). Der Cloud-Testlauf des Challengers entfällt. Festgehalten in `features/F45/feature.md` (Entscheidungen) und `docs/projekt/fixpaket-f45.md` §3.
 Status: erledigt (Prozess festgelegt).
 Feature/Run: Entdeckt: Nachfrage Stefan, 24.10.2026; festgelegt F45 T.
+
+**F-1195** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Übergaben nennen den Design-Canvas nur als claude.ai-Link.
+Beschreibung: Übergaben nennen den Design-Canvas nur als claude.ai-Link; Claude Code braucht den Repo-Pfad `docs/design/neu/03-roadmap--Main.webp` (bzw. die Quelle unter `docs/design/neu/quelle/`), weil es den Link nicht öffnen kann.
+Fundstelle: Übergabe B5b-2 (Challenger); Auftrag B5b-2a nennt den Repo-Pfad.
+Auswirkung: Gering — Rückfrage oder Suche je Auftrag, Gefahr eines Abgleichs gegen die falsche Vorlage.
+Maßnahme: Übergaben mit UI-Bezug nennen immer den Repo-Pfad der Design-Referenz; der claude.ai-Link höchstens zusätzlich.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2a (Auftrag Challenger), 25.10.2026.
+
+**F-1196** · `TECH_DEBT` · P3 · offen
+Titel: Ungetrackte kontrollzustand/-Checkpoints sammeln sich auf Feature-Branches.
+Beschreibung: Ungetrackte kontrollzustand/-Checkpoints aus Leitstand-Nutzung sammeln sich auf Feature-Branches (423 am 25.10.2026); in W2 klären, ob sie gesammelt committet oder anders abgelegt werden.
+Fundstelle: `kontrollzustand/` (Repo-Wurzel), `git status` auf `f45/b5b2-roadmap-anzeige`.
+Auswirkung: Gering — die Basisprüfung „Arbeitsbaum ohne Änderungen“ muss sie ausnehmen; Gefahr versehentlichen Stagens.
+Maßnahme: W2 — Ablage klären (gesammelt committen oder außerhalb des Arbeitsbaums); bis dahin nicht anfassen, nicht löschen, nicht stagen (Stefan, 25.10.2026).
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2a (Basisprüfung), 25.10.2026.
+
+**F-1197** · `TECH_DEBT` · P3 · offen
+Titel: Roadmap-Gantt: Auswahl in Gold, Status ohne Chip-Form.
+Beschreibung: Die gewählte Gantt-Zeile trägt Streifen und Fläche in `--amber` (Bestand seit F46 D1), das Detailpanel einen Amber-Rahmen; Gold ist laut Sollvorgabe die Ebenenfarbe „Meilenstein“, die Auswahl liest sich so wie eine Ebene. Der Status in den Zeilen ist Symbol + Text ohne Pillenform, die Sollvorgabe nennt „Status-Chip“ (design-guardian B5b-2a, Nr. 3 und 4).
+Fundstelle: `public/leitstand/style.css` (`#view-roadmap .rm-zeile.gewaehlt`, `.rm-detail`, `.rm-status`).
+Auswirkung: Gering — lesbar, aber nicht ganz designtreu.
+Maßnahme: Stefan entscheidet: Auswahl neutral (`--note-bg`/`--line`) und Status als Pille, oder Bestand bestätigen. Kandidat für B5b-2b.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2a (design-guardian), 25.10.2026.
+
+**F-1198** · `TECH_DEBT` · P3 · offen
+Titel: Roadmap-Gantt: lange Namen nur über title und Detailpanel lesbar.
+Beschreibung: Die sticky linke Spalte (254 px, Phone 172 px) kürzt Namen mit Ellipse; den Volltext gibt es nur im `title` (weder Touch noch Tastatur) und nach dem Wählen im Detailpanel (qa B5b-2a Nr. 7). Ebenso unbekannte Workstream-`art` hätte keinen Rückfall — die Akten-Prüfung erzwingt `art` heute (qa Nr. 8).
+Fundstelle: `public/leitstand/views/roadmap.js` (`ganttZeile`), `public/leitstand/style.css` (`.rm-name-text`).
+Auswirkung: Gering.
+Maßnahme: Mit B5b-2b prüfen (z. B. zweizeiliger Name oder breitere Spalte ab 1440 px).
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2a (qa), 25.10.2026.
+
+**F-1199** · `TECH_DEBT` · P3 · offen
+Titel: Roadmap-View ohne Tests für Fokus, Zoom-Rücksetzen und Querscroll.
+Beschreibung: Die reinen Funktionen sind getestet; die View-Seite nicht: `fokusSchluessel` mit JSON-Zeilenschlüsseln, Projektwechsel setzt Zoom/Aufklappen/Auswahl zurück, Querscroll bleibt beim Neuschreiben (qa B5b-2a Nr. 9). Belegt ist der Querscroll nur im Render-Nachweis (Schritt 07). Dazu fehlt eine Aufnahme mit reduzierter Bewegung (design-guardian Nr. 6).
+Fundstelle: `public/leitstand/views/roadmap.js`, `public/leitstand/projekt-wechsel.test.mjs`.
+Auswirkung: Gering — Rückschritt würde erst im Browser auffallen.
+Maßnahme: Mit B5b-2b einen View-Test im Muster `projekt-wechsel.test.mjs` ergänzen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2a (qa, design-guardian), 25.10.2026.

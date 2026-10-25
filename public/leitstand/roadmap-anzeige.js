@@ -4,7 +4,10 @@
  * Zweck: Reine Anzeigeregeln der Roadmap (F44 WS-2a, Abgleich F-725 D1–D4) über der Projektion
  * von GET …/roadmap (scripts/leitstand/routen-roadmap.mjs): aktueller Meilenstein, Zähler
  * „x / y abgenommen“, Statuskategorie für Symbol und Legende, welche Meilensteine offen stehen,
- * welche Features in keinem Meilenstein stehen, und in welchem Zustand die Antwort ist.
+ * welche Features in keinem Meilenstein stehen, und in welchem Zustand die Antwort ist. Seit F45 B5b-2a zusätzlich der
+ * Gantt lesend (features/F45/plan-b5b2a-v2.md): Achse je Zoom, Formen je Zeile (baueSpur), Zeilenliste Meilenstein → Feature
+ * → Workstream/Fixpaket/Design mit Gruppen der erledigten Kinder (ganttZeilen), Kennzahlen „Bis <M> fertig“ und „Plan
+ * gegen Ist“ aus kennzahlen der Projektion.
  * Eine Stelle für diese Regeln, damit #/roadmap und in WS-2b der aktuelle Meilenstein und der
  * Fortschrittsring der Übersicht nicht auseinanderlaufen.
  *
@@ -47,6 +50,11 @@ const KATEGORIE_JE_STATUS = {
   READY_FOR_TECH: 'geplant',
   ABGEBROCHEN: 'abgebrochen',
   keine_akte: 'ohne_akte',
+  // F45 B5b-2a: Status einer Workstream-Zeile der Akte (src/workboard/feature-planung.ts WORKSTREAM_STATUS).
+  geplant: 'geplant',
+  laeuft: 'in_arbeit',
+  erledigt: 'abgenommen',
+  verworfen: 'abgebrochen',
 }
 
 /** Kategorien in Legendenreihenfolge (die ersten fünf wie die Vorlage). */
@@ -224,4 +232,441 @@ export function waehleEntwicklungsstand(meilenstein, workitems, max = ENTWICKLUN
     .map((f) => ({ art: 'feature', id: f.id, titel: f.titel, status: f.status, prioritaet: null, typ: 'FEATURE' }))
   const alle = [...findings, ...features].filter((e) => typen === null || typen.has(e.typ))
   return { eintraege: alle.slice(0, max), gesamt: alle.length, findingsVerfuegbar: Array.isArray(workitems) }
+}
+
+// ─── Gantt (F45 B5b-2a, features/F45/plan-b5b2a-v2.md) ─────────────────────────────────────────────
+// Lesend über zeitachse und kennzahlen der Projektion (src/workboard/roadmap-planung.ts). Keine Länge ohne Schätzung (R4);
+// die Ist-Zone ist ein Band wie im Design, keine Skala (Advisor 2).
+
+/** Pixel je Arbeitstag je Zoom (Design 03-roadmap: eine Spalte = 44 px = 1 AT bzw. 1 Woche = 5 AT). */
+export const MASSSTAB_PX = Object.freeze({ tage: 44, wochen: 8.8 })
+
+/** Breite einer Achsenspalte und der Ist-Zone „Ist · bis heute“ links von der Heute-Linie (px). */
+export const SPALTE_PX = 44
+export const IST_BREITE = 96
+
+/** Mindestbreite eines Balkens (px), damit eine sehr kurze Spanne sichtbar bleibt. */
+const BALKEN_MIN_PX = 4
+
+/** Spalten Platz hinter dem letzten Element für die Beschriftung (5 × 44 px ≈ die längste Beschriftung). */
+const RESERVE_SPALTEN = 5
+
+/**
+ * Beschriftung links vom Element statt rechts (Prüfpass dg 2/qa 6): sobald ihr rechter Ankerpunkt hinter AT 6 liegt — die
+ * Startansicht zeigt bei 1440 px rund zehn Spalten — und links davon mindestens LABEL_LINKS_PX Platz bis zur Heute-Linie ist.
+ */
+const LABEL_KIPP_AB_PX = IST_BREITE + 6 * SPALTE_PX
+const LABEL_LINKS_PX = 200
+
+/** Status einer offenen Workstream-Zeile (geplant/laeuft) und einer erledigten (erledigt/verworfen). */
+const ZEILE_OFFEN = new Set(['geplant', 'laeuft'])
+const ZEILE_ERLEDIGT = new Set(['erledigt', 'verworfen'])
+
+/**
+ * Rundet auf zwei Nachkommastellen (wie roadmap-planung.ts).
+ * @param zahl - Wert
+ * @returns gerundeter Wert
+ */
+function runde(zahl) {
+  return Math.round(zahl * 100) / 100
+}
+
+/**
+ * true für eine endliche Zahl.
+ * @param wert - Kandidat
+ * @returns boolean
+ */
+function istZahl(wert) {
+  return typeof wert === 'number' && Number.isFinite(wert)
+}
+
+/**
+ * Einträge der Zeitachse einer gültigen Projektion; fehlt das Feld (älterer Server, Testprojektion) oder ist es kaputt: [].
+ * @param roadmap - Antwort von GET …/roadmap
+ * @returns Liste der Einträge mit meilenstein und feature als Text
+ */
+export function zeitachseVon(roadmap) {
+  const eintraege = roadmapZustand(roadmap) === 'ok' ? roadmap.zeitachse?.eintraege : null
+  return Array.isArray(eintraege) ? eintraege.filter((e) => e !== null && typeof e === 'object' && typeof e.meilenstein === 'string' && typeof e.feature === 'string') : []
+}
+
+/**
+ * Achse für einen Zoom: Spalten ab heute (AT 1 … bzw. W 1 …), mindestens zehn, dazu drei Spalten Platz für die Beschriftung
+ * hinter dem letzten Balken.
+ * @param eintraege - aus zeitachseVon
+ * @param massstab - 'tage' | 'wochen' (Unbekanntes → 'tage')
+ * @returns { massstab, px: Pixel je AT, spalten: [{ nummer, links }], breite: Gesamtbreite der Spur }
+ */
+export function baueAchse(eintraege, massstab) {
+  const zoom = Object.hasOwn(MASSSTAB_PX, massstab) ? massstab : 'tage'
+  const px = MASSSTAB_PX[zoom]
+  const ende = Math.max(0, ...eintraege.flatMap((e) => [e.ende_max_at, e.fruehestens_ab_at].filter(istZahl)))
+  const anzahl = Math.max(10, Math.ceil((ende * px) / SPALTE_PX) + RESERVE_SPALTEN)
+  const spalten = Array.from({ length: anzahl }, (_, i) => ({ nummer: i + 1, links: IST_BREITE + i * SPALTE_PX }))
+  return { massstab: zoom, px, spalten, breite: IST_BREITE + anzahl * SPALTE_PX }
+}
+
+/**
+ * x-Position eines Arbeitstags ab heute (0 = Heute-Linie).
+ * @param at - Arbeitstage ab heute (≥ 0)
+ * @param achse - aus baueAchse
+ * @returns px
+ */
+export function xVonAt(at, achse) {
+  return runde(IST_BREITE + at * achse.px)
+}
+
+/**
+ * Formen einer Zeile auf der Zeitspur (Plan v2 Nr. 2, 3, 7): Ist-Band, Planbalken (gefüllt = läuft, sonst Umriss), gestrichelte
+ * Spanne bis Max., punktierte Marke ohne Schätzung, Beschriftung als Daten (Text baut die Anzeige über i18n).
+ * @param eintraege - Zeitachsen-Einträge der Zeile (bei Feature/Meilenstein alle darunter)
+ * @param optionen - { istBand: Ist-Band zeigen, laeuft: Zeile läuft (füllt den Balken), ohneLage: offene Zeile unter abgeschlossenem Eltern }
+ * @param achse - aus baueAchse
+ * @returns { istBand, ohneLage, plan: { links, breite, form } | null, max: { links, breite } | null, marke: { links, ab } | null, label: { links, seite: 'rechts' | 'links' (Ankerpunkt = linke bzw. rechte Kante des Texts), dauer: { min, max } | null, ohneSchaetzung, fruehestensAb } | null }
+ */
+export function baueSpur(eintraege, optionen, achse) {
+  const mitSchaetzung = eintraege.filter((e) => istZahl(e.start_at) && istZahl(e.ende_min_at) && istZahl(e.ende_max_at))
+  const ohneSchaetzung = eintraege.filter((e) => e.schaetzung_fehlt === true && istZahl(e.fruehestens_ab_at))
+  const spur = { istBand: optionen.istBand === true, ohneLage: optionen.ohneLage === true, plan: null, max: null, marke: null, label: null }
+  let rechts = null
+  let start = null
+  let dauer = null
+  if (mitSchaetzung.length > 0) {
+    start = Math.min(...mitSchaetzung.map((e) => e.start_at))
+    const endeMin = Math.max(...mitSchaetzung.map((e) => e.ende_min_at))
+    const endeMax = Math.max(...mitSchaetzung.map((e) => e.ende_max_at))
+    const laeuft = optionen.laeuft === true || mitSchaetzung.some((e) => e.status === 'laeuft')
+    spur.plan = { links: xVonAt(start, achse), breite: Math.max(runde((endeMin - start) * achse.px), BALKEN_MIN_PX), form: laeuft ? 'gefuellt' : 'umriss' }
+    if (endeMax > endeMin) spur.max = { links: xVonAt(endeMin, achse), breite: runde((endeMax - endeMin) * achse.px) }
+    dauer = { min: runde(endeMin - start), max: runde(endeMax - start) }
+    rechts = Math.max(spur.plan.links + spur.plan.breite, xVonAt(endeMax, achse))
+  }
+  if (ohneSchaetzung.length > 0) {
+    const ab = Math.min(...ohneSchaetzung.map((e) => e.fruehestens_ab_at))
+    spur.marke = { links: xVonAt(ab, achse), ab: runde(ab) }
+    rechts = Math.max(rechts ?? 0, spur.marke.links + 6)
+  }
+  if (rechts !== null) {
+    // nach_unbekannt: die Lage ist nur eine Untergrenze — sichtbar als „frühestens ab AT x“ vor der Dauer (Advisor 3).
+    const nachUnbekannt = dauer !== null && eintraege.some((e) => e.nach_unbekannt === true)
+    // Weit rechts kippt die Beschriftung vor das erste Element, damit sie in der Startansicht lesbar bleibt (Prüfpass dg 2).
+    const linkesEnde = Math.min(spur.plan?.links ?? Number.POSITIVE_INFINITY, (spur.marke?.links ?? Number.POSITIVE_INFINITY) - 6)
+    const kippt = rechts > LABEL_KIPP_AB_PX && linkesEnde - IST_BREITE >= LABEL_LINKS_PX
+    spur.label = {
+      links: runde(kippt ? linkesEnde - 6 : rechts + 6),
+      seite: kippt ? 'links' : 'rechts',
+      dauer,
+      ohneSchaetzung: ohneSchaetzung.length,
+      fruehestensAb: dauer === null ? spur.marke.ab : nachUnbekannt ? runde(start) : null,
+    }
+  }
+  return spur
+}
+
+/**
+ * Schlüssel einer Gantt-Zeile (JSON, damit IDs mit „/“ oder Leerzeichen eindeutig bleiben).
+ * @param teile - Art und IDs
+ * @returns Text
+ */
+export function zeilenSchluessel(...teile) {
+  return JSON.stringify(teile)
+}
+
+/**
+ * Summe der Ist-AT erledigter Workstream-Zeilen, null ohne Ist.
+ * @param zeilen - Workstream-Einträge
+ * @returns Zahl oder null
+ */
+function istSumme(zeilen) {
+  const werte = zeilen.filter((w) => w.status === 'erledigt' && istZahl(w.ist)).map((w) => w.ist)
+  return werte.length === 0 ? null : runde(werte.reduce((s, w) => s + w, 0))
+}
+
+/**
+ * Alle Zeilen des Gantt in Anzeigereihenfolge (Plan v2 Nr. 5): Meilenstein → Feature → Workstream/Fixpaket/Design je `art`.
+ * Bei einer nicht abgeschlossenen Elternzeile stehen die erledigten Kinder in einer Gruppenzeile vorn (eine Regel für
+ * „Erledigt in M5“ und „n erledigt“). Liefert auch die eingeklappten Zeilen (sichtbar = false) — die Anzeige filtert, das
+ * Detailpanel findet so jede Auswahl. Der aktuelle Meilenstein steht oben, abgeschlossene unter der Trennzeile.
+ * @param roadmap - Antwort von GET …/roadmap
+ * @param zustand - { aufgeklappt: Set der Zeilenschlüssel oder null = Standard, abgeschlosseneSichtbar, achse }
+ * @returns { oben: Zeile[], unten: Zeile[], trenner: { anzahl, abgenommen, gesamt } | null, standardOffen: Set }
+ *   Zeile = { schluessel, eltern, ebene, art, farbe, id, titel, status, kategorie, hatKinder, offen, sichtbar, istAt, schaetzung,
+ *   notiz, anzahl, hinweise: string[], spur, bezug: { meilenstein, feature, workstream }, danach }
+ */
+export function ganttZeilen(roadmap, zustand) {
+  const meilensteine = meilensteineVon(roadmap)
+  const aktueller = aktuellerMeilenstein(roadmap)
+  const eintraege = zeitachseVon(roadmap)
+  const achse = zustand.achse ?? baueAchse(eintraege, 'tage')
+  const jeFeature = new Map()
+  for (const e of eintraege) {
+    const schluessel = zeilenSchluessel(e.meilenstein, e.feature)
+    if (!jeFeature.has(schluessel)) jeFeature.set(schluessel, [])
+    jeFeature.get(schluessel).push(e)
+  }
+  const standardOffen = new Set()
+  if (aktueller !== null) {
+    standardOffen.add(zeilenSchluessel('m', aktueller.id))
+    for (const f of aktueller.features) if (statusKategorie(f?.status) === 'in_arbeit') standardOffen.add(zeilenSchluessel('f', aktueller.id, f.id))
+  }
+  const istOffen = (schluessel) => (zustand.aufgeklappt instanceof Set ? zustand.aufgeklappt.has(schluessel) : standardOffen.has(schluessel))
+
+  /** Baut eine Zeile und hängt sie an; Kinder nur über die übergebene Funktion. */
+  const zeilen = []
+  const neu = (basis, sichtbar, kinder) => {
+    const zeile = { hinweise: [], istAt: null, schaetzung: null, notiz: '', anzahl: null, danach: null, ...basis, sichtbar, hatKinder: kinder !== null }
+    zeile.offen = zeile.hatKinder && istOffen(zeile.schluessel)
+    zeilen.push(zeile)
+    if (kinder !== null) kinder(sichtbar && zeile.offen)
+    return zeile
+  }
+
+  const workstreamZeile = (m, f, w, eltern, ebene, sichtbar, elternZu) => {
+    const eigene = (jeFeature.get(zeilenSchluessel(m.id, f.id)) ?? []).filter((e) => e.workstream === w.id)
+    const ohneLage = elternZu && ZEILE_OFFEN.has(w.status)
+    return neu(
+      {
+        schluessel: zeilenSchluessel('w', m.id, f.id, w.id),
+        eltern,
+        ebene,
+        art: w.art,
+        farbe: w.art,
+        id: w.id,
+        titel: w.titel || w.id,
+        status: w.status,
+        kategorie: statusKategorie(w.status),
+        istAt: istZahl(w.ist) ? w.ist : null,
+        schaetzung: w.schaetzung ?? null,
+        notiz: typeof w.notiz === 'string' ? w.notiz : '',
+        hinweise: ohneLage ? ['ohne_lage'] : [],
+        spur: baueSpur(eigene, { istBand: w.status === 'erledigt', laeuft: w.status === 'laeuft', ohneLage }, achse),
+        bezug: { meilenstein: m.id, feature: f.id, workstream: w.id },
+      },
+      sichtbar,
+      null
+    )
+  }
+
+  const featureZeile = (m, f, eltern, ebene, sichtbar) => {
+    const workstreams = Array.isArray(f.workstreams) ? f.workstreams.filter((w) => w !== null && typeof w === 'object' && typeof w.id === 'string') : []
+    const kategorie = statusKategorie(f.status)
+    const geschlossen = ERLEDIGT_STATUS.has(f.status)
+    const elternZu = geschlossen || m.status === ABGESCHLOSSEN
+    const schluessel = zeilenSchluessel('f', m.id, f.id)
+    const eigene = jeFeature.get(zeilenSchluessel(m.id, f.id)) ?? []
+    const hinweise = []
+    if (f.workstreams_fehlerhaft === true) hinweise.push('fehlerhaft')
+    if (Array.isArray(f.planung_befunde) && f.planung_befunde.length > 0) hinweise.push('befunde')
+    if (!geschlossen && m.status === ABGESCHLOSSEN) hinweise.push('ohne_lage')
+    // Abgeschlossen, aber mit offenen Zeilen: schon an der Feature-Zeile sichtbar, nicht erst nach dem Aufklappen (qa 4).
+    if (geschlossen && workstreams.some((w) => ZEILE_OFFEN.has(w.status))) hinweise.push('abweichung')
+    const kinder =
+      workstreams.length === 0
+        ? null
+        : (kinderSichtbar) => {
+            const erledigt = geschlossen ? [] : workstreams.filter((w) => ZEILE_ERLEDIGT.has(w.status))
+            const direkt = geschlossen ? workstreams : workstreams.filter((w) => !ZEILE_ERLEDIGT.has(w.status))
+            if (erledigt.length > 0) {
+              neu(
+                {
+                  schluessel: zeilenSchluessel('h', m.id, f.id),
+                  eltern: schluessel,
+                  ebene: ebene + 1,
+                  art: 'gruppe',
+                  farbe: 'workstream',
+                  id: f.id,
+                  titel: '',
+                  status: 'erledigt',
+                  kategorie: 'abgenommen',
+                  anzahl: erledigt.length,
+                  istAt: istSumme(erledigt),
+                  spur: baueSpur([], { istBand: true }, achse),
+                  bezug: { meilenstein: m.id, feature: f.id, workstream: null },
+                },
+                kinderSichtbar,
+                (gruppeSichtbar) => {
+                  for (const w of erledigt) workstreamZeile(m, f, w, zeilenSchluessel('h', m.id, f.id), ebene + 2, gruppeSichtbar, elternZu)
+                }
+              )
+            }
+            for (const w of direkt) workstreamZeile(m, f, w, schluessel, ebene + 1, kinderSichtbar, elternZu)
+          }
+    return neu(
+      {
+        schluessel,
+        eltern,
+        ebene,
+        art: 'feature',
+        farbe: 'feature',
+        id: f.id,
+        titel: typeof f.titel === 'string' && f.titel.trim() !== '' ? f.titel : f.id,
+        status: f.status,
+        kategorie,
+        istAt: istSumme(workstreams),
+        prioritaet: f.prioritaet ?? null,
+        befunde: Array.isArray(f.planung_befunde) ? f.planung_befunde : [],
+        hinweise,
+        spur: baueSpur(eigene, { istBand: kategorie === 'abgenommen' || eigene.some((e) => istZahl(e.ist_ende_at)), laeuft: kategorie === 'in_arbeit', ohneLage: hinweise.includes('ohne_lage') }, achse),
+        bezug: { meilenstein: m.id, feature: f.id, workstream: null },
+      },
+      sichtbar,
+      kinder
+    )
+  }
+
+  const meilensteinZeile = (m, sichtbar) => {
+    const features = m.features.filter((f) => f !== null && typeof f === 'object' && typeof f.id === 'string')
+    const schluessel = zeilenSchluessel('m', m.id)
+    const abgeschlossen = m.status === ABGESCHLOSSEN
+    const eigene = eintraege.filter((e) => e.meilenstein === m.id)
+    const istAt = istSumme(features.flatMap((f) => (Array.isArray(f.workstreams) ? f.workstreams : [])))
+    return neu(
+      {
+        schluessel,
+        eltern: null,
+        ebene: 0,
+        art: 'meilenstein',
+        farbe: 'meilenstein',
+        id: m.id,
+        titel: typeof m.titel === 'string' && m.titel.trim() !== '' ? m.titel : m.id,
+        status: m.status,
+        kategorie: statusKategorie(m.status),
+        istAt,
+        aktuell: m === aktueller,
+        zaehler: zaehleMeilenstein(m),
+        // R1-Abweichung (abgeschlossen, aber ein Feature nicht): ein Fall der Bereinigungsliste, sichtbar an der Zeile (qa 4).
+        hinweise: abgeschlossen && features.some((f) => f.status !== ABGESCHLOSSEN) ? ['abweichung'] : [],
+        spur: baueSpur(eigene, { istBand: abgeschlossen || eigene.some((e) => istZahl(e.ist_ende_at)), laeuft: statusKategorie(m.status) === 'in_arbeit' }, achse),
+        bezug: { meilenstein: m.id, feature: null, workstream: null },
+      },
+      sichtbar,
+      features.length === 0
+        ? null
+        : (kinderSichtbar) => {
+            const erledigt = abgeschlossen ? [] : features.filter((f) => f.status === ABGESCHLOSSEN)
+            if (erledigt.length > 0) {
+              neu(
+                {
+                  schluessel: zeilenSchluessel('g', m.id),
+                  eltern: schluessel,
+                  ebene: 1,
+                  art: 'gruppe',
+                  farbe: 'feature',
+                  id: m.id,
+                  titel: '',
+                  status: ABGESCHLOSSEN,
+                  kategorie: 'abgenommen',
+                  anzahl: erledigt.length,
+                  istAt: istSumme(erledigt.flatMap((f) => (Array.isArray(f.workstreams) ? f.workstreams : []))),
+                  spur: baueSpur([], { istBand: true }, achse),
+                  bezug: { meilenstein: m.id, feature: null, workstream: null },
+                },
+                kinderSichtbar,
+                (gruppeSichtbar) => {
+                  for (const f of erledigt) featureZeile(m, f, zeilenSchluessel('g', m.id), 2, gruppeSichtbar)
+                }
+              )
+            }
+            for (const f of abgeschlossen ? features : features.filter((x) => x.status !== ABGESCHLOSSEN)) featureZeile(m, f, schluessel, 1, kinderSichtbar)
+          }
+    )
+  }
+
+  const offen = [...(aktueller === null ? [] : [aktueller]), ...meilensteine.filter((m) => m !== aktueller && m.status !== ABGESCHLOSSEN)]
+  const abgeschlossen = meilensteine.filter((m) => m !== aktueller && m.status === ABGESCHLOSSEN)
+  for (const m of offen) meilensteinZeile(m, true)
+  const grenze = zeilen.length
+  for (const m of abgeschlossen) meilensteinZeile(m, zustand.abgeschlosseneSichtbar === true)
+  // „danach“: die nächste Zeile derselben Elternzeile (Gruppen übersprungen), wie im Design-Detail.
+  const geschwister = new Map()
+  for (const z of zeilen) {
+    if (z.art === 'gruppe') continue
+    if (!geschwister.has(z.eltern)) geschwister.set(z.eltern, [])
+    geschwister.get(z.eltern).push(z)
+  }
+  // Meilensteine stehen in der Anzeige umsortiert (aktueller oben); „danach“ folgt der Roadmap-Reihenfolge.
+  geschwister.get(null)?.sort((a, b) => meilensteine.findIndex((m) => m.id === a.id) - meilensteine.findIndex((m) => m.id === b.id))
+  for (const liste of geschwister.values()) liste.forEach((z, i) => (z.danach = liste[i + 1] ?? null))
+  const zaehler = zaehleRoadmap({ status: 'ok', meilensteine: abgeschlossen })
+  return {
+    oben: zeilen.slice(0, grenze),
+    unten: zeilen.slice(grenze),
+    trenner: abgeschlossen.length === 0 ? null : { anzahl: abgeschlossen.length, ...zaehler },
+    standardOffen,
+  }
+}
+
+/**
+ * Schlüssel aller aufklappbaren Zeilen unter den sichtbaren Meilensteinen („Alles aufklappen“) — aus einer schon gebauten Lage,
+ * ohne ganttZeilen erneut zu rechnen (Prüfpass cr 11).
+ * @param lage - Ergebnis von ganttZeilen
+ * @param abgeschlosseneSichtbar - ob die abgeschlossenen Meilensteine eingeblendet sind
+ * @returns Liste der Schlüssel
+ */
+export function aufklappbareSchluessel(lage, abgeschlosseneSichtbar) {
+  return [...lage.oben, ...(abgeschlosseneSichtbar ? lage.unten : [])].filter((z) => z.hatKinder).map((z) => z.schluessel)
+}
+
+/**
+ * Die gewählte Zeile, nur unter den sichtbaren (Prüfpass dg 1/qa 5): ist die Wahl eingeklappt, gilt die nächste sichtbare
+ * Elternzeile (Gruppen übersprungen); ohne gültige Wahl das erste Feature „in Arbeit“ des aktuellen Meilensteins, sonst der
+ * aktuelle Meilenstein, sonst die erste sichtbare Zeile.
+ * @param roadmap - Antwort von GET …/roadmap
+ * @param lage - Ergebnis von ganttZeilen
+ * @param auswahl - Zeilenschlüssel oder null
+ * @returns Zeile oder null, wenn keine Zeile sichtbar ist
+ */
+export function gewaehlteZeile(roadmap, lage, auswahl) {
+  const alle = [...lage.oben, ...lage.unten]
+  const jeSchluessel = new Map(alle.map((z) => [z.schluessel, z]))
+  let zeile = auswahl === null ? null : (jeSchluessel.get(auswahl) ?? null)
+  while (zeile !== null && (!zeile.sichtbar || zeile.art === 'gruppe')) zeile = zeile.eltern === null ? null : (jeSchluessel.get(zeile.eltern) ?? null)
+  if (zeile !== null) return zeile
+  const sichtbar = alle.filter((z) => z.sichtbar && z.art !== 'gruppe')
+  const aktueller = aktuellerMeilenstein(roadmap)
+  const imAktuellen = sichtbar.filter((z) => aktueller !== null && z.bezug.meilenstein === aktueller.id)
+  return imAktuellen.find((z) => z.art === 'feature' && z.kategorie === 'in_arbeit') ?? imAktuellen.find((z) => z.art === 'meilenstein') ?? sichtbar[0] ?? null
+}
+
+/**
+ * „Features x / y abgenommen“ aus kennzahlen.features_abgenommen der Projektion (ohne ABGEBROCHEN, Challenger 24.10.2026);
+ * fehlt das Feld (älterer Server), zählt zaehleRoadmap (Prüfpass cr 3/qa 3).
+ * @param roadmap - Antwort von GET …/roadmap
+ * @returns { abgenommen, gesamt }
+ */
+export function featuresAbgenommen(roadmap) {
+  const wert = roadmapZustand(roadmap) === 'ok' ? roadmap.kennzahlen?.features_abgenommen : null
+  return wert !== null && typeof wert === 'object' && istZahl(wert.abgenommen) && istZahl(wert.gesamt) ? { abgenommen: wert.abgenommen, gesamt: wert.gesamt } : zaehleRoadmap(roadmap)
+}
+
+/**
+ * R5 „Bis <M> fertig“ eines Meilensteins aus kennzahlen.bis_fertig.
+ * @param roadmap - Antwort von GET …/roadmap
+ * @param meilensteinId - ID oder null
+ * @returns { berechenbar, min, max, ohne_schaetzung } oder null (kein Meilenstein, Feld fehlt oder kaputt)
+ */
+export function bisFertig(roadmap, meilensteinId) {
+  const liste = roadmapZustand(roadmap) === 'ok' ? roadmap.kennzahlen?.bis_fertig : null
+  if (!Array.isArray(liste) || meilensteinId === null) return null
+  const eintrag = liste.find((e) => e?.meilenstein === meilensteinId) ?? null
+  if (eintrag === null || typeof eintrag.berechenbar !== 'boolean' || !istZahl(eintrag.ohne_schaetzung)) return null
+  if (eintrag.berechenbar && !(istZahl(eintrag.min) && istZahl(eintrag.max))) return null
+  return { berechenbar: eintrag.berechenbar, min: eintrag.min ?? null, max: eintrag.max ?? null, ohne_schaetzung: eintrag.ohne_schaetzung }
+}
+
+/**
+ * „Plan gegen Ist“ (Plan v2 Nr. 4): Ist gegen die Plan-Spanne der erledigten Zeilen mit Schätzung und Ist. Über plan_max →
+ * „ueber“ mit +%, unter plan_min → „unter“ mit −%, dazwischen „im_plan“; ohne Bezugsgröße (0) keine Prozentzahl.
+ * @param roadmap - Antwort von GET …/roadmap
+ * @returns { zustand: 'leer' | 'im_plan' | 'ueber' | 'unter', prozent: Zahl oder null, anzahl, plan_min, plan_max, ist } oder null (Feld fehlt oder kaputt)
+ */
+export function planGegenIst(roadmap) {
+  const p = roadmapZustand(roadmap) === 'ok' ? roadmap.kennzahlen?.plan_gegen_ist : null
+  if (p === null || typeof p !== 'object' || ![p.anzahl, p.plan_min, p.plan_max, p.ist].every(istZahl)) return null
+  const basis = { anzahl: p.anzahl, plan_min: p.plan_min, plan_max: p.plan_max, ist: p.ist }
+  if (p.anzahl === 0) return { zustand: 'leer', prozent: null, ...basis }
+  // Mindestens 1 %: knapp neben der Spanne nie „0 % über Plan“ (Prüfpass cr 10).
+  if (p.ist > p.plan_max) return { zustand: 'ueber', prozent: p.plan_max > 0 ? Math.max(1, Math.round((p.ist / p.plan_max - 1) * 100)) : null, ...basis }
+  if (p.ist < p.plan_min) return { zustand: 'unter', prozent: Math.min(-1, Math.round((p.ist / p.plan_min - 1) * 100)), ...basis }
+  return { zustand: 'im_plan', prozent: 0, ...basis }
 }
