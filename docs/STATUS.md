@@ -485,7 +485,7 @@ Feature unter `features/F2x/`):
   `features/F20/feature.md` AK7).
 - ✅ **F21** — Workboard + Attention v1 (Projektion über Findings,
   Feature-Akten, Failed Runs, Capability Gaps). Akte `features/F21/
-  feature.md`, Status `FEATURE_GATE`, AK1–AK8 erfüllt. WS-1 (PR #152) und
+  feature.md`, Status `ABGESCHLOSSEN`, AK1–AK8 erfüllt. WS-1 (PR #152) und
   WS-2 (PR #153) gemergt. AK8: ACCEPT, 14.09.2026 (Stefan, Realtest).
 - ✅ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
   Kernartefakt, Vorschlag → Freigabe → Kette). Akte `features/F22/
