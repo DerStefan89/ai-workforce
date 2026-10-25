@@ -87,10 +87,22 @@ export function deuteBereinigung(antwort) {
 export const bereinigungsAnzahl = (liste) => (liste?.zustand === 'ok' ? liste.eintraege.length : 0)
 
 /**
- * Formularstand eines Eintrags beim ersten Anzeigen — keine Vorauswahl (Stefan wählt ausdrücklich).
- * @returns { wahl: null, grund: '', haekchen: false, schritt: 'auswahl', phase: 'offen', meldung: null }
+ * Formularstand eines Eintrags beim ersten Anzeigen. Seit F45 B5b-2c-2-AB (Sollvorgabe Standardoption, Advisor B5b-2c B11 und
+ * B5b-2c-2 B7): „Feature → ABGESCHLOSSEN“ ist vorgewählt, wenn dieser Vorschlag möglich ist; sonst und ohne Eintrag keine
+ * Vorauswahl. Bestätigen bleibt ausdrücklich — Begründung und Bestätigungsschritt sind weiter Pflicht. Ein schon angelegter Stand
+ * (Eingabe, als der Vorschlag nicht möglich war) bekommt die Vorauswahl nicht nachträglich, wenn er nach dem Neuladen möglich wird
+ * (bewusst, Prüfpass cr 6: keine Wahl ändert sich unter Stefans Eingaben).
+ * @param eintrag - Eintrag aus deuteBereinigung (optional)
+ * @returns { wahl: 'feature_abgeschlossen' | null, grund: '', haekchen: false, schritt: 'auswahl', phase: 'offen', meldung: null }
  */
-export const neuerEintragsStand = () => ({ wahl: null, grund: '', haekchen: false, schritt: 'auswahl', phase: 'offen', meldung: null })
+export const neuerEintragsStand = (eintrag) => ({
+  wahl: Array.isArray(eintrag?.vorschlaege) && eintrag.vorschlaege.some((v) => v.entscheidung === 'feature_abgeschlossen' && v.moeglich === true) ? 'feature_abgeschlossen' : null,
+  grund: '',
+  haekchen: false,
+  schritt: 'auswahl',
+  phase: 'offen',
+  meldung: null,
+})
 
 /** Gewählter, möglicher Vorschlag oder null. @param eintrag - Eintrag @param stand - Formularstand @returns Vorschlag oder null */
 export const gewaehlterVorschlag = (eintrag, stand) => eintrag.vorschlaege.find((v) => v.moeglich && v.entscheidung === stand.wahl) ?? null
@@ -203,6 +215,8 @@ function meldungHtml(meldung, eintragId, oben) {
 
 /**
  * Eine Option (Radio) je Vorschlag; nicht mögliche deaktiviert mit Grund (Prosa, kein <code>, design-guardian dg 5) und „von Hand“.
+ * „Meilenstein → LAEUFT“ steht nachrangig (Klasse nachrangig: kleiner, gedämpft, nicht fett), bleibt aber wählbar. Die Folgen
+ * (nebenwirkung) stehen nur im Bestätigungsschritt (F-1206 dg 3, Advisor B5b-2c B10: kein <details> im <label>).
  * @param eintrag - Eintrag
  * @param stand - Formularstand
  * @param v - Vorschlag
@@ -214,7 +228,8 @@ function optionHtml(eintrag, stand, v, index, aus) {
   const id = `rm-bereinigung-${index}-${v.entscheidung}`
   const grund = v.moeglich ? '' : `<small class="rm-bereinigung-grund">${tHtml('roadmap.bereinigung.nichtMoeglich')} ${escapeHtml(v.grund ?? '')}</small>`
   const deaktiviert = !v.moeglich || aus !== ''
-  return `<label class="rm-bereinigung-option${v.moeglich ? '' : ' aus'}" for="${id}"><input type="radio" id="${id}" name="rm-bereinigung-wahl-${index}" value="${escapeHtml(v.entscheidung)}" data-roadmap-bereinigung-feld="wahl" data-roadmap-bereinigung-eintrag-id="${escapeHtml(eintrag.eintrag)}" data-roadmap-bereinigung-fokus="${fokus(eintrag.eintrag, v.entscheidung)}"${stand.wahl === v.entscheidung && v.moeglich ? ' checked' : ''}${deaktiviert ? ' disabled' : ''} /><span><strong>${escapeHtml(v.text)}</strong><small>${escapeHtml(v.nebenwirkung)}</small>${grund}</span></label>`
+  const klassen = ['rm-bereinigung-option', v.moeglich ? '' : 'aus', v.entscheidung === 'meilenstein_laeuft' ? 'nachrangig' : ''].filter(Boolean).join(' ')
+  return `<label class="${klassen}" for="${id}"><input type="radio" id="${id}" name="rm-bereinigung-wahl-${index}" value="${escapeHtml(v.entscheidung)}" data-roadmap-bereinigung-feld="wahl" data-roadmap-bereinigung-eintrag-id="${escapeHtml(eintrag.eintrag)}" data-roadmap-bereinigung-fokus="${fokus(eintrag.eintrag, v.entscheidung)}"${stand.wahl === v.entscheidung && v.moeglich ? ' checked' : ''}${deaktiviert ? ' disabled' : ''} /><span><strong>${escapeHtml(v.text)}</strong>${grund}</span></label>`
 }
 
 /**
@@ -338,7 +353,7 @@ export function bereinigungHtml(stand) {
     }
     if (n > 0) {
       const kontext = { sperre: stand.sperre ?? null, datum: stand.datum }
-      teile.push(`<ol class="rm-bereinigung-liste">${stand.liste.eintraege.map((e, i) => eintragHtml(e, stand.staende.get(e.eintrag) ?? neuerEintragsStand(), i, kontext)).join('')}</ol>`)
+      teile.push(`<ol class="rm-bereinigung-liste">${stand.liste.eintraege.map((e, i) => eintragHtml(e, stand.staende.get(e.eintrag) ?? neuerEintragsStand(e), i, kontext)).join('')}</ol>`)
     }
   }
   return `<section class="rm-bereinigung" aria-labelledby="rm-bereinigung-titel" data-roadmap-bereinigung>${kopf}${teile.join('')}</section>`

@@ -29,6 +29,8 @@
  *     akteFormularOffen: true, solange das Formular „Akte bearbeiten“ (F45 B5a-2) offen ist — „Das Was“ tritt dann
  *          zurück, das Formular steht an seiner Stelle (#workboard-akte-formular, views/workboard.js),
  *     roadmap: undefined (lädt, nur Features) | Projektion von GET …/roadmap | { status: 'fehler' },
+ *     zuordnungRoadmap: Roadmap der Seite für „Zugeordnet zu“ im Befund-Detail (F45 B5b-2c-2-AB) — undefined (lädt) | Projektion |
+ *          { status: 'fehler' },
  *     workitems: alle Workitems (für Befunde je Feature und die Zahl offener Befunde) | null | undefined,
  *     ctw: Click-to-Work-Stand — 'frei' | 'gesperrt' | 'laedt' (Einstieg sichtbar), 'vorschlag'
  *          (Vorschlag wartet auf Freigeben/Ablehnen), 'entwurf' (AK-Entwurf wartet auf Bestätigen, F45 B2a-2),
@@ -53,6 +55,7 @@
  * - Sätze in „Kurz gesagt“ und im Jetzt-Band sind feste Vorlagen, gefüllt nur mit Daten (Regel 8).
  */
 
+import { zuordnungAnzeige } from '../befund-zuordnung.js'
 import { befundeAusFeature, findeFundstellenPfad, fundstelleHtml, jetztBandHtml, kuerzeText, kurzGesagtHtml, statusBlockHtml } from '../eintrag-bausteine.js'
 import { featurePrioritaeten, istNichtTerminal, schrittFortschritt, workflowPhase } from '../entwicklung-daten.js'
 import { schrittFolge } from '../fokus-daten.js'
@@ -258,6 +261,26 @@ function meilensteinText(sicht) {
   if (zustand !== 'ok') return tHtml('entwicklung.detail.planung.nichtVerfuegbar')
   const meilenstein = sicht.roadmap.meilensteine.find((m) => m.features.some((f) => f?.id === sicht.workitem.id))
   return meilenstein === undefined ? tHtml('entwicklung.detail.planung.nichtEingeplant') : escapeHtml(meilenstein.titel ?? meilenstein.id ?? '')
+}
+
+/**
+ * „Zugeordnet zu“ eines Befunds (F45 B5b-2c-2-AB, F-1208 qa 6, Advisor `advisor-b5b2c2.md` A3) nach der Regel in befund-zuordnung.js:
+ * Feature (Link ins Detail) bzw. Meilenstein; sonst „ohne Feature-/Meilenstein-Bezug“, mit „(Spur Pflege & Fixes)“ nur bei offen
+ * P0–P2. Ohne roadmap.json der vorhandene Satz „Keine Roadmap angelegt“.
+ * @param sicht - siehe Dateikopf
+ * @returns HTML
+ */
+function zuordnungText(sicht) {
+  const zustand = sicht.zuordnungRoadmap === undefined ? 'laedt' : roadmapZustand(sicht.zuordnungRoadmap)
+  if (zustand === 'laedt') return tHtml('entwicklung.laedt')
+  if (zustand === 'nicht_vorhanden') return tHtml('entwicklung.detail.planung.keineRoadmap')
+  const ziel = zustand === 'ok' ? zuordnungAnzeige(sicht.workitem, sicht.zuordnungRoadmap) : null
+  if (ziel === null) return tHtml('entwicklung.detail.planung.nichtVerfuegbar')
+  // Ohne Akte führte der Link ins Leere — dann nur Text (wie das Roadmap-Detail, Prüfpass cr 3/qa 7).
+  if (ziel.art === 'feature' && ziel.status === 'keine_akte') return escapeHtml(`${ziel.id} · ${ziel.titel}`)
+  if (ziel.art === 'feature') return `<a class="text-link" href="#/workboard/${encodeURIComponent(ziel.id)}">${escapeHtml(`${ziel.id} · ${ziel.titel}`)}</a>`
+  if (ziel.art === 'meilenstein') return tHtml('eintrag.spalte.zuordnung.meilenstein', { id: ziel.id, titel: ziel.titel })
+  return `${tHtml('eintrag.spalte.zuordnung.ohne')}${ziel.spur ? ` <span class="subtle">${tHtml('eintrag.spalte.zuordnung.spur')}</span>` : ''}`
 }
 
 /**
@@ -974,8 +997,8 @@ export function detailInhaltHtml(sicht) {
 
 /**
  * Rechte Spalte: Feature „Deine Planung“ (Priorität und Meilenstein aus der Roadmap-Projektion, F45 B5b-2c-1; Schätzung und Speichern
- * „kommt“, Fixpaket B5), Befund „Einordnung“ (Priorität echt; Zuordnung, Schätzung, Speichern
- * „kommt“). Darunter die Links: Akte bzw. Fundstelle (nur bei eindeutigem Pfad) und Registereintrag
+ * „kommt“, Fixpaket B5), Befund „Einordnung“ (Priorität echt; „Zugeordnet zu“ seit F45 B5b-2c-2-AB echt —
+ * zuordnungText; Schätzung, Speichern „kommt“). Darunter die Links: Akte bzw. Fundstelle (nur bei eindeutigem Pfad) und Registereintrag
  * in VS Code, Pull Requests (F46 D4: <remoteWebUrl>/pulls in neuem Tab, ohne GitHub-Remote gesperrt), Roadmap,
  * „Frag Jarvis dazu“ (befüllt nur die Eingabe).
  * @param sicht - siehe Dateikopf
@@ -986,7 +1009,7 @@ export function detailSpalteHtml(sicht) {
   const feature = workitem.quelle === 'feature'
   const felder = feature
     ? `<dt>${tHtml('entwicklung.detail.planung.prioritaet')}</dt><dd>${featurePrioritaetText(sicht)}</dd><dt>${tHtml('entwicklung.detail.planung.meilenstein')}</dt><dd>${meilensteinText(sicht)}</dd><dt>${tHtml('eintrag.spalte.schaetzungRest')}</dt><dd>${kommtBadge()}</dd>`
-    : `<dt>${tHtml('entwicklung.detail.planung.prioritaet')}</dt><dd>${escapeHtml(workitem.prioritaet ?? '–')}</dd><dt>${tHtml('eintrag.spalte.zugeordnet')}</dt><dd>${kommtBadge()}</dd><dt>${tHtml('eintrag.spalte.schaetzung')}</dt><dd>${kommtBadge()}</dd>`
+    : `<dt>${tHtml('entwicklung.detail.planung.prioritaet')}</dt><dd>${escapeHtml(workitem.prioritaet ?? '–')}</dd><dt>${tHtml('eintrag.spalte.zugeordnet')}</dt><dd>${zuordnungText(sicht)}</dd><dt>${tHtml('eintrag.spalte.schaetzung')}</dt><dd>${kommtBadge()}</dd>`
   const links = []
   if (feature) {
     links.push(vsCodeLink(sicht.repoPfad, workitem.pfad ?? `features/${workitem.id}/feature.md`, null, t('eintrag.spalte.akteVsCode')))

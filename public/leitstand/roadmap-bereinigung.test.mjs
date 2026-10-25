@@ -5,7 +5,8 @@
  * `moeglich`), Sperren für „Bestätigen …“ und „Jetzt schreiben“ (Häkchen bei LAEUFT, qa2; genau ein Eintrag je Klick), Körper mit
  * den Hashes aus dem GET, Deutung der POST-Antworten (200 eigen, Rest wie deutePlanungAntwort), Sichtbarkeit des Abschnitts
  * (Advisor A4), HTML: deaktivierter Vorschlag mit Grund, Datumshinweis (qa6), „nicht zurücknehmbar“ (qa2), Erfolg mit festem
- * STATUS.md-Hinweis und hinweis (qa7), qa8-Satz, Zähler an der Trennzeile, escaped.
+ * STATUS.md-Hinweis und hinweis (qa7), qa8-Satz, Zähler an der Trennzeile, escaped. Seit F45 B5b-2c-2-AB: Standard-Vorauswahl
+ * „Feature → ABGESCHLOSSEN“ nur wenn möglich, „Meilenstein → LAEUFT“ nachrangig, Folgentext nur im Bestätigungsschritt (F-1206 dg 3).
  *
  * Wird aufgerufen von: `npm run test` (node --test)
  *
@@ -190,4 +191,27 @@ test('trennzeileBereinigungHtml: nur bei n > 0, pluralisiert', () => {
   assert.equal(trennzeileBereinigungHtml(0), '')
   assert.match(trennzeileBereinigungHtml(1), /1 Abweichung zur Bereinigung/)
   assert.match(trennzeileBereinigungHtml(5), /5 Abweichungen zur Bereinigung/)
+})
+
+test('B5b-2c-2-AB neuerEintragsStand: „Feature → ABGESCHLOSSEN“ vorgewählt nur wenn möglich; ohne Eintrag keine Vorauswahl (Advisor B7)', () => {
+  const moeglich = liste([roh({ vorschlaege: [{ entscheidung: 'feature_abgeschlossen', text: 'F18 → ABGESCHLOSSEN', nebenwirkung: 'Akte …', moeglich: true, grund: null }, { entscheidung: 'meilenstein_laeuft', text: 'M3 → LAEUFT', nebenwirkung: 'roadmap.json …', moeglich: true, grund: null }] })]).eintraege[0]
+  assert.equal(neuerEintragsStand(moeglich).wahl, 'feature_abgeschlossen')
+  assert.equal(neuerEintragsStand(liste().eintraege[0]).wahl, null, 'ABGESCHLOSSEN nicht möglich ⇒ keine Vorauswahl, auch nicht LAEUFT')
+  assert.equal(neuerEintragsStand().wahl, null)
+  assert.equal(neuerEintragsStand(moeglich).grund, '', 'Begründung bleibt Pflicht')
+  // Die Anzeige ohne gespeicherten Stand nutzt dieselbe Vorauswahl; Bestätigen bleibt ohne Begründung gesperrt.
+  const h = html({ liste: { zustand: 'ok', eintraege: [moeglich], befunde: [] } })
+  assert.match(h, /value="feature_abgeschlossen"[^>]*checked/)
+  assert.doesNotMatch(h, /value="meilenstein_laeuft"[^>]*checked/)
+  assert.match(h, /data-roadmap-bereinigung-aktion="bestaetigen"[^>]*disabled/)
+})
+
+test('B5b-2c-2-AB Auswahl: „Meilenstein → LAEUFT“ nachrangig und wählbar; Folgentext nur im Bestätigungsschritt (F-1206 dg 3)', () => {
+  const h = html()
+  assert.match(h, /class="rm-bereinigung-option nachrangig" for="rm-bereinigung-0-meilenstein_laeuft"/)
+  assert.match(h, /class="rm-bereinigung-option aus" for="rm-bereinigung-0-feature_abgeschlossen"/)
+  assert.doesNotMatch(h, /roadmap\.json …/, 'kein Folgentext in der Auswahl')
+  assert.doesNotMatch(h, /<details/)
+  const pruefen = html({ staende: new Map([['M3/F18', stand({ wahl: 'meilenstein_laeuft', grund: 'g', schritt: 'pruefen' })]]) })
+  assert.match(pruefen, /roadmap\.json …/, 'Folgentext im Bestätigungsschritt')
 })

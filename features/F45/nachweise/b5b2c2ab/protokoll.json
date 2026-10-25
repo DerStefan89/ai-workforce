@@ -1,0 +1,2166 @@
+[
+  {
+    "hinweis": "Wegwerf-Kopie unter os.tmpdir() mit Basis-Commit (Arbeitsbaum + Präparation: F20 FEATURE_GATE in Akte und STATUS.md, Ausnahme M4/F20; F-013 als BUG), eigener Leitstand-Prozess, rein lesend (kein schreibender Klick).",
+    "uebersprungen": []
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "de-1440-dunkel-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "02-pflege-auf",
+    "bild": "de-1440-dunkel-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "02b-weitere",
+    "bild": "de-1440-dunkel-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "03-befund-detail",
+    "bild": "de-1440-dunkel-03-befund-detail.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "detailChip": "Bug · P1",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Befund öffnen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;b&quot;,&quot;F-013&quot;]\" aria-pressed=\"true\"><s"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "04-feature-zaehler",
+    "bild": "de-1440-dunkel-04-feature-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;f&quot;,&quot;M5&quot;,&quot;F45&quot;]\" aria-pres"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "05-meilenstein-zaehler",
+    "bild": "de-1440-dunkel-05-meilenstein-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "06-trennzeile",
+    "bild": "de-1440-dunkel-06-trennzeile.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "07-eingeblendet",
+    "bild": "de-1440-dunkel-07-eingeblendet.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · unten eingeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Ausblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"true\">Ausblenden</button>"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "08-bereinigung-standard",
+    "bild": "de-1440-dunkel-08-bereinigung-standard.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"false\">Einblenden</button>"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "09-kanban-pflege-vorgemerkt",
+    "bild": "de-1440-dunkel-09-kanban-pflege-vorgemerkt.webp",
+    "ueberlaufSeite": 0,
+    "hash": "#/workboard",
+    "modus": "Kanban · Priorität",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "karten": 24,
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "10-zugeordnet-feature",
+    "bild": "de-1440-dunkel-10-zugeordnet-feature.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "zugeordnet": "F45 · Fixpaket Arbeitsfähigkeit",
+    "zugeordnetLink": "#/workboard/F45"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "11-zugeordnet-ohne",
+    "bild": "de-1440-dunkel-11-zugeordnet-ohne.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "zugeordnet": "ohne Feature-/Meilenstein-Bezug (Spur Pflege & Fixes)",
+    "zugeordnetLink": null
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "de-1440-hell-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "02-pflege-auf",
+    "bild": "de-1440-hell-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "02b-weitere",
+    "bild": "de-1440-hell-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "03-befund-detail",
+    "bild": "de-1440-hell-03-befund-detail.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "detailChip": "Bug · P1",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Befund öffnen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;b&quot;,&quot;F-013&quot;]\" aria-pressed=\"true\"><s"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "04-feature-zaehler",
+    "bild": "de-1440-hell-04-feature-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;f&quot;,&quot;M5&quot;,&quot;F45&quot;]\" aria-pres"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "05-meilenstein-zaehler",
+    "bild": "de-1440-hell-05-meilenstein-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "06-trennzeile",
+    "bild": "de-1440-hell-06-trennzeile.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "07-eingeblendet",
+    "bild": "de-1440-hell-07-eingeblendet.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · unten eingeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Ausblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"true\">Ausblenden</button>"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "08-bereinigung-standard",
+    "bild": "de-1440-hell-08-bereinigung-standard.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"false\">Einblenden</button>"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "09-kanban-pflege-vorgemerkt",
+    "bild": "de-1440-hell-09-kanban-pflege-vorgemerkt.webp",
+    "ueberlaufSeite": 0,
+    "hash": "#/workboard",
+    "modus": "Kanban · Priorität",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "karten": 24,
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "10-zugeordnet-feature",
+    "bild": "de-1440-hell-10-zugeordnet-feature.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "zugeordnet": "F45 · Fixpaket Arbeitsfähigkeit",
+    "zugeordnetLink": "#/workboard/F45"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "11-zugeordnet-ohne",
+    "bild": "de-1440-hell-11-zugeordnet-ohne.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "zugeordnet": "ohne Feature-/Meilenstein-Bezug (Spur Pflege & Fixes)",
+    "zugeordnetLink": null
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "de-390-dunkel-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "02-pflege-auf",
+    "bild": "de-390-dunkel-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "02b-weitere",
+    "bild": "de-390-dunkel-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "03-befund-detail",
+    "bild": "de-390-dunkel-03-befund-detail.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "detailChip": "Bug · P1",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Befund öffnen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;b&quot;,&quot;F-013&quot;]\" aria-pressed=\"true\"><s"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "04-feature-zaehler",
+    "bild": "de-390-dunkel-04-feature-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;f&quot;,&quot;M5&quot;,&quot;F45&quot;]\" aria-pres"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "05-meilenstein-zaehler",
+    "bild": "de-390-dunkel-05-meilenstein-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "06-trennzeile",
+    "bild": "de-390-dunkel-06-trennzeile.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "07-eingeblendet",
+    "bild": "de-390-dunkel-07-eingeblendet.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · unten eingeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Ausblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"true\">Ausblenden</button>"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "08-bereinigung-standard",
+    "bild": "de-390-dunkel-08-bereinigung-standard.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"false\">Einblenden</button>"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "09-kanban-pflege-vorgemerkt",
+    "bild": "de-390-dunkel-09-kanban-pflege-vorgemerkt.webp",
+    "ueberlaufSeite": 0,
+    "hash": "#/workboard",
+    "modus": "Kanban · Priorität",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "karten": 24,
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "10-zugeordnet-feature",
+    "bild": "de-390-dunkel-10-zugeordnet-feature.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "zugeordnet": "F45 · Fixpaket Arbeitsfähigkeit",
+    "zugeordnetLink": "#/workboard/F45"
+  },
+  {
+    "lage": "de-390-dunkel",
+    "schritt": "11-zugeordnet-ohne",
+    "bild": "de-390-dunkel-11-zugeordnet-ohne.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "zugeordnet": "ohne Feature-/Meilenstein-Bezug (Spur Pflege & Fixes)",
+    "zugeordnetLink": null
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "de-390-hell-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "02-pflege-auf",
+    "bild": "de-390-hell-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "02b-weitere",
+    "bild": "de-390-hell-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "03-befund-detail",
+    "bild": "de-390-hell-03-befund-detail.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "detailChip": "Bug · P1",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Befund öffnen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;b&quot;,&quot;F-013&quot;]\" aria-pressed=\"true\"><s"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "04-feature-zaehler",
+    "bild": "de-390-hell-04-feature-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;f&quot;,&quot;M5&quot;,&quot;F45&quot;]\" aria-pres"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "05-meilenstein-zaehler",
+    "bild": "de-390-hell-05-meilenstein-zaehler.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "06-trennzeile",
+    "bild": "de-390-hell-06-trennzeile.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;m&quot;,&quot;M5&quot;]\" aria-pressed=\"true\"><span"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "07-eingeblendet",
+    "bild": "de-390-hell-07-eingeblendet.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · unten eingeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Ausblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"true\">Ausblenden</button>"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "08-bereinigung-standard",
+    "bild": "de-390-hell-08-bereinigung-standard.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "detailChip": "Meilenstein",
+    "offeneBefunde": "118 (P0–P2), davon 6 direkt am Meilenstein",
+    "detailLinks": [],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"button\" data-roadmap-abgeschlossene=\"\" aria-pressed=\"false\">Einblenden</button>"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "09-kanban-pflege-vorgemerkt",
+    "bild": "de-390-hell-09-kanban-pflege-vorgemerkt.webp",
+    "ueberlaufSeite": 0,
+    "hash": "#/workboard",
+    "modus": "Kanban · Priorität",
+    "filter": [
+      "Alle",
+      "Pflege & Fixes"
+    ],
+    "karten": 24,
+    "fokus": "<button type=\"button\" class=\"view-switch-knopf active\" data-board-modus=\"prioritaet\" aria-pressed=\"true\">Kanban · Priori"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "10-zugeordnet-feature",
+    "bild": "de-390-hell-10-zugeordnet-feature.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Zwei Tests mit Wartezeit fallen unter Last aus.",
+    "zugeordnet": "F45 · Fixpaket Arbeitsfähigkeit",
+    "zugeordnetLink": "#/workboard/F45"
+  },
+  {
+    "lage": "de-390-hell",
+    "schritt": "11-zugeordnet-ohne",
+    "bild": "de-390-hell-11-zugeordnet-ohne.webp",
+    "ueberlaufSeite": 0,
+    "titel": "Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt.",
+    "zugeordnet": "ohne Feature-/Meilenstein-Bezug (Spur Pflege & Fixes)",
+    "zugeordnetLink": null
+  },
+  {
+    "lage": "tr-390-dunkel",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "tr-390-dunkel-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Kilometre taşı",
+      "feature:Özellik",
+      "workstream:İş akışı",
+      "fixpaket:Düzeltme paketi",
+      "design:Tasarım",
+      "bug:Hata",
+      "pflege:Bakım ve düzeltmeler"
+    ],
+    "pflegeZeile": "›Bakım ve düzeltmelerAtanmamış 62 açık bulgu (P0–P2)○ Planlandı",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 kabul edildi · gerçekleşen 5,55 İG · 118 açık bulgu (P0–P2)↻ Üzerinde çalışılıyor 8,15–12,75 İG · 1 tahminsiz",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitÖzellik · kalan 8,15–12,75 İG · gerçekleşen 5,55 İG · 46 açık bulgu (P0–P2)↻ Üzerinde çalışılıyor 8,15–12,75 İG",
+    "trennzeile": "✓ 5 tamamlanmış kilometre taşı · 31 / 32 özellik kabul edildi · gizli · 135 açık bulgu Temizlenecek 1 sapma Göster",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Özellik",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Kaydı aç →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "tr-390-dunkel",
+    "schritt": "02-pflege-auf",
+    "bild": "tr-390-dunkel-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Kilometre taşı",
+      "feature:Özellik",
+      "workstream:İş akışı",
+      "fixpaket:Düzeltme paketi",
+      "design:Tasarım",
+      "bug:Hata",
+      "pflege:Bakım ve düzeltmeler"
+    ],
+    "pflegeZeile": "›Bakım ve düzeltmelerAtanmamış 62 açık bulgu (P0–P2)○ Planlandı",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 tane dahaGeliştirmede görüntüle →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 kabul edildi · gerçekleşen 5,55 İG · 118 açık bulgu (P0–P2)↻ Üzerinde çalışılıyor 8,15–12,75 İG · 1 tahminsiz",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitÖzellik · kalan 8,15–12,75 İG · gerçekleşen 5,55 İG · 46 açık bulgu (P0–P2)↻ Üzerinde çalışılıyor 8,15–12,75 İG",
+    "trennzeile": "✓ 5 tamamlanmış kilometre taşı · 31 / 32 özellik kabul edildi · gizli · 135 açık bulgu Temizlenecek 1 sapma Göster",
+    "detailTitel": "Bakım ve düzeltmeler",
+    "detailChip": "Şerit",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Geliştirmede görüntüle →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "tr-390-dunkel",
+    "schritt": "02b-weitere",
+    "bild": "tr-390-dunkel-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Kilometre taşı",
+      "feature:Özellik",
+      "workstream:İş akışı",
+      "fixpaket:Düzeltme paketi",
+      "design:Tasarım",
+      "bug:Hata",
+      "pflege:Bakım ve düzeltmeler"
+    ],
+    "pflegeZeile": "›Bakım ve düzeltmelerAtanmamış 62 açık bulgu (P0–P2)○ Planlandı",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 tane dahaGeliştirmede görüntüle →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 kabul edildi · gerçekleşen 5,55 İG · 118 açık bulgu (P0–P2)↻ Üzerinde çalışılıyor 8,15–12,75 İG · 1 tahminsiz",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitÖzellik · kalan 8,15–12,75 İG · gerçekleşen 5,55 İG · 46 açık bulgu (P0–P2)↻ Üzerinde çalışılıyor 8,15–12,75 İG",
+    "trennzeile": "✓ 5 tamamlanmış kilometre taşı · 31 / 32 özellik kabul edildi · gizli · 135 açık bulgu Temizlenecek 1 sapma Göster",
+    "detailTitel": "Bakım ve düzeltmeler",
+    "detailChip": "Şerit",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Geliştirmede görüntüle →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "ru-1440-hell",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "ru-1440-hell-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Веха",
+      "feature:Функция",
+      "workstream:Рабочий поток",
+      "fixpaket:Пакет исправлений",
+      "design:Дизайн",
+      "bug:Ошибка",
+      "pflege:Поддержка и исправления"
+    ],
+    "pflegeZeile": "›Поддержка и исправления62 открытые находки без привязки (P0–P2)○ Запланировано",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, DogfoodingПринято: 12 из 14 · факт 5,55 РД · 118 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД · 1 без оценки",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitФункция · осталось 8,15–12,75 РД · факт 5,55 РД · 46 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД",
+    "trennzeile": "✓ 5 завершённых вех · принято функций: 31 / 32 · скрыто · 135 открытых находок 1 отклонение к очистке Показать",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Функция",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Открыть запись →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "ru-1440-hell",
+    "schritt": "02-pflege-auf",
+    "bild": "ru-1440-hell-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Веха",
+      "feature:Функция",
+      "workstream:Рабочий поток",
+      "fixpaket:Пакет исправлений",
+      "design:Дизайн",
+      "bug:Ошибка",
+      "pflege:Поддержка и исправления"
+    ],
+    "pflegeZeile": "›Поддержка и исправления62 открытые находки без привязки (P0–P2)○ Запланировано",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ ещё 42Открыть в разработке →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, DogfoodingПринято: 12 из 14 · факт 5,55 РД · 118 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД · 1 без оценки",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitФункция · осталось 8,15–12,75 РД · факт 5,55 РД · 46 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД",
+    "trennzeile": "✓ 5 завершённых вех · принято функций: 31 / 32 · скрыто · 135 открытых находок 1 отклонение к очистке Показать",
+    "detailTitel": "Поддержка и исправления",
+    "detailChip": "Дорожка",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Открыть в разработке →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "ru-1440-hell",
+    "schritt": "02b-weitere",
+    "bild": "ru-1440-hell-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Веха",
+      "feature:Функция",
+      "workstream:Рабочий поток",
+      "fixpaket:Пакет исправлений",
+      "design:Дизайн",
+      "bug:Ошибка",
+      "pflege:Поддержка и исправления"
+    ],
+    "pflegeZeile": "›Поддержка и исправления62 открытые находки без привязки (P0–P2)○ Запланировано",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ ещё 42Открыть в разработке →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, DogfoodingПринято: 12 из 14 · факт 5,55 РД · 118 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД · 1 без оценки",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitФункция · осталось 8,15–12,75 РД · факт 5,55 РД · 46 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД",
+    "trennzeile": "✓ 5 завершённых вех · принято функций: 31 / 32 · скрыто · 135 открытых находок 1 отклонение к очистке Показать",
+    "detailTitel": "Поддержка и исправления",
+    "detailChip": "Дорожка",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Открыть в разработке →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "ru-390-hell",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "ru-390-hell-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Веха",
+      "feature:Функция",
+      "workstream:Рабочий поток",
+      "fixpaket:Пакет исправлений",
+      "design:Дизайн",
+      "bug:Ошибка",
+      "pflege:Поддержка и исправления"
+    ],
+    "pflegeZeile": "›Поддержка и исправления62 открытые находки без привязки (P0–P2)○ Запланировано",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, DogfoodingПринято: 12 из 14 · факт 5,55 РД · 118 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД · 1 без оценки",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitФункция · осталось 8,15–12,75 РД · факт 5,55 РД · 46 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД",
+    "trennzeile": "✓ 5 завершённых вех · принято функций: 31 / 32 · скрыто · 135 открытых находок 1 отклонение к очистке Показать",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Функция",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Открыть запись →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "ru-390-hell",
+    "schritt": "02-pflege-auf",
+    "bild": "ru-390-hell-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Веха",
+      "feature:Функция",
+      "workstream:Рабочий поток",
+      "fixpaket:Пакет исправлений",
+      "design:Дизайн",
+      "bug:Ошибка",
+      "pflege:Поддержка и исправления"
+    ],
+    "pflegeZeile": "›Поддержка и исправления62 открытые находки без привязки (P0–P2)○ Запланировано",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ ещё 42Открыть в разработке →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, DogfoodingПринято: 12 из 14 · факт 5,55 РД · 118 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД · 1 без оценки",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitФункция · осталось 8,15–12,75 РД · факт 5,55 РД · 46 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД",
+    "trennzeile": "✓ 5 завершённых вех · принято функций: 31 / 32 · скрыто · 135 открытых находок 1 отклонение к очистке Показать",
+    "detailTitel": "Поддержка и исправления",
+    "detailChip": "Дорожка",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Открыть в разработке →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "ru-390-hell",
+    "schritt": "02b-weitere",
+    "bild": "ru-390-hell-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Веха",
+      "feature:Функция",
+      "workstream:Рабочий поток",
+      "fixpaket:Пакет исправлений",
+      "design:Дизайн",
+      "bug:Ошибка",
+      "pflege:Поддержка и исправления"
+    ],
+    "pflegeZeile": "›Поддержка и исправления62 открытые находки без привязки (P0–P2)○ Запланировано",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ ещё 42Открыть в разработке →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, DogfoodingПринято: 12 из 14 · факт 5,55 РД · 118 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД · 1 без оценки",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitФункция · осталось 8,15–12,75 РД · факт 5,55 РД · 46 открытых находок (P0–P2)↻ В работе 8,15–12,75 РД",
+    "trennzeile": "✓ 5 завершённых вех · принято функций: 31 / 32 · скрыто · 135 открытых находок 1 отклонение к очистке Показать",
+    "detailTitel": "Поддержка и исправления",
+    "detailChip": "Дорожка",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "Открыть в разработке →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "01-gantt-pflege-zu",
+    "bild": "de-720-200prozent-01-gantt-pflege-zu.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "false",
+    "befundZeilen": 0,
+    "befundeRot": 0,
+    "weitere": null,
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Fixpaket Arbeitsfähigkeit",
+    "detailChip": "Feature",
+    "offeneBefunde": "46 (P0–P2)",
+    "detailLinks": [
+      "Eintrag öffnen →"
+    ],
+    "anpassen": true,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<body>\n  <div id=\"shell\">\n    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus\n   "
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "02-pflege-auf",
+    "bild": "de-720-200prozent-02-pflege-auf.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  },
+  {
+    "lage": "de-720-200prozent",
+    "schritt": "02b-weitere",
+    "bild": "de-720-200prozent-02b-weitere.webp",
+    "ueberlaufSeite": 0,
+    "legende": [
+      "meilenstein:Meilenstein",
+      "feature:Feature",
+      "workstream:Workstream",
+      "fixpaket:Fixpaket",
+      "design:Design",
+      "bug:Bug",
+      "pflege:Pflege & Fixes"
+    ],
+    "pflegeZeile": "›Pflege & Fixes62 offene Befunde ohne Zuordnung (P0–P2)○ Geplant",
+    "pflegeOffen": "true",
+    "befundZeilen": 20,
+    "befundeRot": 1,
+    "weitere": "+ 42 weitereIn der Entwicklung ansehen →",
+    "meilensteinZeile": "›M5 · Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding12 / 14 abgenommen · Ist 5,55 AT · 118 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT · 1 ohne Schätzung",
+    "featureZeile": "›F45 · Fixpaket ArbeitsfähigkeitFeature · Rest 8,15–12,75 AT · Ist 5,55 AT · 46 offene Befunde (P0–P2)↻ In Arbeit 8,15–12,75 AT",
+    "trennzeile": "✓ 5 abgeschlossene Meilensteine · 31 / 32 Features abgenommen · ausgeblendet · 135 offene Befunde 1 Abweichung zur Bereinigung Einblenden",
+    "detailTitel": "Pflege & Fixes",
+    "detailChip": "Spur",
+    "offeneBefunde": null,
+    "detailLinks": [
+      "In der Entwicklung ansehen →"
+    ],
+    "anpassen": false,
+    "bereinigung": [
+      {
+        "klasse": "rm-bereinigung-option",
+        "text": "F20 → ABGESCHLOSSEN (heute FEATURE_GATE)",
+        "gewaehlt": true
+      },
+      {
+        "klasse": "rm-bereinigung-option nachrangig",
+        "text": "M4 → LAEUFT",
+        "gewaehlt": false
+      }
+    ],
+    "fokus": "<button type=\"button\" class=\"rm-waehlen\" data-roadmap-waehlen=\"[&quot;p&quot;]\" aria-pressed=\"true\"><span class=\"rm-name"
+  }
+]

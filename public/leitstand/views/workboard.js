@@ -76,6 +76,9 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initWorkboardView beim Bootstrap)
+ * - public/leitstand/views/code.js und views/runs.js (oeffneEntwicklungsRegister), public/leitstand/views/roadmap.js (oeffneKanbanPrioritaet, F45
+ *   B5b-2c-2-AB: Link „In der Entwicklung ansehen“ unter „Pflege & Fixes“)
+ * - public/leitstand/projekt-wechsel.test.mjs (node:test, Schein-DOM)
  *
  * Wichtig:
  * - Projektinhalte (Titel, IDs, Statuswerte, Parser-Meldungen, Akten- und Servertexte) werden nicht
@@ -215,6 +218,13 @@ let boardModus = 'status'
 /** Filter des Prioritäts-Kanbans: Typ ('' = alle) und „Pflege & Fixes“ (nur offene P0–P2 ohne Feature-/Meilenstein-Bezug). */
 let kanbanTyp = ''
 let kanbanPflege = false
+
+/**
+ * F45 B5b-2c-2-AB (Advisor `advisor-b5b2c2.md` A4): „Pflege & Fixes“ vorgemerkt durch den Link von der Roadmap
+ * (oeffneKanbanPrioritaet). Übernommen nur aus einer aktuellen Roadmap-Antwort mit Zustand ok; verfällt bei fehler/nicht_vorhanden,
+ * in wechsleTab (auch beim Projektwechsel), beim Klick auf einen Kanban-Filterchip und beim Moduswechsel.
+ */
+let kanbanPflegeVorgemerkt = false
 
 /** Aufgeklappte Spalten des Prioritäts-Kanbans („Alle n hier zeigen“). */
 const kanbanVoll = new Set()
@@ -837,7 +847,17 @@ async function ladeKanbanRoadmap() {
     console.error('GET …/roadmap (Kanban) fehlgeschlagen:', fehler)
     kanbanRoadmap = { status: 'fehler' }
   }
+  wendeVormerkerAn()
   renderBoard()
+  // „Zugeordnet zu“ im offenen Befund-Detail liest dieselbe Roadmap (Advisor B10).
+  renderDetailNachtrag()
+}
+
+/** Übernimmt bzw. verwirft den Vormerker „Pflege & Fixes“ nach dem Eintreffen der Roadmap (siehe kanbanPflegeVorgemerkt). */
+function wendeVormerkerAn() {
+  if (!kanbanPflegeVorgemerkt || kanbanRoadmapZustand() === 'laedt') return
+  kanbanPflege = kanbanRoadmapZustand() === 'ok'
+  kanbanPflegeVorgemerkt = false
 }
 
 /** Lädt alles, was die Seite außerhalb des Polls braucht (Betreten, „Neu laden“, Projektwechsel). */
@@ -871,6 +891,7 @@ function wechsleTab(tab, spalte = null, laden = true) {
   // Auch die Filter des Prioritäts-Kanbans gehen auf „Alle“ (Prüfpass qa 5); der Modus selbst bleibt.
   kanbanTyp = ''
   kanbanPflege = false
+  kanbanPflegeVorgemerkt = false
   kanbanVoll.clear()
   letztesTechDebtKopfHtml = ''
   document.getElementById('workboard-techdebt-kopf').innerHTML = ''
@@ -899,6 +920,24 @@ export function oeffneEntwicklungsRegister(tab) {
   navigiere('#/workboard')
   // Erst nach dem Routing fokussieren — die Ansicht ist dann sichtbar und das Folge-Ereignis verarbeitet (Prüfpass qa 7).
   setTimeout(() => document.getElementById('workboard-tabs').querySelector(`[data-tab="${tab}"]`)?.focus(), 0)
+}
+
+/**
+ * F45 B5b-2c-2-AB: öffnet #/workboard im Register Kanban-Board, Modus „Kanban · Priorität“ — für den Link „In der Entwicklung
+ * ansehen“ unter „Pflege & Fixes“ auf der Roadmap (views/roadmap.js). Der Filter „Pflege & Fixes“ wird nur vorgemerkt: das Betreten
+ * lädt die Roadmap der Seite neu, und erst eine aktuelle Antwort mit Zustand ok schaltet ihn ein (Advisor A4). Ist die Seite schon
+ * offen und die Roadmap geladen, gilt er sofort.
+ * @param optionen - { pflege: true } merkt den Filter vor
+ */
+export function oeffneKanbanPrioritaet(optionen = {}) {
+  wechsleTab('board', null, false)
+  boardModus = 'prioritaet'
+  kanbanPflegeVorgemerkt = optionen.pflege === true
+  if (seiteAktiv) wendeVormerkerAn()
+  renderModi()
+  renderBoard()
+  navigiere('#/workboard')
+  setTimeout(() => document.getElementById('workboard-modi').querySelector('[data-board-modus="prioritaet"]')?.focus(), 0)
 }
 
 // ─── Detail (F44 WS-3b) und Click-to-Work ───────────────────────────────────
@@ -1614,6 +1653,8 @@ function baueDetailSicht(workitem) {
     abnahme: nachtrag?.abnahme,
     akte: nachtrag?.akte,
     roadmap: nachtrag?.roadmap,
+    // F45 B5b-2c-2-AB: „Zugeordnet zu“ im Befund-Detail aus der Roadmap der Seite (beim Betreten geladen, nie aus dem Poll).
+    zuordnungRoadmap: kanbanRoadmap,
     workitems: alleWorkitems,
     ctw: ctwStand(workitem),
     repoPfad: detailRepoPfad(),
@@ -1786,6 +1827,7 @@ function initFilterBedienung() {
     const knopf = ereignis.target.closest('[data-board-modus]')
     if (knopf === null || knopf.dataset.boardModus === boardModus) return
     boardModus = knopf.dataset.boardModus === 'prioritaet' ? 'prioritaet' : 'status'
+    kanbanPflegeVorgemerkt = false
     renderModi()
     renderBoard()
     document.getElementById('workboard-modi').querySelector(`[data-board-modus="${boardModus}"]`)?.focus()
@@ -1794,10 +1836,12 @@ function initFilterBedienung() {
     const ansicht = ereignis.target.closest('[data-ansicht]')
     const typ = ereignis.target.closest('[data-kanban-typ]')
     const pflege = ereignis.target.closest('[data-kanban-pflege]')
+    // Jeder Klick auf einen Kanban-Filterchip (auch ein gesperrter) beendet den Vormerker von der Roadmap.
+    if (typ !== null || pflege !== null) kanbanPflegeVorgemerkt = false
     if (ansicht !== null) boardAnsicht = ansicht.dataset.ansicht
     else if (typ !== null) kanbanTyp = typ.dataset.kanbanTyp
     else if (pflege !== null && pflege.getAttribute('aria-disabled') !== 'true') kanbanPflege = pflege.dataset.kanbanPflege === 'an'
-    else return
+    else if (pflege === null) return
     renderBoard()
   })
   document.getElementById('workboard-board').addEventListener('click', (ereignis) => {

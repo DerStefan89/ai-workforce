@@ -3984,6 +3984,60 @@ th {
   --rm-blass: var(--ebene-design-blass);
 }
 
+/* F45 B5b-2c-2-AB: Bug-Befunde rot (--ebene-bug), die Spur „Pflege & Fixes“ und übrige Befunde grau wie die Vorlage („Spur“ =
+   --muted) — keine neuen Farbwerte, blass über dieselbe Mischung wie die Ebenen-Tokens. */
+#view-roadmap [data-farbe='bug'] {
+  --rm-farbe: var(--ebene-bug);
+  --rm-blass: var(--ebene-bug-blass);
+}
+
+#view-roadmap [data-farbe='pflege'],
+#view-roadmap [data-farbe='befund'] {
+  --rm-farbe: var(--muted);
+  --rm-blass: color-mix(in srgb, var(--muted) 16%, transparent);
+}
+
+/* Prüfpass dg 1/qa 2: der Link rutscht als Ganzes unter „+ n weitere“, statt in der schmalen Zelle dreizeilig umzubrechen. */
+#view-roadmap .rm-weitere .rm-links {
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#view-roadmap .rm-weitere .text-link {
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Prüfpass dg 2: „Pflege & Fixes“ in der Legende als Quadrat wie in der Zeile — sonst gleicht es dem Formfeld „läuft“. */
+#view-roadmap .rm-leg[data-farbe='pflege'] .rm-leg-ebene {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+/* „In der Entwicklung ansehen →“ ist ein Knopf (Vormerker braucht den Aufruf), sieht aber aus wie die Textlinks daneben. */
+#view-roadmap button.text-link {
+  align-self: center;
+  padding: 0;
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  cursor: pointer;
+}
+
+#view-roadmap .rm-detail button.text-link {
+  align-self: flex-start;
+}
+
+#view-roadmap .rm-weitere-text {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 #view-roadmap .rm-leg {
   display: inline-flex;
   align-items: center;
@@ -4744,6 +4798,17 @@ th {
   color: var(--muted);
 }
 
+/* F45 B5b-2c-2-AB: „Meilenstein → LAEUFT“ nachrangig neben der Standardoption — kleiner, gedämpft, nicht fett; bleibt wählbar. */
+#view-roadmap .rm-bereinigung-option.nachrangig {
+  padding: 8px 10px;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-bereinigung-option.nachrangig strong {
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
 #view-roadmap .rm-bereinigung-option input,
 #view-roadmap .rm-bereinigung-haekchen input {
   accent-color: var(--mint);
@@ -5384,6 +5449,7 @@ th {
 #view-projektakte .text-link,
 #view-roadmap .rm-detail .text-link,
 #view-roadmap .rm-stand-alle .text-link,
+#view-roadmap .rm-weitere .text-link,
 .live-karte .text-link,
 .workflow-seite .abnahme-kanal-fehler .text-link {
   gap: 6px;

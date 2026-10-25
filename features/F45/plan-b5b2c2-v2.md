@@ -20,7 +20,10 @@ Advisor-Pass (Regel 3a). Schnitt nach der Vorgabe des Auftrags („schneidet der
 
 ## 2c-2-AB (nächster Auftrag) — Änderungen gegenüber v1
 
-- A1: Workstream B5b-2 bleibt `laeuft`, Notiz „2c-2 gebaut“; Abgenommen/Ist setzt der Challenger nach dem Merge.
+- A1: Workstream B5b-2 bleibt `laeuft`, Notiz „2c-2 gebaut“; Abgenommen/Ist setzt der Challenger nach dem Merge. Überholt durch den
+  Auftrag 2c-2-AB (25.10.2026): „auf erledigt, sofern die Ist-Zelle es zulässt“ — `erledigt` mit Ist „–“ und dem erwarteten
+  Merge-Datum (Akte, Zeile B5b-2).
+- Überholt durch den Auftrag 2c-2-AB: die Nachrüstung von `nachweise/b5b2c1/erzeuge-nachweis.mjs` (letzter Punkt unten) entfällt.
 - A2: F-1186 bleibt offen mit Nachtrag „siehe F-1209“, solange Stefans Läufe nicht als Beleg genannt sind.
 - A3: „Zugeordnet zu“: Feature bzw. Meilenstein; sonst „ohne Feature-/Meilenstein-Bezug“, Zusatz „(Spur Pflege & Fixes)“ nur bei
   offen P0–P2; ohne roadmap.json `entwicklung.detail.planung.keineRoadmap`.

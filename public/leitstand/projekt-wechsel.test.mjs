@@ -19,7 +19,8 @@
  * Öffnen (nie aus dem Poll) und blendet die Übersicht aus. F44 WS-4a (F-874, F-923): Ein offenes
  * Workflow-Detail samt Dialog, Bedienzustand und Reparaturentwurf wird beim Wechsel verworfen, der
  * Hash geht ohne neuen History-Eintrag auf #/runs, und der Auffrischer fragt den alten Workflow nicht
- * mehr ab; ein offenes #/workboard/<id> geht ebenso auf #/workboard.
+ * mehr ab; ein offenes #/workboard/<id> geht ebenso auf #/workboard. F45 B5b-2c-2-AB: der Vormerker „Pflege & Fixes“ aus
+ * oeffneKanbanPrioritaet (Link von der Roadmap) gilt nur nach einer aktuellen Roadmap-Antwort mit ok und verfällt sonst.
  *
  * Die echten View-Module laufen gegen ein minimales Schein-DOM (jede id liefert ein
  * gleichbleibendes Schein-Element) und ein aufzeichnendes fetch — kein Browser, kein Server.
@@ -142,6 +143,18 @@ function koerperFuer(url) {
     const projekt = url.match(/projekte\/([^/]+)\/projektakte/)?.[1] ?? 'standard'
     return { dateien: { beschreibung: { status: 'ok', pfad: 'docs/projekt/kontext/beschreibung.md', text: `## Für wen\n\nNutzer von ${projekt}` } }, versionsziel: { status: 'nicht_eindeutig', meilenstein: null } }
   }
+  // F45 B5b-2c-2-AB: projekt-pf (gültige Roadmap) und projekt-pf2 (keine Roadmap) mit einem Befund ohne Bezug und einem an F1 —
+  // für den Vormerker „Pflege & Fixes“ aus oeffneKanbanPrioritaet.
+  if (url.includes('/projekte/projekt-pf/workitems') || url.includes('/projekte/projekt-pf2/workitems'))
+    return {
+      workitems: [
+        { quelle: 'finding', typ: 'BUG', id: 'F-71', titel: 'Ohne Bezug PF', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P1', featureRun: 'Harness' },
+        { quelle: 'finding', typ: 'BUG', id: 'F-72', titel: 'Am Feature PF', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P1', featureRun: 'F1' },
+      ],
+      befunde: [],
+      fehler: [],
+    }
+  if (url.includes('/projekte/projekt-pf/roadmap')) return { status: 'ok', vision: 'V', meilensteine: [{ id: 'M1', titel: 'Eins', status: 'LAEUFT', features: [{ id: 'F1', titel: 'F eins', status: 'IN_ARBEIT' }] }] }
   // F44 WS-4a: projekt-wf mit einem Workflow im Freigabe-Halt (Detail, Aktionen, Dialog).
   if (url.includes('/projekte/projekt-wf/zustand'))
     return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'wf-1', ziel: 'Ziel WF', status: 'WARTET_FREIGABE', naechster: { art: 'haltFreigabe', schrittId: 's1' } }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
@@ -1045,4 +1058,104 @@ test('F46 D3 (Prüfpass qa 1): ein erledigter Bug heißt nicht „Jetzt beheben 
   entscheidungW3 = 'fehlt'
   location.hash = '#/workboard'
   dispatch()
+})
+
+/**
+ * F45 B5b-2c-2-AB: verlässt #/workboard (Seite verborgen, hashchange) und ruft oeffneKanbanPrioritaet({ pflege: true }) wie der Link
+ * „In der Entwicklung ansehen“ auf der Roadmap. Das Schein-DOM blendet keine Ansicht ein — die Seite wird vorher sichtbar gesetzt.
+ */
+async function oeffnePflegeVonDerRoadmap() {
+  const { oeffneKanbanPrioritaet } = await import('./views/workboard.js')
+  const ansicht = document.getElementById('view-workboard')
+  ansicht.hidden = true
+  location.hash = '#/roadmap'
+  for (const handler of hashchangeHandler) handler()
+  await warte()
+  ansicht.hidden = false
+  oeffneKanbanPrioritaet({ pflege: true })
+}
+
+/** Klickt einen Chip in #workboard-ansicht (Klick-Delegation in views/workboard.js). @param attribut - z. B. 'data-kanban-typ' @param dataset - Werte */
+function klickeAnsicht(attribut, dataset) {
+  document.getElementById('workboard-ansicht').handler.click({ target: { closest: (selektor) => (selektor === `[${attribut}]` ? { dataset, getAttribute: () => null } : null) } })
+}
+
+test('F45 B5b-2c-2-AB (Advisor A4, B12): Vormerker „Pflege & Fixes“ — übernommen nur aus einer aktuellen Roadmap-Antwort mit ok', async () => {
+  setzeAktivesProjekt({ id: 'projekt-pf', name: 'Projekt PF' })
+  await warte()
+  const halt = []
+  zurueckgehalten.set('/api/projekte/projekt-pf/roadmap', halt)
+  await oeffnePflegeVonDerRoadmap()
+  await warte()
+  // Bis zur Antwort steht der Filter nicht (Roadmap lädt): beide Befunde sichtbar (Prüfpass cr 1).
+  assert.match(document.getElementById('workboard-board').innerHTML, /Am Feature PF/)
+  assert.match(document.getElementById('workboard-ansicht').innerHTML, /data-kanban-pflege="an" aria-pressed="false" aria-disabled="true"/)
+  zurueckgehalten.clear()
+  for (const freigeben of halt) freigeben()
+  await warte()
+  const board = document.getElementById('workboard-board').innerHTML
+  assert.match(board, /prioritaets-board/, 'Modus „Kanban · Priorität“')
+  assert.match(board, /Ohne Bezug PF/)
+  assert.doesNotMatch(board, /Am Feature PF/, 'Filter „Pflege & Fixes“ angewandt')
+  assert.match(document.getElementById('workboard-ansicht').innerHTML, /data-kanban-pflege="an" aria-pressed="true"/)
+
+  // Keine Roadmap (nicht_vorhanden): der Vormerker verfällt, der Filter bleibt gesperrt.
+  setzeAktivesProjekt({ id: 'projekt-pf2', name: 'Projekt PF2' })
+  await warte()
+  await oeffnePflegeVonDerRoadmap()
+  await warte()
+  assert.match(document.getElementById('workboard-board').innerHTML, /Am Feature PF/)
+  assert.match(document.getElementById('workboard-ansicht').innerHTML, /data-kanban-pflege="an" aria-pressed="false" aria-disabled="true"/)
+})
+
+test('F45 B5b-2c-2-AB (Advisor A4): Vormerker verfällt beim Klick auf einen Kanban-Filterchip und beim Moduswechsel vor der Antwort', async () => {
+  for (const verwerfen of [() => klickeAnsicht('data-kanban-typ', { kanbanTyp: '' }), () => document.getElementById('workboard-modi').handler.click({ target: { closest: (s) => (s === '[data-board-modus]' ? { dataset: { boardModus: 'status' } } : null) } })]) {
+    setzeAktivesProjekt({ id: 'projekt-pf', name: 'Projekt PF' })
+    await warte()
+    const halt = []
+    zurueckgehalten.set('/api/projekte/projekt-pf/roadmap', halt)
+    await oeffnePflegeVonDerRoadmap()
+    await warte()
+    verwerfen()
+    zurueckgehalten.clear()
+    for (const freigeben of halt) freigeben()
+    await warte()
+    assert.doesNotMatch(document.getElementById('workboard-ansicht').innerHTML, /data-kanban-pflege="an" aria-pressed="true"/)
+    // Zurück auf „Kanban · Priorität“ (falls gewechselt): ungefiltert.
+    document.getElementById('workboard-modi').handler.click({ target: { closest: (s) => (s === '[data-board-modus]' ? { dataset: { boardModus: 'prioritaet' } } : null) } })
+    assert.match(document.getElementById('workboard-board').innerHTML, /Am Feature PF/)
+  }
+  location.hash = '#/workboard'
+})
+
+test('F45 B5b-2c-2-AB Prüfpass cr 1/qa 5: Vormerker verfällt bei fehler; eine überholte ok-Antwort schaltet ihn nicht ein', async () => {
+  // fehler: GET …/roadmap antwortet 500 (holeRoadmap wirft) — Filter aus und gesperrt.
+  setzeAktivesProjekt({ id: 'projekt-pf', name: 'Projekt PF' })
+  await warte()
+  sonderAntworten.set('GET /api/projekte/projekt-pf/roadmap', [{ status: 500, json: { grund: 'Test' } }])
+  await oeffnePflegeVonDerRoadmap()
+  await warte()
+  sonderAntworten.delete('GET /api/projekte/projekt-pf/roadmap')
+  assert.match(document.getElementById('workboard-board').innerHTML, /Am Feature PF/)
+  assert.match(document.getElementById('workboard-ansicht').innerHTML, /data-kanban-pflege="an" aria-pressed="false" aria-disabled="true"/)
+
+  // Überholt: erste Antwort zurückgehalten, „Neu laden“ fragt erneut; die alte ok-Antwort zählt nicht, erst die aktuelle.
+  setzeAktivesProjekt({ id: 'projekt-pf2', name: 'Projekt PF2' })
+  setzeAktivesProjekt({ id: 'projekt-pf', name: 'Projekt PF' })
+  await warte()
+  const halt = []
+  zurueckgehalten.set('/api/projekte/projekt-pf/roadmap', halt)
+  await oeffnePflegeVonDerRoadmap()
+  await warte()
+  document.getElementById('workboard-neu-laden').handler.click({})
+  await warte()
+  assert.equal(halt.length, 2, 'zwei Roadmap-Abrufe stehen aus')
+  zurueckgehalten.clear()
+  halt[0]()
+  await warte()
+  assert.doesNotMatch(document.getElementById('workboard-ansicht').innerHTML, /data-kanban-pflege="an" aria-pressed="true"/, 'überholte Antwort verworfen')
+  halt[1]()
+  await warte()
+  assert.match(document.getElementById('workboard-ansicht').innerHTML, /data-kanban-pflege="an" aria-pressed="true"/, 'aktuelle ok-Antwort übernimmt den Vormerker')
+  location.hash = '#/workboard'
 })
