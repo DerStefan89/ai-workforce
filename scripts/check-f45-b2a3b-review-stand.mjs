@@ -17,7 +17,7 @@
  *     -ErrorAction Stop, …, „}“ — F45 B2b-4a-2a), push in eigenem Block, ohne origin ein Block, ohne Pfad ein Grund.
  * (e) F-1085 (11): Befund mit leerer fundstelle/zusammenfassung/beleg → drei Hinweise, kein Halt; F-1085 (6): nach
  *     ANPASSUNG_ANGEFORDERT und zweitem Bau folgt die Projektion dem neuesten Review-Lauf (laufId, Befund, geprueft_stand).
- * (f) Quelltext: starteWorkflowSchritt( genau 6-mal im Server; leseGeprueftenStandSync( genau einmal; der Vergleich in
+ * (f) Quelltext: leseGeprueftenStandSync( genau einmal; der Vergleich in
  *     GET …/abnahme nimmt den Laufort über ermittleLaufort (fail-closed), nicht laufwurzelFuer (Advisor N2).
  * Rot (Selbsttest, kalibriert)
  * (g) Jede Prüfung aus (a)–(f) schlägt bei einem verfälschten Eingang an.
@@ -177,8 +177,6 @@ function pruefeElf(pruefe = pruefeReviewErgebnis) {
 function pruefeServerQuelltext(server) {
   const b = []
   const zaehle = (muster) => server.split(muster).length - 1
-  // Zählweise wie f45-b2a3 (g): jedes Vorkommen im Quelltext, Definition eingeschlossen.
-  if (zaehle('starteWorkflowSchritt(') !== 6) b.push(`(f) starteWorkflowSchritt( ${zaehle('starteWorkflowSchritt(')}-mal im Server (erwartet 6, wie f45-b2a3)`)
   if (zaehle('leseGeprueftenStandSync(') !== 1) b.push(`(f) leseGeprueftenStandSync( ${zaehle('leseGeprueftenStandSync(')}-mal im Server statt einmal`)
   const start = server.indexOf('async function vergleicheReviewStand(')
   const koerper = start < 0 ? '' : server.slice(start, server.indexOf('\n  }\n', start))
@@ -211,7 +209,7 @@ const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
   const vor = befunde.length
   befunde.push(...pruefeElf())
   befunde.push(...pruefeServerQuelltext(SERVER))
-  if (befunde.length === vor) console.log('✓ (e11/f) leere fundstelle/zusammenfassung/beleg → Hinweise ohne Halt; starteWorkflowSchritt( 6-mal, leseGeprueftenStandSync( einmal, GET über ermittleLaufort.')
+  if (befunde.length === vor) console.log('✓ (e11/f) leere fundstelle/zusammenfassung/beleg → Hinweise ohne Halt; leseGeprueftenStandSync( einmal, GET über ermittleLaufort.')
 }
 
 // ─── (a) Wegwerf-Repo ─────────────────────────────────────────────────────────
@@ -222,8 +220,12 @@ const FAELLE = []
 let MESSUNG = null
 try {
   const git = (wurzel, ...argumente) => fuehreGitSync(argumente, { cwd: wurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+  // Eine Zeile: die git-Version im Lauf (CI-Wackler (a), PR W2b-1 — F-1230).
+  console.log(`  ${git(basis, '--version').trim()}`)
   /**
-   * Legt ein Wegwerf-Git-Repo an (Branch gate, ein Commit).
+   * Legt ein Wegwerf-Git-Repo an (Branch gate, ein Commit). Die Hintergrundwartung ist abgeschaltet (gc.auto 0,
+   * maintenance.auto/autoDetach false): sonst schreibt neueres git nach `commit` abgekoppelt nach .git/objects, während
+   * (a) „.git/objects unverändert“ misst (CI-Wackler, PR W2b-1 — F-1230). Unbekannte Schlüssel sind für git config harmlos.
    * @param name - Ordnername
    * @returns Pfad
    */
@@ -231,7 +233,7 @@ try {
     const wurzel = join(basis, name)
     mkdirSync(join(wurzel, 'src'), { recursive: true })
     mkdirSync(join(wurzel, 'kontrollzustand'), { recursive: true })
-    for (const argumente of [['init', '--quiet'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', autocrlf], ['checkout', '--quiet', '-b', 'gate']]) git(wurzel, ...argumente)
+    for (const argumente of [['init', '--quiet'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', autocrlf], ['config', 'gc.auto', '0'], ['config', 'maintenance.auto', 'false'], ['config', 'maintenance.autoDetach', 'false'], ['checkout', '--quiet', '-b', 'gate']]) git(wurzel, ...argumente)
     writeFileSync(join(wurzel, 'src', 'a.ts'), 'export const a = 1\n')
     writeFileSync(join(wurzel, 'README.md'), '# Gate\n')
     writeFileSync(join(wurzel, 'CLAUDE.md'), readFileSync('CLAUDE.md', 'utf8'))
@@ -483,7 +485,6 @@ try {
     ['push im ersten Block', pruefeBloecke('rot', { bloecke: [['& {', ORT, 'git add a', 'git commit -m "x"', 'git push -u origin b', '}']] }, ORT, 1)],
     ['zweiter Block fehlt', pruefeBloecke('rot', { bloecke: [['& {', ORT, 'git add a', '}']] }, ORT, 2)],
     ['(11) ohne Hinweise', pruefeElf(() => ({ halt: [], hinweise: [] }))],
-    ['starteWorkflowSchritt( siebenmal', pruefeServerQuelltext(`${SERVER}\nstarteWorkflowSchritt(`)],
     ['leseGeprueftenStandSync( zweimal', pruefeServerQuelltext(`${SERVER}\nleseGeprueftenStandSync(`)],
     ['GET über laufwurzelFuer', pruefeServerQuelltext(SERVER.replace('const laufort = ermittleLaufort(workflowId, workflowDaten)\n    if (!laufort.ok) {\n      // qa 6', 'const laufort = { ok: true, wurzel: laufwurzelFuer(workflowId, workflowDaten) }\n    if (!laufort.ok) {\n      // qa 6'))],
   ]

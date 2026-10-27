@@ -21,7 +21,7 @@
  * (f) Jarvis-Auftrag: jede Zeile der Regel „direkt ausführbar“, Blockform mit eingesetzter, gequoteter Ortszeile (seit
  *     F45 B2b-4b statt cd, F-1088 (5)), „Deine Schritte“; der Server baut die Ortsangaben an beiden Aufrufen über
  *     baueJarvisOrte(repoWurzel, offeneAblaufOrte()) und ruft weder cdZeile noch ortZeile selbst.
- * (g) Quelltext: starteWorkflowSchritt( genau 6-mal im Server.
+ * (g) Quelltext: Server-Teil von (f) (starteWorkflowSchritt( zählt seit F45 W2b-1 nur check-f15-workflow).
  * Rot (Selbsttest, kalibriert)
  * (h) Jede Prüfung aus (a), (b), (c), (f) schlägt bei einem verfälschten Eingang an.
  *
@@ -166,14 +166,12 @@ function pruefePolicy(block, version, server) {
 }
 
 /**
- * (g) und (f, Server-Teil) prüfen den Quelltext des Servers.
+ * (f, Server-Teil) prüft den Quelltext des Servers.
  * @param server - Quelltext
  * @returns Befunde
  */
 function pruefeServerQuelltext(server) {
   const b = []
-  const starte = server.split('starteWorkflowSchritt(').length - 1
-  if (starte !== 6) b.push(`(g) starteWorkflowSchritt( ${starte}-mal im Server (erwartet 6)`)
   if (!server.includes("import { baueJarvisOrte, waehleOffeneArbeitsordner } from './leitstand/jarvis-orte.mjs'")) b.push('(f) baueJarvisOrte nicht aus scripts/leitstand/jarvis-orte.mjs importiert')
   const aufrufe = server.split(', verlaufsfenster, baueJarvisOrte(repoWurzel, offeneAblaufOrte()))').length - 1
   if (aufrufe !== 2) b.push(`(f) der Server baut die Ortsangaben ${aufrufe}-mal aus dem Projektpfad (erwartet 2: Chat und Zusammenfassung)`)
@@ -214,7 +212,7 @@ const SCHEMA = JSON.parse(readFileSync('schemas/ergebnis-code-reviewer.schema.js
 {
   const vor = befunde.length
   befunde.push(...pruefeServerQuelltext(SERVER))
-  if (befunde.length === vor) console.log('✓ (g) starteWorkflowSchritt( genau 6-mal im Server; Ortsangaben aus baueJarvisOrte an beiden Jarvis-Aufrufen, kein eigenes cdZeile/ortZeile.')
+  if (befunde.length === vor) console.log('✓ (g) Ortsangaben aus baueJarvisOrte an beiden Jarvis-Aufrufen, kein eigenes cdZeile/ortZeile.')
 }
 
 // (h) Rot-Selbsttest
@@ -234,7 +232,6 @@ const SCHEMA = JSON.parse(readFileSync('schemas/ergebnis-code-reviewer.schema.js
     ['Jarvis mit cd statt Blockform', pruefeJarvis(baueJarvisAuftragstext('x', [], { block: { kopf: 'cd', ortZeile: "cd 'C:\\p'", fuss: '' } }), ortZeile('C:\\p'))],
     ['Policy-Text ohne neue Version', pruefePolicy(`${baueReviewPolicyBlock()} `, REVIEW_POLICY_VERSION, SERVER)],
     ['Policy zweimal im Server', pruefePolicy(baueReviewPolicyBlock(), REVIEW_POLICY_VERSION, `${SERVER}\nbaueReviewPolicyBlock()`)],
-    ['starteWorkflowSchritt( siebenmal', pruefeServerQuelltext(`${SERVER}\nstarteWorkflowSchritt(`)],
     ['Ort-Optionen nur einmal', pruefeServerQuelltext(SERVER.replace(', verlaufsfenster, baueJarvisOrte(repoWurzel, offeneAblaufOrte()))', ', verlaufsfenster, {})'))],
     ['Server baut die Ortszeile selbst', pruefeServerQuelltext(`${SERVER}\nortZeile(repoWurzel)`)],
   ]

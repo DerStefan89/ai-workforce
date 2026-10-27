@@ -9,7 +9,7 @@
  *
  * Wird aufgerufen von: src/capabilities-ansicht/index.ts,
  * src/capabilities-ansicht/capabilities-ansicht.test.ts,
- * scripts/leitstand-server.mjs, scripts/check-f24-capabilities.mjs.
+ * scripts/leitstand-server.mjs.
  */
 
 import type { AufgelosteRessource } from '../ressourcen/types.ts'

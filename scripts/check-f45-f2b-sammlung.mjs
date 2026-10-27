@@ -13,7 +13,7 @@
  * (d) Schema ergebnis-scout additiv: valid-sammlung gültig, alte valid.json gültig, invalid-urteil-sammlung ungültig; die
  *     enum urteil_sammlung gleicht URTEILE (src/sammlung/index.ts, Code-Review 5).
  * (e) Server: Route GET /api/sammlung registriert, Scout-Anhang über ergaenzeScoutPrompt in POST /api/laeufe,
- *     starteWorkflowSchritt( genau 6-mal; Oberfläche: Reiter „Sammlung“ und Bereich in index.html.
+ *     Oberfläche: Reiter „Sammlung“ und Bereich in index.html.
  * Rot (Selbsttest)
  * (f) eine Matrixzeile weniger → Befund in der Zahlprüfung; eine leere Pflichtspalte → Strukturfehler.
  *
@@ -103,11 +103,9 @@ if (!befunde.some((x) => x.startsWith('(d)'))) console.log('✓ (d) ergebnis-sco
 const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
 if (!server.includes("if (pfad === '/api/sammlung') {")) befunde.push('(e) Route GET /api/sammlung fehlt im Server')
 if (!server.includes('let auftragstext = ergaenzeScoutPrompt(eingabenRoh.rolle, auftragVersion.daten.auftragstext, installWurzel)')) befunde.push('(e) Scout-Anhang in POST /api/laeufe fehlt')
-const schritte = server.split('starteWorkflowSchritt(').length - 1
-if (schritte !== 6) befunde.push(`(e) starteWorkflowSchritt( ${schritte}-mal statt 6-mal`)
 const html = readFileSync('public/leitstand/index.html', 'utf8')
 if (!html.includes('id="faehigkeiten-reiter-sammlung"') || !html.includes('<div id="sammlung"></div>')) befunde.push('(e) Reiter bzw. Bereich „Sammlung“ fehlt in index.html')
-if (!befunde.some((x) => x.startsWith('(e)'))) console.log('✓ (e) Route, Scout-Anhang, starteWorkflowSchritt( 6-mal, Reiter „Sammlung“.')
+if (!befunde.some((x) => x.startsWith('(e)'))) console.log('✓ (e) Route, Scout-Anhang, Reiter „Sammlung“.')
 
 // (f) Rot-Selbsttest
 const zeilen = SAMMLUNG.split('\n')

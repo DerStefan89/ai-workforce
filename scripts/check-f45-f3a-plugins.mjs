@@ -18,9 +18,9 @@
  *     pluginDirs; ohne pluginDirs bleibt das Argv ohne): kein '--plugin-dir' außerhalb des Gateways in
  *     src/**\/*.ts; baueAufruf() ohne '--plugin-dir'; pruefeInitZeile weist init.plugins ≠ [] weiter ab; kein Import von
  *     src/claude-plugins in Gateway, Fähigkeiten-Start, Execution-Controller und src/ressourcen (Ort-B-Start).
- * (e) starteWorkflowSchritt( genau 6-mal im Server.
+ * (e) (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow).
  * Rot (Selbsttest, kalibriert)
- * (f) Jede Prüfung aus (a)–(e) schlägt bei einem verfälschten Eingang an.
+ * (f) Jede Prüfung aus (a)–(d) schlägt bei einem verfälschten Eingang an.
  *
  * Wird aufgerufen von: npm run check
  *
@@ -245,16 +245,6 @@ function pruefeLaufUnveraendert(quellen, argv, initGrund) {
   return b
 }
 
-/**
- * (e) Quelltext des Servers.
- * @param server - Text
- * @returns Befunde
- */
-function pruefeServer(server) {
-  const n = server.split('starteWorkflowSchritt(').length - 1
-  return n === 6 ? [] : [`(e) starteWorkflowSchritt( ${n}-mal statt 6-mal`]
-}
-
 // ─── (a) + (b) Leser ──────────────────────────────────────────────────────────
 const wurzel = mkdtempSync(join(tmpdir(), 'f45-f3a-gate-'))
 let BESTAND = null
@@ -398,14 +388,6 @@ const INIT_GRUND = pruefeInitZeile(INIT, { skills: [], mcpServer: [], slashComma
   if (befunde.length === vor) console.log(`✓ (d) Lauf unverändert: kein --plugin-dir in ${QUELLEN.length} src-Dateien und im Argv, init.plugins ≠ [] bleibt Verstoß, kein Import von src/claude-plugins im Lauf-Code.`)
 }
 
-// ─── (e) Server ───────────────────────────────────────────────────────────────
-const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-{
-  const vor = befunde.length
-  befunde.push(...pruefeServer(SERVER))
-  if (befunde.length === vor) console.log('✓ (e) starteWorkflowSchritt( genau 6-mal im Server.')
-}
-
 // ─── (f) Rot-Selbsttest ───────────────────────────────────────────────────────
 {
   const vor = befunde.length
@@ -443,7 +425,6 @@ const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
     ['--plugin-dir im Argv', pruefeLaufUnveraendert(QUELLEN, [...ARGV, '--plugin-dir', 'x'], INIT_GRUND)],
     ['init.plugins ≠ [] zugelassen', pruefeLaufUnveraendert(QUELLEN, ARGV, null)],
     ['Lauf-Code importiert claude-plugins', pruefeLaufUnveraendert([...QUELLEN, { pfad: join('src', 'faehigkeiten', 'start.ts'), text: "import { x } from '../claude-plugins/index.ts'" }], ARGV, INIT_GRUND)],
-    ['starteWorkflowSchritt( siebenmal', pruefeServer(`${SERVER}\nstarteWorkflowSchritt(`)],
   ]
   for (const [name, ergebnis] of rot) if (ergebnis.length === 0) befunde.push(`(f) Rotfall '${name}' wird nicht erkannt`)
   if (befunde.length === vor) console.log(`✓ (f) Rot-Selbsttest: ${rot.length} verfälschte Eingänge erkannt.`)

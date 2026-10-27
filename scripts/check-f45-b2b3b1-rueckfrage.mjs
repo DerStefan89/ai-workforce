@@ -29,7 +29,7 @@
  *      startet der Lauf normal (A2). Mit Schalter an bleiben nicht berechtigte Läufe ohne Kanal (Review, Projektordner).
  * (a2) Schalter an: --permission-prompt-tool mcp__rueckfrage__rechte_pruefen vor -p, rueckfrage (+ Katalog-MCP) in der mcp-config,
  *      frage_stefan in --allowedTools/--tools; pruefeInitZeile mit/ohne rueckfrage.
- * (f)  Quelltext: starteWorkflowSchritt( 6×, F-228 unverändert; seit B2b-3b-2b-2a-1 setzt ein Produktaufrufer die Einschalt-Option nur
+ * (f)  Quelltext (Zählungen 6/14/13 seit F45 W2b-1 nur check-f15-workflow): seit B2b-3b-2b-2a-1 setzt ein Produktaufrufer die Einschalt-Option nur
  *      über rueckfrageOptionFuer (scripts/_rueckfrage-aus-pruefung.mjs); src/** ohne Tests setzt sie nicht.
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
@@ -509,10 +509,6 @@ try {
   // ── (f) Quelltext-Invarianten ───────────────────────────────────────────────────────────────────────────────────
   {
     const quelltext = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-    const starts = quelltext.split('starteWorkflowSchritt(').length - 1
-    const schreiber = quelltext.split(`${'schreibeWorkflow'}${'Fortschritt'}(`).length - 1
-    const gelesen = quelltext.split(`.${'eingefroren'}`).length - 1
-    pruefe(starts === 6 && schreiber === 14 && gelesen === 13, '(f) starteWorkflowSchritt( 6×, Workflow-Schreiber 14 / GESTOPPT-Schutz 13 (F-228 unverändert).', `(f) Zählungen ${starts} / ${schreiber} / ${gelesen} (erwartet 6 / 14 / 13)`)
     // B2b-3b-2b-2a-1 (Advisor B1/B2): „kein Produktaufrufer setzt die Einschalt-Option“ gilt mit dem Opt-in absichtlich nicht mehr;
     // gleich streng: jeder erzeugeRequestHandler(-/baueProjektHandlerMap(-Aufruf nennt rueckfrage… nur über rueckfrageOptionFuer, und
     // rueckfrageStand stammt genau einmal aus rueckfrageBasisAusUmgebung(process.env, PORT) (ohne LEITSTAND_RUECKFRAGE=1 ⇒ {}).

@@ -1,19 +1,8 @@
 /**
  * Datei: scripts/check-f28-persona.mjs
  *
- * Zweck: F28-Gate (Persona v1 WS-1, v2 WS-2). Drei Teile: (1) keine
- * Farbliterale (Hex oder rgb()/rgba() ohne var()) in public/leitstand/
- * persona.js, public/leitstand/persona-state.js oder public/leitstand/
- * index.html — dasselbe Regex-Muster wie scripts/check-f20-design-tokens.mjs,
- * dort aber NUR auf style.css angewendet; dieses Gate deckt die drei
- * Dateien, die jenes Gate nicht liest (Auftrag: "ein Literal im SVG würde
- * vom Gate nicht gefunden"). index.html wird komplett geprüft, nicht nur ein
- * ausgezeichneter "Persona-Block" — es gibt aktuell an keiner Stelle der
- * Datei ein Farbliteral, ein enger geschnittener Block wäre hier nur
- * zusätzliche Komplexität ohne zusätzlichen Schutz (state/findings.md
- * F-438: die generelle Gate-Lücke — kein Farbliteral-Check für JS-Dateien
- * außerhalb dieser drei — bleibt offen, dieses Gate mitigiert sie nur für
- * die Persona-Dateien). (2) leitePersonaZustandAb (persona-state.js)
+ * Zweck: F28-Gate (Persona v1 WS-1, v2 WS-2). Zwei Teile (seit F45 W2b-1 liegt der frühere Teil (1) „keine
+ * Farbliterale“ allein in check-f20-design-tokens (2)). (2) leitePersonaZustandAb (persona-state.js)
  * liefert für kalibrierte Eingaben die vier erwarteten Zustände —
  * inklusive zweier null-Quellen (defekte Quelle wirft nicht) und der
  * Prioritätskollision error+waiting_for_human (error gewinnt). (3) F28
@@ -39,26 +28,7 @@ import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { leitePersonaZustandAb } from '../public/leitstand/persona-state.js'
 
 const befunde = []
-console.log('\n=== F28-Check (Persona: Design-Tokens, Zustandsableitung, WS-2 Bildausspielung) ===\n')
-
-// ─── (1) Keine Farbliterale in persona.js/persona-state.js/index.html ──────
-{
-  const befundeVor1 = befunde.length
-  // Muster wie scripts/check-f20-design-tokens.mjs: ein rgb()/rgba()-Aufruf, der 'var(' enthält,
-  // ist eine erlaubte Token-Nutzung (z. B. 'rgba(var(--x-rgb), 0.4)'), kein Farbliteral.
-  const FARB_MUSTER = /#[0-9a-fA-F]{3,8}\b|\brgba?\((?:[^()]|\([^()]*\))*\)/g
-  const dateien = ['public/leitstand/persona.js', 'public/leitstand/persona-state.js', 'public/leitstand/index.html']
-  for (const pfad of dateien) {
-    const inhalt = readFileSync(pfad, 'utf8')
-    const treffer = (inhalt.match(FARB_MUSTER) ?? []).filter((fund) => !(fund.startsWith('rgb') && fund.includes('var(')))
-    if (treffer.length > 0) {
-      befunde.push(`(1) ${treffer.length} Farbliteral(e) in ${pfad}: ${[...new Set(treffer)].join(', ')}`)
-    }
-  }
-  if (befunde.length === befundeVor1) {
-    console.log('✓ (1) Keine Farbliterale in persona.js, persona-state.js oder index.html.')
-  }
-}
+console.log('\n=== F28-Check (Persona: Zustandsableitung, WS-2 Bildausspielung) ===\n')
 
 // ─── (2) leitePersonaZustandAb: kalibrierte Fälle, strikte Priorität ───────
 {

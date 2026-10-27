@@ -27,7 +27,7 @@
  *      Speicherstand der Vermittlung — dieser Pfad ist scripts/check-f45-b2b3b2a-absicherung.mjs (a2).
  *      Seit B2b-3b-2b-1b (F-1128 R1) trägt der Rohstrom das tool_result mit dem Text, den das echte MCP-Skript zurückbekam.
  * (p4) F-1126 (1): Body über 64 KiB auf der Token-Route ⇒ 413, keine neue Protokoll-Version (Ablehnung ohne Eintrag ⇒ VERWEIGERT, e3).
- * (f)  Quelltext: starteWorkflowSchritt( in leitstand-server.mjs 6×; ARCHITECTURE §4 nennt die Regel mit Durchsetzungsgrad.
+ * (f)  Quelltext: ARCHITECTURE §4 nennt die Regel mit Durchsetzungsgrad.
  *
  * Nachgezogen in B2b-3b-2b-1b (F-1128 R1, features/F45/plan-b2b3b2b1b-v2.md): eine Ablehnung durch Stefan zählt nur noch, wenn das
  * tool_result ihrer ID genau den eindeutigen Ablehnungstext trägt — `klassifiziere` schreibt deshalb je Ablehnung ein passendes
@@ -391,9 +391,6 @@ try {
 
   // ── (f) Quelltext ───────────────────────────────────────────────────────────────────────────────────────────────────
   {
-    const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-    const aufrufe = server.split('starteWorkflowSchritt(').length - 1
-    pruefe(aufrufe === 6, '(f) starteWorkflowSchritt( in leitstand-server.mjs 6× (unverändert).', `(f) starteWorkflowSchritt( ${aufrufe}×`)
     const architektur = readFileSync('ARCHITECTURE.md', 'utf8')
     const abschnitt4 = architektur.slice(architektur.indexOf('## 4.'), architektur.indexOf('## 5.'))
     pruefe(/abgelehnt_durch_stefan/.test(abschnitt4) && /DEKLARIERT/.test(abschnitt4) && /ERFOLGREICH/.test(abschnitt4), '(f) ARCHITECTURE §4: Ablehnung allein durch Stefan ⇒ ERFOLGREICH, mit Durchsetzungsgrad DEKLARIERT.', '(f) ARCHITECTURE §4 nennt die Regel (abgelehnt_durch_stefan, ERFOLGREICH, DEKLARIERT) nicht')

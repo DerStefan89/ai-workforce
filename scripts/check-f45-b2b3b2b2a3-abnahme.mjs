@@ -16,7 +16,7 @@
  *     Das Feld art des R3-Startfehlers prüft Gate f45-b2b3b2b1a-rest (r3) über den echten Lauf.
  * (a) Anzeige: Block, „keine Rückfrage“, Kanal-Grund statt Standardsatz (nicht bei echter Verweigerung), R3 escaped.
  * (g) Regel: frage_stefan vor „- [x] Blockiert“, „Frage ungültig“ ⇒ einmal korrigiert neu, dann wie keine Antwort.
- * (w) Grenzen: starteWorkflowSchritt( 6×; scripts/_rueckfrage-aus-pruefung.mjs unverändert (gepinnter Hash, DEKLARIERT); im Controller kein
+ * (w) Grenzen (seit F45 W2b-1: Zählung nur check-f15-workflow; Hash-Pin entfallen, Strenge über o3 von f45-b2b3b2b2a): im Controller kein
  *     await zwischen dem Lesen der Zählung und dem Ende von fuehreAufgabeDurch (Advisor M1).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
@@ -55,8 +55,6 @@ async function lade(pfad) {
   }
 }
 
-/** Hash (LF) von scripts/_rueckfrage-aus-pruefung.mjs auf main nach #358. */
-const REGEL_HASH = '99bf07b69c126c0f8df9d789a779270139fd19842c2b26e47c4bc0b06d282d27'
 const NULL7 ={ stefan_erlaubt: 0, stefan_abgelehnt: 0, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: 0, automatisch: 0 }
 const profil = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
 const kontroll = mkdtempSync(join(tmpdir(), 'f45-b2b3b2b2a3-'))
@@ -214,12 +212,6 @@ try {
 
   // ── (w) Grenzen ────────────────────────────────────────────────────────────────────────────────────────────────────
   {
-    const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-    pruefe(server.split('starteWorkflowSchritt(').length - 1 === 6, '(w) starteWorkflowSchritt( in leitstand-server.mjs 6×.', `(w) starteWorkflowSchritt( ${server.split('starteWorkflowSchritt(').length - 1}×`)
-    // code-reviewer 5: Hash der Fassung von main (#358) statt eines Vergleichs mit main — DEKLARIERT: eine bewusste Änderung der gemeinsamen
-    // Regel muss diesen Hash mit Begründung nachziehen (die Datei soll streng bleiben, nicht stillschweigend weicher werden).
-    const regelHash = sha256Hex(readFileSync('scripts/_rueckfrage-aus-pruefung.mjs', 'utf8').replace(/\r\n/g, '\n'))
-    pruefe(regelHash === REGEL_HASH, '(w) scripts/_rueckfrage-aus-pruefung.mjs unverändert (Hash der Fassung #358).', `(w) scripts/_rueckfrage-aus-pruefung.mjs geändert (Hash ${regelHash})`)
     // code-reviewer 4 / Advisor M1: zwischen dem Lesen der Zählung und dem Ende von fuehreAufgabeDurch kein await — sonst könnte die
     // Wartegrenze dazwischen feuern und `lauf_ende` stimmte nicht mehr (der Server ruft beendeLauf als Erstes im .then).
     const controller = readFileSync('src/execution-controller/index.ts', 'utf8').replace(/\r\n/g, '\n')

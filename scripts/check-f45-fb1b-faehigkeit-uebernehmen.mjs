@@ -17,10 +17,9 @@
  * abweichender workflow_id ⇒ 404, Identitätszeile im Quelltext; (c) CSRF: fremde Herkunft ⇒ 403 direkt und über
  * /api/projekte/<id>/…, nichts bewegt; (r) aendere lehnt ab ⇒ 409 mit Rücknahme, Rücknahme scheitert ⇒ 500 mit beiden Orten;
  * (b4) nach der Übernahme meldet leseClaudeAenderungen das Ziel (Hinweis nötig), nach einem Sichern im Arbeitsordner nicht mehr;
- * (e) starteWorkflowSchritt( genau 6×.
+ * (e) (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow).
  * Neue Funktionen werden dynamisch importiert: auf main fehlen sie ⇒ Befund je Fall (Rot-Nachweis per git archive). Auf main grün
- * sind (c) (der CSRF-Haken greift auch ohne Route) und (e) — ihr Rot-Nachweis ist eine Sabotage-Kopie (Route vor dem Haken bzw.
- * ein siebter Aufruf).
+ * ist (c) (der CSRF-Haken greift auch ohne Route) — ihr Rot-Nachweis ist eine Sabotage-Kopie (Route vor dem Haken).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -441,10 +440,6 @@ try {
       `(r) ${JSON.stringify({ r1, r1zurueck, r2 })}`
     )
   }
-
-  // ── (e) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  const starts = server.split('starteWorkflowSchritt(').length - 1
-  pruefe(starts === 6, '(e) starteWorkflowSchritt( genau 6× im Server.', `(e) starteWorkflowSchritt( ${starts}×`)
 } catch (fehler) {
   befunde.push(`Gate-Ausführung gescheitert: ${fehler.stack ?? fehler}`)
 } finally {

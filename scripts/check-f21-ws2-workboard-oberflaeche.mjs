@@ -3,7 +3,7 @@
  *
  * Zweck: F21-WS-2-Gate (features/F21/feature.md AK5, AK8-Scope: Workboard-
  * Ansicht, Attention-View, Dashboard-Zahlen). Muster
- * scripts/check-f15-workflow-oberflaeche.mjs — eine reine Quelltextprüfung,
+ * check-f15-workflow-oberflaeche (bis F45 W2b-1) — eine reine Quelltextprüfung,
  * kein Rendern: sie belegt, dass die Oberfläche die genannten Container,
  * Routen und Verdrahtungen FÜHRT, nicht, dass ein Browser sie korrekt
  * darstellt (der reale Blick bleibt Sache des Nachweises vor dem PR).
@@ -16,13 +16,11 @@
  *     SELBST (Muster views/runs.js); app.js registriert `#/workboard`
  *     NICHT mehr zentral (sonst träfen zwei Routen denselben Hash mit
  *     unterschiedlichem onEnter, Regressionsschutz für die Umstellung).
- * (d) attention-daten.js — die beiden Attention-Filterregeln (naechster.art
- *     ∈ {haltFreigabe, haltKlaerung}; ergebnis FEHLGESCHLAGEN UND
- *     kenntnisgenommen false), EINMAL geführt.
+ * (d) gestrichen in F45 W2b-1 — die Filterregeln trägt public/leitstand/attention-daten.test.mjs.
  * (e) views/attention.js UND views/dashboard.js beziehen ihre
  *     Attention-Zahlen NACHWEISLICH aus demselben geteilten Modul
  *     (attention-daten.js) statt je einer eigenen, potenziell
- *     abweichenden Filterregel — die eigentliche Zusage von (d) wäre ohne
+ *     abweichenden Filterregel — die Filterregel (attention-daten.test.mjs) wäre ohne
  *     diesen Fall durch ein zweites, stillschweigend abweichendes
  *     Vorkommen unterlaufbar.
  *     F44 WS-2b (F-896): Geprüft wird die HERKUNFT, nicht mehr eine wörtliche
@@ -54,12 +52,12 @@
  *     nur rueckfrage-kanal.js (f-kanal, mit Rot-Kalibrierung). Keine bisherige Bedingung entfällt.
  * (g) Syntaxprüfung (node --check) auf allen neuen/geänderten Modulen (F44 WS-3b:
  *     zusätzlich views/workboard-detail.js und rollen-anzeige.js) —
- *     public/ liegt außerhalb von Biome/tsc (siehe check-f15-workflow-
- *     oberflaeche.mjs Fall (f)).
+ *     public/ liegt außerhalb von tsc; Biome liest seit biome.json alle .js unter public/
+ *     (Syntaxfehler ⇒ npm run lint rot, Rotbeleg F45 W2b-1).
  * (h) F44 WS-3a: Das Board der Seite „Entwicklung“ (entwicklung-daten.js)
  *     ordnet „Braucht dich“ über filtereAttentionWorkflows aus
  *     attention-daten.js zu und führt keine eigene Halt-Regel
- *     (naechster.art) — dieselbe Zusage wie (d)/(e), nur für den dritten
+ *     (naechster.art) — dieselbe Zusage wie (e), nur für den dritten
  *     Abnehmer; dazu, dass die Funktion auch aufgerufen (nicht nur importiert)
  *     wird. (h-kal) belegt die Rotfälle (eigene Regel, nur Import, kein
  *     Import) und den Grünfall. Das Bento (#workboard-bento) ist entfernt
@@ -77,7 +75,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 const befunde = []
 console.log('\n=== F21-WS-2-Check (Workboard-Ansicht, Attention-View, Dashboard-Zahlen) ===\n')
 
-/** Siehe check-f15-workflow-oberflaeche.mjs — entfernt Kommentare, damit eine Quelltextprüfung über Code, nicht über Prosa urteilt. @param quelltext - Inhalt einer .js-Datei @returns derselbe Text ohne Block-/Zeilenkommentare */
+/** Muster des früheren check-f15-workflow-oberflaeche (bis F45 W2b-1) — entfernt Kommentare, damit eine Quelltextprüfung über Code, nicht über Prosa urteilt. @param quelltext - Inhalt einer .js-Datei @returns derselbe Text ohne Block-/Zeilenkommentare */
 function entferneKommentare(quelltext) {
   return quelltext.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 }
@@ -129,12 +127,6 @@ verlangeVorkommen('c', "views/workboard.js registriert '#/workboard/<id>'", work
 if (/registriere\(\/\^#\\\/workboard\$\/,\s*'workboard'\)/.test(appQuelltext)) {
   befunde.push("(c) app.js registriert '#/workboard' weiterhin ZENTRAL — seit F21 WS-2 macht views/workboard.js das selbst (Muster views/runs.js), zwei Routen auf denselben Hash mit unterschiedlichem onEnter wären ein Regressionsrisiko")
 }
-
-// ─── (d) attention-daten.js: die beiden Attention-Filterregeln ─────────────
-verlangeVorkommen('d', "Workflow-Filter: naechster.art === 'haltFreigabe'", attentionDatenQuelltext, "w.naechster?.art === 'haltFreigabe'")
-verlangeVorkommen('d', "Workflow-Filter: naechster.art === 'haltKlaerung'", attentionDatenQuelltext, "w.naechster?.art === 'haltKlaerung'")
-verlangeVorkommen('d', "Lauf-Filter: ergebnis === 'FEHLGESCHLAGEN'", attentionDatenQuelltext, "l.ergebnis === 'FEHLGESCHLAGEN'")
-verlangeVorkommen('d', 'Lauf-Filter: kenntnisgenommen === false (F21 WS-1 AK4)', attentionDatenQuelltext, 'l.kenntnisgenommen === false')
 
 // ─── (e) attention.js UND dashboard.js beziehen die Attention-Zahlen aus attention-daten.js ──
 // F44 WS-2b (F-896): Herkunft statt wörtlicher Zeile — ein named import aus '../attention-daten.js'.

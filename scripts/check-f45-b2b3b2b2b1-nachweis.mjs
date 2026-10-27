@@ -19,8 +19,8 @@
  * (c) nur lesend: Kontrollzustand und Rohstrom-Ordner der Fixture sind nach allen Aufrufen bitgleich (Pfade + Hash).
  * (d) Ausgabe ohne absolute Pfade (Fixture, Temp, Home) und ohne das Lauf-Token (zur Laufzeit zusammengesetzt, F-1134).
  * (e) Doku: Anleitung docs/harness/rueckfrage-nachweislauf.md und Abschnitt in docs/harness/startfreigabe-erneuern.md.
- * (w) Grenzen: leitstand-server.mjs ≤ Grenze der Wachstumsbremse, starteWorkflowSchritt( 6×, scripts/_rueckfrage-aus-pruefung.mjs
- *     unverändert (gepinnter Hash wie Gate f45-b2b3b2b2a3 (w)).
+ * (w) Grenzen: Vermittlung und Werkzeug zählen mit derselben Regel (seit F45 W2b-1: Ratsche nur
+ *     check-wachstumsbremse-server, starteWorkflowSchritt( nur check-f15-workflow; Hash-Pin entfallen, Strenge über o3 von f45-b2b3b2b2a).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -60,9 +60,6 @@ async function lade(pfad) {
 
 /** Liest eine Datei als Text, fehlt sie ⇒ ''. */
 const text = (pfad) => (existsSync(pfad) ? readFileSync(pfad, 'utf8').replace(/\r\n/g, '\n') : '')
-
-/** Hash (LF) von scripts/_rueckfrage-aus-pruefung.mjs (Fassung #358, wie Gate f45-b2b3b2b2a3 (w)). */
-const REGEL_HASH = '99bf07b69c126c0f8df9d789a779270139fd19842c2b26e47c4bc0b06d282d27'
 
 /**
  * Schnappschuss eines Ordners: relative Pfade mit Hash (Gate (c)).
@@ -253,13 +250,6 @@ try {
 
   // ── (w) Grenzen ────────────────────────────────────────────────────────────────────────────────────────────────────
   {
-    const server = text('scripts/leitstand-server.mjs')
-    const grenze = JSON.parse(text('scripts/wachstumsbremse-server.json')).obergrenze_zeilen
-    const zeilen = server.split('\n').length - (server.endsWith('\n') ? 1 : 0)
-    pruefe(zeilen <= grenze, `(w) leitstand-server.mjs ${zeilen} Zeilen ≤ Grenze ${grenze}.`, `(w) leitstand-server.mjs ${zeilen} Zeilen > Grenze ${grenze}`)
-    pruefe(server.split('starteWorkflowSchritt(').length - 1 === 6, '(w) starteWorkflowSchritt( in leitstand-server.mjs 6×.', `(w) starteWorkflowSchritt( ${server.split('starteWorkflowSchritt(').length - 1}×`)
-    const regelHash = sha256Hex(text('scripts/_rueckfrage-aus-pruefung.mjs'))
-    pruefe(regelHash === REGEL_HASH, '(w) scripts/_rueckfrage-aus-pruefung.mjs unverändert.', `(w) scripts/_rueckfrage-aus-pruefung.mjs geändert (Hash ${regelHash})`)
     // M6: eine Zählregel — die Vermittlung zählt über zaehleProtokollEintraege.
     pruefe(text('scripts/leitstand/rueckfrage-vermittlung.mjs').includes('const zaehlung = zaehleProtokollEintraege(lauf.protokoll)'), '(w) Vermittlung und Werkzeug zählen mit derselben Regel.', '(w) zaehlungVon nutzt zaehleProtokollEintraege nicht')
   }

@@ -22,7 +22,7 @@
  *      {fastLane}, {standard}, {hoch}.
  * (f1) Formular: `#auftrag-budget` steht in `details#auftrag-budget-bereich` direkt nach `#auftrag-bereiche-bereich`;
  *      projekt.js wählt die Meldung je Grund, jede Sprache hat sie für jeden Grund außer `leer`.
- * (i)  Invariante (auf main schon grün): starteWorkflowSchritt( in scripts/leitstand-server.mjs 6×. Den Rückfrage-Kanal
+ * (i)  (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow). Den Rückfrage-Kanal
  *      (Schalter aus, Argv bitgleich) prüft weiter das Gate check-f45-b2b3b1-rueckfrage.mjs (a1); dieser Auftrag fasst ihn
  *      nicht an.
  * Zusätzlich in (r1)/(b1): die Rümpfe von pruefeBereich und pruefeBudgetTokens sind auf beiden Seiten zeichengleich.
@@ -307,12 +307,6 @@ try {
       }
     }
     pruefe(fehlend.length === 0, '(f1) i18n: Meldung je Grund in allen vier Sprachen.', `(f1) i18n: Meldung fehlt für ${fehlend.join(', ')}`)
-  })
-
-  // ─── (i) Invariante ────────────────────────────────────────────────────────
-  await fall('i', async () => {
-    const anzahl = [...(lies('scripts/leitstand-server.mjs') ?? '').matchAll(/starteWorkflowSchritt\(/g)].length
-    pruefe(anzahl === 6, '(i) Invariante: starteWorkflowSchritt( in leitstand-server.mjs 6×.', `(i) starteWorkflowSchritt( in leitstand-server.mjs ${anzahl}× statt 6×`)
   })
 } catch (fehler) {
   befunde.push(`Gate abgebrochen: ${fehler instanceof Error ? fehler.stack : fehler}`)

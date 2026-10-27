@@ -12,8 +12,8 @@
  * (p1) GET …/abnahme mit Vorschlägen im Arbeitsordner ⇒ faehigkeitVorschlaege; (p2) ohne Vorschläge ⇒ Feld fehlt, Antwort sonst
  * gleich der mit Vorschlägen ohne das Feld und gleich der vor dem Anlegen; (p3) ohne Arbeitsordner (Bestand) ⇒ kein Feld, auch
  * wenn der Projektordner vorschlaege/ trägt; (r1) Auftrag der Ausführung im Arbeitsordner trägt die Regelzeile, ohne
- * Arbeitsordner nicht; (r2) Architekten-Auftrag (Modus feature und projekt) trägt die Form-Empfehlung; (e) starteWorkflowSchritt(
- * genau 6× im Server.
+ * Arbeitsordner nicht; (r2) Architekten-Auftrag (Modus feature und projekt) trägt die Form-Empfehlung; die Zählung
+ * starteWorkflowSchritt( entfiel in F45 W2b-1 (nur check-f15-workflow).
  * Neue Module werden dynamisch importiert: auf main fehlen sie ⇒ Befund je Fall statt Absturz (Rot-Nachweis per git archive,
  * F-1127). (p2)/(p3) sind auf main grün (dort gibt es das Feld nie) — ihr Rot-Nachweis ist eine Sabotage-Kopie (Feld
  * unbedingt bzw. ohne Bedingung „Arbeitsordner“).
@@ -34,7 +34,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { cpSync, existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -346,10 +346,6 @@ try {
     '(p3) ohne Arbeitsordner: keine Regelzeile im Auftrag und kein Feld in der Abnahme, auch wenn der Projektordner vorschlaege/ trägt.',
     `(p3) ${JSON.stringify({ laufOhne, regel: (auftragstexte.get(laufOhne) ?? '').includes(regel), felder: Object.keys(abnahmeOhne) })}`
   )
-
-  // ── (e) starteWorkflowSchritt( unverändert ───────────────────────────────────────────────────────────────────────────
-  const starts = readFileSync('scripts/leitstand-server.mjs', 'utf8').split('starteWorkflowSchritt(').length - 1
-  pruefe(starts === 6, '(e) starteWorkflowSchritt( genau 6× im Server.', `(e) starteWorkflowSchritt( ${starts}×`)
 } finally {
   for (const d of dienste) if (d.listening) await new Promise((r) => d.close(() => r()))
   for (const pfad of aufraeumen) raeumeVerzeichnis(pfad)

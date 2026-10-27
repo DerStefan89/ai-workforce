@@ -133,7 +133,8 @@ export interface GitErgebnis {
  * Zusatzwerte wie LC_ALL) — der geprüfte Stand des Reviews braucht beides, ohne einen weiteren Starter.
  * @param argumente - Git-Argumente
  * @param optionen - cwd, Zeitgrenze in ms (Standard 60 s; anders als bei execFile heißt 0 nicht „keine Grenze“, sondern
- *   sofortiger Abbruch), maxBuffer in Bytes (Standard 8 MB), eingabe (stdin), umgebung
+ *   sofortiger Abbruch ohne Start, ebenso negativ/NaN; Werte über 2^31−1 setzt Node auf 1 ms, DEKLARIERT), maxBuffer in Bytes
+ *   (Standard 8 MB), eingabe (stdin), umgebung
  * @returns GitErgebnis — bei abgelaufener Zeitgrenze immer { code: null, stdout: '', abbruch: 'zeitgrenze' } (F-1089).
  *   Achtung: „Zeitgrenze“ heißt nicht, dass git beendet ist — unter Windows läuft das echte git hinter dem Wrapper weiter,
  *   überall ein gestarteter Hook; nach einem Abbruch nicht sofort aufräumen oder neu starten, als liefe nichts mehr.
@@ -143,6 +144,13 @@ export function fuehreGitAsync(
   optionen: { cwd: string; zeitgrenzeMs?: number; maxBuffer?: number; eingabe?: string; umgebung?: Record<string, string> }
 ): Promise<GitErgebnis> {
   return new Promise((aufloesen) => {
+    const zeitgrenzeMs = optionen.zeitgrenzeMs ?? 60_000
+    // F-1174 (F45 W2b-1): 0, negativ oder NaN heißt sofortiger Abbruch ohne Start. Vorher lief git an und der Timer (Node: mindestens
+    // 1 ms) verlor gegen ein schnelles git — „Zeitgrenze 0“ kam dann als Erfolg zurück (CI, vorschlag.test.ts).
+    if (!(zeitgrenzeMs > 0)) {
+      aufloesen({ code: null, stdout: '', stderr: `Zeitgrenze von ${zeitgrenzeMs} ms überschritten`, abbruch: 'zeitgrenze' })
+      return
+    }
     let programm: string
     try {
       programm = gitProgramm()
@@ -157,7 +165,6 @@ export function fuehreGitAsync(
     // Ablauf werden stdout/stderr abgebaut, bevor das Kind beendet wird (Code-Review-Nachpass 1): ein Enkelprozess mit
     // geerbten Pipes (Hook, Filter, Credential-Helper, unter Windows der git-Wrapper) hielte 'close' sonst bis zu seinem
     // Ende auf. Gewollte Folge: endet git genau zwischen 'exit' und 'close', gilt auch ein Erfolg als Zeitgrenze (fail closed).
-    const zeitgrenzeMs = optionen.zeitgrenzeMs ?? 60_000
     let zeitAbgelaufen = false
     let zeitgrenze: ReturnType<typeof setTimeout> | undefined
     const kind = execFile(

@@ -20,7 +20,7 @@
  *       persönlicher Wurzel vor jedem Anlegen, entferne löscht den Laufordner.
  * (p3b) Kindprozess: ruft richteNeutraleUmgebungEin mit seinem echten process.env (aufzeichnendes fs) — danach liefern
  *       os.tmpdir()/os.homedir() die neutralen Pfade (Mechanismus auf dieser Plattform, nichts angelegt).
- * (i)   Invariante (auf main schon grün): starteWorkflowSchritt( in scripts/leitstand-server.mjs 6×.
+ * (i)   (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -258,12 +258,6 @@ try {
       `(p3b) im Kindprozess nach richteNeutraleUmgebungEin: os.tmpdir() = ${ausgabe?.tmpdir}, os.homedir() = ${ausgabe?.homedir} (nichts angelegt).`,
       `(p3b) os.tmpdir()/os.homedir() folgen der neutralen Umgebung nicht: ${ausgabe === null ? fehler : JSON.stringify(ausgabe)}`
     )
-  }
-
-  // ─── (i) Invariante ────────────────────────────────────────────────────────
-  {
-    const anzahl = [...(lies('scripts/leitstand-server.mjs') ?? '').matchAll(/starteWorkflowSchritt\(/g)].length
-    pruefe(anzahl === 6, '(i) Invariante: starteWorkflowSchritt( in leitstand-server.mjs 6×.', `(i) starteWorkflowSchritt( in leitstand-server.mjs ${anzahl}× statt 6×`)
   }
 } catch (fehler) {
   befunde.push(`Gate abgebrochen: ${fehler instanceof Error ? fehler.stack : fehler}`)

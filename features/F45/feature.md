@@ -166,7 +166,7 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | T | fixpaket | Tests stabil | erledigt | 0,2–0,3 | – | 2026-10-24 | 2026-10-25 | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154); gemergt #379 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |
 | B5b-2 | fixpaket | Roadmap-Anzeige | erledigt | 1–1,4 | – | 2026-10-25 | 2026-10-25 | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“; gemergt #380 (2a), #381 (2b-1), #382 (2b-2), #384 (2c-1), #385 (2c-2-C); 2c-2-AB gebaut — `erledigt` nach Auftrag Challenger 25.10.2026 („Workstream-Zeile B5b-2 auf erledigt, sofern die Ist-Zelle es zulässt“), abweichend von Advisor `advisor-b5b2c2.md` A1 und Plan v2 A1; Abgenommen = erwartetes Merge-Datum von 2c-2-AB, bei späterem Merge nachziehen; Ist pflegt der Challenger (Zelle erlaubt nur „–“ oder eine Zahl) |
 | B5b-3 | fixpaket | R7: Ist nach Abnahme | erledigt | 0,4–0,6 | – | 2026-10-27 | 2026-10-27 | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6); gemergt #387 (Bereinigung W2a: Ist – nach A3, Begonnen = Abgenommen ⇒ 0 AT) |
-| W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen |
+| W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen; W2b = W2b-1 umbaufest + W2b-2 Wegwerf-Ordner/Fristen; 60 Gates→Tests gestrichen (Pfadfinder) |
 | V1 | workstream | Live-Vorschau des Projekts im Leitstand | geplant | 0,3–0,5 | – | – | – | E-VORSCHAU-1 = A |
 | B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | verworfen | 1–2 | – | – | – | entfällt — E-R-1 = A (Stefan, 25.10.2026): Referenzauftrag = F30-M1 |
@@ -1878,3 +1878,50 @@ parallele Gruppe ≥ 112 s ⇒ ≈ 6–7 min (Messung lief unter Speicherdruck; 
 Erwartung.
 
 Voller Gate-Lauf im Commit-Block (2026-10-27): zweimal gruen, Wanduhr 826.5 s und 739.3 s (Parallelitaet 4); npm run test gruen.
+
+## Stand W2b-1
+
+**Auftrag:** W2b-1 „Gates umbaufest“ (Challenger, 27.10.2026; Grundlage `w2-gate-inventur.md` Befunde 1, 2, 5). Ziel
+Umbaufestigkeit, nicht Gates in Tests umschreiben (verschiebt nur Laufzeit; „ersetzen durch Test“ nur beim Anfassen des
+Bereichs, F-1228). Plan `plan-w2b1.md` → Advisor „Nicht freigegeben“ (kein Schnitt, acht Auflagen) → `plan-w2b1-v2.md` →
+Nachpass „Freigegeben mit Hinweisen“ (eine Korrekturrunde).
+
+**Gebaut:**
+- Eine Zählstelle: `starteWorkflowSchritt(` = 6 und Workflow-Schreiber 14 / `.eingefroren` 13 zählt nur noch
+  `check-f15-workflow` (AK6b/AK7, F-228); gestrichen in 30 Gates (b2b3c/b2b3d (f) ganz, b2b3b1 (f) behält die Opt-in-Prüfungen). Wer f15-workflow in Tests
+  umbaut, nimmt die drei Zählungen mit. Server-Zeilenratsche nur `check-wachstumsbremse-server` (gestrichen in 4 Gates).
+- Pins: sha256 auf `scripts/_rueckfrage-aus-pruefung.mjs` in 2 Gates gestrichen; die Strenge tragen die Rotfälle o3 in
+  `check-f45-b2b3b2b2a-einschalten`, neu ein neunter (zweite Vorgabe `rueckfrageBasis`). `f36-ws3-empfehlung` (e) bleibt
+  (schließt F-833 (1), hängt an der Ausgabe; jede Wortlautänderung des Auftragstexts färbt es gewollt rot).
+- Gelöscht nach Belegprüfung: `check-f24-capabilities`, `check-f15-workflow-oberflaeche` (aus `GATES`, jetzt 120); gestrichen
+  f28-persona (1), f21-ws2 (d); dazu ein ERFOLGREICH-Fall in `attention-daten.test.mjs`. `check-f8-execution-controller`
+  bleibt (Grenze ohne Ersatz, Entscheidung Stefan 04.09.2026).
+- F-1174 (Zeitgrenze 0): Code-Fehler — `fuehreGitAsync` startete git auch bei 0; jetzt `!(zeitgrenzeMs > 0)` ⇒ sofort
+  `abbruch: 'zeitgrenze'` vor `gitProgramm()`, Test per setImmediate-Race (auf dem alten Code rot).
+- Umfang (nach der Korrekturrunde): Gates +81/−914 Zeilen, gesamt +224/−943. Findings F-1227–F-1229 neu; F-261, F-563, F-1174 erledigt; Inventur
+  „Stand W2b-1“ (dabei die verschobene erste Zeile von main entfernt).
+
+**DEKLARIERT:** Restgrenzen nach `check-f15-workflow-oberflaeche` — Endpunkt-Zuordnung in `api.js` für `/starten`,
+`/freigabe`, Reparatur-`POST /workflows` und die Container-ids in `index.html` prüft nur noch der Render-Nachweis; eine neue
+Form in `ERLAUBT_HANDLER`/`ERLAUBT_KARTE` fällt keinem Rotfall auf; der Race-Test belegt den Zeitpunkt, nicht „kein
+execFile“; „Muster check-f15-workflow-oberflaeche“-Erwähnungen in anderen Gates und historischen Dokumenten bleiben.
+
+**Prüfung in der Sitzung:** 34 geänderte Gates einzeln grün (fb2 nach Korrektur einer Klammer erneut), `npm run lint`,
+`npm run typecheck`, `check-docs`, `check-kette.test.mjs`, `git-starter.test.ts` + `vorschlag.test.ts` (30 grün, 1 übersprungen),
+`attention-daten.test.mjs` (20 grün). Rotbelege: F-1174-Test auf altem Code rot; Filter ohne `ergebnis` ⇒ Test rot; Syntaxfehler
+unter `public/` ⇒ `biome lint` Exit 1. Statischer Nachweis: Zählung nur in `check-f15-workflow`, `obergrenze_zeilen` nur in
+`check-wachstumsbremse-server` (ohne `*.test.mjs`). Voller Gate-Lauf und `npm run test` im Commit-Block.
+
+**Prüfpass:** code-reviewer und qa je „Freigegeben mit Hinweisen“, keine kritischen Befunde. Eine Korrekturrunde (nur Kommentare
+und Doku): veraltete Kopfzeilen (f3a „(a)–(e)“, f3a2 „(a)–(g)“, fb1/fb1b (e), f3b1 `leseQuellen`, b2b3b2a/b2b3b2b1a „beide“,
+a3/b1 „Hash-Pin bzw. o3“), f21-ws2 und f20 nicht mehr „public/ außerhalb von Biome“ bzw. Verweis auf die gelöschte Datei,
+Hinweis „einzige Zählstelle“ im Kommentar von `check-f15-workflow`, `docs/STATUS.md` (f15-workflow-oberflaeche entfallen),
+Nachträge F-251 und F-1151 (6), Inventur präzisiert (b2b3b1 (f) bleibt mit Opt-in). Dabei behoben: das Findings-Skript hatte
+mangels eigener Status-Zeile bei F-563 die Status-Zeile von F-652 überschrieben — aus HEAD wiederhergestellt, F-563 hat jetzt
+eine eigene. Offen, DEKLARIERT: keine Zuordnung je Fall des gelöschten `check-f15-workflow-oberflaeche` (laut F15-Akte 42–65
+Zusagen) zu Ersatz oder Restgrenze — grob: (f) Syntax → Biome; Felder/Zustand/Reparatur → View-Tests `workflow-detail`,
+`workflow-eingriffe`, `workflows-dialog` (nicht je Fall gegengeprüft); Endpunkte (b)/(e)/(g) und Container-ids (a) → Restgrenze
+(Render-Nachweis; der Chrome-Klicktest in CI läuft mit `continue-on-error`). Weitere „Muster …“-Erwähnungen in anderen Gates
+(z. B. `check-f42-projekt-harness`, `check-f12-leitstand-ansicht`) bleiben.
+
+Voller Gate-Lauf im Commit-Block (2026-10-27): gruen, Wanduhr 719.2 s (Parallelitaet 4, 120 Gates); npm run test gruen im ersten Lauf.

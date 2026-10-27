@@ -18,7 +18,7 @@
  *     → 409, vorbereiten zeigt pruefbericht_sperre;
  *     neuester passender GEEIGNET → Installation läuft.
  * (g) vorbereiten zeigt den letzten Bericht (aktuell = gleicher Pin); Netzfehler der Registry beim Pin → 502 mit Grund.
- * (h) starteWorkflowSchritt( bleibt 6-mal; Neutralisierung rot; kein eigener Tar-Leser, kein npm pack mehr — Prüflauf und
+ * (h) Neutralisierung rot; kein eigener Tar-Leser, kein npm pack mehr — Prüflauf und
  *     Installation rufen dieselbe npm-Installation (installiereNpmPaketInOrdner, F-1075 Variante C, F45 F-2b-2b).
  * (i) F-1075 Variante C (die Rückfallebene „npm-Installation nach Prüfung gesperrt“ ist aufgehoben): (i1) npm-Prüflauf über die
  *     Routen → Bericht mit der Dateiliste des von npm geschriebenen Paketordners → Installation 200; npm-Argv beider Seiten
@@ -91,8 +91,6 @@ const warte = (ms) => new Promise((r) => setTimeout(r, ms))
 {
   const vorH = befunde.length
   const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-  const anzahl = server.split('starteWorkflowSchritt(').length - 1
-  if (anzahl !== 6) befunde.push(`(h) starteWorkflowSchritt( kommt ${anzahl}-mal vor, erwartet 6`)
   if (neutralisierePfad('.ClAuDe/skills/x/SKILL.md').pfad !== '_.ClAuDe/skills/x/SKILL.md' || neutralisierePfad('a/CLAUDE.md').pfad !== 'a/_CLAUDE.md') befunde.push('(h) Neutralisierung greift nicht')
   // F-2b-2b (F-1075 Variante C): kein eigener Tar-Leser, kein npm pack — beide Seiten über die gemeinsame npm-Installation.
   const inhaltQuelle = readFileSync('src/sammlung/inhalt.ts', 'utf8')
@@ -102,7 +100,7 @@ const warte = (ms) => new Promise((r) => setTimeout(r, ms))
   if (/'pack'/.test(quelleQuelle)) befunde.push("(h) quelle.ts ruft noch 'npm pack'")
   if (!quelleQuelle.includes('await installiereNpmPaketInOrdner(') || !installationQuelle.includes('await installiereNpmPaketInOrdner(')) befunde.push('(h) Prüflauf und Installation rufen nicht beide installiereNpmPaketInOrdner')
   if (/NPM_SPERRE|npmInstallationNachPruefung/.test(server + readFileSync('scripts/leitstand/routen-pruefung.mjs', 'utf8'))) befunde.push('(h) Rückfallebene NPM_SPERRE/npmInstallationNachPruefung noch vorhanden')
-  if (befunde.length === vorH) console.log('✓ (h) starteWorkflowSchritt( 6-mal; Neutralisierung rot; kein Tar-Leser/npm pack, gemeinsame npm-Installation, keine npm-Sperre.')
+  if (befunde.length === vorH) console.log('✓ (h) Neutralisierung rot; kein Tar-Leser/npm pack, gemeinsame npm-Installation, keine npm-Sperre.')
 }
 
 // ─── Fixture: „GitHub“, Installation, Katalog, Sammlung ───────────────────────

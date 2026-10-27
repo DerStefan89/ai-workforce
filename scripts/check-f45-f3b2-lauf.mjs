@@ -21,7 +21,7 @@
  * (j) Instruktion nennt '<plugin>:<skill>' (E-F3b-1);
  * (k) Worker ≠ claude-code → nicht geladen (nur Claude Code), ohne CLI-Abruf;
  * (l) XSS: Nutzlast in Lauf-Kopie, Datenordner und Plugin-Zeile der Empfehlung erscheint nur escaped;
- * (m) Quelltext: starteWorkflowSchritt( genau 6×; in POST /api/laeufe kein await zwischen `if (laufAktiv)` und `laufAktiv = true`
+ * (m) Quelltext: in POST /api/laeufe kein await zwischen `if (laufAktiv)` und `laufAktiv = true`
  *     (Advisor A3); der Plugin-Abruf der Freigabe steht vor dem D13-Bereich;
  * (o) Zuordnung ohne Freigabe (Plan v3.1 Punkt 2): Argv bitgleich, „keine Freigabe — wirkt nicht“ in faehigkeiten_im_lauf;
  * (n) Rot-Selbsttest: jede Prüfung schlägt bei verfälschtem Eingang an.
@@ -256,8 +256,6 @@ function pruefeL(html) {
  */
 function pruefeM(server) {
   const b = []
-  const n = server.split('starteWorkflowSchritt(').length - 1
-  if (n !== 6) b.push(`(m) starteWorkflowSchritt( ${n}-mal statt 6-mal`)
   const route = server.indexOf("if (req.method === 'POST' && pfad === '/api/laeufe')")
   const von = server.indexOf('if (laufAktiv) {', route)
   const bis = server.indexOf('laufAktiv = true', von)
@@ -518,7 +516,7 @@ const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
 {
   const vor = befunde.length
   befunde.push(...pruefeM(SERVER))
-  if (befunde.length === vor) console.log('✓ (m) starteWorkflowSchritt( 6×, kein await im D13-Fenster von POST /api/laeufe, Plugin-Abruf der Freigabe vor dem D13-Bereich.')
+  if (befunde.length === vor) console.log('✓ (m) Kein await im D13-Fenster von POST /api/laeufe, Plugin-Abruf der Freigabe vor dem D13-Bereich.')
 }
 
 // ─── (n) Rot-Selbsttest ──────────────────────────────────────────────────────
@@ -558,7 +556,6 @@ const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
     ['Instruktion ohne Plugin', pruefeJ('AUFTRAG')],
     ['Codex lädt', pruefeK({ start: { art: 'start', plugins: [{}], nichtGeladen: [] }, abgerufen: false })],
     ['XSS roh', pruefeL(`<li>${XSS}</li>`)],
-    ['starteWorkflowSchritt( siebenmal', pruefeM(`${SERVER}\nstarteWorkflowSchritt(`)],
     [
       'await im D13-Fenster',
       (() => {

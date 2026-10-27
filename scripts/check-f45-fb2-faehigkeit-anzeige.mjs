@@ -21,7 +21,7 @@
  * (f) Cache je Wurzel (cr1): gleiche Signatur ⇒ ein Aufruf; Datei geändert ⇒ neu; vergissVorschlagStand ⇒ neu.
  * (g) i18n: jeder Schlüssel abnahme.faehigkeiten.* in de/en/tr/ru, ohne interne Kennung (F-<Zahl>, E-FB1, FB-, cr1, B13, q1);
  *     Umfangs-Hinweis nennt Vorschlagsdateien nur als Satz; VORSCHLAG_PRAEFIX = VORSCHLAG_ORDNER + '/'.
- * (h) Server nicht gewachsen: Zeilen ≤ Ratsche (scripts/wachstumsbremse-server.json), starteWorkflowSchritt( genau 6×, die Abnahme
+ * (h) Server (Zeilen-Ratsche und starteWorkflowSchritt( seit F45 W2b-1 nur in check-wachstumsbremse-server bzw. check-f15-workflow): die Abnahme
  *     mischt baueVorschlagFelder ein (keine eigene Projektion im Server), keine neue Route (/faehigkeit-vorschlag/ nur über
  *     erkenneVorschlagRoute).
  * (r) F-1096: die Plan-Karte der Freigabe zeigt die Zusammenfassung des Architekten (mit Form-Empfehlung) escaped.
@@ -390,13 +390,9 @@ pruefe(
 
 // ─── (h) Server ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** @param server - Quelltext @param grenze - Zeilengrenze @returns Befunde */
-function pruefeH(server, grenze) {
+/** @param server - Quelltext @returns Befunde */
+function pruefeH(server) {
   const b = []
-  const zeilen = server.split('\n').length - (server.endsWith('\n') ? 1 : 0)
-  if (zeilen > grenze) b.push(`Server ${zeilen} > ${grenze} Zeilen`)
-  const starts = server.split('starteWorkflowSchritt(').length - 1
-  if (starts !== 6) b.push(`starteWorkflowSchritt( ${starts}×`)
   const s = norm(server)
   if (!s.includes('awaitbaueVorschlagFelder(vorschlagOrt.wurzel,') || !s.includes('...faehigkeitFelder,')) b.push('Abnahme mischt baueVorschlagFelder nicht ein')
   if (s.includes('baueVorschlagProjektion')) b.push('eigene Projektion im Server')
@@ -404,12 +400,9 @@ function pruefeH(server, grenze) {
   return b
 }
 const serverQuelle = lies('scripts/leitstand-server.mjs')
-const grenze = JSON.parse(lies('scripts/wachstumsbremse-server.json')).obergrenze_zeilen
-pruefe(pruefeH(serverQuelle, grenze), `(h) Server ≤ ${grenze} Zeilen, starteWorkflowSchritt( 6×, Felder über baueVorschlagFelder, keine neue Route.`, '(h)')
+pruefe(pruefeH(serverQuelle), '(h) Felder über baueVorschlagFelder, keine neue Route.', '(h)')
 gegenprobe('(h)', [
-  ['gewachsen', pruefeH(`${serverQuelle}// zusätzliche Zeile\n`, grenze)],
-  ['siebter Start', pruefeH(serverQuelle.replace('...faehigkeitFelder,', '...faehigkeitFelder, x: starteWorkflowSchritt(1),'), grenze)],
-  ['eigene Route', pruefeH(serverQuelle.replace('...faehigkeitFelder,', "...faehigkeitFelder, r: '/faehigkeit-vorschlag/x',"), grenze)],
+  ['eigene Route', pruefeH(serverQuelle.replace('...faehigkeitFelder,', "...faehigkeitFelder, r: '/faehigkeit-vorschlag/x',"))],
 ])
 
 // ─── (r) F-1096 ───────────────────────────────────────────────────────────────────────────────────────────────────────

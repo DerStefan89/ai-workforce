@@ -20,7 +20,7 @@
  *     mit und ohne Plugin-Felder in der lokalen Datei bitgleich; kein Import von src/plugin-kopie bzw. src/claude-plugins in
  *     Gateway, Fähigkeiten-Start, Execution-Controller, Ort-B-Start; plugin_zuordnung/plugin_freigaben nur in erlaubten Dateien;
  *     setzePluginFreigabe nur aus routen-faehigkeiten.mjs aufgerufen;
- * (g) starteWorkflowSchritt( genau 6-mal im Server;
+ * (g) (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow);
  * (j) Auftrag des Prüflaufs ohne Hook-Befehl, MCP-URL, args;
  * (k) Laufsperre nach dem asynchronen Abruf erneut geprüft (der Lauf beginnt in der Attrappe erst während des Abrufs);
  * (l) neuerer NICHT_GEEIGNET-Bericht zum freigegebenen Stand → „bericht_ueberholt“; Rücknahme ohne Freigabe 404;
@@ -791,12 +791,6 @@ try {
     befunde.push(...pruefeXss(xssHtml()))
     if (befunde.length === vor) console.log('✓ (h) XSS: Prüfbericht, Risiko-/Grund-Texte, Namen, Abweichung und Aktionsfehler im Workforce-Abschnitt nur escaped.')
   }
-  // ─── (g) ───
-  {
-    const n = leseQuellen()['scripts/leitstand-server.mjs'].split('starteWorkflowSchritt(').length - 1
-    if (n !== 6) befunde.push(`(g) starteWorkflowSchritt( steht ${n}-mal im Server statt 6-mal`)
-    else console.log('✓ (g) starteWorkflowSchritt( genau 6-mal im Server.')
-  }
 } catch (fehler) {
   befunde.push(`Gate abgebrochen: ${fehler.stack ?? fehler.message}`)
 }
@@ -908,7 +902,7 @@ function pruefeN1(n) {
 }
 
 /**
- * Quelltexte für (f)/(g).
+ * Quelltexte für (f).
  * @returns Pfad → Text
  */
 function leseQuellen() {

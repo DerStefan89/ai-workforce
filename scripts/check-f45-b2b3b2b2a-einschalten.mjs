@@ -11,7 +11,9 @@
  *      Auftragstext ohne Regelzeile; aus leerer Umgebung und aus LEITSTAND_RUECKFRAGE=1 ⇒ Kanal mit url = API-Basis.
  * (r)  Regelzeile frage_stefan: mit Kanal genau einmal im Auftragstext, ohne Kanal nicht (Punkt 4).
  * (o3) Quelltext: CLI-Block und baueProjektHandlerMap setzen rueckfrage nur über rueckfrageOptionFuer (gemeinsame Regel
- *      scripts/_rueckfrage-aus-pruefung.mjs, mit Rotfall); Startzeile im listen-Rückruf; starteWorkflowSchritt( 6×.
+ *      scripts/_rueckfrage-aus-pruefung.mjs, mit Rotfall je Teilregel); Startzeile im listen-Rückruf. Seit F45 W2b-1 ohne Hash-Pin
+ *      der Regeldatei (früher in f45-b2b3b2b2a3/-b2b3b2b2b1 (w)) — DEKLARIERT: eine neue Form in ERLAUBT_HANDLER/ERLAUBT_KARTE
+ *      fällt keinem Rotfall auf.
  * (d)  URL-Basis über den echten erzeugeMultiProjektDispatcher: das echte MCP-Skript fragt und wartet (mehrere Poll-Fenster) für die
  *      Workforce-Instanz (…/api) und eine Projektinstanz (…/api/projekte/p1); die Rückfrage steht nur in der Liste der eigenen
  *      Instanz, die Antwort geht über …/projekte/p1/rueckfragen/<id>/antwort; Token einer anderen Instanz ⇒ deny. Rot auf main:
@@ -276,13 +278,15 @@ try {
       liveForm: rot('rueckfrageBasis: istWorkforceInstanz && rueckfrageAn ? rueckfrage.url : undefined', 'rueckfrageBasis: rueckfrage?.url'),
       vorabObjekt: rot('  const defaultHandler = erzeugeRequestHandler({', "  const kanalOption = { rueckfrage: { an: true, url: 'http://x' } }\n  const defaultHandler = erzeugeRequestHandler({"),
       vorgabe: rot('    rueckfrage = undefined,', "    rueckfrage = { an: true, url: 'http://x' },"),
+      // F45 W2b-1 (Advisor): die zweite Vorgabe der Regel (rueckfrageBasis) hatte keinen Rotfall.
+      vorgabeBasis: rot('rueckfrageBasis = undefined } = optionen', "rueckfrageBasis = 'http://x' } = optionen"),
     }
     pruefe(
       ergebnis.befunde.length === 0 && ergebnis.handlerAufrufe >= 2 && rotFest.befunde.length > 0 && rotKarte.befunde.length > 0 && rotVermittlung.befunde.length > 0 && Object.values(weitere).every((n) => n > 0),
-      '(o3) rueckfrage nur über rueckfrageOptionFuer bzw. rueckfrageStand.basis; feste Adresse, fremde Basis, injizierte Vermittlung, andere Stand-Quelle, veränderter Stand, Live-Form, vorab gebautes Objekt, Vorgabe „an“ ⇒ rot.',
+      '(o3) rueckfrage nur über rueckfrageOptionFuer bzw. rueckfrageStand.basis; feste Adresse, fremde Basis, injizierte Vermittlung, andere Stand-Quelle, veränderter Stand, Live-Form, vorab gebautes Objekt, Vorgabe „an“ (rueckfrage, rueckfrageBasis) ⇒ rot.',
       `(o3) ${JSON.stringify({ befunde: ergebnis.befunde, rot: [rotFest.befunde.length, rotKarte.befunde.length, rotVermittlung.befunde.length], weitere })}`
     )
-    pruefe(server.includes('console.log(rueckfrageStartzeile(rueckfrageStand))') && server.split('starteWorkflowSchritt(').length - 1 === 6, '(o3) Startzeile im listen-Rückruf; starteWorkflowSchritt( 6×.', '(o3) Startzeile fehlt oder starteWorkflowSchritt( nicht 6×')
+    pruefe(server.includes('console.log(rueckfrageStartzeile(rueckfrageStand))'), '(o3) Startzeile im listen-Rückruf.', '(o3) Startzeile fehlt')
   }
 
   // ── (d) URL-Basis über den echten Multi-Projekt-Dispatcher ────────────────────────────────────────────────────────────
