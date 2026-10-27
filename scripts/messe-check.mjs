@@ -1,7 +1,7 @@
 /**
  * Datei: scripts/messe-check.mjs
  *
- * Zweck: Misst Laufzeit und Speicher je Gate aus `check:gates` und je Testdatei (F45 T, F-1154). Jeder Befehl
+ * Zweck: Misst Laufzeit und Speicher je Gate aus `check:gates` (GATES in scripts/check-kette.mjs) und je Testdatei (F45 T, F-1154). Jeder Befehl
  * läuft einzeln nacheinander; am Ende steht eine Markdown-Tabelle (Standard
  * features/F45/nachweise/t/messung-tabelle.md) mit den teuersten zuerst.
  *
@@ -42,15 +42,6 @@ if (!istDirekterAufruf && process.env.AIW_MESS_DATEI) {
       // Messung darf den gemessenen Prozess nie stören.
     }
   })
-}
-
-/**
- * Zerlegt das Skript check:gates in Einzelbefehle.
- * @param paketJson - Inhalt von package.json
- * @returns Liste der Befehle in Kettenreihenfolge
- */
-export function gateBefehle(paketJson) {
-  return paketJson.scripts['check:gates'].split('&&').map((teil) => teil.trim()).filter((teil) => teil !== '')
 }
 
 /**
@@ -138,13 +129,13 @@ if (istDirekterAufruf) {
   // Erst hier geladen: im Hakenmodus bleibt der Import-Aufwand je Node-Prozess klein.
   const { findeTestdateien } = await import('./teste.mjs')
   const { raeumeVerzeichnis } = await import('./_aufraeumen.ts')
+  const { GATES } = await import('./check-kette.mjs')
   const hakenUrl = pathToFileURL(fileURLToPath(import.meta.url)).href
-  const paketJson = JSON.parse(readFileSync('package.json', 'utf8'))
   const teile = []
   const kopf = `# Messung check:gates und Testdateien\n\nErzeugt von \`node scripts/messe-check.mjs\` am ${new Date().toISOString()} (Node ${process.version}, ${process.platform}). Jeder Befehl einzeln nacheinander.\n\n`
 
   for (const [art, befehle] of [
-    ['Gates (check:gates)', nur === 'tests' ? [] : gateBefehle(paketJson).map((b) => ({ name: b, befehl: b }))],
+    ['Gates (check:gates)', nur === 'tests' ? [] : GATES.map((b) => ({ name: b, befehl: b }))],
     ['Testdateien (je Datei einzeln, node --test)', nur === 'gates' ? [] : findeTestdateien().map((d) => ({ name: d, befehl: `node --test "${d}"` }))],
   ]) {
     if (befehle.length === 0) continue
