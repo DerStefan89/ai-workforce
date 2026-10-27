@@ -65,7 +65,7 @@ und das Bearbeiten von Gate oder JSON.
 - `schemas/` — JSON-Schema (Draft 2020-12) für `kontrollzustand/`, `profiles/` und Rollen-Ergebnisse, geprüft von
   `scripts/check-datenformate.mjs` bzw. den Feature-Gates. claude-code löst ein Ausgabeschema nur für real belegte Schemata ein (Regel 4b).
 
-Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, in einem eigenen Git-Repository des Kerns. Rohereignisströme sind gitignoriert und werden aus der Laufakte über ihren Hash referenziert.
+Rohereignisströme sind gitignoriert und werden aus der Laufakte über ihren Hash referenziert.
 
 ## 2. Datenzugriff
 
@@ -93,7 +93,7 @@ Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, i
   nach einem Lauf der Rolle `ausfuehrung` löscht der Kern ausschließlich geprüfte reguläre Dateien der Löschliste, nur
   innerhalb, nie unter `.git`, `.claude/` oder `kontrollzustand/`; außerdem übernimmt bzw. verwirft er Fähigkeit-Vorschläge
   nur auf Klick (`.claude/`; DEKLARIERT, Pfadprüfung ERZWUNGEN); im Projektordner bleibt der Kern lesend, außer der
-  Feature-Akte, `docs/projekt/roadmap.json`, `roadmap-ausnahmen.json` und `docs/STATUS.md` (Status-Wort) auf Eingabe (F45 B5). Der Fingerabdruck des Review-Stands
+  Feature-Akte, `docs/projekt/roadmap.json`, `roadmap-ausnahmen.json` und `docs/STATUS.md` (Status-Wort) auf Eingabe (F45 B5); ANGENOMMEN schreibt die laufende Workstream-Zeile der Akte im Laufort (R7, Arbeits- oder Projektordner). Der Fingerabdruck des Review-Stands
   schreibt weder Index noch `.git/objects`, startet keinen Filter-Treiber. Einzelheiten: `docs/architektur/arbeitsordner.md`.
 - Stefans Claude-Code-Bestand liest der Leitstand nur lesend; unser Code schreibt dort nie (Gate f45-f3a (b)). Eine Abweichung
   im Plugin-Datenordner nach einem Lauf ist ein Befund, kein Abbruch.

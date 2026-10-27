@@ -1,0 +1,63 @@
+[
+  {
+    "hinweis": "Wegwerf-Kopie (Arbeitsbaum + Präparation: B5b-3 Begonnen 2026-10-21, V1 laeuft), zwei Abläufe mit feature_ref F45 ohne Arbeitsordner (Laufort Projektordner der Kopie).",
+    "uebersprungen": []
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "01-abnahme-zwei-laufende",
+    "bild": "de-1440-dunkel-01-abnahme-zwei-laufende.webp",
+    "meldung": {
+      "klasse": "hinweis",
+      "text": "Abnahme festgehalten. Akte nicht fortgeschrieben: Workstream nicht eindeutig (2 laufende Zeilen) — von Hand nachtragen."
+    },
+    "akteUnveraendert": true
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "02-abnahme-eindeutig",
+    "bild": "de-1440-dunkel-02-abnahme-eindeutig.webp",
+    "meldung": {
+      "klasse": "erfolg",
+      "text": "Abnahme festgehalten. Workstream B5b-3 ist in der Akte erledigt (Ist 4 AT) — features/F45/feature.md ist im Projektordner geändert, noch nicht committet; die Befehle stehen in der Code-Ansicht (Projekt)."
+    },
+    "zeile": "| B5b-3 | fixpaket | R7: Ist nach Abnahme | erledigt | 0,4–0,6 | 4 | 2026-10-21 | 2026-10-27 | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6) |"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "03-code-akte-geaendert",
+    "bild": "de-1440-dunkel-03-code-akte-geaendert.webp",
+    "akteSichtbar": true,
+    "diff": "diff --git a/features/F45/feature.md b/features/F45/feature.md\nindex ac72c4c..6b1339c 100644\n--- a/features/F45/feature.md\n+++ b/features/F45/feature.md\n@@ -165,7 +165,7 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B\n | B5b-1b-2 | fixpaket | Bereinigungsliste | erledigt | 0,45–0,6 | – | 2026-10-24 | 2026-10-24 | aus B5b-1b geteilt (A1); vorher 0,3–0,4, korrigiert nach dem Advisor-Pass (`advisor-b5b1b2.md` B6, ohne Schnitt); gemergt #378 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |\n | T | fixpaket | Tests stabil | erledigt | 0,2–0,3 | – | 2026-10-24 | 2026-10-25 | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154); gemergt #379 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |\n | B5b-2 | fixpaket | Roadmap-Anzeige | erledigt | 1–1,4 | – | 2026-10-25 | 2026-10-25 | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“; gemergt #380 (2a), #381 (2b-1), #382 (2b-2), #384 (2c-1), #385 (2c-2-C); 2c-2-AB gebaut — `erledigt` nach Auftrag Challenger 25.10.2026 („Workstream-Zeile B5b-2 auf erledigt, sofern die Ist-Zelle es zulässt“), abweichend von Advisor `advisor-b5b2c2.md` A1 und Plan v2 A1; Abgenommen = erwartetes Merge-Datum von 2c-2-AB, bei späterem Merge nachziehen; Ist pflegt der Challenger (Zelle erlaubt nur „–“ oder eine Zahl) |\n-| B5b-3 | fixpaket | R7: Ist nach Abnahme | laeuft | 0,4–0,6 | – | 2026-10-21 | – | vorher 0,3, korrigiert nac"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "04-roadmap-b5b3-erledigt",
+    "bild": "de-1440-dunkel-04-roadmap-b5b3-erledigt.webp",
+    "detail": "Fixpaket R7: Ist nach Abnahme ✓ Abgenommen IDB5b-3Teil vonF45 · Fixpaket Arbeitsfähigkeit · M5InhaltR7: Ist nach Abnahme — vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6)Schätzung0,4–0,6 ATIst4 ATDanachReferenzauftrag in einem Fremdprojekt Feature öffnen → Frag Jarvis dazu Warum diese Reihenfolge?Was blockiert das?Schätzung prüfen Fragen Öffnet den Chat mit der Frage in der Ein"
+  },
+  {
+    "lage": "de-1440-dunkel",
+    "schritt": "05-befund-pille-offen",
+    "bild": "de-1440-dunkel-05-befund-pille-offen.webp",
+    "pille": {
+      "detail": "Offen",
+      "zeile": "Offen"
+    }
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "04-roadmap-b5b3-erledigt",
+    "bild": "de-1440-hell-04-roadmap-b5b3-erledigt.webp",
+    "detail": "Fixpaket R7: Ist nach Abnahme ✓ Abgenommen IDB5b-3Teil vonF45 · Fixpaket Arbeitsfähigkeit · M5InhaltR7: Ist nach Abnahme — vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6)Schätzung0,4–0,6 ATIst4 ATDanachReferenzauftrag in einem Fremdprojekt Feature öffnen → Frag Jarvis dazu Warum diese Reihenfolge?Was blockiert das?Schätzung prüfen Fragen Öffnet den Chat mit der Frage in der Ein"
+  },
+  {
+    "lage": "de-1440-hell",
+    "schritt": "05-befund-pille-offen",
+    "bild": "de-1440-hell-05-befund-pille-offen.webp",
+    "pille": {
+      "detail": "Offen",
+      "zeile": "Offen"
+    }
+  }
+]

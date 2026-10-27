@@ -12,8 +12,8 @@ Thema berührt.
   Git-Worktree eines schreibenden Ablaufs ausschließlich über git an und entfernt ihn ebenso (Git-Starter), führt
   darin `npm ci --ignore-scripts` aus und löscht nach einem Lauf der Rolle `ausfuehrung` ausschließlich geprüfte
   reguläre Dateien aus dessen Löschliste — nur innerhalb des Arbeitsordners, nie unter `.git`, `.claude/` oder
-  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — Ausnahmen nur die Feature-Akte, die Roadmap und
-  die Bereinigungsliste (nächste drei Punkte).
+  `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — Ausnahmen nur die Feature-Akte, die Roadmap,
+  die Bereinigungsliste und die Workstream-Zeile nach der Abnahme (nächste vier Punkte).
 - Feature-Akte im Projektordner (F45 B5a-1, E-F45-1, F-912; Entscheidung Stefan 23.10.2026 nach dem Advisor-Pass
   `features/F45/advisor-b5a1.md` A1/A2; `scripts/leitstand/routen-f35.mjs`, Plan `features/F45/plan-b5a1-v2.md`): der Server
   schreibt auf direkte Eingabe ausschließlich `features/<id>/feature.md` der `repoWurzel` des Projekts — PUT
@@ -61,6 +61,24 @@ Thema berührt.
   Standardform (Fremdprojekt), wird sie übersprungen (Hinweis in der Antwort); ein Abbruch zwischen zwei Schreibvorgängen
   hinterlässt einen R1-roten, sichtbaren Teilstand; die Sperre gilt auch für „Meilenstein → LAEUFT“; Überschriften und Freitext
   in STATUS.md bleiben Handarbeit; Rückbau best effort, nicht atomar, „nur auf Eingabe“.
+- Workstream-Zeile nach der Abnahme (F45 B5b-3, R7; Plan `features/F45/plan-b5b3-v2.md`, Advisor-Pass „Freigegeben mit
+  Auflagen“ A1–A6, Entscheidungen Stefan A2/A3 27.10.2026; `scripts/leitstand/ist-nach-abnahme.mjs`, Regel
+  `src/feature-auftrag/ist-nach-abnahme.ts`): nach POST `…/workflows/<id>/abnahme` mit ANGENOMMEN (die Eingabe ist Stefans
+  Abnahme) schreibt der Server in die Akte des `feature_ref` des Auftrags im Laufort des Ablaufs — im Arbeitsordner, wenn er
+  einen hat (die Änderung steht dann im Block „Bereit zum Sichern“ desselben Ablaufs), sonst im Projektordner (dann mit der
+  Sperre der vorigen Punkte und einem Git-Block in der Antwort). Geschrieben wird nur die eine Zeile mit Status `laeuft`
+  (Status `erledigt`, Abgenommen = Tag der Abnahme, Begonnen nur wenn leer aus der Anlage des Ablaufs, Ist = Arbeitstage nach
+  der Regel der Ist-Zone, 0 ⇒ `–`) und eine Änderungszeile, die mit `· Abnahme <workflowId>` endet. Nichts geschrieben, Hinweis
+  in der Antwort: CRLF, ABGESCHLOSSEN/ABGEBROCHEN, kein strenger Abschnitt oder Formfehler, ≠ 1 laufende Zeile, Begonnen nach
+  dem Abnahmetag, Akte-Gate, Arbeitsordner nicht verfügbar; schon fortgeschrieben ⇒ nichts (idempotent). Ohne `feature_ref`
+  bzw. ohne Akte nichts. Die Abnahme gilt auch, wenn R7 scheitert (Nebenwirkung, wirft nicht). Kein Commit. Belegt in
+  `scripts/leitstand/ist-nach-abnahme.test.mjs` und `src/feature-auftrag/ist-nach-abnahme.test.ts` (kein eigenes Gate).
+  DEKLARIERT: Vorbedingung — die Zeile steht vor dem Start auf `laeuft` und ist committet; Zuordnung nur über `feature_ref`;
+  der Hinweis steht nur in der Antwort, eine zweite Abnahme gibt es nicht (409) — auch ein vorübergehender Grund (Sperre)
+  bleibt Handarbeit; den Git-Block der Antwort (Projektordner) zeigt die Abnahme nicht, die Meldung verweist auf die
+  Code-Ansicht (Projekt); „erst abnehmen, dann sichern“ ist nicht erzwungen (gesichert vor der Abnahme ⇒ die
+  Änderung landet als neue Änderung auf dem Branch; Aufräumen mit Verwerfen verwirft sie); die Akte im Arbeitsordner hat den
+  Stand beim Anlegen.
 - Fähigkeit-Vorschläge (F45 FB-1b, F-1167, E-FB1-2/-3, `scripts/leitstand/routen-faehigkeit-vorschlag.mjs`, Plan
   `features/F45/plan-fb1b-v2.md`): außerdem bewegt bzw. löscht der Server auf direkte Eingabe (POST
   `…/workflows/<id>/faehigkeit-vorschlag/uebernehmen|verwerfen { typ, name, hash }`) einen Vorschlag des Laufs. Übernehmen

@@ -157,3 +157,4 @@ Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
 - F-1018 · BUG · Windows drosselt den Leitstand-Prozess im Energiemodus „Beste Energieeffizienz“ um Faktor ≈ 5–10.
 - F-1049 · HARNESS_IMPROVEMENT · Eingriffsprotokoll fehlt (Challenger K15).
 - F-1128 · TECH_DEBT · Restpunkte von F45 B2b-3b-1b (Rückfrage-Auswertung) — Pflichtpunkte vor dem Einschalten (B2b-3b-2) und Schulden.
+- F-1212 · HARNESS_IMPROVEMENT · JavaScript ohne Typprüfung.

@@ -23,7 +23,7 @@
  *   ohne Schätzung ist, dann mit Anzahl); plan_gegen_ist über erledigte Zeilen mit Schätzung und Ist.
  *
  * Wird aufgerufen von: scripts/leitstand/routen-roadmap.mjs, scripts/check-f45-b5b1a-planung.mjs,
- * src/workboard/roadmap-planung.test.ts.
+ * src/workboard/roadmap-planung.test.ts, src/feature-auftrag/ist-nach-abnahme.ts (arbeitstageBis, F45 B5b-3 R7).
  *
  * Wichtig — bekannte Grenzen (DEKLARIERT): Summen werden auf zwei Nachkommastellen gerundet; Feiertage kennt die
  * Arbeitstag-Rechnung nicht. Eine Zeile laeuft zählt mit der vollen Schätzung (der Rest ist unbekannt, R7/B5b-3). Ein offenes

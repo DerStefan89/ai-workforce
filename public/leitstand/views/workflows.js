@@ -75,7 +75,7 @@ import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { aufraeumenArt, behandleSichernKlick, sichernFuerAblauf } from './ablauf-sichern-anzeige.js'
 import { renderArbeitsordnerAktion, renderArbeitsordnerKarte, renderAufraeumenDialog } from './arbeitsordner-anzeige.js'
 import { bedienZustand } from './entscheidung-panel.js'
-import { abnahmeLage, ausfuehrungGelaufen, budgetKennung, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung, umfangKennung } from './workflow-abnahme.js'
+import { abnahmeErfolg, abnahmeLage, ausfuehrungGelaufen, budgetKennung, pruefWertText, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, reviewHinweisKennung, umfangKennung } from './workflow-abnahme.js'
 import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
 import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen, renderSichtungR3Schritt, sichtungsAbweichung } from './workflow-eingriffe.js'
 import { entscheidungsModus, FREIGABE_OPTIONEN, renderFreigabePanel, renderFreigabeSeite, seitenKopf } from './workflow-entscheiden.js'
@@ -1499,7 +1499,7 @@ async function fuehreAbnahmeAktionAus(button) {
     feld.focus()
     return
   }
-  await sendeAbnahmeBedienung(workflowId, () => sendeAbnahme(workflowId, { ergebnis: aktion, begruendung }), button, () => t(`abnahme.erfolg.${aktion}`))
+  await sendeAbnahmeBedienung(workflowId, () => sendeAbnahme(workflowId, { ergebnis: aktion, begruendung }), button, (inhalt) => abnahmeErfolg(aktion, inhalt))
 }
 
 /**

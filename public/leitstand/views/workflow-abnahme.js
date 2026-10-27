@@ -607,6 +607,28 @@ export function zaehleAkUrteile(akUrteile) {
 }
 
 /**
+ * Erfolgstext nach POST …/abnahme; bei ANGENOMMEN mit dem Ergebnis von R7 (F45 B5b-3, Feld ist_nach_abnahme): fortgeschrieben ⇒
+ * Erfolg mit Satz (Arbeitsordner: steht unter „Bereit zum Sichern“; Projektordner: nicht committet), schon fortgeschrieben ⇒ Satz,
+ * Hinweis ⇒ Hinweis-Stil mit dem Servergrund (der Kern nennt die Vorbedingung, wo sie fehlt). Ohne Feld bzw.
+ * keine Akte unverändert. Der Text geht als textContent in die Meldung (nie HTML).
+ * @param aktion - ANGENOMMEN | ABGELEHNT | ANPASSUNG_ANGEFORDERT
+ * @param inhalt - Antwort des POST
+ * @returns Text oder { text, art: 'hinweis' }
+ */
+export function abnahmeErfolg(aktion, inhalt) {
+  const basis = t(`abnahme.erfolg.${aktion}`)
+  const r7 = inhalt?.ist_nach_abnahme
+  if (aktion !== 'ANGENOMMEN' || r7 === null || typeof r7 !== 'object') return basis
+  if (r7.art === 'geschrieben') {
+    const werte = { workstream: String(r7.workstream ?? ''), ist: typeof r7.ist === 'number' ? formatiereZahl(r7.ist) : '–', pfad: String(r7.pfad ?? '') }
+    return `${basis} ${t(r7.git === undefined ? 'abnahme.r7.arbeitsordner' : 'abnahme.r7.projektordner', werte)}`
+  }
+  if (r7.art === 'schon_geschrieben') return `${basis} ${t('abnahme.r7.schon')}`
+  if (r7.art === 'hinweis') return { text: `${basis} ${t('abnahme.r7.hinweis', { grund: String(r7.hinweis ?? '') })}`, art: 'hinweis' }
+  return basis
+}
+
+/**
  * Einleitung unter „Passt das Ergebnis?“ — nur aus vorhandenen Daten (Regel 8): mit Review-Urteil
  * je AK die Zahl der erfüllten, sonst der Satz ohne Zahlen.
  * @param abnahme - Antwort von GET …/abnahme

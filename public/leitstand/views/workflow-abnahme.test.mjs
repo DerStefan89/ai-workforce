@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeEinleitung, abnahmeLage, budgetKennung, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, renderKanalImLauf, reviewHinweise, renderUmfangHinweis, reviewHinweisKennung, umfangKennung, zaehleAkUrteile } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeErfolg, abnahmeLage, budgetKennung, erlaubteAbnahmeAktionen, pruefungWiederholbar, qaHinweise, qaHinweisKennung, renderAbnahme, renderAbnahmeBlick, renderKanalImLauf, reviewHinweise, renderUmfangHinweis, reviewHinweisKennung, umfangKennung, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -693,4 +693,18 @@ test('F-1146: lädt ⇒ Zeile; nicht ladbar ⇒ Hinweis mit Link ins Lauf-Detail
   const oben = renderAbnahme('w-1', abnahme(), null, undefined, { kanal: laufB }).oben
   assert.ok(oben.indexOf('rueckfrage-abnahme') < oben.indexOf('abnahme-selbst-titel'), 'mit Grund oben, unter den Kacheln')
   assert.ok(oben.indexOf('entscheiden-kacheln') < oben.indexOf('rueckfrage-abnahme'))
+})
+
+test('abnahmeErfolg: R7 fortgeschrieben (Arbeitsordner/Projektordner), schon, Hinweis im Hinweis-Stil, sonst unverändert (F45 B5b-3)', () => {
+  assert.equal(abnahmeErfolg('ANGENOMMEN', {}), 'Abnahme festgehalten.')
+  assert.equal(abnahmeErfolg('ABGELEHNT', { ist_nach_abnahme: { art: 'hinweis', hinweis: 'x' } }), 'Ablehnung festgehalten — der Workflow ist gestoppt.')
+  assert.equal(abnahmeErfolg('ANGENOMMEN', { ist_nach_abnahme: { art: 'keine_akte' } }), 'Abnahme festgehalten.')
+  const ao = abnahmeErfolg('ANGENOMMEN', { ist_nach_abnahme: { art: 'geschrieben', workstream: 'B5b-3', ist: null, pfad: 'features/F45/feature.md' } })
+  assert.match(ao, /Workstream B5b-3 ist in der Akte erledigt \(Ist – AT\).*Bereit zum Sichern.*erst abnehmen, dann sichern/)
+  const po = abnahmeErfolg('ANGENOMMEN', { ist_nach_abnahme: { art: 'geschrieben', workstream: 'W1', ist: 2, pfad: 'features/F9/feature.md', git: [] } })
+  assert.ok(po.includes('(Ist 2 AT) — features/F9/feature.md ist im Projektordner geändert, noch nicht committet; die Befehle stehen in der Code-Ansicht (Projekt).'), po)
+  assert.match(abnahmeErfolg('ANGENOMMEN', { ist_nach_abnahme: { art: 'schon_geschrieben' } }), /schon fortgeschrieben/)
+  const hinweis = abnahmeErfolg('ANGENOMMEN', { ist_nach_abnahme: { art: 'hinweis', hinweis: 'Workstream nicht eindeutig (2 laufende Zeilen) — von Hand nachtragen' } })
+  assert.equal(hinweis.art, 'hinweis')
+  assert.equal(hinweis.text, 'Abnahme festgehalten. Akte nicht fortgeschrieben: Workstream nicht eindeutig (2 laufende Zeilen) — von Hand nachtragen.')
 })
