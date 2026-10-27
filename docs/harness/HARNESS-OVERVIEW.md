@@ -94,8 +94,12 @@ jedem beobachteten Fall.
 5. Vor Commit: `npm run check` lokal. Push/PR: CI wiederholt es auf
    frischer Maschine. Bricht `npm run check` lokal wegen Speicher ab, ist
    die Rückfallebene `npm run check:gates` (dieselbe Gate-Kette ohne
-   Unit-Tests und Nachlauf) plus die betroffenen Unit-Tests einzeln
-   (`node --test <datei>`) — die volle Kette prüft dann die CI (F-1120).
+   Unit-Tests und Nachlauf, Liste in `scripts/check-kette.mjs`) mit
+   `AIW_GATES_PARALLEL=1` (nacheinander statt vier gleichzeitig; PowerShell:
+   `$env:AIW_GATES_PARALLEL=1; npm run check:gates`, danach
+   `Remove-Item Env:AIW_GATES_PARALLEL`, sonst gilt es für die ganze Sitzung) plus die betroffenen
+   Unit-Tests einzeln (`node --test <datei>`) — die volle Kette prüft dann
+   die CI (F-1120, F45 W2a).
 6. Neues Werkzeug: Skill `werkzeug-auswahl` zuerst. Vor größeren
    Änderungen: Skill `repo-audit` für einen Ist-Stand-Scan.
 7. Architekturentscheidungen mit Alternativen: ADR anlegen

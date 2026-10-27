@@ -9055,7 +9055,7 @@ Beschreibung: Am 25.10.2026 scheiterte `check-f36-ws5b-skill` (l) einmal mit „
 Fundstelle: `scripts/check-f36-ws5b-skill.mjs` (l), `scripts/teste.mjs`, F-1186, F-1209, F-1210.
 Auswirkung: Mittel — sporadisch rote Läufe kosten Wiederholungen und Vertrauen in den vollen Lauf (P4).
 Maßnahme: W2a (E-W2-1) — git- und serverlastige Prüfungen grundsätzlich seriell bzw. stabil ausführen (eigene Gruppe in Gates und Tests, keine Wartegrenzen ohne Zeitfaktor), statt je Vorfall eine Datei nachzutragen.
-Status: offen.
+Status: offen. Nachtrag F45 W2a (27.10.2026): Gates umgesetzt — `scripts/check-kette.mjs` führt 15 Gates mit fester Frist ≤ 10 s auf Server-/Workflow-/Kindprozess-Zustand, Zeitmessung oder belegtem Ausfall (darunter `check-f36-ws5b-skill`) in der seriellen Gruppe (`SERIELL`, Herleitung `features/F45/w2-gate-inventur.md`, Advisor `advisor-w2a.md` A1). Offen: „keine Wartegrenzen ohne Zeitfaktor“ in den Gates selbst (W2b, Gates ändern) und die Testdateien (Gruppe in `scripts/teste.mjs` weiter je Vorfall).
 Feature/Run: Entdeckt: F45 B5b-2c-2-AB (voller Lauf), 25.10.2026; eingetragen F45 B5b-3, 27.10.2026.
 
 **F-1216** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -9093,3 +9093,66 @@ Auswirkung: Gering — verständlich nur auf Deutsch.
 Maßnahme: Kennung des Grunds plus Werte (z. B. `grund_schluessel`, `anzahl`) im Ergebnis, Übersetzung in der Oberfläche (Muster `SICHERN_GRUENDE`/`grund_schluessel`); deutscher Text als Rückfall.
 Status: offen.
 Feature/Run: Entdeckt: F45 B5b-3 (Prüfpass qa 7), 27.10.2026.
+
+**F-1220** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Schwere Läufe (Render-Nachweis, voller Test-/Gate-Lauf) gehören nur in den Commit-Block, nicht in die Bausitzung.
+Beschreibung: Volle Läufe in der Claude-Code-Sitzung scheitern unter Speicherdruck oder liefern Wackler (F-1154, F-1205, Messung F45 T); jede Bausitzung entscheidet neu, ob sie den Lauf versucht. Die Entscheidung E-PRUEF-1 = A (voller Lauf im frischen Terminal) steht nicht als fester Satz in den Bauaufträgen.
+Fundstelle: Bauaufträge des Challengers (F45 B5b-2, B5b-3, W2a), `features/F45/nachweise/t/messung.md` (Befund 1).
+Auswirkung: Mittel — abgebrochene oder rote Läufe ohne Codefehler kosten Zeit und verleiten zu falschen Reparaturen.
+Maßnahme: Standardsatz in jeden Bauauftrag: „Schwere Läufe (Render-Nachweis, voller Gate-Lauf, `npm run test`) nur im Commit-Block; in der Sitzung einzelne Gates und betroffene Testdateien.“ Mit W2d in die Vorlage des Bauauftrags übernehmen.
+Status: offen.
+Feature/Run: Entdeckt: Challenger F45 W2a, 27.10.2026.
+
+**F-1221** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Challenger-Nachaufträge nach dem Bau gegen Nachweis-/Test-Vorbedingungen prüfen; eigenes Paket erst im Aufräumen auf erledigt.
+Beschreibung: In F45 B5b-3 stand das eigene Paket im Abschnitt „Stand B5b-3“ schon vor Render-Nachweis, Testlauf und Merge auf `erledigt`; Nachaufträge des Challengers nach dem Bau wurden nicht dagegen geprüft, ob Nachweis und Testlauf noch ausstehen. Gleiche Klasse wie F-1204 (Auftrag nicht gegen die maßgebliche Quelle geprüft).
+Fundstelle: `features/F45/feature.md` (Workstream-Zeile B5b-3, Abschnitt „Stand B5b-3“), Bauauftrag B5b-3.
+Auswirkung: Gering bis mittel — die Akte zeigt einen Abschluss, bevor Nachweis und Merge vorliegen.
+Maßnahme: Nachauftrag nach dem Bau zuerst gegen offene Vorbedingungen (Nachweis, Test, Merge) prüfen; die eigene Zeile bleibt `laeuft`, `erledigt` setzt das Aufräumen des Folgepakets nach dem Merge (wie W2a für B5b-3).
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-3, eingetragen F45 W2a, 27.10.2026.
+
+**F-1222** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Nachweis-Skript in der Bausitzung per Trockenlauf prüfen (Selektoren, ein Bild).
+Beschreibung: Im Render-Nachweis von F45 B5b-3 war die Gruppe h zugeklappt — die geplanten Bilder zeigten nicht, was sie belegen sollten. Der Fehler fiel erst im Commit-Block auf, weil das Nachweis-Skript in der Sitzung nie lief.
+Fundstelle: `scripts/render-nachweis.mjs`, Nachweis-Skripte unter `features/F45/nachweise/`, Commit-Block B5b-3.
+Auswirkung: Mittel — ein zweiter Nachweislauf und eine Korrektur nach dem eigentlichen Bau.
+Maßnahme: Bauauftrag verlangt einen Trockenlauf des Nachweis-Skripts in der Sitzung: Selektoren auflösen und genau ein Bild erzeugen (leichter Lauf, F-1220 bleibt gewahrt); der volle Nachweis bleibt im Commit-Block.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-3 (Commit-Block), eingetragen F45 W2a, 27.10.2026.
+
+**F-1223** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Commit-Nachricht mit BOM (PowerShell 5.1 `Set-Content -Encoding UTF8`), main `5ce0b47` betroffen.
+Beschreibung: Der Commit-Block von F45 B5b-3 schrieb die Nachricht mit `Set-Content -Encoding UTF8`; Windows PowerShell 5.1 setzt dabei ein BOM (EF BB BF), git übernimmt es in den Titel. Der Titel von `5ce0b47` beginnt mit U+FEFF vor „F45 B5b-3:“ (Bytes geprüft am 27.10.2026); Prüfungen auf den Titelanfang („F45 …“) sehen den Titel dadurch nicht.
+Fundstelle: Commit `5ce0b47` auf main; Commit-Blöcke der Bauaufträge.
+Auswirkung: Mittel — dauerhaft in der Historie; Titelprüfungen und Suchen nach „^F45“ verfehlen den Commit.
+Maßnahme: Commit-Blöcke schreiben die Nachricht BOM-frei: `[IO.File]::WriteAllText($pfad, $text, (New-Object System.Text.UTF8Encoding($false)))`, danach Commit mit `-F $pfad`. Titelprüfungen tolerieren ein führendes U+FEFF. Die Historie bleibt (kein Umschreiben von main).
+Status: offen.
+Feature/Run: Entdeckt: Challenger nach Merge #387, eingetragen F45 W2a, 27.10.2026.
+
+**F-1224** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Ist-Daten im F45-Workstream vor dem Merge gesetzt (B5b-2, B5b-3).
+Beschreibung: B5b-2 wurde mit „Abgenommen = erwartetes Merge-Datum“ auf `erledigt` gesetzt, B5b-3 im Abschnitt „Stand B5b-3“ vor dem Merge; „Abgenommen = Merge-Datum“ (A2) setzt aber einen Merge voraus. Bei späterem Merge stimmt das Datum nicht, und die Akte zeigt einen Abschluss ohne Merge.
+Fundstelle: `features/F45/feature.md` (Workstream-Zeilen B5b-2 und B5b-3, Notizen).
+Auswirkung: Gering — Datumsfehler um Tage, „Plan gegen Ist“ leicht verfälscht.
+Maßnahme: Abgenommen und `erledigt` erst im Aufräumen nach dem Merge setzen (Muster W2a für B5b-3); siehe F-1221.
+Status: offen.
+Feature/Run: Entdeckt: Challenger F45 W2a, 27.10.2026.
+
+**F-1225** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Regel 1j schützt den Testlauf (`scripts/teste.mjs`) und den Nachlauf (`scripts/aufraeumen-nachlauf.mjs`) nicht.
+Beschreibung: Regel 1j (F-713/F-735) hält einen `ausfuehrung`-Lauf an, der die Prüfkette ändert — geschützt sind `package.json` (scripts) und die Muster in `STANDARD_PRUEFKETTEN_MUSTER` (u. a. `scripts/check-*`, `scripts/_*`). `npm run check` ruft aber auch `scripts/teste.mjs` (SERIELL, `findeTestdateien`) und `scripts/aufraeumen-nachlauf.mjs` auf; beide passen auf kein Muster. Ein Lauf könnte Testdateien aus der Suche nehmen, ohne dass 1j hält. Seit F45 W2a liegt die Gate-Liste in `scripts/check-kette.mjs` und ist damit geschützt; der Läufer importiert deshalb nur `node:`-Module (`advisor-w2a.md` B1).
+Fundstelle: `src/aenderungsuebersicht/index.ts` (`STANDARD_PRUEFKETTEN_MUSTER`), `scripts/teste.mjs`, `scripts/aufraeumen-nachlauf.mjs`.
+Auswirkung: Mittel — eine Lücke im Schutz gegen das Abschalten von Prüfungen durch einen Lauf.
+Maßnahme: Beide Pfade in `STANDARD_PRUEFKETTEN_MUSTER` aufnehmen (oder die Dateien unter ein bestehendes Muster umbenennen), mit Rot-/Grünfall im Gate von F-713; dabei die Importe beider Skripte (`src/git-starter`, `scripts/_aufraeumen.ts`) mitbedenken.
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass F45 W2a (B2), 27.10.2026.
+
+**F-1226** · `TECH_DEBT` · P3 · offen
+Titel: `scripts/teste.mjs` erkennt den direkten Aufruf über einen Pfadvergleich ohne realpath — über Junction/Symlink endet `npm run test` still grün.
+Beschreibung: `istDirekterAufruf` vergleicht `resolve(process.argv[1])` mit `fileURLToPath(import.meta.url)`. Löst der ESM-Loader den Hauptmodulpfad per realpath auf (Junction, Symlink, `subst`) oder weicht die Großschreibung des Laufwerks ab, ist der Vergleich falsch; der Testlauf startet dann keinen Test und endet mit Exit 0. `scripts/check-kette.mjs` vergleicht seit F45 W2a per realpath (`gleicheDatei`, unter Windows ohne Groß-/Kleinschreibung) und prüft den Weg über `npm run check:gates` im Test (cr 2/qa 6 des Prüfpasses).
+Fundstelle: `scripts/teste.mjs` (`istDirekterAufruf`); dasselbe Muster in weiteren Skripten (`messe-check.mjs`, Gates mit Haupteinstieg).
+Auswirkung: Gering — heute kein beobachteter Fall; wenn, dann ein stilles Grün.
+Maßnahme: `gleicheDatei` aus `scripts/check-kette.mjs` übernehmen (oder in ein gemeinsames `node:`-Hilfsmodul unter `scripts/_*` ziehen) und einen Test über `npm run test` mit einem Abbruchfall ergänzen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F45 W2a (code-reviewer cr 2, qa 6), 27.10.2026.

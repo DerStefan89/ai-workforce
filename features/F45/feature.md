@@ -165,8 +165,8 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | B5b-1b-2 | fixpaket | Bereinigungsliste | erledigt | 0,45–0,6 | – | 2026-10-24 | 2026-10-24 | aus B5b-1b geteilt (A1); vorher 0,3–0,4, korrigiert nach dem Advisor-Pass (`advisor-b5b1b2.md` B6, ohne Schnitt); gemergt #378 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |
 | T | fixpaket | Tests stabil | erledigt | 0,2–0,3 | – | 2026-10-24 | 2026-10-25 | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154); gemergt #379 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |
 | B5b-2 | fixpaket | Roadmap-Anzeige | erledigt | 1–1,4 | – | 2026-10-25 | 2026-10-25 | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“; gemergt #380 (2a), #381 (2b-1), #382 (2b-2), #384 (2c-1), #385 (2c-2-C); 2c-2-AB gebaut — `erledigt` nach Auftrag Challenger 25.10.2026 („Workstream-Zeile B5b-2 auf erledigt, sofern die Ist-Zelle es zulässt“), abweichend von Advisor `advisor-b5b2c2.md` A1 und Plan v2 A1; Abgenommen = erwartetes Merge-Datum von 2c-2-AB, bei späterem Merge nachziehen; Ist pflegt der Challenger (Zelle erlaubt nur „–“ oder eine Zahl) |
-| B5b-3 | fixpaket | R7: Ist nach Abnahme | laeuft | 0,4–0,6 | – | 2026-10-27 | – | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6) |
-| W2 | workstream | Aufräumpaket | geplant | 1,5–3 | – | – | – | |
+| B5b-3 | fixpaket | R7: Ist nach Abnahme | erledigt | 0,4–0,6 | – | 2026-10-27 | 2026-10-27 | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6); gemergt #387 (Bereinigung W2a: Ist – nach A3, Begonnen = Abgenommen ⇒ 0 AT) |
+| W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen |
 | V1 | workstream | Live-Vorschau des Projekts im Leitstand | geplant | 0,3–0,5 | – | – | – | E-VORSCHAU-1 = A |
 | B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | verworfen | 1–2 | – | – | – | entfällt — E-R-1 = A (Stefan, 25.10.2026): Referenzauftrag = F30-M1 |
@@ -182,8 +182,8 @@ in der Notiz. Ist nur, wo eine einzelne AT-Zahl als Ist steht. Status und Abgeno
 bekannt, wo es eine Quelle gibt. Art: `workstream` = ungeteilter Baustein oder Sammelzeile, `fixpaket` = Teilpaket eines
 geteilten Bausteins, `design` = Design- und Motion-Paket. Die Sammelzeile B2b bleibt, weil §3 nicht alle B2b-Teilpakete als
 eigene Zeile führt; sie ist erledigt und ohne Ist, zählt also weder in „Bis M5 fertig“ noch in „Plan gegen Ist“. Ist pflegt bis
-B5b-3 der Challenger nach Abschluss eines Eintrags nach. Reihenfolge der offenen Zeilen seit E-BRAIN-2 (Stefan, 25.10.2026): B5b-2
-(2c) → B5b-3 → V1 → B3 → W2 → R2 (Brain Stufe 1) → Brain-2 → Brain-3 → F30; R ist verworfen (E-R-1 = A, Referenzauftrag = F30-M1).
+B5b-3 der Challenger nach Abschluss eines Eintrags nach. Reihenfolge der offenen Zeilen seit E-W2-1 (Stefan, 25.10.2026; ersetzt
+E-BRAIN-2): B5b-3 → W2 → V1 → B3 → R2 (Brain Stufe 1) → Brain-2 → Brain-3 → F30; R ist verworfen (E-R-1 = A, Referenzauftrag = F30-M1).
 
 Grobschätzungen der alten Scope-Tabelle ohne eigene Zeile hier (wörtlich, Stand vor B5b-1a): F-2b-2 „≈ 1–1,25“; F-3
 „Schätzung fehlt“, Ist „F-3a-1 ≈ 0,5, F-3a-2 ≈ 0,4, F-3b-1 ≈ 0,95 AT (beauftragt 0,5; Grund: Advisor-Auflagen)“; B2b
@@ -1829,5 +1829,52 @@ Code-Ansicht); „erst abnehmen, dann sichern“ nicht erzwungen; Hinweisgründe
 (Begonnen-Ersatz fehlertolerant), cr 3 (Rückbau-Meldung), cr 4/qa 3/qa 4/qa 5 (Tests Rückbau, Laufort, Sperre, Begonnen-Ersatz über
 die Route, Akte ohne „## Änderungen“), cr 5/qa 1 (Verweis auf die Code-Ansicht, DEKLARIERT), cr 6/qa 2 (0 und mehrere getrennt,
 Vorbedingung nur bei 0). Offen: dg 2 → F-1218, qa 6 → Nachtrag F-1211 (qa 6), qa 7 → F-1219,
-F-1217. B5b-3 am 27.10.2026 auf `erledigt` (Challenger: freigegeben mit Hinweisen); Render-Nachweis und voller `npm run test` nach
-der Korrekturrunde laufen in Stefans Commit-Block.
+F-1217. B5b-3 gemergt #387 (`5ce0b47`) am 27.10.2026 — damit `erledigt`, Abgenommen = Merge-Datum (Challenger: freigegeben mit
+Hinweisen); Render-Nachweis und voller `npm run test` nach der Korrekturrunde gehörten zu Stefans Commit-Block vor dem Merge.
+
+## Stand W2a
+
+**Auftrag:** W2a „Gates: Läufer + Inventur“ (Challenger, 27.10.2026; E-W2-1, Schnitt W2a–W2d, Server-Monolith gestrichen).
+Plan `plan-w2a.md` → Advisor `advisor-w2a.md` „Freigegeben mit Hinweisen“ (A1–A5, B1–B9, kein Schnitt) → `plan-w2a-v2.md`.
+A1 = (a) nach F-1215 (Frist-Gates seriell; Maßnahme des Findings, keine neue Abwägung).
+
+**Gebaut:**
+- `scripts/check-kette.mjs` (neu): eine Quelle `GATES` (die 122 Befehle der früheren `&&`-Kette wörtlich, gleiche Reihenfolge —
+  Abgleich gegen `main:package.json` 122 = 122) und Läufer: zuerst `SERIELL` einzeln (23 Gates: Repo-Baum-Läufer,
+  `startvorlagen/`-Schreiber, Frist/Zeit/Ausfall F-1215, echtes Home), danach die übrigen 99 mit höchstens N gleichzeitig
+  (Standard 4, `AIW_GATES_PARALLEL`); Startzeile, Block je Gate (stdout/stderr getrennt), Zusammenfassung am Ende mit den
+  letzten 20 Zeilen je rotem Gate und Schlusszeile „zuerst rot: …“; Exit 0/1/2 über `hauptprogramm`; Haupteinstieg per
+  realpath. Nur `node:`-Importe (Regel 1j, B1). `package.json` `check:gates` ruft ihn.
+- `scripts/check-kette.test.mjs` (neu, 14 Tests, steuerbarer Starter ohne Wanduhr, absichtlich rotes Pseudo-Gate, Weg über
+  `npm run check:gates`).
+- `scripts/messe-check.mjs` nimmt `GATES` statt die Kette zu zerlegen; `docs/harness/HARNESS-OVERVIEW.md` §5 Rückfallebene
+  mit `AIW_GATES_PARALLEL=1`. CI unverändert: sie ruft `npm run check` und daneben nur den Chrome-Klicktest
+  `check-f20-leitstand-shell.mjs`, kennt die Kette also nicht.
+- Inventur `w2-gate-inventur.md`: 122 Gates, 52 263 Zeilen; Verhalten 74, gemischt 20, Invariante 15, Codeform 7,
+  Sicherheit 6; Kandidaten W2b: ersetzen durch Test 60, behalten 59, löschen 3 (Vorschlag, DEKLARIERT).
+- Aufräumen: B5b-3 `erledigt` (Merge #387), W2 `laeuft`, Reihenfolge W2 vor V1 hier und in `docs/STATUS.md`; F-1220–F-1226,
+  Nachtrag F-1215.
+
+**DEKLARIERT:** SERIELL zuerst und Weiterlaufen nach Rot (Folgefehler möglich, erstes rotes Gate zuerst und in der
+Schlusszeile); kein Timeout je Gate, ein hängendes Gate zeigt eine Startzeile ohne Kopfzeile; Puffer unbegrenzt; bei Abbruch
+unter Windows können bis zu N Gate-Prozessbäume verwaisen; Klassifizierung der Inventur durch Lesen, nicht gemessen.
+
+**Prüfpass:** code-reviewer und qa je „Freigegeben mit Hinweisen“. Eine Korrekturrunde: cr 1 (Parallelität in
+`fuehreKetteAus` geprüft, Vollständigkeit der Ergebnisse), cr 2/qa 6 (Haupteinstieg per realpath, Test über
+`npm run check:gates`), qa 2 (`hauptprogramm` mit Tests für Exit 0/1/2), qa 1 (Schlusszeile „zuerst rot“), qa 4 (SERIELL
+zuerst statt zuletzt — Repo-Baum-Läufer sehen den Stand vor allen Wegwerf-Ordnern wie früher), cr 3 (Kopf), cr 4 (Verkleben,
+„(keine Ausgabe)“), cr 5 (Signal-Test), cr 9/qa 5 (falscher Arbeitsordner), cr 6 (CI-Begründung, Gate außerhalb der Kette in
+der Inventur), cr 8/qa 7/qa 8 (DEKLARIERT), cr 10/qa 10 (Doku, Tests 20-Zeilen-Kürzung, nur stderr, alles grün,
+Sicherheits-Gates in der Liste), qa 9 (Zurücksetzen der Variable in der Doku; keine Obergrenze — mehr als Gates laufen nie),
+qa 12 (Zeilen wie `wc -l`, Summen neu), qa 13 (Reihenfolge). Offen: teste.mjs-Einstieg → F-1226; qa 3 → zwei Läufe im
+Commit-Block; qa 14 (W2 ist einzige laufende Zeile in F45, R7 würde sie bei ANGENOMMEN mit `feature_ref` F45 schließen,
+F-1217) — W2 läuft außerhalb der Workforce.
+
+**Prüfung in der Sitzung:** `node --test scripts/check-kette.test.mjs` (13 grün, 1 nur POSIX), Mutationsprobe (sechs
+Mutationen, je rot), Trockenläufe über den neuen Läufer: 6 leichte Gates (Wanduhr 1,0 s, Σ 1,9 s); nach der Korrekturrunde
+über `hauptprogramm` 13 Gates inkl. lint, typecheck und vier seriellen (alle grün, Wanduhr 30,7 s, Σ 43,6 s). Erwartung voller Lauf aus den Messwerten: SERIELL ≈ 257 s plus
+parallele Gruppe ≥ 112 s ⇒ ≈ 6–7 min (Messung lief unter Speicherdruck; im frischen Terminal weniger). Voller Gate-Lauf
+über den neuen Läufer (zweimal, qa 3) und `npm run test` im Commit-Block (F-1220); die gemessene Wanduhr ersetzt die
+Erwartung.
+
+Voller Gate-Lauf im Commit-Block (2026-10-27): zweimal gruen, Wanduhr 826.5 s und 739.3 s (Parallelitaet 4); npm run test gruen.
