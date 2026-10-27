@@ -543,6 +543,7 @@ import { arbeitsordnerGrund, mitAblauf, SICHERN_GRUND_TEXT } from './leitstand/a
 import { LAUFID_UNZULAESSIGE_ZEICHEN, pruefeAblaufKennung } from './leitstand/kennung.mjs'
 import { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt, formatiereAbgelehnteBefehle, versucheJsonParse } from './leitstand/text-auszug.mjs'
 export { entferneAeusserstenCodezaun, entferneCodezaun, extrahiereErstesJsonObjekt }
+export { ermittleAbnahmeStand }
 import { beschreibeStartvorlagenHerkunft, ermittleStartvorlage } from './leitstand/startvorlage-wahl.mjs'
 import { maskiereGeheimnisse } from './leitstand/geheimnisse-maskieren.mjs'
 import { ermittleBudgetStand } from './leitstand/budget-stand.mjs'
@@ -571,6 +572,8 @@ import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } f
 import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, erkenneAkteRoute, fuehreAkteRouteDurch } from './leitstand/routen-f35.mjs'
+import { ermittleAbnahmeStand, findeAusfuehrungsSchritt } from './leitstand/abnahme-stand.mjs'
+import { fuehreIstNachAbnahmeDurch } from './leitstand/ist-nach-abnahme.mjs'
 import { erkennePlanungRoute, fuehrePlanungRouteDurch } from './leitstand/routen-planung.mjs'
 import { findeQaSchritt, findeReviewSchritt, findeReviewVorQa } from './leitstand/workflow-schritte.mjs'
 import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
@@ -2036,27 +2039,6 @@ const ERSETZBARE_STATUS_TEXT = ['OFFEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT']
 const STOPPBARE_WORKFLOW_STATUS = new Set(['OFFEN', 'LAEUFT', 'WARTET_FREIGABE', 'KLAERUNG_ERFORDERLICH'])
 
 /**
- * Der Bauschritt einer Fassung (F23 WS-2a, GET/POST .../abnahme) — Kopplung an
- * rolle 'ausfuehrung' wie in beiden Vorlagen (workflow-vorlagen/standard.json,
- * hoch.json). Erster Treffer: mehrere Ausführungsschritte in einer Vorlage zu
- * unterscheiden ist kein WS-2a-Ziel.
- *
- * Der POST-Endpunkt ruft dies erst NACH validiereWorkflowDaten auf (409 vorher),
- * der GET-Endpunkt bewusst NICHT (Muster GET /api/workflows/<id>: eine ungültige
- * Fassung bleibt ansehbar, das ist ihr erster Reparaturschritt — Reviewer-Pass
- * 15.09.2026). workflowDaten.schritte ist deshalb HIER, anders als sonst in dieser
- * Datei, nicht als geprüftes Array vorauszusetzen — ein rohes .find() auf einem
- * fehlenden/kaputten Feld wäre derselbe Absturzpfad, den dekodiereSegment schon
- * einmal real den ganzen Server gekostet hat (siehe dortiger Kopfkommentar).
- * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
- * @returns der Schritt, oder null
- */
-function findeAusfuehrungsSchritt(workflowDaten) {
-  if (!Array.isArray(workflowDaten?.schritte)) return null
-  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.rolle === 'ausfuehrung') ?? null
-}
-
-/**
  * Der bezug einer Abnahme-Entscheidung (F23 WS-2a) — EINE Stelle für Kern und Mensch. F45 B2b-2b-1: in Abläufen mit
  * qa-Schritt zusätzlich qa_lauf_id (optional im Schema); ohne qa-Schritt bitgleich wie zuvor.
  * @param workflowDaten - Workflow-Daten der abgenommenen Fassung
@@ -2081,34 +2063,6 @@ function baueAbnahmeBezug(workflowDaten, ausfuehrungSchritt) {
  */
 function abnahmeEntscheidungsId(workflowId) {
   return `entscheidung-workflow-${workflowId}-abnahme`
-}
-
-/**
- * Die EINE Regel „Abnahme offen“ (F46 D2, herausgelöst aus GET …/abnahme, F23 WS-2a, F-384):
- * - entscheidungStatus: 'nicht_vorhanden' ohne Abnahme-Entscheidung, 'ok', wenn sie sich auf den
- *   aktuellen Bau bezieht (bezug.ausfuehrung_lauf_id === lauf_id des Ausführungsschritts), sonst
- *   'veraltet' (ein neuer Bau-Lauf macht eine frühere Entscheidung veraltet, F-384);
- * - faellig: eine Abnahme wird angeboten — Workflow ABGESCHLOSSEN mit gelaufenem
- *   Ausführungsschritt. Das sind die Vorbedingungen, unter denen POST …/abnahme ein ANGENOMMEN
- *   annimmt (Sachprüfung (4) und bezug (5)). Die Ansicht (views/workflow-abnahme.js abnahmeLage)
- *   verlangt für „entscheidbar“ nur ABGESCHLOSSEN ohne aktuelle Entscheidung, nicht den gelaufenen
- *   Ausführungsschritt — praktisch gleich, weil ABGESCHLOSSEN heute einen Bau voraussetzt; ohne Bau
- *   bliebe die Liste hier zurückhaltend (nicht fällig), der POST antwortete ohnehin 409;
- * - offen: fällig und keine Entscheidung zum aktuellen Bau;
- * - status: für die Kopfdaten 'nicht_faellig', sonst entscheidungStatus.
- * Aufrufer: GET /api/workflows/<id>/abnahme (entscheidung.status) und baueWorkflowKopfdaten
- * (kopfdaten.abnahme). POST …/abnahme prüft seine Vorbedingungen unverändert selbst. Robust gegen
- * eine ungültige Fassung (findeAusfuehrungsSchritt).
- * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
- * @param abnahmeVersion - geladene Version von abnahmeEntscheidungsId(<id>), oder null
- * @returns { entscheidungStatus, faellig, offen, status }
- */
-export function ermittleAbnahmeStand(workflowDaten, abnahmeVersion) {
-  const ausfuehrungSchritt = findeAusfuehrungsSchritt(workflowDaten)
-  let entscheidungStatus = 'nicht_vorhanden'
-  if (abnahmeVersion !== null && abnahmeVersion !== undefined) entscheidungStatus = abnahmeVersion.daten?.bezug?.ausfuehrung_lauf_id === ausfuehrungSchritt?.lauf_id ? 'ok' : 'veraltet'
-  const faellig = workflowDaten?.status === 'ABGESCHLOSSEN' && typeof ausfuehrungSchritt?.lauf_id === 'string'
-  return { entscheidungStatus, faellig, offen: faellig && entscheidungStatus !== 'ok', status: faellig ? entscheidungStatus : 'nicht_faellig' }
 }
 
 /** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). F39 WS-2a: 'herkunft' additiv/optional. F45 B2a-2 (E3): 'akzeptanzkriterien' nur zusammen mit herkunft.art 'finding' (pruefeAuftragsformular) — sonst bleibt das Formular für AK zu (F35 AK2). */
@@ -12602,13 +12556,17 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
 
       // ANGENOMMEN: der Workflow-Status ändert sich NICHT (Bauauftrag Punkt 4) — die Abnahme
-      // ist eine reine Bezeugung, kein Übergang.
+      // ist eine reine Bezeugung, kein Übergang. F45 B5b-3 (R7): danach die laufende Workstream-Zeile der Akte im Laufort
+      // fortschreiben — Nebenwirkung, die Abnahme gilt auch ohne (scripts/leitstand/ist-nach-abnahme.mjs).
+      const laufort = () => ermittleLaufort(workflowId, workflowDaten)
+      const istNachAbnahme = await fuehreIstNachAbnahmeDurch({ workflowId, workflowDaten, laufort, repoWurzel, ladeOptionen, workflows: () => sammleWorkflows(basisVerzeichnis), auftraege: () => sammleAuftraege(basisVerzeichnis) })
       sendeJson(res, 200, {
         workflowId,
         ergebnis: 'ANGENOMMEN',
         status: workflowDaten.status,
         artefaktId: abnahmeArtefaktId,
         versionSequenz: entscheidungsArtefakt.versionSequenz,
+        ...(istNachAbnahme === null ? {} : { ist_nach_abnahme: istNachAbnahme }),
       })
       return
     }

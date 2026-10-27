@@ -69,6 +69,7 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **B5b-2c geteilt** (Challenger, 25.10.2026, Advisor `features/F45/advisor-b5b2c.md` A1) — B5b-2c-1 „Entwicklung: Zuordnung, Kanban · Priorität, Bug-Felder“ → B5b-2c-2 „Roadmap: Pflege & Fixes, Restpunkte“ (Gantt-Spur, Bereinigungs-Standardoption, STATUS.md F25, F-1206, F-1010). Übernommen: P4 (Alt-Bestand) in „P3 · Später“ mit Chip und „davon n P4“ (A2), Feature-Priorität aus GET /api/roadmap ohne Serveränderung, das Eintrag-Detail liest sie aus derselben Quelle (A4), keine eigene Suche im Kanban (B13). Zuordnungsregel: erste ganze Feature-ID aus „Feature/Run“, die in roadmap.json steht, sonst erste ganze Meilenstein-ID aus roadmap.json (z. B. „M3-Challenge“), sonst „Pflege & Fixes“; mehrere IDs: die erste gewinnt (DEKLARIERT). Für 2c-2 vorgemerkt: Befunde an abgeschlossenen Features bleiben dort, die Trennzeile abgeschlossener Meilensteine zeigt zusätzlich „· n offene Befunde“; Zeile „Pflege & Fixes“ grau wie im Design (Vorgabe „rot“ aufgehoben), Befunde darin mit rotem Quadrat; kein Schätzfeld für Befunde (bewusst, keine Serveränderung).
 - **E-BRAIN-2** (Stefan, 25.10.2026): Produkt-Brain Stufen 1–3 kommen vor dem Referenzauftrag. Reihenfolge (Challenger): B5b-2c → B5b-3 → V1 Live-Vorschau → B3 → W2 → Brain Stufe 1 (R2) → Brain Stufe 2 → Brain Stufe 3 → F30. Stufe 2 = LLM-Wiki nach Karpathy: aus dem Repo kompiliert unter docs/brain/<produkt>/ mit index.md und Quellstand-Stempel, jeder Satz mit Quelle, Lint als Gate, inkrementell nach Commits. Stufe 3 = Brain-Graph aus Backlinks + Graphify als Codewissen nach Eignungsprüfung (Hook-Kollision mit dem Harness prüfen); Deploy/Operate/Monitor bis zum ersten Release nur Struktur und ehrlicher Leerzustand. Obsidian nur optionales Lesefenster, keine Integration.
 - **E-R-1 = A** (Stefan, 25.10.2026): Kein eigener Referenzauftrag R (haushaltsbuch2). Der erste echte Workflow-Lauf im Opportunity Scanner (F30-M1) erbringt die Belege 1–14 der Fixpaket-Bestehensbedingung; F45 schließt mit der ersten Abnahme in F30. Die Brain-Erfolgskriterien (a) Warum-Frage < 1 min mit Quelle, (b) Tokens je Rolle messbar gesenkt (Richtwert −20 %) werden in F30 gemessen. Stefan hält während F30 parallel fest, was ihn stört; Auswertung nach F30-M1.
+- E-W2-1 (Stefan, 25.10.2026): ‚Ich will, dass diese Themen behoben werden und die Workforce danach auch nach den Prinzipien arbeitet.‘ Reihenfolge: B5b-3 → W2 → V1 Live-Vorschau → B3 → Brain 1 → Brain 2 → Brain 3 → F30. W2 behebt: JS ohne Typprüfung (≈ 76.000 Zeilen, tsconfig nur *.ts), Biome recommended:false (2 Regeln, keine Komplexitätsgrenze, kein Formatierer), Gates ≈ 53.600 Zeilen mit Codeform-Prüfungen und ≈ 23 min Lauf, keine Dateigrenze außer Server, Doku-Wachstum (feature.md, findings.md), git-/serverlastige Tests unter Last. B3 überträgt dieselben Prinzipien ins Projekt-Skelett und in die Rollen (Advisor: ‚Muss das existieren?‘, Review: ‚Was kann weg?‘). (Eingetragen B5b-3; ersetzt die Reihenfolge aus E-BRAIN-2, `## Workstreams` und `docs/projekt/fixpaket-f45.md` §3 entsprechend: W2 vor V1.)
 - **Folgen von E-BRAIN-2 und E-R-1 = A für ältere Einträge** (B5b-2c-2-C, Advisor `features/F45/advisor-b5b2c2.md` B8; benannt, nicht umgedeutet): E-BRAIN-1 „Stufen 2/3 nach F30“ ist durch E-BRAIN-2 überholt (vor F30). E-F45-2 „fällig nach R“ und E-VORSCHAU-1 „Stufe 2 nach R“ verlieren ihren Bezugspunkt, weil R entfällt — neuer Zeitpunkt offen (Klärung Challenger). Scope R2 „Abhängig von R, B3“ gilt als „W2, B3“ (Reihenfolge E-BRAIN-2). Weitere Verweise auf R in Maßnahmen, Kriterien-Überschriften („erneut in R“) und in `harness-abgleich/standard.json` („für den Referenzauftrag R nicht zulässig“) gelten für F30-M1; ausdrücklich Klärung Challenger: F-1165 (B3-Render-Nachweis mit Bewegung sollte im R-Lauf entstehen), F-1047 (Baseline des R-Projekts), F-982/F-1050 (Messfenster Codex-Nutzen), die „eine Fixrunde“ aus R (nach F30-M1 ohne eigene Zeile) und ob F30 nach dem ganzen Fixpaket oder nach Teil 1 beginnt (F45 schließt erst mit der ersten Abnahme in F30).
   - **Klärung Challenger [EMPFEHLUNG]** (25.10.2026, eingetragen B5b-2c-2-AB): (1) F30 beginnt nach Brain Stufe 3 (Ende Fixpaket
     Teil 1); F45 bleibt LAEUFT bis zur ersten Abnahme in F30. (2) F-1165: Den Render-Nachweis mit Bewegung im Fremdprojekt erbringt
@@ -161,13 +162,13 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | B5a-2 | fixpaket | Akte im Leitstand | erledigt | 0,4–0,5 | – | – | 2026-10-24 | gemergt #375 |
 | B5b-1a | fixpaket | Planungsdaten lesen | erledigt | 0,4–0,5 | – | 2026-10-24 | 2026-10-24 | B5b-1 (0,6–0,8) geteilt nach dem Advisor-Pass (A1, Challenger 24.10.2026); gemergt #376 |
 | B5b-1b-1 | fixpaket | Planung schreiben | erledigt | 0,3–0,4 | – | 2026-10-24 | 2026-10-24 | B5b-1b (0,35–0,45) geteilt nach dem Advisor-Pass (`advisor-b5b1b.md` A1, Challenger 24.10.2026); gemergt #377 |
-| B5b-1b-2 | fixpaket | Bereinigungsliste | laeuft | 0,45–0,6 | – | 2026-10-24 | – | aus B5b-1b geteilt (A1); vorher 0,3–0,4, korrigiert nach dem Advisor-Pass (`advisor-b5b1b2.md` B6, ohne Schnitt) |
-| T | fixpaket | Tests stabil | laeuft | 0,2–0,3 | – | 2026-10-24 | – | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154) |
+| B5b-1b-2 | fixpaket | Bereinigungsliste | erledigt | 0,45–0,6 | – | 2026-10-24 | 2026-10-24 | aus B5b-1b geteilt (A1); vorher 0,3–0,4, korrigiert nach dem Advisor-Pass (`advisor-b5b1b2.md` B6, ohne Schnitt); gemergt #378 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |
+| T | fixpaket | Tests stabil | erledigt | 0,2–0,3 | – | 2026-10-24 | 2026-10-25 | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154); gemergt #379 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |
 | B5b-2 | fixpaket | Roadmap-Anzeige | erledigt | 1–1,4 | – | 2026-10-25 | 2026-10-25 | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“; gemergt #380 (2a), #381 (2b-1), #382 (2b-2), #384 (2c-1), #385 (2c-2-C); 2c-2-AB gebaut — `erledigt` nach Auftrag Challenger 25.10.2026 („Workstream-Zeile B5b-2 auf erledigt, sofern die Ist-Zelle es zulässt“), abweichend von Advisor `advisor-b5b2c2.md` A1 und Plan v2 A1; Abgenommen = erwartetes Merge-Datum von 2c-2-AB, bei späterem Merge nachziehen; Ist pflegt der Challenger (Zelle erlaubt nur „–“ oder eine Zahl) |
-| B5b-3 | fixpaket | R7: Ist nach Abnahme | geplant | 0,3 | – | – | – | |
+| B5b-3 | fixpaket | R7: Ist nach Abnahme | laeuft | 0,4–0,6 | – | 2026-10-27 | – | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6) |
+| W2 | workstream | Aufräumpaket | geplant | 1,5–3 | – | – | – | |
 | V1 | workstream | Live-Vorschau des Projekts im Leitstand | geplant | 0,3–0,5 | – | – | – | E-VORSCHAU-1 = A |
 | B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
-| W2 | workstream | Aufräumpaket | geplant | 1,5–3 | – | – | – | |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | verworfen | 1–2 | – | – | – | entfällt — E-R-1 = A (Stefan, 25.10.2026): Referenzauftrag = F30-M1 |
 | R2 | design | Brain Stufe 1: Produktzyklus lesend, mit Motion | geplant | 1,5–2 | – | – | – | E-BRAIN-1 = B (Stefan, 25.10.2026); vorher „Motion im Leitstand der Workforce“, 1 |
 | Brain-2 | workstream | Brain Stufe 2: LLM-Wiki, Fragen mit Quelle, Rollen-Kontext | geplant | 1,5–2,5 | – | – | – | E-BRAIN-2 (Stefan, 25.10.2026): nach Brain Stufe 1, vor F30 |
@@ -1788,3 +1789,45 @@ Nachweis neu zu erzeugen.
 check-f45-b5b1b2-bereinigung, check-feature, check-docs, check-status-akten, check-akte-meilenstein je Exit 0, lint und tsc grün;
 betroffene Tests einzeln grün (nach der Korrektur 95/95 plus projekt-wechsel 34/34); `npm run test` vor der Korrekturrunde grün
 (parallel 2688, seriell 209, 0 Fehler, 2 übersprungen).
+
+## Stand B5b-3
+
+**Auftrag:** B5b-3 „Ist nach Abnahme“ (R7, `docs/projekt/fixpaket-f45.md` §2) und Kleinpunkte (Challenger, 27.10.2026). Plan
+`plan-b5b3.md` → Advisor `advisor-b5b3.md` „Freigegeben mit Auflagen“ (A1–A6, H1–H4) → `plan-b5b3-v2.md`. Entscheidungen Stefan
+(27.10.2026): **A2 = Vorbedingung tragen** (die Zeile steht vor dem Start auf `laeuft` und ist committet; `workstream_ref` als
+F-1217 nach F30-M1), **A3 = Ist „–“ bei 0**. Zuordnung nach der Challenger-Regel (`feature_ref`, genau eine laufende Zeile) — der
+Advisor nannte `workstream_ref` nur als Vorschlag für später.
+
+**Schreibstelle (Abnahme ↔ Sichern):** POST `…/abnahme`, Zweig ANGENOMMEN, nach dem Registrieren der Entscheidung, in die Akte im
+Laufort des Ablaufs. Die Abnahme liegt vor dem Sichern; im Arbeitsordner steht die Akte danach in derselben Dateiliste und
+demselben Befehlsblock „Bereit zum Sichern“ wie der Bau (ein Commit, ein PR). Ohne Arbeitsordner: Projektordner mit der Sperre wie
+PUT …/planung und Git-Block in der Antwort. „Review veraltet“ rechnet nur bei offener Abnahme, Aufräumen ist bis zur Abnahme
+gesperrt — keine Nebenwirkung. R7 ist Nebenwirkung: scheitert es, gilt die Abnahme trotzdem (Hinweis in der Antwort).
+
+**Gebaut:**
+- `src/feature-auftrag/ist-nach-abnahme.ts` (rein): CRLF / abgeschlossen / Formfehler / keine laufende Zeile (Hinweis auf die
+  Vorbedingung) / mehrere (Hinweis mit Anzahl) / Begonnen nach dem Abnahmetag (A1) ⇒ Hinweis; Token `· Abnahme <workflowId>` am
+  Zeilenende ⇒ idempotent; Status `erledigt`, Abgenommen, Begonnen-Ersatz = Anlage des Ablaufs (erster Checkpoint der
+  Workflow-Kette) mit Herkunft in der Änderungszeile, Ist = `arbeitstageBis`, 0 ⇒ „–“; Akte-Gate und Rundlauf.
+  `ersetzeZelle`/`workstreamZeilen` aus `planung-schreiben.ts` (eine Stelle).
+- `scripts/leitstand/ist-nach-abnahme.mjs` (I/O, wirft nie; Laufort erst im try, Rückbau mit eigener Meldung); Verdrahtung im
+  Server, Feld `ist_nach_abnahme` nur mit `feature_ref`. Ausgleich W1: `findeAusfuehrungsSchritt` und `ermittleAbnahmeStand`
+  unverändert nach `scripts/leitstand/abnahme-stand.mjs`; Server 13 240 → 13 198, Ratsche gesenkt.
+- Leitstand: Erfolgstext der Abnahme mit Satz zu R7 (`abnahmeErfolg`, Hinweis im Hinweis-Stil), i18n de/en/tr/ru.
+- ARCHITECTURE.md §2 (R7 im Laufort, Arbeits- oder Projektordner; doppelte Aussage zu den Bezeugungen in §1 gestrichen, sie steht
+  in §3 — Kern 17 781 B) und `docs/architektur/arbeitsordner.md` (Regel und DEKLARIERT).
+- Kleinpunkte: Pille „Offen“ statt „Geplant“ an Befund- und Pflege-Zeilen und im Detail (F-1211 qa 8; bewusste Abweichung von der
+  Vorlage V10, Entscheidung Challenger „ehrlich vor Vorlage“, design-guardian dg 1); F30-Akte und fixpaket §3 nach Klärung (1);
+  E-W2-1 und Reihenfolge W2 vor V1 in Akte und fixpaket §3; F-1212–F-1216, Nachtrag F-1190, F-1211; Bereinigung B5b-1b-2 (#378) und
+  T (#379) auf `erledigt`, B5b-3 `laeuft`.
+
+**DEKLARIERT:** Vorbedingung `laeuft` + Commit; Zuordnung nur über `feature_ref`; Hinweis nur in der Antwort, keine zweite Abnahme
+(auch ein vorübergehender Grund bleibt Handarbeit); der Git-Block des Projektordner-Falls wird nicht angezeigt (Verweis auf die
+Code-Ansicht); „erst abnehmen, dann sichern“ nicht erzwungen; Hinweisgründe kommen deutsch vom Server (auch in en/tr/ru).
+
+**Prüfpass:** code-reviewer, qa, design-guardian je „Freigegeben mit Hinweisen“. Eine Korrekturrunde: cr 1 (Laufort im try), cr 2
+(Begonnen-Ersatz fehlertolerant), cr 3 (Rückbau-Meldung), cr 4/qa 3/qa 4/qa 5 (Tests Rückbau, Laufort, Sperre, Begonnen-Ersatz über
+die Route, Akte ohne „## Änderungen“), cr 5/qa 1 (Verweis auf die Code-Ansicht, DEKLARIERT), cr 6/qa 2 (0 und mehrere getrennt,
+Vorbedingung nur bei 0). Offen: dg 2 → F-1218, qa 6 → Nachtrag F-1211 (qa 6), qa 7 → F-1219,
+F-1217. B5b-3 am 27.10.2026 auf `erledigt` (Challenger: freigegeben mit Hinweisen); Render-Nachweis und voller `npm run test` nach
+der Korrekturrunde laufen in Stefans Commit-Block.

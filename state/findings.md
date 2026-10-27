@@ -8818,6 +8818,7 @@ Beschreibung: 121 Prüfskripte (`scripts/check-*.mjs`, 122 Befehle in `check:gat
 Fundstelle: `package.json` (`check:gates`), `scripts/check-f45-b5b1b1-planung-schreiben.mjs` (m), F-1161.
 Auswirkung: Mittel — langer Commit-Block; Umbauten werden durch Formvorgaben gebremst.
 Maßnahme: W2 — Inventur je Gate (Verhalten / Struktur-Invariante bewusst / Codeform ersetzen), Codeform-Gates durch Verhaltensprüfungen ersetzen, Gates mit eigenem Server bündeln; Ziel voller Lauf ≤ 3 min.
+Nachtrag F45 B5b-3 (27.10.2026, E-W2-1): Die Gates (`scripts/check-*.mjs`) umfassen ≈ 53.600 Zeilen — mehr als der TypeScript-Kern unter `src/` ohne Tests (≈ 33.500 Zeilen); der volle Lauf lag am 25.10.2026 bei ≈ 23 min. Teil von W2 (E-W2-1).
 Status: offen.
 Feature/Run: Entdeckt: F45 T (Auftrag Challenger), 24.10.2026.
 
@@ -9017,5 +9018,78 @@ Beschreibung: Prüfpass B5b-2c-2-AB (code-reviewer, qa, design-guardian je „Fr
 Fundstelle: `public/leitstand/views/roadmap.js`, `public/leitstand/views/dashboard.js`, `public/leitstand/style.css`, `features/F30/feature.md`, `docs/projekt/fixpaket-f45.md`, `features/F45/feature.md` (Workstreams, Zeile R).
 Auswirkung: Gering — nichts wird falsch geschrieben; Doppelungen und eine missverständliche Status-Pille.
 Maßnahme: cr 7, qa 6, dg 3, dg 5 mit W2; qa 8 mit Stefan klären (Pille „Offen“ statt „Geplant“?); qa 9 mit dem nächsten Doku-Auftrag des Challengers (F30-Akte, fixpaket §3).
+Nachtrag F45 B5b-3 (27.10.2026): qa 8 erledigt (Pille „Offen“ an Befund- und Pflege-Zeilen und im Detail, Entscheidung Challenger „ehrlich vor Vorlage“); qa 9 erledigt für `features/F30/feature.md` und `docs/projekt/fixpaket-f45.md` §3 (Reihenfolge ab B5b-3, Summe als Verlauf markiert); offen bleiben cr 7, qa 6, dg 3, dg 5 und die Kurzinfo „1–2 AT“ an der verworfenen Zeile R. Nachtrag F45 B5b-3 (Prüfpass qa 6): auch die neue Pille „Offen“ (`offenText`/`zeilenStatus` in `views/roadmap.js`) ist ohne View-Test, belegt nur über den Render-Nachweis `features/F45/nachweise/b5b3/` — der View-Test für `views/roadmap.js` bleibt Teil von qa 6.
 Status: offen.
 Feature/Run: Entdeckt: F45 B5b-2c-2-AB (Prüfpass), 25.10.2026.
+
+**F-1212** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: JavaScript ohne Typprüfung.
+Beschreibung: `tsconfig.json` nimmt nur `scripts/**/*.ts` und `src/**/*.ts` auf; der JavaScript-Bestand (`scripts/**/*.mjs` einschließlich Server und Routen-Module, `public/leitstand/**/*.js`; ≈ 76.000 Zeilen nach E-W2-1) läuft ohne `tsc`. Die Definition of Done („typisiert, kein any“) greift dort nicht; Fehler wie falsche Feldnamen oder fehlende Argumente fallen erst im Test oder im Browser auf.
+Fundstelle: `tsconfig.json` (`include`), `scripts/leitstand-server.mjs`, `scripts/leitstand/*.mjs`, `public/leitstand/`.
+Auswirkung: Hoch — der größte Teil des Codes ist ungeprüft; jeder Umbau (W2) trägt das Risiko unbemerkter Typfehler.
+Maßnahme: W2 (E-W2-1) — `checkJs` bzw. JSDoc-Typprüfung schrittweise einschalten (zuerst die Routen-Module und reinen Helfer), oder Dateien nach `.ts` überführen; Gate, dass neue `.mjs`/`.js`-Dateien geprüft werden.
+Status: offen.
+Feature/Run: Entdeckt: Challenger-Befund, festgehalten in E-W2-1 (Stefan, 25.10.2026); eingetragen F45 B5b-3, 27.10.2026.
+
+**F-1213** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Biome fast aus — keine Komplexitätsgrenze, kein Formatierer.
+Beschreibung: `biome.json` setzt `recommended: false` und schaltet nur zwei Regeln ein (`noExplicitAny`, `noFloatingPromises`); es gibt keine Komplexitäts- oder Längengrenze je Funktion und keinen Formatierer (das Repo nutzt ihn nicht, schaltet ihn aber auch nicht ab — F-1161). Verwandt: F-1152 (veraltetes Feld `recommended`), F-1161 (`biome check --write` formatiert ganze Dateien um).
+Fundstelle: `biome.json`, F-1152, F-1161.
+Auswirkung: Mittel — Lint findet fast nichts; Formatfragen werden über Codeform-Gates (F-1190) statt über ein Werkzeug entschieden.
+Maßnahme: W2 (E-W2-1) — empfohlene Regeln einschalten (Ausnahmen begründet), `noExcessiveCognitiveComplexity` mit Grenze, Formatierer einmalig über den Bestand und danach im Gate; zusammen mit F-1152 und F-1161.
+Status: offen.
+Feature/Run: Entdeckt: Challenger-Befund, festgehalten in E-W2-1 (Stefan, 25.10.2026); eingetragen F45 B5b-3, 27.10.2026.
+
+**F-1214** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Keine Dateigrenze außer für den Leitstand-Server.
+Beschreibung: Die Wachstumsbremse (W1, `scripts/wachstumsbremse-server.json`) begrenzt nur `scripts/leitstand-server.mjs`. Alle anderen Dateien wachsen ohne Grenze (z. B. `public/leitstand/views/workflows.js`, `state/findings.md`, `features/F45/feature.md`).
+Fundstelle: `scripts/check-wachstumsbremse-server.mjs`, `scripts/wachstumsbremse-server.json`.
+Auswirkung: Mittel — neue Großdateien entstehen unbemerkt; die Aufteilung kostet später mehr.
+Maßnahme: W2 (E-W2-1) — Obergrenze je Datei als Gate (löst die Ratsche von W1 ab, fixpaket §3 Zeile W2), mit begründeten Ausnahmen in einer JSON-Liste.
+Status: offen.
+Feature/Run: Entdeckt: Challenger-Befund, festgehalten in E-W2-1 (Stefan, 25.10.2026); eingetragen F45 B5b-3, 27.10.2026.
+
+**F-1215** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: git- und serverlastige Prüfungen sind unter Last instabil.
+Beschreibung: Am 25.10.2026 scheiterte `check-f36-ws5b-skill` (l) einmal mit „fetch failed“ und war beim Wiederholen grün; dasselbe Muster ist seit 30.09.2026 belegt. Dazu F-1186, F-1209, F-1210 (Ausfälle unter paralleler Last, behoben je Datei über die serielle Gruppe von `scripts/teste.mjs`). Die Einzelfälle werden je Vorfall nachgezogen statt grundsätzlich.
+Fundstelle: `scripts/check-f36-ws5b-skill.mjs` (l), `scripts/teste.mjs`, F-1186, F-1209, F-1210.
+Auswirkung: Mittel — sporadisch rote Läufe kosten Wiederholungen und Vertrauen in den vollen Lauf (P4).
+Maßnahme: W2a (E-W2-1) — git- und serverlastige Prüfungen grundsätzlich seriell bzw. stabil ausführen (eigene Gruppe in Gates und Tests, keine Wartegrenzen ohne Zeitfaktor), statt je Vorfall eine Datei nachzutragen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2c-2-AB (voller Lauf), 25.10.2026; eingetragen F45 B5b-3, 27.10.2026.
+
+**F-1216** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Wer STATUS.md oder findings.md ändert, muss `scripts/erzeuge-lagebild.mjs` ausführen.
+Beschreibung: Das Lagebild wird aus `docs/STATUS.md` und `state/findings.md` erzeugt; `check-f40-lagebild` ist rot, wenn es veraltet. Am 25.10.2026 fiel das erst im vollen Lauf auf, nicht beim Ändern der Dateien.
+Fundstelle: `scripts/erzeuge-lagebild.mjs`, `scripts/check-f40-lagebild.mjs`.
+Auswirkung: Gering — ein vermeidbarer roter Lauf.
+Maßnahme: Pflichtschritt in der Arbeitsweise (Bauaufträge nennen ihn) oder ein Hook/Hinweis beim Ändern der beiden Dateien; mit W2 entscheiden.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-2c-2-AB, 25.10.2026; eingetragen F45 B5b-3, 27.10.2026.
+
+**F-1217** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: R7 ordnet nur über feature_ref und „genau eine laufende Zeile“ zu; der Hinweis ist nicht dauerhaft sichtbar.
+Beschreibung: F45 B5b-3 schreibt nach ANGENOMMEN die eine Workstream-Zeile mit Status `laeuft` fort. Kein Code setzt eine Zeile auf `laeuft` — Stefan muss sie vor dem Start setzen und committen (Arbeitsordner aus einem Commit; Entscheidung Stefan A2 = Vorbedingung tragen, 27.10.2026). Aufträge aus dem Formular tragen kein `feature_ref`. Ein Hinweis („nicht eindeutig“, CRLF, …) steht nur in der Antwort der Abnahme und ist nach dem Neuladen weg. Advisor-Vorschlag (`features/F45/advisor-b5b3.md` Punkt 6): optionales `workstream_ref` im Auftrag, gesetzt beim Anlegen aus der Akte; dazu eine abgeleitete Anzeige in GET …/abnahme (ANGENOMMEN, feature_ref, keine Änderungszeile ⇒ „von Hand nachtragen“).
+Fundstelle: `src/feature-auftrag/ist-nach-abnahme.ts`, `scripts/leitstand/ist-nach-abnahme.mjs`, `src/auftrag/types.ts`.
+Auswirkung: Gering bis mittel — ohne Vorbedingung bleibt R7 wirkungslos, aber sichtbar; nichts wird falsch geschrieben.
+Maßnahme: Nach F30-M1 mit den Erfahrungen aus F30 entscheiden: `workstream_ref` (Schema, Formular, Gate) und dauerhafte Anzeige; offen bleibt, wann ein Workstream mit mehreren Abläufen erledigt ist.
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass F45 B5b-3, 27.10.2026.
+
+**F-1218** · `TECH_DEBT` · P3 · offen
+Titel: Pille „Offen“ im Detailkopf der Roadmap sitzt ohne Symbol außermittig.
+Beschreibung: Seit F45 B5b-3 (F-1211 qa 8) zeigen Befund- und Pflege-Details die neutrale Pille „Offen“ ohne Statussymbol. Die Polsterung im Detailkopf (`padding: 1px 8px 1px 5px`) ist auf das Symbol ausgelegt; der Text sitzt dadurch leicht außermittig (design-guardian dg 2, Prüfpass B5b-3).
+Fundstelle: `public/leitstand/style.css` (`.rm-detail-kopf .roadmap-status`, ca. Zeile 4377), `public/leitstand/views/roadmap.js` (`offenText`).
+Auswirkung: Gering — nur optisch.
+Maßnahme: Regel ohne Kategorie-Klasse (z. B. `.rm-detail-kopf .roadmap-status:not([class*="roadmap-kat-"])` mit `padding-inline: 8px`) oder bewusst so lassen; design-guardian und Render-Nachweis.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-3 (Prüfpass design-guardian dg 2), 27.10.2026.
+
+**F-1219** · `TECH_DEBT` · P3 · offen
+Titel: Hinweisgründe von R7 erscheinen in en/tr/ru deutsch.
+Beschreibung: Der Grund eines Hinweises nach der Abnahme (Feld `ist_nach_abnahme.hinweis`, z. B. „Workstream nicht eindeutig (2 laufende Zeilen) — von Hand nachtragen“) kommt als deutscher Servertext und wird in den übersetzten Satz `abnahme.r7.hinweis` eingesetzt; in en/tr/ru steht dadurch ein deutscher Teilsatz (qa 7, Prüfpass B5b-3; bekanntes Muster der Servergründe).
+Fundstelle: `src/feature-auftrag/ist-nach-abnahme.ts`, `scripts/leitstand/ist-nach-abnahme.mjs`, `public/leitstand/views/workflow-abnahme.js` (`abnahmeErfolg`), `public/leitstand/i18n/*.js`.
+Auswirkung: Gering — verständlich nur auf Deutsch.
+Maßnahme: Kennung des Grunds plus Werte (z. B. `grund_schluessel`, `anzahl`) im Ergebnis, Übersetzung in der Oberfläche (Muster `SICHERN_GRUENDE`/`grund_schluessel`); deutscher Text als Rückfall.
+Status: offen.
+Feature/Run: Entdeckt: F45 B5b-3 (Prüfpass qa 7), 27.10.2026.

@@ -193,6 +193,25 @@ function statusText(status) {
 }
 
 /**
+ * Pille „Offen“ für Befunde und die Spur „Pflege & Fixes“ (F45 B5b-3, F-1211 qa 8: ein offener Befund ist nicht „geplant“) —
+ * dieselbe neutrale Form wie im Entwicklungsstand; der rohe Status steht im title.
+ * @param status - roher Statuswert
+ * @returns HTML
+ */
+function offenText(status) {
+  return `<span class="roadmap-status" title="${escapeHtml(status ?? '')}">${tHtml('uebersicht.stand.offen')}</span>`
+}
+
+/**
+ * Status-Pille einer Gantt-Zeile: Befund und Pflege „Offen“, sonst die Statuskategorie.
+ * @param zeile - Gantt-Zeile { art, status }
+ * @returns HTML
+ */
+function zeilenStatus(zeile) {
+  return zeile.art === 'befund' || zeile.art === 'pflege' ? offenText(zeile.status) : statusText(zeile.status)
+}
+
+/**
  * Titel eines Eintrags, sonst die ID.
  * @param eintrag - { id, titel? }
  * @returns Rohtext
@@ -451,7 +470,7 @@ function ganttZeile(zeile, gewaehlt) {
   const waehlen = zeile.art === 'gruppe' ? `<span class="rm-waehlen rm-gruppe-name">${inhalt}</span>` : `<button type="button" class="rm-waehlen" data-roadmap-waehlen="${schluessel}" aria-pressed="${istGewaehlt}">${inhalt}</button>`
   const klassen = ['rm-zeile', `rm-ebene-${zeile.ebene}`, istGewaehlt ? 'gewaehlt' : '', zeile.aktuell ? 'aktuell' : ''].filter(Boolean).join(' ')
   return `<li class="${klassen}" data-farbe="${escapeHtml(zeile.farbe)}">
-      <div class="rm-links" style="--rm-einzug: ${zeile.ebene}">${klappe}${waehlen}<span class="rm-status">${statusText(zeile.status)}</span></div>
+      <div class="rm-links" style="--rm-einzug: ${zeile.ebene}">${klappe}${waehlen}<span class="rm-status">${zeilenStatus(zeile)}</span></div>
       ${spurHtml(zeile.spur)}
     </li>`
 }
@@ -647,7 +666,7 @@ function pflegeDetail(zeile) {
       <div class="rm-detail-kopf">
         ${chip}
         <h3 id="rm-detail-titel">${escapeHtml(pflege ? t('roadmap.pflege.titel') : zeile.titel)}</h3>
-        ${statusText(zeile.status)}
+        ${offenText(zeile.status)}
       </div>
       ${felderHtml(felder)}
       ${link}
@@ -832,7 +851,7 @@ function standZeile(eintrag) {
   const chipTyp = chipTypVonWorkitem(eintrag.typ)
   const chip = chipTyp === null ? `<span class="typ-chip typ-chip-neutral">${escapeHtml(String(eintrag.typ ?? ''))}</span>` : typChip(chipTyp, { zusatz: eintrag.prioritaet ?? '' })
   const ohneAkte = eintrag.art === 'feature' && statusKategorie(eintrag.status) === 'ohne_akte'
-  const status = eintrag.art === 'feature' ? statusText(eintrag.status) : `<span class="roadmap-status" title="${escapeHtml(eintrag.status ?? '')}">${tHtml('uebersicht.stand.offen')}</span>`
+  const status = eintrag.art === 'feature' ? statusText(eintrag.status) : offenText(eintrag.status)
   const oeffnen = ohneAkte ? '' : `<a class="button" href="#/workboard/${encodeURIComponent(eintrag.id)}">${tHtml('roadmap.stand.oeffnen')}</a>`
   return `<tr>
       <td><span class="rm-stand-titel">${escapeHtml(titelVon(eintrag))}</span><small><code>${escapeHtml(eintrag.id)}</code></small></td>

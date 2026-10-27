@@ -18,7 +18,8 @@
  * - Rundlauf: lesePlanung der neuen Akte liefert genau die angefragten Werte, die Status-Zeile bleibt. Das Feature-Akte-Gate
  *   (pruefeFeatureAkteInhalt) blockiert JEDEN Befund — wie B5a-1 (Advisor B1); „schon vor der Bearbeitung“ ändert nur die Meldung.
  *
- * Wird aufgerufen von: scripts/leitstand/routen-planung.mjs, src/feature-auftrag/planung-schreiben.test.ts (das Gate
+ * Wird aufgerufen von: scripts/leitstand/routen-planung.mjs, src/feature-auftrag/ist-nach-abnahme.ts (workstreamZeilen,
+ * ersetzeZelle; F45 B5b-3), src/feature-auftrag/planung-schreiben.test.ts (das Gate
  * scripts/check-f45-b5b1b1-planung-schreiben.mjs erreicht das Modul über die Route).
  *
  * Wichtig — bekannte Grenzen (DEKLARIERT): Workstream-Zeilen legt die Route nicht an (F30 bleibt bis zum Schnitt ohne Schätzung,
@@ -35,8 +36,6 @@ export const PLANUNG_WORKSTREAM_OBERGRENZE = 100
 export const SCHAETZUNG_OBERGRENZE = 1000
 
 const SCHAETZUNG_ZAHL = /^\d+(?:\.\d{1,2})?$/
-/** Index der Spalte „Schätzung AT“ in `zeile.split('|')` (Feld 0 ist der Leerraum vor dem ersten `|`). */
-const SCHAETZUNG_FELD = WORKSTREAM_SPALTEN.indexOf('Schätzung AT') + 1
 
 /** Ein normalisierter Planungsauftrag (Körper von PUT …/planung ohne Hashes). null = nicht angefragt. */
 export interface PlanungAenderung {
@@ -149,7 +148,7 @@ function gleicheSchaetzung(a: Schaetzung | null, b: Schaetzung | null): boolean 
  * @param inhalt - Dateitext
  * @returns je Zeile { start, text } (text ohne `\r`)
  */
-function workstreamZeilen(inhalt: string): { start: number; text: string }[] {
+export function workstreamZeilen(inhalt: string): { start: number; text: string }[] {
   const zeilen: { start: number; text: string }[] = []
   let start = 0
   for (const roh of inhalt.split('\n')) {
@@ -165,6 +164,22 @@ function workstreamZeilen(inhalt: string): { start: number; text: string }[] {
     else if (tabelle.length > 0) break
   }
   return tabelle.slice(2)
+}
+
+/**
+ * Ersetzt den Inhalt einer Zelle einer Workstream-Zeile; der Leerraum der Zelle bleibt (auch F45 B5b-3, ist-nach-abnahme.ts).
+ * @param zeile - Tabellenzeile ohne Zeilenende
+ * @param spalte - Spaltenname aus WORKSTREAM_SPALTEN
+ * @param wert - neuer Zellinhalt
+ * @returns die Zeile mit ersetzter Zelle
+ */
+export function ersetzeZelle(zeile: string, spalte: (typeof WORKSTREAM_SPALTEN)[number], wert: string): string {
+  const teile = zeile.split('|')
+  // Feld 0 ist der Leerraum vor dem ersten `|`.
+  const feld = WORKSTREAM_SPALTEN.indexOf(spalte) + 1
+  const zelle = teile[feld] ?? ''
+  teile[feld] = `${/^\s*/.exec(zelle)?.[0] ?? ''}${wert}${/\s*$/.exec(zelle)?.[0] ?? ''}`
+  return teile.join('|')
 }
 
 /**
@@ -213,10 +228,7 @@ export function bearbeitePlanungInAkte(inhalt: string, aenderung: PlanungAenderu
       if (gleicheSchaetzung(bestand.schaetzung, anfrage.schaetzung)) continue
       const zeile = zeilen.find((z) => z.text.split('|')[1]?.trim() === anfrage.id)
       if (zeile === undefined) return { ok: false, grund: `Workstream '${anfrage.id}': Tabellenzeile nicht gefunden — von Hand eintragen` }
-      const teile = zeile.text.split('|')
-      const zelle = teile[SCHAETZUNG_FELD]
-      teile[SCHAETZUNG_FELD] = `${/^\s*/.exec(zelle)?.[0] ?? ''}${formatiereSchaetzung(anfrage.schaetzung)}${/\s*$/.exec(zelle)?.[0] ?? ''}`
-      ersetzungen.push({ start: zeile.start, ende: zeile.start + zeile.text.length, text: teile.join('|') })
+      ersetzungen.push({ start: zeile.start, ende: zeile.start + zeile.text.length, text: ersetzeZelle(zeile.text, 'Schätzung AT', formatiereSchaetzung(anfrage.schaetzung)) })
       ids.push(anfrage.id)
     }
     if (ids.length > 0) {

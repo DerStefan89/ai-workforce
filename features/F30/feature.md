@@ -13,7 +13,9 @@ Angelegt als Entwurf in F45 B5b-1a (24.10.2026, `features/F45/plan-b5b1-v2.md`),
 (R1/R3, `docs/projekt/fixpaket-f45.md` §2) und die Ausnahme `ohne_akte` für F30 in `scripts/check-akte-meilenstein.mjs`
 entfällt. Inhalt nur aus vorhandenen Quellen: `docs/projekt/zielfassung.md` (E-M5-15, Zielsatz und Bestehensbedingung M5/V1,
 E-M5-16, E-M5-17, E-M5-18) und `docs/projekt/fixpaket-f45.md`. Was dort nicht steht, ist als „offen“ gekennzeichnet. F30
-beginnt nach dem Fixpaket „Arbeitsfähigkeit“ (E-M5-18) und wird mit der Workforce selbst entwickelt (`fixpaket-f45.md` §1).
+beginnt nach Brain Stufe 3, dem Ende von Fixpaket Teil 1 (E-M5-18, Klärung Challenger (1) vom 25.10.2026 in
+`features/F45/feature.md`), und wird mit der Workforce selbst entwickelt (`fixpaket-f45.md` §1). F45 bleibt LAEUFT bis zur
+ersten Abnahme in F30.
 
 ## Ziel
 F30 baut den „Opportunity Scanner“ — ein eigenständiges Produkt, vollständig in der Workforce geplant und gebaut, das
