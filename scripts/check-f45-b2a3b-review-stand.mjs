@@ -220,8 +220,12 @@ const FAELLE = []
 let MESSUNG = null
 try {
   const git = (wurzel, ...argumente) => fuehreGitSync(argumente, { cwd: wurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+  // Eine Zeile: die git-Version im Lauf (CI-Wackler (a), PR W2b-1 — F-1230).
+  console.log(`  ${git(basis, '--version').trim()}`)
   /**
-   * Legt ein Wegwerf-Git-Repo an (Branch gate, ein Commit).
+   * Legt ein Wegwerf-Git-Repo an (Branch gate, ein Commit). Die Hintergrundwartung ist abgeschaltet (gc.auto 0,
+   * maintenance.auto/autoDetach false): sonst schreibt neueres git nach `commit` abgekoppelt nach .git/objects, während
+   * (a) „.git/objects unverändert“ misst (CI-Wackler, PR W2b-1 — F-1230). Unbekannte Schlüssel sind für git config harmlos.
    * @param name - Ordnername
    * @returns Pfad
    */
@@ -229,7 +233,7 @@ try {
     const wurzel = join(basis, name)
     mkdirSync(join(wurzel, 'src'), { recursive: true })
     mkdirSync(join(wurzel, 'kontrollzustand'), { recursive: true })
-    for (const argumente of [['init', '--quiet'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', autocrlf], ['checkout', '--quiet', '-b', 'gate']]) git(wurzel, ...argumente)
+    for (const argumente of [['init', '--quiet'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', autocrlf], ['config', 'gc.auto', '0'], ['config', 'maintenance.auto', 'false'], ['config', 'maintenance.autoDetach', 'false'], ['checkout', '--quiet', '-b', 'gate']]) git(wurzel, ...argumente)
     writeFileSync(join(wurzel, 'src', 'a.ts'), 'export const a = 1\n')
     writeFileSync(join(wurzel, 'README.md'), '# Gate\n')
     writeFileSync(join(wurzel, 'CLAUDE.md'), readFileSync('CLAUDE.md', 'utf8'))

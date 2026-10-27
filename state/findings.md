@@ -9186,3 +9186,12 @@ Auswirkung: Gering bis mittel — ein Paket hätte auf einer falschen Größe au
 Maßnahme: Bei Aufräumpaketen zuerst inventarisieren (gemessen bzw. gelesen), dann schneiden; eine Schätzung vor der Inventur ist als VERMUTET zu kennzeichnen.
 Status: offen.
 Feature/Run: Entdeckt: Challenger nach Inventur F45 W2a, eingetragen F45 W2b-1, 27.10.2026.
+
+**F-1230** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Wegwerf-Repos ohne abgeschaltete git-Hintergrundwartung (CI-Wackler b2a3b (a)).
+Beschreibung: `scripts/check-f45-b2a3b-review-stand.mjs` (a) war in der CI (ubuntu-latest) zweimal rot an derselben Stelle („(a) CRLF in HEAD (sync): neue Datei unter .git/objects“ bzw. „(a) nach Commit (sync): neue Datei unter .git/objects“), beide Fälle direkt nach dem Commit im Wegwerf-Repo; lokal (Windows) und unter Linux mit älterem git grün. VERMUTET: neueres git startet nach dem Commit die automatische Wartung abgekoppelt (maintenance.auto / gc --auto) und schreibt nach .git/objects, während das Gate misst.
+Fundstelle: `scripts/check-f45-b2a3b-review-stand.mjs`, `legeRepoAn()`; weitere Gates mit Wegwerf-Repos ungeprüft.
+Auswirkung: Mittel — ein Gate wird rot ohne Codefehler; die Prüfung „.git/objects unverändert“ bleibt richtig und wird nicht abgeschwächt.
+Maßnahme: In `legeRepoAn()` `gc.auto 0`, `maintenance.auto false` und `maintenance.autoDetach false` gesetzt, die git-Version wird einmal ausgegeben. Vollumstellung aller Wegwerf-Repos in W2b-2.
+Status: offen — Gegenprobe läuft in PR W2b-1; Vollumstellung aller Wegwerf-Repos in W2b-2.
+Feature/Run: Entdeckt: CI PR F45 W2b-1, eingetragen F45 W2b-1, 27.10.2026.
