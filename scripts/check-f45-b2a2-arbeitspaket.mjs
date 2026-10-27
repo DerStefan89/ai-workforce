@@ -19,7 +19,7 @@
  *     ohne Basis-Commit bzw. unlesbarer Commit → Lücke in fehlend.
  * (f) F-989: Feature-Akte → feature_ref im Auftrag und in GET /api/auftraege; baueVerknuepfung nutzt ihn vor der
  *     Referenzzeile. AK-Entwurf aus der Maßnahme (ak-entwurf.js).
- * (g) Quelltext: starteWorkflowSchritt( genau 6-mal, baueArbeitspaketBlock( genau einmal im Server; die Einrichtung wird
+ * (g) Quelltext: baueArbeitspaketBlock( genau einmal im Server (starteWorkflowSchritt( zählt seit F45 W2b-1 nur check-f15-workflow); die Einrichtung wird
  *     nur über registriereAuftrag geschrieben.
  * Rot (Selbsttest)
  * (h) Die Vergleiche in (b) und (e) schlagen bei einer veränderten Zeile an.
@@ -461,10 +461,9 @@ try {
   const vor = befunde.length
   const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
   const zaehle = (text, teil) => text.split(teil).length - 1
-  if (zaehle(server, 'starteWorkflowSchritt(') !== 6) befunde.push(`(g) starteWorkflowSchritt( steht ${zaehle(server, 'starteWorkflowSchritt(')}-mal im Server (erwartet 6)`)
   if (zaehle(server, 'baueArbeitspaketBlock(') !== 1) befunde.push(`(g) baueArbeitspaketBlock( steht ${zaehle(server, 'baueArbeitspaketBlock(')}-mal im Server (erwartet 1 — kein zweiter Textbau)`)
   if (/einrichtung[^\n]*registriereKernArtefakt\(/.test(server) || /registriereKernArtefakt\(`auftrag-/.test(server)) befunde.push('(g) Auftragsversion an registriereAuftrag vorbei geschrieben')
-  if (befunde.length === vor) console.log('✓ (g) Quelltext: starteWorkflowSchritt( 6×, baueArbeitspaketBlock( 1×, Auftragsversionen nur über registriereAuftrag.')
+  if (befunde.length === vor) console.log('✓ (g) Quelltext: baueArbeitspaketBlock( 1×, Auftragsversionen nur über registriereAuftrag.')
 }
 
 // (h) Rot (Selbsttest): die Vergleiche schlagen an

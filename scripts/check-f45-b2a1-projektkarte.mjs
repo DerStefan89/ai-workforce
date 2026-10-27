@@ -14,7 +14,7 @@
  * (f) Server: Codex-Review-Auftrag ohne Beobachtungsblock, mit Karte (Checkliste, Urteil je Punkt) — F-1062.
  * (g) Server: ohne ARCHITECTURE.md läuft der Architekt-Schritt, fehlend nennt die Lücke (fail-open).
  * (h) Argv bitgleich mit und ohne Karte (Prompt per stdin, beide Worker); jarvis/router/ausfuehrung ohne Karte;
- *     starteWorkflowSchritt( genau 6-mal, baueProjektkarte( genau einmal im Server.
+ *     baueProjektkarte( genau einmal im Server (starteWorkflowSchritt( zählt seit F45 W2b-1 nur check-f15-workflow).
  * (i) F-1066: ARCHITECTURE.md in der Projektmodus-Allowlist; Laufakte mit projektkarte gültig.
  * Rot (Selbsttest)
  * (j) Laufakte mit kaputtem projektkarte-Feld wird abgelehnt; eine geänderte Kartenzeile ändert den Hash.
@@ -310,9 +310,8 @@ try {
   for (const rolle of ['jarvis', 'router', 'ausfuehrung', 'product-coach', 'qa']) if (istKarteRolle(rolle)) befunde.push(`(h) Rolle ${rolle} bekäme eine Karte`)
   const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
   const anzahl = (muster) => server.split(muster).length - 1
-  if (anzahl('starteWorkflowSchritt(') !== 6) befunde.push(`(h) starteWorkflowSchritt( steht ${anzahl('starteWorkflowSchritt(')}-mal im Server statt 6-mal`)
   if (anzahl('baueProjektkarte(') !== 1) befunde.push(`(h) baueProjektkarte( steht ${anzahl('baueProjektkarte(')}-mal im Server statt einmal (nur starteWorkflowSchritt)`)
-  if (befunde.length === vor) console.log('✓ (h) Argv beider Worker bitgleich mit und ohne Karte (Prompt per stdin); jarvis/router/ausfuehrung ohne Karte; starteWorkflowSchritt( 6-mal, baueProjektkarte( einmal.')
+  if (befunde.length === vor) console.log('✓ (h) Argv beider Worker bitgleich mit und ohne Karte (Prompt per stdin); jarvis/router/ausfuehrung ohne Karte; baueProjektkarte( einmal.')
 }
 
 // (i) Allowlist, Laufakte

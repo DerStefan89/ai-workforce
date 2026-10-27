@@ -27,7 +27,7 @@
  * (r3) claude-code-Reviewer FEHLGESCHLAGEN → GET …/abnahme reviewWiederholbar true, POST …/pruefer-wiederholen 200.
  * (g1) Gegenprobe: claude-code mit dem nicht belegten 'ergebnis-architektur' → KLAERUNG_ERFORDERLICH (Regel 4b), kein Lauf;
  *      zweite Sicherung loeseAusfuehrungsEingabenAuf lehnt ab, der Reviewer mit Schema bekommt jsonSchema.
- * (f)  Quelltext: starteWorkflowSchritt( genau 6-mal im Server (wie f45-b2a3/b2a3b).
+ * (f)  (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow).
  * B2b-2b-1 (Ablauf Ausführung → Review → qa, qa claude-code mit 'ergebnis-qa'):
  * (s1) schemas/ergebnis-qa.schema.json = Spike-Fassung (SHA-256 in features/F45/nachweise/b2b2b/spike-qa-schema.md).
  * (q1) Review und qa BEREIT ⇒ ABGESCHLOSSEN; Läufe in der Reihenfolge Ausführung, Review, qa; der qa mit jsonSchema und
@@ -813,12 +813,6 @@ try {
         `(v8) erwartet reviewBeanstandet — ${daten.status}/${daten.aktiver_schritt_id}, ${JSON.stringify(abnahme.qaErgebnis)}`
       )
     }
-  }
-
-  // ── (f) Quelltext-Invariante ───────────────────────────────────────────────────────────
-  {
-    const anzahl = readFileSync('scripts/leitstand-server.mjs', 'utf8').split('starteWorkflowSchritt(').length - 1
-    pruefe(anzahl === 6, '(f) starteWorkflowSchritt( genau 6-mal im Server.', `(f) starteWorkflowSchritt( ${anzahl}-mal im Server (erwartet 6)`)
   }
 } finally {
   await new Promise((resolve) => server.close(resolve))

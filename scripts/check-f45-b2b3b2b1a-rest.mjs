@@ -18,8 +18,8 @@
  *      < 5 MB (vorher ~43 MB); zusammengesetztes Protokoll passt zum Speicher und ergibt ERFOLGREICH.
  * (b7) E-B7: herkunftDerAntwort (same-origin bzw. passender Origin ⇒ browser, sonst nicht_browser); über den echten Server
  *      geschriebene Antworten tragen herkunft im Protokoll; das Schema kennt das Feld.
- * (f)  Grenzen: starteWorkflowSchritt( im Server 6×; Produktaufrufer übergeben `rueckfrage` nur über rueckfrageOptionFuer (seit B2b-3b-2b-2a-1) (beide gegen main grün,
- *      Invarianten); ARCHITECTURE §3 nennt E-B7 (gegen main rot).
+ * (f)  Grenzen: Produktaufrufer übergeben `rueckfrage` nur über rueckfrageOptionFuer (seit B2b-3b-2b-2a-1) (gegen main grün,
+ *      Invariante); ARCHITECTURE §3 nennt E-B7 (gegen main rot).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -392,9 +392,6 @@ try {
 
   // ── (f) Grenzen ────────────────────────────────────────────────────────────────────────────────────────────────────────
   {
-    const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-    const aufrufe = server.split('starteWorkflowSchritt(').length - 1
-    pruefe(aufrufe === 6, '(f) starteWorkflowSchritt( in leitstand-server.mjs 6× (unverändert).', `(f) starteWorkflowSchritt( ${aufrufe}×`)
     const produkt = ['scripts/leitstand-server.mjs', ...readdirSync('scripts/leitstand').filter((n) => n.endsWith('.mjs') && !n.endsWith('.test.mjs')).map((n) => `scripts/leitstand/${n}`)]
     // B2b-3b-2b-2a-1 (Advisor B1/B2): „Kanal aus“ heißt seit dem Opt-in „nur über rueckfrageOptionFuer, also nur mit
     // LEITSTAND_RUECKFRAGE=1“ — gemeinsame, gleich strenge Regel in scripts/_rueckfrage-aus-pruefung.mjs.

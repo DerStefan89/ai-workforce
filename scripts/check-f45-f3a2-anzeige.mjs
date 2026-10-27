@@ -17,9 +17,9 @@
  * (f) Kein Abruf ohne Reiterwahl: Steuerung (Erzeugen, Zurücksetzen, Wählen → 0 Abrufe; Reiterwahl/Neu laden → je 1) und
  *     Quelltext (holePlugins nur in api.js und views/plugins.js; ladeCapabilities lädt keine Plugins; der Abruf hängt nur am
  *     Rückruf der Reiterwahl und am gewählten Reiter bei „Neu laden“; Projektwechsel setzt nur zurück).
- * (g) starteWorkflowSchritt( genau 6-mal im Server (kein Lauf geändert).
+ * (g) (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow).
  * Rot (Selbsttest, kalibriert)
- * (h) Jede Prüffunktion aus (a)–(g) schlägt bei verfälschten Eingängen an — je Einzelprüfung mindestens ein Rotfall
+ * (h) Jede Prüffunktion aus (a)–(f) schlägt bei verfälschten Eingängen an — je Einzelprüfung mindestens ein Rotfall
  *     (Code-Review 7).
  *
  * Wird aufgerufen von: npm run check
@@ -207,16 +207,6 @@ function pruefeQuelltext(dateien, cap, view) {
   return b
 }
 
-/**
- * (g) Quelltext des Servers.
- * @param server - Text
- * @returns Befunde
- */
-function pruefeServer(server) {
-  const n = server.split('starteWorkflowSchritt(').length - 1
-  return n === 6 ? [] : [`(g) starteWorkflowSchritt( ${n}-mal statt 6-mal`]
-}
-
 // ─── (a)–(e) über den echten Handler ──────────────────────────────────────────
 const wurzel = mkdtempSync(join(tmpdir(), 'f45-f3a2-gate-'))
 const E = {}
@@ -325,10 +315,6 @@ const CAP = readFileSync('public/leitstand/views/capabilities.js', 'utf8')
 const VIEW = readFileSync('public/leitstand/views/plugins.js', 'utf8')
 pruefe('(f)', [...pruefeSteuerung(zaehlung), ...pruefeQuelltext(DATEIEN, CAP, VIEW)], `(f) Kein Abruf ohne Reiterwahl: Steuerung 0/0/0 → 1 → 2, späte Antwort nach Projektwechsel verworfen; Quelltext (${DATEIEN.length} Dateien): Abruf nur über Reiterwahl und „Neu laden“ bei gewähltem Reiter.`)
 
-// ─── (g) Server ───────────────────────────────────────────────────────────────
-const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-pruefe('(g)', pruefeServer(SERVER), '(g) starteWorkflowSchritt( genau 6-mal im Server.')
-
 // ─── (h) Rot-Selbsttest ───────────────────────────────────────────────────────
 {
   const vor = befunde.length
@@ -382,7 +368,6 @@ pruefe('(g)', pruefeServer(SERVER), '(g) starteWorkflowSchritt( genau 6-mal im S
     ['Neu laden ohne Reiter', pruefeQuelltext(DATEIEN, CAP.replace('if (pluginsReiterGewaehlt()) ladePluginsNeu()', 'ladePluginsNeu()'), VIEW)],
     ['Projektwechsel lädt', pruefeQuelltext(DATEIEN, CAP.replace('    setzePluginsZurueck()\n', '    setzePluginsZurueck()\n    ladePluginsBeiReiterwahl()\n'), VIEW)],
     ['initPlugins ruft ab', pruefeQuelltext(DATEIEN, CAP, VIEW.replace('  zeichne(steuerung.zustand())\n', '  zeichne(steuerung.zustand())\n  void steuerung.beiReiterwahl()\n'))],
-    ['starteWorkflowSchritt( siebenmal', pruefeServer(`${SERVER}\nstarteWorkflowSchritt(`)],
   ]
   for (const [name, ergebnis] of rot) if (ergebnis.length === 0) befunde.push(`(h) Rotfall '${name}' wird nicht erkannt`)
   if (befunde.length === vor) console.log(`✓ (h) Rot-Selbsttest: ${rot.length} verfälschte Eingänge erkannt.`)

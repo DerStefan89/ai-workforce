@@ -24,8 +24,7 @@
  * - Servertexte (ziel, grund, IDs, Statuswerte, Modell) werden nie übersetzt und immer escaped;
  *   alle übrigen Texte über t()/tHtml(). Worker erscheinen in der Timeline lesbar (workerName,
  *   F44 WS-4b, Rückfall auf die ID), in der technischen Schritttabelle (F12) roh.
- * - scripts/check-f15-workflow-oberflaeche.mjs liest dieses Modul zusammen mit
- *   views/workflows.js (Felder, Planreihenfolge, LAGE_JE_AUSGANG, Stopp nur bei gültiger Fassung).
+ * - views/workflow-detail.test.mjs (das Quelltext-Gate check-f15-workflow-oberflaeche entfiel in F45 W2b-1).
  */
 
 import { t, tHtml } from '../i18n.js'

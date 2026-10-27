@@ -12,7 +12,7 @@
  *     Arbeitsordnern, Worker-Attrappe hält den Lauf offen) ⇒ genau ein 202, ein 409; der Auftrag des 202 trägt die
  *     Ortszeilen. Statisch (die eigentliche Sicherung, die Laufzeitprobe ist zeitabhängig): kein await zwischen
  *     `if (laufAktiv)` und starteRollenChatLauf( in beiden Chat-Routen; offeneAblaufOrte nicht async, ohne await/readdirAsync.
- * (e) starteWorkflowSchritt( genau 6-mal im Server.
+ * (e) (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow).
  * (f) Rotfälle: je Prüfung ein verfälschter Eingang ⇒ Befund.
  *
  * Wird aufgerufen von: npm run check:gates. Ausgaben ohne Pfade (Wegwerf-Ordner unter os.tmpdir, danach entfernt).
@@ -184,13 +184,11 @@ const TEXT_A = bauen(baueJarvisOrte(PROJEKT, waehleOffeneArbeitsordner(NEUN).map
   if (befunde.length === vor) console.log('✓ (c) Blockform: Kopf/Fuß/Ortszeile aus code-daten.js, keine zweite Quoting-Regel in src/jarvis.')
 }
 
-// (d) D13 statisch + (e)
+// (d) D13 statisch
 {
   const vor = befunde.length
   befunde.push(...pruefeD13Quelltext(SERVER))
-  const starte = SERVER.split('starteWorkflowSchritt(').length - 1
-  if (starte !== 6) befunde.push(`(e) starteWorkflowSchritt( ${starte}-mal im Server (erwartet 6)`)
-  if (befunde.length === vor) console.log('✓ (d) D13 statisch: kein await im Fenster beider Chat-Routen, offeneAblaufOrte synchron; (e) starteWorkflowSchritt( = 6.')
+  if (befunde.length === vor) console.log('✓ (d) D13 statisch: kein await im Fenster beider Chat-Routen, offeneAblaufOrte synchron.')
 }
 
 // (d) D13 über den echten Handler

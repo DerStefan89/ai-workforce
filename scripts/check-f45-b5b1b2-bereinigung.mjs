@@ -34,7 +34,7 @@
  *     (Modulaufruf; cr 5, qa 5);
  * (k) CSRF für POST (Origin bzw. Sec-Fetch-Site fremd ⇒ 403, direkt und über den Präfix), fremder Host ⇒ 403 für GET und POST;
  * (l) falsche Methode ⇒ 405 (POST/PUT …/bereinigung, GET …/bestaetigen);
- * (m) Server: erkennePlanungRoute(pfad) genau einmal, routen-planung.mjs ohne `.method`, Zeilenzahl = Grenze.
+ * (m) Server: erkennePlanungRoute(pfad) genau einmal, routen-planung.mjs ohne `.method` (Zeilen-Ratsche seit F45 W2b-1 nur check-wachstumsbremse-server).
  * Randfälle der reinen Funktionen belegen src/workboard/status-md.test.ts, src/workboard/roadmap-schreiben.test.ts,
  * src/workboard/roadmap-regeln.test.ts und src/feature-auftrag/akte-abschliessen.test.ts.
  *
@@ -528,9 +528,7 @@ try {
     const server = readFileSync('scripts/leitstand-server.mjs', 'utf8')
     const modul = readFileSync('scripts/leitstand/routen-planung.mjs', 'utf8')
     const aufrufe = server.split('erkennePlanungRoute(pfad)').length - 1
-    const zeilen = server.split('\n').length - (server.endsWith('\n') ? 1 : 0)
-    const grenze = JSON.parse(readFileSync('scripts/wachstumsbremse-server.json', 'utf8')).obergrenze_zeilen
-    pruefe(aufrufe === 1 && !modul.includes('.method') && zeilen === grenze, `(m) erkennePlanungRoute(pfad) genau einmal im Server, routen-planung.mjs ohne „.method“, Server ${zeilen} Zeilen = Grenze.`, `(m) ${JSON.stringify({ aufrufe, method: modul.includes('.method'), zeilen, grenze })}`)
+    pruefe(aufrufe === 1 && !modul.includes('.method'), '(m) erkennePlanungRoute(pfad) genau einmal im Server, routen-planung.mjs ohne „.method“.', `(m) ${JSON.stringify({ aufrufe, method: modul.includes('.method') })}`)
   }
 } catch (fehler) {
   befunde.push(`Gate-Ausführung gescheitert: ${fehler.stack ?? fehler}`)

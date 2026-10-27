@@ -337,7 +337,7 @@ Seitenaufbau `ABGESCHLOSSEN` (D0 bis D6 gemergt, zuletzt #315; abgenommen
   Der Leitstand zeigt Schritte, Status und aktiven Schritt und bietet
   Freigeben / Überspringen / Stoppen als Entscheidungsartefakt (Gates
   `scripts/check-f15-workflow.mjs`,
-  `scripts/check-f15-workflow-oberflaeche.mjs`,
+  `scripts/check-f15-workflow-oberflaeche.mjs` (F45 W2b-1 entfallen),
   `scripts/check-f15-instanzlock.mjs`,
   `scripts/check-f15-automat-real.mjs`, eingehängt in `npm run check`;
   realer Nachweis `features/F15/nachweis-ak10.md`).

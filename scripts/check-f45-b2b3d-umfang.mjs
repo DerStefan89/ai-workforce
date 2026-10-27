@@ -22,7 +22,7 @@
  *      Plan v2 (u7, Projekt ohne git): ohne git hält schon Regel 1j bzw. die Startprüfung — hier wird die Übersicht ohne Feld neu
  *      registriert; der Zweig „degradiert ⇒ kein Feld“ ist per Unit-Test belegt (scripts/leitstand/umfang-stand.test.mjs).
  * (e)  Beispiel schemas/examples/…aenderungsuebersicht-payload.valid-umfang.json ist gültig, mit fehlendem ausserhalb ungültig.
- * (f)  Quelltext: starteWorkflowSchritt( 6×, Workflow-Schreiber 14 / .eingefroren 13 (F-228 unverändert).
+ * (f)  gestrichen in F45 W2b-1 (Zählungen 6/14/13 trägt check-f15-workflow).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -247,15 +247,6 @@ try {
     const beispiel = JSON.parse(readFileSync('schemas/examples/kontrollzustand-aenderungsuebersicht-payload.valid-umfang.json', 'utf8'))
     const kaputt = { ...beispiel, umfang: { bereiche: beispiel.umfang.bereiche } }
     pruefe(validiereAenderungsuebersichtDaten(beispiel).length === 0 && validiereAenderungsuebersichtDaten(kaputt).length > 0, '(e) Beispiel mit umfang gültig, ohne ausserhalb ungültig.', `(e) ${JSON.stringify(validiereAenderungsuebersichtDaten(beispiel))}`)
-  }
-
-  // ── (f) Quelltext-Invarianten ───────────────────────────────────────────────────────────
-  {
-    const quelltext = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-    const starts = quelltext.split('starteWorkflowSchritt(').length - 1
-    const schreiber = quelltext.split(`${'schreibeWorkflow'}${'Fortschritt'}(`).length - 1
-    const gelesen = quelltext.split(`.${'eingefroren'}`).length - 1
-    pruefe(starts === 6 && schreiber === 14 && gelesen === 13, '(f) starteWorkflowSchritt( 6×, Workflow-Schreiber 14 / GESTOPPT-Schutz 13 (F-228 unverändert).', `(f) Zählungen ${starts} / ${schreiber} / ${gelesen} (erwartet 6 / 14 / 13)`)
   }
 } finally {
   for (const dienst of server) if (dienst.listening) await new Promise((resolve) => dienst.close(() => resolve()))

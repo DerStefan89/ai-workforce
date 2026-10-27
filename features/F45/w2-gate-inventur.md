@@ -1,6 +1,6 @@
-| löschen | 3 | 720 | 1,2 || ersetzen durch Test | 60 | 27.954 | 444,0 || behalten | 59 | 23.589 | 259,1 || gemischt | 20 | 8.156 | 35,5 || Sicherheit | 6 | 1.095 | 10,9 || Verhalten | 74 | 38.351 | 627,6 || Codeform | 7 | 2.076 | 5,2 || Invariante | 15 | 2.585 | 25,1 |# F45 W2 — Gate-Inventur (W2a)
+# F45 W2 — Gate-Inventur (W2a)
 
-Stand 27.10.2026, Branch `f45/w2a-gates-laeufer` (Basis main `5ce0b47`). Grundlage für W2b „Codeform-Gates abbauen“.
+Stand 27.10.2026, Branch `f45/w2a-gates-laeufer` (Basis main `5ce0b47`). Grundlage für W2b „Codeform-Gates abbauen“. **Nachtrag W2b-1** (27.10.2026, `plan-w2b1-v2.md`): siehe Abschnitt „Stand W2b-1“; Tabelle und Befunde tragen den Stand mit „W2b-1:“.
 Quelle der Liste: `GATES` in `scripts/check-kette.mjs` (bis W2a die `&&`-Kette `check:gates` in `package.json`, gleiche
 122 Einträge in gleicher Reihenfolge).
 
@@ -44,6 +44,16 @@ Je Kandidat W2b:
 
 Server „ja“: 85 Gates (45.020 Zeilen).
 
+Summen = Stand W2a. **Stand W2b-1:** 120 Gates (−2: `check-f24-capabilities` Verhalten 116 Zeilen, `check-f15-workflow-oberflaeche` Codeform 501 Zeilen); Kandidat „löschen“ 3 → 2 gelöscht, `check-f8-execution-controller` behalten (Grenze ohne Ersatz). Zeilen der übrigen Gates nicht neu gezählt.
+
+## Stand W2b-1
+
+- **Eine Zählstelle:** `starteWorkflowSchritt(` = 6 sowie Workflow-Schreiber 14 / `.eingefroren` 13 (F-228) zählt nur noch `check-f15-workflow` (AK6b/AK7, F-228-Block); gestrichen in 30 Gates (b2b3c/b2b3d (f) ganz, b2b3b1 (f) behält die Opt-in-Prüfungen). Wird f15-workflow in Tests umgebaut, wandern die drei Zählungen mit. Server-Zeilenratsche nur `check-wachstumsbremse-server` (gestrichen in b2b3b2b2b1 (w), b2b4a2b2 (h), fb2 (h), b5b1b2 (m)).
+- **Pins:** sha256 auf `scripts/_rueckfrage-aus-pruefung.mjs` gestrichen (a3 (w), b1 (w)); die Strenge der Regel tragen die Rotfälle in `check-f45-b2b3b2b2a-einschalten` (o3), seit W2b-1 neun (zweite Vorgabe `rueckfrageBasis`). DEKLARIERT: eine neue Form in `ERLAUBT_HANDLER`/`ERLAUBT_KARTE` fällt keinem Rotfall auf. `f36-ws3-empfehlung` (e) bleibt: schließt F-833 (1), hängt an der Ausgabe; jede Wortlautänderung des Auftragstexts färbt es gewollt rot.
+- **Gelöscht/gestrichen nach Belegprüfung:** f24 (capabilities-ansicht.test.ts AK1/5/6, Projektion per `map`), f15-workflow-oberflaeche (Syntax: Biome liest `public/**/*.js`, Rotbeleg in der Sitzung; Verhalten: View-Tests), f28 (1) (= f20-design-tokens (2)), f21-ws2 (d) (attention-daten.test.mjs, seit W2b-1 mit ERFOLGREICH-Fall). DEKLARIERTE Restgrenzen nach f15-workflow-oberflaeche: Endpunkt-Zuordnung in `api.js` für `/starten`, `/freigabe` und Reparatur-`POST /workflows`, Container-ids in `index.html` — prüft nur noch der Render-Nachweis.
+- **Nicht gestrichen:** f8 (Grenze „Controller ohne F4/F5/F6a/F7-Regelbezeichner“, Entscheidung Stefan 04.09.2026, kein Test trägt sie; „Importregel“ gibt es nicht).
+- **60 × „ersetzen durch Test“** bleiben stehen (Challenger 27.10.2026): umgeschrieben wird nur, wenn der Bereich ohnehin angefasst wird (F-1228).
+
 ## Befunde für W2b
 
 1. **Reine Codeform ist selten, Codeform-Anteile sind überall.** Nur 7 Gates sind reine Codeform, 20 gemischt — aber
@@ -51,9 +61,9 @@ Server „ja“: 85 Gates (45.020 Zeilen).
    `leitstand-server.mjs` steht in rund 30 Gates (über 30 Gate-Dateien nennen den Bezeichner), die Server-Zeilenratsche zusätzlich in `b2b3b2b2b1-nachweis`,
    `b2b4a2b2-anzeige`, `fb2-faehigkeit-anzeige`, `b5b1b2-bereinigung` (Doppel zu `check-wachstumsbremse-server`);
    `b2b3c`/`b2b3d`/`b2b3b1` prüfen dieselben Zählungen 6/14/13. Ein Server-Umbau färbt sie alle gleichzeitig rot —
-   einmal zentral behalten, Rest streichen.
+   einmal zentral behalten, Rest streichen. **W2b-1: erledigt** (zentral `check-f15-workflow`, Ratsche `check-wachstumsbremse-server`).
 2. **Hash-Pins auf Quelldateien:** `b2b3b2b2a3-abnahme` und `b2b3b2b2b1-nachweis` pinnen den sha256 von
-   `scripts/_rueckfrage-aus-pruefung.mjs`; `f36-ws3-empfehlung` (e) einen Text-Schnappschuss.
+   `scripts/_rueckfrage-aus-pruefung.mjs`; `f36-ws3-empfehlung` (e) einen Text-Schnappschuss. **W2b-1:** Quelldatei-Pins gestrichen; (e) bleibt (F-833).
 3. **Wegwerf-Ordner in der Repo-Wurzel:** mindestens 43 Gates legen `kontrollzustand-test-…` relativ zum Arbeitsordner an statt
    unter `os.tmpdir()` (nach Abbruch bleiben Reste, F-590); `f14-abbruch` und `f15-automat-real` schreiben zusätzlich
    feste Dateien nach `startvorlagen/` und Rohströme nach `kontrollzustand-roh/`. Umstellung auf `mkdtemp` ist je Gate
@@ -62,7 +72,7 @@ Server „ja“: 85 Gates (45.020 Zeilen).
    `f652-pruefschritt` (d) sowie die 11 Gates mit Frist ≤ 10 s (F-1215, Spalte Parallel-Risiko) — Kandidaten für
    Unit-Tests ohne Wanduhr bzw. Fristen mit Zeitfaktor; danach können sie aus `SERIELL`.
 5. **Belegte Doppelungen:** `f24-capabilities` (capabilities-ansicht.test.ts), `f28-persona` (1) (f20-design-tokens),
-   `f21-ws2-workboard-oberflaeche` (d) (attention-daten.test.mjs), `b2b3d` (f) = `b2b3c` (f).
+   `f21-ws2-workboard-oberflaeche` (d) (attention-daten.test.mjs), `b2b3d` (f) = `b2b3c` (f). **W2b-1: erledigt.**
 6. **Gate außerhalb der Kette:** `scripts/check-f20-leitstand-shell.mjs` (Chrome-Klicktest) läuft nur als eigener
    CI-Schritt (`.github/workflows/ci.yml`, `continue-on-error`), nicht in `check:gates` — für W2b mitbetrachten.
 
@@ -88,14 +98,14 @@ Server „ja“: 85 Gates (45.020 Zeilen).
 | 16 | `check-f4-invocation-policy` | 321 | 3,7 | Verhalten | nein | ersetzen durch Test — invocation-policy.test.ts existiert; AC8-Grep blockiert Umbau | – |
 | 17 | `check-f6a-claude-code-gateway` | 257 | 0,3 | gemischt | nein | ersetzen durch Test — Fixtures und Funktionen testbar; Grep-Teil ≈ 20 % | Repo-Wurzel kontrollzustand-test/ |
 | 18 | `check-f7-result-evaluator` | 185 | 0,3 | gemischt | nein | ersetzen durch Test — result-evaluator.test.ts deckt klassifiziereLauf ab; Grep ≈ 30 % | Repo-Wurzel kontrollzustand-test/ |
-| 19 | `check-f8-execution-controller` | 103 | 0,2 | Codeform | nein | löschen — reine Bezeichner-Greps; Grenze besser als Importregel | – |
+| 19 | `check-f8-execution-controller` | 103 | 0,2 | Codeform | nein | behalten — W2b-1: Kandidat verworfen, Grenze (Stefan 04.09.2026) ohne Ersatz | – |
 | 20 | `check-f10-leitstand` | 862 | 1,6 | Verhalten | ja | ersetzen durch Test — Handler-Tests mit Port 0; AK4 liest Server-Quelltext | schreibt startvorlagen/ (seriell) |
 | 21 | `check-f11-auftrag` | 403 | 0,6 | gemischt | ja | ersetzen durch Test — reine Funktionen; Greps auf Controller/Server ≈ 25 % | – |
 | 22 | `check-f12-leitstand-ansicht` | 503 | 1,0 | gemischt | ja | ersetzen durch Test — Server-Teil testbar, Frontend-Greps ≈ 20 % ohne Wert | Repo-Wurzel kontrollzustand-test-* |
 | 23 | `check-f13-entscheiden` | 700 | 1,5 | Verhalten | ja | ersetzen durch Test — Handler-Tests; Grep auf Server-Quelltext blockiert Umbau | Repo-Wurzel kontrollzustand-test-* |
 | 24 | `check-f14-abbruch` | 414 | 10,2 | Verhalten | ja | behalten — einziger E2E-Beleg mit echtem Kindprozess (Timeout/Abbruch) | schreibt startvorlagen/, kontrollzustand-roh/ (seriell) |
-| 25 | `check-f15-workflow` | 3.468 | 95,3 | Verhalten | ja | ersetzen durch Test — Attrappen-Automat; Zähl-Greps blockieren Server-Umbau | Repo-Wurzel kontrollzustand-test-* |
-| 26 | `check-f15-workflow-oberflaeche` | 501 | 0,8 | Codeform | nein | löschen — nur Frontend-Strings; Syntax deckt Lint ab | – |
+| 25 | `check-f15-workflow` | 3.468 | 95,3 | Verhalten | ja | ersetzen durch Test — Attrappen-Automat; seit W2b-1 einzige Zählstelle 6/14/13 (beim Umbau mitnehmen) | Repo-Wurzel kontrollzustand-test-* |
+| 26 | `check-f15-workflow-oberflaeche` | 501 | 0,8 | Codeform | nein | erledigt W2b-1 (gelöscht) — Syntax über Biome, Restgrenzen DEKLARIERT | – |
 | 27 | `check-f15-instanzlock` | 345 | 2,6 | Verhalten | ja | ersetzen durch Test — Lock-Logik im Wegwerf-Ordner als Unit-Test prüfbar | – |
 | 28 | `check-f15-automat-real` | 1.169 | 24,5 | Verhalten | ja | behalten — einziger echter E2E-Lauf der Automatenkette | schreibt startvorlagen/, kontrollzustand-roh/ (seriell) |
 | 29 | `check-f16-codex-gateway` | 789 | 0,5 | gemischt | ja | ersetzen durch Test — codex-gateway.test.ts existiert; Codeform ≈ 35 % | liest alle startvorlagen/ |
@@ -107,14 +117,14 @@ Server „ja“: 85 Gates (45.020 Zeilen).
 | 35 | `check-f46-bestand` | 100 | 0,2 | Codeform | nein | behalten — bewusster Bestandsschutz (Stefan); Funktion hat eigenen Test | – |
 | 36 | `check-f20-zustand-poll` | 391 | 10,0 | gemischt | ja | ersetzen durch Test — Textmuster (c) überflüssig; Messung (d) lastempfindlich | Zeitgrenze, liest kontrollzustand/ (seriell) |
 | 37 | `check-f21-workboard` | 319 | 0,5 | Verhalten | ja | behalten — Parser-Rotfälle plus echte Register-/Archiv-Invariante | Repo-Wurzel kontrollzustand-test-* |
-| 38 | `check-f21-ws2-workboard-oberflaeche` | 316 | 0,9 | Codeform | nein | ersetzen durch Test — Wortstrings; (d) deckt attention-daten.test.mjs ab | – |
+| 38 | `check-f21-ws2-workboard-oberflaeche` | 316 | 0,9 | Codeform | nein | ersetzen durch Test — Wortstrings; (d) erledigt W2b-1 (gestrichen, attention-daten.test.mjs) | – |
 | 39 | `check-f22-click-to-work` | 484 | 0,5 | Verhalten | ja | behalten — Router-Ergebnis, Workflow-Kopplung und 409 real über HTTP | Repo-Wurzel kontrollzustand-test-* |
 | 40 | `check-f23-abnahme` | 1.092 | 3,6 | Verhalten | ja | behalten — Abnahme-/Entscheidungspfad E2E mit Wegwerf-Git | Repo-Wurzel kontrollzustand-test-* |
-| 41 | `check-f24-capabilities` | 116 | 0,2 | Verhalten | nein | löschen — AK1/5/6 schon in capabilities-ansicht.test.ts | – |
+| 41 | `check-f24-capabilities` | 116 | 0,2 | Verhalten | nein | erledigt W2b-1 (gelöscht) — AK1/5/6 in capabilities-ansicht.test.ts | – |
 | 42 | `check-f27-scout` | 384 | 0,5 | Verhalten | ja | behalten — Rollenvertrag, Schema, HTTP und Laufakten real geprüft | Repo-Wurzel kontrollzustand-test-* |
 | 43 | `check-f25-projekte` | 582 | 0,8 | Verhalten | ja | behalten — Multi-Projekt-Dispatcher und cwd-Durchreichung E2E | – |
 | 44 | `check-f26-jarvis` | 590 | 0,7 | Verhalten | ja | behalten — Jarvis-Chat, Lineage und Schema über echten Handler | Repo-Wurzel kontrollzustand-test-* |
-| 45 | `check-f28-persona` | 170 | 0,5 | gemischt | ja | ersetzen durch Test — (1) doppelt zu f20-design-tokens; (2) reine Funktion | – |
+| 45 | `check-f28-persona` | 170 | 0,5 | gemischt | ja | ersetzen durch Test — (1) erledigt W2b-1 (gestrichen); (2) reine Funktion | – |
 | 46 | `check-f31-gedaechtnis` | 664 | 0,7 | Verhalten | ja | behalten — Chat-Gedächtnis und Zusammenfassung real im Auftragstext | Repo-Wurzel kontrollzustand-test-* |
 | 47 | `check-f32-verbrauch` | 214 | 0,3 | Verhalten | nein | ersetzen durch Test — reine Validierung/Projektion, gehört in node:test | Repo-Wurzel kontrollzustand-test-* |
 | 48 | `check-f32-verbrauch-ansicht` | 286 | 0,5 | Verhalten | ja | behalten — Zeitraum-Rotfälle 400/200 real über HTTP | Repo-Wurzel kontrollzustand-test-* |
@@ -157,8 +167,8 @@ Server „ja“: 85 Gates (45.020 Zeilen).
 | 85 | `check-f45-f3b2-lauf` | 580 | 1,5 | Verhalten | ja | ersetzen durch Test — D13-Fenster (m) im Quelltext spröde | – |
 | 86 | `check-f45-b2b1-rueckweg` | 991 | 22,1 | Verhalten | ja | ersetzen durch Test — Schema-SHA (c0b) als Invariante behalten | Frist ≤ 10 s auf Server-/Workflow-Zustand, Repo-Wurzel kontrollzustand-test-* (seriell) |
 | 87 | `check-f45-b2b2-pruefer` | 835 | 43,7 | Verhalten | ja | ersetzen durch Test — Schema-SHA (s0)/(s1) behalten, Zählung (f) doppelt | Frist ≤ 10 s auf Server-/Workflow-Zustand, Repo-Wurzel kontrollzustand-test-* (seriell) |
-| 88 | `check-f45-b2b3c-budget` | 628 | 18,3 | Verhalten | ja | ersetzen durch Test — Zählungen (f) identisch in b2b3d/b2b3b1 | Frist ≤ 10 s auf Server-/Workflow-Zustand, Repo-Wurzel kontrollzustand-test-* (seriell) |
-| 89 | `check-f45-b2b3d-umfang` | 270 | 12,3 | Verhalten | ja | ersetzen durch Test — (f) wortgleich zu b2b3c (f) | Repo-Wurzel kontrollzustand-test-* |
+| 88 | `check-f45-b2b3c-budget` | 628 | 18,3 | Verhalten | ja | ersetzen durch Test — (f) erledigt W2b-1 (gestrichen) | Frist ≤ 10 s auf Server-/Workflow-Zustand, Repo-Wurzel kontrollzustand-test-* (seriell) |
+| 89 | `check-f45-b2b3d-umfang` | 270 | 12,3 | Verhalten | ja | ersetzen durch Test — (f) erledigt W2b-1 (gestrichen) | Repo-Wurzel kontrollzustand-test-* |
 | 90 | `check-f45-b2b3b1-rueckfrage` | 561 | 15,8 | Verhalten | ja | behalten — sicherheitsnah: Token-403, Deny-Grenzen des Rückfrage-Kanals | – |
 | 91 | `check-f45-b2b3b1b-auswertung` | 421 | 3,5 | Verhalten | ja | ersetzen durch Test — Evaluator-Fälle e1–e4 sind reine Unit-Fälle | Frist ≤ 10 s auf Server-/Workflow-Zustand (seriell) |
 | 92 | `check-f45-b2b3b2a-absicherung` | 444 | 4,4 | Verhalten | ja | behalten — sicherheitsnah (Fälschung, Steuerzeichen) | – |
@@ -166,8 +176,8 @@ Server „ja“: 85 Gates (45.020 Zeilen).
 | 94 | `check-f45-b2b3b2b1b-r1` | 388 | 6,1 | Verhalten | ja | behalten — einziger E2E-Beleg R1 mit echtem Controller | – |
 | 95 | `check-f45-b2b3b2b2a-einschalten` | 435 | 9,7 | Verhalten | ja | behalten — Schalter und URL-Basis über echten Dispatcher und MCP-Skript | – |
 | 96 | `check-f45-b2b3b2b2a2-anzeige` | 195 | 0,9 | Verhalten | ja | ersetzen durch Test — Routen- und Render-Proben passen in Handler-/Modultests | – |
-| 97 | `check-f45-b2b3b2b2a3-abnahme` | 242 | 0,9 | gemischt | ja | ersetzen durch Test — Evaluator unit-fähig; Hash-Pin der Regeldatei blockiert | – |
-| 98 | `check-f45-b2b3b2b2b1-nachweis` | 277 | 0,5 | Verhalten | ja | ersetzen durch Test — hauptprogramm direkt testbar; (w) doppelt zur Wachstumsbremse | – |
+| 97 | `check-f45-b2b3b2b2a3-abnahme` | 242 | 0,9 | gemischt | ja | ersetzen durch Test — Evaluator unit-fähig; Hash-Pin erledigt W2b-1 (gestrichen) | – |
+| 98 | `check-f45-b2b3b2b2b1-nachweis` | 277 | 0,5 | Verhalten | ja | ersetzen durch Test — hauptprogramm direkt testbar; (w) erledigt W2b-1 (Ratsche, Zählung, Pin gestrichen) | – |
 | 99 | `check-f45-b2b3b2b2b2a-crlf` | 117 | 0,3 | gemischt | nein | ersetzen durch Test — Verhalten schon in arbeitsordner.test.ts; Rest Text ≈ 60 % | – |
 | 100 | `check-f45-b2b3b2b2b2b1-projekt-cli` | 208 | 7,6 | Verhalten | ja | ersetzen durch Test — Handler-Option installierteCliVersion im Handlertest abbildbar | – |
 | 101 | `check-f45-b2b3e1-pfade` | 277 | 0,3 | gemischt | ja | ersetzen durch Test — Probe unit-fähig; Import-/Regex-Prüfungen ≈ 50 % | – |

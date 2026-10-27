@@ -15,7 +15,7 @@
  *     Exit ≠ 0, Abbruch an Set-Location (kein Parse-Fehler) und kein „git version“ in stdout; Gegenprobe: vorhandene Ordner
  *     mit Leerzeichen, [1], ', ’, ` und $ ⇒ Exit 0, git lief (eine kaputte Quotierung fiele hier auf). Startfehler und
  *     Zeitgrenze zählen als Befund. Ohne PowerShell (powershell.exe, pwsh) übersprungen mit Meldung; (a) bleibt wirksam.
- * (c) starteWorkflowSchritt( genau 6× im Server (der Server ist in diesem Paket nicht berührt).
+ * (c) (gestrichen in F45 W2b-1: starteWorkflowSchritt( zählt nur check-f15-workflow).
  * Gegenproben im Gate: verfälschte Blöcke (Folgezeile mit Einzug, ohne -ErrorAction Stop, cd als Folgezeile, ohne Fuß,
  * -Path), in echter PowerShell ein Block ohne -ErrorAction Stop (git läuft trotz fehlendem Ordner) und einer mit nicht
  * verdoppeltem Apostroph (vorhandener Ordner scheitert), Quelltext mit cdZeile(, HTML ohne Hinweis, fehlender ru-Schlüssel —
@@ -261,12 +261,6 @@ try {
 } finally {
   for (const pfad of aufraeumen) raeumeVerzeichnis(pfad)
 }
-
-// ─── (c) Server unberührt ─────────────────────────────────────────────────────────────────────────────────────────────
-
-const SERVER = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-const starts = SERVER.split('starteWorkflowSchritt(').length - 1
-pruefe(starts === 6, '(c) starteWorkflowSchritt( genau 6× im Server.', `(c) starteWorkflowSchritt( ${starts}×`)
 
 // ─── Gegenproben ─────────────────────────────────────────────────────────────────────────────────────────────────────
 

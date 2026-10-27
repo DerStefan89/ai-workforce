@@ -59,6 +59,18 @@ test('Reihenfolge, Titel, Ziele und Startprobleme ohne Link', () => {
   assert.equal(alleLeer, false)
 })
 
+test('nur fehlgeschlagene, nicht zur Kenntnis genommene Läufe werden Einträge (F45 W2b-1, vorher Gate f21-ws2 (d))', () => {
+  const laeufe = [
+    { laufId: 'l-ok', ergebnis: 'ERFOLGREICH', kenntnisgenommen: false },
+    { laufId: 'l-rot', ergebnis: 'FEHLGESCHLAGEN', kenntnisgenommen: false },
+  ]
+  const { eintraege } = baueEntscheidungen({ workflows: [], laeufe, startfehler: [] }, [])
+  assert.deepEqual(
+    eintraege.filter((e) => e.art === 'lauf').map((e) => e.id),
+    ['l-rot']
+  )
+})
+
 test('IDs werden im Ziel kodiert', () => {
   const { eintraege } = baueEntscheidungen({ workflows: [{ workflowId: 'a/b c', naechster: { art: 'haltFreigabe' } }], laeufe: [], startfehler: [] }, [])
   assert.equal(eintraege[0].hash, '#/workflows/a%2Fb%20c')

@@ -29,7 +29,7 @@
  * (b12) POST …/budget auf unbekanntem Ablauf ⇒ 404.
  * (b13) F45 W1, F-1123 (18): Altauftrag mit nach B2b-3e-2 ungültigen bereiche ⇒ POST …/budget 200 (Bestandsschutz in
  *       registriereAuftrag), neue Version mit erhöhtem Budget und unveränderten bereiche.
- * (f)  Quelltext: starteWorkflowSchritt( 6×, Workflow-Schreiber 14 / .eingefroren 13 (F-228 unverändert).
+ * (f)  gestrichen in F45 W2b-1 (Zählungen 6/14/13 trägt check-f15-workflow).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -39,7 +39,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -603,15 +603,6 @@ try {
         )
       }
     }
-  }
-
-  // ── (f) Quelltext-Invarianten ───────────────────────────────────────────────────────────
-  {
-    const quelltext = readFileSync('scripts/leitstand-server.mjs', 'utf8')
-    const starts = quelltext.split('starteWorkflowSchritt(').length - 1
-    const schreiber = quelltext.split(`${'schreibeWorkflow'}${'Fortschritt'}(`).length - 1
-    const gelesen = quelltext.split(`.${'eingefroren'}`).length - 1
-    pruefe(starts === 6 && schreiber === 14 && gelesen === 13, '(f) starteWorkflowSchritt( 6×, Workflow-Schreiber 14 / GESTOPPT-Schutz 13 (F-228 unverändert).', `(f) Zählungen ${starts} / ${schreiber} / ${gelesen} (erwartet 6 / 14 / 13)`)
   }
 } finally {
   await new Promise((resolve) => server.close(resolve))

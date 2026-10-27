@@ -3257,6 +3257,8 @@ async function starteTestserver(optionen) {
     console.log('✓ AK7: genau ein Schreiber von freigabe_erteilt (der Freigabe-Endpunkt) — kein zweiter Weg, einen ZWINGEND-Schritt startbar zu machen.')
   }
 
+  // Seit F45 W2b-1 die EINZIGE Zählstelle für starteWorkflowSchritt( (6) und — im Block darunter — Workflow-Schreiber 14 /
+  // .eingefroren 13 (F-228); die Doppel in 30 anderen Gates sind gestrichen. Wer dieses Gate in Tests umbaut, nimmt beide mit.
   // Dieselbe Zählung eine Ebene höher, für den Startpfad des Automaten (F15 WS-2c,
   // Reviewer-Pass 10.09.2026). starteWorkflowSchritt prüft die D13-Sperre NICHT selbst — es
   // verlässt sich darauf, dass genau zwei Stellen es aufrufen: der HTTP-Endpunkt, der laufAktiv

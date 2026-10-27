@@ -2092,6 +2092,7 @@ Empfohlene Maßnahme: `public/**` in `biome.json` aufnehmen und den daraus
 folgenden Befundberg in einem eigenen Durchgang abtragen — nicht nebenbei in
 einem Feature-Commit. Vorher prüfen, ob die Browser-Globals (`document`,
 `fetch`, `console`) eine eigene Biome-Domain brauchen.
+Nachtrag (27.10.2026, F45 W2b-1): `biome.json` führt inzwischen `public/**/*.js` (Syntaxfehler ⇒ `npm run lint` rot, Rotbeleg W2b-1); `scripts/check-f15-workflow-oberflaeche.mjs` ist gelöscht. Offen bleiben die Typprüfung (`tsconfig.json` nur `*.ts`), die schwachen Lint-Regeln (`recommended: false`, W2c) und `index.html`/`style.css`.
 Status: offen.
 Feature/Run: F15 WS-3a, 10.09.2026.
 
@@ -2248,7 +2249,7 @@ kleine Erweiterung — nicht nebenbei.
 Status: offen.
 Feature/Run: F15 WS-3b, 10.09.2026 (aus F-240 abgespalten).
 
-**F-261** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-261** · `HARNESS_IMPROVEMENT` · P3 · erledigt
 Titel: Das Oberflächen-Gate nagelt Bezeichner fest, nicht nur Verhalten —
 und eine seiner Pfadregeln ist zu locker.
 Beschreibung: Zwei Beobachtungen aus dem WS-3b-Bau, beide am Muster F-215
@@ -2272,7 +2273,7 @@ Anführungszeichen direkt hinter dem Endpunktnamen). (a) beim nächsten
 größeren Umbau der Ansicht entscheiden, ob ein Rendertest (Kopfloser Browser,
 wie im WS-3b-Nachweis) die Quelltextfälle ablösen soll — dann prüft das Gate
 Verhalten statt Bezeichner. Beides eigene Iteration.
-Status: offen.
+Status: erledigt (27.10.2026, F45 W2b-1): `scripts/check-f15-workflow-oberflaeche.mjs` gelöscht (Syntax über Biome `public/**/*.js`, Verhalten über die View-Tests; Restgrenzen in `features/F45/w2-gate-inventur.md` „Stand W2b-1“).
 Feature/Run: F15 WS-3b, 10.09.2026 (Rotkalibrierung).
 
 **F-262** · `TECH_DEBT` · P3 · offen
@@ -5065,12 +5066,13 @@ Auswirkung: Browser-Messungen sind unzuverlässig.
 Maßnahme: Messungen immer mit curl und Browser gegenüberstellen.
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/295.
 
-**F-563** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-563** · `PROCESS_IMPROVEMENT` · P3 · erledigt
 Titel: Textgenaue Quelltext-Zusagen in Gates brechen bei harmlosen Signaturänderungen.
 Beschreibung: Erster `npm run check`-Lauf endete mit Exit 1 in check-f15 (d) nach einer harmlosen Änderung.
 Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs` (d).
 Auswirkung: Falsch-rote Gates.
 Maßnahme: Verhaltensprüfung statt Textvergleich, wenn das Gate wieder angefasst wird.
+Status: erledigt (27.10.2026, F45 W2b-1): Gate gelöscht, siehe F-261.
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/296.
 
 **F-565** · `TECH_DEBT` · P3 · offen
@@ -8438,6 +8440,7 @@ Nachtrag (Challenger, 18.10.2026): zu (1) **angenommen** — die Wartezeit bis z
 Fundstelle: `scripts/leitstand/rueckfrage-einschalten.mjs`, `src/ausfuehrung-vorbedingung/index.ts`, `scripts/leitstand/cli-version.mjs`, `docs/harness/startfreigabe-erneuern.md` („Projekt-Startfreigabe erneuern“), `.claude/hooks/commit-guard.cjs` (`TEXT_ARGUMENT`), `scripts/_rueckfrage-aus-pruefung.mjs` Z. 9.
 Auswirkung: Gering bis mittel ((1) betrifft jeden unbeaufsichtigten Ausführungslauf).
 Maßnahme: (1) entschieden (Nachtrag), Anzeige nicht in 2b-2b-2b-2b-2 umgesetzt, offen (F-1153 (10)); (2) bei der nächsten Berührung; (3)(5) bei Bedarf; (4) mit der ersten realen Projekt-Erneuerung; (6) beim nächsten fachlichen Eingriff in `_rueckfrage-aus-pruefung.mjs` (Hash-Pin mit erneuern).
+Nachtrag (27.10.2026, F45 W2b-1) zu (6): `REGEL_HASH` (Pins in f45-b2b3b2b2a3/-b2b3b2b2b1 (w)) ist entfallen; die Strenge der Regel tragen die Rotfälle o3 in `scripts/check-f45-b2b3b2b2a-einschalten.mjs` (seit W2b-1 neun). Eine Änderung an `scripts/_rueckfrage-aus-pruefung.mjs` braucht keinen Hash-Nachzug mehr.
 Status: offen.
 Feature/Run: Entdeckt: F45 B2b-3b-2b-2b-2b-1 (code-reviewer, qa), 18.10.2026.
 
@@ -8663,13 +8666,13 @@ Nachtrag 23.10.2026 (Entscheidung Challenger: N1 vor dem Commit beheben): **N1 e
 Status: offen (N2, N4, cr 1–4, Absatzabstand).
 Feature/Run: Entdeckt: F45 FB-2 (Nachpass code-reviewer, qa, design-guardian), 23.10.2026.
 
-**F-1174** · `BUG` · P2 · offen
+**F-1174** · `BUG` · P2 · erledigt
 Titel: Test „Zeitgrenze 0“ in `vorschlag.test.ts` wackelt unter paralleler Testausführung.
 Beschreibung: Der Fall „Abbruch durch die Zeitgrenze ⇒ null“ (`src/faehigkeiten/vorschlag.test.ts:299`) setzt die Zeitgrenze 0 und erwartet den Abbruch. Unter `--test-concurrency=4` endet `git` gelegentlich vor dem Timer; das Ergebnis ist dann `[true, true]` statt `null`.
 Fundstelle: `src/faehigkeiten/vorschlag.test.ts:299` (`pruefeZielIgnoriert` mit Zeitgrenze 0).
 Auswirkung: Mittel — ein roter Testlauf ohne Codeänderung (CLAUDE.md, Falle „einmalig ohne erkennbaren Grund“); untergräbt das Vertrauen in `npm run check`.
 Maßnahme: einen sicher langsamen Aufruf bzw. einen injizierbaren Starter verwenden oder den Fall streichen (src/git-starter testet den Abbruch selbst).
-Status: offen.
+Status: erledigt (27.10.2026, F45 W2b-1): Code-Fehler, kein Testfehler — `fuehreGitAsync` startete git auch bei Zeitgrenze 0 (Timer ≥ 1 ms verlor gegen ein schnelles git, PR-CI Linux `[true, true]`). Jetzt `!(zeitgrenzeMs > 0)` ⇒ sofort `{ code: null, abbruch: 'zeitgrenze' }` ohne Start; Test `git-starter.test.ts` (setImmediate-Race, auf dem alten Code rot). `vorschlag.test.ts` unverändert.
 Feature/Run: Entdeckt: Challenger, 23.10.2026 (FB-2-Prüfung).
 
 **F-1175** · `PROCESS_IMPROVEMENT` · P3 · erledigt
@@ -9156,3 +9159,30 @@ Auswirkung: Gering — heute kein beobachteter Fall; wenn, dann ein stilles Grü
 Maßnahme: `gleicheDatei` aus `scripts/check-kette.mjs` übernehmen (oder in ein gemeinsames `node:`-Hilfsmodul unter `scripts/_*` ziehen) und einen Test über `npm run test` mit einem Abbruchfall ergänzen.
 Status: offen.
 Feature/Run: Entdeckt: Prüfpass F45 W2a (code-reviewer cr 2, qa 6), 27.10.2026.
+
+**F-1227** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Gate-Parallelität bringt auf Stefans Rechner keinen Zeitgewinn.
+Beschreibung: Der Läufer `scripts/check-kette.mjs` (F45 W2a, Parallelität 4) lief im Commit-Block zweimal 826,5 s und 739,3 s Wanduhr — gegen Σ 704 s einzeln gemessen (`features/F45/nachweise/t/messung.md`). Die Erwartung 6–7 min trat nicht ein; die Gates konkurrieren um dieselben Mittel (Prozessstart, Platte, Virenscanner), Parallelität verschiebt die Kosten nur.
+Fundstelle: `features/F45/feature.md` „Stand W2a“ (Commit-Block-Zeile), `scripts/check-kette.mjs`.
+Auswirkung: Mittel — der volle Lauf bleibt bei ≈ 12–14 min; jeder Commit-Block zahlt das zweimal.
+Maßnahme: Hebel sind die Kosten je Gate bzw. je Prozess (Startkosten Node/tsx, Server-Import je Gate, Wegwerf-Repos), nicht die Parallelität: je Gate Startzeit gegen Rechenzeit messen, teure Gemeinsamkeiten bündeln. W2b-2 (Wegwerf-Ordner/Fristen) misst vorher und nachher.
+Status: offen.
+Feature/Run: Entdeckt: Commit-Block F45 W2a, eingetragen F45 W2b-1, 27.10.2026.
+
+**F-1228** · `TECH_DEBT` · P3 · offen
+Titel: 60 Gates mit Kandidat „ersetzen durch Test“ (Inventur W2a) — nicht als Paket, sondern beim Anfassen des Bereichs.
+Beschreibung: `features/F45/w2-gate-inventur.md` führt 60 Gates (27.954 Zeilen, Σ 444 s) als Kandidat „ersetzen durch Test“. Der Challenger hat das Umschreiben als eigenes Paket gestrichen (27.10.2026): es verschiebt nur Laufzeit von der Gate-Kette in `npm run test`. W2b-1 hat stattdessen die Umbaufestigkeit hergestellt (eine Zählstelle, keine Quelldatei-Pins).
+Fundstelle: `features/F45/w2-gate-inventur.md` (Tabelle, Spalte Kandidat).
+Auswirkung: Gering — Wartungslast bleibt, aber ein Umbau färbt nicht mehr Dutzende Gates rot.
+Maßnahme: Wer einen Bereich ohnehin ändert, schreibt das zugehörige Gate in Tests um und nimmt Zählungen/Invarianten mit (z. B. `check-f15-workflow` trägt seit W2b-1 die einzige Zählung 6/14/13). Kein eigenes Paket.
+Status: offen.
+Feature/Run: Entdeckt: Inventur F45 W2a, eingetragen F45 W2b-1, 27.10.2026.
+
+**F-1229** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Challenger-Heuristik überschätzte Codeform-Gates — Schnitte erst nach der Inventur.
+Beschreibung: Der Schnitt W2a–W2d ging von ≈ 53 Codeform-Gates aus; die Inventur fand 7 reine Codeform-Gates und 20 gemischte. Der größere Hebel lag in Codeform-ANTEILEN verteilter Gates (eine Zählung in 31 Gates, Ratsche in 5), nicht in ganzen Gates.
+Fundstelle: Schnitt W2 (Challenger 27.10.2026), `features/F45/w2-gate-inventur.md` (Summen, Befund 1).
+Auswirkung: Gering bis mittel — ein Paket hätte auf einer falschen Größe aufgesetzt.
+Maßnahme: Bei Aufräumpaketen zuerst inventarisieren (gemessen bzw. gelesen), dann schneiden; eine Schätzung vor der Inventur ist als VERMUTET zu kennzeichnen.
+Status: offen.
+Feature/Run: Entdeckt: Challenger nach Inventur F45 W2a, eingetragen F45 W2b-1, 27.10.2026.

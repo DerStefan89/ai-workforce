@@ -22,7 +22,7 @@
  *     kein ablauf; /api/code/diff ohne Parameter im Projektordner.
  * (d) die id ist nie ein Git-Argument: Spion über die Handler-Option codeGit — kein argv-Element enthält die id, cwd ist der
  *     Arbeitsordner bzw. der Projektordner.
- * (e) `starteWorkflowSchritt(` genau 6× im Server (die Zeilen-Ratsche prüft check-wachstumsbremse-server in derselben Kette).
+ * (e) gestrichen in F45 W2b-1 (starteWorkflowSchritt( zählt nur check-f15-workflow, die Zeilen-Ratsche check-wachstumsbremse-server).
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
  *
@@ -383,10 +383,6 @@ try {
   const fremdDiff = await hole(`/api/code/diff?workflow=${encodeURIComponent(w3)}&pfad=neu.txt`, { 'Sec-Fetch-Site': 'cross-site' })
   const fremdUngueltig = await hole('/api/code?workflow=../x', { 'Sec-Fetch-Site': 'cross-site' })
   pruefe(fremd.http === 403 && fremdDiff.http === 403 && fremdUngueltig.http === 403, '(b11) fremde Herkunft mit ?workflow= ⇒ 403 an beiden Routen, auch mit ungültiger id (403 vor 400).', `(b11) ${fremd.http} ${fremdDiff.http} ${fremdUngueltig.http}`)
-
-  // ── (e) starteWorkflowSchritt( unverändert ───────────────────────────────────────────────────────────────────────────
-  const starts = readFileSync('scripts/leitstand-server.mjs', 'utf8').split('starteWorkflowSchritt(').length - 1
-  pruefe(starts === 6, '(e) starteWorkflowSchritt( genau 6× im Server.', `(e) starteWorkflowSchritt( ${starts}×`)
 } finally {
   for (const d of dienste) if (d.listening) await new Promise((r) => d.close(() => r()))
   for (const pfad of aufraeumen) raeumeVerzeichnis(pfad)

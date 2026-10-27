@@ -19,7 +19,7 @@
  * - scripts/check-f45-b2b3b2b2b1-nachweis.mjs (a): Sichtung bei R3 in zwei Schritten (renderSichtungDialog, renderSichtungR3Schritt)
  * - scripts/check-f42-projekt-harness.mjs (i) liest diese Datei: die Vorauswahl der Empfehlung im
  *   Formular der Rückfrage (F-711, renderArchitekturEntscheidung)
- * - scripts/check-f15-workflow-oberflaeche.mjs (h) liest diese Datei mit views/workflows.js zusammen
+ * - views/workflow-eingriffe.test.mjs (das Quelltext-Gate check-f15-workflow-oberflaeche entfiel in F45 W2b-1)
  *
  * Wichtig:
  * - Angeboten wird nur, was der Server ausweist (D5): architekturEntscheidung (Regel 1c), sichtung

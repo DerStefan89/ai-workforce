@@ -29,7 +29,7 @@
  * hier, unverändert in Inhalt und Wirkung.
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs,
- * scripts/check-f19-ressourcen.mjs, scripts/check-f24-capabilities.mjs,
+ * scripts/check-f19-ressourcen.mjs,
  * src/capabilities-ansicht/capabilities-ansicht.test.ts.
  */
 

@@ -10,10 +10,9 @@
  * *.js-Datei dort (rekursiv, deckt also auch views/) —, weil ein Farbliteral
  * in einem dieser JS-Module (z. B. ein Inline-style oder eine dynamisch
  * erzeugte Klasse) von der ursprünglichen Prüfung nicht gefunden worden wäre.
- * persona.js/persona-state.js sind bereits über scripts/check-f28-persona.mjs
- * separat abgedeckt (Auftrag: hier nicht doppelt prüfen, aber auch nicht
- * ausschließen — schadet nicht, wenn beide Gates dieselbe Datei sauber
- * befinden). Eine Quelltextprüfung per Regex, kein Rendern — sie belegt,
+ * Seit F45 W2b-1 ist das die einzige Farbliteral-Prüfung für persona.js,
+ * persona-state.js und index.html (Teil (1) von check-f28-persona entfiel als
+ * Doppel). Eine Quelltextprüfung per Regex, kein Rendern — sie belegt,
  * dass der Quelltext die Grenze FÜHRT, nicht, dass ein Browser sie korrekt
  * zeigt. F-468 (Nachzug zu F-467): dieselbe Prüfung zählt zusätzlich in
  * jedem Stylesheet die Vorkommen von '/*' gegen '*\/' — ungleiche Anzahl
@@ -159,7 +158,7 @@ function pruefeStylesheet(pfad, rohtext, istTokenQuelle) {
   const balance = pruefeKommentarBalance(pfad, rohtext)
   if (balance !== null) ergebnis.push(balance)
 
-  // Kommentare zuerst raus (Muster scripts/check-f15-workflow-oberflaeche.mjs entferneKommentare):
+  // Kommentare zuerst raus (Muster des früheren check-f15-workflow-oberflaeche entferneKommentare, bis F45 W2b-1):
   // sonst löst eine bloße Erwähnung von 'rgb()' oder einem Hex-Beispiel in der Prosa selbst einen
   // Befund aus.
   const quelltext = rohtext.replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -223,8 +222,8 @@ function pruefeAlleStylesheets(verzeichnis) {
 befunde.push(...pruefeAlleStylesheets(LEITSTAND_VERZEICHNIS))
 
 // ─── (2) F-438: alle *.js/*.html unter public/leitstand/ (rekursiv) ────────────────
-// Ungefiltert (keine Kommentarentfernung wie bei CSS oben) — Muster
-// scripts/check-f28-persona.mjs prüft seine drei Dateien ebenfalls ungefiltert: ein
+// Ungefiltert (keine Kommentarentfernung wie bei CSS oben) — wie früher
+// check-f28-persona (1) (bis F45 W2b-1): ein
 // Farbliteral in einem JS-Kommentar ist eher ein Indiz für eine versehentlich stehen
 // gebliebene Notiz als ein Fund, den man verstecken sollte.
 for (const pfad of sammleDateien(LEITSTAND_VERZEICHNIS, ['.js', '.html'])) {

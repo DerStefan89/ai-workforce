@@ -22,8 +22,8 @@
  * (f) i18n vollständig: jeder Schlüssel arbeitsordner.sichernAbschnitt.* / sichernGrund.* (neun Gründe) und befehl.enterHinweis (mit
  *     „>>“) in de/en/tr/ru, ohne interne Kennung (wf/, workflow-, F-<Zahl>, B2b); sichtbarer Text ohne workflowId.
  * (g) node_modules-Hinweis im Abschnitt nach derselben Regel wie #/code (nur bei nodeModulesAnzahl > 0), nie in git add.
- * (h) Server nicht gewachsen: starteWorkflowSchritt( genau 6×, Zeilen ≤ Ratsche (scripts/wachstumsbremse-server.json). Ob er
- *     unverändert ist, belegt der Diff gegen main (Bericht), nicht dieses Gate (Code-Review 4).
+ * (h) gestrichen in F45 W2b-1 (starteWorkflowSchritt( zählt nur check-f15-workflow, die Zeilen-Ratsche
+ *     check-wachstumsbremse-server).
  * Gegenproben im Gate: je Teil verfälschte Module, Texte oder Eingänge — jede muss erkannt werden.
  *
  * Wird aufgerufen von: `npm run check:gates` (und damit `npm run check`).
@@ -528,32 +528,6 @@ gegenprobe('(g)', [
   ['Hinweis fehlt', pruefeNodeModules((e) => renderSichernAbschnitt(e).replace(/<p class="subtle code-node-modules">[^<]*<\/p>/g, ''))],
   ['Hinweis immer', pruefeNodeModules((e) => `${renderSichernAbschnitt(e)}<p class="subtle code-node-modules">x</p>`)],
 ])
-
-// ─── (h) Server nicht gewachsen ───────────────────────────────────────────────────────────────────────────────────────
-
-/**
- * Prüft, dass der Server nicht gewachsen ist und starteWorkflowSchritt( 6× trägt.
- * @param server - Quelltext
- * @param obergrenze - Ratsche
- * @returns Befunde
- */
-function pruefeServer(server, obergrenze) {
-  const b = []
-  const n = zahl(server, /starteWorkflowSchritt\(/g)
-  if (n !== 6) b.push(`starteWorkflowSchritt( ${n}× statt 6×`)
-  const zeilen = server.split('\n').length - (server.endsWith('\n') ? 1 : 0)
-  if (zeilen > obergrenze) b.push(`Server ${zeilen} Zeilen > ${obergrenze}`)
-  return b
-}
-
-const SERVER = lies('scripts/leitstand-server.mjs')
-const RATSCHE = JSON.parse(lies('scripts/wachstumsbremse-server.json')).obergrenze_zeilen
-pruefe(pruefeServer(SERVER, RATSCHE), `(h) Server nicht gewachsen: starteWorkflowSchritt( 6×, Zeilen ≤ ${RATSCHE}.`, '(h)')
-gegenprobe('(h)', [
-  ['siebter Aufruf', pruefeServer(`${SERVER}\nstarteWorkflowSchritt(x)`, RATSCHE)],
-  ['Server über der Ratsche', pruefeServer(`${SERVER}${'// x\n'.repeat(RATSCHE + 1)}`, RATSCHE)],
-])
-
 if (befunde.length > 0) {
   console.error(`\n✗ check-f45-b2b4a2b2-anzeige: ${befunde.length} Befund(e):`)
   for (const b of befunde) console.error(`  - ${b}`)

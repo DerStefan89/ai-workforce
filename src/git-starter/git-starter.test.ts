@@ -156,6 +156,17 @@ test('fuehreGitAsync (F45 B2a-3b, Zeitgrenze): ein hängendes git (hash-object -
   }
 })
 
+test('fuehreGitAsync (F-1174, F45 W2b-1): Zeitgrenze 0, negativ oder NaN bricht sofort ab, vor jedem Makrotask', async () => {
+  // Alt lief git an und das Ergebnis kam frühestens nach Exit und Pipe-Ende (spätere Poll-Phase) — setImmediate gewann.
+  // Neu löst das Promise synchron auf, also als Mikrotask vor setImmediate. Belegt den Zeitpunkt, nicht „kein execFile“ (DEKLARIERT).
+  for (const zeitgrenzeMs of [0, -1, Number.NaN]) {
+    const spaet = new Promise((r) => setImmediate(() => r('spaet')))
+    const ergebnis = await Promise.race([fuehreGitAsync(['--version'], { cwd: tmpdir(), zeitgrenzeMs }), spaet])
+    assert.notEqual(ergebnis, 'spaet', `Zeitgrenze ${zeitgrenzeMs}: Ergebnis erst nach setImmediate`)
+    assert.deepEqual(ergebnis, { code: null, stdout: '', stderr: `Zeitgrenze von ${zeitgrenzeMs} ms überschritten`, abbruch: 'zeitgrenze' })
+  }
+})
+
 test('fuehreGitAsync (F45 B2a-3b, Node-execFile-Wettlauf): Zeitgrenze wird nie als Erfolg mit leerer Ausgabe gemeldet', { timeout: 30_000 }, async () => {
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'git-starter-wettlauf-')))
   try {
