@@ -69,19 +69,8 @@ Rohereignisströme sind gitignoriert und werden aus der Laufakte über ihren Has
 - Schreibend auf `kontrollzustand/` greift ausschließlich der Kern zu, und nur über die append-only Hash-Kette des Checkpoint Store. Kein Commit pro Zustandsübergang — der Kontrollzustand ist Momentaufnahme im Metadaten-Commit.
 - Einzige Ausnahme: `kontrollzustand/.leitstand.lock`, der Instanz-Lock des Leitstand-Prozesses (F-201). Flüchtiger Betriebszustand mit PID, Port und Startzeit — kein Artefakt, keine Lineage, keine Hash-Kette, git-ignoriert, vom Leitstand nur im CLI-Bindeblock vor dem Binden angelegt und beim Prozessende entfernt. Er liegt hier, weil er genau diese Ressource schützt: zwei Serverprozesse auf demselben `kontrollzustand/`. Jede weitere Ausnahme braucht denselben Weg — erst hier, dann im Code.
 - Weitere Ausnahmen, außerhalb jedes Repos und Arbeitsordners, kein Kontrollzustand (Einzelheiten:
-  `docs/architektur/lokale-dateien.md`):
-  - `~/.ai-workforce/faehigkeiten.lokal.json` — geschrieben nur von den Fähigkeiten-/Plugin-Routen auf direkte Eingabe,
-    gesperrt während eines Laufs, je Lauf vorher/nachher gehasht (Abweichung = Lauf rot); ungültig (E-F45-7) oder außerhalb
-    geändert (F-1061, erst nach Bestätigung im Leitstand) ⇒ jeder Start mit Katalog-Fähigkeiten und die Schreib-Routen gesperrt.
-    Plugins sind nur der Rolle `ausfuehrung` zuordenbar (E-F3b-3); eine Plugin-Freigabe gilt nur im Checkout, dessen
-    Kontrollzustand den Prüfbericht trägt.
-  - `…/plugin-kopien/<plugin-id>/<kopie_hash>/` — geschrieben nur von POST `…/plugins/freigabe` nach geltendem Prüfbericht,
-    inhaltsadressiert, nie überschrieben (409), nur `skills/`, `agents/`, `commands/` nach Positivliste, nie Hooks/MCP/LSP,
-    gelöscht nur durch Stefan; Prüfläufe startet nur die Workforce-Instanz. `…/plugin-kopien/_lauf/<lauf_kopie_hash>/` — nur vom
-    Startweg eines Ausführungsschritts, nie gelöscht; vorhanden mit anderem Inhalt ⇒ der Lauf startet nicht; `_` beginnt nie
-    eine Plugin-id.
-  - `~/.ai-workforce/faehigkeiten.stand.json` — geschrieben nur vom Wächter, atomar, gelesen nur beim Serverstart; Startregel
-    fail-closed; kein Schutz gegen einen Prozess mit Nutzerrechten.
+  `docs/architektur/lokale-dateien.md`): `~/.ai-workforce/faehigkeiten.lokal.json`, `…/plugin-kopien/<plugin-id>/<kopie_hash>/`,
+  `…/plugin-kopien/_lauf/<lauf_kopie_hash>/`, `~/.ai-workforce/faehigkeiten.stand.json` — Regeltext seit F45 W2d nur dort.
 - `profiles/` ist die alleinige editierbare Quelle für Profilinhalte. Der Kontrollzustand hält davon nur eine gepinnte Referenz aus Pfad, Hash und Version, nie eine Kopie.
 - Artefakte werden versioniert, nicht überschrieben. Version ist der Inhalts-Hash; die einzige Stelle, die den aktuellen Stand benennt, ist der letzte Checkpoint.
 - Produktdateien im freigegebenen Baupfad ändert ausschließlich das Ausführungswerkzeug. Der Kern liest sie read-only.
