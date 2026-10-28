@@ -5543,23 +5543,64 @@ th {
   padding: 0 18px;
 }
 
-#view-dashboard .uebersicht-detail[data-status='jetzt'] {
-  border-color: color-mix(in srgb, var(--amber) 33%, transparent);
+/* F45 V1: Karte b und d stehen in Hüllen ohne eigene Box — die Karten bleiben Rasterelemente des Cockpits. */
+#view-dashboard .uebersicht-cockpit-teil {
+  display: contents;
 }
 
-#view-dashboard .uebersicht-detail[data-status='jetzt'] > .eyebrow {
+/* F45 V1: Ausklapper „Rolle im Detail“ unter dem Kreis. */
+#view-dashboard .uebersicht-detail {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 18px 0;
+  border-top: 1px solid var(--track);
+}
+
+#view-dashboard .uebersicht-detail-umschalter {
+  align-self: flex-start;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 9.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+#view-dashboard .uebersicht-detail-umschalter::after {
+  content: ' ▾';
+}
+
+#view-dashboard .uebersicht-detail-umschalter[aria-expanded='true']::after {
+  content: ' ▴';
+}
+
+#view-dashboard .uebersicht-detail-umschalter:hover {
+  color: var(--ink);
+}
+
+#view-dashboard .uebersicht-detail-umschalter:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
+
+#view-dashboard .uebersicht-detail[data-status='jetzt'] .uebersicht-detail-umschalter {
   color: var(--amber);
 }
 
-#view-dashboard .uebersicht-detail-kopf {
+#view-dashboard .uebersicht-detail-inhalt {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+  flex-direction: column;
+  gap: 8px;
 }
 
-#view-dashboard .uebersicht-detail-kopf h2 {
-  font-size: 20px;
+#view-dashboard .uebersicht-detail-inhalt[hidden] {
+  display: none;
 }
 
 #view-dashboard .uebersicht-detail-kopf .subtle {
@@ -5593,7 +5634,62 @@ th {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 16px;
-  margin-top: auto;
+}
+
+/* F45 V1: Karte c — Live-Vorschau bzw. „Start Building“. */
+#view-dashboard .uebersicht-vorschau-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+#view-dashboard .uebersicht-vorschau-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#view-dashboard .uebersicht-vorschau-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+#view-dashboard .uebersicht-vorschau-rahmen {
+  flex: 1;
+  width: 100%;
+  min-height: 360px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+#view-dashboard .uebersicht-vorschau-start {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Knopf-Links ohne Unterstreichung wie im übrigen Bestand (a.button). */
+#view-dashboard .uebersicht-vorschau .button {
+  text-decoration: none;
+}
+
+/* „Neu laden“ während der Prüfung (aria-busy, vorschau-panel.js). */
+#view-dashboard .uebersicht-vorschau [aria-busy='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* F45 V1: Hinweis des Rahmen-Schutzes (rahmen-schutz.js) — der Leitstand läuft in einem Rahmen und startet nicht. */
+.rahmen-hinweis {
+  margin: 0;
+  padding: 24px;
+  font: 14px/1.5 var(--sans);
+  color: var(--ink);
 }
 
 #view-dashboard .uebersicht-spalte {
@@ -6374,6 +6470,10 @@ th {
 @container uebersicht (max-width: 1060px) {
   #view-dashboard .uebersicht-cockpit {
     grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  #view-dashboard .uebersicht-vorschau {
+    grid-column: 1 / -1;
   }
 
   #view-dashboard .uebersicht-spalte {

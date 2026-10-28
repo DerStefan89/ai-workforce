@@ -118,7 +118,8 @@ Hauptaufgabe: Lage erfassen und dorthin springen, wo er gebraucht wird.
 | Knopf „Architektur & Code“ | U | → `#/code` (bis D4: K) |
 | Karte Produktmanagement · Ziel dieser Version | U / K | Ziel aus der Projektakten-Quelle (D1); fehlt es: K. Link „Zielgruppe & Erfolgskriterien“ → `#/projektakte` |
 | Karte Wer arbeitet gerade: Feature in Arbeit + Rollen-Kreis | U | Feature mit laufendem Workflow, sonst erstes Feature IN_ARBEIT |
-| Karte Rolle im Detail: Name, Worker, Bekommt/Liefert, „In diesem Lauf“ | U / K | Bekommt/Liefert K (`src/rollen/types.ts` hat dafür keine Felder; Fixpaket B2); „In diesem Lauf“ aus der Laufakte-Beobachtung des letzten Laufs der Rolle (Dateien, Skills, Agents), sonst „—“ |
+| Rolle im Detail: Name, Worker, „In diesem Lauf“ — seit F45 V1 als Ausklapper unter dem Rollen-Kreis (Karte b), ein Klick auf eine Rolle öffnet ihn | U | „In diesem Lauf“ aus der Laufakte-Beobachtung des letzten Laufs der Rolle (Dateien, Skills, Agents), sonst „—“; Bekommt/Liefert entfallen (Stefan, Bauauftrag F45 V1, 28.10.2026; vorher K) |
+| Karte c: Live-Vorschau der Projekt-App bzw. „Start Building“ (F45 V1, E-VORSCHAU-1 = A) | U | iframe auf die vom Server geprüfte `vorschau_url` (GET `…/projekt-aufruf`), „Neu laden“, „In neuem Tab öffnen“; sonst „Start Building“ mit Hinweis und Weg zu „Auftrag & Start“ — Abweichung vom Bild (dort Rolle im Detail) |
 | Karte Fortschritt (Ring x/y abgenommen) und Braucht dich (Anzahl → `#/attention`) | U | `fortschritt-ring.js`, `baueEntscheidungen` |
 | Vier Kennzahlen: In Arbeit, Deine Entscheidung, Abgenommen, Geplant | U | wie heute (F44 WS-2b) |
 | „Der Weg von <Feature>“: Workstream-Zeitleiste | K | Workstreams als Daten und Schätzfelder (Fixpaket B2/B5); Kopf mit Feature-Name U |

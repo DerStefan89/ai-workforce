@@ -10,6 +10,10 @@
  * Wird aufgerufen von:
  * - public/leitstand/index.html (<script type="module" src="/app.js">)
  *
+ * F45 V1: Erster Import ist rahmen-schutz.js — läuft der Leitstand in einem Rahmen, bricht er dort ab, bevor
+ * ein anderes Modul als seine eigenen, nebenwirkungsfreien Abhängigkeiten (i18n.js, render.js) ausgewertet wird
+ * (kein Poll, kein API-Aufruf).
+ *
  * Wichtig: Die Reihenfolge unten ist bewusst — jede initXView() registriert
  * ihre Routen bei router.js, BEVOR starteRouter() den ersten dispatch()
  * auslöst. Wird eine neue View ergänzt, muss ihr init-Aufruf vor
@@ -68,6 +72,7 @@
  * rendert die Auswahl über setzeAktivesProjekt() selbst neu.
  */
 
+import './rahmen-schutz.js'
 import { initialisiereSprache } from './i18n.js'
 import { initKommt } from './kommt.js'
 import { initEntscheidungenZaehler } from './entscheidungen-zaehler.js'

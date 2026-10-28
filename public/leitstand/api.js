@@ -23,7 +23,7 @@
  * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems; F46 D1: holeFeatureAkte; F45 B5b-2b-1:
  *   speicherePlanung; F45 B5b-2b-2: holeBereinigung, bestaetigeBereinigung)
  * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems; F46 D1: holeAuftraege, holeLaufDetail,
- *   holeProjektakte — nur lesend)
+ *   holeProjektakte; F45 V1: holeProjektAufruf für die Live-Vorschau — nur lesend)
  * - public/leitstand/views/projektakte.js (F46 D1: holeProjektakte, holeRoadmap)
  * - public/leitstand/code-stand.js (F46 D4: holeCode), public/leitstand/views/code.js (F46 D4: holeCodeDiff)
  * - public/leitstand/ablauf-code-stand.js (F45 B2b-4a-2b-2: holeAblaufCode — GET …/code?workflow=<id>)
