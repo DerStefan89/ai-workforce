@@ -62,6 +62,12 @@ Summen = Stand W2a. **Stand W2b-1:** 120 Gates (−2: `check-f24-capabilities` V
 - **SERIELL** 23 → 16: Repo-Baum-Läufer und startvorlagen-Gruppe laufen parallel; Zeit-/Frist-Gates und f3b1 bleiben (Kommentare im Läufer).
 - **git-Wartung (F-1230):** jedes Wegwerf-Repo in Gates (43 Dateien) und Tests (21 Dateien) schaltet gc/maintenance direkt nach `git init` ab.
 
+## Stand W2c-1
+
+- **Neues Gate** `check-ratsche` (parallel, ≈ 8 s): Ratsche je Datei für Biome-Befunde je Regel (Preset recommended, Komplexität ≤ 15), Zeilen über 800 (ohne Server und i18n) und checkJs-Fehler `scripts/leitstand/*.mjs`, dazu die Liste formatierter Dateien (E-FMT-1 = B, kein Massen-Commit). Bestand `scripts/ratsche.json`; Regel und Durchsetzungsgrad in ARCHITECTURE.md §1, Einzelheiten `docs/architektur/ratsche.md`. Gates jetzt 121.
+- **Codeform-Gates und Formatierung:** eine Probe-Formatierung des Bestands färbte 14 Codeform-Prüfungen und die Wachstumsbremse rot (F-1239) — der Bestand bleibt unformatiert; Formatierung einer Bestandsdatei nur, wenn ihre Leser-Gates mitgezogen werden.
+- **Dritte Kopie der Referenzlogik** (merge-base) in `check-ratsche` (F-1241): in W2 mit der Ablösung der W1-Ratsche zusammenführen.
+
 ## Befunde für W2b
 
 1. **Reine Codeform ist selten, Codeform-Anteile sind überall.** Nur 7 Gates sind reine Codeform, 20 gemischt — aber

@@ -71,13 +71,14 @@ Auswirkung: verschärft F-013 — keine funktionierende Alternative zur Verifika
 Maßnahme: Auth einrichten, oder Verfahren dauerhaft auf "Repo-Fakten immer per Claude-Code-Prompt" festlegen.
 Feature/Run: AF-F001-Planung, 28.08.2026.
 
-**F-015** · `TECH_DEBT` · P4 · offen
+**F-015** · `TECH_DEBT` · P4 · erledigt (F45 W2c-1)
 Titel: `ARCHITECTURE.md` Kopfkommentar trägt noch `[FÜLLUNG — GANZE DATEI]`.
 Beschreibung: Alle acht Inhaltsabschnitte sind befüllt, aber der Meta-Kommentar (Zeile 1–18) wurde nicht entfernt.
 Fundstelle: `ARCHITECTURE.md:1–18`.
 Auswirkung: kosmetisch — kein Platzhalter im eigentlichen Inhalt, aber irreführend für den nächsten Leser.
 Maßnahme: Kopfkommentar bei Gelegenheit entfernen.
 Feature/Run: Verifikation AF-F001-Planung, Schritt A, 28.08.2026.
+Nachtrag (28.10.2026, F45 W2c-1): Marker `[FÜLLUNG — GANZE DATEI]` mit Erklärung und die erledigte Vorlagenanweisung „Fülle sie erst …“ entfernt (Platz für den Satz zur Ratsche unter dem Deckel). Die Aufteilungsregel im Kommentar bleibt — sie ist eine echte Regel, kein Platzhalter. Damit erledigt.
 
 **F-017** · `PROCESS_IMPROVEMENT` · P4 · offen
 Titel: Zahlenfehler in der Selbstverifikation von plan-v1-feature0-datenformate.
@@ -9231,3 +9232,66 @@ Auswirkung: Gering bis mittel — ein Rückfall brächte sporadische ENOENT-Rotl
 Maßnahme: Textregel in `check-rules` (Literal `kontrollzustand-test` in Gates und Tests verboten, mit Rot-Kalibrierung) — eigenes kleines Paket (Advisor `advisor-w2b2.md`, optional).
 Status: offen.
 Feature/Run: Entdeckt: Advisor-Pass F45 W2b-2, 27.10.2026.
+
+**F-1235** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Im Commit-Block laufen die Prüfungen nach der letzten Schreiboperation.
+Beschreibung: In W2b-2 lag der Akten-Nachtrag im Commit-Block hinter `erzeuge-lagebild.mjs --check`; das Lagebild prüfte damit einen Stand, der danach noch geändert wurde.
+Fundstelle: Commit-Block F45 W2b-2 (Bericht an Stefan, 27.10.2026).
+Auswirkung: Mittel — ein grüner Lauf belegt nicht den committeten Stand; Rot fällt erst in der CI auf.
+Maßnahme: Jeder Commit-Block schreibt zuerst alles (Akte, Findings, Lagebild neu) und prüft danach; kein Schreibschritt nach dem ersten Prüfschritt.
+Status: offen.
+Feature/Run: Entdeckt: Auftrag F45 W2c-1 (Challenger), 28.10.2026.
+
+**F-1236** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Löschungen außerhalb des Umfangs nur melden, nicht ausführen.
+Beschreibung: In W2b-2 wurden 18 alte `kontrollzustand-test*`-Reste in der Repo-Wurzel lokal gelöscht, obwohl das nicht beauftragt war.
+Fundstelle: `features/F45/feature.md` „Stand W2b-2“ (letzter Satz unter „Gebaut“).
+Auswirkung: Gering im Einzelfall — aber eine nicht beauftragte Löschung ist nicht umkehrbar und kann echte Daten treffen.
+Maßnahme: Regel für Bauaufträge: Dateien außerhalb des Umfangs werden im Bericht genannt, gelöscht nur auf Freigabe.
+Status: offen.
+Feature/Run: Entdeckt: Auftrag F45 W2c-1 (Challenger), 28.10.2026.
+
+**F-1237** · `TECH_DEBT` · P3 · offen
+Titel: ≈ 13 050 Altordner in `kontrollzustand-roh/`, Herkunft Test/echt ungeklärt.
+Beschreibung: Seit W2b-2 schreiben Gates ihre Rohströme in Wegwerf-Ordner; die alten Ordner (überwiegend `f14a-`/`f14b-`/`jarvis-jarvis-chat-` aus früheren Läufen) liegen weiter lokal, gitignoriert. Darunter können Rohströme echter Läufe sein, auf die eine Laufakte per Hash verweist.
+Fundstelle: `kontrollzustand-roh/` (lokal).
+Auswirkung: Gering — Platz und langsame Verzeichnisläufe (Werkzeuge, die den ganzen Baum durchsuchen).
+Maßnahme: Sichten (Verweise aus `kontrollzustand/` gegen Ordnernamen), nur Testreste löschen; Löschung auf Freigabe (F-1236).
+Status: offen.
+Feature/Run: Entdeckt: Auftrag F45 W2c-1 (Challenger), 28.10.2026.
+
+**F-1238** · `TECH_DEBT` · P2 · offen
+Titel: 18 mögliche Fehlerstellen laut Biome sichten (16 noUnsafeOptionalChaining, 2 noEmptyCharacterClassInRegex).
+Beschreibung: Die Erhebung W2c-1 (Preset recommended) meldet 16 × `correctness/noUnsafeOptionalChaining` (optional chaining in einem Kontext, der bei `undefined` wirft) und 2 × `correctness/noEmptyCharacterClassInRegex` in `scripts/check-f45-f2b2-pruefung.mjs` und `scripts/leitstand/routen-pruefung.test.mjs`; weitere 8 der zweiten Regel liegen in `public/**/*.test.mjs` (erst seit W2c-1 gelintet). Sie sind in `biome.json` auf `info` gestellt und in `scripts/ratsche.json` als Bestand gezählt.
+Fundstelle: `scripts/ratsche.json` (Regeln `correctness/noUnsafeOptionalChaining`, `correctness/noEmptyCharacterClassInRegex`).
+Auswirkung: Mittel — echte Laufzeitfehler oder Regex, die nie trifft, sind möglich.
+Maßnahme: Je Stelle prüfen, echte Fehler beheben; die Ratsche senkt den Bestand mit `--aktualisiere`.
+Status: offen.
+Feature/Run: Entdeckt: Auftrag F45 W2c-1 (Challenger, Messung auf main da333cb), 28.10.2026.
+
+**F-1239** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: ≈ 40 Gates lesen Quelltext als Text — eine Probe-Formatierung machte 14 davon rot.
+Beschreibung: Eine Probe-Formatierung des Bestands (495 Dateien, +71 k/−22 k Zeilen) färbte 15 Gates rot: 14 Codeform-Prüfungen, die Quelltext per Regex oder Zeilenvergleich lesen, und die Wachstumsbremse. Deshalb bleibt der Bestand unformatiert (E-FMT-1 = B); jede Formatierung einer gelisteten Bestandsdatei kann dieselben Gates treffen.
+Fundstelle: `features/F45/w2-gate-inventur.md` (Spalte Art „Codeform“/„gemischt“); `docs/architektur/ratsche.md`.
+Auswirkung: Mittel — Formatierung und Umbauten werden teuer; Gates prüfen Form statt Verhalten.
+Maßnahme: Bei Berührung durch Verhaltens-Tests ersetzen (F-1228).
+Status: offen.
+Feature/Run: Entdeckt: Auftrag F45 W2c-1 (Challenger, Probe-Formatierung), 28.10.2026.
+
+**F-1240** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Bauaufträge immer als ein vollständiger Block.
+Beschreibung: Der Challenger gab W2c-1 in zwei Teilen (Auftrag + Zusatz E-FMT-1); nur der Zusatz kam in der Bausitzung an. Die Sitzung fand den Auftrag weder im Repo noch in früheren Sitzungen und musste zurückfragen.
+Fundstelle: Bausitzung F45 W2c-1, 28.10.2026.
+Auswirkung: Gering bis mittel — Zeitverlust, Gefahr eines Baus nach halbem Auftrag.
+Maßnahme: Regel: Bauaufträge immer als ein vollständiger Block; Zusätze werden in den Auftrag eingearbeitet, nicht nachgereicht.
+Status: offen.
+Feature/Run: Entdeckt: Auftrag F45 W2c-1 (Challenger), 28.10.2026.
+
+**F-1241** · `TECH_DEBT` · P3 · offen
+Titel: Dritte Kopie der merge-base-Referenzlogik in Gates.
+Beschreibung: `leseReferenz` (merge-base mit `origin/main`/`main`, Spitze als Rückfall, Hinweis ohne Referenz) steht in `scripts/check-wachstumsbremse-server.mjs`, `scripts/check-f45-k-kontext.mjs` und jetzt `scripts/check-ratsche.mjs` (dort zusätzlich die Dateiliste der merge-base für (g3)).
+Fundstelle: `scripts/check-wachstumsbremse-server.mjs:171`, `scripts/check-f45-k-kontext.mjs:205`, `scripts/check-ratsche.mjs` (`leseReferenz`).
+Auswirkung: Gering — eine Korrektur muss an drei Stellen nachgezogen werden.
+Maßnahme: In W2 zu einem Helfer `scripts/_referenz.ts` zusammenführen (nur node:-Importe), wenn die W1-Ratsche abgelöst wird.
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass F45 W2c-1 (`features/F45/advisor-w2c1.md` Befund 9), 28.10.2026.

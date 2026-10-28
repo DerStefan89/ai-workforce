@@ -1,11 +1,4 @@
 <!--
-[FÜLLUNG — GANZE DATEI] ARCHITECTURE.md ist Füllung, nicht Skelett: Die
-Abschnittsstruktur unten hat sich in der Praxis bewährt, der Inhalt jedes
-Abschnitts ist stackgebunden und entsteht in deinem Projekt neu.
-
-Fülle sie erst, wenn du deine erste echte Architekturentscheidung getroffen
-hast — vorher stehen hier Regeln, die nie geprüft wurden.
-
 Aufteilungsregel: Ein Abschnitt wird eine eigene Datei, wenn drei Dinge
 zutreffen — er trägt mindestens drei echte, belegte Entscheidungen · er
 wird unabhängig vom Rest nachgeschlagen · er hat ein eigenes Gate. Vorher
@@ -61,6 +54,9 @@ und das Bearbeiten von Gate oder JSON.
     CSRF-Haken (DEKLARIERT, F-1131).
     ERZWUNGEN: Zeilenzahl, Literal-/Regex-Dispatch an `pfad`, Vergleich mit main bei lesbarer Referenz. DEKLARIERT: andere
     Dispatch-Formen, Bearbeiten von Gate oder JSON. Einzelheiten: `docs/architektur/wachstumsbremse.md`.
+  - Ratsche (F45 W2c-1): Biome-Befunde, Zeilen über 800 und checkJs-Fehler (`scripts/leitstand/`) sinken je Datei
+    nur; gelistete und neue Code-Dateien sind formatiert — ERZWUNGEN (`check-ratsche`, gegen main bei lesbarer Referenz);
+    DEKLARIERT: Bearbeiten von Gate, JSON, Konfiguration, Unterdrückungen im Code. Einzelheiten: `docs/architektur/ratsche.md`.
 - `docs/projekt/` — führende Projektdokumente (Zielfassung, Umsetzungsplan); Projektkontext für `jarvis`/`router` je Projekt-Repo, kein zweiter Speicher (E-M4-2).
 - `schemas/` — JSON-Schema (Draft 2020-12) für `kontrollzustand/`, `profiles/` und Rollen-Ergebnisse, geprüft von
   `scripts/check-datenformate.mjs` bzw. den Feature-Gates. claude-code löst ein Ausgabeschema nur für real belegte Schemata ein (Regel 4b).

@@ -170,6 +170,7 @@ export const GATES = [
   'node scripts/check-fixpaket-f36-nachlauf.mjs',
   'node scripts/check-f43-projekt-aufrufen.mjs',
   'node scripts/check-wachstumsbremse-server.mjs',
+  'node scripts/check-ratsche.mjs',
   'node scripts/check-f45-k-kontext.mjs',
   'node scripts/check-secrets.mjs',
 ]

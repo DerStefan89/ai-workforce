@@ -1,17 +1,65 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
   "files": {
-    "includes": ["scripts/**", "src/**", "public/**/*.js"]
+    "includes": ["scripts/**", "src/**", "public/**/*.js", "public/**/*.mjs"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5",
+      "arrowParentheses": "always"
+    }
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": false,
-      "suspicious": {
-        "noExplicitAny": "error"
+      "preset": "recommended",
+      "complexity": {
+        "noCommaOperator": "info",
+        "noExcessiveCognitiveComplexity": {
+          "level": "info",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        },
+        "noUselessEscapeInRegex": "info",
+        "noUselessLoneBlockStatements": "info",
+        "useIndexOf": "info",
+        "useLiteralKeys": "info",
+        "useOptionalChain": "info"
+      },
+      "correctness": {
+        "noEmptyCharacterClassInRegex": "info",
+        "noUnsafeOptionalChaining": "info",
+        "noUnusedFunctionParameters": "info",
+        "noUnusedImports": "info",
+        "noUnusedVariables": "info"
       },
       "nursery": {
         "noFloatingPromises": "error"
+      },
+      "performance": {
+        "noAccumulatingSpread": "info"
+      },
+      "style": {
+        "noNonNullAssertion": "info",
+        "useTemplate": "info"
+      },
+      "suspicious": {
+        "noAssignInExpressions": "info",
+        "noControlCharactersInRegex": "info",
+        "noExplicitAny": "error",
+        "noTemplateCurlyInString": "info",
+        "noThenProperty": "info",
+        "useIterableCallbackReturn": "info"
       }
     }
   }
