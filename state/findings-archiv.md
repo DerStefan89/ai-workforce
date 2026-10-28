@@ -5671,3 +5671,265 @@ Auswirkung: Mittel — ein roter Gate-Befund erscheint erst vor dem Merge und ko
 Maßnahme: Skript `check:gates` in `package.json` (dieselbe Gate-Kette wie `check`, ohne `npm run test`) als Rückfallebene in den Bauaufträgen: bricht `npm run check` wegen Speicher ab, läuft `check:gates` und die betroffenen Unit-Tests einzeln. Optional (P3): AK1 ignoriert Bezeichner, auf die ein Typ folgt (`name: string`), oder prüft nur Objektliterale. Das Skript wird nicht in F45 B2b-2b-2 angelegt (Auftrag).
 Status: erledigt (F45 B2b-3a, 15.10.2026): Skript `check:gates` in `package.json` — die Gate-Kette von `check` ohne `npm run test` und ohne den Nachlauf; `check` ruft jetzt `npm run check:gates && npm run test && node scripts/aufraeumen-nachlauf.mjs` (eine Quelle, keine Kopie). Rückfallebene zentral in `docs/harness/HARNESS-OVERVIEW.md` (Arbeitsweise, Punkt 5) beschrieben statt in jedem Bauauftrag (bewusste Abweichung von der Maßnahme). Der optionale P3-Teil (AK1-Heuristik in `scripts/check-f17-rollenvertrag.mjs`) ist nicht umgesetzt.
 Feature/Run: Entdeckt: F45 B2b-2b-2 (Cloud-Prüfung vor dem Merge, check-f17 AK1), 15.10.2026.
+
+**F-015** · `TECH_DEBT` · P4 · erledigt (F45 W2c-1)
+Titel: `ARCHITECTURE.md` Kopfkommentar trägt noch `[FÜLLUNG — GANZE DATEI]`.
+Beschreibung: Alle acht Inhaltsabschnitte sind befüllt, aber der Meta-Kommentar (Zeile 1–18) wurde nicht entfernt.
+Fundstelle: `ARCHITECTURE.md:1–18`.
+Auswirkung: kosmetisch — kein Platzhalter im eigentlichen Inhalt, aber irreführend für den nächsten Leser.
+Maßnahme: Kopfkommentar bei Gelegenheit entfernen.
+Feature/Run: Verifikation AF-F001-Planung, Schritt A, 28.08.2026.
+Nachtrag (28.10.2026, F45 W2c-1): Marker `[FÜLLUNG — GANZE DATEI]` mit Erklärung und die erledigte Vorlagenanweisung „Fülle sie erst …“ entfernt (Platz für den Satz zur Ratsche unter dem Deckel). Die Aufteilungsregel im Kommentar bleibt — sie ist eine echte Regel, kein Platzhalter. Damit erledigt.
+
+**F-261** · `HARNESS_IMPROVEMENT` · P3 · erledigt
+Titel: Das Oberflächen-Gate nagelt Bezeichner fest, nicht nur Verhalten —
+und eine seiner Pfadregeln ist zu locker.
+Beschreibung: Zwei Beobachtungen aus dem WS-3b-Bau, beide am Muster F-215
+(„das Gate diktiert die Form des Codes, statt ihn zu prüfen"). (a) Mehrere
+Fälle in `scripts/check-f15-workflow-oberflaeche.mjs` suchen nach lokalen
+Bezeichnern (`faelligMarke`, `cursorMarke`, `aktualisiereWorkflowBedienung`,
+`REPARIERBARE_SCHRITT_STATUS`). Eine reine Umbenennung ohne jede
+Verhaltensänderung macht das Gate rot. Das ist der Preis einer
+Quelltextprüfung ohne Rendern und war beim Bau tragbar — der Umbau musste
+NICHT gegen das Gate arbeiten —, aber es wächst mit jeder Zusage. (b) Die
+Pfadregel in Fall (e) prüft auf `/api/workflows/<irgendwas>/starten` und
+schlägt deshalb auch bei `/starten-weg` noch an: bei der Rotkalibrierung real
+aufgefallen, weil die erste Manipulation den Endpunkt umbenannte und die
+Zusage grün blieb.
+Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs`, Fälle (e), (g), (h).
+Auswirkung: (a) Reibung bei jedem Refactoring der Oberfläche. (b) Ein
+umbenannter Endpunkt fällt nicht auf, solange der alte Name Teil des neuen
+ist — der Fall ist konstruiert, aber die Zusage sagt mehr, als sie prüft.
+Empfohlene Maßnahme: (b) die Pfadregel am Ende verankern (Backtick oder
+Anführungszeichen direkt hinter dem Endpunktnamen). (a) beim nächsten
+größeren Umbau der Ansicht entscheiden, ob ein Rendertest (Kopfloser Browser,
+wie im WS-3b-Nachweis) die Quelltextfälle ablösen soll — dann prüft das Gate
+Verhalten statt Bezeichner. Beides eigene Iteration.
+Status: erledigt (27.10.2026, F45 W2b-1): `scripts/check-f15-workflow-oberflaeche.mjs` gelöscht (Syntax über Biome `public/**/*.js`, Verhalten über die View-Tests; Restgrenzen in `features/F45/w2-gate-inventur.md` „Stand W2b-1“).
+Feature/Run: F15 WS-3b, 10.09.2026 (Rotkalibrierung).
+
+**F-563** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: Textgenaue Quelltext-Zusagen in Gates brechen bei harmlosen Signaturänderungen.
+Beschreibung: Erster `npm run check`-Lauf endete mit Exit 1 in check-f15 (d) nach einer harmlosen Änderung.
+Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs` (d).
+Auswirkung: Falsch-rote Gates.
+Maßnahme: Verhaltensprüfung statt Textvergleich, wenn das Gate wieder angefasst wird.
+Status: erledigt (27.10.2026, F45 W2b-1): Gate gelöscht, siehe F-261.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/296.
+
+**F-912** · `PROCESS_IMPROVEMENT` · P2 · erledigt
+Titel: Der Coach legt in bestehenden Projekten keine Feature-Akte an; der Scope wird direkt zum Auftrag.
+Beschreibung: Im bestehenden Projekt macht der Coach aus dem Scope direkt einen Auftrag (`baueAuftragAusScope`), ohne eine Feature-Akte anzulegen.
+Fundstelle: `src/product-coach/index.ts` (baueAuftragAusScope), `public/leitstand/auftrag-aus-scope.js`.
+Auswirkung: Coach-Ideen erscheinen nicht als Feature im Board, AK werden nicht in einer Akte gepflegt, und F35 „Bauen aus der Akte“ greift nicht.
+Maßnahme: Fixpaket Arbeitsfähigkeit, B5.
+Status: erledigt durch F45 B5a-2 (24.10.2026) — Server in B5a-1 (POST /api/features legt aus einem Coach-Scope eine Akte mit Status ENTWURF an, `baueFeatureAkteAusScope`), Anzeige in B5a-2: „Als Feature anlegen“ unter jedem Coach-Entwurf (`public/leitstand/views/chat.js` `renderFeatureAnlage`, `legeFeatureAn` in `api.js`), Ergebnis mit neuer ID, Link ins Detail und Git-Block, 400/409/422 wörtlich; der Auftragsweg bleibt unverändert. Rest: Rückverweis Turn → Akte (Doppelanlage nach Neuladen) F-1182.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-917** · `TECH_DEBT` · P2 · erledigt (a)
+Titel: Prioritäts-Kanban (E2): Auftrag WS-3a und Abgleich §4 Punkt 4 widersprechen sich.
+Beschreibung: Der Auftrag WS-3a verlangt „Kanban · Priorität“ als „kommt“ ohne Daten; so ist es gebaut. `docs/design/abgleich-f725.md` §4 Punkt 4 (verbindlich über E-F44-1) sagt dagegen: Das Prioritäts-Kanban zeigt die echten Prioritäten der Findings, Features stehen unter „ohne Priorität“, nur das Ziehen ist deaktiviert. design-guardian hat die Abweichung im Prüfpass WS-3a als „hoch (Verfahren)“ gemeldet.
+Fundstelle: `public/leitstand/views/workboard.js` (baueFesteBedienung, `#workboard-modi`); `docs/design/abgleich-f725.md` §4 Punkt 4.
+Auswirkung: Mittel — ohne Entscheidung bleibt eine dokumentierte Zusage unerfüllt; die Daten lädt die Seite bereits.
+Maßnahme: Stefan entscheidet: (a) in WS-3b ein lesendes Prioritäts-Kanban (Spalten P0–P4 und „ohne Priorität“ aus den ungefilterten Workitems, Ziehen und Auswahlfelder „kommt“) oder (b) §4 Punkt 4 anpassen und E2 bleibt „kommt“.
+Status: entschieden (Stefan, 01.10.2026): E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert, keine Daten). Ein nur lesendes Prioritäts-Kanban ist Kandidat für das Fixpaket „Arbeitsfähigkeit“ (Baustein B5 Feature-Fluss) — dort neu bewerten. Vermerk in `docs/design/abgleich-f725.md` §4 Punkt 4 und `features/F44/feature.md` (Stand WS-3a). Vermerk (01.10.2026): entschieden: wird gebaut (Stefan, 01.10.2026), Fixpaket ‚Arbeitsfähigkeit‘ Baustein B5. Erst lesend, dann Ziehen = Prioritätsänderung mit Pflichtbegründung; Features bekommen ein Prioritätsfeld in der Akte. Vermerk 24.10.2026 (E-KANBAN = A, Challenger, Bauauftrag B5b-1): erfüllt (a) — lesendes Prioritäts-Kanban P0–P4 + „ohne Priorität“ in B5b-2, erweitert: Features erscheinen mit ihrer Zeile „Priorität:“ aus der Akte (Daten seit B5b-1a); Ziehen bleibt Teil 2 (B5b′). Erledigt (a) 25.10.2026 (F45 B5b-2c-1, `features/F45/plan-b5b2c1-v2.md`): „Kanban · Priorität“ in der Entwicklung lesend — Spalten P0 · P1 · P2 · P3 · ohne Priorität, offene Features mit der Priorität ihrer Akte (aus GET /api/roadmap), offene Befunde mit ihrer, Filter Typ und „Pflege & Fixes“. Abweichung von „P0–P4“: P4 (Alt-Bestand, keine neue Vergabe, Gate f21 (5)) steht in „P3 · Später“ mit Chip „P4“ und „davon n P4 (Alt-Bestand)“ (Advisor `features/F45/advisor-b5b2c.md` A2, Challenger 25.10.2026). Ziehen bleibt Teil 2 (B5b′).
+Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian), 01.10.2026.
+
+**F-979** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: „Bereit zum Sichern“ ist kein Zustand zwischen Abnahme und Merge.
+Beschreibung: Nach der Abnahme gibt es keinen eigenen Zustand für „abgenommen, noch nicht committet/gemergt“.
+Fundstelle: Lebenszyklus eines Eintrags (Abnahme → Merge).
+Auswirkung: Gering — der Schritt zum Sichern ist im Leitstand nicht sichtbar.
+Maßnahme: Fixpaket „Arbeitsfähigkeit“.
+Status: offen. Nachtrag F45 B2b-4a-1 (19.10.2026, `features/F45/plan-b2b4a1.md`): Server-Teil gebaut — „Bereit zum Sichern“ als abgeleiteter Zustand ohne neuen Workflow-Status (`scripts/leitstand/ablauf-sichern.mjs` `leiteSichernLageAb`: abgeschlossen + eigener Arbeitsordner + geänderte Dateien bzw. Commits noch nicht auf main; Grenze F-1155), geliefert als Feld `ablauf.sichern` von GET `/api/code?workflow=<id>`; Gate `scripts/check-f45-b2b4a1-sichern.mjs`. Die Anzeige (Karte, Abnahme, Workboard) folgt in B2b-4a-2, erst dann erledigt.
+Erledigt (F45 B2b-4a-2b-2, 20.10.2026, `features/F45/plan-b2b4a2b2.md`): Abschnitt „Bereit zum Sichern“ in der Karte „Wo gearbeitet wird“ (Abnahme- und Ablaufseite bei ABGESCHLOSSEN/GESTOPPT) und im Workboard „abgeschlossen“ (`public/leitstand/views/ablauf-sichern-anzeige.js`, Stand je Ablauf `public/leitstand/ablauf-code-stand.js`): Schritte commit · push bzw. Grund · Pull Request und Merge im Web, danach Aufräumen; Gate `scripts/check-f45-b2b4a2b2-anzeige.mjs`. Rest: kein eigener Eintrag „Bereit zum Sichern“ in „Deine Entscheidungen“ (Filter bleibt „kommt“, `attention-daten.js`); „noch nicht auf main“ bleibt nach Push/Merge bis zum Aufräumen stehen (F-1155).
+
+**F-991** · `BUG` · P2 · erledigt
+Titel: Persona, Startfläche und Entwicklung zählen offene Abnahmen nicht.
+Beschreibung: Seit F46 D2 stehen offene Abnahmen unter „Deine Entscheidungen“, im Zähler der Seitenleiste, in der Kennzahl der Übersicht und in Jarvis' „was braucht mich“. Der Persona-Zustand („wartet auf dich“), der Warte-Hinweis der Startfläche und die Spalte „Braucht dich“ der Entwicklung lesen weiter nur `filtereAttentionWorkflows` (Freigabe, Rückfrage).
+Fundstelle: `public/leitstand/persona-state.js:36`, `public/leitstand/views/start.js:66`, `public/leitstand/entwicklung-daten.js:149`.
+Auswirkung: Mittel — der Zähler zeigt eine wartende Abnahme, die Persona meldet „nichts“.
+Maßnahme: dieselbe Auswahl über `filtereOffeneAbnahmen` bzw. `baueEntscheidungen`; Gate f28-persona und Tests mitziehen. Bewusst nicht in D2 (Umfang: Liste, Zähler, Entscheiden-Seite).
+Status: erledigt durch F45 B5a-2 (24.10.2026) — `zaehleWartendeAufStefan` (`attention-daten.js`, Freigaben, Rückfragen und offene Abnahmen aus `baueEntscheidungen`) zählt für Persona (`persona-state.js`) und Wartezeile der Startfläche (`views/start.js`); `spalteVon` (`entwicklung-daten.js`) setzt bei `filtereOffeneAbnahmen` „Braucht dich“; Gate `check-f28-persona` (2) mit Fall und Gegenprobe, Gate `check-f45-b5a2-akte-anzeige` (e), Tests in `attention-daten.test.mjs` und `entwicklung-daten.test.mjs`.
+Feature/Run: Entdeckt: F46 D2, Prüfpass qa 5 / code-reviewer 2.
+
+**F-995** · `TECH_DEBT` · P3 · erledigt
+Titel: Die Leseroute der Feature-Akte liefert die Entscheidungen nicht.
+Beschreibung: Das Detail eines Features soll unter „Verlauf“ die Entscheidungen der Akte (E-…) zeigen (abgleich-f46.md §4.6). GET …/features/<id>/akte liefert nur Titel, Status, Ziel, Nicht-Ziele und AKs; D3 durfte den Server nicht ändern. Die Kachel steht deshalb als „kommt“.
+Fundstelle: `scripts/leitstand/routen-f35.mjs` (`leseFeatureAkteFuerAnzeige`), `src/feature-auftrag/index.ts` (`leseFeatureAkteAnzeige`); Anzeige `public/leitstand/views/workboard-detail.js` (`verlaufBlock`).
+Auswirkung: Gering — die Entscheidungen bleiben über „Akte in VS Code öffnen“ erreichbar.
+Maßnahme: Die lesende Projektion um den Abschnitt „Entscheidungen“ (Zeilen mit E-…) erweitern, eine Regel mit dem Bau-Auftrag; dann die Kachel echt (D4 oder Fixpaket).
+Status: erledigt durch F45 B5a-2 (24.10.2026) — Server in B5a-1 (GET …/akte liefert `entscheidungen[]` und `hash`), Anzeige in B5a-2: Kachel „Entscheidungen“ in „Verlauf“ (`views/workboard-detail.js` `entscheidungenInhalt`): Zahl, die letzten fünf in Aktenreihenfolge (Kennung als Code, Text ohne Fettung), Link auf die ganze Akte; leer ⇒ „Die Akte nennt noch keine Entscheidungen.“, nie mehr „kommt“.
+Feature/Run: Entdeckt: F46 D3.
+
+**F-1010** · `BUG` · P2 · erledigt
+Titel: Roadmap und Akten widersprechen sich.
+Beschreibung: docs/projekt/roadmap.json führt F30 ohne Akte (Anzeige „keine_akte“), die Akte AF-F001 fehlt in der Roadmap, und M3/M4 stehen auf ABGESCHLOSSEN, obwohl F18, F20, F21, F22 und F25 auf FEATURE_GATE stehen — die Kennzahl „Features abgenommen“ passt nicht zum Meilensteinstatus. Die IDs (jede Akte in genau einem Meilenstein, jeder Roadmap-Eintrag mit Akte) prüft seit F46 D0 `scripts/check-akte-meilenstein.mjs`; offen war nur die Status-Regel R1 (Meilensteinstatus gegen den Status der Akten) — Satz berichtigt 24.10.2026 (F-1175; vorher: „Kein Gate prüft diese Übereinstimmung.“).
+Fundstelle: docs/projekt/roadmap.json, features/*/feature.md (Status), scripts/check-akte-meilenstein.mjs, scripts/leitstand/routen-roadmap.mjs.
+Auswirkung: Mittel — die Roadmap zeigt einen anderen Stand als die Akten.
+Maßnahme: F45 B5b: Gate Akte ↔ Roadmap, Bereinigungsliste zur Bestätigung durch Stefan.
+Status: erledigt (F45 B5b-2c-2-AB, 25.10.2026). Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): R1 ist jetzt Gate (`src/workboard/roadmap-regeln.ts` in `check-akte-meilenstein`): M3/F18 und M4/F20, F21, F22, F25 stehen als begründete Ausnahmen in `docs/projekt/roadmap-ausnahmen.json` („Bereinigung offen — Bestätigung Stefan (Bereinigungsliste)“); F30 hat eine Akte (ENTWURF), AF-F001 bleibt Ausnahme ohne_meilenstein. Rest: Bereinigungsliste mit Bestätigung je Eintrag (B5b-1b) und Anzeige (B5b-2). Nachtrag 24.10.2026 (F45 B5b-1b-1, `features/F45/plan-b5b1b-v2.md`): B5b-1b geteilt; die Bereinigungsliste mit Bestätigung je Eintrag kommt mit B5b-1b-2 („Meilenstein → LAEUFT“ nur bei genau einer R1-Abweichung, B4). PUT `…/planung` blockiert jedes Verschieben, das R1 neu verletzt (422 „erst bereinigen“), siehe F-1187. Nachtrag 24.10.2026 (F45 B5b-1b-2, `features/F45/plan-b5b1b2-v2.md`): Mechanik erledigt — GET `/api/roadmap/bereinigung` listet jede R1-Abweichung mit den erlaubten Entscheidungen, POST `/api/roadmap/bereinigung/bestaetigen` bestätigt genau einen Eintrag („Feature → ABGESCHLOSSEN“: Akte, Status-Wort in STATUS.md, Ausnahme entfernt; „Meilenstein → LAEUFT“ nur bei genau einer Abweichung, dynamisch), Gate `check-f45-b5b1b2-bereinigung`. Status bleibt offen (Advisor `features/F45/advisor-b5b1b2.md` C5): die fünf Einträge bestätigt Stefan einzeln, die Anzeige kommt mit B5b-2. Erledigt 25.10.2026: die R1-Bereinigung M3/F18, M4/F20, F21, F22, F25 hat Stefan bestätigt (#383, `docs/projekt/roadmap-ausnahmen.json` leer); F30 hat seit B5b-1a eine Akte (ENTWURF), AF-F001 bleibt eine deklarierte Ausnahme ohne Meilenstein (Gate `check-akte-meilenstein`); die Bereinigungsliste ist gebaut (B5b-1b-2, B5b-2b-2) und schlägt „Feature → ABGESCHLOSSEN“ als Standard vor, wenn möglich (B5b-2c-2-AB).
+Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
+
+**F-1087** · `TECH_DEBT` · P2 · erledigt
+Titel: Workboard-„Sichern“ zeigt nach einem Ablauf im Arbeitsordner die Änderungen des Projektordners statt des Worktrees.
+Beschreibung: Der Block „Sichern“ im Workboard (Phase „abgeschlossen“) und in #/code liest GET /api/code, und die Code-Projektion (`baueCodeProjektion({ repoWurzel })`) liest immer den Projektordner. Lief der Ablauf in seinem eigenen Arbeitsordner (Worktree, Branch `wf/<id>`, E-F45-3 = A), stehen die Änderungen dort — der Block nennt dann die Dateien, den Branch und den `cd`-Pfad des Projektordners, nicht des Ablaufs.
+Fundstelle: `public/leitstand/views/workboard.js` (`renderTerminalBlock`), `scripts/leitstand/routen-code.mjs` (`baueCodeProjektion`), `scripts/leitstand-server.mjs` (GET /api/code).
+Auswirkung: Mittel — die Befehle sind ausführbar, sichern aber das Falsche bzw. nichts; Stefan muss selbst wissen, wo der Ablauf gearbeitet hat.
+Maßnahme: Mit B2b („Bereit zum Sichern“): Sichern je Ablauf aus dem Laufort (`ermittleLaufort`), cd auf den Worktree. In B2a-3b bewusst nicht gelöst (Auftrag).
+Status: offen. Nachtrag F45 B2b-4a-1 (19.10.2026): Server-Teil gebaut — GET `/api/code` und `/api/code/diff` nehmen `?workflow=<id>` (keine neue Route): Formprüfung vor jedem Dateizugriff (`scripts/leitstand/kennung.mjs`, 400), unbekannt 404, Laufort über `ermittleLaufort` (Arbeitsordner aus dem Kontrollzustand, nie die id als Git-Argument oder cwd), Arbeitsordner nicht bereit ⇒ 409 mit `grund_schluessel` aus `arbeitsordnerGrund` ohne Kennung im Text; ohne Parameter bitgleich; Aufbau je Laufort geteilt (`codeProjektionLaufend` als Map). Gate `scripts/check-f45-b2b4a1-sichern.mjs` (b)–(d). Workboard und Abnahme nutzen den Parameter erst ab B2b-4a-2 (jeder Ablauf mit Arbeitsordner über `?workflow=`), erst dann erledigt.
+Erledigt (F45 B2b-4a-2b-2, 20.10.2026): Workboard „abgeschlossen“ und Karte (Abnahme-/Ablaufseite) wählen die Quelle über `sichernQuelle` (`sichernFuerAblauf`) — jeder Ablauf mit eigenem Arbeitsordner (jeder Status außer `kein_bedarf`/`bestand`) liest GET `/api/code?workflow=<id>`, Befehle mit Ort und Branch des Arbeitsordners; nur `bestand` behält den Projektordner-Block. Rest: keiner.
+Feature/Run: Entdeckt: F45 B2a-3b (Plan, Befunde vorab), 13.10.2026.
+
+**F-1137** · `PROCESS_IMPROVEMENT` · P1 · erledigt durch F45 K
+Titel: Wissensgrenze des Claude-Projekts durch state/findings.md.
+Beschreibung: Das Claude-Projekt, das das Repo synchronisiert, stand bei 1,78 von 2,0 MB Wissensgrenze; `state/findings.md` allein hatte 1 597 930 B und wuchs um ≈ 40 KB/Tag, weil erledigte Einträge nie das Register verließen (Challenger, 17.10.2026).
+Fundstelle: `state/findings.md`.
+Auswirkung: Bald kein Platz mehr für Projektwissen im Claude-Projekt; jede Sitzung, die das Register liest, trägt den Ballast.
+Maßnahme: F45 K: 413 erledigte Einträge (Status beginnt mit gelöst/behoben/erledigt/korrigiert, E-K-1) wörtlich nach `state/findings-archiv.md` verschoben; `state/findings.md` danach 907 536 B (−43 %). Archiv nur bei Bedarf lesen (CLAUDE.md). Wirkung auf das Claude-Projekt erst, wenn Stefan `state/findings-archiv.md` dort nicht synchronisiert. Künftig gesammelt nachziehen, sobald das Register wieder wächst.
+Feature/Run: F45 K „Kontext-Diät“, Branch `f45/k-kontext-diaet`, 17.10.2026 (Plan `features/F45/plan-k-v2.md`).
+
+**F-1138** · `PROCESS_IMPROVEMENT` · P2 · erledigt durch F45 K
+Titel: ARCHITECTURE.md wuchs als Pflichtlektüre von 10 KB auf 40 KB.
+Beschreibung: `ARCHITECTURE.md` ist Pflichtlektüre jeder Sitzung (CLAUDE.md) und wuchs vom 11.10. bis 17.10.2026 von ≈ 10 KB auf 40 094 B, getrieben von Detailabschnitten zum Rückfrage-Kanal (§3/§4); ≈ 7 000 Token mehr je Sitzung. Die Projektkarte kürzte §1 schon vorher auf 2000 Zeichen, die Rollen im Lauf sahen W1 und die Kanal-Grenzen nicht.
+Fundstelle: `ARCHITECTURE.md`.
+Auswirkung: Kontextkosten jeder Sitzung; Regeln im Rauschen der Herleitung.
+Maßnahme: F45 K: Kern 17 332 B (Deckel 17 800 B) mit jeder Regel als Satz (Durchsetzungsgrad sichtbar); Detailtext wörtlich in `docs/architektur/` (module, kette, wachstumsbremse, lokale-dateien, arbeitsordner, rueckfrage-kanal); Gate `check-f45-k-kontext` (Deckel `scripts/architektur-kern.json`, nur senkbar; Verweise und Rückverweise; keine Versionsnummer in den Details).
+Feature/Run: F45 K „Kontext-Diät“, Branch `f45/k-kontext-diaet`, 17.10.2026 (Plan `features/F45/plan-k-v2.md`, Advisor `features/F45/advisor-k.md`, `advisor-k-delta.md`).
+
+**F-1141** · `HARNESS_IMPROVEMENT` · P2 · erledigt durch F45 B2b-3b-2b-2b-2b-1
+Titel: commit-guard sperrt `git stash` nicht (nur `drop`/`clear`).
+Beschreibung: Bei F45 K liefen versehentlich `git stash` und `git stash pop` durch (ohne Schaden). Der Hook sperrt nur `git stash drop|clear`; `stash`, `stash push`, `pop` und `apply` verändern den Arbeitsbaum ohne Freigabe und können bei einem Konflikt Arbeit verstecken.
+Fundstelle: `.claude/hooks/commit-guard.cjs` (Kopf Z. 28, Sperrliste Z. 378 und Z. 410).
+Auswirkung: Mittel — eine Sitzung kann ungefragt Änderungen aus dem Arbeitsbaum nehmen; zurück nur über `stash pop`.
+Maßnahme: `git stash` außer `list`/`show` in `.claude/hooks/commit-guard.cjs` sperren, mit Gate-Fall. Die Hook-Änderung ändert den E-183-Hash und gehört deshalb zur Erneuerung der Startfreigabe.
+Status: erledigt durch F45 B2b-3b-2b-2b-2b-1 (18.10.2026). Nachtrag: `.claude/hooks/commit-guard.cjs` sperrt jedes `git stash` außer `list`/`show` (`stashSegment`, Grund mit „Änderungen sichern über commit auf einem Branch (Stefan)“; `drop`/`clear` behalten den Grund „nicht umkehrbar“) — auch nackt, mit `git -C`/`git -c`, `git.exe`, in Ketten (`&&`, `;`, `||`, `|`, `&`), über `xargs`, `powershell -Command`, `cmd /c`, Heredoc in bash. Dazu `verbenVon`: Befehlsstelle auch nach einer Blockklammer `{` — die PowerShell-Kettenform `A; if ($?) { B }` (CLAUDE.md) war auch für die übrigen Regeln der Aufgabe 6 eine Lücke (`if ($?) { git reset --hard }`, `ForEach-Object { Remove-Item … -Recurse -Force }`). Tests `scripts/commit-guard.test.mjs` (Rot je Variante, Grün `git stash list`/`show -p`, `git commit -m "stash erklärt"`, `grep stash datei`, Ende-zu-Ende Bash und PowerShell); Mutationsproben an einer Kopie (Regel aus ⇒ Stash-Tests rot; Blockklammer aus ⇒ Block-Tests rot). Korrekturrunde (code-reviewer V1, qa L2/L3): `tokenisiere` entfernt eine schließende `}` am Token-Ende (ohne eigenes `{`), damit greift die Blockklammer auch ohne Leerzeichen (`if ($?) {git reset --hard}`); PowerShell-Here-Strings (`git commit -m @'…'@`) sind Fließtext, außer sie gehen per Pipe in eine Shell oder bleiben offen. Grenzen (Kopf des Hooks): `git log --grep stash` wird mitgesperrt (`--grep=stash` nicht), `if (Test-Path .claude) { git checkout x }` als Schreiben auf `.claude` mitgesperrt; offen bleiben Aliase, ein git-Programmpfad mit Leerzeichen, PowerShell-Zuweisung (`$r = git stash`), `$(git stash)`, `Start-Process`/`Invoke-Expression`, `--autostash`. Die Hook-Änderung ändert den E-183-Hash der Workforce — Startfreigabe nach `docs/harness/startfreigabe-erneuern.md` erneuern (Stefan). **Skelett bewusst nicht geändert:** `vorlagen/projekt-skelett/.claude/hooks/commit-guard.js` hat keine stash-Regel; Nachrüsten würde jede Projekt-Startfreigabe brechen — eigener Folgepunkt F-1150. Neue Projekte bekommen über `kopiereBaseline` den Hook der Installation (mit Regel).
+Feature/Run: Entdeckt: F45 K (Challenger), 17.10.2026; eingetragen in F45 B2b-3b-2b-2b-2a, 18.10.2026.
+
+**F-1143** · `BUG` · P1 · erledigt durch F45 B2b-3b-2b-2b-2a
+Titel: Arbeitsordner bekommt unter Windows CRLF — E-183 lehnt jeden schreibenden Projektlauf ab.
+Beschreibung: Mit `core.autocrlf=true` (Windows-Standard) checkte `git worktree add` den Arbeitsordner mit CRLF aus. E-183 (`ermittleIstZustand`/`pruefeStartbedingung1`, `src/invocation-policy/index.ts`) hasht bewusst die Rohbytes der Werkzeugkonfiguration und der Hook-Skripte; der Hash wich deshalb von der Baseline ab, die Vorbereitung endete FEHLGESCHLAGEN. Beleg im Nachweislauf: Baseline `a35ee4…` = LF, Arbeitsordner roh `f23228…`, als LF wieder gleich der Baseline. Betroffen seit B1a-1; der Reallauf R wäre daran gescheitert.
+Fundstelle: `src/arbeitsordner/index.ts` (`bereiteArbeitsordnerVor`, beide `worktree add`); `src/invocation-policy/index.ts` (`ermittleIstZustand`, Rohbytes — unverändert, Invariante).
+Auswirkung: Hoch — kein schreibender Projektlauf im Arbeitsordner möglich, sobald das Projekt `core.autocrlf=true` hat.
+Maßnahme: Beide `worktree add` laufen mit `CHECKOUT_OHNE_UMWANDLUNG` = `-c core.autocrlf=false -c core.eol=lf` (`src/arbeitsordner/index.ts` Z. 63; Z. 434 Branch vorhanden, Z. 437 neuer Branch) — `core.eol=lf` nach code-reviewer/qa, weil Dateien mit `text`/`text=auto` ohne `eol` sonst `native` (Git für Windows: CRLF) bekämen. Zusätzlich trägt das Skelett `vorlagen/projekt-skelett/.gitattributes` (`* text=auto eol=lf`, byte-gleich aus dem Template; Nachrüsten legt sie nur an, wenn sie fehlt; wirkt erst nach dem Commit). Ein wiederaufgenommener Arbeitsordner mit CR in Werkzeugkonfiguration oder Hook (von vor dem Fix) bekommt im E-183-Grund den Rat „Arbeitsordner aufräumen“ und neu starten (`zeilenendenHinweis`, nur bei Wiederaufnahme — in einem frischen Ordner kommt CR nur noch aus dem Projekt, dort hülfe Aufräumen nicht). Tests in `src/arbeitsordner/arbeitsordner.test.ts` (echtes `pruefeStartbedingung1`, neuer und vorhandener Branch): „core.autocrlf=true im Projekt …“, „Projekt-.gitattributes `* text=auto` ohne eol und core.eol=crlf …“, „Wiederaufnahme eines CRLF-Arbeitsordners …“, „frisch angelegter Arbeitsordner mit CR aus dem Projekt (`eol=crlf`) …“ (kein Rat), „Wiederaufnahme eines LF-Arbeitsordners mit rotem E-183: kein Zeilenenden-Rat“, „Wiederaufnahme eines alten Arbeitsordners, nur der Hook mit CRLF: Rat erwartet …“. Mutationsproben: ohne beide Optionen beide Checkout-Tests rot („Hash der Werkzeugkonfiguration weicht von der Baseline ab (E-183)“, auch nur am Weg „Branch vorhanden“), ohne `core.eol=lf` der text=auto-Test rot, ohne Hinweis der Wiederaufnahme-Test rot, ohne Wiederaufnahme-Bedingung der `eol=crlf`-Test rot, Rat ohne CR-Prüfung der LF-Wiederaufnahme-Test rot, ohne Hooks der Hook-Test rot. Ein nachträglich von Hand auf CRLF umgeschriebener Hook in einem LF-Arbeitsordner hält schon an der Sauberkeitsprüfung (Größe ≠ Index; Rat dort ebenfalls „Arbeitsordner aufräumen“). Gate `scripts/check-f45-b2b3b2b2b2a-crlf.mjs`; Doku `docs/architektur/arbeitsordner.md`. Grenzen: ein `eol=crlf`-Attribut oder ein Filter des Projekts auf `.claude/**` wirkt weiter; spätere Checkouts im Arbeitsordner (checkout/restore/stash/reset) folgen der gemeinsamen Repo-Konfiguration (der Server macht keine); ein schon angelegter CRLF-Arbeitsordner bleibt rot, bis er aufgeräumt ist (F-1147). **Abwägung, Entscheidung Stefan offen:** die Startfreigabe hasht die Arbeitskopie des Projektordners, der Arbeitsordner trägt den Commit. Hat git die Werkzeugkonfiguration oder Hooks der Arbeitskopie unter `core.autocrlf=true` ohne `eol=lf` mit CRLF ausgecheckt (Klon, Pull, Checkout), war der Lauf vor dem Fix zufällig grün und scheitert jetzt an E-183, ohne eigenen Rat (ein Rat wurde im Review verworfen, weil er nicht verlässlich hilft). Abhilfe von Hand: `.gitattributes` mit `eol=lf` committen, `.claude/` neu auschecken (Dateien löschen, `git checkout -- .claude`), dann die Startfreigabe nach `docs/harness/startfreigabe-erneuern.md` erneuern. `haushaltsbuch2` ist nicht betroffen (Baseline `a35ee4…` = LF).
+Status: erledigt durch F45 B2b-3b-2b-2b-2a (18.10.2026).
+Feature/Run: Entdeckt: Nachweislauf Rückfrage-Kanal (Stefan, Projekt `haushaltsbuch2`), 17.10.2026.
+
+**F-1144** · `BUG` · P2 · erledigt durch F45 B2b-3b-2b-2b-2b-2
+Titel: Freigabeseite „Darf der Ablauf starten?“ zeigt den Auftragstext des Schritts nicht.
+Beschreibung: Im Nachweislauf sah Stefan auf der Freigabe vor dem Start nicht, welchen Auftrag der Schritt bekommt — weder in der Hauptansicht noch unter „Technischer Ablauf“. Er gibt damit einen Lauf frei, dessen Inhalt er nicht sieht.
+Fundstelle: `public/leitstand/views/workflow-entscheiden.js` (Freigabe, `entscheiden.freigabe.titel` in `public/leitstand/i18n/de.js` Z. 1869).
+Auswirkung: Mittel — Freigabe ohne Sicht auf den Inhalt.
+Maßnahme: Auftragstext des Schritts auf der Freigabeseite anzeigen (vollständig, wörtlich), mit Render-Nachweis.
+Status: erledigt durch F45 B2b-3b-2b-2b-2b-2 (18.10.2026). Karte „Auftrag für diesen Schritt“ vor „Was startet“ (nach den Plan-Karten) (`renderAuftragKarte`, `public/leitstand/views/workflow-entscheiden.js`): Auftragstext wörtlich als `<pre>` (escaped, Umbrüche erhalten); über 12 Zeilen oder 1200 Zeichen Vorschau plus `<details data-klappe="auftrag">` „Ganzer Auftrag (m Zeichen)“, bleibt über den Poll offen (`setzeHtml` in `views/workflows.js`); ohne Text amber Hinweis „nicht lesbar … sonst ablehnen“. Quelle: bestehende Projektion GET /api/workflows/<id>, Feld `auftragstext` (`leseAuftragProjektion` ersetzt `leseEinrichtungProjektion` zeilenneutral, keine neue Route; Gate f45-b2a2 (d)). Grenze, auf der Karte gesagt („So wurde der Auftrag angelegt. Beim Start ergänzt das System ihn je nach Rolle …“): angezeigt wird der Auftragstext des Auftrags; je nach Rolle ergänzt oder umrahmt ihn das System beim Start (Regeln, Arbeitspaket, Abnahmekriterien, in einer Korrekturrunde Stefans Anpassungswünsche; Architekt, Advisor, qa, scout mit eigenem Rahmen) — der zusammengesetzte Prompt entsteht erst beim Start (`starteWorkflowSchritt`) und wird nicht vorab gezeigt (code-reviewer V9, qa 4). Render-Nachweis `features/F45/nachweise/b2b3b2b2b2b2/render/freigabe-auftrag-*` (eingeklappt, aufgeklappt, nach einem echten Neuzeichnen — qa 1) und `…/render/freigabe-fehlt-*`.
+Feature/Run: Entdeckt: Nachweislauf Rückfrage-Kanal (Stefan), 17.10.2026.
+
+**F-1145** · `BUG` · P2 · erledigt durch F45 B2b-3b-2b-2b-2b-2
+Titel: „Was tun“ bei `nicht_von_stefan` nennt immer Frist und Sichtbarkeit, auch bei Ablehnung durch Regel oder Pfadgrenze.
+Beschreibung: Der Abgleich-Grund `nicht_von_stefan` fällt immer in die Klasse `automatisch`; deren „Was tun“ rät, die Sichtbarkeit zu prüfen und innerhalb der Frist zu antworten. In Lauf B lehnte aber die Pfadgrenze ab (auto_deny „Pfad außerhalb des Arbeitsordners“, `features/F45/nachweise/b2b3b2b2b/auswertung-haushaltsbuch2-b-577ea346-ed76-4fad-a58a-26c0cdbe0c59.md` Z. 60 und Z. 96) — der Rat führt in die Irre.
+Fundstelle: `public/leitstand/rueckfrage-abnahme.js` Z. 30 (`ABGLEICH_KLASSE`), `public/leitstand/i18n/de.js` Z. 3135–3137 (`abnahme.kanal.klasse.automatisch.*`, ebenso en/tr/ru).
+Auswirkung: Mittel — Stefan bekommt einen falschen Handlungsrat.
+Maßnahme: Je Ursache unterscheiden (Regel/Pfadgrenze, Frist abgelaufen, Lauf-Ende, Protokollgrenze), z. B. aus `rueckfrage_zaehlung` (`automatisch` vs. `abgelaufen`/`lauf_ende`); Texte in de/en/tr/ru.
+Status: erledigt durch F45 B2b-3b-2b-2b-2b-2 (18.10.2026). `automatischUrsache` (`public/leitstand/rueckfrage-abnahme.js`) aus der Zählung: genau ein Feld > 0 unter `automatisch` (ohne den Überlauf)/`abgelaufen` ⇒ Regel/Frist; der Überlauf (`protokollUeberlauf`: Summe der sechs Felder über `PROTOKOLL_GRENZE` = `MAX_PROTOKOLL_JE_LAUF`, im Test verankert — Einträge + offene bleiben ≤ Grenze) wird herausgerechnet, denn eine Ablehnung über der Grenze hat keinen Eintrag, ergibt im Abgleich `kein_eintrag` (Klasse `echt`) und ist nie die Ursache von `nicht_von_stefan` (code-reviewer 1); „Protokollgrenze“ erscheint deshalb als Zusatz bei `automatisch` und `echt`; ebenso „Lauf-Ende“: Zählung und Protokoll werden vor `beendeLauf` gelesen, `lauf_ende` sind beim Lesen offene Rückfragen ohne Eintrag (code-reviewer Nachpass 1); keins, mehrere oder unlesbar ⇒ neutraler Text, der Regel und Frist bzw. Lauf-Ende nennt (`abnahme.kanal.klasse.automatisch.*` umgeschrieben). Je Ursache Text und „Was tun“ (`URSACHE_SCHLUESSEL`, `abnahme.kanal.ursache.*`, de/en/tr/ru). Gilt in Lauf-Notiz, Sichtungs-Notiz und Abnahmeseite (eine Quelle `grundHtml`). Lauf B (automatisch 1) ⇒ Regel-Text, Testfall mit den Daten der Auswertung B (`rueckfrage-abnahme.test.mjs`). Render-Nachweis `…/render/wastun-lauf-b-*` und `…/render/abnahme-lauf-b-*`. Grenze: „Regel“ fasst alle Ablehnungen mit Eintrag ohne Rückfrage zusammen (Pfadgrenze, Werkzeug, Steuerzeichen, doppelte ID, zu viele offene) — die Zählung trennt sie nicht.
+Feature/Run: Entdeckt: Nachweislauf Rückfrage-Kanal, Lauf B (Stefan), 17.10.2026.
+
+**F-1146** · `PROCESS_IMPROVEMENT` · P2 · erledigt durch F45 B2b-3b-2b-2b-2b-2
+Titel: Abnahmeseite zeigt den Block „Rückfrage-Kanal im Lauf“ nicht selbst.
+Beschreibung: Der Block (Zählung, bestätigte Ablehnungen, Ursache, R3) steht im Lauf-Detail (F-1128 (3), Nachtrag 2a-3), nicht auf der Abnahmeseite. Stefan fand ihn im Nachweislauf nicht; für einen Nicht-Entwickler ist der Weg über das Lauf-Detail nicht erkennbar.
+Fundstelle: `public/leitstand/rueckfrage-abnahme.js` (Block `abnahme.kanal.titel`, Z. 125 ff.), Abnahmeansicht in `public/leitstand/views/`.
+Auswirkung: Mittel — die Kanal-Auskunft wird bei der Abnahme übersehen.
+Maßnahme: Block auf der Abnahmeseite selbst zeigen (oder deutlicher Verweis), mit Render-Nachweis.
+Status: erledigt durch F45 B2b-3b-2b-2b-2b-2 (18.10.2026). Die Seite „entscheidbar“ zeigt den Block des Ausführungslaufs (mit Grund oder R3 unter den Kacheln, sonst nach „Selbst ausprobieren“ — design-guardian 2) (`renderKanalImLauf` in `public/leitstand/views/workflow-abnahme.js` ruft `renderRueckfrageAbnahme(kanal, { mitUrsache: true })` — dieselbe Funktion wie im Lauf-Detail, hier mit dem Grund jeder Klasse, weil keine Fehler-Notiz darüber steht); geladen in `views/workflows.js` (`kanalDerAbnahme`) aus GET /api/laeufe/<laufId> über `kanalDerSichtung` (ein Abruf je Lauf, Rückzug nach Fehler), Lauf aus `aenderungsuebersicht.laufId`; lädt ⇒ Zeile „wird geladen“; nicht ladbar ⇒ Hinweis mit Link „Lauf ansehen“ ins Lauf-Detail (qa 2), beim Neuversuch nach dem Rückzug ohne Flackern (code-reviewer V2). Im Lauf-Detail unverändert. Im Block „vorab“ (Sichtungs-Halt) nicht — dort trägt die Sichtungs-Notiz die Ursache. Render-Nachweis `…/render/abnahme-kanal-a-*` (Zählung von Lauf A), `…/render/abnahme-lauf-b-*`, `…/render/abnahme-fehler-*`.
+Feature/Run: Entdeckt: Nachweislauf Rückfrage-Kanal (Stefan), 17.10.2026.
+
+**F-1157** · `TECH_DEBT` · P2 · erledigt
+Titel: Auflagen aus dem Prüfpass von B2b-4a-1 an B2b-4a-2 (Anzeige „Bereit zum Sichern“).
+Beschreibung: Die Ableitung (`scripts/leitstand/ablauf-sichern.mjs`) liefert bewusst nur die Lage; der Befehlsblock und die Anzeige in 4a-2 müssen: (1) node_modules ohne `.gitignore` berücksichtigen — nach `npm ci` im Arbeitsordner eines Fremdprojekts zählt `git status --untracked-files=all` node_modules/ als neu (Tausende Einträge, `gekappt`, „bereit (commit)“ ohne Änderung des Ablaufs; bei sehr großer Ausgabe `nichtBestimmbar`); Anzahl und Kappung zeigen, kein pauschales Stagen (qa 6, code-reviewer 1); (2) vor einem Push-Block `branch.losgeloest`, `branch.name` gegen `ablauf.arbeitsordner.branch` und `remoteWebUrl.origin` prüfen — die Ableitung meldet auch bei losgelöstem HEAD oder fremdem Branch „bereit (push)“ (qa 5, Advisor-Delta 4a-1 15); (3) Befehle nur aus `ablauf.arbeitsordner.pfad/branch` bauen, nie aus der zurückgegebenen `workflowId` (code-reviewer 5); (4) GET …/code?workflow= nur für die geöffnete Karte bzw. Abnahme abrufen, nie im Poll für alle Karten — je Abruf ≈ 10 Git-Prozesse und synchrones Lesen der Checkpoint-Ketten (qa 7); (5) 409 mit `grund_schluessel` ist eine Lage (z. B. `aufgeraeumt` als normaler Endzustand), kein Fehler; bei 400/404 ist der Schlüssel `null` (qa 8); (6) GESTOPPT mit offenen Änderungen auf Aufräumen/Verwerfen verweisen (`offeneAenderungen` wird geliefert; qa 2); (7) Text je Grund übersetzen und `keinArbeitsordner` für `kein_bedarf` (nichts zu sichern) und `bestand` (Projektordner) trennen (code-reviewer 9); (8) Advisor-Delta 4a 8–20, soweit sie C betreffen, und Befund 6 (jeder Ablauf mit Arbeitsordner über `?workflow=`).
+Fundstelle: `scripts/leitstand/ablauf-sichern.mjs`, `public/leitstand/code-daten.js` (`sicherBefehle`), `public/leitstand/views/workboard.js`, `public/leitstand/views/workflows.js`, `public/leitstand/views/arbeitsordner-anzeige.js`.
+Auswirkung: Mittel — ohne die Auflagen zeigte 4a-2 irreführende oder zu breite Befehle.
+Maßnahme: in den Plan von B2b-4a-2 übernehmen.
+Status: teilweise — (1), (2), (3), (7) erledigt auf Regelebene (F45 B2b-4a-2b-1, 20.10.2026, `features/F45/plan-b2b4a2b.md`):
+(1) `scripts/leitstand/routen-code.mjs` `leseDateien` nimmt neue, ungetrackte Dateien unter node_modules (Regel `istNodeModulesPfad` in
+`public/leitstand/code-daten.js`) vor der Kappung heraus und meldet ihre Anzahl (`dateien.nodeModules`); getrackte/gestagte bleiben; kein
+Block stagt sie; #/code zeigt „node_modules ausgelassen – fehlt in .gitignore“ nur bei ausgelassenen Dateien; `ablauf.sichern` zählt sie
+nicht mehr ⇒ ein Arbeitsordner nur mit node_modules ist nicht „bereit (commit)“. (2)/(3) `ablaufSicherBefehle`: Ort und Branch nur aus
+`ablauf.arbeitsordner`, Branch-Prüfung (losgelöst, main, fremder Branch) vor jedem Block, push nur bei origin und Commits noch nicht auf
+main bzw. commit-Block davor, unabhängig von der Kappung; origin nicht lesbar ⇒ sichtbarer Hinweis. (7) `sichernQuelle` trennt
+`kein_bedarf` (nichts zu sichern) und `bestand` (Projektordner); Gründe/Hinweise in de/en/tr/ru. Gate `scripts/check-f45-b2b4a2b1-regeln.mjs`.
+Rest: (4), (5), (6), (8) und die Anzeige der Regeln in Karte/Abnahme/Workboard folgen in B2b-4a-2b-2; Grenze von (1): übersteigt die
+Ausgabe von `git status` den Puffer, bleibt `nichtBestimmbar`.
+Erledigt (F45 B2b-4a-2b-2, 20.10.2026, `features/F45/plan-b2b4a2b2.md`, Advisor `advisor-b2b4a2b2.md`): (4) Stand je Ablauf
+`public/leitstand/ablauf-code-stand.js` — Abruf nur beim Zeichnen der geöffneten Karte/Abnahme bzw. des Workboard-Details „abgeschlossen“,
+je Neuladen-Schlüssel (V1) einmal, Fehlschlag zählt, Ablaufseite nur auf der Detailroute, Projektwechsel verwirft alles; neu nur über
+„Aktualisieren“. (5) 409 mit `grund_schluessel` ist eine Lage ohne Fehlerfarbe (`aufgeraeumt` = Endzustand), 409 ohne Schlüssel, 400/404,
+200 ohne Feld `ablauf` (älterer Server, „Leitstand neu starten“) sind Fehler. (6) GESTOPPT mit offenen Änderungen ⇒ „Weg: Aufräumen — mit
+„Änderungen verwerfen““, nur Commits ⇒ eigener Text, 0/0 ⇒ „Nichts offen“, unlesbar ⇒ eigener Text. (8) Aufräumen-Art aus
+`aufraeumenMoeglich` (Delta 8, Bauauflage 3), V1, Branch/origin (13), Kartensignatur `sichernHtml`/`ohneKnopf` (14), Workboard-Delegation
+(15), Köpfe (16), Befund 6 über `sichernQuelle`. Gate `scripts/check-f45-b2b4a2b2-anzeige.mjs` (a)–(h). Rest (Grenzen, im Plan): kein
+automatisches Neuladen bei Rückkehr auf dieselbe Karte („Aktualisieren“); das Workboard frischt nach „abgeschlossen“ nicht auf
+(Bauauflage 6); der Verweis „Knopf unter den Aktionen“ hat kein Sprungziel; bei GESTOPPT mit unlesbarem git fehlt der node_modules-Satz
+(Server liefert dort `nichtAbgeschlossen`).
+Feature/Run: Entdeckt: F45 B2b-4a-1 (code-reviewer, qa), 19.10.2026.
+
+**F-1160** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: Challenger-Commit-Block prüfte „NICHT GESTAGT“ mit `git status --short` und brach fälschlich ab.
+Beschreibung: Der Commit-Block des Challengers prüfte nach dem gezielten Stagen, ob noch etwas „NICHT GESTAGT“ ist, mit `git status --short` — das listet auch Gestagtes; der Block brach deshalb ab, obwohl alles richtig gestagt war.
+Fundstelle: Commit-Block des Challengers (Freigabe/Commit nach einer Iteration).
+Auswirkung: Gering — Fehlabbruch, kein falscher Commit.
+Maßnahme: Regel: Nicht Gestagtes über `git diff --name-only` (geänderte, nicht gestagte) plus `git ls-files --others --exclude-standard` (neue, unverfolgte) prüfen, nie über `git status --short`.
+Status: erledigt — Regel angewandt ab 19.10.2026.
+Feature/Run: Entdeckt: F45 B2b-4a-2a (Commit durch den Challenger), 19.10.2026; eingetragen F45 B2b-4a-2b-1, 20.10.2026.
+
+**F-1174** · `BUG` · P2 · erledigt
+Titel: Test „Zeitgrenze 0“ in `vorschlag.test.ts` wackelt unter paralleler Testausführung.
+Beschreibung: Der Fall „Abbruch durch die Zeitgrenze ⇒ null“ (`src/faehigkeiten/vorschlag.test.ts:299`) setzt die Zeitgrenze 0 und erwartet den Abbruch. Unter `--test-concurrency=4` endet `git` gelegentlich vor dem Timer; das Ergebnis ist dann `[true, true]` statt `null`.
+Fundstelle: `src/faehigkeiten/vorschlag.test.ts:299` (`pruefeZielIgnoriert` mit Zeitgrenze 0).
+Auswirkung: Mittel — ein roter Testlauf ohne Codeänderung (CLAUDE.md, Falle „einmalig ohne erkennbaren Grund“); untergräbt das Vertrauen in `npm run check`.
+Maßnahme: einen sicher langsamen Aufruf bzw. einen injizierbaren Starter verwenden oder den Fall streichen (src/git-starter testet den Abbruch selbst).
+Status: erledigt (27.10.2026, F45 W2b-1): Code-Fehler, kein Testfehler — `fuehreGitAsync` startete git auch bei Zeitgrenze 0 (Timer ≥ 1 ms verlor gegen ein schnelles git, PR-CI Linux `[true, true]`). Jetzt `!(zeitgrenzeMs > 0)` ⇒ sofort `{ code: null, abbruch: 'zeitgrenze' }` ohne Start; Test `git-starter.test.ts` (setImmediate-Race, auf dem alten Code rot). `vorschlag.test.ts` unverändert.
+Feature/Run: Entdeckt: Challenger, 23.10.2026 (FB-2-Prüfung).
+
+**F-1175** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: Text von F-1010 „Kein Gate prüft“ ist überholt.
+Beschreibung: F-1010 sagt „Kein Gate prüft diese Übereinstimmung“. `scripts/check-akte-meilenstein.mjs` prüft seit F46 D0 die IDs (Akte ↔ Meilenstein); offen ist nur die Status-Regel R1 (Meilensteinstatus gegen den Status der Akten).
+Fundstelle: `state/findings.md` (F-1010), `scripts/check-akte-meilenstein.mjs`.
+Auswirkung: Gering — der Befund beschreibt einen größeren Rest, als offen ist.
+Maßnahme: in B5b-1 F-1010 berichtigen (offen nur R1).
+Status: erledigt (24.10.2026, F45 B5b-1a): F-1010 berichtigt — „Kein Gate prüft …“ ersetzt durch den Stand (IDs seit F46 D0, R1 seit B5b-1a).
+Feature/Run: Entdeckt: Challenger, 23.10.2026 (Bauauftrag F45 B5a-1).
+
+**F-1176** · `BUG` · P3 · erledigt
+Titel: Gate verbietet Akten ohne Meilenstein, die Roadmap zeigt sie als „Noch nicht eingeplant“.
+Beschreibung: Die Roadmap-Ansicht kennt Akten ohne Meilenstein („Noch nicht eingeplant“), `scripts/check-akte-meilenstein.mjs` lehnte jede solche Akte ab — eine frisch angelegte Akte (Coach-Scope, F-912) hätte das Gate sofort rot gemacht.
+Fundstelle: `scripts/check-akte-meilenstein.mjs` (`pruefeAkteMeilenstein`), `scripts/leitstand/routen-roadmap.mjs`.
+Auswirkung: Gering — ein Widerspruch zwischen Anzeige und Gate.
+Maßnahme: E-B5-2 (F45 B5a-1): Akte mit Status ENTWURF darf ohne Meilenstein sein; ab jedem anderen Status bleibt der Meilenstein Pflicht.
+Status: erledigt durch F45 B5a-1 (23.10.2026) — `pruefeAkteMeilenstein` nimmt den Status je Akte (`leseAktenStatus`); ENTWURF ohne Meilenstein ist zulässig, Tests für ENTWURF und READY_FOR_TECH in `scripts/check-akte-meilenstein.test.mjs`.
+Feature/Run: Entdeckt: Challenger, 23.10.2026 (Bauauftrag F45 B5a-1).
+
+**F-1194** · `PROCESS_IMPROVEMENT` · P2 · erledigt (Prozess festgelegt, E-PRUEF-1 = A)
+Titel: Challenger-Prüfung vor dem Merge war ausgedünnt.
+Beschreibung: Bei B5b-1a bis B5b-1b-2 wurde ohne Hinweis an Stefan auf die volle Cloud-Prüfung des Challengers verzichtet. Die PR-CI kann der Challenger mangels API-Zugriff nicht sehen. Aufgefallen durch Nachfrage Stefans, 24.10.2026. Bezug F-956 (Merge vor der Challenger-Prüfung, F44).
+Fundstelle: Merge-Ablauf B5b-1a (#376), B5b-1b-1 (#377), B5b-1b-2 (#378); `docs/projekt/fixpaket-f45.md` §3 (Prüfmodus).
+Auswirkung: Mittel — die vereinbarte Prüftiefe vor dem Merge war nicht mehr gegeben, ohne dass Stefan es wusste.
+Maßnahme: E-PRUEF-1 = A (Stefan, 24.10.2026) — vor jedem Merge gelten genau: (1) Stefans lokaler voller Lauf im Commit-Block, (2) inhaltliche Prüfung des gepushten Diffs durch den Challenger (Dateiliste, Kernstellen gegen Auftrag, Invarianten), (3) grüne PR-CI (`.github/workflows/ci.yml`: `npm run check` auf ubuntu-latest mit Node 24 + gitleaks). Der Cloud-Testlauf des Challengers entfällt. Festgehalten in `features/F45/feature.md` (Entscheidungen) und `docs/projekt/fixpaket-f45.md` §3.
+Status: erledigt (Prozess festgelegt).
+Feature/Run: Entdeckt: Nachfrage Stefan, 24.10.2026; festgelegt F45 T.
+
+**F-1197** · `TECH_DEBT` · P3 · erledigt (F45 B5b-2b-1)
+Titel: Roadmap-Gantt: Auswahl in Gold, Status ohne Chip-Form.
+Beschreibung: Die gewählte Gantt-Zeile trägt Streifen und Fläche in `--amber` (Bestand seit F46 D1), das Detailpanel einen Amber-Rahmen; Gold ist laut Sollvorgabe die Ebenenfarbe „Meilenstein“, die Auswahl liest sich so wie eine Ebene. Der Status in den Zeilen ist Symbol + Text ohne Pillenform, die Sollvorgabe nennt „Status-Chip“ (design-guardian B5b-2a, Nr. 3 und 4).
+Fundstelle: `public/leitstand/style.css` (`#view-roadmap .rm-zeile.gewaehlt`, `.rm-detail`, `.rm-status`).
+Auswirkung: Gering — lesbar, aber nicht ganz designtreu.
+Maßnahme: Stefan entscheidet: Auswahl neutral (`--note-bg`/`--line`) und Status als Pille, oder Bestand bestätigen. Kandidat für B5b-2b.
+Status: erledigt 25.10.2026 (F45 B5b-2b-1, Entscheidung Challenger: Status als Pille wie im Canvas, Auswahl als neutraler Streifen, kein Gold, kein Mint, keine neue Farbe): Pille `.rm-status .roadmap-status` und `.rm-detail-kopf .roadmap-status` (Rahmen aus der Kategoriefarbe über `color-mix`), Auswahl Fläche `--button-hover-bg` und Streifen `--ink`, Detailpanel-Rahmen `--line`; Nachweis `features/F45/nachweise/b5b2b/` (dunkel/hell, 1440/390).
+Feature/Run: Entdeckt: F45 B5b-2a (design-guardian), 25.10.2026.
+
+**F-1201** · `TECH_DEBT` · P3 · erledigt (F45 B5b-2b-1)
+Titel: Nachweis B5b-2a nimmt auf, bevor Entwicklungsstand/Noch nicht eingeplant geladen sind.
+Beschreibung: `features/F45/nachweise/b5b2a/erzeuge-nachweis.mjs` wartete nach dem Gantt fest 600 ms; Entwicklungsstand und „Noch nicht eingeplant“ standen in den Bildern teils noch auf „Lädt…“.
+Fundstelle: `features/F45/nachweise/b5b2a/erzeuge-nachweis.mjs`.
+Auswirkung: Gering — Bilder zeigten einen Zwischenstand.
+Maßnahme: Warten, bis beide Abschnitte da sind und kein „Lädt…“ der Lagensprache mehr auf der Seite steht.
+Status: erledigt 25.10.2026 (F45 B5b-2b-1): beide Nachweisskripte (`b5b2a`, `b5b2b`) warten mit `waitForFunction` auf das Ladeende.
+Feature/Run: Entdeckt: F45 B5b-2a (Challenger), 25.10.2026.

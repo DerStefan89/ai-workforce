@@ -56,3 +56,23 @@ Thema berührt.
   laut Spike `features/F45/nachweise/f3b2/spike.md` S6: Hooks, MCP, `CLAUDE_PLUGIN_DATA` im Text — die Kopie übernimmt keinen davon).
   Der Controller erfasst `plugins/data` vor und nach dem Lauf nur lesend (Liste, mtime, Größe); eine Abweichung ist ein Befund in
   der Laufakte, kein Abbruch (Variante A, Challenger 14.10.2026). Unser Code schreibt dort weiterhin nie.
+
+## Kurzfassung aus dem Kern §2 (F45 W2d, wörtlich verschoben)
+
+Bis F45 W2d standen diese Unterpunkte von „Weitere Ausnahmen“ in `ARCHITECTURE.md` §2 (Abweichung von der Aufteilungsregel —
+Regeltext statt Herleitung — bestätigt vom Challenger, 28.10.2026); der Kern nennt seitdem nur die vier Namen. Gleich
+verbindlich wie die Langfassung oben; bei Widerspruch zwischen beiden gilt diese Kurzfassung (bis W2d Wortlaut des Kerns),
+und jeder Widerspruch ist ein Befund; eine Regeländerung ändert Kurz- und Langfassung gemeinsam.
+
+  - `~/.ai-workforce/faehigkeiten.lokal.json` — geschrieben nur von den Fähigkeiten-/Plugin-Routen auf direkte Eingabe,
+    gesperrt während eines Laufs, je Lauf vorher/nachher gehasht (Abweichung = Lauf rot); ungültig (E-F45-7) oder außerhalb
+    geändert (F-1061, erst nach Bestätigung im Leitstand) ⇒ jeder Start mit Katalog-Fähigkeiten und die Schreib-Routen gesperrt.
+    Plugins sind nur der Rolle `ausfuehrung` zuordenbar (E-F3b-3); eine Plugin-Freigabe gilt nur im Checkout, dessen
+    Kontrollzustand den Prüfbericht trägt.
+  - `…/plugin-kopien/<plugin-id>/<kopie_hash>/` — geschrieben nur von POST `…/plugins/freigabe` nach geltendem Prüfbericht,
+    inhaltsadressiert, nie überschrieben (409), nur `skills/`, `agents/`, `commands/` nach Positivliste, nie Hooks/MCP/LSP,
+    gelöscht nur durch Stefan; Prüfläufe startet nur die Workforce-Instanz. `…/plugin-kopien/_lauf/<lauf_kopie_hash>/` — nur vom
+    Startweg eines Ausführungsschritts, nie gelöscht; vorhanden mit anderem Inhalt ⇒ der Lauf startet nicht; `_` beginnt nie
+    eine Plugin-id.
+  - `~/.ai-workforce/faehigkeiten.stand.json` — geschrieben nur vom Wächter, atomar, gelesen nur beim Serverstart; Startregel
+    fail-closed; kein Schutz gegen einen Prozess mit Nutzerrechten.

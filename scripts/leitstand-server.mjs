@@ -1719,7 +1719,7 @@ function findeLetzteRealeBesetzung(rolle, basisVerzeichnis) {
 
 /**
  * Parse-Cache für sammleWorkitems je repoWurzel (F45 P, Event-Loop): GET /api/workitems parste bei jedem
- * Aufruf state/findings.md (≈ 13 000 Zeilen) und alle Akten neu — gedrosselt ≈ 130–390 ms synchron je
+ * Aufruf state/findings.md (≈ 9 050 Zeilen) und alle Akten neu — gedrosselt ≈ 130–390 ms synchron je
  * Seitenbetreten. Stempel ist der INHALT der gelesenen Dateien (asynchron gelesen, Vergleich statt Parsen):
  * Datei-mtime und -größe taugen unter Windows nicht, beim schnellen Neuschreiben blieb die mtime in ≈ 80 %
  * der Fälle gleich (gemessen 10.10.2026).
