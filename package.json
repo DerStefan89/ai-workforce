@@ -10,7 +10,7 @@
     "prepare": "git config core.hooksPath .githooks",
     "dev": "echo '[FÜLLUNG] Dev-Server-Befehl'",
     "build": "echo '[FÜLLUNG] Build-Befehl'",
-    "lint": "biome lint .",
+    "lint": "biome lint --error-on-warnings --diagnostic-level=warn .",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/teste.mjs",
     "leitstand": "node scripts/leitstand-server.mjs",

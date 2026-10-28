@@ -64,6 +64,8 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **A2 B5b-1b-2 = dynamisch** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — „Meilenstein → LAEUFT“ wird angeboten, sobald der Meilenstein im aktuellen Stand genau eine R1-Abweichung hat (auch M4 nach drei Einzelbestätigungen); kein Sonderverbot.
 - **E-PRUEF-1 = A** (Stefan, 24.10.2026) — Vor jedem Merge gelten genau drei Prüfungen: (1) Stefans lokaler voller Lauf im Commit-Block, (2) inhaltliche Prüfung des gepushten Diffs durch den Challenger (Dateiliste, Kernstellen gegen Auftrag, Invarianten), (3) grüne PR-CI (`.github/workflows/ci.yml`: `npm run check` auf ubuntu-latest mit Node 24 + gitleaks). Der Cloud-Testlauf des Challengers entfällt. Anlass: bei B5b-1a bis B5b-1b-2 war die Prüfung ohne Hinweis an Stefan ausgedünnt; Finding F-1194.
 - **E-PRUEF-2 = B** (Stefan, 27.10.2026) — löst E-PRUEF-1 ab. Lokal im Commit-Block: lint, typecheck, `npm run test`, Lagebild und die im Bauauftrag genannten Gates; der volle Gate-Lauf nur in der CI. Ausnahme „voller lokaler Lauf“, wenn der Challenger sie im Bauauftrag setzt (z. B. W2b-2, plattformsensibel). Rückfall auf A, sobald ein Windows-Fehler erst nach dem Merge auffällt. Prüfung des gepushten Diffs durch den Challenger und grüne PR-CI bleiben.
+- **E-FMT-1 = B** (Stefan, 28.10.2026) — kein Formatierer-Massen-Commit, kein `.git-blame-ignore-revs`: der Biome-Formatierer gilt nur für eine wachsende Liste formatierter Dateien (`scripts/ratsche.json` `formatiert`; Start: schon formatierte Bestandsdateien und alle neuen). Grund: eine Probe-Formatierung des Challengers änderte 495 Dateien (+71 k/−22 k Zeilen), machte 15 Gates rot (14 Codeform-Prüfungen + Wachstumsbremse) und hätte die Server-Grenze gegen E-WART-1 von 13 198 auf 16 182 erhöht. Umsetzung W2c-1.
+- **E-RATSCHE-1 = A** (Stefan, 28.10.2026) — die i18n-Wörterbücher `public/leitstand/i18n/*.js` (je ≈ 3 500 Zeilen, Daten) sind von der Dateigrenze 800 ausgenommen wie der Server; Lint und Formatierer gelten für sie weiter. Anlass: Advisor `features/F45/advisor-w2c1.md` Befund 1 (sonst wäre jedes UI-Paket rot).
 - **E-BRAIN-1 = B** (Stefan, 25.10.2026) — R2 wird „Brain Stufe 1: Produktzyklus lesend, mit Motion“ (≈ 1,5–2 AT). Beleg 15 (Motion mit Zweck, Bewegungs-Tokens, `prefers-reduced-motion`, Render-Nachweis mit Bewegung, design-guardian, eigener Worktree) wird an der Zyklus-Seite erbracht; ersetzt den Inhalt von E-F45-11. Stufen 2/3 nach F30 (F-1202).
 - **Bug-Felder nach 2c** ([EMPFEHLUNG] Challenger 25.10.2026) — gleiche Datenquelle (Workitems) wie Pflege & Fixes; 2b nur Schreibwege.
 - **B5b-2b geteilt** (Challenger, 25.10.2026, Advisor `features/F45/advisor-b5b2b.md` O4) — B5b-2b-1 „Anpassen“ (ohne Serveränderung, mit F-1197, eigener Nachweis) → B5b-2b-2 „Bereinigungsliste“ (Vorprüfung `moeglich`/`grund` mit Tests, Gate (a), F-1189-Reste, eigener Nachweis). Körperform maßgeblich `pruefePlanungAenderung` (`workstreams: [{ id, schaetzung_min, schaetzung_max }]`). F-1197: Status als Pille, Auswahl als neutraler Streifen (`--ink`/`--line`), kein Gold, kein Mint. qa8 = Variante (a): „Dauerhaft begründete Ausnahmen sind heute nicht vorgesehen“, qa8 → W2, Gate b5b1a (i) unverändert.
@@ -167,7 +169,7 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | T | fixpaket | Tests stabil | erledigt | 0,2–0,3 | – | 2026-10-24 | 2026-10-25 | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154); gemergt #379 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |
 | B5b-2 | fixpaket | Roadmap-Anzeige | erledigt | 1–1,4 | – | 2026-10-25 | 2026-10-25 | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“; gemergt #380 (2a), #381 (2b-1), #382 (2b-2), #384 (2c-1), #385 (2c-2-C); 2c-2-AB gebaut — `erledigt` nach Auftrag Challenger 25.10.2026 („Workstream-Zeile B5b-2 auf erledigt, sofern die Ist-Zelle es zulässt“), abweichend von Advisor `advisor-b5b2c2.md` A1 und Plan v2 A1; Abgenommen = erwartetes Merge-Datum von 2c-2-AB, bei späterem Merge nachziehen; Ist pflegt der Challenger (Zelle erlaubt nur „–“ oder eine Zahl) |
 | B5b-3 | fixpaket | R7: Ist nach Abnahme | erledigt | 0,4–0,6 | – | 2026-10-27 | 2026-10-27 | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6); gemergt #387 (Bereinigung W2a: Ist – nach A3, Begonnen = Abgenommen ⇒ 0 AT) |
-| W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen; W2b = W2b-1 umbaufest + W2b-2 Wegwerf-Ordner/Fristen; 60 Gates→Tests gestrichen (Pfadfinder) |
+| W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen; W2b = W2b-1 umbaufest (#389) + W2b-2 Wegwerf-Ordner/Fristen (#390), beide erledigt; W2c-1 Ratschen + Formatierer; 60 Gates→Tests gestrichen (Pfadfinder) |
 | V1 | workstream | Live-Vorschau des Projekts im Leitstand | geplant | 0,3–0,5 | – | – | – | E-VORSCHAU-1 = A |
 | B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | verworfen | 1–2 | – | – | – | entfällt — E-R-1 = A (Stefan, 25.10.2026): Referenzauftrag = F30-M1 |
@@ -1929,6 +1931,8 @@ Voller Gate-Lauf im Commit-Block (2026-10-27): gruen, Wanduhr 719.2 s (Paralleli
 
 ## Stand W2b-2
 
+**Status:** erledigt — gemergt #390 (28.10.2026 nachgetragen in W2c-1).
+
 **Auftrag:** W2b-2 „Wegwerf-Ordner und Fristen“ (Challenger, 27.10.2026; `w2-gate-inventur.md` Befunde 3/4, F-590, F-1215,
 F-1230). Plan `plan-w2b2.md` → Advisor `advisor-w2b2.md` „Freigegeben mit Hinweisen“ (A1–A5, kein Schnitt) →
 `plan-w2b2-v2.md`. A2: die ungetrackten `kontrollzustand/jarvis-jarvis-chat-*` stammen aus echter Leitstand-Nutzung, kein Gate.
@@ -1967,3 +1971,48 @@ der zwei Unit-Tests umgelenkt (cr 3/qa 3), SERIELL-Kommentar präzisiert (11 von
 Laufwerksfall im Helfer-Test (cr 6/qa 7), F-1230-Abgrenzung Produkt-Repos (qa 6), Inventur zum f25-Dispatch-Eintrag (cr 2).
 
 Voller Gate-Lauf im Commit-Block (2026-10-27, E-PRUEF-2 Ausnahme): ── check-kette: 120 grün, 0 rot · Wanduhr 533.5 s · Σ Einzelzeiten 1351.8 s · parallel 4, seriell 16; Repo-Baum vor/nach unveraendert; npm run test zweimal gruen.
+
+## Stand W2c-1
+
+**Auftrag:** W2c-1 „Ratschen + Formatierer für neue Dateien“ (Challenger, 28.10.2026, ein Block mit eingearbeitetem Zusatz
+E-FMT-1 = B; der erste Auftragsteil kam nicht an, F-1240). Plan `plan-w2c1.md` → Advisor `advisor-w2c1.md` „Nicht
+freigegeben“ (kein Schnitt; Befund 1 ⇒ E-RATSCHE-1 = A) → `plan-w2c1-v2.md` → Delta `advisor-w2c1-delta.md` „Freigegeben mit
+Hinweisen“ (N1: kein `vcs` in biome.json).
+
+**Gebaut:**
+- `biome.json`: `preset: recommended`, `noExcessiveCognitiveComplexity` max 15; die 20 Regeln mit Bestand auf `info`;
+  `files.includes` um `public/**/*.mjs` erweitert; Formatierer 2 Leerzeichen, einfache Anführungszeichen, Semikolon nur bei
+  Bedarf, Breite 120, `trailingCommas: es5`, `arrowParentheses: always`. `npm run lint` = `biome lint --error-on-warnings --diagnostic-level=warn .` (Info-Befunde des Bestands bleiben stumm, qa 7).
+- Wahl der zwei offenen Formatierer-Optionen (Probe über alle 632 Code-Dateien, sechs Kombinationen): es5/always ändert am
+  wenigsten (558 Dateien, +78 694/−22 349 Zeilen; all/always 561, none/always 575, asNeeded je 578–588).
+- `tsconfig.checkjs.json` (strict, `allowJs`/`checkJs`, `scripts/leitstand/*.mjs` ohne Tests).
+- Gate `scripts/check-ratsche.mjs` + `scripts/check-ratsche.test.mjs` (Rot je Regel, Kalibrierung mit echtem Biome,
+  Kopplung an `files.includes`), Bestand `scripts/ratsche.json`, Eintrag in `GATES` (`scripts/check-kette.mjs`).
+- ARCHITECTURE.md §1 (`scripts/`) Satz zur Ratsche (nicht §6: der Projektkarten-Auszug ist auf 9 000 Zeichen begrenzt, §6 hätte §7 „Verbotene Patterns“ aus der Karte des Code-Reviewers geschoben), Detail `docs/architektur/ratsche.md`; Kopfkommentar um Marker und erledigte
+  Vorlagenanweisung gekürzt (F-015 erledigt) — Kern 17 793 von 17 800 Bytes.
+- Findings F-1235–F-1241; E-FMT-1 = B und E-RATSCHE-1 = A unter Entscheidungen; W2b-2 erledigt; Inventur „Stand W2c-1“.
+
+**Bestand (Ersterhebung 28.10.2026):** 255 Dateien in `scripts/ratsche.json`; Lint 562 Befunde in 20 Regeln (Komplexität
+381); 38 Dateien über 800 Zeilen (ohne Server und i18n); checkJs 1 174 Fehler in 41 Dateien (die übrigen 267 der 1 441 liegen in
+importierten `public/leitstand/*.js` und zählen nicht); Formatierer-Liste 76 Dateien (74 Bestand + 2 neue).
+
+**DEKLARIERT:** Bearbeiten von Gate, JSON, `biome.json`, `tsconfig.checkjs.json`, Unterdrückungen im Code; Editor-Formatierung
+außerhalb der Liste; Änderungen an importierten `public/leitstand/*.js` verschieben die checkJs-Zählung gelisteter Dateien;
+checkJs nur `scripts/leitstand/*.mjs`. Werkzeug-Update mit neuen Befunden: beheben oder Bestand nur mit Entscheidung Stefans
+anheben. **Folgen:** große Views (`workboard.js` 2 375, `chat.js` 2 076 …) nur
+zeilenneutral änderbar; neue Module unter `scripts/leitstand/` (auch ausgelagerte Server-Helfer) brauchen 0 checkJs-Fehler,
+Komplexität ≤ 15 und Formatierung; Umbenennen einer Bestandsdatei nur mit Entscheidung Stefans ((c) einmal rot).
+Nicht gemacht: Autofix (Advisor 7 gestrichen), Formatierung des Bestands.
+
+**Prüfpass:** code-reviewer und qa je „Freigegeben mit Hinweisen“, gemeinsamer Kernbefund: `leseReferenz` und der Startpfad
+von `--aktualisiere` ohne Test (cr 1/qa 1/qa 3). Dazu im lokalen Lauf rot: `src/projektkarte/projektkarte.test.ts` — der Satz in
+§6 schob §7 „Verbotene Patterns“ über die Auszugsgrenze von 9 000 Zeichen aus der Karte des Code-Reviewers; der Satz steht
+deshalb in §1 (`scripts/`), dessen Auszug ohnehin bei 2 000 Zeichen endet. Eine Korrekturrunde: sechs Tests für
+`leseReferenz` mit nachgebautem git (merge-base, gestapelter Branch, nur main, kaputte JSON, vor dem ersten Merge, ohne
+git/Wurzel/Refs/ls-tree), Startwahl `waehleStart` herausgezogen; Werkzeugausgabe nur bei normalem Ende übernommen, tsc-Fehler in
+Nicht-Quelldateien ⇒ (f) (cr 2); Formprüfung je Eintrag, `ls-tree` abgefangen (cr 3); Hinweistext bei kaputter Referenz
+(cr 4); Biome-/tsc-Zählung nur für die Code-Dateien aus git, JS/TS-Endung außerhalb von CODE_MUSTER ⇒ (f) (cr 7/qa 6);
+Rotmeldungen mit Befehl zum Finden der Stelle, Grenze, Weg für (c)/(d), Syntaxfehler benannt, Verweis auf die Detaildatei
+(qa 2); Lint-Ausgabe ohne Info-Rauschen (qa 7); Doku: Werkzeug-Update, checkJs-Umfang, Import-Effekt, Dateigröße (qa 4/5/8/9,
+cr 5); Test tsconfig-include = CHECKJS_MUSTER (cr 6); F-1238-Wortlaut (cr 8); Gate-Kopf (cr 10). Rot-Nachweise in der
+Sitzung: `workboard.js` +1 Zeile ⇒ (a) rot; neue unformatierte `scripts/probe-ratsche.mjs` ⇒ (g3) rot; beide zurückgesetzt.
