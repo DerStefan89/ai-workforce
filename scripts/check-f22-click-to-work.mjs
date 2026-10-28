@@ -61,6 +61,10 @@ import { validiereRouterErgebnisDaten } from '../src/router/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { entferneCodezaun, erzeugeRequestHandler, leseWorkitemReferenz, verarbeiteRouterErgebnis } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f22-click-to-work')
 
 const befunde = []
 
@@ -182,7 +186,7 @@ function schreibeRohstromFixture(basisVerzeichnis, dateiname, stdout) {
 // synchronen Durchlauf. Ein Workflow ohne vorheriges Router-Artefakt ist damit nicht ein
 // Fall, den ein Rotfall zeigen könnte — er ist mit diesem Code strukturell unerreichbar.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f22-a-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f22-a-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     const auftragId = `f22-gruen-${randomUUID()}`
@@ -231,7 +235,7 @@ function schreibeRohstromFixture(basisVerzeichnis, dateiname, stdout) {
 // äußersten Zaun. Eine Klassifikation, deren begruendung selbst einen ```-Block trägt, wird
 // gelesen; die Beobachtung bleibt 'fence_entfernt' und damit im Schema-ENUM des Router-Artefakts.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f22-a2-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f22-a2-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     const auftragId = `f22-zaun-${randomUUID()}`
@@ -257,7 +261,7 @@ function schreibeRohstromFixture(basisVerzeichnis, dateiname, stdout) {
 
 // ─── (c) Rotfall: schemawidrige Klassifikation erzeugt weder Artefakt noch Workflow ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f22-c-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f22-c-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     const auftragId = `f22-rot-${randomUUID()}`
@@ -330,7 +334,7 @@ for (const { status, sollErsetzen } of [
   { status: 'OFFEN', sollErsetzen: true },
   { status: 'LAEUFT', sollErsetzen: false },
 ]) {
-  const basisVerzeichnis = `kontrollzustand-test-f22-e-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f22-e-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     const auftragId = `f22-erneut-${randomUUID()}`
@@ -391,7 +395,7 @@ for (const { status, sollErsetzen } of [
 // beide unabhängig: ein Tippfehler im Feldnamen oder eine vertauschte Aufrufreihenfolge wäre
 // sonst von keinem Gate erkannt worden).
 {
-  const basisVerzeichnis = `kontrollzustand-test-f22-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f22-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -427,7 +431,7 @@ for (const { status, sollErsetzen } of [
 
 // ─── (b) Rotfall: 409 bei aktivem Lauf (D13) ────────────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f22-b-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f22-b-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   let starts = 0
   let freigeben

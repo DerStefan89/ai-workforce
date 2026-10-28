@@ -52,6 +52,10 @@ import { renderEmpfehlung } from '../public/leitstand/empfehlung-anzeige.js'
 import { baueMcpPlatzhalter, erzeugeRequestHandler, ermittleAusfuehrungsEmpfehlungGecached } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { legePassendenBerichtAn, mitPassendemBericht } from './leitstand/pruefbericht-testhilfe.mjs'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f36-ws5a-installation')
 
 const befunde = []
 console.log('\n=== F36-WS-5a-Installations-Check ===\n')
@@ -146,7 +150,7 @@ async function warte(bedingung, ms = 10000) {
  *   F-849): vorschau_url = http://<host>:<gebundener Port dieses Servers>, erst nach listen(0) bekannt
  */
 async function umgebung(o = {}) {
-  const basisVerzeichnis = `kontrollzustand-test-f36-ws5a-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f36-ws5a-${randomUUID()}`)
   const aufraeumen = [basisVerzeichnis]
   const ordner = (praefix) => {
     const pfad = mkdtempSync(join(tmpdir(), praefix))
@@ -161,6 +165,7 @@ async function umgebung(o = {}) {
   const repoWurzel = ordner('f36-ws5a-repo-')
   const git = (argumente) => execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8' })
   git(['init', '--quiet', '-b', 'wegwerf-branch'])
+  schalteGitWartungAb(repoWurzel)
   git(['config', 'user.email', 'gate@example.invalid'])
   git(['config', 'user.name', 'Gate'])
   git(['config', 'core.autocrlf', 'false'])

@@ -20,6 +20,7 @@ import { ECHTE_RUNNER, npmInstallArgs, type NpmRunner } from '../ressourcen/inst
 import { holeSkillQuelle } from '../ressourcen/skill-installation.ts'
 import { GRENZEN } from './inhalt.ts'
 import { holeGitInhalt, holeNpmInhalt, pinneNpm } from './quelle.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 const wurzeln: string[] = []
 after(() => {
@@ -45,6 +46,7 @@ function quellRepo(): { pfad: string; sha: string; symlink: boolean } {
   const pfad = neu('quelle')
   const git = (...a: string[]) => fuehreGitSync(a, { cwd: pfad, encoding: 'utf8' })
   git('init', '-q')
+  schalteGitWartungAb(pfad)
   git('config', 'user.email', 'test@example.invalid')
   git('config', 'user.name', 'Test')
   git('config', 'core.symlinks', 'true')
@@ -109,6 +111,7 @@ function zwillingsRepo(eintraege: Array<[string, string]>): { pfad: string; sha:
   const pfad = neu('zwilling')
   const git = (args: string[], input?: string) => fuehreGitSync(args, { cwd: pfad, encoding: 'utf8', ...(input !== undefined ? { input } : {}) })
   git(['init', '-q'])
+  schalteGitWartungAb(pfad)
   git(['config', 'user.email', 'test@example.invalid'])
   git(['config', 'user.name', 'Test'])
   for (const [datei, inhalt] of eintraege) {

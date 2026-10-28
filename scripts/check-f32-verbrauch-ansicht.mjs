@@ -41,6 +41,7 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { join } from 'node:path'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
@@ -48,6 +49,10 @@ import { berechneVerbrauchsVon } from '../public/leitstand/verbrauch-zeitraum.js
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f32-verbrauch-ansicht')
 
 const befunde = []
 console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
@@ -80,7 +85,7 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 
 // ─── (b) echter HTTP-Aufruf GET /api/verbrauch mit clientseitig gebautem 'von' ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f32-ansicht-${randomUUID()}`)
   const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
   const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', globalerLaufZustand })
   const server = createServer(handler)
@@ -112,7 +117,7 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 
 // ─── (c) Rot-Fall: baueVerbrauchsProjektion wirft nie (F-603-Fix) ───────────
 {
-  const dateiAlsBasisVerzeichnis = `kontrollzustand-test-f32-ansicht-rotfall-${randomUUID()}.txt`
+  const dateiAlsBasisVerzeichnis = join(WEGWERF, `f32-ansicht-rotfall-${randomUUID()}.txt`)
   writeFileSync(dateiAlsBasisVerzeichnis, 'ich bin ein Verzeichnis, keine Datei', 'utf8')
   try {
     const projektion = baueVerbrauchsProjektion(dateiAlsBasisVerzeichnis)
@@ -128,7 +133,7 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 
 // ─── (d) Derselbe Rot-Fall über einen echten HTTP-Aufruf: kein 500 ─────────
 {
-  const dateiAlsBasisVerzeichnis = `kontrollzustand-test-f32-ansicht-rotfall-http-${randomUUID()}.txt`
+  const dateiAlsBasisVerzeichnis = join(WEGWERF, `f32-ansicht-rotfall-http-${randomUUID()}.txt`)
   writeFileSync(dateiAlsBasisVerzeichnis, 'ich bin ein Verzeichnis, keine Datei', 'utf8')
   const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
   const handler = erzeugeRequestHandler({ basisVerzeichnis: dateiAlsBasisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', globalerLaufZustand })
@@ -155,7 +160,7 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 
 // ─── (e) F-518, grün: gültiges von/bis und gar kein von/bis bleiben gültig ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-gruen-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f32-ansicht-zeitraum-gruen-${randomUUID()}`)
   const gueltig = baueVerbrauchsProjektion(basisVerzeichnis, { von: '2026-01-01', bis: '2026-12-31' })
   if (gueltig.status !== 'ok') {
     befunde.push(`(e) gültiges von/bis (YYYY-MM-DD): erwartet { status: 'ok' }, erhalten ${JSON.stringify(gueltig)}`)
@@ -173,7 +178,7 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 
 // ─── (f) F-518, Rot-Fall Format: ungültiges von/bis ─────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-format-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f32-ansicht-zeitraum-format-${randomUUID()}`)
   const ungueltigesVon = baueVerbrauchsProjektion(basisVerzeichnis, { von: 'nicht-datum', bis: '2026-12-31' })
   if (ungueltigesVon.status !== 'fehler' || ungueltigesVon.code !== 'zeitraum_ungueltig' || typeof ungueltigesVon.grund !== 'string' || ungueltigesVon.grund.length === 0) {
     befunde.push(`(f) ungültiges 'von' ('nicht-datum'): erwartet { status: 'fehler', grund, code: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(ungueltigesVon)}`)
@@ -200,7 +205,7 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 
 // ─── (g) F-518, Rot-Fall Reihenfolge: von > bis ─────────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-reihenfolge-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f32-ansicht-zeitraum-reihenfolge-${randomUUID()}`)
   const vertauscht = baueVerbrauchsProjektion(basisVerzeichnis, { von: '2026-12-31', bis: '2026-01-01' })
   if (vertauscht.status !== 'fehler' || vertauscht.code !== 'zeitraum_ungueltig' || typeof vertauscht.grund !== 'string' || vertauscht.grund.length === 0) {
     befunde.push(`(g) von > bis: erwartet { status: 'fehler', grund, code: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(vertauscht)}`)
@@ -221,7 +226,7 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 
 // ─── (h) F-518, echter HTTP-Aufruf: Rot-Fälle liefern 400 ──────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-http-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f32-ansicht-zeitraum-http-${randomUUID()}`)
   const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
   const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', globalerLaufZustand })
   const server = createServer(handler)

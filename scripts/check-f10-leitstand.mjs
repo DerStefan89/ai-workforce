@@ -74,6 +74,10 @@ import { kanonischesJson, schreibeWirkungsmarke, sha256Hex } from '../src/checkp
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f10-leitstand')
 
 const befunde = []
 console.log('\n=== F10-Leitstand-Check (WS-1) ===\n')
@@ -154,7 +158,7 @@ function verzoegerung(ms) {
 
 // ─── (c) AK3: Options-Sperre — verbotenes Feld und unbekanntes Feld → 400 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f10-ak3'
+  const basisVerzeichnis = join(WEGWERF, 'f10-ak3')
   const auftragId = registriereTestAuftrag(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -186,7 +190,7 @@ function verzoegerung(ms) {
 
 // ─── (c2) F12 WS-2 AK5: Startauftrag ohne 'auftragId' → 400; mit 'auftragstext' im Body → 400 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f10-f12-ak5'
+  const basisVerzeichnis = join(WEGWERF, 'f10-f12-ak5')
   const auftragId = registriereTestAuftrag(basisVerzeichnis)
   // Attrappe statt der echten fuehreAufgabeDurch (Muster Block (d)/(d2)) — der Retry-Fall unten erreicht
   // real die Reservierung/202, ein echter Aufruf würde ohne Startfreigabe-Fixture einen realen Prozess
@@ -247,7 +251,7 @@ function verzoegerung(ms) {
     await verzoegerung(30)
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
-  const basisVerzeichnisAk5 = 'kontrollzustand-test-f10-ak5'
+  const basisVerzeichnisAk5 = join(WEGWERF, 'f10-ak5')
   const auftragIdAk5 = registriereTestAuftrag(basisVerzeichnisAk5)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisAk5, fuehreAufgabeDurchFn })
   try {
@@ -271,7 +275,7 @@ function verzoegerung(ms) {
 
 // ─── (d2) AK5(a): laufId mit bereits existierendem Verzeichnis unter kontrollzustand/ → 409 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f10-ak5a'
+  const basisVerzeichnis = join(WEGWERF, 'f10-ak5a')
   const laufId = `check-f10-ak5a-${randomUUID()}`
   mkdirSync(join(basisVerzeichnis, laufId), { recursive: true })
   const auftragId = registriereTestAuftrag(basisVerzeichnis)
@@ -301,7 +305,7 @@ function verzoegerung(ms) {
     stufe: 'kontextpaket',
     ergebnis: { ok: false, grund: 'unbekannte_rolle', rolle: 'nicht-existent' },
   })
-  const basisVerzeichnisAk5b = 'kontrollzustand-test-f10-ak5b'
+  const basisVerzeichnisAk5b = join(WEGWERF, 'f10-ak5b')
   const auftragIdAk5b = registriereTestAuftrag(basisVerzeichnisAk5b)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisAk5b, fuehreAufgabeDurchFn })
   try {
@@ -334,7 +338,7 @@ function verzoegerung(ms) {
   const fuehreAufgabeDurchFn = async () => {
     throw new Error('synthetischer Wurf aus der Attrappe (AK6)')
   }
-  const basisVerzeichnisAk6 = 'kontrollzustand-test-f10-ak6'
+  const basisVerzeichnisAk6 = join(WEGWERF, 'f10-ak6')
   const auftragIdAk6 = registriereTestAuftrag(basisVerzeichnisAk6)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisAk6, fuehreAufgabeDurchFn })
   try {
@@ -368,7 +372,7 @@ function verzoegerung(ms) {
 
 // ─── (f) F11 WS-2 AK5: verbotenes Startvorlage-Feld und freie werkzeugsatz-Liste → 400 ──
 {
-  const basisVerzeichnisF11Ak5 = 'kontrollzustand-test-f11-ak5'
+  const basisVerzeichnisF11Ak5 = join(WEGWERF, 'f11-ak5')
   const auftragIdF11Ak5 = registriereTestAuftrag(basisVerzeichnisF11Ak5)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisF11Ak5 })
   try {
@@ -395,7 +399,7 @@ function verzoegerung(ms) {
 
 // ─── (g) F11 WS-2 AK6: verbotenes 'inhalt', unsicherer Pfad, fehlende Datei → je 400 ──
 {
-  const basisVerzeichnisF11Ak6 = 'kontrollzustand-test-f11-ak6'
+  const basisVerzeichnisF11Ak6 = join(WEGWERF, 'f11-ak6')
   const auftragIdF11Ak6 = registriereTestAuftrag(basisVerzeichnisF11Ak6)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisF11Ak6 })
   try {
@@ -444,7 +448,7 @@ function verzoegerung(ms) {
     await verzoegerung(60)
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
-  const basisVerzeichnisF11Ak7 = 'kontrollzustand-test-f11-ak7'
+  const basisVerzeichnisF11Ak7 = join(WEGWERF, 'f11-ak7')
   const auftragIdF11Ak7 = registriereTestAuftrag(basisVerzeichnisF11Ak7)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisF11Ak7, fuehreAufgabeDurchFn })
   try {
@@ -474,7 +478,7 @@ function verzoegerung(ms) {
 
 // ─── (i) F11 WS-2 AK7 (D13): ein verwaister, unabgeschlossener Lauf aus einer FRÜHEREN Serverinstanz blockiert eine neue NICHT (F-128) ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f11-ak7-verwaist'
+  const basisVerzeichnis = join(WEGWERF, 'f11-ak7-verwaist')
   const verwaisteLaufId = `check-f11-ak7-verwaist-${randomUUID()}`
   // Simuliert einen Lauf, der von einer früheren, längst beendeten Serverinstanz gestartet wurde und
   // nie zurückgekehrt ist (z. B. Serverabsturz) — kein laufAktiv-Zustand kann davon wissen, weil eine
@@ -499,7 +503,7 @@ function verzoegerung(ms) {
 
 // ─── (j) F12 AK1: nur Läufe mit mindestens einer Wirkungsmarke erscheinen in GET /api/laeufe, eine reine Lineage-Kette nicht ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ak1'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ak1')
   const laufIdEcht = `check-f12-ak1-echt-${randomUUID()}`
   const artefaktIdLineage = `check-f12-ak1-lineage-${randomUUID()}`
   schreibeWirkungsmarke(laufIdEcht, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
@@ -529,7 +533,7 @@ function verzoegerung(ms) {
 
 // ─── (k) F12 AK2: GET /api/laeufe ohne checkpoints-Array, GET /api/laeufe/<laufId> mit voller Projektion, unbekannte laufId → 404 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ak2'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ak2')
   const laufId = `check-f12-ak2-${randomUUID()}`
   schreibeWirkungsmarke(laufId, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
 
@@ -563,7 +567,7 @@ function verzoegerung(ms) {
 
 // ─── (l) F12 AK3(c): Kopfdaten/Detail zeigen payload.erstellt_am, null bei fehlendem Feld — nie statSync-mtime ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ak3'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ak3')
   const laufId = `check-f12-ak3-${randomUUID()}`
   const { pfad: ersterPfad } = schreibeWirkungsmarke(laufId, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
   const ersterInhalt = JSON.parse(readFileSync(ersterPfad, 'utf8'))
@@ -608,7 +612,7 @@ function verzoegerung(ms) {
 
 // ─── (m) F12 WS-1 Advisor-Ergänzung: GET /api/laeufe/<laufId> mit unzulässigen Zeichen (nach decodeURIComponent) → 400, kein Pfad-Escape ──
 {
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f12-pfad' })
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: join(WEGWERF, 'f12-pfad') })
   try {
     for (const unsichereLaufId of ['../ausserhalb', 'a/b', 'a\\b']) {
       const antwort = await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(unsichereLaufId)}`)
@@ -626,7 +630,7 @@ function verzoegerung(ms) {
 
 // ─── (n) F12 WS-2 AK4: POST /api/auftraege legt über registriereAuftrag an (201, echte Version unter auftrag-<auftragId>), GET /api/auftraege listet ihn danach ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ak4'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ak4')
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
     const antwort = await fetch(`${basisUrl}/api/auftraege`, {
@@ -664,7 +668,7 @@ function verzoegerung(ms) {
 
 // ─── (o) F12 WS-2 AK6: GET /api/startvorlage/werkzeugsaetze liefert nur name/modus/erlaubte_werkzeuge — nie art/werkzeugStartziel/berechtigungskontext/profilReferenz ──
 {
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f12-ak6' })
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: join(WEGWERF, 'f12-ak6') })
   try {
     const antwort = await fetch(`${basisUrl}/api/startvorlage/werkzeugsaetze`)
     const liste = await antwort.json()
@@ -682,7 +686,7 @@ function verzoegerung(ms) {
 
 // ─── (p) F-145: der Fire-and-forget-Aufruf reicht optionen strukturell an fuehreAufgabeDurchFn durch ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f145-optionen'
+  const basisVerzeichnis = join(WEGWERF, 'f145-optionen')
   const auftragId = registriereTestAuftrag(basisVerzeichnis)
   let empfangeneOptionen
   const fuehreAufgabeDurchFn = async (laufId, profilReferenz, eingaben, optionen) => {
@@ -732,7 +736,7 @@ function verzoegerung(ms) {
     await laufFreigegeben
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
-  const basisVerzeichnis = 'kontrollzustand-test-f14-ws4-abbrechen'
+  const basisVerzeichnis = join(WEGWERF, 'f14-ws4-abbrechen')
   const auftragId = registriereTestAuftrag(basisVerzeichnis)
   const laufId = `check-f14-ws4-abbrechen-${randomUUID()}`
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
@@ -817,8 +821,8 @@ function verzoegerung(ms) {
   // Reviewer-Befund: Datei-Erzeugung UND Serverstart liegen jetzt selbst im try — ein Wurf an
   // irgendeiner Stelle (auch vor starteTestserver) lässt weder die Testvorlage noch basisVerzeichnis
   // zurück (anders als zuvor, wo beides vor dem try lag und bei einem frühen Wurf nie geräumt worden wäre).
-  const testStartvorlagePfad = 'startvorlagen/test-f14-ws4-zeitgrenze.json'
-  const basisVerzeichnis = 'kontrollzustand-test-f14-ws4-zeitgrenze'
+  const testStartvorlagePfad = join(WEGWERF, 'test-f14-ws4-zeitgrenze.json')
+  const basisVerzeichnis = join(WEGWERF, 'f14-ws4-zeitgrenze')
   let schliessen = async () => {}
   try {
     const testVorlage = JSON.parse(readFileSync('startvorlagen/beispielprojekt.json', 'utf-8'))

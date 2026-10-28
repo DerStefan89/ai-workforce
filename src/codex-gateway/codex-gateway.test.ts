@@ -70,6 +70,10 @@ import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../che
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { baueCodexAufruf, leseCodexEreignisse, leseVerbrauchCodex, starteCodexGateway } from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { wegwerfOrdner } from '../../scripts/_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('codex-gateway')
 
 const ABSOLUTER_SCHEMAPFAD = resolve(process.cwd(), 'schemas', 'ergebnis-code-reviewer.schema.json')
 
@@ -529,7 +533,7 @@ test("AK2: '--sandbox read-only' als EIN Token wird abgelehnt (Shell-Denkfehler)
 
 // ─── AK7: starteCodexGateway ────────────────────────────────────────────────
 
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+
 const ROH_BASIS = join(tmpdir(), 'f16-codex-gateway-test')
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 

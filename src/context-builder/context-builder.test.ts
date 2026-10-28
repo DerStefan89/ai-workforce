@@ -2,7 +2,7 @@
  * Datei: src/context-builder/context-builder.test.ts
  *
  * Zweck: node:test-Fälle für AC1-AC11 (state/tasks/f5-context-builder.md
- * SCOPE.4). Läuft auf einem Wegwerfverzeichnis unter kontrollzustand-test/
+ * SCOPE.4). Läuft auf einem Wegwerfverzeichnis unter os.tmpdir() (scripts/_wegwerf.ts)
  * (nicht kontrollzustand/ selbst). Jeder Lauf berührt die F2-Kette
  * lineage-kontextpaket-<laufId>, im finally-Block aufgeräumt.
  */
@@ -15,8 +15,11 @@ import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { baueKontextpaket, pruefeKontextpaketFrisch } from './index.ts'
 import type { Anfrage } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('context-builder')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const STILL = { basisVerzeichnis: BASIS, schreiber: () => {} }
 

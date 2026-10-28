@@ -13,6 +13,7 @@
  * - GET …/abnahme meldet dieselbe Lesart (entscheidung.status) wie die Kopfdaten.
  */
 
+import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
@@ -21,6 +22,10 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler, ermittleAbnahmeStand } from './leitstand-server.mjs'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('leitstand-abnahme-stand')
 
 /**
  * Zweistufiger Workflow (Muster workflow-vorlagen/standard.json).
@@ -82,7 +87,7 @@ test('Regel: offen ohne Entscheidung, zu mit Entscheidung zum Bau, veraltet nach
 })
 
 test('Kopfdaten: nach einer Abnahme sofort offen=false, nach einem neuen Bau-Lauf wieder offen=true (Cache-Stempel)', async () => {
-  const basisVerzeichnis = `kontrollzustand-test-f46-d2-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f46-d2-${randomUUID()}`)
   const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
   const profil = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
   const workflowId = `f46-d2-${randomUUID()}`

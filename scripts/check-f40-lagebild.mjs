@@ -33,6 +33,10 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { baueLagebildInhalt, leseOffeneP1Findings } from './erzeuge-lagebild.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f40-lagebild')
 
 const befunde = []
 
@@ -87,7 +91,7 @@ try {
 
 // ─── (c)/(d) Rot-/Grün-Fall real über die CLI (Subprozess, Wegwerf-Pfade) ───
 {
-  const basisVerzeichnis = `kontrollzustand-test-f40-lagebild-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f40-lagebild-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     mkdirSync(basisVerzeichnis, { recursive: true })

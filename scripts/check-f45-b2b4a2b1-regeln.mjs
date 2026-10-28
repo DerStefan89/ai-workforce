@@ -41,6 +41,7 @@ import ru from '../public/leitstand/i18n/ru.js'
 import tr from '../public/leitstand/i18n/tr.js'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { baueCodeProjektion } from './leitstand/routen-code.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 
@@ -230,6 +231,7 @@ const BLEIBEN = ['b.txt', 'meine_node_modules/echt.js', 'node_modules/gestagt.js
 const NEU = 505 + 1
 try {
   g(repo, 'init', '-q', '-b', 'main')
+  schalteGitWartungAb(repo)
   mkdirSync(join(repo, 'node_modules', 'pkg'), { recursive: true })
   writeFileSync(join(repo, 'node_modules', 'vendored.js'), 'alt\n')
   writeFileSync(join(repo, 'a.txt'), 'a\n')

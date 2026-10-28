@@ -57,6 +57,11 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f35-ws3-adjust-automatik')
 
 const befunde = []
 console.log('\n=== F35-WS3-Adjust-Automatik-Check ===\n')
@@ -80,7 +85,7 @@ function verzoegerung(ms) {
 async function warteBis(pruefen, maxWartezeitMs) {
   const start = Date.now()
   let wert = await pruefen()
-  while (!wert && Date.now() - start < maxWartezeitMs) {
+  while (!wert && Date.now() - start < skaliert(maxWartezeitMs)) {
     await verzoegerung(50)
     wert = await pruefen()
   }
@@ -110,6 +115,7 @@ function git(repoWurzel, argumente) {
 function baueFremdprojekt(featureAkten) {
   const fremdprojekt = mkdtempSync(join(tmpdir(), 'check-f35-ws3-fremdprojekt-'))
   git(fremdprojekt, ['init', '--quiet'])
+  schalteGitWartungAb(fremdprojekt)
   git(fremdprojekt, ['config', 'user.email', 'test@example.invalid'])
   git(fremdprojekt, ['config', 'user.name', 'Test'])
   git(fremdprojekt, ['branch', '-m', 'wegwerf-branch'])
@@ -232,7 +238,7 @@ const AK_BEIDE_ERFUELLT = [
 const EIN_BEFUND = { schwere: 'HOCH', fundstelle: 'src/beispiel.ts:9', zusammenfassung: 'Gate-Fixture-Befund F35-WS3 — muss in der Begründung/dem nächsten Auftragstext auftauchen.', beleg: 'Synthetischer Beleg, Gate-Fixture.' }
 
 {
-  const basisVerzeichnis = `kontrollzustand-test-f35-ws3-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-ws3-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fremdprojekt = baueFremdprojekt({ [FEATURE_ID]: AKTE_MIT_2_AK })
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f35-ws3-gate-'))
@@ -384,7 +390,7 @@ for (const fall of [
   { kennung: 'e', akUrteile: AK_BEIDE_ERFUELLT, text: "Reviewer-Stub ohne gültiges Urteil ('UNKLAR')" },
   { kennung: 'e2', akUrteile: [{ ak_id: 'AK1', urteil: 'ERFUELLT', beleg: 'src/beispiel.ts:1' }, { ak_id: 'AK2', urteil: 'NICHT_ERFUELLT', beleg: 'Verhalten weicht ab.' }], text: "Reviewer-Stub ohne gültiges Urteil ('UNKLAR') UND mit AK2 NICHT_ERFUELLT" },
 ]) {
-  const basisVerzeichnis = `kontrollzustand-test-f35-ws3-${fall.kennung}-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-ws3-${fall.kennung}-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fremdprojekt = baueFremdprojekt({ [FEATURE_ID]: AKTE_MIT_2_AK })
   const verzeichnis = mkdtempSync(join(tmpdir(), `f35-ws3-gate-${fall.kennung}-`))
@@ -440,7 +446,7 @@ for (const fall of [
 
 // ── (f) Der menschliche POST .../abnahme (ANPASSUNG_ANGEFORDERT) funktioniert unverändert ──────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f35-ws3-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-ws3-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fremdprojekt = baueFremdprojekt({ [FEATURE_ID]: AKTE_MIT_2_AK })
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f35-ws3-gate-f-'))

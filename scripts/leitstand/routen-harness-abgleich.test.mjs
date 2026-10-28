@@ -34,6 +34,7 @@ import { registriereWorkflow } from '../../src/workflow/index.ts'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { skaliert } from '../_zeitfaktor.ts'
 import { erzeugeRequestHandler } from '../leitstand-server.mjs'
+import { schalteGitWartungAb } from '../_wegwerf.ts'
 
 const INSTALLATION = join(import.meta.dirname, '..', '..')
 const NPM_CHECK = dodId('`npm run check` → Exit 0')
@@ -68,6 +69,7 @@ function baueUmgebung(pruefSkript = 'process.exit(0)') {
   const repoWurzel = join(basis, 'projekt')
   mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   git(repoWurzel, ['config', 'core.autocrlf', 'false'])

@@ -57,6 +57,10 @@ import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { erzeugeRequestHandler, verarbeiteRouterErgebnis } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f35-ws1-feature-auftrag')
 
 const befunde = []
 console.log('\n=== F35-WS1-Feature-Auftrag-Check ===\n')
@@ -152,7 +156,7 @@ function baueFremdprojekt(featureAkten) {
 
 // ─── (a)/(b)/(c)/(d): echte HTTP-Route gegen das Fremdprojekt ──────────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f35-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fremdprojekt = baueFremdprojekt({
     [FREMDPROJEKT_ID]: AKTE_MIT_AKS,
@@ -268,7 +272,7 @@ function baueFremdprojekt(featureAkten) {
 
 // ─── (g) F44 WS-3b: GET /api/features/<id>/akte — lesend, schreibt kein Artefakt ───────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f35-g-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-g-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fremdprojekt = baueFremdprojekt({ [FREMDPROJEKT_ID]: AKTE_MIT_AKS, [`${FREMDPROJEKT_ID}B`]: AKTE_OHNE_AK })
   const aktenVorher = readdirSync(join(fremdprojekt, 'features'), { recursive: true }).sort()
@@ -317,7 +321,7 @@ function baueFremdprojekt(featureAkten) {
 
 // ─── (f) AK5: Kontrolltiefe-Untergrenze real über verarbeiteRouterErgebnis ─────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f35-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))

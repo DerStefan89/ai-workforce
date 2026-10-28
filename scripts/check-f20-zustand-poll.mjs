@@ -37,6 +37,10 @@ import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f20-zustand-poll')
 
 const befunde = []
 console.log('\n=== F20-WS-2-Check (AK3, Aggregat-Endpunkt und Poll-Konsolidierung) ===\n')
@@ -87,7 +91,7 @@ function workflowFixture(workflowId) {
 
 // ─── (a) Grünfall: GET /api/zustand liefert BYTE-GLEICHE Elemente wie die drei Einzelendpunkte ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f20-ws2-aggregat-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f20-ws2-aggregat-${randomUUID()}`)
   const laufId = `f20-ws2-lauf-${randomUUID()}`
   schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: STILL })
   registriereWorkflow(workflowFixture(`f20-ws2-workflow-${randomUUID()}`), PROFIL_REFERENZ, { basisVerzeichnis, schreiber: STILL })
@@ -121,7 +125,7 @@ function workflowFixture(workflowId) {
 
 // ─── (b) Rot-Fall: defekte Quelle → null + fehler[]-Eintrag, Antwort bleibt 200 ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f20-ws2-defekt-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f20-ws2-defekt-${randomUUID()}`)
   writeFileSync(basisVerzeichnis, 'keine Verzeichnis-Datei')
 
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })

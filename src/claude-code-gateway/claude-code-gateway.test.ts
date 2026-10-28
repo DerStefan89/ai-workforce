@@ -40,8 +40,13 @@ import { baueAufruf, baueClaudeJsonSchema, leseModellBeobachtet, leseSlashComman
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, fuehreUmgebungZusammen, pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('claude-code-gateway')
+/** Rohströme der Läufe dieses Tests (F45 W2b-2: im Wegwerf-Ordner statt kontrollzustand-roh/ des Repos). */
+const ROH_BASIS = join(KONTROLLZUSTAND_BASIS, 'kontrollzustand-roh')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 /** Real existierende, absolute, endungs- und sperrlistenkonforme Datei — besteht pruefeStartziel ohne Sonderfall (F6a WS4). */
 const GUELTIGES_STARTZIEL = [process.execPath]
@@ -53,7 +58,7 @@ function neueLaufId(praefix: string): string {
 function raeumeKette(laufId: string): void {
   raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
   raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`))
-  raeumeVerzeichnis(join('kontrollzustand-roh', laufId))
+  raeumeVerzeichnis(join(ROH_BASIS, laufId))
 }
 
 function gueltigeEingaben(): AufrufEingaben {
@@ -76,6 +81,7 @@ function neuesExternesRepo(): string {
   const repoWurzel = join(tmpdir(), `f6a-gateway-test-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')
@@ -305,7 +311,7 @@ test('starteGateway liefert eine vollständige Laufakte bei validem Ergebnisobje
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -333,7 +339,7 @@ test('F45 B2a-3a: optionen.review geht unverändert als review in die Laufakte (
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
       review: { policy_version: 'review-policy-1' },
@@ -352,7 +358,7 @@ test('F45 B2a-3b: review mit geprüftem Stand geht unverändert in die Laufakte 
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
       review,
@@ -385,7 +391,7 @@ for (const fall of [
       const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
         ...startfreigabeOptionen(),
         basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        rohBasisVerzeichnis: ROH_BASIS,
         starter: streamStarter(fall.stdout),
         schreiber: () => {},
       })
@@ -415,7 +421,7 @@ test('starteGateway reicht optionen.abbruchSignal unverändert an starteProzess 
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
       abbruchSignal: controller.signal,
@@ -439,7 +445,7 @@ test('starteGateway übergibt kein abbruchSignal an starteProzess, wenn optionen
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -465,7 +471,7 @@ test('starteGateway reicht den Prompt über stdinDaten an starteProzess durch, N
     const ergebnis = await starteGateway(eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -496,7 +502,7 @@ test('starteGateway setzt ergebnisZeileBeendet, leitet tool_use-Zeilen an beiWer
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
       beiWerkzeugaufruf: (aufruf) => gemeldet.push(aufruf),
@@ -525,7 +531,7 @@ test('starteGateway ohne beiWerkzeugaufruf übergibt kein beiStreamZeile — Reg
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -549,7 +555,7 @@ test('starteGateway reicht optionen.umgebungsvariablen an starteProzess durch, e
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
       umgebungsvariablen: { MAX_THINKING_TOKENS: '0' },
@@ -573,7 +579,7 @@ test('starteGateway (F45 B1b-1): ohne optionen.umgebungsvariablen trägt der Sta
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -596,7 +602,7 @@ test('starteGateway (F45 B1b-1): ein Aufrufer kann WORKFORCE_LAUF_UMGEBUNG nicht
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
       umgebungsvariablen: { npm_config_ignore_scripts: 'false', CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '0' },
@@ -624,7 +630,7 @@ test('starteGateway verweigert bei verbotenem Aufrufparameter — WS1-Check grei
     const ergebnis = await starteGateway(eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -653,7 +659,7 @@ test('starteGateway kennzeichnet die Laufakte als unvollständig bei einem Fehll
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeOhneErgebnisobjekt,
       schreiber: () => {},
     })
@@ -682,7 +688,7 @@ test('starteGateway verweigert bei Drift im F4-Gültigkeitsschlüssel — kein P
       ...startfreigabeOptionen(),
       aktuelleAutorisierungPfad: AKTUELLE_AUTORISIERUNG_MIT_DRIFT_PFAD,
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -711,7 +717,7 @@ test('starteGateway verweigert, wenn die Autorisierungs-Referenzdatei fehlt — 
       ...startfreigabeOptionen(),
       aktuelleAutorisierungPfad: join(PROJEKT_VERZEICHNIS, 'existiert-nicht.json'),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -737,7 +743,7 @@ test('starteGateway verweigert, wenn die Autorisierungs-Referenzdatei valides JS
       ...startfreigabeOptionen(),
       aktuelleAutorisierungPfad: AKTUELLE_AUTORISIERUNG_FALSCHE_FORM_PFAD,
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -763,7 +769,7 @@ test('starteGateway verweigert, wenn .claude/settings.json am gemessenen Pfad fe
       ...startfreigabeOptionen(),
       settingsPfad: join(PROJEKT_VERZEICHNIS, '.claude', 'settings-existiert-nicht.json'),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -786,7 +792,7 @@ test('starteGateway registriert die Laufakte über F2 (Lineage) mit dem exakten 
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1117,7 +1123,7 @@ test('starteGateway verweigert bei ungültigem werkzeugStartziel — kein RUN_PR
     const ergebnis = await starteGateway(eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -1150,7 +1156,7 @@ test('starteGateway verweigert bei verbotenem Aufrufparameter in werkzeugStartzi
     const ergebnis = await starteGateway(eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -1177,7 +1183,7 @@ test('starteGateway lässt ein gültiges mehrgliedriges werkzeugStartziel weiter
     const ergebnis = await starteGateway(eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1195,7 +1201,7 @@ test('starteGateway trägt werkzeugStartziel und startfehler im Rohstrom (F-071)
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeOhneErgebnisobjekt,
       schreiber: () => {},
     })
@@ -1257,7 +1263,7 @@ test('F-642 grün (real gemessen, kein Spy): starteGateway spawnt mit einem Argv
     const ergebnis = await starteGateway(eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -1350,7 +1356,7 @@ test('F-831 starteGateway (initGate): unbekannter Slash-Command in init → Abbr
   try {
     const protokoll = { toolUseGesendet: false }
     const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear', 'neuer-command'], mcp_servers: [], plugins: [] }
-    const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [], gesperrt: ['design'] } }
+    const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [], gesperrt: ['design'] } }
     const rot = await starteGateway(gueltigeGatewayEingaben(laufId), { ...optionen, starter: initGateStarter(init, protokoll) })
     assert.ok(rot.ok)
     assert.equal(protokoll.toolUseGesendet, false, 'Abbruch vor tool_use')
@@ -1384,7 +1390,7 @@ test('F36 WS-5b starteGateway (initGate): fremder Skill in init → Abbruch vor 
   const laufRot = neueLaufId('init-gate-rot')
   const laufGruen = neueLaufId('init-gate-gruen')
   try {
-    const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
+    const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
     const rotProtokoll = { toolUseGesendet: false }
     const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design', 'ponytail'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [], plugins: [] }
     const rot = await starteGateway(gueltigeGatewayEingaben(laufRot), { ...optionen, starter: initGateStarter(init, rotProtokoll) })
@@ -1408,7 +1414,7 @@ test('F36 WS-5b starteGateway (initGate): fremder Skill in init → Abbruch vor 
 test('F-833 starteGateway ohne initGate: beliebige init-Zeile (fremde Skills, Agent, fremder MCP, F-831: unbekannter Slash-Command) → kein Abbruch, kein init_gate_verstoss; ohne init-Zeile ebenso', async () => {
   const ids = ['fremd', 'ohne-init'].map((n) => neueLaufId(`ohne-init-gate-${n}`))
   // Läufe ohne Ort-B (Codex, Läufe ohne Katalog-Einträge) bekommen kein initGate — dort darf die init-Zeile nichts auslösen.
-  const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {} }
+  const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, schreiber: () => {} }
   try {
     const protokoll = { toolUseGesendet: false }
     const init = { type: 'system', subtype: 'init', tools: ['Agent', 'Bash', 'Skill'], skills: ['ponytail', 'unbekannt'], slash_commands: ['neuer-command'], mcp_servers: [{ name: 'fremd' }], agents: ['qa'] }
@@ -1428,7 +1434,7 @@ test('F-833 starteGateway ohne initGate: beliebige init-Zeile (fremde Skills, Ag
 
 test('F36 WS-5b starteGateway (initGate): tool_use vor init → Abbruch; keine init-Zeile bei regulärem Ende → Verstoß mit Exitcode; Startfehler → kein Verstoß; manueller Abbruch → kein Verstoß, ABBRUCH bleibt manuell', async () => {
   const ids = ['vor-init', 'ohne-init', 'startfehler', 'manuell'].map((n) => neueLaufId(`init-gate-${n}`))
-  const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
+  const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
   const roh = (ergebnis: Awaited<ReturnType<typeof starteGateway>>) => (ergebnis.ok ? JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8')) : {})
   const toolUse = { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'x' } }] }, parent_tool_use_id: null }
   const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [], plugins: [] }
@@ -1492,7 +1498,7 @@ test('starteGateway (F45 B1b-1): Bash-Zeitgrenze aus bashZeitgrenzeMs, nie über
       const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
         ...startfreigabeOptionen(),
         basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        rohBasisVerzeichnis: ROH_BASIS,
         starter: spyStarter,
         schreiber: () => {},
         ...(bash !== undefined ? { bashZeitgrenzeMs: bash } : {}),
@@ -1509,7 +1515,7 @@ test('starteGateway (F45 B1b-1): Bash-Zeitgrenze aus bashZeitgrenzeMs, nie über
 
 test('F45 F-1 starteGateway: vorStartPruefung mit Grund → kein Spawn, Verweigerung; faehigkeiten_im_lauf in der Laufakte mit Aufrufen', async () => {
   const ids = ['vorstart-rot', 'vorstart-gruen'].map((n) => neueLaufId(`f45-f1-${n}`))
-  const basis = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {} }
+  const basis = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, schreiber: () => {} }
   const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], slash_commands: ['frontend-design', 'clear'], mcp_servers: [], plugins: [] }
   const faehigkeiten = [{ id: 'skill:frontend-design', name: 'frontend-design', typ: 'skill' as const, quelle: 'projekt' as const, hash: 'a'.repeat(64), pfad: 'skills/frontend-design', aktiv: true }]
   try {

@@ -3,7 +3,7 @@
  *
  * Zweck: Sechs node:test-Fälle (plan-v2-feature2-artifact-registry-
  * lineage.md Delta 2), die A1-A4/A12/A13 (AC1-AC4/AC12/AC13) abdecken.
- * Läuft auf einem Wegwerfverzeichnis unter kontrollzustand-test/ (nicht
+ * Läuft auf einem Wegwerfverzeichnis unter os.tmpdir() (scripts/_wegwerf.ts; nicht
  * kontrollzustand/ selbst), damit kein Produktzustand durch Tests
  * verschmutzt wird.
  */
@@ -23,8 +23,11 @@ import {
   registriereWerkzeugReferenz,
 } from './index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import { wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('lineage-registry')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 
 function neueArtefaktId(praefix: string): string {

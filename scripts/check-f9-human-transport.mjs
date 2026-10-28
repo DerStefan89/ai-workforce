@@ -34,9 +34,13 @@ import {
   validiereBedarfDaten,
   validiereTransportpaketDaten,
 } from '../src/human-transport/index.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('f9-human-transport')
 
 const befunde = []
-const BASIS = 'kontrollzustand-test'
+
 const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const stillerSchreiber = () => {}
 

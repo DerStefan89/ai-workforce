@@ -9,12 +9,16 @@
  * - scripts/leitstand-arbeitsordner.test.mjs
  * - scripts/leitstand/routen-code.test.mjs
  * - scripts/leitstand/routen-harness-abgleich.test.mjs
+ * - die 11 Frist-Gates aus SERIELL in scripts/check-kette.mjs (F45 W2b-2, F-1215): check-f656, check-f659,
+ *   check-f35-ws2/-ws3, check-f45-b2b1/-b2b2/-b2b3c/-b2b3b1b, check-f36-ws2/-ws5b, check-fixpaket-f36-nachlauf —
+ *   je in der eigenen Wartefunktion (warteBis/warte), in `while`-Fristen und bei `pruefZeitgrenzeMs: 10000`
  *
  * Wichtig:
  * - Nur Werte von 1 bis 100 sind erlaubt; alles andere (Text, 0, negativ, < 1, > 100) wirft — ein Tippfehler soll
  *   den Lauf nicht still mit verkürzten Grenzen fahren. Die Obergrenze hält skalierte Timer unter 2^31-1 ms (sonst
  *   macht Node aus einer übergroßen Zeitgrenze 1 ms, also das Gegenteil).
- * - scripts/teste.mjs setzt die Variable nicht (Begründung dort im Kopf).
+ * - scripts/teste.mjs setzt die Variable nicht (Begründung dort im Kopf), scripts/check-kette.mjs ebenfalls nicht —
+ *   die Frist-Gates bleiben deshalb in SERIELL.
  */
 
 /** Größter zulässiger Faktor (größte skalierte Grenze heute 600 000 ms × 100 < 2^31-1). */

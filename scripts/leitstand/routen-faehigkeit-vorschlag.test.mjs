@@ -28,6 +28,7 @@ import { erkenneFaehigkeitVorschlaege } from '../../src/faehigkeiten/vorschlag.t
 import { aendereLokaleDatei, erzeugeLokalWaechter } from './routen-faehigkeiten.mjs'
 import { claudePfadeAusStatus } from '../../src/execution-controller/index.ts'
 import { BASIS_UNBESTIMMT, baueVorschlagFelder, baueVorschlagProjektion, erkenneVorschlagRoute, fuehreSynchronDurch, fuehreVorschlagAktionDurch, leseClaudeUngesichert, pruefeVorschlagKoerper, vergissVorschlagStand, vorschlagSignatur, ZIEL_IGNORIERT } from './routen-faehigkeit-vorschlag.mjs'
+import { schalteGitWartungAb } from '../_wegwerf.ts'
 
 // qa FB-1a 7: ohne globale/System-git-Konfiguration des Entwicklers (core.excludesFile könnte .claude/ ignorieren).
 const gitKonfig = mkdtempSync(join(tmpdir(), 'fb1a-gitcfg-'))
@@ -70,6 +71,7 @@ const agentText = (name, beschreibung = 'Liest.') => `---\nname: ${name}\ndescri
 function repoMitBasis(gitignore = null) {
   const w = tmp('repo')
   git(w, ['init', '--quiet'])
+  schalteGitWartungAb(w)
   lege(w, { 'README.md': 'x\n', ...(gitignore === null ? {} : { '.gitignore': gitignore }) })
   git(w, ['add', '.'])
   git(w, ['commit', '--quiet', '-m', 'basis'])

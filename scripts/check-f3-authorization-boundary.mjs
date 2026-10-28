@@ -24,6 +24,7 @@ import { dirname, join } from 'node:path'
 import { pruefeAutorisierung } from '../src/authorization-boundary/index.ts'
 import { sha256Hex } from '../src/checkpoint-store/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 
@@ -37,6 +38,7 @@ function neuesExternesRepo() {
   const repoWurzel = join(tmpdir(), `check-f3-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')

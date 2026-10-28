@@ -62,6 +62,10 @@ import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../src
 import { ermittleIstZustand } from '../src/invocation-policy/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f14-abbruch')
 
 const befunde = []
 console.log('\n=== F14-Abbruch-Check (WS-5, AK9) ===\n')
@@ -76,6 +80,7 @@ function neuesExternesRepo() {
   const repoWurzel = join(tmpdir(), `f14-ws5-repo-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')
@@ -195,13 +200,14 @@ function schreibeTestStartvorlage(dateiname, overrides) {
     berechtigungskontext: ISTUEBRIGEFELDER_FIXTURE.berechtigungskontext,
     ...overrides,
   }
-  const pfad = join('startvorlagen', dateiname)
+  const pfad = join(WEGWERF, dateiname)
   writeFileSync(pfad, JSON.stringify(vorlage))
   return pfad
 }
 
 async function starteTestserver(optionen) {
-  const server = createServer(erzeugeRequestHandler(optionen))
+  // F45 W2b-2: Rohströme in den Wegwerf-Ordner statt nach kontrollzustand-roh/ des Repos (Handler-Option, an F8 durchgereicht).
+  const server = createServer(erzeugeRequestHandler({ rohBasisVerzeichnis: join(WEGWERF, 'roh'), ...optionen }))
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address()
   return { basisUrl: `http://127.0.0.1:${port}`, schliessen: () => new Promise((resolve) => server.close(resolve)) }
@@ -242,7 +248,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 
 // ─── (a) AK5/AK6: TIMEOUT — echter Kindprozess über die reale Kette F8→F5→F6a(F4)→F7→F1B ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f14-ws5-timeout'
+  const basisVerzeichnis = join(WEGWERF, 'f14-ws5-timeout')
   const startvorlagePfad = schreibeTestStartvorlage('test-f14-ws5-timeout.json', { zeitgrenzeMs: 1500 })
   let schliessen = async () => {}
   let laufId
@@ -286,7 +292,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 
 // ─── (b) AK7: ABBRUCH — echter Kindprozess, real über POST /api/laeufe/<laufId>/abbrechen beendet ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f14-ws5-abbruch'
+  const basisVerzeichnis = join(WEGWERF, 'f14-ws5-abbruch')
   // Kein zeitgrenzeMs — der Prozess soll ausschließlich durch den manuellen Abbruch enden, nicht durch einen Timeout-Wettlauf.
   const startvorlagePfad = schreibeTestStartvorlage('test-f14-ws5-abbruch.json', {})
   let schliessen = async () => {}
@@ -354,7 +360,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 // hängende Kindprozess (HAENGE_SKRIPT) endet ausschließlich durch den Abbruch — dadurch liegt der
 // Abbruch garantiert IM laufenden Prozess, ohne Wettlauf gegen ein natürliches Laufende.
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f14-chat-abbruch'
+  const basisVerzeichnis = join(WEGWERF, 'f14-chat-abbruch')
   const startvorlagePfad = schreibeTestStartvorlage('test-f14-chat-abbruch.json', {})
   let schliessen = async () => {}
   try {

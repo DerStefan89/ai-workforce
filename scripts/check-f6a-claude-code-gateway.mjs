@@ -20,7 +20,7 @@
  * nachgestelltem Leerzeichen; Sperrlisten-Basisname; Verzeichnis statt
  * Datei; leeres Array) und ein Grün-Fall direkt gegen starteProzess mit
  * [process.execPath] und ['-e', 'process.exit(0)'] als Tokens — nicht
- * über starteGateway, dessen raeumeKette hier nur kontrollzustand-test/
+ * über starteGateway, dessen raeumeKette hier nur den Wegwerf-Ordner/
  * aufräumt, nicht kontrollzustand-roh/ (plan-v2 Delta 7). AK15 ist
  * ausdrücklich ein Hygiene-Guard, keine Vertrauensgrenze (plan-v2 Delta 3)
  * — die Vertrauensfrage liegt per E2 beim Aufrufer.
@@ -37,9 +37,13 @@ import { join } from 'node:path'
 import { baueAufruf, pruefeUndVerweigereBeiTreffer, validiereLaufakteDaten } from '../src/claude-code-gateway/index.ts'
 import { pruefeStartziel, starteProzess } from '../src/claude-code-gateway/prozessstart.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('f6a-claude-code-gateway')
 
 const befunde = []
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 
 console.log('\n=== F6a-Claude-Code-Gateway-Check (WS1) ===\n')

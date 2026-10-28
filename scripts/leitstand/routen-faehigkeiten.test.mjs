@@ -39,6 +39,7 @@ import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { bereiteEmpfehlungFuerStartVor, ermittleAusfuehrungsEmpfehlung, erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, loeseSchrittEingabenAuf } from '../leitstand-server.mjs'
 import { standPfadFuer } from '../../src/faehigkeiten/stand.ts'
 import { baueFaehigkeitenStatus, erzeugeLokalWaechter, fremdGeaendert } from './routen-faehigkeiten.mjs'
+import { schalteGitWartungAb } from '../_wegwerf.ts'
 
 const INSTALLATION = join(import.meta.dirname, '..', '..')
 const SKELETT = join(INSTALLATION, 'vorlagen', 'projekt-skelett', '.claude')
@@ -63,6 +64,7 @@ function baueUmgebung() {
   for (const d of ['SKILL.md', 'LICENSE']) copyFileSync(join(SKELETT, 'skills', 'ponytail', d), join(repoWurzel, '.claude', 'skills', 'ponytail', d))
   writeFileSync(join(repoWurzel, '.claude', 'settings.json'), '{}\n')
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   return { basis, repoWurzel, lokalPfad: join(basis, 'ai-workforce-home', 'faehigkeiten.lokal.json'), basisVerzeichnis: join(basis, 'kontrollzustand') }
 }
 

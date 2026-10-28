@@ -16,6 +16,7 @@ import { after, test } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import { fuehreGitSync } from '../git-starter/index.ts'
 import { fingerabdruckAusTeilen, leseGeprueftenStandAsync, leseGeprueftenStandSync, parseCheckAttrFilter, parseDiffIndexRaw, parseLsTree, STANDARD_GRENZEN, standIstVeraltet } from './index.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 const basis = mkdtempSync(join(tmpdir(), 'review-stand-test-'))
 after(() => raeumeVerzeichnis(basis))
@@ -32,6 +33,7 @@ function repo(name: string, dateien: Record<string, string>, autocrlf = 'false')
   mkdirSync(w, { recursive: true })
   const git = (a: string[]) => fuehreGitSync(a, { cwd: w, encoding: 'utf8' })
   git(['init', '--quiet'])
+  schalteGitWartungAb(w)
   for (const [k, v] of [['user.email', 'a@b.invalid'], ['user.name', 'T'], ['core.autocrlf', autocrlf]]) git(['config', k, v])
   for (const [pfad, inhalt] of Object.entries(dateien)) {
     mkdirSync(join(w, pfad, '..'), { recursive: true })
@@ -146,6 +148,7 @@ test('Hülle: Filter-Treiber, kein Repo an der Wurzel, kein Commit, Kappe → nu
   const leer = join(basis, 'leer')
   mkdirSync(leer)
   fuehreGitSync(['init', '--quiet'], { cwd: leer, encoding: 'utf8' })
+  schalteGitWartungAb(leer)
   assert.match(leseGeprueftenStandSync(leer).grund ?? '', /kein Commit/)
   const viele = repo('kappe', { 'a.txt': 'a\n' })
   writeFileSync(join(viele, 'n1.txt'), '1')

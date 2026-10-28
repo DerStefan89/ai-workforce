@@ -30,6 +30,10 @@ import { join } from 'node:path'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f33-roadmap-projektion')
 
 const befunde = []
 console.log('\n=== F33-WS2-Roadmap-Projektion-Check ===\n')
@@ -129,7 +133,7 @@ console.log('\n=== F33-WS2-Roadmap-Projektion-Check ===\n')
 
 // ─── (e) echter HTTP-Aufruf GET /api/roadmap ────────────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f33-roadmap-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f33-roadmap-${randomUUID()}`)
   const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
   const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', globalerLaufZustand })
   const server = createServer(handler)

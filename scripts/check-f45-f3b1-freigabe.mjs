@@ -59,6 +59,10 @@ import { renderPluginDetail, renderPluginWorkforce, renderVerwaist } from '../pu
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { aendereLokaleDatei, FREMD_UNBESTAETIGT } from './leitstand/routen-faehigkeiten.mjs'
 import { fuehrePluginFreigabeDurch, pruefePluginKoerper } from './leitstand/routen-plugin-freigabe.mjs'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f45-f3b1-freigabe')
 
 const befunde = []
 console.log('\n=== F45-F-3b-1-Freigabe-Check ===\n')
@@ -241,7 +245,7 @@ try {
   ])
   const kopienWurzel = join(ordner('f45-f3b1-kopien-'), 'plugin-kopien')
   const lokalPfad = join(ordner('f45-f3b1-lokal-'), 'faehigkeiten.lokal.json')
-  const basisVerzeichnis = `kontrollzustand-test-f45-f3b1-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f45-f3b1-${randomUUID()}`)
   aufraeumen.push(basisVerzeichnis)
   const install = ordner('f45-f3b1-install-')
   writeFileSync(join(install, 'ressourcen.json'), readFileSync('ressourcen.json'))
@@ -754,7 +758,7 @@ try {
     writeFileSync(join(installO, 'ressourcen.json'), readFileSync('ressourcen.json'))
     const svO = join(installO, 'startvorlage.json')
     writeFileSync(svO, readFileSync('startvorlagen/ai-workforce.json'))
-    const basisO = `kontrollzustand-test-f45-f3b1-o-${randomUUID()}`
+    const basisO = join(WEGWERF, `f45-f3b1-o-${randomUUID()}`)
     aufraeumen.push(basisO)
     const handlerO = erzeugeRequestHandler({ basisVerzeichnis: basisO, repoWurzel: installO, installWurzel: installO, startvorlagePfad: svO, capWurzel: join(ordner('f45-f3b1-oc-'), 'cap'), laufausgabeWurzel: join(ordner('f45-f3b1-ol-'), 'aus'), globalerLaufZustand: { aktiv: false, laufId: null, abortController: null }, pluginListe: async () => ({ ok: true, stdout: JSON.stringify([{ id: 'kraft@markt', version: '2.0.0', scope: 'user', enabled: false, installPath: pluginO }]) }), pluginClaudeOrdner: claudeO, pluginWerkzeugsatz: null })
     const serverO = createServer(handlerO)

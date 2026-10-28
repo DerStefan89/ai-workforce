@@ -131,8 +131,13 @@ import { registriereAuftrag } from '../auftrag/index.ts'
 import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, ermittleRueckfrageProtokoll, leseRueckfrageProtokoll, leseRueckfrageZaehlung, vergleicheClaudeOrdner } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('execution-controller')
+/** Rohströme der Läufe dieses Tests (F45 W2b-2: im Wegwerf-Ordner statt kontrollzustand-roh/ des Repos). */
+const ROH_BASIS = join(KONTROLLZUSTAND_BASIS, 'kontrollzustand-roh')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const GUELTIGES_STARTZIEL = [process.execPath]
 
@@ -154,7 +159,7 @@ function raeumeKette(laufId: string, eskLaufId?: string, vorgaengerLaufId?: stri
   raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
   raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-kontextpaket-${laufId}`))
   raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`))
-  raeumeVerzeichnis(join('kontrollzustand-roh', laufId))
+  raeumeVerzeichnis(join(ROH_BASIS, laufId))
   if (eskLaufId !== undefined) {
     raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, eskLaufId))
     raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-bedarf-${eskLaufId}`))
@@ -193,6 +198,7 @@ function neuesExternesRepo(): string {
   const repoWurzel = join(tmpdir(), `f8-controller-test-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')
@@ -288,7 +294,7 @@ test('AK1/AK5/AK8: Grün-Durchlauf ruft F5/F6a/F7/F1B je genau einmal und liefer
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -332,7 +338,7 @@ test('F11 AK2: promptText besteht aus Auftragsabschnitt und Evidenzabschnitt, ge
       laufId,
       PROFIL_REFERENZ,
       { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), auftragstext: 'Testauftragstext' },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: spyStarter, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: spyStarter, schreiber: () => {} }
     )
     assert.strictEqual(ergebnis.ok, true)
     assert.ok(erfassteTokens)
@@ -367,7 +373,7 @@ test('F12 WS-2 (AK5): anfragen leer → Evidenzabschnitt enthält ausschließlic
       laufId,
       PROFIL_REFERENZ,
       { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), anfragen: [], auftragstext: 'Testauftragstext' },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: spyStarter, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: spyStarter, schreiber: () => {} }
     )
     assert.strictEqual(ergebnis.ok, true)
     assert.ok(erfassteTokens)
@@ -393,7 +399,7 @@ test("F31 WS-3: aufrufEingaben.settingSources '' überschreibt den Standardwert 
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -419,7 +425,7 @@ test("F31 WS-3: ohne aufrufEingaben.settingSources bleibt der Standardwert 'proj
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -447,7 +453,7 @@ test("F31 WS-3c: ohne aufrufEingaben.mcpConfig trägt jeder Lauf trotzdem '--str
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -475,7 +481,7 @@ test("F31 WS-3c: aufrufEingaben.mcpConfig überschreibt weiterhin den Default-We
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -504,7 +510,7 @@ test('F40 WS-3: ohne aufrufEingaben.disallowedTools trägt der Aufruf kein \'--d
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -529,7 +535,7 @@ test("F40 WS-3: aufrufEingaben.disallowedTools 'Read(~/.claude/**)' landet unver
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -558,7 +564,7 @@ test('Task "Jarvis-Chat-Latenz senken": aufrufEingaben.umgebungsvariablen erreic
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -581,7 +587,7 @@ test('Task "Jarvis-Chat-Latenz senken": ohne aufrufEingaben.umgebungsvariablen t
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -612,7 +618,7 @@ test("F31 WS-3b (QA-Pass 20.09.2026, TC-06): worker 'codex' mit gesetztem aufruf
     eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, settingSources: '', mcpConfig: '{"mcpServers":{}}', disallowedTools: 'Read(~/.claude/**)' }
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -638,13 +644,13 @@ test('F11 AK3(b): Auftragstext-Marke fehlt im registrierten Kontextpaket, Elemen
       laufIdA,
       PROFIL_REFERENZ,
       { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), auftragstext: marke },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: attrappeMitValidemErgebnis, schreiber: () => {} }
     )
     const ergebnisB = await fuehreAufgabeDurch(
       laufIdB,
       PROFIL_REFERENZ,
       { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), auftragstext: 'Ein völlig anderer Auftragstext' },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: attrappeMitValidemErgebnis, schreiber: () => {} }
     )
     assert.strictEqual(ergebnisA.ok, true)
     assert.strictEqual(ergebnisB.ok, true)
@@ -704,7 +710,7 @@ test('AK2/AK8: F6a-Rot-Fall bricht mit dem unveränderten Gateway-Grund ab, kein
     // die Tokens vor jeder F4-Prüfung ab (E-182, Ablauf laut Abschnitt 0/2.1).
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -754,7 +760,7 @@ test('F5-Abbruchzweig: kontextpaket-Rot-Fall bricht sofort ab, Grund unveränder
 
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -797,7 +803,7 @@ test('F-124: der an den Starter übergebene Prompt enthält nur die von F5 akzep
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -830,7 +836,7 @@ test('F14 WS-1 AK2: zeitgrenzeMs aus AusfuehrungsOptionen kommt unverändert am 
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
       zeitgrenzeMs: 12345,
@@ -857,7 +863,7 @@ test('F14 WS-4 AK7: abbruchSignal aus AusfuehrungsOptionen kommt unverändert am
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
       abbruchSignal: controller.signal,
@@ -906,7 +912,7 @@ test('Attrappen-Vorprüfung: attrappeVerweigertBypass1/-0 erzeugen wirklich VERW
         werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
         berechtigungskontext: eingaben.berechtigungskontext,
       },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeVerweigertBypass1, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: attrappeVerweigertBypass1, schreiber: () => {} }
     )
     assert.strictEqual(gatewayA.ok, true)
     assert.ok(gatewayA.ok)
@@ -924,7 +930,7 @@ test('Attrappen-Vorprüfung: attrappeVerweigertBypass1/-0 erzeugen wirklich VERW
         werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
         berechtigungskontext: eingaben.berechtigungskontext,
       },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeVerweigertBypass0, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: attrappeVerweigertBypass0, schreiber: () => {} }
     )
     assert.strictEqual(gatewayB.ok, true)
     assert.ok(gatewayB.ok)
@@ -945,7 +951,7 @@ test('AK4-positiv: VERWEIGERT mit bypass_verdacht_anzahl > 0 eskaliert real übe
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeVerweigertBypass1,
       schreiber: () => {},
     })
@@ -976,7 +982,7 @@ test('AK4-negativ: VERWEIGERT mit bypass_verdacht_anzahl === 0 eskaliert nicht',
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeVerweigertBypass0,
       schreiber: () => {},
     })
@@ -1025,7 +1031,7 @@ test('AK6 (F-091): E-186-Eskalation unter eigener laufId lässt stelleLaufstatus
         werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
         berechtigungskontext: eingaben.berechtigungskontext,
       },
-      { ...startfreigabeOptionen(), ...f9Optionen, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeVerweigertBypass1 }
+      { ...startfreigabeOptionen(), ...f9Optionen, rohBasisVerzeichnis: ROH_BASIS, starter: attrappeVerweigertBypass1 }
     )
     assert.strictEqual(gatewayErgebnis.ok, true)
     assert.ok(gatewayErgebnis.ok)
@@ -1104,7 +1110,7 @@ test('Delta 1 (Wurf): ein Wurf in erzeugeTransportpaket propagiert unverändert,
     const promise = fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeVerweigertBypass1,
       schreiber: werferSchreiber,
     })
@@ -1140,7 +1146,7 @@ test('AK7-positiv-A (KLAERUNG_ERFORDERLICH): Wiederaufnahme erhält Lineage-Verw
         werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
         berechtigungskontext: eingaben.berechtigungskontext,
       },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: attrappeMitValidemErgebnis, schreiber: () => {} }
     )
     assert.strictEqual(vorgaengerGateway.ok, true)
     assert.ok(vorgaengerGateway.ok)
@@ -1152,7 +1158,7 @@ test('AK7-positiv-A (KLAERUNG_ERFORDERLICH): Wiederaufnahme erhält Lineage-Verw
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1198,7 +1204,7 @@ test('AK7-positiv-B (FEHLGESCHLAGEN): Wiederaufnahme erhält Lineage-Verweis auf
     const vorgaengerErgebnis = await fuehreAufgabeDurch(vorgaengerLaufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeOhneErgebnisobjekt,
       schreiber: () => {},
     })
@@ -1217,7 +1223,7 @@ test('AK7-positiv-B (FEHLGESCHLAGEN): Wiederaufnahme erhält Lineage-Verweis auf
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1267,7 +1273,7 @@ test("F13 AK5-positiv: existiert ein entscheidung-<vorgaengerLaufId>-Artefakt, e
         werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
         berechtigungskontext: eingaben.berechtigungskontext,
       },
-      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: attrappeMitValidemErgebnis, schreiber: () => {} }
     )
     assert.strictEqual(vorgaengerGateway.ok, true)
 
@@ -1287,7 +1293,7 @@ test("F13 AK5-positiv: existiert ein entscheidung-<vorgaengerLaufId>-Artefakt, e
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1315,7 +1321,7 @@ test('F13 AK5-Selbsttest: kein Wurf und kein zusätzlicher Eintrag, wenn kein en
     const vorgaengerErgebnis = await fuehreAufgabeDurch(vorgaengerLaufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1327,7 +1333,7 @@ test('F13 AK5-Selbsttest: kein Wurf und kein zusätzlicher Eintrag, wenn kein en
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1355,7 +1361,7 @@ test('Vorbedingungsverstoß: vorgaengerLaufId ohne existierende Laufakte wirft m
       fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
         ...startfreigabeOptionen(),
         basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        rohBasisVerzeichnis: ROH_BASIS,
         starter: attrappeMitValidemErgebnis,
         schreiber: () => {},
       }),
@@ -1375,7 +1381,7 @@ test('F12 AK5: ein gültiger Grün-Durchlauf ohne vorgaengerLaufId erhält den a
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: attrappeMitValidemErgebnis,
       schreiber: () => {},
     })
@@ -1401,7 +1407,7 @@ test('F12 Vorbedingungsverstoß: auftragId ohne existierende Auftragsakte wirft 
       fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
         ...startfreigabeOptionen(),
         basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        rohBasisVerzeichnis: ROH_BASIS,
         starter: attrappeMitValidemErgebnis,
         schreiber: () => {},
       }),
@@ -1437,7 +1443,7 @@ test('F16 AK11: worker "codex" baut das Codex-Argv und schreibt eine Codex-Laufa
     }
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -1477,7 +1483,7 @@ test('F16 AK11: ein gesetzter ausgabeSchemaPfad landet als --output-schema im Ar
     const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), worker: 'codex', ausgabeSchemaPfad: schemaPfad }
     await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -1499,7 +1505,7 @@ test('F16 AK11: ohne worker-Feld bleibt der Claude-Code-Zweig unverändert (Vorg
     await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      rohBasisVerzeichnis: ROH_BASIS,
       starter: spyStarter,
       schreiber: () => {},
     })
@@ -1537,7 +1543,7 @@ test('F16 AK11: ein Worker, den die Weiche nicht kennt, wirft VOR jeder Schreibw
       fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben as unknown as AusfuehrungsEingaben, {
         ...startfreigabeOptionen(),
         basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        rohBasisVerzeichnis: ROH_BASIS,
         starter: spyStarter,
         schreiber: () => {},
       }),
@@ -1566,6 +1572,7 @@ test('F36 WS-5b leseClaudeAenderungen: neue, geänderte und umbenannte Pfade mit
   try {
     const g = (...a: string[]) => execFileSync('git', a, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
     g('init', '-q')
+    schalteGitWartungAb(repo)
     g('config', 'user.email', 't@example.invalid')
     g('config', 'user.name', 'T')
     mkdirSync(join(repo, '.claude', 'skills', 'alt'), { recursive: true })
@@ -1595,6 +1602,7 @@ test('F-832 erfasseClaudeOrdner/vergleicheClaudeOrdner: gitignorierte neue Datei
     assert.deepEqual([...(erfasseClaudeOrdner(repo) ?? new Map())], [], 'ohne .claude: leere Momentaufnahme')
     const g = (...a: string[]) => execFileSync('git', a, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
     g('init', '-q')
+    schalteGitWartungAb(repo)
     mkdirSync(join(repo, '.claude', 'skills', 'a'), { recursive: true })
     writeFileSync(join(repo, '.claude', 'settings.local.json'), '{"permissions":{}}')
     writeFileSync(join(repo, '.claude', 'skills', 'a', 'SKILL.md'), 'a')
@@ -1646,7 +1654,7 @@ test('F45 F-3b-2: ortBLauf.plugins erreicht das Init-Gate (kraft@inline läuft d
         datenordner,
       },
     }
-    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {} })
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter, schreiber: () => {} })
     assert.ok(ergebnis.ok, JSON.stringify(ergebnis).slice(0, 300))
     const laufakte = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })?.daten as Record<string, unknown> | undefined
     const roh = JSON.parse(readFileSync((laufakte?.rohstrom_referenz as { pfad: string }).pfad, 'utf8'))
@@ -1695,7 +1703,7 @@ test('F45 B2b-3b-1b: mit rueckfrageKanal liest der Controller rueckfragen-<laufI
       // B2b-3b-2b-2a-1: Zählung aus dem Speicherstand geht in daten der Terminalmarke, die Abweichung zusätzlich (R3).
       const zaehlung = { stefan_erlaubt: 0, stefan_abgelehnt: 1, frage_beantwortet: 0, nicht_browser: 0, abgelaufen: 0, lauf_ende: 0, automatisch: 0 }
       const rueckfrageZugang = speicher === 'fehlt' ? undefined : { speicher: () => projektion, zaehlung: () => zaehlung, abweichung: () => gemeldet[0] ?? null, meldeAbweichung: (grund: string) => gemeldet.push(grund) }
-      const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter, schreiber: () => {}, ...(rueckfrageZugang !== undefined ? { rueckfrageZugang } : {}) })
+      const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter, schreiber: () => {}, ...(rueckfrageZugang !== undefined ? { rueckfrageZugang } : {}) })
       // B2b-3b-2b-1a (R3): eine Abweichung Speicher/Datei geht über den Zugang (Server: Startfehlerliste).
       // Gemeldet wird jede Abweichung: abweichende Art, oder Speicher mit Eintrag ohne Datei.
       assert.equal(gemeldet.length, mitKanal && (speicher === 'auto_deny' || !mitProtokoll) ? 1 : 0, `Meldungen: ${gemeldet.join('; ')}`)

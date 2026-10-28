@@ -40,8 +40,11 @@ import { kanonischesJson, ladeGueltigeCheckpoints, ladeLetztenGueltigenCheckpoin
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { klassifiziereLauf } from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('result-evaluator')
+
 const ROH_BASIS = join(tmpdir(), 'f7-result-evaluator-test')
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 

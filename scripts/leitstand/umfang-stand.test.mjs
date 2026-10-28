@@ -5,12 +5,17 @@
  * Bereichen und nur bei nicht degradierter Übersicht, nie ein Wurf; Projektion je Lage; Zeile aus der festgehaltenen Übersicht.
  */
 
+import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import { registriereKernArtefakt } from '../../src/lineage-registry/index.ts'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { baueUmfangProjektion, ermittleUmfangFuerUebersicht, leseUmfangsZeile } from './umfang-stand.mjs'
+import { wegwerfOrdner } from '../_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('umfang-stand')
 
 const UEBERSICHT = { aenderungsuebersicht_schema: 'v0', lauf_id: 'l1', erzeugt_am: '2026-10-16T00:00:00.000Z', basis_ref: 'abc', dateien: [{ pfad: 'src/a.ts', status: 'GEAENDERT', plus: 1, minus: 0 }, { pfad: 'docs/x.md', status: 'NEU', plus: null, minus: null }], stat_text: '', patch: '', gekuerzt: false, budget_bytes: 1 }
 const PROFIL = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -37,7 +42,7 @@ test('baueUmfangProjektion: Lagen kein_abgleich, noch_nicht_gelaufen, nicht_best
 })
 
 test('leseUmfangsZeile: aus der festgehaltenen Übersicht; ohne Lauf, Artefakt oder Treffer leer', () => {
-  const basisVerzeichnis = `kontrollzustand-test-umfang-stand-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `umfang-stand-${randomUUID()}`)
   const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
   try {
     registriereKernArtefakt('aenderungsuebersicht-l1', PROFIL, { erzeuger: 'kern' }, { ...UEBERSICHT, umfang: { bereiche: ['src/'], ausserhalb: ['docs/x.md'] } }, [], ladeOptionen)

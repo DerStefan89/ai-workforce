@@ -46,6 +46,7 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F45-FB-1a-Fähigkeit-Vorschlag-Check ===\n')
@@ -180,6 +181,7 @@ const KONTEXT = { katalog: new Map(), einstellungen: { an: [], aus: [], inhalt_f
 {
   const w = tmp('e78')
   execFileSync('git', ['init', '--quiet'], { cwd: w })
+  schalteGitWartungAb(w)
   lege(w, { '.gitignore': '.claude/agents/\n', [`${VS}/agents/qa.md`]: agentText('qa'), [`${VS}/skills/neu/SKILL.md`]: skillText('neu'), '.claude/agents/QA.md': agentText('QA') })
   const v = vorschlag === null ? [] : vorschlag.erkenneFaehigkeitVorschlaege(w)
   const g = Object.fromEntries(v.map((e) => [e.name, e]))
@@ -218,6 +220,7 @@ function legeRepoAn(name, branch) {
   const wurzel = join(basis, name)
   mkdirSync(join(wurzel, '.claude'), { recursive: true })
   git(wurzel, ['init', '--quiet'])
+  schalteGitWartungAb(wurzel)
   git(wurzel, ['config', 'user.email', 'test@example.invalid'])
   git(wurzel, ['config', 'user.name', 'Test'])
   git(wurzel, ['config', 'core.autocrlf', 'false'])

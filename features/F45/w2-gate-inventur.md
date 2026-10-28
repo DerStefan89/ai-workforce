@@ -1,6 +1,6 @@
 # F45 W2 — Gate-Inventur (W2a)
 
-Stand 27.10.2026, Branch `f45/w2a-gates-laeufer` (Basis main `5ce0b47`). Grundlage für W2b „Codeform-Gates abbauen“. **Nachtrag W2b-1** (27.10.2026, `plan-w2b1-v2.md`): siehe Abschnitt „Stand W2b-1“; Tabelle und Befunde tragen den Stand mit „W2b-1:“.
+Stand 27.10.2026, Branch `f45/w2a-gates-laeufer` (Basis main `5ce0b47`). Grundlage für W2b „Codeform-Gates abbauen“. **Nachtrag W2b-1** (27.10.2026, `plan-w2b1-v2.md`): siehe Abschnitt „Stand W2b-1“; Tabelle und Befunde tragen den Stand mit „W2b-1:“. **Nachtrag W2b-2** (27.10.2026, `plan-w2b2-v2.md`): Abschnitt „Stand W2b-2“; die Spalte Parallel-Risiko der Tabelle bleibt Stand W2a (Repo-Wurzel- und startvorlagen-Angaben überholt).
 Quelle der Liste: `GATES` in `scripts/check-kette.mjs` (bis W2a die `&&`-Kette `check:gates` in `package.json`, gleiche
 122 Einträge in gleicher Reihenfolge).
 
@@ -54,6 +54,14 @@ Summen = Stand W2a. **Stand W2b-1:** 120 Gates (−2: `check-f24-capabilities` V
 - **Nicht gestrichen:** f8 (Grenze „Controller ohne F4/F5/F6a/F7-Regelbezeichner“, Entscheidung Stefan 04.09.2026, kein Test trägt sie; „Importregel“ gibt es nicht).
 - **60 × „ersetzen durch Test“** bleiben stehen (Challenger 27.10.2026): umgeschrieben wird nur, wenn der Bereich ohnehin angefasst wird (F-1228).
 
+## Stand W2b-2
+
+- **Wegwerf-Ordner:** 52 Gates der Kette, `check-f20-leitstand-shell` und 18 Testdateien legen ihre Ordner über `wegwerfOrdner` (`scripts/_wegwerf.ts`, `mkdtemp` unter `os.tmpdir()`, Aufräumen beim Prozessende über `raeumeVerzeichnis`, R1) an statt als `kontrollzustand-test-*` in der Repo-Wurzel; die Aufräumer je Fall bleiben. Ausnahme: Projektregister-Einträge in `check-f25`/`check-f41` (`basisverzeichnis` relativ zu `repo_pfad`) — reine Validierung oder unter `os.tmpdir()`; der Dispatch-Eintrag in f25 (7) hat `repo_pfad: '.'` und zeigt damit in die Repo-Wurzel, der Ordner wird dort aber nie angelegt (nur GET). Dazu leiten `claude-code-gateway.test.ts` und `execution-controller.test.ts` ihre Rohströme in den Wegwerf-Ordner.
+- **startvorlagen/ und Rohströme:** f10, f14, f15-automat-real schreiben ihre Wegwerf-Startvorlagen in den Wegwerf-Ordner; f14 und f15-automat-real geben dem Testserver `rohBasisVerzeichnis` mit (Handler-Option, über `starteLaufUndVergiss` an F8 durchgereicht — kein Produktcode geändert).
+- **Fristen:** die 11 Frist-Gates warten über `skaliert` (`AIW_TEST_ZEITFAKTOR`, Standard 1).
+- **SERIELL** 23 → 16: Repo-Baum-Läufer und startvorlagen-Gruppe laufen parallel; Zeit-/Frist-Gates und f3b1 bleiben (Kommentare im Läufer).
+- **git-Wartung (F-1230):** jedes Wegwerf-Repo in Gates (43 Dateien) und Tests (21 Dateien) schaltet gc/maintenance direkt nach `git init` ab.
+
 ## Befunde für W2b
 
 1. **Reine Codeform ist selten, Codeform-Anteile sind überall.** Nur 7 Gates sind reine Codeform, 20 gemischt — aber
@@ -67,10 +75,10 @@ Summen = Stand W2a. **Stand W2b-1:** 120 Gates (−2: `check-f24-capabilities` V
 3. **Wegwerf-Ordner in der Repo-Wurzel:** mindestens 43 Gates legen `kontrollzustand-test-…` relativ zum Arbeitsordner an statt
    unter `os.tmpdir()` (nach Abbruch bleiben Reste, F-590); `f14-abbruch` und `f15-automat-real` schreiben zusätzlich
    feste Dateien nach `startvorlagen/` und Rohströme nach `kontrollzustand-roh/`. Umstellung auf `mkdtemp` ist je Gate
-   klein und würde die serielle Gruppe 1 (Repo-Baum-Läufer) des Läufers überflüssig machen; für Gruppe 2 müssten zusätzlich die festen Dateien in `startvorlagen/` umgelenkt werden.
+   klein und würde die serielle Gruppe 1 (Repo-Baum-Läufer) des Läufers überflüssig machen; für Gruppe 2 müssten zusätzlich die festen Dateien in `startvorlagen/` umgelenkt werden. **W2b-2: erledigt** (beide Gruppen aus `SERIELL`).
 4. **Lastempfindliche Zeitmessungen:** `f43-projekt-aufrufen`, `f20-zustand-poll` (d), `fix-zustand-poll-kosten` (3),
    `f652-pruefschritt` (d) sowie die 11 Gates mit Frist ≤ 10 s (F-1215, Spalte Parallel-Risiko) — Kandidaten für
-   Unit-Tests ohne Wanduhr bzw. Fristen mit Zeitfaktor; danach können sie aus `SERIELL`.
+   Unit-Tests ohne Wanduhr bzw. Fristen mit Zeitfaktor; danach können sie aus `SERIELL`. **W2b-2:** Fristen der 11 Gates mit Zeitfaktor (Standard 1); sie bleiben seriell bis zu einer Messung unter Last.
 5. **Belegte Doppelungen:** `f24-capabilities` (capabilities-ansicht.test.ts), `f28-persona` (1) (f20-design-tokens),
    `f21-ws2-workboard-oberflaeche` (d) (attention-daten.test.mjs), `b2b3d` (f) = `b2b3c` (f). **W2b-1: erledigt.**
 6. **Gate außerhalb der Kette:** `scripts/check-f20-leitstand-shell.mjs` (Chrome-Klicktest) läuft nur als eigener

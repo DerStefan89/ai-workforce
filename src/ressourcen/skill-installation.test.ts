@@ -23,6 +23,7 @@ import { validiereRessourcenDaten } from './index.ts'
 import { bereiteInstallationVor, ECHTE_RUNNER, type InstallationsRunner, installiereRessource, type ProzessErgebnis } from './installation.ts'
 import { berechneInhaltHash, zerlegeGithubUrl } from './skill-dateien.ts'
 import { GIT_UMGEBUNG_OHNE_KONFIG, type GitRunner, holeSkillQuelle, loeseSkillCommitAuf, pruefeSkillQuelle } from './skill-installation.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 const ok = (stdout: string): ProzessErgebnis => ({ code: 0, stdout, stderr: '', zeitueberschritten: false })
 const QUELLE = zerlegeGithubUrl('https://github.com/fixture/pack/tree/main/plugins/p') as ReturnType<typeof zerlegeGithubUrl> & { ok: true }
@@ -60,6 +61,7 @@ function wegwerfRemote(): { wurzel: string; git: GitRunner; repo: (name: string,
       const r = join(wurzel, name)
       mkdirSync(r)
       g(r, 'init', '-q', '-b', 'main')
+      schalteGitWartungAb(r)
       g(r, 'config', 'user.email', 't@example.invalid')
       g(r, 'config', 'user.name', 'T')
       g(r, 'config', 'core.autocrlf', 'false')

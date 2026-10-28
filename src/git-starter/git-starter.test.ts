@@ -21,6 +21,7 @@ import { delimiter, isAbsolute, join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import { findeGitProgramm, fuehreGitAsync, fuehreGitSync, GIT_NICHT_GEFUNDEN, gitProgramm, gitUmgebung } from './index.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 /**
  * Legt ein Wegwerf-Repo mit Attrappen git.exe, git.com (unter Windows) und git (ausführbares Skript, das
@@ -30,6 +31,7 @@ import { findeGitProgramm, fuehreGitAsync, fuehreGitSync, GIT_NICHT_GEFUNDEN, gi
 function repoMitAttrappe(): { repo: string; markierung: string } {
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'git-starter-')))
   fuehreGitSync(['init', '--quiet'], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  schalteGitWartungAb(repo)
   const markierung = join(repo, 'attrappe-lief')
   // Kein gültiges Programm: würde der Prozessstart sie wählen, scheiterte der Aufruf (Windows) bzw. schriebe die Markierung (Skript).
   writeFileSync(join(repo, 'git.exe'), 'keine ausführbare Datei')
@@ -148,6 +150,7 @@ test('fuehreGitAsync (F45 B2a-3b, Zeitgrenze): ein hängendes git (hash-object -
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'git-starter-zeit-')))
   try {
     fuehreGitSync(['init', '--quiet'], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    schalteGitWartungAb(repo)
     const ergebnis = await fuehreGitAsync(['hash-object', '--stdin'], { cwd: repo, zeitgrenzeMs: 50 })
     assert.equal(ergebnis.code, null)
     assert.equal(ergebnis.abbruch, 'zeitgrenze')
@@ -171,6 +174,7 @@ test('fuehreGitAsync (F45 B2a-3b, Node-execFile-Wettlauf): Zeitgrenze wird nie a
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'git-starter-wettlauf-')))
   try {
     fuehreGitSync(['init', '--quiet'], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    schalteGitWartungAb(repo)
     // rev-parse --show-toplevel liefert im Erfolgsfall immer eine Zeile — code 0 mit leerer Ausgabe ist ein verdeckter Abbruch.
     const ergebnisse = await Promise.all(Array.from({ length: 50 }, () => fuehreGitAsync(['rev-parse', '--show-toplevel'], { cwd: repo, zeitgrenzeMs: 1 })))
     const stilleAbbrueche = ergebnisse.filter((e) => e.code === 0 && e.stdout === '')
@@ -188,6 +192,7 @@ test('fuehreGitAsync (F45 B2a-3b, Code-Review-Nachpass 1): ein Enkelprozess mit 
   try {
     const git = (...a: string[]) => fuehreGitSync(a, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
     git('init', '--quiet')
+    schalteGitWartungAb(repo)
     git('-c', 'user.email=t@example.invalid', '-c', 'user.name=T', 'commit', '--quiet', '--allow-empty', '-m', 'init')
     mkdirSync(hooks)
     // post-checkout schläft 5 s und erbt stdout/stderr von git — bei Ablauf der Zeitgrenze (1 s) läuft er sicher, und ohne

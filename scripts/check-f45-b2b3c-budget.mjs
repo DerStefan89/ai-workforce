@@ -51,6 +51,11 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f45-b2b3c-budget')
 
 const befunde = []
 console.log('\n=== F45-B2b-3c-Budget-Check ===\n')
@@ -82,6 +87,7 @@ function git(wurzel, argumente) {
 function baueFremdprojekt() {
   const wurzel = mkdtempSync(join(tmpdir(), 'check-f45-b2b3c-fremd-'))
   git(wurzel, ['init', '--quiet'])
+  schalteGitWartungAb(wurzel)
   git(wurzel, ['config', 'user.email', 'test@example.invalid'])
   git(wurzel, ['config', 'user.name', 'Test'])
   git(wurzel, ['branch', '-m', 'wegwerf-branch'])
@@ -98,14 +104,14 @@ const verzoegerung = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 async function warteBis(pruefen, maxMs) {
   const start = Date.now()
   let wert = await pruefen()
-  while (!wert && Date.now() - start < maxMs) {
+  while (!wert && Date.now() - start < skaliert(maxMs)) {
     await verzoegerung(50)
     wert = await pruefen()
   }
   return wert
 }
 
-const basisVerzeichnis = `kontrollzustand-test-f45-b2b3c-${randomUUID()}`
+const basisVerzeichnis = join(WEGWERF, `f45-b2b3c-${randomUUID()}`)
 raeumeVerzeichnis(basisVerzeichnis)
 const ladeOptionen = { basisVerzeichnis, schreiber: STILL }
 const fremdprojekt = baueFremdprojekt()
@@ -120,7 +126,7 @@ writeFileSync(
       ...ladeStartvorlage('startvorlagen/beispielprojekt.json'),
       worker: { codex: { startziel: [String.raw`C:\f45b2b3c-gate-dummy\codex.exe`], versionDeklariert: 'codex-cli-gate-fixture', sandbox: 'read-only' } },
       pruefbefehl: [process.execPath, '-e', `const fs=require('node:fs'); const m=${JSON.stringify(markerPfad)}; if (fs.existsSync(m)) { fs.unlinkSync(m); console.error('FEHLER: Gate-B2b-3c rot'); process.exit(1) } process.exit(0)`],
-      pruefZeitgrenzeMs: 10000,
+      pruefZeitgrenzeMs: skaliert(10000),
     },
     null,
     2

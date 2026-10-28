@@ -48,6 +48,10 @@ import { join } from 'node:path'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { entferneAeusserstenCodezaun, entferneCodezaun, erzeugeMultiProjektDispatcher, erzeugeRequestHandler, extrahiereErstesJsonObjekt, leseJarvisErgebnisAusLaufakte } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f31-gedaechtnis')
 
 const befunde = []
 const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -85,7 +89,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (a) POST /api/chat übergibt das Verlaufsfenster im Auftragstext ───────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-a-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-a-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-a'
 
@@ -141,7 +145,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (b) POST /api/chat/zusammenfassen: 409 bei D13 ────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-b-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-b-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-b'
 
@@ -173,7 +177,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (c) POST /api/chat/zusammenfassen: 409 bei leerem Verlauf ─────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-c-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-c-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-c'
 
@@ -197,7 +201,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (d) POST /api/chat/zusammenfassen: 400 bei unbekanntem Body-Feld ──────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-d-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-d-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const projektId = 'check-f31-ak-d'
@@ -235,7 +239,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (e) Erfolg schreibt istZusammenfassung; GET /api/chat projiziert das Flag ─
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-e-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-e-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-e'
 
@@ -278,7 +282,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (f) Der Turn NACH einer Zusammenfassung bekommt nur Zusammenfassung + Folgeturns ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-f'
 
@@ -322,7 +326,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 // Server-Aufrufpfad). 9 Folgeturns nach der Zusammenfassung sind mehr als (maxTurns - 1 = 7) —
 // ohne Pinning wäre die Zusammenfassung hier bereits aus dem Fenster gefallen.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-h-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-h-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-h'
 
@@ -362,7 +366,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (g) Erreichbarkeit über den F25-Dispatcher ────────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-g-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-g-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-g'
 
@@ -424,7 +428,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
   // leseJarvisErgebnisAusLaufakte end-to-end über alle vier vom Auftrag genannten Fälle plus den
   // Prosa-ohne-Zaun-Fall — Muster scripts/check-f26-jarvis.mjs Abschnitt (d).
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-i-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-i-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     mkdirSync(basisVerzeichnis, { recursive: true })
@@ -477,7 +481,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 
 // ─── (j) Ungültiges Ergebnis nach ERFOLGREICH: genau ein Fehler-Chat-Eintrag (Runde 2, Schritt 2) ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-j-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-j-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f31-ak-j'
 
@@ -543,7 +547,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
 // die nachfolgende Verarbeitung (verarbeiteRouterErgebnis) ist für DIESE Prüfung irrelevant, weil
 // capture(eingaben) bereits VOR jeder Nachbereitung greift (Muster (a) oben).
 {
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-k-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-k-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
 
   let letzteEingaben = null
@@ -585,7 +589,7 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
   const befundeVor = befunde.length
   const mitBlock = { art: 'antwort', antwort: 'Führe aus:\n```powershell\ngit status\ngit diff --stat\n```\nDanach melden.' }
   const roh = JSON.stringify(mitBlock)
-  const basisVerzeichnis = `kontrollzustand-test-f31-ak-l-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f31-ak-l-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     mkdirSync(basisVerzeichnis, { recursive: true })

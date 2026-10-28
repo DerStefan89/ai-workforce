@@ -23,11 +23,16 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { validiereLaufakteDaten } from '../src/claude-code-gateway/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f32-verbrauch')
 
 const befunde = []
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -97,7 +102,7 @@ function gueltigeBasisLaufakte(laufId) {
 
 // ─── (c)/(d) Projektion: zwei reale Fixture-Laufakten + ein Lauf ohne Beobachtung ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f32-projektion-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f32-projektion-${randomUUID()}`)
   const projektId = 'check-f32-projektion'
   raeumeVerzeichnis(basisVerzeichnis)
   try {

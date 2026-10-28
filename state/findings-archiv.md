@@ -3768,7 +3768,7 @@ Beschreibung: Heute 2x in `npm run check` aufgetreten (Testverzeichnis unter `ko
 Fundstelle: `scripts/_aufraeumen.ts` (`raeumeVerzeichnis`); `scripts/check-f20-leitstand-shell.mjs` (nutzte vorher einen eigenen direkten `rmSync`-Aufruf statt des gemeinsamen Helfers, jetzt auf `raeumeVerzeichnis` umgestellt).
 Auswirkung: Sporadisch scheiternde `npm run check`-Läufe ohne Codeänderung (Retry meist grün) — Verwechslungsgefahr mit einem echten Befund, Muster CLAUDE.md „Bekannte Fallen".
 Maßnahme: Wiederholung allein löst es nicht (bestätigt) — `raeumeVerzeichnis` wirft nach ausgeschöpften Wiederholungen bei EPERM/EBUSY/ENOTEMPTY nicht mehr, sondern warnt auf stderr und sammelt den Pfad in `scripts/.aufraeumen-reste.jsonl`; `scripts/aufraeumen-nachlauf.mjs` versucht diese Pfade am Ende von `npm run check` einmal erneut und meldet verbleibende Reste nur als Hinweis (Exit 0). `maxRetries` unverändert bei 10 belassen (F-591).
-Status: erledigt (Fix `fix/f590-eperm-aufraeumen`, 23.09.2026 — `npm run check` dreimal hintereinander grün, gemergt #228).
+Status: erledigt (Fix `fix/f590-eperm-aufraeumen`, 23.09.2026 — `npm run check` dreimal hintereinander grün, gemergt #228). Nachtrag F45 W2b-2 (27.10.2026): die Reste-Quelle selbst ist weg — Gates und Tests legen ihre Wegwerf-Ordner über `wegwerfOrdner` (`scripts/_wegwerf.ts`) unter `os.tmpdir()` an statt als `kontrollzustand-test-*` in der Repo-Wurzel; nach einem Abbruch bleibt ein Rest im Temp-Ordner des Systems. Toleranz und Nachlauf bleiben.
 Feature/Run: Fix f588-sammle-laeufe, 22.09.2026 (Aufnahme). Quelle: claude/316, claude/317. Fix fix/f590-eperm-aufraeumen, 23.09.2026 (#228).
 
 **F-595** · `TECH_DEBT` · P3 · erledigt

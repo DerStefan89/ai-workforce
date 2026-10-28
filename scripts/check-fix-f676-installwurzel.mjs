@@ -66,6 +66,10 @@ import { validiereErgebnisRouter, waehleWorkflowVorlage } from '../src/router/in
 import { validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { loeseAusgabeSchemaAuf, loeseSchrittEingabenAuf, verarbeiteRouterErgebnis } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('fix-f676-installwurzel')
 
 const befunde = []
 console.log('\n=== Fix-Check E-F41-2 (F-676): Workforce-Assets aus der Installationswurzel ===\n')
@@ -197,7 +201,7 @@ try {
 
   // ─── (2b) Voller Server-Durchlauf (verarbeiteRouterErgebnis, dieselbe Funktion wie POST /api/auftraege/<id>/routen) für 'hoch' ──
   {
-    const basisVerzeichnis = `kontrollzustand-test-f676-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f676-${randomUUID()}`)
     raeumeVerzeichnis(basisVerzeichnis)
     try {
       const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
@@ -243,7 +247,7 @@ try {
       output_schema: 'ergebnis-architektur',
     }
     const workflowDaten = { workflow_id: 'wf-f676', auftrag_id: 'auftrag-f676-architekt', schritte: [schritt] }
-    const ladeOptionen = { basisVerzeichnis: `kontrollzustand-test-f676-c-${randomUUID()}`, schreiber: () => {} }
+    const ladeOptionen = { basisVerzeichnis: join(WEGWERF, `f676-c-${randomUUID()}`), schreiber: () => {} }
 
     let ergebnis
     try {

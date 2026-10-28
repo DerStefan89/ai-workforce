@@ -9,6 +9,7 @@
  * Wird aufgerufen von: `npm run test` (node --test)
  */
 
+import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
@@ -19,6 +20,10 @@ import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { erzeugeRequestHandler } from '../leitstand-server.mjs'
 import { MASKE } from './geheimnisse-maskieren.mjs'
 import { AKTIVITAET_GRENZE, BERUEHRT_GRENZE, erzeugeAktivitaetsSpeicher, kuerze, WERKZEUG_ART, werkzeugArt, ZIEL_MAX_ZEICHEN, zielFuerAnzeige } from './lauf-aktivitaet.mjs'
+import { wegwerfOrdner } from '../_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('lauf-aktivitaet')
 
 test('werkzeugArt bildet die Werkzeuge nach Tabelle ab, MCP als Fähigkeit, Unbekanntes als sonstiges', () => {
   const erwartet = {
@@ -161,7 +166,7 @@ test('Berührte Dateien: nur schreibende Werkzeuge, eindeutig, gekappt bei 100',
 })
 
 test('HTTP: GET /api/laeufe/<laufId> liefert aktivitaet nur für den aktiven Lauf und nach Laufende null', async () => {
-  const basisVerzeichnis = `kontrollzustand-test-f46-d5-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f46-d5-${randomUUID()}`)
   const profil = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
   const fremdId = `f46-d5-fremd-${randomUUID()}`
   schreibeWirkungsmarke(fremdId, profil, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })

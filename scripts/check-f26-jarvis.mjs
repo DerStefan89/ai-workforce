@@ -49,6 +49,10 @@ import { registriereKernArtefakt, validiereLineageEintrag } from '../src/lineage
 import { ladeGueltigeCheckpoints } from '../src/checkpoint-store/index.ts'
 import { erzeugeRequestHandler, leseJarvisErgebnisAusLaufakte, loeseAusfuehrungsEingabenAuf, vergleicheStartordner } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f26-jarvis')
 
 const befunde = []
 const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -269,7 +273,7 @@ console.log('\n=== F26-Jarvis-Check ===\n')
 
 // ─── (c) POST /api/chat: reale Rot-Fälle der Bodyprüfung ───────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f26-ak-c-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f26-ak-c-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
 
@@ -305,7 +309,7 @@ console.log('\n=== F26-Jarvis-Check ===\n')
 
 // ─── (d) leseJarvisErgebnisAusLaufakte über präparierten Rohstrom ──────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f26-ak-d-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f26-ak-d-${randomUUID()}`)
   const befundeVor = befunde.length
   try {
     mkdirSync(basisVerzeichnis, { recursive: true })
@@ -360,7 +364,7 @@ console.log('\n=== F26-Jarvis-Check ===\n')
 // <projektId>') mit der Nachricht im freien 'daten'-Feld — NICHT in 'eingaben' (das ist für
 // Datei-Referenzen mit inhalts_hash reserviert, schemas/kontrollzustand-lineage-payload.schema.json).
 {
-  const basisVerzeichnis = `kontrollzustand-test-f26-ak-e-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f26-ak-e-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   try {
@@ -424,7 +428,7 @@ console.log('\n=== F26-Jarvis-Check ===\n')
 // zugleich die neue erzeugeRequestHandler-Option 'projektId' UND GET /api/chat (Projektion der
 // Checkpoint-Kette) in einem echten HTTP-Rundlauf.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f26-ak-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f26-ak-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const projektId = 'check-f26-ws2a'
@@ -517,7 +521,7 @@ console.log('\n=== F26-Jarvis-Check ===\n')
 // verfügbar machte. Grün: zeitgrenzeMs 180 000 am Lauf, laufZeitgrenzeMs 180 000 im Lauf-Detail,
 // worker claude-code (fehlendes Feld) ohne Ausgabe-Schema.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f26-f45-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f26-f45-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   let gesehen = null
@@ -564,7 +568,7 @@ console.log('\n=== F26-Jarvis-Check ===\n')
   if (vergleicheStartordner('c:/users/stefa/projekte/ai-workforce', soll) !== null) befunde.push('(i) Grünfall: gleiche Pfade in anderer Schreibweise dürfen keinen Start-Hinweis erzeugen')
   const hinweis = vergleicheStartordner('C:\\Users\\stefa\\Projekte\\aiw-main-ansicht', soll)
   if (hinweis?.art !== 'falscherOrdner' || hinweis.sollPfad !== soll) befunde.push(`(i) Rotfall: abweichender Ordner muss einen Start-Hinweis mit beiden Pfaden erzeugen, erhalten ${JSON.stringify(hinweis)}`)
-  const basisVerzeichnis = `kontrollzustand-test-f26-f45i-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f26-f45i-${randomUUID()}`)
   const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, startHinweis: hinweis }))
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   try {

@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { findeTestdateien, fuehreGruppenAus, SERIELL, teileAuf } from './teste.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const TESTE = join(import.meta.dirname, 'teste.mjs')
 
@@ -30,6 +31,7 @@ const TESTE = join(import.meta.dirname, 'teste.mjs')
 function leeresRepo(praefix) {
   const wurzel = mkdtempSync(join(tmpdir(), praefix))
   execFileSync('git', ['init', '--quiet'], { cwd: wurzel })
+  schalteGitWartungAb(wurzel)
   return wurzel
 }
 

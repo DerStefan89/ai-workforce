@@ -20,9 +20,13 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { baueKontextpaket, pruefeKontextpaketFrisch, validiereKontextpaketDaten } from '../src/context-builder/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('f5-context-builder')
 
 const befunde = []
-const BASIS = 'kontrollzustand-test'
+
 const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const stillerSchreiber = () => {}
 

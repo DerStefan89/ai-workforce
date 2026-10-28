@@ -60,6 +60,11 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { mitPassendemBericht } from './leitstand/pruefbericht-testhilfe.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f36-ws5b-skill')
 
 const befunde = []
 console.log('\n=== F36-WS-5b-Skill-Check ===\n')
@@ -87,6 +92,7 @@ function remoteRepo(name, dateien, symlinks = {}) {
   const r = join(REMOTE, name)
   mkdirSync(r)
   git(r, 'init', '-q', '-b', 'main')
+  schalteGitWartungAb(r)
   git(r, 'config', 'user.email', 'gate@example.invalid')
   git(r, 'config', 'user.name', 'Gate')
   git(r, 'config', 'core.autocrlf', 'false')
@@ -199,6 +205,7 @@ function katalog() {
 
 const STARTFREIGABE_REPO = ordner('f36-ws5b-startfreigabe-')
 git(STARTFREIGABE_REPO, 'init', '-q')
+schalteGitWartungAb(STARTFREIGABE_REPO)
 git(STARTFREIGABE_REPO, 'config', 'user.email', 'gate@example.invalid')
 git(STARTFREIGABE_REPO, 'config', 'user.name', 'Gate')
 writeFileSync(join(STARTFREIGABE_REPO, '.gitattributes'), '* -text\n')
@@ -238,6 +245,7 @@ const F4_OPTIONEN = { settingsPfad: SETTINGS_PFAD, aktuelleAutorisierungPfad: AU
 function projektRepo() {
   const repo = ordner('f36-ws5b-projekt-')
   git(repo, 'init', '-q', '-b', 'wegwerf-branch')
+  schalteGitWartungAb(repo)
   git(repo, 'config', 'user.email', 'gate@example.invalid')
   git(repo, 'config', 'user.name', 'Gate')
   git(repo, 'config', 'core.autocrlf', 'false')
@@ -256,7 +264,7 @@ function projektRepo() {
 }
 
 async function umgebung() {
-  const basisVerzeichnis = `kontrollzustand-test-f36-ws5b-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f36-ws5b-${randomUUID()}`)
   aufraeumenGlobal.push(basisVerzeichnis)
   const installWurzel = ordner('f36-ws5b-install-')
   const katalogPfad = join(installWurzel, 'ressourcen.json')
@@ -360,7 +368,7 @@ async function workflowAmZwingendStart(u) {
 
 async function warte(bedingung, ms = 10000) {
   const start = Date.now()
-  while (Date.now() - start < ms) {
+  while (Date.now() - start < skaliert(ms)) {
     if (bedingung()) return true
     await new Promise((resolve) => setTimeout(resolve, 50))
   }

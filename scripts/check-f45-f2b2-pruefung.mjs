@@ -55,6 +55,10 @@ import { LEER_SHA256, legePassendenBerichtAn } from './leitstand/pruefbericht-te
 import { berichtKurz, PRUEF_TEMP_PRAEFIX } from './leitstand/routen-pruefung.mjs'
 import { baueSammlungVormerkenAuftragstext, sammlungNichtVormerkbar } from '../public/leitstand/vormerken-auftrag.js'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f45-f2b2-pruefung')
 
 const befunde = []
 console.log('\n=== F45-F-2b-2-Prüfung-Check ===\n')
@@ -109,6 +113,7 @@ const shaVon = (name, dateien) => {
   const r = join(REMOTE, name)
   mkdirSync(r)
   git(r, 'init', '-q', '-b', 'main')
+  schalteGitWartungAb(r)
   git(r, 'config', 'user.email', 'gate@example.invalid')
   git(r, 'config', 'user.name', 'Gate')
   git(r, 'config', 'core.autocrlf', 'false')
@@ -184,7 +189,7 @@ const KATALOG = {
 
 /** Eine Leitstand-Instanz (Workforce oder Projekt) mit Attrappen; fuehreAufgabeDurchFn schreibt eine Laufakte mit Ergebnis. */
 async function umgebung({ workforce = true, ergebnis = null } = {}) {
-  const basisVerzeichnis = `kontrollzustand-test-f45-f2b2-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f45-f2b2-${randomUUID()}`)
   aufraeumen.push(basisVerzeichnis)
   // repoWurzel = installWurzel (wie die Workforce selbst): Sammlung, Stack-Liste, Katalog, kein verschachteltes .claude.
   const install = ordner('f45-f2b2-install-')

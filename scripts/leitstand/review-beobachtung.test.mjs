@@ -33,6 +33,9 @@ const basisVerzeichnis = join(basis, 'kontrollzustand')
 mkdirSync(repoWurzel, { recursive: true })
 for (const argumente of [
   ['init', '--quiet'],
+  ['config', 'gc.auto', '0'],
+  ['config', 'maintenance.auto', 'false'],
+  ['config', 'maintenance.autoDetach', 'false'],
   ['config', 'user.email', 'test@example.invalid'],
   ['config', 'user.name', 'Test'],
   ['checkout', '--quiet', '-b', 'wegwerf-branch'],

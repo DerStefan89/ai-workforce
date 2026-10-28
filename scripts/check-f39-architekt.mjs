@@ -85,6 +85,10 @@ import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.t
 import { findeWorkflowEntscheidungFuerSchritt, pruefeWorkflowEntscheidungsformular, registriereWorkflowEntscheidung } from './leitstand/routen-f39.mjs'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, loeseSchrittEingabenAuf, pruefeAuftragsformular } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f39-architekt')
 
 const befunde = []
 
@@ -484,7 +488,7 @@ console.log('\n=== F39-Architekt-Check ===\n')
   const befundeVor = befunde.length
   const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
   const repoWurzel = process.cwd()
-  const testBasis = `kontrollzustand-test-f39-g-${randomUUID()}`
+  const testBasis = join(WEGWERF, `f39-g-${randomUUID()}`)
   const ladeOptionen = { basisVerzeichnis: testBasis, schreiber: () => {} }
 
   function baueSchritt(eingaben, felder = {}) {
@@ -777,7 +781,7 @@ const GATE_FRAGE = {
 // ─── (j) POST /api/workflows/<id>/entscheidung: rot (Status/Antworten) und grün (echter Dispatch) ──
 {
   const befundeVor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-f39-j-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f39-j-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
   const profilReferenz = leiteProfilReferenzAb(vorlage)
@@ -864,7 +868,7 @@ const GATE_FRAGE = {
   const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
   const profilReferenz = leiteProfilReferenzAb(vorlage)
   const repoWurzel = process.cwd()
-  const testBasis = `kontrollzustand-test-f39-k-${randomUUID()}`
+  const testBasis = join(WEGWERF, `f39-k-${randomUUID()}`)
   const ladeOptionen = { basisVerzeichnis: testBasis, schreiber: () => {} }
 
   function baueSchritt(eingaben, felder = {}) {
@@ -973,7 +977,7 @@ const GATE_FRAGE = {
 // ─── (m) GET /api/workflows/<id>: additives Feld 'architekturEntscheidung' ─────────────────
 {
   const befundeVor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-f39-m-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f39-m-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
   const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
@@ -1011,17 +1015,15 @@ const GATE_FRAGE = {
 // ─── (n) F39 WS-3a (löst F-635): realer Schrittstart-Pfad umhüllt den Auftragstext ─────────
 {
   const befundeVor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-f39-n-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f39-n-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
 
   // Der architekt-Schritt läuft laut workflow-vorlagen/hoch.json auf worker 'codex' — die
   // reale Standard-Startvorlage (startvorlagen/beispielprojekt.json) trägt keinen
   // worker.codex-Block. Muster check-f15-workflow.mjs (WS-3a-Block): eine Wegwerfkopie MIT
-  // Block, injiziert über die Server-Option startvorlagePfad — REPO-RELATIV (nicht im OS-
-  // Temp-Verzeichnis wie beim F15-Vorbild), weil loeseRessourcenAuf (Modus 'projekt', unten)
-  // startvorlagePfad intern gegen repoWurzel auflöst (join(repoWurzel, startvorlagePfad)) —
-  // ein absoluter Pfad würde dort falsch verkettet. kontrollzustand-test-*-Verzeichnisse sind
-  // gitignored (CLAUDE.md „Bekannte Fallen").
+  // Block, injiziert über die Server-Option startvorlagePfad. Seit F45 W2b-2 liegt sie im
+  // Wegwerf-Ordner unter os.tmpdir(): loeseRessourcenAuf löst startvorlagePfad per resolve gegen
+  // repoWurzel auf (src/ressourcen/index.ts), ein absoluter Pfad bleibt dabei unverändert.
   mkdirSync(basisVerzeichnis, { recursive: true })
   const startvorlagePfadMitCodex = join(basisVerzeichnis, 'startvorlage-mit-codex.json')
   const vorlageBasis = ladeStartvorlage('startvorlagen/beispielprojekt.json')
@@ -1151,7 +1153,7 @@ const GATE_FRAGE = {
 // Arguments lässt (n4) unten real fehlschlagen).
 {
   const befundeVor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-f39-n4-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f39-n4-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   mkdirSync(basisVerzeichnis, { recursive: true })
 
@@ -1261,7 +1263,7 @@ const GATE_FRAGE = {
 
   // (o1)/(o2) realer Schrittstart-Pfad: ein 'ausfuehrung'-Schritt MIT 'ergebnis-@<architekt>'-
   // Eingabe bekommt den Zusatzblock angehängt; einer OHNE eine solche Eingabe bleibt unverändert.
-  const basisVerzeichnis = `kontrollzustand-test-f39-o-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f39-o-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
   const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
@@ -1278,6 +1280,7 @@ const GATE_FRAGE = {
   // (process.cwd(), Default) statt gegen eine feste Fixture.
   const repoWurzelWegwerf = mkdtempSync(join(tmpdir(), 'f39-o-repo-'))
   execFileSync('git', ['init', '--quiet', '-b', 'wegwerf-branch'], { cwd: repoWurzelWegwerf })
+  schalteGitWartungAb(repoWurzelWegwerf)
 
   const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel: repoWurzelWegwerf }))
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))

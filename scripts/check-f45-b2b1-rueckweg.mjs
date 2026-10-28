@@ -92,6 +92,11 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { ermittlePlanRueckweg } from './leitstand/f35-ws3-adjust-automatik.mjs'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f45-b2b1-rueckweg')
 
 const befunde = []
 console.log('\n=== F45-B2b-1a-Rückweg-Check ===\n')
@@ -126,6 +131,7 @@ function git(wurzel, argumente) {
 function baueFremdprojekt() {
   const wurzel = mkdtempSync(join(tmpdir(), 'check-f45-b2b1-fremd-'))
   git(wurzel, ['init', '--quiet'])
+  schalteGitWartungAb(wurzel)
   git(wurzel, ['config', 'user.email', 'test@example.invalid'])
   git(wurzel, ['config', 'user.name', 'Test'])
   git(wurzel, ['branch', '-m', 'wegwerf-branch'])
@@ -144,14 +150,14 @@ function verzoegerung(ms) {
 async function warteBis(pruefen, maxMs) {
   const start = Date.now()
   let wert = await pruefen()
-  while (!wert && Date.now() - start < maxMs) {
+  while (!wert && Date.now() - start < skaliert(maxMs)) {
     await verzoegerung(50)
     wert = await pruefen()
   }
   return wert
 }
 
-const basisVerzeichnis = `kontrollzustand-test-f45-b2b1-${randomUUID()}`
+const basisVerzeichnis = join(WEGWERF, `f45-b2b1-${randomUUID()}`)
 raeumeVerzeichnis(basisVerzeichnis)
 const ladeOptionen = { basisVerzeichnis, schreiber: STILL }
 const fremdprojekt = baueFremdprojekt()

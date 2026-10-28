@@ -45,6 +45,10 @@ import { renderEmpfehlung } from '../public/leitstand/empfehlung-anzeige.js'
 import { empfehlungsKennung } from '../src/ressourcen/index.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f36-ws3-empfehlung')
 
 const befunde = []
 console.log('\n=== F36-WS-3-Empfehlungs-Check ===\n')
@@ -125,7 +129,7 @@ async function warte(bedingung, ms = 10000) {
  * @returns { detail, startStatus, startGrund, gesehen, entscheidungFestgehalten }
  */
 async function durchlauf(fall, o) {
-  const basisVerzeichnis = `kontrollzustand-test-f36-ws3-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f36-ws3-${randomUUID()}`)
   const aufraeumen = [basisVerzeichnis]
   const ergebnis = { detail: null, startStatus: null, startGrund: null, gesehen: null, entscheidungFestgehalten: false }
   let server = null
@@ -141,6 +145,7 @@ async function durchlauf(fall, o) {
     aufraeumen.push(repoWurzel)
     const git = (argumente) => execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8' })
     git(['init', '--quiet', '-b', 'wegwerf-branch'])
+    schalteGitWartungAb(repoWurzel)
     git(['config', 'user.email', 'gate@example.invalid'])
     git(['config', 'user.name', 'Gate'])
     git(['config', 'core.autocrlf', 'false'])

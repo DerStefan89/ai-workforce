@@ -36,6 +36,10 @@ import {
 } from './routen-code.mjs'
 import { ablaufSicherBefehle, sicherBefehle } from '../../public/leitstand/code-daten.js'
 import { leiteSichernLageAb } from './ablauf-sichern.mjs'
+import { schalteGitWartungAb, wegwerfOrdner } from '../_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('routen-code')
 
 /** Führt git im Test-Repo aus (nur zum Aufbau der Fixtures). */
 function g(repo, ...args) {
@@ -76,6 +80,7 @@ async function mitRepo(fn) {
   const repo = mkdtempSync(join(tmpdir(), 'f46-code-'))
   try {
     g(repo, 'init', '-q', '-b', 'main')
+    schalteGitWartungAb(repo)
     writeFileSync(join(repo, 'bleibt.txt'), 'eins\nzwei\n')
     writeFileSync(join(repo, 'weg.txt'), 'weg\n')
     writeFileSync(join(repo, 'alt-name.txt'), 'umbenannt\nbleibt gleich\n')
@@ -246,6 +251,7 @@ test('Zeitgrenze: ein hängender Git-Aufruf endet als Fehler, nicht als Hänger'
   const repo = mkdtempSync(join(tmpdir(), 'f46-code-zeit-'))
   try {
     g(repo, 'init', '-q')
+    schalteGitWartungAb(repo)
     const start = Date.now()
     // hash-object --stdin wartet auf die Standardeingabe, die execFile offen hält.
     const ergebnis = await fuehreGitAus(repo, ['hash-object', '--stdin'], { zeitgrenzeMs: 300 })
@@ -287,7 +293,7 @@ test('kein Git: Ordner ohne Repo, Unterordner eines Repos, fehlendes git', async
 
 test('HTTP: Host-Prüfung greift vor der Route; Diff-Parameter wird geprüft', async () => {
   await mitRepo(async (repo) => {
-    const basisVerzeichnis = `kontrollzustand-test-f46-code-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f46-code-${randomUUID()}`)
     const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', repoWurzel: repo, globalerLaufZustand: { aktiv: false, laufId: null, abortController: null } })
     const server = createServer(handler)
     await new Promise((ok) => server.listen(0, '127.0.0.1', ok))
@@ -382,6 +388,7 @@ test('node_modules (F45 B2b-4a-2b-1, O2): neue Dateien darunter zählen nicht un
   const repo = mkdtempSync(join(tmpdir(), 'f45-code-nm-'))
   try {
     g(repo, 'init', '-q', '-b', 'main')
+    schalteGitWartungAb(repo)
     mkdirSync(join(repo, 'node_modules'))
     writeFileSync(join(repo, 'node_modules', 'vendored.js'), 'alt\n')
     writeFileSync(join(repo, 'a.txt'), 'a\n')
@@ -425,6 +432,7 @@ test('node_modules bis zur Ableitung (F-1157 (1), qa 9): nur node_modules offen 
   const repo = mkdtempSync(join(tmpdir(), 'f45-code-nm-ablauf-'))
   try {
     g(repo, 'init', '-q', '-b', 'main')
+    schalteGitWartungAb(repo)
     writeFileSync(join(repo, 'a.txt'), 'a\n')
     g(repo, 'add', 'a.txt')
     g(repo, 'commit', '-q', '-m', 'start')
@@ -462,6 +470,7 @@ test('Randfälle der Route: detached HEAD, ohne origin, ohne Commits, mehr als 5
   const leer = mkdtempSync(join(tmpdir(), 'f46-code-unborn-'))
   try {
     g(leer, 'init', '-q', '-b', 'main')
+    schalteGitWartungAb(leer)
     writeFileSync(join(leer, 'a.txt'), 'a\n')
     g(leer, 'add', 'a.txt')
     const p = await baueCodeProjektion({ repoWurzel: leer })
@@ -489,6 +498,7 @@ test('Git: GIT_DIR der Umgebung lenkt nicht um (Prüfpass cr 9)', async () => {
     const vorher = process.env.GIT_DIR
     try {
       g(anderes, 'init', '-q', '-b', 'fremd')
+      schalteGitWartungAb(anderes)
       process.env.GIT_DIR = join(anderes, '.git')
       const p = await baueCodeProjektion({ repoWurzel: repo })
       assert.equal(p.branch.name, 'feat/f46-d4-test')
@@ -507,7 +517,7 @@ test('Herkunft: fremde Seite (Sec-Fetch-Site cross-site) bekommt 403, Leitstand 
   assert.notEqual(pruefeCodeHerkunft({ headers: { 'sec-fetch-site': 'cross-site' } }), null)
   assert.notEqual(pruefeCodeHerkunft({ headers: { 'sec-fetch-site': 'same-site' } }), null)
   await mitRepo(async (repo) => {
-    const basisVerzeichnis = `kontrollzustand-test-f46-code-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f46-code-${randomUUID()}`)
     const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', repoWurzel: repo, globalerLaufZustand: { aktiv: false, laufId: null, abortController: null } })
     const server = createServer(handler)
     await new Promise((ok) => server.listen(0, '127.0.0.1', ok))

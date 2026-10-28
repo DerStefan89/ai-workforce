@@ -29,6 +29,7 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { skaliert } from './_zeitfaktor.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 /** git für Testaufbauten (Tests liegen außerhalb des Git-Starter-Gates). */
 function git(cwd, argumente) {
@@ -55,6 +56,7 @@ function baueUmgebung({ pruefSkript = null, packageJson = null } = {}) {
   const repoWurzel = join(basis, 'projekt')
   mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   git(repoWurzel, ['config', 'core.autocrlf', 'false'])

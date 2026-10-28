@@ -19,6 +19,7 @@ import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import { fuehreGitSync } from '../git-starter/index.ts'
 import { kopiereSkelett, planeSkelettKopie } from './index.ts'
 import { formatiereNachruestBericht, nachruesten, pruefeNachruestZiel } from './nachruesten.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 const wurzel = mkdtempSync(join(tmpdir(), 'nachruesten-'))
 after(() => raeumeVerzeichnis(wurzel))
@@ -43,6 +44,7 @@ function schreibe(pfad: string, inhalt: string): void {
 function gitRepo(ordner: string): void {
   mkdirSync(ordner, { recursive: true })
   fuehreGitSync(['init', '-q'], { cwd: ordner, encoding: 'utf8' })
+  schalteGitWartungAb(ordner)
   fuehreGitSync(['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'start'], { cwd: ordner, encoding: 'utf8' })
 }
 

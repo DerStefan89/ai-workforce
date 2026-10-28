@@ -40,6 +40,11 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f35-ws2-urteil-je-ak')
 
 const befunde = []
 console.log('\n=== F35-WS2-Urteil-je-AK-Check ===\n')
@@ -63,7 +68,7 @@ function verzoegerung(ms) {
 async function warteBis(pruefen, maxWartezeitMs) {
   const start = Date.now()
   let wert = await pruefen()
-  while (!wert && Date.now() - start < maxWartezeitMs) {
+  while (!wert && Date.now() - start < skaliert(maxWartezeitMs)) {
     await verzoegerung(50)
     wert = await pruefen()
   }
@@ -98,6 +103,7 @@ function git(repoWurzel, argumente) {
 function baueFremdprojekt(featureAkten) {
   const fremdprojekt = mkdtempSync(join(tmpdir(), 'check-f35-ws2-fremdprojekt-'))
   git(fremdprojekt, ['init', '--quiet'])
+  schalteGitWartungAb(fremdprojekt)
   git(fremdprojekt, ['config', 'user.email', 'test@example.invalid'])
   git(fremdprojekt, ['config', 'user.name', 'Test'])
   git(fremdprojekt, ['branch', '-m', 'wegwerf-branch'])
@@ -203,7 +209,7 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewErg
 }
 
 {
-  const basisVerzeichnis = `kontrollzustand-test-f35-ws2-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-ws2-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fremdprojekt = baueFremdprojekt({ [FEATURE_ID]: AKTE_MIT_2_AK })
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f35-ws2-gate-'))
@@ -347,10 +353,11 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewErg
 
 // ── (e) Alt-Verhalten: Auftrag OHNE Akzeptanzkriterien, eigener Serverlauf (kein Fremdprojekt nötig) ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f35-ws2-e-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f35-ws2-e-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzelLeer = mkdtempSync(join(tmpdir(), 'f35-ws2-gate-repo-'))
   git(repoWurzelLeer, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzelLeer)
   git(repoWurzelLeer, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzelLeer, ['config', 'user.name', 'Test'])
   git(repoWurzelLeer, ['branch', '-m', 'wegwerf-branch'])

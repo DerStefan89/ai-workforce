@@ -59,6 +59,10 @@ import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../src/human-transport/index.ts'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f13-entscheiden')
 
 const befunde = []
 console.log('\n=== F13-Entscheiden-Check (WS-2) ===\n')
@@ -246,7 +250,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (c) AK3(a)/AK4: grüner Weg 'antwort' — echte transport-Kette, 200, Antwort real in Version 2 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak3a'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak3a')
   const laufId = `check-f13-ak3a-${randomUUID()}`
   baueTransportKette(laufId, basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -274,7 +278,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (d) AK3(a): Vorbedingungsverletzung — keine transport-Kette → 400 mit Klartext, kein 500 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak3a-fehlend'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak3a-fehlend')
   const laufId = `check-f13-ak3a-fehlend-${randomUUID()}`
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -296,7 +300,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (e) AK3(b): grüner Weg 'stale' plus Vorbedingungsverletzung ────────────
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak3b'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak3b')
   const laufId = `check-f13-ak3b-${randomUUID()}`
   baueTransportKette(laufId, basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -340,7 +344,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (f) AK3(c)/AK4/F-162: grüner Weg 'terminal' — echte Wirkungsmarke trägt ergebnis + daten.mensch_begruendung ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak3c'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak3c')
   const laufId = `check-f13-ak3c-${randomUUID()}`
   // F13 WS-4 (F-167): art 'terminal' verlangt jetzt real KLAERUNG_ERFORDERLICH vor jedem Schreiben —
   // ohne die offene RUN_PREPARED-Marke würde der grüne Weg jetzt korrekt mit 400 abgelehnt.
@@ -394,7 +398,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (g) AK6 (D13): ein Entscheidungs-POST wird durch einen aktiven Lauf NICHT blockiert ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak6'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak6')
   const fuehreAufgabeDurchFn = async () => {
     await verzoegerung(200)
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
@@ -436,7 +440,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (h) F13 WS-4 (F-166): 'kenntnisnahme' auf KLAERUNG_ERFORDERLICH → 400, vor jedem Schreiben ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak8-klaerung'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak8-klaerung')
   const laufId = `check-f13-ws4-klaerung-${randomUUID()}`
   baueKlaerungErforderlich(laufId, basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -459,7 +463,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (i) F13 WS-4 (F-166): 'kenntnisnahme' auf ABGESCHLOSSEN/VERWEIGERT → 200 + reales Artefakt ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak8-kenntnisnahme'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak8-kenntnisnahme')
   const laufId = `check-f13-ws4-kenntnisnahme-${randomUUID()}`
   baueAbgeschlossen(laufId, basisVerzeichnis, 'VERWEIGERT')
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -518,7 +522,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (i2) F13 WS-4: 'kenntnisnahme' auf ABGESCHLOSSEN/FEHLGESCHLAGEN → 200 (zweiter erlaubter Zweig) ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak8-kenntnisnahme-fehlgeschlagen'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak8-kenntnisnahme-fehlgeschlagen')
   const laufId = `check-f13-ws4-kenntnisnahme-fehlgeschlagen-${randomUUID()}`
   baueAbgeschlossen(laufId, basisVerzeichnis, 'FEHLGESCHLAGEN')
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -546,7 +550,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (i3) F13 WS-4 (Reviewer-Befund, Off-by-one-Grenze): 'kenntnisnahme' auf ABGESCHLOSSEN/ERFOLGREICH → 400 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak8-kenntnisnahme-erfolgreich'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak8-kenntnisnahme-erfolgreich')
   const laufId = `check-f13-ws4-kenntnisnahme-erfolgreich-${randomUUID()}`
   baueAbgeschlossen(laufId, basisVerzeichnis, 'ERFOLGREICH')
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -568,7 +572,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (i4) QA-Befund: 'kenntnisnahme' auf VERWEIGERT MIT echtem Bypass-Verdacht → 400 (E-186-Fall bleibt art:'antwort' vorbehalten) ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak8-kenntnisnahme-bypass'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak8-kenntnisnahme-bypass')
   const laufId = `check-f13-ws4-kenntnisnahme-bypass-${randomUUID()}`
   baueAbgeschlossen(laufId, basisVerzeichnis, 'VERWEIGERT', { bypass_verdacht_anzahl: 1 })
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -591,7 +595,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (j) F13 WS-4 (F-167, Nebenbefund): 'terminal' auf bereits ABGESCHLOSSEN → 400 ──────────────
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f13-ak8-terminal-doppelt'
+  const basisVerzeichnis = join(WEGWERF, 'f13-ak8-terminal-doppelt')
   const laufId = `check-f13-ws4-terminal-doppelt-${randomUUID()}`
   baueAbgeschlossen(laufId, basisVerzeichnis, 'ERFOLGREICH')
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -614,7 +618,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
 
 // ─── (k) F14 WS-4 (AK8, löst F-175): 'terminal'/'kenntnisnahme' auf der GERADE AKTIVEN laufId → 400 ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f14-ws4-schreibsperre'
+  const basisVerzeichnis = join(WEGWERF, 'f14-ws4-schreibsperre')
   const fuehreAufgabeDurchFn = async () => {
     await verzoegerung(400)
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }

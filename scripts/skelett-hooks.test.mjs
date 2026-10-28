@@ -20,12 +20,14 @@ import { join } from 'node:path'
 import { after, test } from 'node:test'
 import { fuehreGitSync } from '../src/git-starter/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const HOOKS_QUELLE = join(import.meta.dirname, '..', 'vorlagen', 'projekt-skelett', '.claude', 'hooks')
 const ordner = mkdtempSync(join(tmpdir(), 'skelett-hooks-'))
 cpSync(HOOKS_QUELLE, join(ordner, 'hooks'), { recursive: true })
 // Git-Repo ohne Zwischenstand-Datei: die Hooks erreichen ihre eigentliche Prüfung statt des Fehlerzweigs.
 fuehreGitSync(['init', '-q'], { cwd: ordner, encoding: 'utf8' })
+schalteGitWartungAb(ordner)
 fuehreGitSync(['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'start'], { cwd: ordner, encoding: 'utf8' })
 after(() => raeumeVerzeichnis(ordner))
 

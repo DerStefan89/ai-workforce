@@ -16,8 +16,11 @@ import type { AuftragV0Daten } from './types.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('auftrag')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const stillerSchreiber = () => {}
 

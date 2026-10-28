@@ -49,6 +49,10 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseSchrittEingabenAuf } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f652-pruefschritt')
 
 const befunde = []
 console.log('\n=== F-652-Pruefschritt-Check ===\n')
@@ -70,6 +74,7 @@ function neuesRepo() {
   const repoWurzel = join(tmpdir(), `f652-pruefschritt-gate-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   git(repoWurzel, ['branch', '-m', 'wegwerf-branch'])
@@ -158,7 +163,7 @@ function baueSchritt(overrides = {}) {
 
   // (a1) unbekannte schritt_id
   {
-    const ladeOptionen = { basisVerzeichnis: `kontrollzustand-test-f652-a1-${randomUUID()}`, schreiber: () => {} }
+    const ladeOptionen = { basisVerzeichnis: join(WEGWERF, `f652-a1-${randomUUID()}`), schreiber: () => {} }
     const schritt = baueSchritt({ eingaben: ['artefakt:pruefergebnis-@schritt-existiert-nicht'] })
     const workflowDaten = { workflow_id: 'gate-f652-a1', schritte: [schritt] }
     const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
@@ -171,7 +176,7 @@ function baueSchritt(overrides = {}) {
 
   // (a2) bekannte schritt_id, aber lauf_id noch null (Zielschritt noch nicht gestartet)
   {
-    const ladeOptionen = { basisVerzeichnis: `kontrollzustand-test-f652-a2-${randomUUID()}`, schreiber: () => {} }
+    const ladeOptionen = { basisVerzeichnis: join(WEGWERF, `f652-a2-${randomUUID()}`), schreiber: () => {} }
     const referenzierterSchritt = baueSchritt({ schritt_id: 'schritt-1', rolle: 'ausfuehrung', lauf_id: null })
     const schritt = baueSchritt({ eingaben: ['artefakt:pruefergebnis-@schritt-1'] })
     const workflowDaten = { workflow_id: 'gate-f652-a2', schritte: [referenzierterSchritt, schritt] }
@@ -185,7 +190,7 @@ function baueSchritt(overrides = {}) {
 
   // (a3) Selbstreferenz
   {
-    const ladeOptionen = { basisVerzeichnis: `kontrollzustand-test-f652-a3-${randomUUID()}`, schreiber: () => {} }
+    const ladeOptionen = { basisVerzeichnis: join(WEGWERF, `f652-a3-${randomUUID()}`), schreiber: () => {} }
     const schritt = baueSchritt({ schritt_id: 'schritt-selbst', eingaben: ['artefakt:pruefergebnis-@schritt-selbst'], lauf_id: 'vorheriger-versuch-lauf-1' })
     const workflowDaten = { workflow_id: 'gate-f652-a3', schritte: [schritt] }
     const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
@@ -200,7 +205,7 @@ function baueSchritt(overrides = {}) {
   // (Startvorlage ohne pruefbefehl) — bleibt bewusst FOLGENLOS (Bauauftrag Punkt 4), anders als
   // bei 'aenderungsuebersicht-@' oben.
   {
-    const basisVerzeichnis = `kontrollzustand-test-f652-a4-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f652-a4-${randomUUID()}`)
     raeumeVerzeichnis(basisVerzeichnis)
     const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
     const referenzierterSchritt = baueSchritt({ schritt_id: 'schritt-1', rolle: 'ausfuehrung', lauf_id: 'lauf-ohne-pruefergebnis' })
@@ -217,7 +222,7 @@ function baueSchritt(overrides = {}) {
 
   // (a5) Grünfall: ein real registriertes 'pruefergebnis-<lauf_id>'-Artefakt wird korrekt aufgelöst.
   {
-    const basisVerzeichnis = `kontrollzustand-test-f652-a5-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f652-a5-${randomUUID()}`)
     raeumeVerzeichnis(basisVerzeichnis)
     const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
     const zielLaufId = 'lauf-mit-pruefergebnis'
@@ -335,7 +340,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (b) Grün: pruefbefehl mit Exitcode 0 ────────────────────────────────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f652-b-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f652-b-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f652-gate-b-'))
@@ -391,7 +396,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (c) Rot: pruefbefehl mit Exitcode 1 — KLAERUNG_ERFORDERLICH, kein Review-Start ──────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f652-c-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f652-c-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f652-gate-c-'))
@@ -429,7 +434,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (d) Zeitgrenze: pruefbefehl überschreitet pruefZeitgrenzeMs — ZEITGRENZE, Prozessbaum real beendet ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f652-d-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f652-d-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f652-gate-d-'))
@@ -468,7 +473,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (e) kein pruefbefehl: bitgenau wie vor F-652 ────────────────────────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f652-e-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f652-e-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f652-gate-e-'))
@@ -505,7 +510,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (f) lesender Lauf: keine Prüfung, obwohl pruefbefehl konfiguriert ist ───────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f652-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f652-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f652-gate-f-'))
   const startvorlagePfad = schreibeStartvorlage(verzeichnis, { pruefbefehl: knotenBefehl('process.exit(0)'), pruefZeitgrenzeMs: 10000 })
@@ -539,7 +544,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (g) D13: ein Startversuch während die Prüfung noch läuft wird abgelehnt ─────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f652-g-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f652-g-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f652-gate-g-'))
@@ -603,7 +608,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 // DATEI genau an der Stelle des Verzeichnisses lässt mkdirSync(..., {recursive:true}) real mit
 // ENOTDIR scheitern, kein simulierter/gestubbter Fehler.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f652-i-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f652-i-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f652-gate-i-'))

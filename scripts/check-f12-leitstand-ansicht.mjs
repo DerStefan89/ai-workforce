@@ -90,6 +90,10 @@ import { schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f12-leitstand-ansicht')
 
 // F44 WS-5a: (f)/(g) prüfen die Beschriftung über den Schlüssel UND seinen deutschen Wörterbuchwert.
 const { default: deWoerterbuch } = await import('../public/leitstand/i18n/de.js')
@@ -122,7 +126,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 
 // ─── (a) AK1: reine Artefaktkette (registriereAuftrag, keine Wirkungsmarke) erscheint nicht in GET /api/laeufe ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ws3-ak1'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ws3-ak1')
   const auftragId = `test-auftrag-${randomUUID()}`
   registriereAuftrag(auftragId, PROFIL_REFERENZ, 'Testtitel', 'Testauftragstext', { basisVerzeichnis, schreiber: () => {} })
 
@@ -143,7 +147,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 
 // ─── (b) AK2: GET /api/laeufe liefert je Lauf kein checkpoints-Array ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ws3-ak2'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ws3-ak2')
   const laufId = `check-f12-ws3-ak2-${randomUUID()}`
   schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
 
@@ -164,7 +168,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 
 // ─── (c) AK5: Body mit 'auftragstext' → 400; unbekannte 'auftragId' → 400 (isolierter Beleg, feature.md AK10) ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ws3-ak5'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ws3-ak5')
   const auftragId = `test-auftrag-${randomUUID()}`
   registriereAuftrag(auftragId, PROFIL_REFERENZ, 'Testtitel', 'Testauftragstext', { basisVerzeichnis, schreiber: () => {} })
   // Attrappe statt der echten fuehreAufgabeDurch — wird in keinem der beiden Fälle erreicht (beide
@@ -298,7 +302,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 
 // ─── (e) F16 AK12: worker/modellDeklariert in der Detailprojektion — Codex-Laufakte liefert beide Felder, Bestands-Laufakte ohne beide Felder fällt auf 'claude-code'/null ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f12-ws3-ak12'
+  const basisVerzeichnis = join(WEGWERF, 'f12-ws3-ak12')
   const laufIdCodex = `check-f12-ws3-ak12-codex-${randomUUID()}`
   const laufIdBestand = `check-f12-ws3-ak12-bestand-${randomUUID()}`
   const laufIdCodexOhneModell = `check-f12-ws3-ak12-codex-ohne-modell-${randomUUID()}`

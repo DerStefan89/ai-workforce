@@ -20,9 +20,13 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { schreibeWirkungsmarke, stelleLaufstatusFest, validiereWirkungsmarkeEintrag } from '../src/checkpoint-store/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('f1b-wirkungsmarke')
 
 const befunde = []
-const BASIS = 'kontrollzustand-test'
+
 
 console.log('\n=== F1B-Wirkungsmarke-Check ===\n')
 

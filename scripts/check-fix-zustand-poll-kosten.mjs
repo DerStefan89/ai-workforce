@@ -37,12 +37,17 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { join } from 'node:path'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('fix-zustand-poll-kosten')
 
 const befunde = []
 console.log('\n=== Perf-Fix-Check (fix/zustand-poll-kosten: Lauf-/Workflow-Kopfdaten-Cache) ===\n')
@@ -94,7 +99,7 @@ function workflowFixture(workflowId, status = 'OFFEN') {
 // ─── (1) Rot-/Grünfall: neuer Checkpoint eines laufenden Laufs im nächsten Poll sichtbar ──
 {
   const befundeVor1 = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-perf-fix-laufend-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `perf-fix-laufend-${randomUUID()}`)
   const laufId = `perf-fix-lauf-${randomUUID()}`
   try {
     schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: STILL })
@@ -136,7 +141,7 @@ function workflowFixture(workflowId, status = 'OFFEN') {
 // ─── (2) Rot-/Grünfall: Statuswechsel eines Workflows im nächsten Poll sichtbar ──
 {
   const befundeVor2 = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-perf-fix-workflow-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `perf-fix-workflow-${randomUUID()}`)
   const workflowId = `perf-fix-workflow-${randomUUID()}`
   try {
     registriereWorkflow(workflowFixture(workflowId, 'OFFEN'), PROFIL_REFERENZ, { basisVerzeichnis, schreiber: STILL })
@@ -169,7 +174,7 @@ function workflowFixture(workflowId, status = 'OFFEN') {
 
 // ─── (3) Performance-Regressionswächter: warmer Poll deutlich schneller als kalter ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-perf-fix-last-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `perf-fix-last-${randomUUID()}`)
   const ANZAHL_LAEUFE = 150
   try {
     for (let i = 0; i < ANZAHL_LAEUFE; i += 1) {

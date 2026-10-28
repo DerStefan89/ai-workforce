@@ -44,6 +44,7 @@ import { pruefeKanalNurUeberOptIn } from './_rueckfrage-aus-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRueckfrageProtokollSchreiber } from './leitstand/rueckfrage-protokoll.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F45-B2b-3b-2b-1b-R1-Check ===\n')
@@ -172,6 +173,7 @@ try {
     const fixRepo = join(basis, 'startfreigabe')
     mkdirSync(fixRepo, { recursive: true })
     git(fixRepo, ['init', '--quiet'])
+    schalteGitWartungAb(fixRepo)
     git(fixRepo, ['config', 'user.email', 'test@example.invalid'])
     git(fixRepo, ['config', 'user.name', 'Test'])
     writeFileSync(join(fixRepo, '.gitattributes'), '* -text\n')
@@ -204,6 +206,7 @@ try {
     const repoWurzel = join(basis, 'projekt')
     mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
     git(repoWurzel, ['init', '--quiet'])
+    schalteGitWartungAb(repoWurzel)
     git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
     git(repoWurzel, ['config', 'user.name', 'Test'])
     git(repoWurzel, ['config', 'core.autocrlf', 'false'])

@@ -34,9 +34,13 @@ import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../src/c
 import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { klassifiziereLauf } from '../src/result-evaluator/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('f7-result-evaluator')
 
 const befunde = []
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+
 const ROH_BASIS = join(tmpdir(), `check-f7-${randomUUID()}`)
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 

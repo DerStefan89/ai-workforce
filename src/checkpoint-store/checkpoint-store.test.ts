@@ -10,7 +10,7 @@
  * (A9-A12), die gemischte Kette und den unbekannten typ (A20/A21), das
  * Advisor-Szenario zu mehrfachem RUN_PREPARED (A22) und das
  * Orphan-dann-neue-RUN_PREPARED-Interleaving (A23, zweiter Advisor-Pass
- * B11). Läuft auf einem Wegwerfverzeichnis unter kontrollzustand-test/
+ * B11). Läuft auf einem Wegwerfverzeichnis unter os.tmpdir() (scripts/_wegwerf.ts)
  * (nicht kontrollzustand/ selbst), damit kein Produktzustand durch Tests
  * verschmutzt wird.
  */
@@ -31,8 +31,11 @@ import {
   stelleLaufstatusFest,
 } from './index.ts'
 import type { Ereignis, LaufStatus, ProfilReferenz, Schreiber } from './types.ts'
+import { wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('checkpoint-store')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 
 function neueLaufId(praefix: string): string {
@@ -109,7 +112,7 @@ test('abgebrochene Persistierung hinterlässt keinen sichtbaren Checkpoint — A
   }
 })
 
-test('kein Aufruf verändert Dateien außerhalb von kontrollzustand-test/<lauf_id> — A10/AC8', () => {
+test('kein Aufruf verändert Dateien außerhalb von <Wegwerf-Basis>/<lauf_id> — A10/AC8', () => {
   const laufId = neueLaufId('trennung')
   const produktVerzeichnis = join(BASIS, `${laufId}-produkt-fixture`)
   try {

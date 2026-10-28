@@ -33,9 +33,13 @@ import { validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f17-rollenvertrag')
 
 const befunde = []
-const BASIS = 'kontrollzustand-test'
+const BASIS = WEGWERF
 const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const stillerSchreiber = () => {}
 
@@ -346,6 +350,7 @@ function neuesWegwerfGitRepo() {
   const repoWurzel = join(tmpdir(), `f17-ak6b-vorbedingung-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   execFileSync('git', ['init', '--quiet', '-b', 'main'], { cwd: repoWurzel })
+  schalteGitWartungAb(repoWurzel)
   execFileSync('git', ['config', 'user.email', 'test@example.invalid'], { cwd: repoWurzel })
   execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoWurzel })
   writeFileSync(join(repoWurzel, 'datei.txt'), 'init\n')
@@ -464,7 +469,7 @@ function neuesWegwerfGitRepo() {
 // eine vergessene Feldweitergabe (z. B. rolle: body.rolle) bliebe von einem reinen
 // Funktionstest an loeseAusfuehrungsEingabenAuf unentdeckt (QA-Pass 11.09.2026).
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f17-ak6-http'
+  const basisVerzeichnis = join(WEGWERF, 'f17-ak6-http')
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVorHttp = befunde.length
   const auftragId = `check-f17-ak6-http-auftrag-${randomUUID()}`
@@ -503,7 +508,7 @@ function neuesWegwerfGitRepo() {
 // AK7: die additive Leitstand-Projektion zeigt 'DEKLARIERT' für einen
 // codex-Schritt und 'ERZWUNGEN' für einen claude-code-Schritt (F-323 Weg a).
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f17-ak7'
+  const basisVerzeichnis = join(WEGWERF, 'f17-ak7')
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVorAK7 = befunde.length
   const server = createServer(erzeugeRequestHandler({ basisVerzeichnis }))
