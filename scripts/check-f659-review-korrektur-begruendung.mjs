@@ -36,6 +36,11 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f659-review-korrektur-begruendung')
 
 const befunde = []
 console.log('\n=== F-659-Review-Korrektur-Begruendung-Check ===\n')
@@ -49,6 +54,7 @@ function neuesRepo() {
   const repoWurzel = join(tmpdir(), `f659-gate-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   git(repoWurzel, ['branch', '-m', 'wegwerf-branch'])
@@ -79,7 +85,7 @@ function verzoegerung(ms) {
 async function warteBis(pruefen, maxWartezeitMs) {
   const start = Date.now()
   let wert = await pruefen()
-  while (!wert && Date.now() - start < maxWartezeitMs) {
+  while (!wert && Date.now() - start < skaliert(maxWartezeitMs)) {
     await verzoegerung(50)
     wert = await pruefen()
   }
@@ -190,7 +196,7 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewLau
 }
 
 {
-  const basisVerzeichnis = `kontrollzustand-test-f659-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f659-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f659-gate-'))

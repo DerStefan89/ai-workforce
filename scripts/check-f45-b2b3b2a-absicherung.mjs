@@ -58,6 +58,7 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { pruefeKanalNurUeberOptIn } from './_rueckfrage-aus-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F45-B2b-3b-2a-Absicherung-Check ===\n')
@@ -234,6 +235,7 @@ try {
     const repoWurzel = join(basis, 'projekt')
     mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
     git(repoWurzel, ['init', '--quiet'])
+    schalteGitWartungAb(repoWurzel)
     git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
     git(repoWurzel, ['config', 'user.name', 'Test'])
     git(repoWurzel, ['config', 'core.autocrlf', 'false'])

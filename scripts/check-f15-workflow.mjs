@@ -86,6 +86,10 @@ import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT } from '../src/codex-gateway/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f15-workflow')
 
 const befunde = []
 
@@ -360,7 +364,7 @@ async function starteTestserver(optionen) {
 }
 
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2a'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2a')
   const workflowId = `gate-workflow-${randomUUID()}`
   const befundeVorEndpunkten = befunde.length
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
@@ -583,7 +587,7 @@ async function starteTestserver(optionen) {
 // check-f10-leitstand.mjs): das Gate prüft den Automatenpfad, nicht F8.
 
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2b'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2b')
   const befundeVorStart = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
 
@@ -851,6 +855,7 @@ async function starteTestserver(optionen) {
     // den Branch, ein frisches Repo ohne Dateien ist bereits sauber.
     const wegwerfRepoWurzel = mkdtempSync(join(tmpdir(), 'f15-ws3a-repo-'))
     execFileSync('git', ['init', '--quiet', '-b', 'test'], { cwd: wegwerfRepoWurzel })
+    schalteGitWartungAb(wegwerfRepoWurzel)
 
     // Das Wegwerf-Verzeichnis wird im finally geräumt, nicht am Blockende:
     // wirft einer der fetch-Aufrufe darin, bliebe es sonst liegen (Muster
@@ -3096,7 +3101,7 @@ async function starteTestserver(optionen) {
 // LIEGEN aber real im Bestand: die erste, weil ein durchgelaufener Workflow so endet, die
 // zweite, weil eine neue Validatorregel Bestandsdaten ungültig machen kann.
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws3b'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws3b')
   const befundeVorProjektion = befunde.length
   const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
   const lege = (workflowId, daten) => registriereWorkflow({ ...daten, workflow_id: workflowId }, profilReferenz, { basisVerzeichnis, schreiber: () => {} })

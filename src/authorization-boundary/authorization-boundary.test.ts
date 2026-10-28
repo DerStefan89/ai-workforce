@@ -25,8 +25,11 @@ import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAutorisierung, verweigereAutorisierung } from './index.ts'
 import type { AutorisierungsReferenz } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('authorization-boundary')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 
 function neueLaufId(praefix: string): string {
@@ -42,6 +45,7 @@ function neuesExternesRepo(): string {
   const repoWurzel = join(tmpdir(), `f3-autorisierung-test-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')
@@ -55,6 +59,7 @@ function neuesExternesRepoOhneGitattributes(): string {
   const repoWurzel = join(tmpdir(), `f3-autorisierung-test-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   return repoWurzel

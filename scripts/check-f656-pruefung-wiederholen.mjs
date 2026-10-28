@@ -42,6 +42,11 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f656-pruefung-wiederholen')
 
 const befunde = []
 console.log('\n=== F-656-Pruefung-Wiederholen-Check ===\n')
@@ -55,6 +60,7 @@ function neuesRepo() {
   const repoWurzel = join(tmpdir(), `f656-gate-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   git(repoWurzel, ['branch', '-m', 'wegwerf-branch'])
@@ -85,7 +91,7 @@ function verzoegerung(ms) {
 async function warteBis(pruefen, maxWartezeitMs) {
   const start = Date.now()
   let wert = await pruefen()
-  while (!wert && Date.now() - start < maxWartezeitMs) {
+  while (!wert && Date.now() - start < skaliert(maxWartezeitMs)) {
     await verzoegerung(50)
     wert = await pruefen()
   }
@@ -203,11 +209,11 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (a) falscher Zustand: Workflow nicht KLAERUNG_ERFORDERLICH → 409 ────────────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f656-a-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f656-a-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f656-gate-a-'))
-  const startvorlagePfad = schreibeStartvorlage(verzeichnis, { pruefbefehl: knotenBefehl('process.exit(1)'), pruefZeitgrenzeMs: 10000 })
+  const startvorlagePfad = schreibeStartvorlage(verzeichnis, { pruefbefehl: knotenBefehl('process.exit(1)'), pruefZeitgrenzeMs: skaliert(10000) })
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: baueErfolgAttrappe(), repoWurzel, startvorlagePfad })
   try {
@@ -235,11 +241,11 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (b) KLAERUNG_ERFORDERLICH, aber NICHT aus Regel 1f (Ausführungsschritt nicht ERFOLGREICH) → 409 ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f656-b-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f656-b-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f656-gate-b-'))
-  const startvorlagePfad = schreibeStartvorlage(verzeichnis, { pruefbefehl: knotenBefehl('process.exit(0)'), pruefZeitgrenzeMs: 10000 })
+  const startvorlagePfad = schreibeStartvorlage(verzeichnis, { pruefbefehl: knotenBefehl('process.exit(0)'), pruefZeitgrenzeMs: skaliert(10000) })
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: baueAblehnungAttrappe(), repoWurzel, startvorlagePfad })
   try {
@@ -269,7 +275,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (c)+(e) Grünfall: zweiter Versuch liefert GRUEN, Review startet, 2 Artefaktversionen ─────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f656-c-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f656-c-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f656-gate-c-'))
@@ -281,7 +287,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
     pruefbefehl: knotenBefehl(
       `const fs=require('node:fs'); const m='${markerPfad}'; if (!fs.existsSync(m)) { fs.writeFileSync(m,'x'); console.error('FEHLER: Gate-F656 noch nicht behoben'); process.exit(1) } process.exit(0)`
     ),
-    pruefZeitgrenzeMs: 10000,
+    pruefZeitgrenzeMs: skaliert(10000),
   })
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: baueErfolgAttrappe(), repoWurzel, startvorlagePfad })
@@ -321,13 +327,13 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (d) Rot bleibt rot: erneuter Halt mit neuem Grund, Review startet NICHT ─────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f656-d-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f656-d-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f656-gate-d-'))
   const startvorlagePfad = schreibeStartvorlage(verzeichnis, {
     pruefbefehl: knotenBefehl('console.error("FEHLER: Gate-F656 bleibt kaputt"); process.exit(1)'),
-    pruefZeitgrenzeMs: 10000,
+    pruefZeitgrenzeMs: skaliert(10000),
   })
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: baueErfolgAttrappe(), repoWurzel, startvorlagePfad })
@@ -363,7 +369,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
 
 // ─── (f) D13: ein paralleler Startversuch während der Wiederholung wird abgelehnt ────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f656-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f656-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = neuesRepo()
   const verzeichnis = mkdtempSync(join(tmpdir(), 'f656-gate-f-'))
@@ -373,7 +379,7 @@ async function starteFixture(basisUrl, basisVerzeichnis, vorlage) {
   // für eine zuverlässige Anfrage-Reihenfolge werden.
   const startvorlagePfad = schreibeStartvorlage(verzeichnis, {
     pruefbefehl: knotenBefehl('setTimeout(() => { console.error("FEHLER: Gate-F656 D13"); process.exit(1) }, 600)'),
-    pruefZeitgrenzeMs: 10000,
+    pruefZeitgrenzeMs: skaliert(10000),
   })
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: baueErfolgAttrappe(), repoWurzel, startvorlagePfad })

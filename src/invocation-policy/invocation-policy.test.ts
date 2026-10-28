@@ -25,8 +25,11 @@ import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAufrufparameter, pruefeStartbedingung1, pruefeStartbedingung2, pruefeStartfreigabe, verweigereStart } from './index.ts'
 import type { BaselineReferenz, IstUebrigeFelder, IstZustand, WirksamkeitsnachweisReferenz } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('invocation-policy')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 
 const KONFIG_INHALT = 'konfig-inhalt'
@@ -53,6 +56,7 @@ function neuesExternesRepo(): string {
   const repoWurzel = join(tmpdir(), `f4-invocation-policy-test-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')
@@ -294,6 +298,7 @@ test('Wirksamkeitsnachweis in externem Repo ohne pinnende .gitattributes liefert
   const repoWurzel = join(tmpdir(), `f4-invocation-policy-test-nogitattr-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   try {

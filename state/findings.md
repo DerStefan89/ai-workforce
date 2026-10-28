@@ -9058,7 +9058,7 @@ Beschreibung: Am 25.10.2026 scheiterte `check-f36-ws5b-skill` (l) einmal mit „
 Fundstelle: `scripts/check-f36-ws5b-skill.mjs` (l), `scripts/teste.mjs`, F-1186, F-1209, F-1210.
 Auswirkung: Mittel — sporadisch rote Läufe kosten Wiederholungen und Vertrauen in den vollen Lauf (P4).
 Maßnahme: W2a (E-W2-1) — git- und serverlastige Prüfungen grundsätzlich seriell bzw. stabil ausführen (eigene Gruppe in Gates und Tests, keine Wartegrenzen ohne Zeitfaktor), statt je Vorfall eine Datei nachzutragen.
-Status: offen. Nachtrag F45 W2a (27.10.2026): Gates umgesetzt — `scripts/check-kette.mjs` führt 15 Gates mit fester Frist ≤ 10 s auf Server-/Workflow-/Kindprozess-Zustand, Zeitmessung oder belegtem Ausfall (darunter `check-f36-ws5b-skill`) in der seriellen Gruppe (`SERIELL`, Herleitung `features/F45/w2-gate-inventur.md`, Advisor `advisor-w2a.md` A1). Offen: „keine Wartegrenzen ohne Zeitfaktor“ in den Gates selbst (W2b, Gates ändern) und die Testdateien (Gruppe in `scripts/teste.mjs` weiter je Vorfall).
+Status: offen. Nachtrag F45 W2a (27.10.2026): Gates umgesetzt — `scripts/check-kette.mjs` führt 15 Gates mit fester Frist ≤ 10 s auf Server-/Workflow-/Kindprozess-Zustand, Zeitmessung oder belegtem Ausfall (darunter `check-f36-ws5b-skill`) in der seriellen Gruppe (`SERIELL`, Herleitung `features/F45/w2-gate-inventur.md`, Advisor `advisor-w2a.md` A1). Offen: „keine Wartegrenzen ohne Zeitfaktor“ in den Gates selbst (W2b, Gates ändern) und die Testdateien (Gruppe in `scripts/teste.mjs` weiter je Vorfall). Nachtrag F45 W2b-2 (27.10.2026): die 11 Frist-Gates warten über `skaliert` (`scripts/_zeitfaktor.ts`, `AIW_TEST_ZEITFAKTOR`, Standard 1) — je in der eigenen Wartefunktion, in `while`-Fristen und bei `pruefZeitgrenzeMs: 10000`. Der Läufer setzt keinen Faktor; die 15 Zeit-/Frist-Gates bleiben deshalb in `SERIELL`, bis eine Messung unter Last das Herausnehmen trägt. Testdateien unverändert.
 Feature/Run: Entdeckt: F45 B5b-2c-2-AB (voller Lauf), 25.10.2026; eingetragen F45 B5b-3, 27.10.2026.
 
 **F-1216** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -9187,11 +9187,47 @@ Maßnahme: Bei Aufräumpaketen zuerst inventarisieren (gemessen bzw. gelesen), d
 Status: offen.
 Feature/Run: Entdeckt: Challenger nach Inventur F45 W2a, eingetragen F45 W2b-1, 27.10.2026.
 
-**F-1230** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-1230** · `HARNESS_IMPROVEMENT` · P2 · umgesetzt, Beobachtung in CI
 Titel: Wegwerf-Repos ohne abgeschaltete git-Hintergrundwartung (CI-Wackler b2a3b (a)).
 Beschreibung: `scripts/check-f45-b2a3b-review-stand.mjs` (a) war in der CI (ubuntu-latest) zweimal rot an derselben Stelle („(a) CRLF in HEAD (sync): neue Datei unter .git/objects“ bzw. „(a) nach Commit (sync): neue Datei unter .git/objects“), beide Fälle direkt nach dem Commit im Wegwerf-Repo; lokal (Windows) und unter Linux mit älterem git grün. VERMUTET: neueres git startet nach dem Commit die automatische Wartung abgekoppelt (maintenance.auto / gc --auto) und schreibt nach .git/objects, während das Gate misst.
 Fundstelle: `scripts/check-f45-b2a3b-review-stand.mjs`, `legeRepoAn()`; weitere Gates mit Wegwerf-Repos ungeprüft.
 Auswirkung: Mittel — ein Gate wird rot ohne Codefehler; die Prüfung „.git/objects unverändert“ bleibt richtig und wird nicht abgeschwächt.
 Maßnahme: In `legeRepoAn()` `gc.auto 0`, `maintenance.auto false` und `maintenance.autoDetach false` gesetzt, die git-Version wird einmal ausgegeben. Vollumstellung aller Wegwerf-Repos in W2b-2.
-Status: offen — Gegenprobe läuft in PR W2b-1; Vollumstellung aller Wegwerf-Repos in W2b-2.
+Status: umgesetzt, Beobachtung in CI — Gegenprobe PR #389 grün (ein Lauf). Nachtrag F45 W2b-2 (27.10.2026): alle Wegwerf-Repos von Gates und Tests schalten die Wartung direkt nach `git init` ab — `schalteGitWartungAb` (`scripts/_wegwerf.ts`, hängt die drei Einstellungen an `.git/config`, Test `scripts/_wegwerf.test.ts` liest sie über git zurück) bzw. drei `config`-Einträge in den Init-Schleifen (b2a1, b2a2, b2a3, b2a3b, review-beobachtung.test). Nicht erfasst: Repos, die der Produktcode selbst anlegt (`src/sammlung/quelle.ts`, `src/ressourcen/skill-installation.ts`) — Produktverhalten, nicht im Umfang. Ursache bleibt VERMUTET (Advisor `advisor-w2b2.md` A4); erledigt, wenn die CI über mehrere Läufe ohne „neue Datei unter .git/objects“ bleibt.
 Feature/Run: Entdeckt: CI PR F45 W2b-1, eingetragen F45 W2b-1, 27.10.2026.
+
+**F-1231** · `TECH_DEBT` · P2 · offen
+Titel: Endpunkte in `public/leitstand/api.js` und Container-IDs in `index.html` ohne Gate-Prüfung seit Löschung von `check-f15-workflow-oberflaeche`.
+Beschreibung: F45 W2b-1 hat `check-f15-workflow-oberflaeche` gelöscht (Syntax trägt Biome, Verhalten die View-Tests). Seitdem prüft nichts mehr, dass die Endpunkte in `api.js` (`/starten`, `/freigabe`, Reparatur-`POST /workflows`) zu Server-Routen passen und die Container-IDs in `index.html` zu den Views — nur noch der Render-Nachweis (DEKLARIERT in Akte F45 „Stand W2b-1“).
+Fundstelle: `public/leitstand/api.js`, `public/leitstand/index.html`, `scripts/leitstand-server.mjs` (Routen).
+Auswirkung: Mittel — ein umbenannter Endpunkt oder eine fehlende ID fällt erst im Browser auf.
+Maßnahme: Kleiner Verhaltens-Test (Endpunkte aus `api.js` gegen den echten Handler, IDs aus `index.html` gegen die Views) beim nächsten Anfassen des Bereichs oder in W2c.
+Status: offen.
+Feature/Run: Entdeckt: Challenger nach F45 W2b-1, eingetragen F45 W2b-2, 27.10.2026.
+
+**F-1232** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Bericht W2b-1 nannte Änderungen an Produktdateien außerhalb des Auftrags nicht.
+Beschreibung: Der Bericht zu F45 W2b-1 führte geänderte Produktdateien außerhalb des Auftragsumfangs nicht auf (es waren nur Kommentare). Der Challenger musste sie aus dem Diff herauslesen.
+Fundstelle: Bericht F45 W2b-1 (PR #389).
+Auswirkung: Gering — diesmal ohne Folgen, aber die Prüfung des Diffs hängt an der Vollständigkeit des Berichts.
+Maßnahme: Bauaufträge verlangen künftig je geänderter Datei außerhalb des Umfangs einen Halbsatz Begründung im Bericht (in W2b-2 bereits so verlangt und umgesetzt).
+Status: offen.
+Feature/Run: Entdeckt: Challenger nach F45 W2b-1, eingetragen F45 W2b-2, 27.10.2026.
+
+**F-1233** · `TECH_DEBT` · P3 · offen
+Titel: Rest-Verweise auf gelöschte Gates (`check-f15-workflow-oberflaeche`, `check-f24-capabilities`) in Kommentaren und Doku.
+Beschreibung: Nach F45 W2b-1 nennen Kommentare in anderen Gates und Dokumente die gelöschten Gates weiter (z. B. „Muster check-f15-workflow-oberflaeche“). Historische Dokumente bleiben; lebende Kommentare führen in die Irre.
+Fundstelle: `grep -rnE "check-f15-workflow-oberflaeche|check-f24-capabilities" scripts src docs`.
+Auswirkung: Gering — Leser suchen ein Gate, das es nicht mehr gibt.
+Maßnahme: Beim Anfassen der jeweiligen Datei bereinigen; kein eigenes Paket.
+Status: offen.
+Feature/Run: Entdeckt: Challenger nach F45 W2b-1, eingetragen F45 W2b-2, 27.10.2026.
+
+**F-1234** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Keine Schutzregel gegen neue Wegwerf-Ordner in der Repo-Wurzel.
+Beschreibung: Seit F45 W2b-2 legen Gates und Tests Wegwerf-Ordner über `wegwerfOrdner` (`scripts/_wegwerf.ts`) unter `os.tmpdir()` an; darauf beruht, dass die Repo-Baum-Gates nicht mehr in `SERIELL` stehen. Eine neue Stelle mit einem relativen `kontrollzustand-test-…`-Literal (oder einem Gateway-Lauf ohne `rohBasisVerzeichnis`) fiele keinem Gate auf.
+Fundstelle: `scripts/check-rules.mjs` (Textregeln), `scripts/check-kette.mjs` (`SERIELL`).
+Auswirkung: Gering bis mittel — ein Rückfall brächte sporadische ENOENT-Rotläufe der Repo-Baum-Gates zurück.
+Maßnahme: Textregel in `check-rules` (Literal `kontrollzustand-test` in Gates und Tests verboten, mit Rot-Kalibrierung) — eigenes kleines Paket (Advisor `advisor-w2b2.md`, optional).
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass F45 W2b-2, 27.10.2026.

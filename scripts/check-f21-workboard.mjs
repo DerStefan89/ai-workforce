@@ -41,6 +41,10 @@ import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f21-workboard')
 
 /** Das Findings-Register und sein Archiv (F45 K): erledigte Einträge stehen wörtlich im Archiv. */
 const REGISTER_DATEIEN = ['state/findings.md', 'state/findings-archiv.md']
@@ -195,7 +199,7 @@ async function starteTestserver(optionen) {
 // ─── (4) kenntnisgenommen-Kopfdatum (AK4, F-370) ───────────────────────────
 {
   const befundeVor4 = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-f21-ws1-kenntnisnahme-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f21-ws1-kenntnisnahme-${randomUUID()}`)
   const laufId = `f21-ws1-lauf-${randomUUID()}`
   try {
     schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: STILL })

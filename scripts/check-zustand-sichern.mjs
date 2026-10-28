@@ -38,6 +38,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { formatiereDatum } from './zustand-sichern.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const SKRIPT = fileURLToPath(new URL('./zustand-sichern.mjs', import.meta.url))
 const DATUM = formatiereDatum(new Date())
@@ -56,6 +57,7 @@ function neuesRepo() {
   const repo = mkdtempSync(join(tmpdir(), 'check-zustand-sichern-'))
   wegwerf.push(repo)
   git(repo, ['init', '--quiet', '--initial-branch=main'])
+  schalteGitWartungAb(repo)
   git(repo, ['config', 'user.email', 'test@example.invalid'])
   git(repo, ['config', 'user.name', 'Test'])
   mkdirSync(join(repo, 'kontrollzustand'))

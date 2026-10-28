@@ -125,7 +125,7 @@ try {
     const wurzel = join(basis, name)
     mkdirSync(join(wurzel, 'docs', 'projekt', 'kontext'), { recursive: true })
     mkdirSync(join(wurzel, '.claude', 'agents'), { recursive: true })
-    for (const argumente of [['init', '--quiet'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', 'false'], ['checkout', '--quiet', '-b', 'gate']]) {
+    for (const argumente of [['init', '--quiet'], ['config', 'gc.auto', '0'], ['config', 'maintenance.auto', 'false'], ['config', 'maintenance.autoDetach', 'false'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', 'false'], ['checkout', '--quiet', '-b', 'gate']]) {
       fuehreGitSync(argumente, { cwd: wurzel, encoding: 'utf8' })
     }
     writeFileSync(join(wurzel, 'CLAUDE.md'), REPO_CLAUDE)

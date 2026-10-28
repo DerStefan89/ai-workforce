@@ -91,6 +91,10 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseSchrittEingabenAuf } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f23-abnahme')
 
 const befunde = []
 
@@ -150,6 +154,7 @@ function neuesRepo() {
   const repoWurzel = join(tmpdir(), `f23-abnahme-gate-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, 'bestehend.txt'), 'Zeile 1\n')
@@ -188,7 +193,7 @@ function neuesRepo() {
 {
   const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
   const repoWurzel = process.cwd()
-  const ladeOptionen = { basisVerzeichnis: `kontrollzustand-test-f23-b-${randomUUID()}`, schreiber: () => {} }
+  const ladeOptionen = { basisVerzeichnis: join(WEGWERF, `f23-b-${randomUUID()}`), schreiber: () => {} }
 
   function baueSchritt(eingaben) {
     return {
@@ -269,7 +274,7 @@ for (const { werkzeugsatz, rolle, sollUebersichtHaben } of [
   { werkzeugsatz: 'schreibend', rolle: 'ausfuehrung', sollUebersichtHaben: true },
   { werkzeugsatz: 'lesend', rolle: 'code-reviewer', sollUebersichtHaben: false },
 ]) {
-  const basisVerzeichnis = `kontrollzustand-test-f23-cd-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-cd-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fuehreAufgabeDurchFn = async () => ({
     ok: true,
@@ -474,7 +479,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 
 // (g1) Rot: ANGENOMMEN auf einem nicht abgeschlossenen Workflow -> 409
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-g1-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-g1-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -529,7 +534,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 
 // (g2) Rot: Abnahme ohne Begründung -> 400
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-g2-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-g2-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -566,7 +571,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 // (g5) Grün: echter POST .../abnahme-Dispatch (ANGENOMMEN) über einen Testserver (Muster Block
 // (c)/(d)) — Entscheidungsartefakt mit korrektem bezug registriert, Workflow-Status unverändert.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-g5-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-g5-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -607,7 +612,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 // Promise niemand einsammelt — derselbe Absturzpfad, den dekodiereSegment schon einmal real den
 // ganzen Server gekostet hat (siehe dortiger Kopfkommentar in leitstand-server.mjs).
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-g6-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-g6-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -655,7 +660,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 // Gate-Fixture registriert bewusst keine Laufakte/Änderungsübersicht zu ihren erfundenen
 // lauf_id, um diese beiden Zweige real (nicht nur behauptet) zu belegen.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-g7-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-g7-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -711,7 +716,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 // hingewiesen, dass ein ERFOLGREICHER Ausführungsschritt manuell zurückgesetzt werden muss, sonst
 // bleibt eine vorhandene Abnahme-Entscheidung gültig.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-g8-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-g8-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -822,7 +827,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 //      1b) — belegt, dass der ADJUST-Zweig aktiver_schritt_id korrekt auf den Ausführungsschritt
 //      überschreibt, statt den alten Review-Cursor zu übernehmen. Eigener Block, s. u.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-h-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-h-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
@@ -983,7 +988,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
 // alten (Review-)Cursor stehen zu lassen — genau die Art Zustandslogik, an der dieses Feature laut
 // F-384/TC-04/TC-05 bereits zweimal real brach.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f23-h5-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f23-h5-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {

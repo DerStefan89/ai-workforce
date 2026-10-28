@@ -39,6 +39,11 @@ import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f36-ws2-laufzeit')
 
 const befunde = []
 console.log('\n=== F36-WS-2-Laufzeit-Check ===\n')
@@ -179,7 +184,7 @@ function loeseAusfuehrungsEingabenAufAusServer(roh, werkzeugsatzName, optionen) 
  * @returns die vom Starter gesehenen AusfuehrungsEingaben oder null (Befund bereits gemeldet)
  */
 async function starteAusfuehrung(fall, art, werkzeugsatz) {
-  const basisVerzeichnis = `kontrollzustand-test-f36-ws2-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f36-ws2-${randomUUID()}`)
   const aufraeumen = [basisVerzeichnis]
   let server = null
   let gesehen = null
@@ -188,6 +193,7 @@ async function starteAusfuehrung(fall, art, werkzeugsatz) {
     aufraeumen.push(repoWurzel)
     const git = (argumente) => execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8' })
     git(['init', '--quiet', '-b', 'wegwerf-branch'])
+    schalteGitWartungAb(repoWurzel)
     git(['config', 'user.email', 'gate@example.invalid'])
     git(['config', 'user.name', 'Gate'])
     git(['config', 'core.autocrlf', 'false'])
@@ -261,7 +267,7 @@ async function starteAusfuehrung(fall, art, werkzeugsatz) {
     // Prüfergebnis abwarten, sonst hält er das Repo noch offen (EPERM beim Abräumen, F-590).
     const startzeit = Date.now()
     let fertig = false
-    while (Date.now() - startzeit < 10000) {
+    while (Date.now() - startzeit < skaliert(10000)) {
       const status = workflowId === null ? null : ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten?.status
       const pruefungFertig = gesehenLaufId !== null && ladeArtefaktVersion(`pruefergebnis-${gesehenLaufId}`, undefined, ladeOptionen) !== null
       if (gesehen !== null && pruefungFertig && status !== 'LAEUFT' && status !== 'OFFEN') {

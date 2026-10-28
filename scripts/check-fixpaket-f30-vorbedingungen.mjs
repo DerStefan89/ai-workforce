@@ -60,6 +60,10 @@ import { registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/ind
 import { registriereWorkflowEntscheidung } from './leitstand/routen-f39.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('fixpaket-f30-vorbedingungen')
 
 const befunde = []
 console.log('\n=== Fixpaket-F30-Vorbedingungen-Check ===\n')
@@ -80,6 +84,7 @@ function git(repoWurzel, argumente) {
 function baueFremdprojekt(zusatzDateien = {}) {
   const repoWurzel = mkdtempSync(join(tmpdir(), 'fixpaket-f30-repo-'))
   git(repoWurzel, ['init', '--quiet', '-b', 'wegwerf-branch'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'gate@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Gate'])
   git(repoWurzel, ['config', 'core.autocrlf', 'false'])
@@ -191,7 +196,7 @@ const REVIEW_BEREIT = JSON.stringify({ urteil: 'BEREIT', befunde: [], empfehlung
  * @returns { status, grund, reviewGestartet } oder null bei Vorbedingungsfehler (dann bereits in befunde)
  */
 async function fuehreFallDurch(bezeichnung, veraendereRepo, ergebnistext, optionen = {}) {
-  const basisVerzeichnis = `kontrollzustand-test-fixpaket-f30-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `fixpaket-f30-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = baueFremdprojekt(optionen.zusatzDateien)
   const verzeichnis = mkdtempSync(join(tmpdir(), 'fixpaket-f30-vorlage-'))
@@ -497,7 +502,7 @@ for (const [kennung, startvorlageZusatz] of [
   ['(l2)', { pruefketten_pfade: [] }],
 ]) {
   const vor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-fixpaket-f30-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `fixpaket-f30-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = baueFremdprojekt({ 'CLAUDE.md': '# Projekt\n\n## 🏗️ Technischer Stack [FÜLLUNG]\n\nNoch nicht entschieden.\n' })
   const verzeichnis = mkdtempSync(join(tmpdir(), 'fixpaket-f30-vorlage-'))

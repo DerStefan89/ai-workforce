@@ -134,7 +134,7 @@ try {
   function legeRepoAn(name, dateien) {
     const wurzel = join(basis, name)
     mkdirSync(wurzel, { recursive: true })
-    for (const argumente of [['init', '--quiet'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', 'false'], ['checkout', '--quiet', '-b', 'gate']]) {
+    for (const argumente of [['init', '--quiet'], ['config', 'gc.auto', '0'], ['config', 'maintenance.auto', 'false'], ['config', 'maintenance.autoDetach', 'false'], ['config', 'user.email', 'gate@example.invalid'], ['config', 'user.name', 'Gate'], ['config', 'core.autocrlf', 'false'], ['checkout', '--quiet', '-b', 'gate']]) {
       fuehreGitSync(argumente, { cwd: wurzel, encoding: 'utf8' })
     }
     for (const [rel, inhalt] of Object.entries(dateien)) {

@@ -20,6 +20,10 @@ import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { erzeugeRequestHandler } from '../leitstand-server.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, HARNESS_BAUSTEINE, lesbareHarnessPfade, MAX_BYTES, MAX_ORDNER_EINTRAEGE, pruefeHarnessHerkunft, pruefeHarnessPfad } from './routen-harness.mjs'
+import { wegwerfOrdner } from '../_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('routen-harness')
 
 /** Dateien des Grünfall-Repos (repo-relativ → Inhalt); ein Name auf '/' endet, ist ein leerer Ordner. */
 const DATEIEN = {
@@ -303,7 +307,7 @@ test('Herkunft: nur same-origin, none oder ohne Sec-Fetch-Site', () => {
 
 test('HTTP: GET /api/harness und /api/harness/datei — 200, 400 außerhalb der Liste, 403 von fremder Seite, nur GET', async () => {
   await mitRepo(async (repoWurzel) => {
-    const basisVerzeichnis = `kontrollzustand-test-f46-harness-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f46-harness-${randomUUID()}`)
     const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', repoWurzel, globalerLaufZustand: { aktiv: false, laufId: null, abortController: null } })
     const server = createServer(handler)
     await new Promise((ok) => server.listen(0, '127.0.0.1', ok))

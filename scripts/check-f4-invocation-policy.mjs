@@ -37,6 +37,7 @@ import {
   validiereWirksamkeitsnachweisEintrag,
 } from '../src/invocation-policy/index.ts'
 import { sha256Hex } from '../src/checkpoint-store/index.ts'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 const KONFIG_INHALT = 'konfig-inhalt'
@@ -59,6 +60,7 @@ function neuesExternesRepo() {
   const repoWurzel = join(tmpdir(), `check-f4-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')

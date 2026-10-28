@@ -3,7 +3,7 @@
  *
  * Zweck: node:test-Fälle für A2-A9/A8a (state/tasks/f9-human-transport-
  * bauauftrag.md). Läuft auf einem Wegwerfverzeichnis unter
- * kontrollzustand-test/ (nicht kontrollzustand/ selbst). Jeder Lauf
+ * os.tmpdir() (scripts/_wegwerf.ts; nicht kontrollzustand/ selbst). Jeder Lauf
  * berührt bis zu drei getrennte Ketten: lineage-bedarf-<laufId>,
  * lineage-transport-<laufId> (beide über F2s lauf_id-Konvention) und
  * <laufId> selbst (F1B-Wirkungsmarken, ohne Präfix) — alle drei werden im
@@ -28,8 +28,11 @@ import {
   importiereAntwort,
   pruefeUndEntscheideStale,
 } from './index.ts'
+import { wegwerfOrdner } from '../../scripts/_wegwerf.ts'
 
-const BASIS = 'kontrollzustand-test'
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('human-transport')
+
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const STILL = { basisVerzeichnis: BASIS, schreiber: () => {} }
 

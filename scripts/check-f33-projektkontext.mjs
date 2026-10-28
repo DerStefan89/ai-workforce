@@ -51,6 +51,10 @@ import { validiereProjekteDaten } from '../src/projekte/index.ts'
 import { baueKontextpaket } from '../src/context-builder/index.ts'
 import { baueProjektkontextAnfragen, filtereExistierendeAnfragen, erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f33-projektkontext')
 
 const befunde = []
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -129,7 +133,7 @@ console.log('\n=== F33-WS1-Projektkontext-Check ===\n')
 // ─── das reale standardBudget (QA-Pass-Befund: bislang nur isoliert geprüft) ──
 {
   for (const rolle of ['jarvis', 'router']) {
-    const basisVerzeichnis = `kontrollzustand-test-f33-projektkontext-${rolle}-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f33-projektkontext-${rolle}-${randomUUID()}`)
     raeumeVerzeichnis(basisVerzeichnis)
     try {
       const anfragenOhneInhalt = baueProjektkontextAnfragen('docs/projekt/kontext', 'docs/projekt/roadmap.json')
@@ -187,7 +191,7 @@ async function starteTestserver(handler) {
 // ─── mehr komplett — real über POST /api/chat gegen einen Handler geprüft, dessen ──
 // ─── kontextPfad/roadmapPfad auf NICHT existierende Pfade zeigen. ──────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f33-fehlender-kontext-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f33-fehlender-kontext-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   try {
     let beobachteteAnfragen = null
@@ -226,8 +230,10 @@ async function starteTestserver(handler) {
 // ─── (g) Ein abweichender, real existierender kontext_pfad/roadmap_pfad wird ────
 // ─── tatsächlich eingespeist — kein stiller Rückfall auf den Standardpfad. ──────
 {
-  const kontextOrdner = `kontrollzustand-test-f33-override-kontext-${randomUUID()}`
-  const basisVerzeichnis = `kontrollzustand-test-f33-override-${randomUUID()}`
+  // F45 W2b-2: kontext_pfad/roadmap_pfad sind repo-relativ (Vertrag) — die Repo-Wurzel dieses Falls ist der Wegwerf-Ordner.
+  const kontextName = `f33-override-kontext-${randomUUID()}`
+  const kontextOrdner = join(WEGWERF, kontextName)
+  const basisVerzeichnis = join(WEGWERF, `f33-override-${randomUUID()}`)
   mkdirSync(kontextOrdner, { recursive: true })
   raeumeVerzeichnis(basisVerzeichnis)
   try {
@@ -244,8 +250,9 @@ async function starteTestserver(handler) {
       fuehreAufgabeDurchFn: attrappeFuehreAufgabeDurch,
       basisVerzeichnis,
       startvorlagePfad: 'startvorlagen/beispielprojekt.json',
-      kontextPfad: kontextOrdner,
-      roadmapPfad: `${kontextOrdner}/roadmap-custom.json`,
+      repoWurzel: WEGWERF,
+      kontextPfad: kontextName,
+      roadmapPfad: `${kontextName}/roadmap-custom.json`,
     })
     const { basisUrl, schliessen } = await starteTestserver(handler)
     try {
@@ -255,7 +262,7 @@ async function starteTestserver(handler) {
         befunde.push('(g) POST /api/chat hat fuehreAufgabeDurchFn nicht aufgerufen — Testaufbau selbst defekt')
       } else {
         const pfade = beobachteteAnfragen.map((a) => a.pfad)
-        const erwartet = [`${kontextOrdner}/beschreibung.md`, `${kontextOrdner}/anweisungen.md`, `${kontextOrdner}/roadmap-custom.json`]
+        const erwartet = [`${kontextName}/beschreibung.md`, `${kontextName}/anweisungen.md`, `${kontextName}/roadmap-custom.json`]
         const fehlend = erwartet.filter((p) => !pfade.includes(p))
         if (fehlend.length > 0) {
           befunde.push(`(g) POST /api/chat mit überschriebenem kontext_pfad/roadmap_pfad: erwartete Pfade fehlen: ${fehlend.join(', ')} (erhalten: ${pfade.join(', ')})`)
@@ -274,7 +281,9 @@ async function starteTestserver(handler) {
 
 // ─── (h) F-598-Fix: leere/nur-Whitespace-Dateien werden wie fehlende behandelt ──
 {
-  const kontextOrdner = `kontrollzustand-test-f33-leer-${randomUUID()}`
+  // F45 W2b-2: Anfragepfade repo-relativ zur Wurzel WEGWERF (wie zuvor relativ zu process.cwd()).
+  const kontextName = `f33-leer-${randomUUID()}`
+  const kontextOrdner = join(WEGWERF, kontextName)
   mkdirSync(kontextOrdner, { recursive: true })
   try {
     writeFileSync(join(kontextOrdner, 'leer.md'), '')
@@ -282,12 +291,12 @@ async function starteTestserver(handler) {
     writeFileSync(join(kontextOrdner, 'echter-inhalt.md'), '# Echter Inhalt\n')
 
     const anfragen = [
-      { pfad: join(kontextOrdner, 'leer.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
-      { pfad: join(kontextOrdner, 'nur-whitespace.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
-      { pfad: join(kontextOrdner, 'echter-inhalt.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
-      { pfad: join(kontextOrdner, 'fehlt-komplett.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
+      { pfad: `${kontextName}/leer.md`, frage: 'Test', begruendung: 'Test', notwendig: true },
+      { pfad: `${kontextName}/nur-whitespace.md`, frage: 'Test', begruendung: 'Test', notwendig: true },
+      { pfad: `${kontextName}/echter-inhalt.md`, frage: 'Test', begruendung: 'Test', notwendig: true },
+      { pfad: `${kontextName}/fehlt-komplett.md`, frage: 'Test', begruendung: 'Test', notwendig: true },
     ]
-    const gefiltert = filtereExistierendeAnfragen(anfragen, process.cwd())
+    const gefiltert = filtereExistierendeAnfragen(anfragen, WEGWERF)
     const uebrigePfade = gefiltert.map((a) => a.pfad)
     if (uebrigePfade.length !== 1 || !uebrigePfade[0].endsWith('echter-inhalt.md')) {
       befunde.push(`(h) filtereExistierendeAnfragen: erwartet nur 'echter-inhalt.md' übrig (leer/Whitespace/fehlend ausgeschlossen), erhalten ${JSON.stringify(uebrigePfade)}`)

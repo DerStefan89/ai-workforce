@@ -44,6 +44,7 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeMultiProjektDispatcher, erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F45-FB-1b-Fähigkeit-übernehmen-Check ===\n')
@@ -119,6 +120,7 @@ function legeRepoAn(name, branch) {
   const wurzel = join(basis, name)
   mkdirSync(join(wurzel, '.claude'), { recursive: true })
   git(wurzel, ['init', '--quiet'])
+  schalteGitWartungAb(wurzel)
   git(wurzel, ['checkout', '--quiet', '-b', branch])
   writeFileSync(join(wurzel, '.claude', 'settings.json'), '{}\n')
   writeFileSync(join(wurzel, 'README.md'), 'Zeile 1\n')
@@ -418,6 +420,7 @@ try {
   else {
     const w = tmp('r')
     git(w, ['init', '--quiet'])
+    schalteGitWartungAb(w)
     lege(w, { 'README.md': 'x\n' })
     git(w, ['add', '.'])
     git(w, ['commit', '--quiet', '-m', 'basis'])

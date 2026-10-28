@@ -78,6 +78,10 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { KEINE_BEFUNDE_SATZ } from '../src/review-policy/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f15-automat-real')
 
 const befunde = []
 console.log('\n=== F15-Automat-Realcheck (WS-2c, AK6b + F-208) ===\n')
@@ -124,6 +128,7 @@ function neuesExternesRepo() {
   const repoWurzel = join(tmpdir(), `f15-ws2c-repo-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')
@@ -252,13 +257,14 @@ function schreibeTestStartvorlage(dateiname, skript) {
     werkzeugVersionDeklariert: ISTUEBRIGEFELDER_FIXTURE.werkzeug_version_deklariert,
     berechtigungskontext: ISTUEBRIGEFELDER_FIXTURE.berechtigungskontext,
   }
-  const pfad = join('startvorlagen', dateiname)
+  const pfad = join(WEGWERF, dateiname)
   writeFileSync(pfad, JSON.stringify(vorlage))
   return pfad
 }
 
 async function starteTestserver(optionen) {
-  const server = createServer(erzeugeRequestHandler(optionen))
+  // F45 W2b-2: Rohströme in den Wegwerf-Ordner statt nach kontrollzustand-roh/ des Repos (Handler-Option, an F8 durchgereicht).
+  const server = createServer(erzeugeRequestHandler({ rohBasisVerzeichnis: join(WEGWERF, 'roh'), ...optionen }))
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address()
   return { basisUrl: `http://127.0.0.1:${port}`, schliessen: () => new Promise((resolve) => server.close(resolve)) }
@@ -385,7 +391,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 
 // ─── (a) AK6b real: EIN Startaufruf, zwei reale Läufe ──────────────────────
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-auto'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2c-auto')
   raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-auto.json', ERFOLG_SKRIPT)
   let schliessen = async () => {}
@@ -429,7 +435,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 
 // ─── (b) F-208: ein abgebrochener Schritt 1 setzt NICHT auf Schritt 2 fort ──
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-abbruch'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2c-abbruch')
   // Gegen den Stand VOR diesem Block geprüft, nicht gegen die globale Liste (Reviewer-Pass
   // 10.09.2026): sonst unterdrückte ein Befund aus (a) die Erfolgsmeldung von (b), obwohl (b)
   // bestanden hat — und der Bericht sagte weniger, als der Lauf belegt.
@@ -509,7 +515,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 // Hier steht er über der realen Kette: echter Kindprozess für Schritt 1, echter Halt,
 // EINE menschliche Freigabe, echter Kindprozess für Schritt 2.
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-freigabe'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2c-freigabe')
   const befundeVorFreigabe = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-freigabe.json', ERFOLG_SKRIPT)
@@ -575,7 +581,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 // KEINE Sackgasse — eine korrigierte Fassung wird angenommen. Das ist der Grund, aus
 // dem die Ablehnung GESTOPPT setzt und nicht KLAERUNG_ERFORDERLICH.
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-ablehnung'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2c-ablehnung')
   const befundeVorAblehnung = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-ablehnung.json', ERFOLG_SKRIPT)
@@ -681,7 +687,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 // korrigierte Fassung einreichen und real starten. Ohne ihn wäre „der Mensch kommt
 // wieder heraus" eine Behauptung.
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-stopp'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2c-stopp')
   const befundeVorStopp = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
   const haengePfad = schreibeTestStartvorlage('test-f15-ws2c-stopp-haengt.json', HAENGE_SKRIPT)
@@ -830,7 +836,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 // wäre hier gar nicht bedienbar. Es darf trotzdem gestoppt werden — und es darf dabei
 // nichts abgebrochen werden, was jemand anderem gehört.
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-stopp-leer'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2c-stopp-leer')
   const befundeVorLeer = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-stopp-leer.json', ERFOLG_SKRIPT)
@@ -891,7 +897,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 // Mensch, der B stoppt, während A läuft, ist der Normalfall — nicht die
 // Ausnahme.
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-fremdlauf'
+  const basisVerzeichnis = join(WEGWERF, 'f15-ws2c-fremdlauf')
   const befundeVorFremdlauf = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-fremdlauf.json', VERZOEGERTER_ERFOLG_SKRIPT)
@@ -1021,7 +1027,7 @@ function schreibeTestKombinierteStartvorlage(dateiname, claudeSkript, codexSkrip
     berechtigungskontext: ISTUEBRIGEFELDER_FIXTURE.berechtigungskontext,
     worker: { codex: { startziel: [NODE_STARTZIEL_PFAD, '-e', codexSkript, '--'], versionDeklariert: 'f23-ws1b-test-codex-1.0.0', sandbox: 'read-only' } },
   }
-  const pfad = join('startvorlagen', dateiname)
+  const pfad = join(WEGWERF, dateiname)
   writeFileSync(pfad, JSON.stringify(vorlage))
   return pfad
 }
@@ -1058,7 +1064,7 @@ function legeAusfuehrungMitReviewWorkflowAn(basisVerzeichnis, auftragId, zeitgre
 
 // ─── (h) BEREIT setzt fort — der Workflow läuft real bis ABGESCHLOSSEN ─────
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f23-ws1b-bereit'
+  const basisVerzeichnis = join(WEGWERF, 'f23-ws1b-bereit')
   const befundeVorBereit = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestKombinierteStartvorlage('test-f23-ws1b-bereit.json', ERFOLG_SKRIPT, codexUrteilSkript('BEREIT'))
@@ -1099,7 +1105,7 @@ function legeAusfuehrungMitReviewWorkflowAn(basisVerzeichnis, auftragId, zeitgre
 
 // ─── (i) BLOCKIERT hält an — obwohl der Werkzeuglauf selbst ERFOLGREICH war ─
 {
-  const basisVerzeichnis = 'kontrollzustand-test-f23-ws1b-blockiert'
+  const basisVerzeichnis = join(WEGWERF, 'f23-ws1b-blockiert')
   const befundeVorBlockiert = befunde.length
   raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestKombinierteStartvorlage('test-f23-ws1b-blockiert.json', ERFOLG_SKRIPT, codexUrteilSkript('BLOCKIERT'))

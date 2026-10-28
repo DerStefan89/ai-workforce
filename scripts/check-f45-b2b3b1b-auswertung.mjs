@@ -53,6 +53,8 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
 
 const befunde = []
 console.log('\n=== F45-B2b-3b-1b-Auswertung-Check ===\n')
@@ -79,7 +81,7 @@ async function lade(pfad) {
 const hashVon = (input) => sha256Hex(kanonischesJson(input ?? null))
 const verzoegerung = (ms) => new Promise((r) => setTimeout(r, ms))
 async function warteBis(pruefen, maxMs = 15000) {
-  const ende = Date.now() + maxMs
+  const ende = Date.now() + skaliert(maxMs)
   let wert = await pruefen()
   while (!wert && Date.now() < ende) {
     await verzoegerung(25)
@@ -229,6 +231,7 @@ try {
     const repoWurzel = join(basis, 'projekt')
     mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
     git(repoWurzel, ['init', '--quiet'])
+    schalteGitWartungAb(repoWurzel)
     git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
     git(repoWurzel, ['config', 'user.name', 'Test'])
     git(repoWurzel, ['config', 'core.autocrlf', 'false'])

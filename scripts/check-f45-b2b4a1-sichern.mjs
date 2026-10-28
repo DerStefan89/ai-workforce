@@ -44,6 +44,7 @@ import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { arbeitsordnerGrund, leiteSichernLageAb, SICHERN_GRUENDE, SICHERN_GRUND_TEXT } from './leitstand/ablauf-sichern.mjs'
 import { baueCodeProjektion, fuehreGitAus } from './leitstand/routen-code.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F45-B2b-4a-1-Sichern-Check ===\n')
@@ -155,6 +156,7 @@ aufraeumen.push(basis)
 const repoWurzel = join(basis, 'projekt')
 mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
 git(repoWurzel, ['init', '--quiet'])
+schalteGitWartungAb(repoWurzel)
 git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
 git(repoWurzel, ['config', 'user.name', 'Test'])
 git(repoWurzel, ['config', 'core.autocrlf', 'false'])

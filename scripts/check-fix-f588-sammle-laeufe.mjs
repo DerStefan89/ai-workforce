@@ -32,6 +32,10 @@ import { join } from 'node:path'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('fix-f588-sammle-laeufe')
 
 const befunde = []
 console.log('\n=== F-588-Fix-Check (sammleLaeufe: "lineage-"-Denylist vor der Stempelbildung) ===\n')
@@ -60,7 +64,7 @@ function legeScheinVerzeichnisAn(basisVerzeichnis, name) {
 // ─── (1) Äquivalenz: "lineage-"-Verzeichnisse daneben ändern GET /api/laeufe nicht ───────────
 {
   const befundeVor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-f588-aequivalenz-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f588-aequivalenz-${randomUUID()}`)
   const laufId = `f588-echter-lauf-${randomUUID()}`
   try {
     schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: STILL })
@@ -108,7 +112,7 @@ function legeScheinVerzeichnisAn(basisVerzeichnis, name) {
 // ─── (2) Rotfall-Regression: ein Nicht-Lauf-Verzeichnis OHNE "lineage-"-Präfix bleibt gefiltert ──
 {
   const befundeVor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-f588-istlaufkette-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f588-istlaufkette-${randomUUID()}`)
   const laufId = `f588-echter-lauf-${randomUUID()}`
   try {
     schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: STILL })

@@ -55,6 +55,11 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../public/leitstand/sichtung-anzeige.js'
 import { erzeugeRequestHandler, ermittleSichtungsHalt } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+import { skaliert } from './_zeitfaktor.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('fixpaket-f36-nachlauf')
 
 const befunde = []
 console.log('\n=== Fixpaket-F36-Nachlauf-Check ===\n')
@@ -154,11 +159,12 @@ function haltDaten(ueberschreiben = {}) {
  * @param o - { bypassKlassifikation, bypassMarke, markeOhneDaten }
  */
 async function umgebung(o = {}) {
-  const basisVerzeichnis = `kontrollzustand-test-fixpaket-f36-nachlauf-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `fixpaket-f36-nachlauf-${randomUUID()}`)
   const repoWurzel = mkdtempSync(join(tmpdir(), 'fixpaket-f36-nachlauf-repo-'))
   const vorlagenOrdner = mkdtempSync(join(tmpdir(), 'fixpaket-f36-nachlauf-vorlage-'))
   const git = (argumente) => execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8' })
   git(['init', '--quiet', '-b', 'wegwerf-branch'])
+  schalteGitWartungAb(repoWurzel)
   git(['config', 'user.email', 'gate@example.invalid'])
   git(['config', 'user.name', 'Gate'])
   git(['config', 'core.autocrlf', 'false'])
@@ -247,7 +253,7 @@ async function amHalt(u) {
   if (start.status !== 202) throw new Error(`POST .../starten erwartet 202, erhalten ${start.status} (${start.inhalt.grund})`)
   const laden = () => ladeArtefaktVersion(`workflow-${workflowId}`, undefined, u.ladeOptionen)
   const beginn = Date.now()
-  while (Date.now() - beginn < 10000 && ['OFFEN', 'LAEUFT'].includes(laden()?.daten?.status)) await new Promise((resolve) => setTimeout(resolve, 50))
+  while (Date.now() - beginn < skaliert(10000) && ['OFFEN', 'LAEUFT'].includes(laden()?.daten?.status)) await new Promise((resolve) => setTimeout(resolve, 50))
   const version = laden()
   const laufId = version?.daten?.schritte?.[0]?.lauf_id
   if (version?.daten?.status !== 'KLAERUNG_ERFORDERLICH' || typeof laufId !== 'string') throw new Error(`kein Halt erreicht: ${JSON.stringify(version?.daten?.status)}`)
@@ -295,7 +301,7 @@ function nichtsGeschrieben(fall, u, halt) {
     } else {
       const laden = () => ladeArtefaktVersion(`workflow-${halt.workflowId}`, undefined, u.ladeOptionen)?.daten
       const beginn = Date.now()
-      while (Date.now() - beginn < 10000 && typeof laden()?.schritte?.[1]?.lauf_id !== 'string') await new Promise((resolve) => setTimeout(resolve, 50))
+      while (Date.now() - beginn < skaliert(10000) && typeof laden()?.schritte?.[1]?.lauf_id !== 'string') await new Promise((resolve) => setTimeout(resolve, 50))
       const s2 = laden()?.schritte?.[1]
       if (typeof s2?.lauf_id !== 'string') befunde.push(`(d) Folgeschritt nach der Sichtung nicht gestartet: ${JSON.stringify(s2)}`)
       if (laden()?.schritte?.[0]?.status !== 'VERWEIGERT') befunde.push('(d) VERWEIGERT-Schritt nach dem Folgestart verändert')

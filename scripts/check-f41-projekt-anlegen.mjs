@@ -82,6 +82,7 @@ import { ladeProjektregisterMitLokal } from '../src/projekte/index.ts'
 import { erzeugeRequestHandler, erzeugeMultiProjektDispatcher } from './leitstand-server.mjs'
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F41-Projekt-Anlegen-Check (WS-1) ===\n')
@@ -97,6 +98,7 @@ function neuesExternesRepo() {
   const repoWurzel = join(TEST_WURZEL, `extern-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')

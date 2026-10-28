@@ -17,6 +17,10 @@ import { test } from 'node:test'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { erzeugeRequestHandler } from '../leitstand-server.mjs'
 import { baueProjektakteProjektion, findeVersionsziel, leseKontextDatei, MAX_BYTES } from './routen-projektakte.mjs'
+import { wegwerfOrdner } from '../_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('routen-projektakte')
 
 const KONTEXT = 'docs/projekt/kontext'
 const ROADMAP = 'docs/projekt/roadmap.json'
@@ -169,7 +173,7 @@ test('Versionsziel: keine oder mehrere Fundstellen → nicht_eindeutig, nichts g
 test('HTTP: GET /api/projektakte liest keinen Anfrageteil — Query und Pfadanhang wählen keine Datei', async () => {
   await mitRepo(async (repoWurzel) => {
     writeFileSync(join(repoWurzel, 'geheim.md'), 'GEHEIM')
-    const basisVerzeichnis = `kontrollzustand-test-f46-projektakte-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f46-projektakte-${randomUUID()}`)
     const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', repoWurzel, globalerLaufZustand: { aktiv: false, laufId: null, abortController: null } })
     const server = createServer(handler)
     await new Promise((ok) => server.listen(0, '127.0.0.1', ok))

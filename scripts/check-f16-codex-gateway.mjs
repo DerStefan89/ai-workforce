@@ -82,10 +82,14 @@ import { CODEX_BERECHTIGUNGSKONTEXT, baueCodexAufruf, pruefeUndVerweigereCodexBe
 import { ladeStartvorlage } from '../src/startvorlage/index.ts'
 import { loeseAusfuehrungsEingabenAuf, loeseAusgabeSchemaAuf, pruefeStartauftrag } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const KONTROLLZUSTAND_BASIS = wegwerfOrdner('f16-codex-gateway')
 
 const befunde = []
 const CODEX_GATEWAY_DIR = join('src', 'codex-gateway')
-const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 
 function neueLaufId(praefix) {

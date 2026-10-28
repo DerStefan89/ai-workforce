@@ -44,6 +44,10 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f45-b2b3d-umfang')
 
 const befunde = []
 console.log('\n=== F45-B2b-3d-Umfang-Check ===\n')
@@ -70,6 +74,7 @@ function baueProjekt() {
   const wurzel = mkdtempSync(join(tmpdir(), 'check-f45-b2b3d-projekt-'))
   aufraeumen.push(wurzel)
   git(wurzel, ['init', '--quiet'])
+  schalteGitWartungAb(wurzel)
   git(wurzel, ['config', 'user.email', 'test@example.invalid'])
   git(wurzel, ['config', 'user.name', 'Test'])
   git(wurzel, ['config', 'core.autocrlf', 'false'])
@@ -117,7 +122,7 @@ const SCHRITTE = [
  */
 async function szenario(kennung, body, dateien) {
   const projekt = baueProjekt()
-  const basisVerzeichnis = `kontrollzustand-test-f45-b2b3d-${kennung}-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f45-b2b3d-${kennung}-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   aufraeumen.push(basisVerzeichnis)
   const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }

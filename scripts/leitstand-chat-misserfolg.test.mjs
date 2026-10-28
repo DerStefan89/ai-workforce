@@ -16,6 +16,7 @@
  * Wird aufgerufen von: `npm run test` (node --test)
  */
 
+import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
@@ -24,6 +25,10 @@ import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { beschreibeChatMisserfolg, erzeugeRequestHandler, vergleicheStartordner } from './leitstand-server.mjs'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('leitstand-chat-misserfolg')
 
 const STILL = () => {}
 const warte = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -57,7 +62,7 @@ async function warteBisLaufFrei(basisUrl) {
  * @param pruefung - async (basisUrl, basisVerzeichnis) => void
  */
 async function mitServer(optionen, pruefung) {
-  const basisVerzeichnis = `kontrollzustand-test-f45-b0-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f45-b0-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const fuehreAufgabeDurchFn = optionen.fuehreAufgabeDurchFn ? (...args) => optionen.fuehreAufgabeDurchFn(basisVerzeichnis, ...args) : undefined
   const server = createServer(erzeugeRequestHandler({ projektId: 'test-f45', startvorlagePfad: 'startvorlagen/beispielprojekt.json', ...optionen, basisVerzeichnis, fuehreAufgabeDurchFn }))

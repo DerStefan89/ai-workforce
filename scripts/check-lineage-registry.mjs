@@ -20,9 +20,13 @@ import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { haltFestStaleEntscheidung, pruefeStale, registriereKernArtefakt, validiereLineageEintrag } from '../src/lineage-registry/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('lineage-registry')
 
 const befunde = []
-const BASIS = 'kontrollzustand-test'
+
 
 console.log('\n=== Lineage-Registry-Check ===\n')
 

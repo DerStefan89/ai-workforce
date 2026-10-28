@@ -21,7 +21,7 @@
  * werkzeug-auswahl.
  *
  * Isolation (keine Berührung der echten kontrollzustand/-Daten): eigenes
- * basisVerzeichnis unter kontrollzustand-test-f20-shell-<random>, eigener
+ * basisVerzeichnis unter os.tmpdir() (scripts/_wegwerf.ts, f20-shell-<random>), eigener
  * Ephemeral-Loopback-Port, fuehreAufgabeDurchFn ist eine Attrappe — es
  * startet nie ein echtes Claude-Code/Codex-Kindprozess. publicVerzeichnis
  * bleibt der ECHTE public/leitstand/-Ordner (Default von erzeugeRequestHandler),
@@ -73,6 +73,10 @@ import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f20-leitstand-shell')
 
 const befunde = []
 
@@ -484,7 +488,7 @@ async function haupt() {
     return
   }
 
-  const basisVerzeichnis = `kontrollzustand-test-f20-shell-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f20-shell-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const chromeProfilVerzeichnis = legeChromeProfilAn()
   let httpServer = null

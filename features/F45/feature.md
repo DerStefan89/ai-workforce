@@ -63,6 +63,7 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **A1 B5b-1b-2 = Weg (b)** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — CRLF in `docs/STATUS.md` ⇒ 422 „von Hand“ (analog A3); keine Ausnahme in ARCHITECTURE.md §7, nur die §2-Ergänzung um `roadmap-ausnahmen.json` und `docs/STATUS.md` (Deckel 17 800 B eingehalten).
 - **A2 B5b-1b-2 = dynamisch** ([EMPFEHLUNG] Challenger, 24.10.2026, reversibel) — „Meilenstein → LAEUFT“ wird angeboten, sobald der Meilenstein im aktuellen Stand genau eine R1-Abweichung hat (auch M4 nach drei Einzelbestätigungen); kein Sonderverbot.
 - **E-PRUEF-1 = A** (Stefan, 24.10.2026) — Vor jedem Merge gelten genau drei Prüfungen: (1) Stefans lokaler voller Lauf im Commit-Block, (2) inhaltliche Prüfung des gepushten Diffs durch den Challenger (Dateiliste, Kernstellen gegen Auftrag, Invarianten), (3) grüne PR-CI (`.github/workflows/ci.yml`: `npm run check` auf ubuntu-latest mit Node 24 + gitleaks). Der Cloud-Testlauf des Challengers entfällt. Anlass: bei B5b-1a bis B5b-1b-2 war die Prüfung ohne Hinweis an Stefan ausgedünnt; Finding F-1194.
+- **E-PRUEF-2 = B** (Stefan, 27.10.2026) — löst E-PRUEF-1 ab. Lokal im Commit-Block: lint, typecheck, `npm run test`, Lagebild und die im Bauauftrag genannten Gates; der volle Gate-Lauf nur in der CI. Ausnahme „voller lokaler Lauf“, wenn der Challenger sie im Bauauftrag setzt (z. B. W2b-2, plattformsensibel). Rückfall auf A, sobald ein Windows-Fehler erst nach dem Merge auffällt. Prüfung des gepushten Diffs durch den Challenger und grüne PR-CI bleiben.
 - **E-BRAIN-1 = B** (Stefan, 25.10.2026) — R2 wird „Brain Stufe 1: Produktzyklus lesend, mit Motion“ (≈ 1,5–2 AT). Beleg 15 (Motion mit Zweck, Bewegungs-Tokens, `prefers-reduced-motion`, Render-Nachweis mit Bewegung, design-guardian, eigener Worktree) wird an der Zyklus-Seite erbracht; ersetzt den Inhalt von E-F45-11. Stufen 2/3 nach F30 (F-1202).
 - **Bug-Felder nach 2c** ([EMPFEHLUNG] Challenger 25.10.2026) — gleiche Datenquelle (Workitems) wie Pflege & Fixes; 2b nur Schreibwege.
 - **B5b-2b geteilt** (Challenger, 25.10.2026, Advisor `features/F45/advisor-b5b2b.md` O4) — B5b-2b-1 „Anpassen“ (ohne Serveränderung, mit F-1197, eigener Nachweis) → B5b-2b-2 „Bereinigungsliste“ (Vorprüfung `moeglich`/`grund` mit Tests, Gate (a), F-1189-Reste, eigener Nachweis). Körperform maßgeblich `pruefePlanungAenderung` (`workstreams: [{ id, schaetzung_min, schaetzung_max }]`). F-1197: Status als Pille, Auswahl als neutraler Streifen (`--ink`/`--line`), kein Gold, kein Mint. qa8 = Variante (a): „Dauerhaft begründete Ausnahmen sind heute nicht vorgesehen“, qa8 → W2, Gate b5b1a (i) unverändert.
@@ -1925,3 +1926,44 @@ Zusagen) zu Ersatz oder Restgrenze — grob: (f) Syntax → Biome; Felder/Zustan
 (z. B. `check-f42-projekt-harness`, `check-f12-leitstand-ansicht`) bleiben.
 
 Voller Gate-Lauf im Commit-Block (2026-10-27): gruen, Wanduhr 719.2 s (Parallelitaet 4, 120 Gates); npm run test gruen im ersten Lauf.
+
+## Stand W2b-2
+
+**Auftrag:** W2b-2 „Wegwerf-Ordner und Fristen“ (Challenger, 27.10.2026; `w2-gate-inventur.md` Befunde 3/4, F-590, F-1215,
+F-1230). Plan `plan-w2b2.md` → Advisor `advisor-w2b2.md` „Freigegeben mit Hinweisen“ (A1–A5, kein Schnitt) →
+`plan-w2b2-v2.md`. A2: die ungetrackten `kontrollzustand/jarvis-jarvis-chat-*` stammen aus echter Leitstand-Nutzung, kein Gate.
+
+**Gebaut:**
+- `scripts/_wegwerf.ts` (neu): `wegwerfOrdner(kennung)` (`mkdtemp` unter `os.tmpdir()`, Aufräumen beim Prozessende über
+  `raeumeVerzeichnis`, R1 — läuft auch nach `process.exit(1)`; die finally-Aufräumer je Fall bleiben) und
+  `schalteGitWartungAb(repo)` (gc.auto 0, maintenance.auto/autoDetach false in `.git/config`); Test `scripts/_wegwerf.test.ts`
+  (Ort, Räumen nach Exit 0/1 im Kindprozess, Werte über git gelesen; zwei Mutationen je rot).
+- Wegwerf-Ordner: 52 Gates der Kette, `check-f20-leitstand-shell` und 18 Testdateien (`scripts/` und `src/`) statt
+  `kontrollzustand-test-*` in der Repo-Wurzel; dazu die Rohströme von `claude-code-gateway.test.ts` und
+  `execution-controller.test.ts` im Wegwerf-Ordner. f33 (g)/(h): `kontext_pfad` bleibt vertragsgemäß repo-relativ, Repo-Wurzel
+  des Falls ist der Wegwerf-Ordner. Projektregister-Einträge f25/f41 (relativ zu `repo_pfad`) unverändert.
+- startvorlagen/ und Rohströme: f10, f14, f15-automat-real schreiben Wegwerf-Startvorlagen in den Wegwerf-Ordner; f14 und
+  f15-automat-real geben dem Testserver `rohBasisVerzeichnis` mit (Handler-Option, über `starteLaufUndVergiss` an F8). Kein
+  Produktcode geändert.
+- Fristen: 11 Frist-Gates skalieren über `skaliert` (`AIW_TEST_ZEITFAKTOR`, Standard 1) — in der Wartefunktion, in
+  `while`-Fristen und bei `pruefZeitgrenzeMs: 10000`; ablaufende Fristen (f14 `zeitgrenzeMs: 1500`) unverändert.
+- `SERIELL` 23 → 16: Repo-Baum-Läufer (check-docs, check-rules, check-f45-k-kontext, check-secrets) und startvorlagen-Gruppe
+  (f10, f14, f15-automat-real) laufen parallel; 15 Zeit-/Frist-Gates und f3b1 bleiben (Kommentar je Gruppe).
+- git-Wartung (F-1230): jedes `git init` in Gates und Tests, Init-Schleifen mit drei `config`-Einträgen. F-1230 „umgesetzt,
+  Beobachtung in CI“ (A4).
+- Findings F-1231–F-1234 neu; F-1215, F-1230 nachgezogen, F-590 (Archiv) Nachtrag. E-PRUEF-2 = B eingetragen (Entscheidungen,
+  `docs/projekt/fixpaket-f45.md`). Inventur „Stand W2b-2“. 18 alte `kontrollzustand-test*`-Reste in der Repo-Wurzel lokal entfernt.
+
+**DEKLARIERT:** Bei Signal oder Absturz bleibt ein Rest im System-Temp (kein Hook); wirft der Exit-Hook mit nicht toleriertem
+Code, wird ein grünes Gate rot. `check-f45-b2b3b1b` skaliert auch seinen Standard 15 s. Der f25-Dispatch-Eintrag
+(`repo_pfad: '.'`) zeigt weiter in die Repo-Wurzel, der Ordner entsteht dort nie. Repos, die Produktcode selbst anlegt
+(`sammlung/quelle.ts`, `skill-installation.ts`), schalten die Wartung nicht ab. Keine Schutzregel gegen neue Literale
+(F-1234). Lokal liegen weiter ≈ 13 000 alte Rohstrom-Ordner in `kontrollzustand-roh/` (gitignoriert, frühere f14/f15-Läufe).
+
+**Prüfpass:** code-reviewer und qa je „Nicht freigegeben“ mit demselben Kernbefund: die mechanische Umstellung hatte in f25
+und f41 vier Literale innerhalb von `join(<Temp-Wurzel>, …)` ersetzt (doppelt absoluter Pfad, f25 (2a) rot). Eine
+Korrekturrunde: die vier Stellen zurück (die Basen lagen schon unter `os.tmpdir()`), `WEGWERF` dort entfernt; dazu Rohströme
+der zwei Unit-Tests umgelenkt (cr 3/qa 3), SERIELL-Kommentar präzisiert (11 von 15, cr 4/qa 4), Zählung 18 (cr 5),
+Laufwerksfall im Helfer-Test (cr 6/qa 7), F-1230-Abgrenzung Produkt-Repos (qa 6), Inventur zum f25-Dispatch-Eintrag (cr 2).
+
+Voller Gate-Lauf im Commit-Block (2026-10-27, E-PRUEF-2 Ausnahme): ── check-kette: 120 grün, 0 rot · Wanduhr 533.5 s · Σ Einzelzeiten 1351.8 s · parallel 4, seriell 16; Repo-Baum vor/nach unveraendert; npm run test zweimal gruen.

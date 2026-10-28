@@ -74,6 +74,10 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { registriereWorkflowEntscheidung } from './leitstand/routen-f39.mjs'
 import { erzeugeRequestHandler, loeseProjektPfade } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('fixpaket-f35-reallauf')
 
 const befunde = []
 console.log('\n=== Fixpaket-F35-Reallauf-Check ===\n')
@@ -98,6 +102,7 @@ function git(repoWurzel, argumente) {
 function baueFremdprojekt(adrDateien = null) {
   const repoWurzel = mkdtempSync(join(tmpdir(), 'fixpaket-f35-repo-'))
   git(repoWurzel, ['init', '--quiet', '-b', 'wegwerf-branch'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'gate@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Gate'])
   git(repoWurzel, ['config', 'core.autocrlf', 'false'])
@@ -191,7 +196,7 @@ const STACK_ENTSCHEIDUNG = {
  *   laufId1, uebersichtRegistriert, pruefergebnisRegistriert } oder null bei Vorbedingungsfehler
  */
 async function starteSchritt(fall, optionen) {
-  const basisVerzeichnis = `kontrollzustand-test-fixpaket-f35-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `fixpaket-f35-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = baueFremdprojekt(optionen.adrDateien ?? null)
   const { pfad: startvorlagePfad, verzeichnis } = schreibeStartvorlage({ mitBashAllowlist: optionen.ohneArchitekt === true })
@@ -668,7 +673,7 @@ async function starteSchritt(fall, optionen) {
 // ─── (j) F-760: Reparaturfassung mit cursor auf dem Review löst die Eingaben des VERWEIGERT-Vorgängers auf ──
 {
   const vor = befunde.length
-  const basisVerzeichnis = `kontrollzustand-test-fixpaket-f35-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `fixpaket-f35-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = baueFremdprojekt()
   const { pfad: startvorlagePfad, verzeichnis } = schreibeStartvorlage()

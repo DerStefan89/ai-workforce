@@ -53,6 +53,7 @@ import { pruefeKanalNurUeberOptIn } from './_rueckfrage-aus-pruefung.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, pruefeStartauftrag, RUECKFRAGE_BODY_MAX_BYTES } from './leitstand-server.mjs'
 import { erzeugeRueckfrageVermittlung, KEINE_ANTWORT } from './leitstand/rueckfrage-vermittlung.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F45-B2b-3b-1a-Rückfrage-Check ===\n')
@@ -100,6 +101,7 @@ function baueUmgebung(kennung) {
   const repoWurzel = join(basis, 'projekt')
   mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   git(repoWurzel, ['config', 'core.autocrlf', 'false'])

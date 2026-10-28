@@ -20,12 +20,13 @@
  * - Parallelität: Standard 4 (= --test-concurrency der parallelen Testgruppe in scripts/teste.mjs; größte Gate-Spitzen
  *   270 MB Node-RSS bzw. 330 MB Δ System liegen in deren Rahmen). Änderbar über AIW_GATES_PARALLEL (ganze Zahl ≥ 1;
  *   1 = alles nacheinander, Rückfallebene bei Speicherdruck F-1205). Ungültiger Wert ⇒ Exit 2 vor dem ersten Gate.
- * - Abweichungen von der Kette (DEKLARIERT): (1) Reihenfolge — SERIELL läuft vor allen anderen; die Repo-Baum-Läufer
- *   (check-docs, check-rules) sehen damit wie früher (Platz 3 und 5) den Stand vor allen Wegwerf-Ordnern,
- *   check-f45-k-kontext und check-secrets (früher am Ende, nach allen Aufräumarbeiten) ebenso. (2) Nach einem roten Gate
+ * - Abweichungen von der Kette (DEKLARIERT): (1) Reihenfolge — SERIELL läuft vor allen anderen. Bis W2b-2 standen
+ *   die Repo-Baum-Läufer (check-docs, check-rules, check-f45-k-kontext, check-secrets) dort, damit sie keine
+ *   Wegwerf-Ordner anderer Gates sahen; seit W2b-2 legt kein Gate mehr etwas im Repo-Baum an (scripts/_wegwerf.ts), sie
+ *   laufen parallel. (2) Nach einem roten Gate
  *   laufen die übrigen weiter. Das Gesamturteil bleibt gleich (rot ⇔ mindestens ein Gate rot); das Urteil je Gate gilt
  *   sicher für Gates, die vor dem ersten roten fertig wurden — ein rot abgebrochenes Gate kann Reste hinterlassen, an
- *   denen spätere rot werden (z. B. startvorlagen/test-*.json für check-f16 (e)). Darum nennt die Zusammenfassung das
+ *   denen spätere rot werden (bis W2b-2 z. B. startvorlagen/test-*.json für check-f16 (e)). Darum nennt die Zusammenfassung das
  *   zuerst rot gewordene Gate zuerst und in ihrer letzten Zeile noch einmal.
  * - Ausgabe: je Gate sofort eine Startzeile „▶ <befehl>“, beim Ende ein Block aus Kopfzeile (✓/✗, Dauer) und der
  *   gepufferten Ausgabe (stdout nach stdout, stderr nach stderr, nicht verschränkt). Ganz am Ende die Zusammenfassung mit
@@ -179,18 +180,15 @@ export const GATES = [
  * Parallel-Risiko). Lange Laufzeit allein ist kein Grund (verlängert die Wanduhr). Kein Gate bindet einen festen Port.
  */
 export const SERIELL = [
-  // Durchlaufen den ganzen Repo-Baum; parallel legen ≥ 43 Gates Wegwerf-Ordner kontrollzustand-test-* in der Repo-Wurzel
-  // an und löschen sie wieder (ENOENT, Funde in fremden Ordnern).
-  'node scripts/check-docs.mjs',
-  'node scripts/check-rules.mjs',
-  'node scripts/check-f45-k-kontext.mjs',
-  'node scripts/check-secrets.mjs',
-  // Schreiben und löschen feste Dateien in startvorlagen/ des Repos, das andere Gates lesen (check-f16 (e) jede Datei).
-  'node scripts/check-f10-leitstand.mjs',
-  'node scripts/check-f14-abbruch.mjs',
-  'node scripts/check-f15-automat-real.mjs',
+  // Seit F45 W2b-2 nicht mehr hier: die Repo-Baum-Läufer (check-docs, check-rules, check-f45-k-kontext, check-secrets)
+  // und die startvorlagen/-Schreiber (check-f10, check-f14, check-f15-automat-real) — Wegwerf-Ordner, Wegwerf-Startvorlagen
+  // und Rohströme der Gates liegen unter os.tmpdir() (scripts/_wegwerf.ts), kein Gate schreibt mehr in den Repo-Baum.
+  //
   // Warten mit fester Frist ≤ 10 s auf Server-, Workflow- oder Kindprozess-Zustand, messen Zeit gegen eine feste Grenze
   // oder fielen unter Last schon aus — git- und serverlastig, F-1215 (dieselbe Klasse wie F-1186/F-1209/F-1210 in teste.mjs).
+  // Seit W2b-2 warten die 11 Frist-Gates (f656 bis f36-ws5b) über AIW_TEST_ZEITFAKTOR (scripts/_zeitfaktor.ts); f43,
+  // f20-zustand-poll, fix-zustand-poll-kosten und f652 messen Zeit bzw. warten unskaliert. Der Läufer setzt keinen Faktor
+  // (Standard 1), also bleiben alle hier, bis eine Messung unter Last das Herausnehmen trägt.
   'node scripts/check-f43-projekt-aufrufen.mjs',
   'node scripts/check-f20-zustand-poll.mjs',
   'node scripts/check-fix-zustand-poll-kosten.mjs',

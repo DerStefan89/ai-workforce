@@ -40,6 +40,7 @@ import {
   schreibenderSchrittGelaufen,
   validiereArbeitsordnerDaten,
 } from './index.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 /** git für Testaufbauten (Tests liegen außerhalb des Git-Starter-Gates). */
 function git(cwd: string, argumente: string[]): string {
@@ -58,6 +59,7 @@ function neueWurzel(): { basis: string; projekt: string } {
 function neuesRepo(): { basis: string; projekt: string; settingsInhalt: string; hookInhalt: string } {
   const { basis, projekt } = neueWurzel()
   git(projekt, ['init', '--quiet'])
+  schalteGitWartungAb(projekt)
   git(projekt, ['config', 'user.email', 'test@example.invalid'])
   git(projekt, ['config', 'user.name', 'Test'])
   git(projekt, ['config', 'core.autocrlf', 'false'])
@@ -338,6 +340,7 @@ describe('bereiteArbeitsordnerVor', () => {
       assert.equal(a.status, 'FEHLGESCHLAGEN')
       assert.match(a.grund ?? '', /kein Git-Repository|nicht die Wurzel/)
       git(ohneCommit.projekt, ['init', '--quiet'])
+      schalteGitWartungAb(ohneCommit.projekt)
       const b = await bereiteArbeitsordnerVor({ repoWurzel: ohneCommit.projekt, workflowId: 'wf-b', vorherigeBasis: null, npm: npmAttrappe().npm, pruefeE183: E183_GRUEN })
       assert.equal(b.status, 'FEHLGESCHLAGEN')
       assert.match(b.grund ?? '', /noch keinen Commit/)
@@ -418,6 +421,7 @@ function e183GegenBaseline(basis: string, projekt: string, settingsInhalt: strin
   const extern = join(basis, 'autorisierung')
   mkdirSync(extern, { recursive: true })
   git(extern, ['init', '--quiet'])
+  schalteGitWartungAb(extern)
   git(extern, ['config', 'user.email', 'test@example.invalid'])
   git(extern, ['config', 'user.name', 'Test'])
   writeFileSync(join(extern, '.gitattributes'), '* -text\n')

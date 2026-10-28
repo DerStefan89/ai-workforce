@@ -45,6 +45,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const WURZEL = join(import.meta.dirname, '..')
 const lies = (pfad) => readFileSync(join(WURZEL, pfad), 'utf8')
@@ -264,6 +265,7 @@ const git = (cwd, argumente) => execFileSync('git', ['-c', 'user.email=t@example
 try {
   const w = tmp('repo')
   git(w, ['init', '--quiet'])
+  schalteGitWartungAb(w)
   writeFileSync(join(w, 'README.md'), 'x\n')
   git(w, ['add', 'README.md'])
   git(w, ['commit', '--quiet', '-m', 'basis'])

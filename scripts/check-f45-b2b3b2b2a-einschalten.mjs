@@ -52,6 +52,7 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import { erzeugeMultiProjektDispatcher, erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { erzeugeRueckfrageVermittlung } from './leitstand/rueckfrage-vermittlung.mjs'
+import { schalteGitWartungAb } from './_wegwerf.ts'
 
 const befunde = []
 console.log('\n=== F45-B2b-3b-2b-2a-1-Einschalten-Check ===\n')
@@ -95,6 +96,7 @@ function baueUmgebung(kennung) {
   const repoWurzel = join(basis, 'projekt')
   mkdirSync(join(repoWurzel, '.claude'), { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   git(repoWurzel, ['config', 'core.autocrlf', 'false'])

@@ -26,6 +26,7 @@ import {
   wirksamePruefkettenMuster,
 } from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 function git(repoWurzel: string, argumente: string[]): string {
   return execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8' })
@@ -36,6 +37,7 @@ function neuesRepo(): string {
   const repoWurzel = join(tmpdir(), `f23-aenderungsuebersicht-test-${randomUUID()}`)
   mkdirSync(repoWurzel, { recursive: true })
   git(repoWurzel, ['init', '--quiet'])
+  schalteGitWartungAb(repoWurzel)
   git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
   git(repoWurzel, ['config', 'user.name', 'Test'])
   writeFileSync(join(repoWurzel, 'bestehend.txt'), 'Zeile 1\nZeile 2\nZeile 3\n')

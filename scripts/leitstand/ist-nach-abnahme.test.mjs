@@ -25,6 +25,7 @@ import { registriereWorkflow } from '../../src/workflow/index.ts'
 import { raeumeVerzeichnis } from '../_aufraeumen.ts'
 import { erzeugeRequestHandler } from '../leitstand-server.mjs'
 import { fuehreIstNachAbnahmeDurch } from './ist-nach-abnahme.mjs'
+import { schalteGitWartungAb } from '../_wegwerf.ts'
 
 const KOPF = '| ID | Art | Titel | Status | Schätzung AT | Ist AT | Begonnen | Abgenommen | Notiz |\n|---|---|---|---|---|---|---|---|---|\n'
 
@@ -159,6 +160,7 @@ test('Arbeitsordner: die Akte erscheint in git status des Arbeitsordners, kein G
     const pfad = join(ordner, 'features', 'F9', 'feature.md')
     writeFileSync(pfad, EINE)
     git('init', '-q')
+    schalteGitWartungAb(ordner)
     git('add', '--', 'features/F9/feature.md')
     git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'akte')
     const basisVerzeichnis = join(ordner, 'kz-leer')

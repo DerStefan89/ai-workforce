@@ -20,6 +20,7 @@ import { after, describe, it } from 'node:test'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import { ermittleProjektFaehigkeiten } from './index.ts'
 import { erkenneFaehigkeitVorschlaege, FAEHIGKEIT_VORSCHLAG_REGEL, istSchreibbarerName, leseBasisBaum, pruefeZielIgnoriert, VORSCHLAG_GRENZEN, vergleicheMitBasis, vorschlagDateien, zielPfad } from './vorschlag.ts'
+import { schalteGitWartungAb } from '../../scripts/_wegwerf.ts'
 
 // qa FB-1a 7: check-ignore liest sonst die globale/System-Konfiguration des Entwicklers (z. B. core.excludesFile mit .claude/).
 const gitKonfig = mkdtempSync(join(tmpdir(), 'fb1a-gitcfg-'))
@@ -259,6 +260,7 @@ describe('pruefeZielIgnoriert', () => {
   function repo(gitignore: string | null): string {
     const w = wurzel()
     execFileSync('git', ['init', '--quiet'], { cwd: w })
+    schalteGitWartungAb(w)
     if (gitignore !== null) writeFileSync(join(w, '.gitignore'), gitignore)
     skill(w, 'pruefen')
     agent(w, 'leser.md', agentText('leser'))
@@ -335,6 +337,7 @@ describe('FB-1b: anlegbare Namen (q9) und Stand gegenüber dem Basis-Commit (q1)
   it('vergleicheMitBasis: neu, unverändert (Blob wie git hash-object --no-filters), geändert; Verknüpfung im Baum ⇒ geändert', async () => {
     const w = wurzel()
     git(w, ['init', '--quiet'])
+    schalteGitWartungAb(w)
     skill(w, 's', { 'SKILL.md': skillText('s'), 'teil/a.txt': 'a\n' })
     agent(w, 'leser.md', agentText('leser'))
     const basis = await leseBasisBaum(w, basisAnlegen(w))
@@ -367,6 +370,7 @@ describe('FB-1b: anlegbare Namen (q9) und Stand gegenüber dem Basis-Commit (q1)
     const w = wurzel()
     try {
       git(w, ['init', '--quiet', '--object-format=sha256'])
+      schalteGitWartungAb(w)
     } catch {
       t.skip('git ohne --object-format=sha256')
       return

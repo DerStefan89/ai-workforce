@@ -116,6 +116,10 @@ import { baueAuftragAusScope as baueAuftragAusScopeBrowser } from '../public/lei
 import { anzeigePruefbefehl as anzeigePruefbefehlBrowser, baueAuftragAusProjektentwurf as baueAuftragAusProjektentwurfBrowser } from '../public/leitstand/auftrag-aus-projektentwurf.js'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, sammleBestehendeIds } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f34-product-coach')
 
 const befunde = []
 const STILLER_SCHREIBER = () => {}
@@ -353,7 +357,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 
 // ─── (d) POST /api/sparring: reale Rot-Fälle der Bodyprüfung ───────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-d-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-d-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
 
@@ -388,7 +392,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 
 // ─── (e) GET /api/sparring: leere Kette liefert { verlauf: [] }, kein Fehler ─
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-e-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-e-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId: 'check-f34-leer' }))
@@ -411,7 +415,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 
 // ─── (f) Realer POST/GET-/api/sparring-Rundlauf: coach-spezifische aufrufEingaben ─
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-f-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-f-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const projektId = 'check-f34-ak-f'
@@ -483,7 +487,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 // Jarvis-Fassung abgeleitet) und damit die wahrscheinlichste Stelle für einen unbemerkten
 // Tippfehler. Muster check-f31-gedaechtnis.mjs (j), hier für POST /api/sparring.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-h-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-h-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f34-ak-h'
 
@@ -540,7 +544,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 // beendeter Coach-Lauf schreibt genau einen Eintrag mit istFehler und fehler.art, trägt seinen
 // Untermodus und keine Antwort. Vor F45 B0 schrieb dieser Fall nichts.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-h2-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-h2-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const fuehreAufgabeDurchFn = async () => ({ ok: true, klassifikation: { ergebnis: 'FEHLGESCHLAGEN', grund: 'beobachtungsbasis_unvollstaendig' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'FEHLGESCHLAGEN' } })
@@ -574,7 +578,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 
 // ─── (g) Jarvis-Regression: POST /api/chat unverändert nach der Parametrisierung ─
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-g-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-g-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const projektId = 'check-f34-ak-g'
@@ -779,7 +783,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 
 // ─── (m) F34 WS-3: POST /api/sparring — reale Rot-/Grünfälle der 'modus'-Prüfung ──────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-m-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-m-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
 
@@ -1074,7 +1078,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 // erfolgreichen Lauf real Feature-/Meilenstein-IDs (vergebeFeatureIds, verarbeiteRollenChatErgebnis)
 // — beides nur end-to-end über den echten Endpunkt nachweisbar, nicht durch einen Unit-Test allein.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-r-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-r-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const projektId = 'check-f34-ak-r'
@@ -1151,7 +1155,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 // angefragt hatte. verarbeiteRollenChatErgebnis lehnt diesen Widerspruch jetzt wie jeden anderen
 // Vertragsverstoß ab (sichtbarer Fehler-Turn, F-506-Muster) statt ihm zu vertrauen.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-s-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-s-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const projektId = 'check-f34-ak-s'
@@ -1211,7 +1215,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 // der Coach frühere Turns des JEWEILS ANDEREN Untermodus als ungekennzeichneten Kontext (real
 // beobachtet, features/F34/nachweis-ws3.md). ladeRollenVerlaufsfenster filtert jetzt nach modus.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-t-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-t-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const projektId = 'check-f34-ak-t'
   const frageErgebnis = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-frage.json', 'utf-8'))
@@ -1385,7 +1389,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 
 // ─── (x) F34 Fixpaket (löst F-625): POST /api/sparring/<laufId>/auftrag — realer Rundlauf ──
 {
-  const basisVerzeichnis = `kontrollzustand-test-f34-ak-x-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f34-ak-x-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const projektId = 'check-f34-ak-x'

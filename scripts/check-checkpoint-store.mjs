@@ -25,9 +25,13 @@ import {
   schreibeCheckpoint,
   validiereCheckpointEintrag,
 } from '../src/checkpoint-store/index.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const BASIS = wegwerfOrdner('checkpoint-store')
 
 const befunde = []
-const BASIS = 'kontrollzustand-test'
+
 
 console.log('\n=== Checkpoint-Store-Check ===\n')
 

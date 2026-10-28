@@ -38,6 +38,10 @@ import { erzeugeRequestHandler, leseScoutErgebnisAusLaufakte, loeseAusfuehrungsE
 import { schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f27-scout')
 
 const befunde = []
 const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -195,7 +199,7 @@ console.log('\n=== F27-Scout-Check ===\n')
 
 // ─── AK2 (c): derselbe Rot-Fall real über POST /api/laeufe ─────────────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f27-ak2-http-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f27-ak2-http-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
   const auftragId = `check-f27-ak2-http-auftrag-${randomUUID()}`
@@ -234,7 +238,7 @@ console.log('\n=== F27-Scout-Check ===\n')
 
 // ─── AK5: leseScoutErgebnisAusLaufakte über präparierten Rohstrom ──────────
 {
-  const basisVerzeichnis = `kontrollzustand-test-f27-ak5-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f27-ak5-${randomUUID()}`)
   const befundeVor = befunde.length
   try {
     mkdirSync(basisVerzeichnis, { recursive: true })
@@ -296,7 +300,7 @@ console.log('\n=== F27-Scout-Check ===\n')
 // AK5s eigener Fixture-Aufbau oben es bereits zeigt). schreibeWirkungsmarke für das
 // Laufverzeichnis PLUS registriereKernArtefakt für die Laufakte, keine starteGateway-Attrappe.
 {
-  const basisVerzeichnis = `kontrollzustand-test-f27-ak14-${randomUUID()}`
+  const basisVerzeichnis = join(WEGWERF, `f27-ak14-${randomUUID()}`)
   raeumeVerzeichnis(basisVerzeichnis)
   const befundeVor = befunde.length
 

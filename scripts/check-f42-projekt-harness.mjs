@@ -98,6 +98,10 @@ import { registriereWorkflow } from '../src/workflow/index.ts'
 import { registriereWorkflowEntscheidung } from './leitstand/routen-f39.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+import { schalteGitWartungAb, wegwerfOrdner } from './_wegwerf.ts'
+
+/** Wegwerf-Wurzel dieses Laufs unter os.tmpdir() (F45 W2b-2), beim Prozessende geräumt. */
+const WEGWERF = wegwerfOrdner('f42-projekt-harness')
 
 const befunde = []
 console.log('\n=== F42-Projekt-Harness-Check (WS-1) ===\n')
@@ -492,7 +496,7 @@ try {
     // 'schritt-2-ausfuehrung' über POST /api/workflows/<id>/starten gegen ein echtes,
     // wegwerfbares Git-Repo. Der Stub schreibt real eine Datei in dieses Repo, BEVOR er ok:true
     // liefert — dieselbe git-basierte Änderungsübersicht-Ermittlung wie im echten Betrieb.
-    const basisVerzeichnis = `kontrollzustand-test-f42-g-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f42-g-${randomUUID()}`)
     raeumeVerzeichnis(basisVerzeichnis)
     const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
     const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
@@ -500,6 +504,7 @@ try {
 
     const repoWurzelWegwerf = mkdtempSync(join(tmpdir(), 'f42-g-repo-'))
     execFileSync('git', ['init', '--quiet', '-b', 'wegwerf-branch'], { cwd: repoWurzelWegwerf })
+    schalteGitWartungAb(repoWurzelWegwerf)
     execFileSync('git', ['config', 'user.email', 'gate@example.com'], { cwd: repoWurzelWegwerf })
     execFileSync('git', ['config', 'user.name', 'Gate'], { cwd: repoWurzelWegwerf })
     writeFileSync(join(repoWurzelWegwerf, 'README.md'), '# Wegwerf-Projekt\n')
@@ -746,7 +751,7 @@ try {
   {
     const vor = befunde.length
 
-    const basisVerzeichnis = `kontrollzustand-test-f42-h-${randomUUID()}`
+    const basisVerzeichnis = join(WEGWERF, `f42-h-${randomUUID()}`)
     raeumeVerzeichnis(basisVerzeichnis)
     const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
     const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
@@ -754,6 +759,7 @@ try {
 
     const repoWurzelWegwerf = mkdtempSync(join(tmpdir(), 'f42-h-repo-'))
     execFileSync('git', ['init', '--quiet', '-b', 'wegwerf-branch'], { cwd: repoWurzelWegwerf })
+    schalteGitWartungAb(repoWurzelWegwerf)
     execFileSync('git', ['config', 'user.email', 'gate@example.com'], { cwd: repoWurzelWegwerf })
     execFileSync('git', ['config', 'user.name', 'Gate'], { cwd: repoWurzelWegwerf })
     const claudeMdPfad = join(repoWurzelWegwerf, 'CLAUDE.md')
