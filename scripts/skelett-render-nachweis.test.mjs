@@ -3,16 +3,26 @@
  *
  * Zweck: F45 B3b-1 (Plan features/F45/plan-b3b1-v2.md, Advisor-Auflage 7) — reine Funktionen des Render-Nachweises im
  * Projekt-Skelett (vorlagen/projekt-skelett/scripts/render-nachweis.mjs): Pfad-Ausbruch des kurzlebigen Servers,
- * render.json-Prüfung und Bewertung. Der echte Browserlauf steht im Probelauf (features/F45/nachweise/b3b1/).
+ * render.json-Prüfung, Bewertung und Hinweise (F-1262), das Protokoll (schreibeProtokoll, F45 B3b-2a-1) und dass Gründe
+ * auf stdout stehen (Kindprozess ohne render.json, QA M1). Der echte Browserlauf steht im Probelauf (features/F45/nachweise/b3b1/).
  *
  * Wird aufgerufen von:
  * - npm run test (node --test)
  */
 
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { bewerte, leseKonfig, loeseDateiPfad, VARIANTEN } from '../vorlagen/projekt-skelett/scripts/render-nachweis.mjs'
+import {
+  bewerte,
+  hinweise,
+  leseKonfig,
+  loeseDateiPfad,
+  schreibeProtokoll,
+  VARIANTEN,
+} from '../vorlagen/projekt-skelett/scripts/render-nachweis.mjs'
 import { wegwerfOrdner } from './_wegwerf.ts'
 
 const dist = join(wegwerfOrdner('skelett-render-nachweis'), 'dist')
@@ -60,7 +70,7 @@ test('render.json: {} nimmt Standardwerte, ungültige Werte werfen', () => {
   }
 })
 
-test('Bewertung: HTTP-Status, laufende Animation unter reduzierter Bewegung, Überlauf, Budget, LCP nicht messbar', () => {
+test('Bewertung: HTTP-Status, laufende Animation unter reduzierter Bewegung, Überlauf, Budget', () => {
   const budget = { lcpMs: 2500, bytes: 1000 }
   const [hell, , mobil, reduziert] = VARIANTEN
   const basis = { seite: '/', variante: 'x', status: 200, bilder: [], animationen: 1, laufend: 1 }
@@ -70,5 +80,53 @@ test('Bewertung: HTTP-Status, laufende Animation unter reduzierter Bewegung, Üb
   assert.equal(bewerte(basis, hell, budget).length, 0)
   assert.equal(bewerte({ ...basis, ueberlauf: true }, mobil, budget).length, 1)
   assert.equal(bewerte({ ...basis, lcpMs: 3000, bytes: 2000 }, hell, budget).length, 2)
-  assert.match(bewerte({ ...basis, lcpMs: null, bytes: 1 }, hell, budget)[0] ?? '', /nicht messbar/)
+})
+
+test('F-1262: LCP nicht messbar ist ein Hinweis, kein Befund; Bytes-Budget bleibt rot', () => {
+  const budget = { lcpMs: 2500, bytes: 1000 }
+  const reduziert = VARIANTEN[3]
+  const basis = { seite: '/', variante: 'reduziert', status: 200, bilder: [], animationen: 1, laufend: 0 }
+  assert.deepEqual(bewerte({ ...basis, lcpMs: null, bytes: 1 }, reduziert, budget), [])
+  assert.equal(hinweise({ ...basis, lcpMs: null, bytes: 1 }).length, 1)
+  assert.match(hinweise({ ...basis, lcpMs: null, bytes: 1 })[0] ?? '', /LCP nicht messbar/)
+  assert.deepEqual(hinweise({ ...basis, lcpMs: 900, bytes: 1 }), [])
+  assert.deepEqual(hinweise(basis), [])
+  const mitBytes = bewerte({ ...basis, lcpMs: null, bytes: 2000 }, reduziert, budget)
+  assert.equal(mitBytes.length, 1)
+  assert.match(mitBytes[0] ?? '', /2000 Bytes > 1000/)
+  assert.equal(bewerte({ ...basis, lcpMs: null, bytes: 1, laufend: 2 }, reduziert, budget).length, 1)
+})
+
+test('F-1262: Protokoll mit nur Hinweisen ist grün und nennt die Hinweise (QA TC-F)', () => {
+  const ausgabe = join(wegwerfOrdner('skelett-render-protokoll'), '.render-nachweis')
+  mkdirSync(ausgabe, { recursive: true })
+  const konfig = leseKonfig('{}')
+  const e = {
+    seite: '/',
+    variante: 'reduziert',
+    status: 200,
+    bilder: [],
+    animationen: 0,
+    laufend: 0,
+    lcpMs: null,
+    bytes: 1,
+  }
+  const ergebnis = { ...e, befunde: bewerte(e, VARIANTEN[3], konfig.budget), hinweise: hinweise(e) }
+  const { befunde, hinweise: alle } = schreibeProtokoll(ausgabe, konfig, [ergebnis])
+  assert.deepEqual(befunde, [])
+  assert.equal(alle.length, 1)
+  const md = readFileSync(join(ausgabe, 'protokoll.md'), 'utf8')
+  assert.match(md, /## Hinweise \(ohne Einfluss auf das Ergebnis\)\n\n- \/ \(reduziert\): LCP nicht messbar/)
+  assert.match(md, /Ergebnis: \*\*grün\*\*/)
+  const json = JSON.parse(readFileSync(join(ausgabe, 'protokoll.json'), 'utf8'))
+  assert.equal(json.ergebnis, 'grün')
+  assert.equal(json.hinweise.length, 1)
+})
+
+test('Gründe stehen auf stdout, nicht nur auf stderr (QA M1: die Workforce hält das Ende von stdout fest)', () => {
+  const leer = wegwerfOrdner('skelett-render-stdout')
+  const skript = join(import.meta.dirname, '..', 'vorlagen', 'projekt-skelett', 'scripts', 'render-nachweis.mjs')
+  const lauf = spawnSync(process.execPath, [skript], { cwd: leer, encoding: 'utf8', timeout: 30000 })
+  assert.equal(lauf.status, 1)
+  assert.match(lauf.stdout, /✗ render\.json fehlt/)
 })

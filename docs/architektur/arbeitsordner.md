@@ -14,6 +14,11 @@ Thema berührt.
   reguläre Dateien aus dessen Löschliste — nur innerhalb des Arbeitsordners, nie unter `.git`, `.claude/` oder
   `kontrollzustand/`. Im Projektordner selbst bleibt der Kern lesend — Ausnahmen nur die Feature-Akte, die Roadmap,
   die Bereinigungsliste und die Workstream-Zeile nach der Abnahme (nächste vier Punkte).
+- Render-Nachweis im Arbeitsordner (F45 B3b-2a-1, F-1256, `src/pruefschritt/render.ts`): nach einem erfolgreichen Lauf der
+  Rolle `ausfuehrung` im Arbeitsordner mit grünem Prüfschritt und render.json in dessen Wurzel startet der Kern dort
+  `npm run check:render` (Prozess des Projekts wie der Prüfschritt; schreibt `.render-nachweis/`, mit Build auch die
+  Build-Ausgabe). ERZWUNGEN: `.render-nachweis/` ist git-ignoriert (sonst kein Lauf, Ergebnis FEHLER mit Grund).
+  DEKLARIERT: die Build-Ausgabe steht in `.gitignore` (Gate-Vorlage des Skeletts). Im Projektordner kein Render.
 - Feature-Akte im Projektordner (F45 B5a-1, E-F45-1, F-912; Entscheidung Stefan 23.10.2026 nach dem Advisor-Pass
   `features/F45/advisor-b5a1.md` A1/A2; `scripts/leitstand/routen-f35.mjs`, Plan `features/F45/plan-b5a1-v2.md`): der Server
   schreibt auf direkte Eingabe ausschließlich `features/<id>/feature.md` der `repoWurzel` des Projekts — PUT

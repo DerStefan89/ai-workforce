@@ -6821,13 +6821,14 @@ Nachtrag (F45 F-3a-2, 14.10.2026): Anzeige erledigt — Reiter „Plugins aus de
 Nachtrag (F45 F-3b-1, 14.10.2026): Plugins freigeben gebaut (gefilterte Kopie `src/plugin-kopie`, Prüfbericht über die Kopie, Freigabe an Hash und Bericht gebunden, Zuordnung je Rolle nur Ausführung); `init.plugins` bleibt `[]`, Startargumente unverändert. Offen: Plugins im Lauf (F-1090, F45 F-3b-2).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
-**F-911** · `TECH_DEBT` · P2 · teilweise (Skelett F45 B3b-1, 29.10.2026; Lauf-Schritt B3b-2)
+**F-911** · `TECH_DEBT` · P2 · teilweise (Skelett F45 B3b-1, 29.10.2026; Render im Lauf B3b-2a; Rest B3b-2b)
 Titel: Fremdprojekte haben keine Design-Prüfkette.
 Beschreibung: design-guardian fehlt im Projekt-Skelett und in den Workflow-Vorlagen. impeccable steht auf OFFEN und hat keine `installation_vorlage`. Render-Nachweis und Token-Gate gibt es nur in ai-workforce. Installiert ist nur frontend-design.
 Fundstelle: `vorlagen/projekt-skelett/.claude/agents`, `workflow-vorlagen/*.json`, `ressourcen.json`.
 Auswirkung: Oberflächen in Fremdprojekten werden ohne Design-Prüfung gebaut.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B3.
 Status: teilweise (F45 B3b-1, 29.10.2026): Skelett erledigt — Token-/Bewegungs-Gate `scripts/check-design-tokens.mjs` in `npm run check`, Render-Nachweis `npm run check:render`, Design-Referenzen `docs/design/referenzen/`, design-guardian-Beispiel mit Bewegungsregeln und Render-Nachweis als Pflicht (`vorlagen/projekt-skelett/`, Nachweis `features/F45/nachweise/b3b1/`). Offen: design-guardian-Schritt im Lauf (Workflow-Vorlagen) → B3b-2.
+Nachtrag (Challenge B3b-2, 29.10.2026): Der Render-Nachweis im Lauf durch den Kern kommt mit B3b-2a (F-1256). Rest: Bewertung der Darstellung im qa-Schritt statt eines eigenen design-guardian-Schritts (E-B3B2-1 = A) → B3b-2b.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-915** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -7595,6 +7596,7 @@ Maßnahme: Vor F30 prüfen (Scanner-Recherche); Geheimnis-Weitergabe ohne Klarte
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-1, 11.10.2026.
 Zugeordnet: F45 B3 statt B2b, gemeinsam mit F-1072 — Auslöser ist das erste Projekt mit echtem externen API-Aufruf, spätestens B3 (E-B2b-1 = A, 14.10.2026).
+Nachtrag (F45 B3b-2a): Zuordnung vor F30, Auslöser erstes Projekt mit echtem externen API-Aufruf (E-B3B-1 = A, 29.10.2026); nicht mehr an B3.
 Nachtrag (Auftrag F45 F-3a, 14.10.2026): Zuordnung → F45 B2b, gemeinsam mit F-1072 (K32) — die Geheimnis-Weitergabe an einen MCP-Server folgt derselben Regel wie API-Schlüssel im Lauf (nur Umgebungsvariable, nie in Datei/Laufakte/Rohstrom, echter Aufruf nur nach Rückfrage). Nicht mehr Teil von F-3.
 
 **F-1055** · `HARNESS_IMPROVEMENT` · P2 · teilweise
@@ -7701,6 +7703,7 @@ Maßnahme: B3 (zuvor B2a/B2b) mit F-1071 — Standard Attrappe, echter Aufruf nu
 Status: offen.
 Feature/Run: Entdeckt: Challenger, 12.10.2026.
 Zugeordnet: F45 B3 statt B2a/B2b — Auslöser ist das erste Projekt mit echtem externen API-Aufruf, spätestens B3 (K32; E-B2b-1 = A, 14.10.2026).
+Nachtrag (F45 B3b-2a): Zuordnung vor F30, Auslöser erstes Projekt mit echtem externen API-Aufruf (E-B3B-1 = A, 29.10.2026); nicht mehr an B3.
 
 **F-1073** · `TECH_DEBT` · P3 · offen
 Titel: Restpunkte F45 F-2b-2a (Eignungsprüfung) — Bedienung und Anzeige.
@@ -9114,6 +9117,7 @@ Auswirkung: Mittel — im Lauf beantwortet der Advisor die Pflichtfragen nicht v
 Maßnahme: Pflichtfragen in den Auftrag des Advisor-Schritts (Antwort je Frage im Ergebnis) und ggf. ein Feld „Was kann weg?“ im Reviewer-Ergebnis — Workforce-Code, eigenes Paket.
 Status: offen.
 Feature/Run: Entdeckt: Advisor-Pass F45 B3a (`features/F45/plan-b3a-v2.md`), 29.10.2026.
+Zugeordnet: F45 Q1 „Weniger ist mehr im Lauf“ (Challenger 29.10.2026, `docs/projekt/fixpaket-f45.md`).
 
 **F-1251** · `TECH_DEBT` · P3 · offen
 Titel: Skelett-Skripte `check-gates.mjs` und `tests-mit-untergrenze.mjs` verfehlen die Grenzen der eigenen Gate-Vorlage.
@@ -9153,20 +9157,20 @@ Feature/Run: Entdeckt: F45 B3a, eingetragen F45 B3b-1, 29.10.2026.
 
 **F-1255** · `TECH_DEBT` · P2 · offen
 Titel: `check:render` kennt nur statischen Ordner oder laufende localhost-URL; JS-Animationen unsichtbar.
-Beschreibung: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` liefert einen gebauten Ordner selbst aus oder nutzt eine schon laufende URL auf 127.0.0.1/localhost; einen Dev-Server oder SSR startet er nicht. Die Bildfolge hält Animationen über `document.getAnimations()` an — requestAnimationFrame- oder GSAP-Animationen erfasst sie nicht, beendete Animationen ohne `fill` zählen nicht. LCP misst die Variante „reduziert“, weil Chromium für Einblendungen aus `opacity: 0` keinen LCP-Eintrag meldet (Probelauf `features/F45/nachweise/b3b1/`). Der verbreitete Reset `animation-duration: .01ms` unter „Bewegung reduzieren“ beginnt ebenfalls bei `opacity: 0`: Chromium meldet dann weder LCP noch FCP ⇒ „LCP nicht messbar“ (rot, Abhilfe `animation: none`; ob das rot bleiben soll, entscheidet Stefan).
+Beschreibung: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` liefert einen gebauten Ordner selbst aus oder nutzt eine schon laufende URL auf 127.0.0.1/localhost; einen Dev-Server oder SSR startet er nicht. Die Bildfolge hält Animationen über `document.getAnimations()` an — requestAnimationFrame- oder GSAP-Animationen erfasst sie nicht, beendete Animationen ohne `fill` zählen nicht. LCP misst die Variante „reduziert“, weil Chromium für Einblendungen aus `opacity: 0` keinen LCP-Eintrag meldet (Probelauf `features/F45/nachweise/b3b1/`). Der verbreitete Reset `animation-duration: .01ms` unter „Bewegung reduzieren“ beginnt ebenfalls bei `opacity: 0`: Chromium meldet dann weder LCP noch FCP ⇒ „LCP nicht messbar“ (Abhilfe `animation: none`; seit F45 B3b-2a-1 ein Hinweis statt Befund, F-1262).
 Fundstelle: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` (Datei-Kopf, Grenzen).
 Auswirkung: Mittel — Projekte mit Framework-Dev-Server oder JS-Animationsbibliothek bekommen einen unvollständigen Nachweis.
 Maßnahme: Bei Bedarf: Startbefehl in `render.json` (mit Bereitschaftsprüfung) und eine Schnittstelle für JS-Animationen (z. B. GSAP `globalTimeline`); erst mit echtem Projekt.
 Status: offen.
 Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
 
-**F-1256** · `TECH_DEBT` · P2 · offen
+**F-1256** · `TECH_DEBT` · P2 · erledigt (F45 B3b-2a-1, 29.10.2026)
 Titel: Render-Nachweis im Fremdprojekt hängt am Builder.
 Beschreibung: Im Skelett ist `npm run check:render` eine DoD-Zeile der `CLAUDE.md` und Pflicht-Eingabe des design-guardian-Beispiels — ausgeführt wird er nur, wenn der Builder es tut. Kein Lauf-Schritt erzwingt ihn.
 Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md` (DoD), `vorlagen/projekt-skelett/docs/examples/design-guardian.example.md`.
 Auswirkung: Mittel — UI-Änderungen können ohne Render-Nachweis als fertig gemeldet werden.
 Maßnahme: B3b-2: design-guardian-Schritt im Lauf, der den Render-Nachweis ausführt bzw. verlangt — dann deterministisch.
-Status: offen.
+Status: erledigt (F45 B3b-2a-1, 29.10.2026): Nach einer erfolgreichen Ausführung im Arbeitsordner mit grünem Prüfschritt führt der Kern `npm run check:render` aus, sobald `render.json` in dessen Wurzel liegt (`src/pruefschritt/render.ts`, Artefakt `render-nachweis-<laufId>`, `renderNachweis` in GET …/abnahme; Test `scripts/render-im-lauf.test.mjs`). Karte in der Abnahme: B3b-2a-2; Bewertung der Darstellung: B3b-2b (E-B3B2-1 = A, F-1268).
 Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
 
 **F-1257** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -9204,3 +9208,111 @@ Auswirkung: Gering bis mittel — Projekte mit Tailwind v4/shadcn schalten das G
 Maßnahme: Entscheidung Stefan: Liste der Token-Container erweitern (z. B. `@theme`, `.dark`, `@supports` um `:root`) oder je Stack ein Muster in der Gate-Vorlage; dann Rot-/Grün-Tests je Muster.
 Status: offen.
 Feature/Run: Entdeckt: QA-/Code-Review-Pass F45 B3b-1, 29.10.2026.
+
+**F-1261** · `TECH_DEBT` · P3 · offen
+Titel: Playwright-Pin im Skelett nachziehen.
+Beschreibung: Die Gate-Vorlage des Skeletts pinnt `playwright@1.63.0`. Der Pin muss bei jedem Playwright-Update der Workforce mitgehen, sonst passt der Chromium-Cache nicht (Download, Zeitgrenze).
+Fundstelle: `vorlagen/projekt-skelett/docs/harness/gate-vorlage-node.md`.
+Auswirkung: Gering — erster Render-Nachweis nach einem Update lädt Chromium nach oder läuft in die Zeitgrenze.
+Maßnahme: Versionsabgleich oder Gate: Pin gegen `package-lock.json` der Workforce.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
+
+**F-1262** · `TECH_DEBT` · P2 · erledigt (F45 B3b-2a, 29.10.2026)
+Titel: `check:render` rot bei Reset-Muster `.01ms`.
+Beschreibung: Chromium meldet unter reduzierter Bewegung keinen LCP, wenn der Inhalt bei `opacity: 0` beginnt (verbreiteter Reset `animation-duration: .01ms`) — eine Messlücke, kein Projektfehler.
+Fundstelle: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` (`bewerte`).
+Auswirkung: Mittel — ein korrektes Projekt bekommt einen roten Render-Nachweis.
+Maßnahme: Hinweis statt Befund; Bytes-Budget bleibt rot.
+Status: erledigt (F45 B3b-2a, 29.10.2026): „LCP nicht messbar“ steht als Hinweis in Protokoll und Konsole, der Exit-Code hängt nur an Befunden.
+Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
+
+**F-1263** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Brain-Rollen-Kontext arbeiterneutral.
+Beschreibung: Der Rollen-Kontext aus Brain Stufe 2 muss über die Projektkarte (`src/projektkarte`) kommen, nicht über Claude-only-Wege (Skill, MCP), je Rolle zugeschnitten, der Reviewer ohne Roadmap-Zukunft.
+Fundstelle: `src/projektkarte`, Brain Stufe 2 (`docs/projekt/fixpaket-f45.md`).
+Auswirkung: Mittel — sonst prüft und plant Codex mit anderem Wissen als Claude.
+Maßnahme: Anforderung in der Challenge Brain 2.
+Status: offen.
+Feature/Run: Entdeckt: Frage Stefan, 29.10.2026.
+
+**F-1264** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Kein Werkzeug für toten Code.
+Beschreibung: Biome meldet nur ungenutzte Importe und Variablen; ungenutzte Exporte, Dateien und Abhängigkeiten bleiben unbemerkt.
+Fundstelle: `biome.json`, `package.json`, `vorlagen/projekt-skelett/docs/harness/gate-vorlage-node.md`.
+Auswirkung: Mittel — toter Code wächst unbemerkt, in der Workforce und in gebauten Projekten.
+Maßnahme: Q1: knip im Skelett hart, in der Workforce nur als Bericht.
+Status: offen.
+Feature/Run: Entdeckt: Frage Stefan, 29.10.2026.
+
+**F-1265** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Sicherheit gebauter Apps nicht systematisch.
+Beschreibung: Heute nur `npm audit` und gitleaks (`vorlagen/projekt-skelett/scripts/check-gates.mjs`) und die Nebenbei-Dimension `sicherheit` im Review (`src/review-policy/index.ts`); keine Sicherheitsrolle, kein SAST, kein Bedrohungsmodell, keine Bausteine für Login/Zahlung, keine Test/Live-Trennung.
+Fundstelle: `vorlagen/projekt-skelett/scripts/check-gates.mjs`, `src/review-policy/index.ts`.
+Auswirkung: Hoch für das Endziel (Nicht-Entwickler bauen enterprise-taugliche Apps), gering für F45/F30.
+Maßnahme: Baustein „Sicher bauen“ nach F30 (E-SEC-1 = A): bewährte Bausteine statt Eigenbau, Risiko-Fragen im Coach, security-reviewer bei Risiko-Merkmalen, SAST-/Lizenz-/CSP-Gates, Test/Live-Trennung, ehrliche Grenze (Pen-Test/Compliance extern); vorher Eingaben von Stefan und die Sammlung sichten.
+Status: offen.
+Feature/Run: Entdeckt: Frage Stefan, 29.10.2026.
+
+**F-1266** · `TECH_DEBT` · P2 · offen
+Titel: Render-Bilder nicht in der Abnahme.
+Beschreibung: Die Bilder des Render-Nachweises liegen nur im Arbeitsordner (`.render-nachweis/`); die Abnahme zeigt Ergebnis, Dauer und Ausgabe-Ende, aber kein Bild (keine Bild-Route).
+Fundstelle: `scripts/leitstand/abnahme-pruefung.mjs` (`projiziereRenderNachweis`), Karte der Abnahme (B3b-2a-2).
+Auswirkung: Mittel — Stefan muss für die Bilder in den Arbeitsordner wechseln.
+Maßnahme: Bei Bedarf (R2/F30).
+Status: offen.
+Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
+
+**F-1267** · `TECH_DEBT` · P3 · offen
+Titel: Altprojekte ohne `.render-nachweis/` in `.gitignore`.
+Beschreibung: Vor F45 B3b-1 angelegte Projekte tragen den Eintrag nicht; der Kern führt den Render-Nachweis dort nicht aus und hält stattdessen den Grund fest.
+Fundstelle: `src/projekt-anlegen/index.ts` (`.gitignore` neuer Projekte), `src/pruefschritt/render.ts`.
+Auswirkung: Gering — Grund statt Nachweis, sichtbar in der Abnahme.
+Maßnahme: Bei Bedarf über `src/projekt-anlegen/nachruesten.ts`.
+Status: offen.
+Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
+
+**F-1268** · `TECH_DEBT` · P2 · offen
+Titel: Render-Befunde ohne Folge in der Kette.
+Beschreibung: Ein ROT/ZEITGRENZE/FEHLER des Render-Nachweises hält die Kette nicht an und löst keine Korrekturrunde aus; die Abnahme zeigt nur einen Hinweis.
+Fundstelle: `scripts/leitstand-server.mjs` (Nachlauf), `src/pruefschritt/render.ts`.
+Auswirkung: Mittel — Darstellungsfehler erreichen die Abnahme ohne Korrektur.
+Maßnahme: B3b-2b: Befunde über den qa-Schritt (E-B3B2-1 = A).
+Status: offen.
+Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
+
+**F-1269** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Schätzung nach Muster mit Ist-Aufwand.
+Beschreibung: B3b-2 war mit 0,5–0,6 AT geschätzt; der Muster-Schritt qa brauchte zwei Pakete.
+Fundstelle: `docs/projekt/fixpaket-f45.md` (Zeile B3b-2).
+Auswirkung: Gering — zu knappe Schätzungen führen zu späten Schnitten.
+Maßnahme: Neue Prüfschritte mit dem Ist-Aufwand des Musters schätzen.
+Status: offen.
+Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
+
+**F-1270** · `TECH_DEBT` · P3 · offen
+Titel: Alter Render-Nachweis bleibt bei fehlendem Chromium.
+Beschreibung: `render-nachweis.mjs` des Skeletts leert `.render-nachweis/` erst nach dem Browserstart — fehlt Chromium, bleiben die Bilder des vorigen Laufs stehen, und ein Prüfer könnte veraltete Bilder lesen.
+Fundstelle: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` (`main`).
+Auswirkung: Gering heute, mittel ab B3b-2b (qa liest die Bilder).
+Maßnahme: B3b-2b.
+Status: offen.
+Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
+
+**F-1271** · `TECH_DEBT` · P3 · offen
+Titel: Kein Render-Nachweis nach „Prüfung wiederholen“.
+Beschreibung: Der Kern führt `npm run check:render` nur im Nachlauf eines Ausführungslaufs aus. Wird ein ROT des Prüfschritts über „Prüfung wiederholen“ GRÜN, startet kein Render — die Abnahme hat dann keinen Render-Nachweis (`renderNachweis` 'fehlt'). Ebenso ist der Render nicht abbrechbar (bis zu 180 s, D13).
+Fundstelle: `scripts/leitstand-server.mjs` (Nachlauf, Route `…/pruefung-wiederholen`), `src/pruefschritt/render.ts`.
+Auswirkung: Gering — selten (Prüfung erst rot, dann grün ohne neuen Bau); die Abnahme ist trotzdem möglich.
+Maßnahme: B3b-2b oder bei Bedarf: Render auch nach einer grünen Wiederholung.
+Status: offen.
+Feature/Run: Entdeckt: Plan/Advisor-Pass F45 B3b-2a, 29.10.2026.
+
+**F-1272** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 B3b-2a-1 „Render-Nachweis im Lauf“ (QA- und Review-Pass).
+Beschreibung: (qa M3) `renderNachweis` 'fehlt' heißt dreierlei — kein Render nötig, fällig aber nicht gelaufen (F-1271), Registrierung gescheitert (nur Startfehlerliste); die Karte verschwände dann still. (qa N1) „Abbrechen“ antwortet während des Renders 202, wirkt aber bis zu 180 s nicht (DEKLARIERT in `src/pruefschritt/render.ts`). (qa N3) Ein getrackter `.render-nachweis/` mit später ergänztem `.gitignore`-Eintrag gilt wegen `check-ignore --no-index` als ignoriert; das Skelett überschreibt dann getrackte Dateien nach der Änderungsübersicht. (qa N4) Die Meldung „Ordner dist fehlt — vorher bauen“ des Skeletts nennt die Lösung `"check:render": "npm run build && …"` nicht. (qa N6) Der Wurf von `findeNpmCli` ⇒ FEHLER ist ungetestet; der Servertest belegt unter `npm run` vermutlich nur den `npm_execpath`-Zweig. (qa N8) Während des Renders zeigt der Lauf das letzte Werkzeug des Builders, das Warten bleibt unerklärt. (qa N9) Symlink-Fälle bei render.json (ins Leere ⇒ kein Render, nach außen ⇒ Render) ungetestet. (cr 7) Die 40 Zeilen stehen als Konstante in `scripts/leitstand/abnahme-pruefung.mjs` und als Literal im Server (Halt-Grund). (cr-delta 2) Bleibt das Laden eines `render-nachweis-*` dauerhaft kaputt, schreibt `projiziereRenderNachweis` bei jedem Poll (2 s) eine Fehlerzeile mit Stack.
+Fundstelle: `scripts/leitstand/abnahme-pruefung.mjs`, `src/pruefschritt/render.ts`, `vorlagen/projekt-skelett/scripts/render-nachweis.mjs`, `scripts/leitstand-server.mjs`.
+Auswirkung: Gering — Anzeige und Randfälle; der Kern-Ablauf ist belegt (`features/F45/nachweise/b3b2a/nachweis.md`).
+Maßnahme: M3, N1, N8 mit B3b-2a-2 (Karte: eigener Status oder Hinweis, Fortschritt „Render-Nachweis läuft“); N3, N4 mit B3b-2b; N6, N9, cr 7 bei Bedarf.
+Status: offen.
+Feature/Run: Entdeckt: QA-/Code-Review-Pass F45 B3b-2a-1, 29.10.2026.

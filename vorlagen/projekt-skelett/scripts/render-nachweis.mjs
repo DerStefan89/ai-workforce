@@ -9,10 +9,11 @@
  * Animationen der Seite (`document.getAnimations()`, CSS-Animationen und -Transitions) anhalten, `currentTime` setzen,
  * Bild. Rot bei: HTTP-Status ≥ 400 (oder keine Antwort), laufenden Animationen unter „Bewegung reduzieren“ (gezählt nach
  * zwei Frames, beendete wie beim `.01ms`-Reset zählen nicht), waagerechtem Überlauf bei 390 px, LCP über
- * `budget.lcpMs` oder nicht messbar (3 s ohne Eintrag), Summe `transferSize` über `budget.bytes`. LCP und Bytes misst
- * die Variante „reduziert“: Chromium meldet für ein Element, das aus `opacity: 0` einblendet, keinen LCP-Eintrag (auch
- * nicht danach, Probelauf F45 B3b-1) — gemessen wird die Lade- und Renderzeit ohne Einblendung. Auch der `.01ms`-Reset
- * beginnt bei `opacity: 0`: dann kein LCP (rot) — unter „Bewegung reduzieren“ `animation: none` verwenden.
+ * `budget.lcpMs`, Summe `transferSize` über `budget.bytes`. LCP und Bytes misst die Variante „reduziert“: Chromium
+ * meldet für ein Element, das aus `opacity: 0` einblendet, keinen LCP-Eintrag (auch nicht danach, Probelauf F45 B3b-1)
+ * — gemessen wird die Lade- und Renderzeit ohne Einblendung. Auch der `.01ms`-Reset beginnt bei `opacity: 0`: dann kein
+ * LCP — das ist eine Messlücke, kein Befund (F-1262): „LCP nicht messbar“ steht als Hinweis in Protokoll und Konsole,
+ * das LCP-Budget bleibt ungeprüft, das Bytes-Budget gilt weiter; messbar wird LCP mit `animation: none`.
  *
  * render.json (Projektwurzel, Pflicht; `{}` nimmt alle Standardwerte):
  *   { "ordner": "dist", "seiten": ["/"], "bildfolgeMs": [0, 150, 400, 1000], "budget": { "lcpMs": 2500, "bytes": 1000000 } }
@@ -66,7 +67,7 @@ const MIME = new Map([
  * @typedef {{ ordner: string | null, url: string | null, seiten: string[], bildfolgeMs: number[],
  *   budget: { lcpMs: number, bytes: number } }} Konfig
  * @typedef {{ seite: string, variante: string, status: number, bilder: string[], animationen: number, laufend: number,
- *   ueberlauf?: boolean, lcpMs?: number | null, bytes?: number, befunde: string[] }} Ergebnis
+ *   ueberlauf?: boolean, lcpMs?: number | null, bytes?: number, befunde: string[], hinweise: string[] }} Ergebnis
  *
  * Nur die genutzten Teile der Playwright-API:
  * @typedef {{ evaluate: (ausdruck: string) => Promise<unknown>, addInitScript: (s: { content: string }) => Promise<void>,
@@ -312,8 +313,9 @@ async function messe(seite) {
 }
 
 /**
- * Bewertet ein Ergebnis gegen die Regeln (reine Funktion).
- * @param {Omit<Ergebnis, 'befunde'>} e - Messwerte
+ * Bewertet ein Ergebnis gegen die Regeln (reine Funktion). „LCP nicht messbar“ ist kein Befund, sondern ein Hinweis
+ * (siehe hinweise, F-1262).
+ * @param {Omit<Ergebnis, 'befunde' | 'hinweise'>} e - Messwerte
  * @param {Variante} variante - Variante
  * @param {Konfig['budget']} budget - Budget
  * @returns {string[]} Befunde
@@ -325,16 +327,25 @@ export function bewerte(e, variante, budget) {
   if (variante.reduziert && e.laufend > 0)
     befunde.push(`${wo}: ${e.laufend} Animation(en) laufen trotz „Bewegung reduzieren“`)
   if (e.ueberlauf === true) befunde.push(`${wo}: waagerechter Überlauf`)
-  if (e.lcpMs === null) {
-    befunde.push(
-      `${wo}: LCP nicht messbar (kein Eintrag nach 3 s) — beginnt der Inhalt unter „Bewegung reduzieren“ bei opacity 0 ` +
-        '(z. B. Reset auf .01ms)? Dort mit animation: none abschalten'
-    )
-  }
   if (typeof e.lcpMs === 'number' && e.lcpMs > budget.lcpMs)
     befunde.push(`${wo}: LCP ${e.lcpMs} ms > ${budget.lcpMs} ms`)
   if (typeof e.bytes === 'number' && e.bytes > budget.bytes) befunde.push(`${wo}: ${e.bytes} Bytes > ${budget.bytes}`)
   return befunde
+}
+
+/**
+ * Hinweise ohne Einfluss auf den Exit-Code (reine Funktion, F-1262): Chromium meldet unter „Bewegung reduzieren“ keinen
+ * LCP, wenn der Inhalt bei `opacity: 0` beginnt (Reset auf `.01ms`) — eine Messlücke, kein Projektfehler. Das
+ * LCP-Budget ist dann ungeprüft; das Bytes-Budget gilt weiter.
+ * @param {Omit<Ergebnis, 'befunde' | 'hinweise'>} e - Messwerte
+ * @returns {string[]} Hinweise
+ */
+export function hinweise(e) {
+  if (e.lcpMs !== null) return []
+  return [
+    `${e.seite} (${e.variante}): LCP nicht messbar (kein Eintrag nach 3 s), LCP-Budget ungeprüft — beginnt der Inhalt ` +
+      'unter „Bewegung reduzieren“ bei opacity 0 (z. B. Reset auf .01ms)? Mit animation: none wird er messbar',
+  ]
 }
 
 /**
@@ -378,7 +389,7 @@ async function nimmVariante(browser, basisUrl, seitenPfad, variante, konfig, aus
     // Zwei Frames abwarten: direkt nach `load` gilt auch eine `.01ms`-Animation (übliches Reset-Muster) noch als laufend.
     if (variante.reduziert) await seite.evaluate(ZWEI_FRAMES)
     const zeiten = variante.bildfolge ? konfig.bildfolgeMs : konfig.bildfolgeMs.slice(-1)
-    /** @type {Omit<Ergebnis, 'befunde'>} */
+    /** @type {Omit<Ergebnis, 'befunde' | 'hinweise'>} */
     const e = {
       seite: seitenPfad,
       variante: variante.name,
@@ -398,7 +409,7 @@ async function nimmVariante(browser, basisUrl, seitenPfad, variante, konfig, aus
     }
     if (variante.ueberlauf) e.ueberlauf = (await seite.evaluate(UEBERLAUF)) === true
     if (variante.messen) Object.assign(e, await messe(seite))
-    return { ...e, befunde: bewerte(e, variante, konfig.budget) }
+    return { ...e, befunde: bewerte(e, variante, konfig.budget), hinweise: hinweise(e) }
   } finally {
     await kontext.close()
   }
@@ -409,10 +420,11 @@ async function nimmVariante(browser, basisUrl, seitenPfad, variante, konfig, aus
  * @param {string} ausgabe - Ausgabeordner
  * @param {Konfig} konfig - Konfiguration
  * @param {Ergebnis[]} ergebnisse - Ergebnisse
- * @returns {string[]} alle Befunde
+ * @returns {{ befunde: string[], hinweise: string[] }} alle Befunde und Hinweise
  */
-function schreibeProtokoll(ausgabe, konfig, ergebnisse) {
+export function schreibeProtokoll(ausgabe, konfig, ergebnisse) {
   const befunde = ergebnisse.flatMap((e) => e.befunde)
+  const hinweiseAlle = ergebnisse.flatMap((e) => e.hinweise)
   const ergebnis = befunde.length === 0 ? 'grün' : 'rot'
   const quelle = konfig.url === null ? `ordner: ${konfig.ordner}` : `url: ${konfig.url}`
   const zelle = (/** @type {unknown} */ w) => (w === undefined ? '–' : w === null ? 'nicht messbar' : String(w))
@@ -434,13 +446,25 @@ function schreibeProtokoll(ausgabe, konfig, ergebnisse) {
     '',
     ...(befunde.length === 0 ? ['keine'] : befunde.map((b) => `- ${b}`)),
     '',
+    '## Hinweise (ohne Einfluss auf das Ergebnis)',
+    '',
+    ...(hinweiseAlle.length === 0 ? ['keine'] : hinweiseAlle.map((h) => `- ${h}`)),
+    '',
     `Ergebnis: **${ergebnis}**`,
     '',
   ].join('\n')
   writeFileSync(join(ausgabe, 'protokoll.md'), md)
-  const json = { ergebnis, quelle, bildfolgeMs: konfig.bildfolgeMs, budget: konfig.budget, ergebnisse, befunde }
+  const json = {
+    ergebnis,
+    quelle,
+    bildfolgeMs: konfig.bildfolgeMs,
+    budget: konfig.budget,
+    ergebnisse,
+    befunde,
+    hinweise: hinweiseAlle,
+  }
   writeFileSync(join(ausgabe, 'protokoll.json'), `${JSON.stringify(json, null, 2)}\n`)
-  return befunde
+  return { befunde, hinweise: hinweiseAlle }
 }
 
 /**
@@ -493,14 +517,15 @@ async function nimmAlleAuf(browser, basisUrl, konfig, ausgabe) {
 }
 
 /**
- * Führt den Render-Nachweis im Projektordner aus.
+ * Führt den Render-Nachweis im Projektordner aus. Befunde und Gründe stehen auf stdout, nicht auf stderr: die Workforce
+ * hält vom Lauf das Ende der Ausgabe fest und stellt stderr davor — ein langer Build davor verdrängte sie sonst.
  * @param {string} wurzel - Projektordner
  * @returns {Promise<number>} Exit-Code
  */
 async function main(wurzel) {
   const bereit = await bereiteVor(wurzel)
   if (typeof bereit === 'string') {
-    console.error(`✗ ${bereit}`)
+    console.log(`✗ ${bereit}`)
     return 1
   }
   const { konfig, ordner, launch } = bereit
@@ -520,8 +545,9 @@ async function main(wurzel) {
   } finally {
     lokal?.server.close()
   }
-  const befunde = schreibeProtokoll(ausgabe, konfig, ergebnisse)
-  for (const befund of befunde) console.error(`✗ ${befund}`)
+  const { befunde, hinweise: hinweiseAlle } = schreibeProtokoll(ausgabe, konfig, ergebnisse)
+  for (const hinweis of hinweiseAlle) console.log(`ℹ ${hinweis}`)
+  for (const befund of befunde) console.log(`✗ ${befund}`)
   const zeichen = befunde.length === 0 ? '✓' : '✗'
   console.log(`${zeichen} Render-Nachweis: ${ergebnisse.length} Ansichten, ${AUSGABE}/protokoll.md`)
   return befunde.length === 0 ? 0 : 1
@@ -545,7 +571,7 @@ if (istHaupteinstieg()) {
       process.exitCode = code
     },
     (fehler) => {
-      console.error(`✗ Render-Nachweis: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+      console.log(`✗ Render-Nachweis: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
       process.exitCode = 1
     }
   )

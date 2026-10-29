@@ -64,6 +64,14 @@ Herkunft).
   drei DoD-Zeilen nur für UI (Referenzen, `frontend-design`, Bewegung,
   `check:render`). Lokal neu: `scripts/check-design-tokens.mjs`,
   `scripts/render-nachweis.mjs`, `docs/design/referenzen/README.md`.
+- F45 B3b-2a-1 (29.10.2026, `features/F45/plan-b3b2a-v2.md`, F-1262):
+  `scripts/render-nachweis.mjs` — „LCP nicht messbar“ ist ein Hinweis
+  (Protokoll und Konsole), kein Befund; Exit-Code nur aus Befunden; Befunde
+  und Gründe auf stdout (die Workforce hält das Ende von stdout fest);
+  `docs/harness/gate-vorlage-node.md` — Abschnitt „UI-Projekte“: mit Build
+  `check:render` = `npm run build && node scripts/render-nachweis.mjs`, die
+  Build-Ausgabe in `.gitignore` (die Workforce führt `check:render` nach
+  jedem grünen Lauf im Arbeitsordner aus), LCP-Satz angepasst.
 
 Bereits angelegte Projekte (z. B. haushaltsbuch2) behalten ihre alte
 Fassung, weil `kopiereSkelett` nichts überschreibt. Nachrüsten:
@@ -216,7 +224,7 @@ Advisor-Historie).
 | `docs/guide/06-DER-PROZESS.md` | `a1db590ebdd70374f30cc45ed1eb60c9c5209248b73d7deeb8a2bb0bb85178e2` | template |
 | `docs/guide/07-TOKEN-SPAREN.md` | `5e9d4f64c05b56f912e9913c5384b719ef7940248136448da5b18cb9c20ff3a6` | template |
 | `docs/guide/08-EIGENES-PROJEKT.md` | `2b58f899a1d00082baac9bc195b385ac020ce5ea44d406424aa4c193a3c9c407` | template |
-| `docs/harness/gate-vorlage-node.md` | `0911595b4d5f28d85568a493ab13f47bb0b380aa50f7017ee33454c6db999794` | lokal neu |
+| `docs/harness/gate-vorlage-node.md` | `377b5f02590a97488f7496e6e15358b83423c0e521e71dbff72f7e09b80f614d` | lokal neu |
 | `docs/harness/werkzeug-katalog.md` | `87d18fefc3e469bdbede6a7d366ba759b63372368faefd4e42f93d17aca18dcd` | template |
 | `docs/kommentar-standard.md` | `77b9e43c4b50414c1c50c9c19af27303f5bc1b5e7a2b0a53afd605e6beed75b3` | template |
 | `package.json` | `e0af40b654569f280db666cd94dc93d66f37188e8ea1d3eede696c7b5c6231b3` | lokal geändert |
@@ -226,7 +234,7 @@ Advisor-Historie).
 | `scripts/check-docs.mjs` | `88d76a731120c1f50aff9734ce0ef957f1682e4aeded8ddf45e5a7907a784651` | template |
 | `scripts/check-gates.mjs` | `7c1b7427024ab0d0b912596a7c681b5beac8a6ab034a3ba5fcd6fe8dd9570621` | lokal neu |
 | `scripts/check-rules.mjs` | `ceb6cbff96fff062c4e1ca9d09d880a195d02d2d34b6d442eddd97969e9f5534` | template |
-| `scripts/render-nachweis.mjs` | `cbf5269f51a4adddb0b8b35b74f20a8fe0127ce774de0cae152ed7fea4081c5f` | lokal neu |
+| `scripts/render-nachweis.mjs` | `1abb578c18937f81b257bf0efecb5e7ca22dbe93c4afcb1c1f202a328c5a213e` | lokal neu |
 | `scripts/tests-mit-untergrenze.mjs` | `1beda7502b35012e3c2746397505f153c77475dea986643df089afd2a3ca34b6` | lokal neu |
 | `state/assumption-ledger.md` | `efb81d71790fdaa21b11615615341c15bb073088f263915468464a9a7d9a92ba` | template |
 | `state/gates.md` | `87026e65f7bd4839962a897db65b8e72e94b2f5cf5c1316b1b29ca88b3eea254` | template |
