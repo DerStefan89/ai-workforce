@@ -431,7 +431,8 @@ export function schreibeStartvorlageUndProfil(id: string, quellRepoWurzel: strin
   mkdirSync(join(zielRepoWurzel, 'profiles'), { recursive: true })
   writeFileSync(join(zielRepoWurzel, 'profiles', `${id}.json`), `${JSON.stringify(profil, null, 2)}\n`)
 
-  writeFileSync(join(zielRepoWurzel, '.gitignore'), 'kontrollzustand/\n')
+  // F45 B3b-1: Ausgabe von `npm run check:render` (scripts/render-nachweis.mjs des Skeletts) gehört nicht ins Repo.
+  writeFileSync(join(zielRepoWurzel, '.gitignore'), 'kontrollzustand/\n.render-nachweis/\n')
 
   return {
     werkzeugVersionDeklariert: startvorlage.werkzeugVersionDeklariert,

@@ -6821,13 +6821,13 @@ Nachtrag (F45 F-3a-2, 14.10.2026): Anzeige erledigt — Reiter „Plugins aus de
 Nachtrag (F45 F-3b-1, 14.10.2026): Plugins freigeben gebaut (gefilterte Kopie `src/plugin-kopie`, Prüfbericht über die Kopie, Freigabe an Hash und Bericht gebunden, Zuordnung je Rolle nur Ausführung); `init.plugins` bleibt `[]`, Startargumente unverändert. Offen: Plugins im Lauf (F-1090, F45 F-3b-2).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
-**F-911** · `TECH_DEBT` · P2 · offen
+**F-911** · `TECH_DEBT` · P2 · teilweise (Skelett F45 B3b-1, 29.10.2026; Lauf-Schritt B3b-2)
 Titel: Fremdprojekte haben keine Design-Prüfkette.
 Beschreibung: design-guardian fehlt im Projekt-Skelett und in den Workflow-Vorlagen. impeccable steht auf OFFEN und hat keine `installation_vorlage`. Render-Nachweis und Token-Gate gibt es nur in ai-workforce. Installiert ist nur frontend-design.
 Fundstelle: `vorlagen/projekt-skelett/.claude/agents`, `workflow-vorlagen/*.json`, `ressourcen.json`.
 Auswirkung: Oberflächen in Fremdprojekten werden ohne Design-Prüfung gebaut.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B3.
-Status: offen.
+Status: teilweise (F45 B3b-1, 29.10.2026): Skelett erledigt — Token-/Bewegungs-Gate `scripts/check-design-tokens.mjs` in `npm run check`, Render-Nachweis `npm run check:render`, Design-Referenzen `docs/design/referenzen/`, design-guardian-Beispiel mit Bewegungsregeln und Render-Nachweis als Pflicht (`vorlagen/projekt-skelett/`, Nachweis `features/F45/nachweise/b3b1/`). Offen: design-guardian-Schritt im Lauf (Workflow-Vorlagen) → B3b-2.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-915** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -7614,15 +7614,15 @@ Auswirkung: Gering bis mittel — Design- und Motion-Projekte bekommen keine ver
 Maßnahme: B3 (Design & Motion, E-F45-10) bzw. Projektkarte (B2a).
 Status: offen.
 Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
-Zugeordnet: Fixpaket Arbeitsfähigkeit, B3 bzw. B2a.
+Zugeordnet: Sichtung vor F30 (F45 B3b-1, 29.10.2026: aus B3b gestrichen; die Sammlung wird vor F30 gesichtet, dann Entscheidung über Vorgaben je Projekt).
 
-**F-1059** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1059** · `PROCESS_IMPROVEMENT` · P2 · teilweise (F45 B3b-1, 29.10.2026)
 Titel: Die Workforce kann keine Website mit Motion, Interaktion und 3D auf Qualitätsniveau bauen und belegen (Challenger K23).
 Beschreibung: Es fehlen Motion-Skills im Lauf, Design-Referenzen als Eingabe, Bibliotheken je Projekt und ein Render-Nachweis mit Bewegung (Bildfolge/Video, Ladezeit-Budget, „Bewegung reduzieren“).
 Fundstelle: `docs/projekt/fixpaket-f45.md` (B3, R2, Beleg 15), `scripts/render-nachweis.mjs`.
 Auswirkung: Mittel — Website- und Design-Aufträge (E-F45-10) sind ohne Handarbeit nicht in der geforderten Qualität möglich.
 Maßnahme: B3 neu („Design & Motion in Fremdprojekten“) und Referenzauftrag R2 mit Beleg 15 (E-F45-10).
-Status: offen.
+Status: teilweise (F45 B3b-1, 29.10.2026): Design-Referenzen als Eingabe und Render-Nachweis mit Bewegung (Bildfolge, Ladezeit-Budget, „Bewegung reduzieren“) im Skelett. Offen: Lauf-Schritt (B3b-2), Bibliotheken je Projekt (F-1058), Beleg 15 in Brain Stufe 1.
 Feature/Run: Challenger, Bauauftrag F45 F-2a, 12.10.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit, B3 und R2.
 
@@ -7724,13 +7724,13 @@ Nachtrag (Delta-Review Runde 2, 12.10.2026, mittel/gering): (11) NTFS-Großschre
 Nachtrag (Delta-Review, 12.10.2026): (8) `auswahl` prüft MCP-Pakete mit `^npm:`, die Route mit `paketNameAus` — ein ungültiger Name zeigt „Auswählen“ und endet mit 422; (9) die Payload prüft die Integrity nur auf das Präfix `sha512-` statt auf SHA512_INTEGRITY; (10) Kopf von `schreibeInhalt` nennt Kollision noch „Fakt“, und eine Kollision durch die Neutralisierung (`.claude/x` neben `_.claude/x`) meldet „andere Schreibweise“.
 Nachtrag (F45 F-2b-2b, 13.10.2026): (8) erledigt — `auswahl` (`src/sammlung/index.ts`) prüft Katalog- und Sammlungs-Paket mit `paketNameAus` wie die Prüfroute (Test `sammlung.test.ts`); (9) erledigt — `validierePruefberichtDaten` und `schemas/kontrollzustand-pruefbericht-payload.schema.json` verlangen die volle Form `SHA512_INTEGRITY` (Test `pruefbericht.test.ts`). Übrige Punkte offen.
 
-**F-1076** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1076** · `PROCESS_IMPROVEMENT` · P2 · erledigt (F45 B3b-1, 29.10.2026)
 Titel: impeccable ist laut Prüfbericht NICHT_GEEIGNET, steht aber im B3-Plan (Challenger K34).
 Beschreibung: Der echte Prüflauf `eignungspruefung-impeccable-87331e24…` (Skill-Ordner `.claude/skills/impeccable` @ `919dbeb`, `features/F45/nachweise/f2b2/bericht-impeccable.json`) urteilt NICHT_GEEIGNET: der Launcher (`scripts/impeccable`, `impeccable.cmd`) lädt beim ersten Lauf ein geschlossenes Engine-Binary von GitHub-Releases nach `~/.impeccable/bin/` und führt es aus; `hooks on` schreibt Hook-Manifeste u. a. in `.claude/settings.local.json`. B3 (`docs/projekt/fixpaket-f45.md`) plant „impeccable installierbar“.
 Fundstelle: `docs/projekt/fixpaket-f45.md` (Zeile B3), `ressourcen.json` (impeccable), `features/F45/nachweise/f2b2/`.
 Auswirkung: Mittel — B3 plant eine Fähigkeit, die die eigene Eignungsprüfung ablehnt.
 Maßnahme: B3 — Ersatz aus der Sammlung prüfen (taste-skill, animate-skill, ui-ux-pro-max; frontend-design ist installiert) oder nur eine gepinnte Teilkopie ohne Launcher und Hooks nach neuem Prüfbericht.
-Status: offen.
+Status: erledigt (F45 B3b-1, 29.10.2026): impeccable gestrichen — der Prüfbericht bleibt NICHT_GEEIGNET, frontend-design (installiert) trägt Design und Motion; ui-ux-pro-max gestrichen (Python, nicht im Stack). Kein Design-Skill wird in B3b installiert; Zeile B3b in `docs/projekt/fixpaket-f45.md` ersetzt durch B3b-1/B3b-2 mit Abschnitt „Gestrichen“.
 Feature/Run: Entdeckt: Challenger, 12.10.2026 (Prüfbericht F45 F-2b-2a).
 Zugeordnet: F45 B3.
 
@@ -9132,3 +9132,75 @@ Auswirkung: Gering bis mittel — bestehende Fremdprojekte bleiben ohne die neue
 Maßnahme: Hinweis beim Nachrüsten, wenn `check` `check-dateigroesse` nicht aufruft, und wenn die Gate-Vorlage des Projekts von der Skelett-Fassung abweicht; Hinweistext Zeile 181 berichtigen.
 Status: offen.
 Feature/Run: Entdeckt: QA-Pass F45 B3a (L4), 29.10.2026.
+
+**F-1253** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Commit-Block ohne catch lässt den Index gefüllt.
+Beschreibung: Ergänzung zu F-1247: Bricht ein Schritt im Commit-Block nach dem Stagen ab (z. B. Hook oder Gate rot), räumt der Block den Index nicht auf — die gestagten Pfade bleiben stehen, der nächste Versuch nimmt sie ungeprüft mit. Beobachtet in F45 B3a.
+Fundstelle: Commit-Block der Berichte (Pfadliste, Stagen, Commit), Skill `git-flow`.
+Auswirkung: Gering — ein Folge-Commit kann fremde gestagte Pfade enthalten.
+Maßnahme: Commit-Block mit Fehlerpfad: bei Abbruch `git restore --staged -- <pfade>` und Meldung; im Skill `git-flow` festhalten.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3a, eingetragen F45 B3b-1, 29.10.2026.
+
+**F-1254** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `scripts/teste.mjs` nennt bei Rot keine Testnamen.
+Beschreibung: Schlägt ein Test fehl, meldet `npm run test` nur die rote Gruppe, nicht die fehlgeschlagenen Tests. Die Ursache muss man durch erneuten Einzellauf suchen. Beobachtet in F45 B3a.
+Fundstelle: `scripts/teste.mjs`.
+Auswirkung: Mittel — jede rote Testgruppe kostet einen zweiten Lauf zur Fehlersuche.
+Maßnahme: Je Gruppe die fehlgeschlagenen Tests (Name, Datei, erste Fehlerzeile) ausgeben.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3a, eingetragen F45 B3b-1, 29.10.2026.
+
+**F-1255** · `TECH_DEBT` · P2 · offen
+Titel: `check:render` kennt nur statischen Ordner oder laufende localhost-URL; JS-Animationen unsichtbar.
+Beschreibung: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` liefert einen gebauten Ordner selbst aus oder nutzt eine schon laufende URL auf 127.0.0.1/localhost; einen Dev-Server oder SSR startet er nicht. Die Bildfolge hält Animationen über `document.getAnimations()` an — requestAnimationFrame- oder GSAP-Animationen erfasst sie nicht, beendete Animationen ohne `fill` zählen nicht. LCP misst die Variante „reduziert“, weil Chromium für Einblendungen aus `opacity: 0` keinen LCP-Eintrag meldet (Probelauf `features/F45/nachweise/b3b1/`). Der verbreitete Reset `animation-duration: .01ms` unter „Bewegung reduzieren“ beginnt ebenfalls bei `opacity: 0`: Chromium meldet dann weder LCP noch FCP ⇒ „LCP nicht messbar“ (rot, Abhilfe `animation: none`; ob das rot bleiben soll, entscheidet Stefan).
+Fundstelle: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` (Datei-Kopf, Grenzen).
+Auswirkung: Mittel — Projekte mit Framework-Dev-Server oder JS-Animationsbibliothek bekommen einen unvollständigen Nachweis.
+Maßnahme: Bei Bedarf: Startbefehl in `render.json` (mit Bereitschaftsprüfung) und eine Schnittstelle für JS-Animationen (z. B. GSAP `globalTimeline`); erst mit echtem Projekt.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
+
+**F-1256** · `TECH_DEBT` · P2 · offen
+Titel: Render-Nachweis im Fremdprojekt hängt am Builder.
+Beschreibung: Im Skelett ist `npm run check:render` eine DoD-Zeile der `CLAUDE.md` und Pflicht-Eingabe des design-guardian-Beispiels — ausgeführt wird er nur, wenn der Builder es tut. Kein Lauf-Schritt erzwingt ihn.
+Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md` (DoD), `vorlagen/projekt-skelett/docs/examples/design-guardian.example.md`.
+Auswirkung: Mittel — UI-Änderungen können ohne Render-Nachweis als fertig gemeldet werden.
+Maßnahme: B3b-2: design-guardian-Schritt im Lauf, der den Render-Nachweis ausführt bzw. verlangt — dann deterministisch.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
+
+**F-1257** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: `skill_pfad` erlaubt keinen Skill an der Repo-Wurzel; animate-skill ohne LICENSE.
+Beschreibung: animate-skill und taste-skill liegen als Skill direkt an der Wurzel ihres Repos; `skill_pfad` in `ressourcen.json` verlangt einen Unterordner. animate-skill hat keine LICENSE-Datei.
+Fundstelle: `ressourcen.json` (Einträge animate-skill, taste-skill), Prüfung von `skill_pfad`.
+Auswirkung: Gering — beide sind heute nicht eingeplant (B3b-1 stützt sich auf frontend-design).
+Maßnahme: Erst wenn ein Eignungsbericht GEEIGNET urteilt: `skill_pfad` für die Wurzel zulassen; ohne LICENSE keine Übernahme.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
+
+**F-1258** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: `ressourcen.json`: zwei verschiedene Repos namens taste-skill.
+Beschreibung: taste-skill (senlindesign) und image-to-code (leonxlnx/taste-skill) sind verschiedene Repos mit gleichem Namen; die Beschreibungen trennen das nicht.
+Fundstelle: `ressourcen.json`.
+Auswirkung: Gering — Verwechslungsgefahr bei Sichtung und Eignungsprüfung.
+Maßnahme: Beschreibungen beider Einträge um Herkunft (Besitzer/Repo) ergänzen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
+
+**F-1259** · `TECH_DEBT` · P3 · offen
+Titel: Render-Nachweis des Leitstands ohne Ladezeit-Budget.
+Beschreibung: `scripts/render-nachweis.mjs` der Workforce prüft Bilder, Klickfolgen und Bewegung, aber kein Ladezeit-Budget (LCP, Bytes) — das Skelett hat es seit F45 B3b-1.
+Fundstelle: `scripts/render-nachweis.mjs`.
+Auswirkung: Gering — die Ladezeit des Leitstands ist unbelegt.
+Maßnahme: Brain Stufe 1 (R2): Budget wie im Skelett (LCP, transferSize).
+Status: offen.
+Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
+
+**F-1260** · `TECH_DEBT` · P3 · offen
+Titel: Token-Gate im Skelett meldet verbreitete Token-Muster als rot.
+Beschreibung: `vorlagen/projekt-skelett/scripts/check-design-tokens.mjs` erlaubt Farbliterale nur in `:root`-Blöcken (auch in `@media (prefers-color-scheme)`). Rot, obwohl vertretbar: Tailwind v4/shadcn (`@theme`, `.dark { --x: oklch() }`), `[data-theme=dark]` ohne `:root`, `@supports (color: oklch(0 0 0)) { :root {…} }`, `@media screen and (prefers-color-scheme: dark)`, `:root, :host`, `@property … initial-value`. Einziger Ausweg ist `AUSNAHMEN` je Datei — bei einer zentralen `globals.css` ist das Gate damit aus. Erzeugte CSS in `out/`, `storybook-static/` u. ä. wird geprüft, bis der Ordner in `UEBERSPRUNGEN_WURZEL` steht. Gefunden von qa und code-reviewer in F45 B3b-1; im Datei-Kopf und in der Gate-Vorlage als Grenze benannt.
+Fundstelle: `vorlagen/projekt-skelett/scripts/check-design-tokens.mjs` (ROOT, FARBSCHEMA, istTokenBlock).
+Auswirkung: Gering bis mittel — Projekte mit Tailwind v4/shadcn schalten das Gate über AUSNAHMEN faktisch ab.
+Maßnahme: Entscheidung Stefan: Liste der Token-Container erweitern (z. B. `@theme`, `.dark`, `@supports` um `:root`) oder je Stack ein Muster in der Gate-Vorlage; dann Rot-/Grün-Tests je Muster.
+Status: offen.
+Feature/Run: Entdeckt: QA-/Code-Review-Pass F45 B3b-1, 29.10.2026.
