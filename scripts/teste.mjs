@@ -51,6 +51,10 @@ export const SERIELL = [
   // Ausfall unter Last (F-1210): Test „im echten Worktree (git worktree add) wie im Repo“ lieferte am 25.10.2026 in der
   // parallelen Gruppe `null` statt `false`/`true` (git check-ignore), einzeln grün.
   'src/faehigkeiten/vorschlag.test.ts',
+  // F45 B3b-2a-1: echter Server, Worktree und echtes `npm run` mit einem D13-Zeitfenster — vorsorglich seriell (Muster F-1186).
+  'scripts/render-im-lauf.test.mjs',
+  // F45 B3b-2a-1 (code-reviewer 1): git check-ignore mit fester 5-s-Zeitgrenze — dieselbe Fehlerklasse wie F-1210.
+  'src/pruefschritt/render.test.ts',
 ]
 
 /** Standardmuster von `node --test` (Node 24, Typ-Entfernung an): test, test/**, test-*, *.test, *-test, *_test. */

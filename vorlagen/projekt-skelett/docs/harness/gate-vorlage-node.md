@@ -229,10 +229,21 @@ Skripte eintragen; vorhandenes CSS wird sofort geprüft (keine Ratsche) — Lite
    `"url": "http://127.0.0.1:<port>/"` (oder `localhost`) für einen schon laufenden Server. Budget: LCP in ms (gemessen
    mit „Bewegung reduzieren“, weil Chromium Einblendungen aus `opacity: 0` nicht als LCP meldet) und die Summe der
    übertragenen Bytes je Seite. Darum unter „Bewegung reduzieren“ mit `animation: none` abschalten, nicht mit dem
-   Reset auf `.01ms` — der lässt Einblendungen bei `opacity: 0` beginnen, LCP ist dann nicht messbar (rot).
+   Reset auf `.01ms` — der lässt Einblendungen bei `opacity: 0` beginnen, LCP ist dann nicht messbar (Hinweis im
+   Protokoll, kein Befund; das LCP-Budget bleibt dann ungeprüft, das Bytes-Budget gilt weiter).
 
-   Ohne Build (statisches HTML): `"ordner"` auf den Quellordner setzen (z. B. `"public"`). Mit Build: vorher bauen —
-   `check:render` prüft, was im Ordner liegt, auch einen veralteten Stand.
+   Ohne Build (statisches HTML): `"ordner"` auf den Quellordner setzen (z. B. `"public"`), `check:render` bleibt
+   `node scripts/render-nachweis.mjs`. Mit Build: der Eintrag `check:render` in `package.json` baut vorher selbst —
+
+   ```json
+   "check:render": "npm run build && node scripts/render-nachweis.mjs"
+   ```
+
+   Die Workforce führt `npm run check:render` nach jedem erfolgreichen Bau im Arbeitsordner mit grüner Prüfung selbst
+   aus, sobald `render.json` in der Projektwurzel liegt (nicht nach „Prüfung wiederholen“); ohne den Build davor
+   prüfte sie einen veralteten Stand des Ordners — oder fände `dist` gar nicht („Ordner dist fehlt“). Die Build-Ausgabe
+   (`dist/` o. ä.) gehört dann in `.gitignore` — sonst liegen nach dem Lauf ungetrackte Dateien im Arbeitsordner, die
+   die Änderungsübersicht nicht kennt.
 4. Vor „fertig“ `npm run check:render` — grün heißt: je Seite Bilder 1440×900 hell und dunkel, 390×844, „Bewegung
    reduzieren“ und Zoom 200 % in `.render-nachweis/`, Bildfolge der Animationen, keine laufende Animation unter
    „Bewegung reduzieren“, kein waagerechter Überlauf bei 390 px, Budget eingehalten. Das Protokoll

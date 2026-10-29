@@ -496,6 +496,7 @@ import {
   validiereAenderungsuebersichtDaten,
 } from '../src/aenderungsuebersicht/index.ts'
 import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '../src/pruefschritt/index.ts'
+import { registriereRenderNachweis, renderNachweisFaellig } from '../src/pruefschritt/render.ts'
 import { fuehreAufrufDurch, pruefeVorschau } from '../src/projekt-aufruf/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import {
@@ -572,6 +573,7 @@ import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } f
 import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, erkenneAkteRoute, fuehreAkteRouteDurch } from './leitstand/routen-f35.mjs'
+import { projizierePruefergebnis, projiziereRenderNachweis } from './leitstand/abnahme-pruefung.mjs'
 import { ermittleAbnahmeStand, findeAusfuehrungsSchritt } from './leitstand/abnahme-stand.mjs'
 import { fuehreIstNachAbnahmeDurch } from './leitstand/ist-nach-abnahme.mjs'
 import { erkennePlanungRoute, fuehrePlanungRouteDurch } from './leitstand/routen-planung.mjs'
@@ -6636,10 +6638,11 @@ export function erzeugeRequestHandler(optionen = {}) {
           // Fehlschlag hier ist Nachbereitung, kein Laufergebnis: er wird wie ein Wurf aus nachLauf
           // abgefangen und in der Startfehlerliste protokolliert, der bereits geschriebene, terminale
           // Laufstatus bleibt unverändert.
-          // F45 B1a-1 (F-715): Löschliste nur nach ERFOLGREICH, im Arbeitsordner, Rolle 'ausfuehrung', VOR der Übersicht; eigener try.
+          // F45 B1a-1 (F-715): Löschliste nur nach ERFOLGREICH, im Arbeitsordner, Rolle 'ausfuehrung', VOR der Übersicht; eigener try. Dasselbe Prädikat gilt für den Render-Nachweis (B3b-2a-1).
           // B2b-3b-2a/2b-1a (F-1128 (2), R2): nach einer Ablehnung durch Stefan (Speicher der Vermittlung) nichts löschen, nur Hinweis.
+          const ausfuehrungImArbeitsordner = laufErfolgreich && laufImArbeitsordner && laufort.loeschliste === true
           let loeschliste
-          if (laufErfolgreich && laufImArbeitsordner && laufort.loeschliste === true) {
+          if (ausfuehrungImArbeitsordner) {
             try {
               const laufakteFuerLoeschliste = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
               const textErgebnis = laufakteFuerLoeschliste !== null ? leseErgebnistextAusRohstrom(laufakteFuerLoeschliste.daten) : { ok: false }
@@ -6705,6 +6708,11 @@ export function erzeugeRequestHandler(optionen = {}) {
                 [],
                 { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
               )
+              // F45 B3b-2a-1 (F-1256): Render-Nachweis nach GRÜN — Prädikat der Löschliste (ERFOLGREICH, Arbeitsordner, Rolle 'ausfuehrung'); wirft nie, hält nie.
+              if (renderNachweisFaellig({ ausfuehrungImArbeitsordner, pruefErgebnis: pruefDaten.ergebnis, wurzel: nachlaufWurzel })) {
+                const meldeRenderFehler = (fehler) => { startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler }); console.error(`[leitstand] ${fehler}`) }
+                await registriereRenderNachweis(laufId, nachlaufWurzel, (daten) => registriereKernArtefakt(`render-nachweis-${laufId}`, profilReferenz, { erzeuger: 'kern', schritt: 'nach-lauf-render-nachweis' }, daten, [], { basisVerzeichnis, schreiber: STILLER_SCHREIBER }), meldeRenderFehler)
+              }
             } catch (pruefFehler) {
               const eintrag = {
                 zeitstempel: new Date().toISOString(),
@@ -8691,25 +8699,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       // festgehalten hat).
       const freigabeHalt = workflowDaten.status === 'WARTET_FREIGABE' ? { schrittId: workflowDaten.aktiver_schritt_id ?? null, grund: workflowDaten.grund ?? null } : null
 
-      // F-652 (state/findings.md F-652, Bauauftrag Punkt 7): schlanke Projektion des
-      // deterministischen Prüfergebnisses, GENAU NEBEN aenderungsuebersichtProjektion oben (Muster
-      // 1:1, gleicher Ausführungsschritt, gleiche drei status-Werte) — der Leitstand rendert die
-      // eine Zeile "Prüfung: GRÜN/ROT (Exit n)" an derselben Stelle wie die Änderungsübersicht
-      // (renderAenderungsuebersicht, public/leitstand/views/workflows.js).
-      let pruefergebnisProjektion
-      if (ausfuehrungSchritt === null) {
-        pruefergebnisProjektion = { status: 'kein_ausfuehrungs_schritt' }
-      } else if (ausfuehrungSchritt.lauf_id === null) {
-        pruefergebnisProjektion = { status: 'noch_nicht_gelaufen', schrittId: ausfuehrungSchritt.schritt_id }
-      } else {
-        const pruefergebnisVersion = ladeArtefaktVersion(`pruefergebnis-${ausfuehrungSchritt.lauf_id}`, undefined, ladeOptionen)
-        pruefergebnisProjektion =
-          pruefergebnisVersion === null
-            ? { status: 'nicht_vorhanden', laufId: ausfuehrungSchritt.lauf_id }
-            : // F45 B1b-2: versionSequenz additiv — eine wiederholte Prüfung ist eine neue Version; die Abnahme lädt den
-              // Harness-Abgleich einmal je Stand und erkennt so auch GRÜN → GRÜN.
-              { status: 'ok', laufId: ausfuehrungSchritt.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code, versionSequenz: pruefergebnisVersion.versionSequenz }
-      }
+      // F-652/F45 B3b-2a-1: Prüfergebnis (neben der Änderungsübersicht) und Render-Nachweis des Ausführungslaufs (scripts/leitstand/abnahme-pruefung.mjs).
+      const pruefergebnisProjektion = projizierePruefergebnis(ausfuehrungSchritt, ladeOptionen)
 
       // F45 B2b-1a: „Review wiederholen“ — dieselbe Vorbedingung wie POST …/pruefer-wiederholen. Gelesen wird nur, wenn
       // der Ablauf am Review auf Klärung wartet (die Abnahme wird alle 2 s gepollt).
@@ -8738,6 +8729,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         urteil: urteilProjektion,
         aenderungsuebersicht: aenderungsuebersichtProjektion,
         pruefergebnis: pruefergebnisProjektion,
+        renderNachweis: projiziereRenderNachweis(ausfuehrungSchritt, ladeOptionen),
         entscheidung: entscheidungProjektion,
         freigabeHalt,
         reviewWiederholbar,
@@ -8841,33 +8833,19 @@ export function erzeugeRequestHandler(optionen = {}) {
         }
       }
 
-      // F-652 (state/findings.md F-652, Bauauftrag Punkt 7): schlanke Projektion des
-      // deterministischen Prüfergebnisses, additiv wie architekturEntscheidung oben — Muster
-      // aenderungsuebersichtProjektion in GET .../abnahme, hier bewusst NICHT die vollen Daten
-      // (Ausgabetext), nur Status/Ergebnis/Exit-Code für die eine Anzeigezeile im Leitstand.
-      const ausfuehrungSchrittFuerPruefung = findeAusfuehrungsSchritt(version.daten)
-      let pruefergebnisProjektion
-      if (ausfuehrungSchrittFuerPruefung === null) {
-        pruefergebnisProjektion = { status: 'kein_ausfuehrungs_schritt' }
-      } else if (ausfuehrungSchrittFuerPruefung.lauf_id === null) {
-        pruefergebnisProjektion = { status: 'noch_nicht_gelaufen', schrittId: ausfuehrungSchrittFuerPruefung.schritt_id }
-      } else {
-        const pruefergebnisVersion = ladeArtefaktVersion(`pruefergebnis-${ausfuehrungSchrittFuerPruefung.lauf_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-        pruefergebnisProjektion =
-          pruefergebnisVersion === null
-            ? { status: 'nicht_vorhanden', laufId: ausfuehrungSchrittFuerPruefung.lauf_id }
-            : { status: 'ok', laufId: ausfuehrungSchrittFuerPruefung.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code }
-      }
+      // F-652: schlanke Projektion des Prüfergebnisses (nur Status/Ergebnis/Exit-Code, kein Ausgabetext; seit F45 B3b-2a-1 derselbe
+      // Helfer wie GET …/abnahme, dadurch additiv versionSequenz).
+      const detailLadeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const pruefergebnisProjektion = projizierePruefergebnis(findeAusfuehrungsSchritt(version.daten), detailLadeOptionen)
 
       // verstoesse wird durchgereicht statt ein zweites Mal berechnet: dieselbe Prüfung auf
       // demselben Datensatz im selben Request (Reviewer-Pass 10.09.2026).
       // F45 B2b-3c (Advisor B4): im überschrittenen Budget zeigt das Verdikt den Budget-Halt — keine Freigabe-Karte, kein Start;
       // nach „Budget erhöhen“ wieder das Verdikt des Automaten (z. B. die Freigabe des Neubaus).
-      const budget = baueBudgetProjektion(workflowId, version.daten, version.versionSequenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const budget = baueBudgetProjektion(workflowId, version.daten, version.versionSequenz, detailLadeOptionen)
       const naechster = baueNaechsterProjektion(version.daten, verstoesse, budget.status === 'ok' ? budget : null)
 
       // F45 B2b-1b-2b (F-1106, F-1108): Plan und Advisor-Befunde an der Freigabe der Plan-Stufe (bauePlanFreigabeProjektion).
-      const detailLadeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
       const planFreigabe = bauePlanFreigabeProjektion(workflowId, version.daten, naechster, detailLadeOptionen)
       // F45 B2b-1b-2b (F-1104 (4), §3.10): „Advisor wiederholen“ — dieselbe Vorbedingung wie POST …/pruefer-wiederholen; die
       // Advisor-Laufakte wird nur gelesen, wenn der Ablauf am Advisor auf Klärung wartet (Muster reviewWiederholbar).
