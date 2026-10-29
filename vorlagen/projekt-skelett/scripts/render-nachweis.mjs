@@ -226,7 +226,8 @@ export function loeseDateiPfad(ordner, urlPfad) {
   } catch {
     return null
   }
-  if (pfad.includes('\0')) return null
+  // '\' ablehnen: in URL-Pfaden nie gültig, so verhalten sich Windows und Linux gleich
+  if (pfad.includes('\0') || pfad.includes('\\')) return null
   const basis = resolve(ordner)
   const ziel = resolve(basis, `.${pfad.startsWith('/') ? '' : '/'}${pfad}`)
   return ziel === basis || ziel.startsWith(basis + sep) ? ziel : null
