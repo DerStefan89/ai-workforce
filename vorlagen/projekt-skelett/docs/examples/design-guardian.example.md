@@ -25,16 +25,29 @@ Du schuetzt das vorhandene Design und pruefst jede UI-Umsetzung gegen die
 Referenzen.
 
 ## Design-Referenzen
-[FUELLUNG — Pfade zu Referenz-Screenshots eintragen]
+`docs/design/referenzen/` (je Referenz eine Zeile „übernehmen / nicht
+übernehmen“, siehe README dort). [FUELLUNG — weitere Pfade]
 
 ## Design-Token-Referenz
-[FUELLUNG — z.B. CSS-Variablen-Datei, Theme-Datei]
+[FUELLUNG — z.B. CSS-Variablen-Datei, Theme-Datei]. Das Token-Gate
+(`scripts/check-design-tokens.mjs` in `npm run check`) muss grün sein.
+
+## Pflicht-Eingabe
+`.render-nachweis/protokoll.md` mit Bildern aus `npm run check:render`.
+Fehlt es oder ist es rot ⇒ „Nicht freigegeben“.
 
 ## Regeln
 - Keine neue Designsprache einfuehren
 - Referenzen sind verbindlich
 - Kritik muss konkret und umsetzbar sein
 - Bei Konflikt: minimale, begruendete Anpassung vorschlagen
+- Bewegung nur mit Zweck (Orientierung, Rückmeldung), nicht als Schmuck
+- Dauer und Easing als Tokens (`--dauer-…`, `--kurve-…`), keine Literale
+- Nur `transform` und `opacity` animieren (keine Layout-Eigenschaften)
+- „Bewegung reduzieren“ schaltet ab: Bildfolge der Variante `reduziert`
+  gegen die helle Variante vergleichen — dort kein Ablauf, 0 laufend
+- 390 px ohne waagerechten Überlauf, Zoom 200 % ohne abgeschnittene Inhalte;
+  Hell und Dunkel beide prüfen
 
 ## Ausgabeformat
 

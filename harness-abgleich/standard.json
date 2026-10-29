@@ -116,6 +116,27 @@
       "begruendung": "Render-Nachweis im Lauf erst mit B3 (Beleg 5; E-B2b-2-1 = A)."
     },
     {
+      "art": "dod",
+      "name": "dod-9f7fb386",
+      "text": "[FÜLLUNG, nur UI] Referenzen in `docs/design/referenzen/` gelesen; Skill `frontend-design` genutzt, wenn verfügbar",
+      "status": "bewusst_nicht",
+      "begruendung": "Skelett-DoD (F45 B3b-1); im Lauf prüft das erst der design-guardian-Schritt (B3b-2, F-1256)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-42d163ec",
+      "text": "[FÜLLUNG, nur UI] Bewegung mit Zweck, Dauer/Easing als Tokens, nur `transform`/`opacity`; „Bewegung reduzieren“ schaltet sie ab",
+      "status": "bewusst_nicht",
+      "begruendung": "Skelett-DoD (F45 B3b-1); im Lauf prüft das erst der design-guardian-Schritt (B3b-2, F-1256)."
+    },
+    {
+      "art": "dod",
+      "name": "dod-d2613977",
+      "text": "[FÜLLUNG, nur UI] Vor „fertig“ `npm run check:render` grün (`docs/harness/gate-vorlage-node.md`, Abschnitt UI-Projekte)",
+      "status": "bewusst_nicht",
+      "begruendung": "Skelett-DoD (F45 B3b-1); im Lauf führt den Render-Nachweis erst der design-guardian-Schritt aus (B3b-2, F-1256)."
+    },
+    {
       "art": "hook",
       "name": "commit-guard",
       "status": "wirksam",

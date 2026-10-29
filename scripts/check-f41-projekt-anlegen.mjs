@@ -340,8 +340,8 @@ try {
     }
     const geschriebenesProfil = JSON.parse(readFileSync(join(ziel, 'profiles', 'mein-projekt.json'), 'utf8'))
     if (geschriebenesProfil.projekt !== 'mein-projekt') befunde.push(`(2) profiles/mein-projekt.json trägt nicht projekt:'mein-projekt', erhalten '${geschriebenesProfil.projekt}'`)
-    if (!existsSync(join(ziel, '.gitignore')) || readFileSync(join(ziel, '.gitignore'), 'utf8') !== 'kontrollzustand/\n') {
-      befunde.push("(2) .gitignore fehlt oder trägt nicht genau 'kontrollzustand/\\n'")
+    if (!existsSync(join(ziel, '.gitignore')) || readFileSync(join(ziel, '.gitignore'), 'utf8') !== 'kontrollzustand/\n.render-nachweis/\n') {
+      befunde.push("(2) .gitignore fehlt oder trägt nicht genau 'kontrollzustand/\\n.render-nachweis/\\n'")
     }
 
     if (befunde.length === vor) console.log('✓ (2) kopiereBaseline byte-identisch (3 Dateien), schreibeStartvorlageUndProfil setzt pruefbefehl (F42 WS-1) + pruefZeitgrenzeMs, profilPfad absolut auf das neue Profil, profil.projekt korrekt, .gitignore korrekt.')

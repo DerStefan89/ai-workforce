@@ -97,6 +97,12 @@ Platzhalter. Code-Dateien über 800 Zeilen macht
       mit max-width hat auch width: 100%
 - [ ] [FÜLLUNG, nur UI] Design bleibt treu (Design-Tokens, keine neuen
       Farben/Schatten ohne Freigabe)
+- [ ] [FÜLLUNG, nur UI] Referenzen in `docs/design/referenzen/` gelesen;
+      Skill `frontend-design` genutzt, wenn verfügbar
+- [ ] [FÜLLUNG, nur UI] Bewegung mit Zweck, Dauer/Easing als Tokens, nur
+      `transform`/`opacity`; „Bewegung reduzieren“ schaltet sie ab
+- [ ] [FÜLLUNG, nur UI] Vor „fertig“ `npm run check:render` grün
+      (`docs/harness/gate-vorlage-node.md`, Abschnitt UI-Projekte)
 - [ ] Code ist sinnvoll kommentiert (Datei-Header + Funktionsdoku, siehe
       `docs/kommentar-standard.md`)
 - [ ] `npm run check` → Exit 0

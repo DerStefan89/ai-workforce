@@ -304,6 +304,8 @@
     "scripts/projekt-nachruesten.mjs",
     "scripts/projekt-nachruesten.test.mjs",
     "scripts/skelett-check-dateigroesse.test.mjs",
+    "scripts/skelett-check-design-tokens.test.mjs",
+    "scripts/skelett-render-nachweis.test.mjs",
     "scripts/verify-rename-atomicity.mjs",
     "src/aenderungsuebersicht/types.ts",
     "src/ak-pruefung/ak-pruefung.test.ts",

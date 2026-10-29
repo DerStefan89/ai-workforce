@@ -19,6 +19,7 @@ Anfang an — keine Ratsche, keine Liste „alter“ Dateien.
 | Gate | Befehl | rot, wenn |
 |---|---|---|
 | Dateigrenze | `node scripts/check-dateigroesse.mjs` | eine Code-Datei hat mehr als 800 Zeilen (wirkt schon vor dieser Vorlage) |
+| Design-Tokens | `node scripts/check-design-tokens.mjs` | Farbliteral außerhalb eines Token-Blocks, Bewegung ohne `prefers-reduced-motion: reduce`, offener CSS-Kommentar (ohne CSS: grün, „kein UI“) |
 | Mindest-Gates | `node scripts/check-gates.mjs` | Platzhalter, Audit-Befund (high/critical), Secret-Fund, abstürzender Hook |
 | Lint + Formatierer | `biome check --error-on-warnings .` | Lint-Befund (recommended, Komplexität > 15, `any`), unformatiert, Importe nicht sortiert |
 | Typprüfung | `tsc --noEmit` | Typfehler, auch in `.js`/`.mjs` (`checkJs`) |
@@ -186,6 +187,59 @@ Formatierer daneben.
      (`startvorlagen/<id>.json`) `pruefbefehl` von `run check:template` auf
      `run check` umstellen — sonst wirken diese Gates nur für Menschen,
      nicht im Prüfschritt eines Workforce-Laufs.
+
+## UI-Projekte
+
+Gilt zusätzlich, sobald das Projekt eine Oberfläche hat.
+
+**Design-Tokens** (`scripts/check-design-tokens.mjs`, in `check` ab Anlage): Farben stehen nur als Custom Property
+(`--name: …`) in `:root`, `:root[data-theme=…]`, `:root:not([data-theme=…])` — auf oberster Ebene oder in
+`@media (prefers-color-scheme: light|dark)`. Überall sonst `var(--name)`. Wer `@keyframes`, `animation` oder
+`transition` nutzt, braucht einen `@media (prefers-reduced-motion: reduce)`-Block, der die Bewegung abschaltet (oder
+setzt Bewegung nur in `(prefers-reduced-motion: no-preference)`); ob er wirkt, zeigt erst der Render-Nachweis.
+Geprüft wird die Quelle, nicht `dist`/`build`/`coverage` und keine Punkt-Ordner; weitere Ausgabe-Ordner (`out/`,
+`storybook-static/`) in `UEBERSPRUNGEN_WURZEL` des Skripts. Fremd-CSS oder andere Token-Container (Tailwind `@theme`,
+`@layer`, `.dark`) nur mit Begründung in `AUSNAHMEN`. Ältere Projekte, die das Skript beim Nachrüsten bekommen:
+`node scripts/check-design-tokens.mjs` von Hand nach `check-dateigroesse` in `check` und `"check:render"` in die
+Skripte eintragen; vorhandenes CSS wird sofort geprüft (keine Ratsche) — Literale in Tokens überführen.
+
+**Render-Nachweis** (`npm run check:render`, `scripts/render-nachweis.mjs`, nicht Teil von `check`):
+
+1. Playwright installieren — exakt diese Version (= installierte Version der Workforce; gleiche Version ⇒ gleiche
+   Browser-Revision, die im vorhandenen Browser-Cache liegt, kein Download). Fehlt der Browser trotzdem:
+   `npx playwright install chromium`.
+
+   ```
+   npm i -D --save-exact playwright@1.63.0
+   ```
+
+2. `.gitignore` um `.render-nachweis/` ergänzen (über die Workforce angelegte Projekte haben es).
+3. `render.json` in der Projektwurzel anlegen (`{}` nimmt alle Standardwerte):
+
+   ```json
+   {
+     "ordner": "dist",
+     "seiten": ["/", "/preise.html"],
+     "bildfolgeMs": [0, 150, 400, 1000],
+     "budget": { "lcpMs": 2500, "bytes": 1000000 }
+   }
+   ```
+
+   `ordner` wird über einen kurzlebigen Server auf 127.0.0.1 ausgeliefert (vorher bauen). Statt `ordner`:
+   `"url": "http://127.0.0.1:<port>/"` (oder `localhost`) für einen schon laufenden Server. Budget: LCP in ms (gemessen
+   mit „Bewegung reduzieren“, weil Chromium Einblendungen aus `opacity: 0` nicht als LCP meldet) und die Summe der
+   übertragenen Bytes je Seite. Darum unter „Bewegung reduzieren“ mit `animation: none` abschalten, nicht mit dem
+   Reset auf `.01ms` — der lässt Einblendungen bei `opacity: 0` beginnen, LCP ist dann nicht messbar (rot).
+
+   Ohne Build (statisches HTML): `"ordner"` auf den Quellordner setzen (z. B. `"public"`). Mit Build: vorher bauen —
+   `check:render` prüft, was im Ordner liegt, auch einen veralteten Stand.
+4. Vor „fertig“ `npm run check:render` — grün heißt: je Seite Bilder 1440×900 hell und dunkel, 390×844, „Bewegung
+   reduzieren“ und Zoom 200 % in `.render-nachweis/`, Bildfolge der Animationen, keine laufende Animation unter
+   „Bewegung reduzieren“, kein waagerechter Überlauf bei 390 px, Budget eingehalten. Das Protokoll
+   `.render-nachweis/protokoll.md` ist die Eingabe für den design-guardian.
+
+Grenzen: startet keinen Dev-Server und kein SSR; JS-Animationen (requestAnimationFrame, GSAP) erfasst die Bildfolge
+nicht.
 
 ## ES-Module und Hooks
 
