@@ -1,0 +1,61 @@
+{
+  "url": "http://127.0.0.1:4403/#/workflows/router-ce6469e6-01ff-42b1-8741-e5d3aa6dc3ed",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Kartentitel",
+        "selector": "#abnahme-render-titel"
+      },
+      {
+        "name": "Badge",
+        "selector": ".abnahme-render .ablauf-status"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte",
+        "selector": ".abnahme-render"
+      },
+      {
+        "name": "Karte im Block vorab",
+        "selector": ".abnahme-vorab .abnahme-render"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-render .note.amber"
+      },
+      {
+        "name": "Badge grün",
+        "selector": ".abnahme-render .ablauf-status.ok"
+      },
+      {
+        "name": "Badge amber",
+        "selector": ".abnahme-render .ablauf-status.warten"
+      },
+      {
+        "name": "Ausgabe aufgeklappt",
+        "selector": ".abnahme-render details[open]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Halt nach Review BLOCKIERT, Karte im Block „vorab“ — de-390",
+      "warteAufSelector": {
+        "selector": ".abnahme-render",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-karte.webp"
+    }
+  ]
+}

@@ -8827,8 +8827,10 @@ th {
   margin-top: 18px;
 }
 
-/* design-guardian 3/4: Notizen und h3 der Karte ohne eigenen Rand — der Abstand kommt aus gap wie bei der h2-Fassung. */
-.workflow-seite .abnahme-faehigkeiten > .note {
+/* design-guardian 3/4: Notizen und h3 der Karte ohne eigenen Rand — der Abstand kommt aus gap wie bei der h2-Fassung.
+   F45 B3b-2a-2: dasselbe für die Notiz der Karte „Darstellung (Render-Nachweis)“. */
+.workflow-seite .abnahme-faehigkeiten > .note,
+.workflow-seite .abnahme-render-karte > .note {
   margin: 0;
 }
 
@@ -11112,8 +11114,10 @@ th {
 }
 
 /* F45 B2b-3b-2b-2b-2b-2 (F-1144): Auftragstext des Schritts — wörtlich als Text (Umbrüche bleiben, lange Wörter brechen), Muster
-   .rueckfrage-befehl; bei langem Text verschwindet die Vorschau, sobald „Ganzer Auftrag“ aufgeklappt ist. */
-.workflow-seite .entscheiden-auftrag-text {
+   .rueckfrage-befehl; bei langem Text verschwindet die Vorschau, sobald „Ganzer Auftrag“ aufgeklappt ist. F45 B3b-2a-2: auch das
+   Ausgabe-Ende des Render-Nachweises (.abnahme-render-ausgabe). */
+.workflow-seite .entscheiden-auftrag-text,
+.workflow-seite .abnahme-render-ausgabe {
   margin: 0;
   padding: 10px 12px;
   border: 1px solid var(--line);

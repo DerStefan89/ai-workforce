@@ -1,0 +1,61 @@
+{
+  "url": "http://127.0.0.1:4403/#/workflows/router-7a5feb53-bcb5-4e8b-a22c-76105acf2caf",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Kartentitel",
+        "selector": "#abnahme-render-titel"
+      },
+      {
+        "name": "Badge",
+        "selector": ".abnahme-render .ablauf-status"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte",
+        "selector": ".abnahme-render"
+      },
+      {
+        "name": "Karte im Block vorab",
+        "selector": ".abnahme-vorab .abnahme-render"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-render .note.amber"
+      },
+      {
+        "name": "Badge grün",
+        "selector": ".abnahme-render .ablauf-status.ok"
+      },
+      {
+        "name": "Badge amber",
+        "selector": ".abnahme-render .ablauf-status.warten"
+      },
+      {
+        "name": "Ausgabe aufgeklappt",
+        "selector": ".abnahme-render details[open]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Render FEHLER, Grund im aufgeklappten Ausgabe-Ende — de-1440",
+      "warteAufSelector": {
+        "selector": ".abnahme-render",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-karte.webp"
+    }
+  ]
+}

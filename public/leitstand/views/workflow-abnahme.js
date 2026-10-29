@@ -37,6 +37,7 @@
  * dem Umfangs-Hinweis, in jeder anderen Lage unter dem Block; zusatz.verwerfenOffen trägt die Stufe „Wirklich verwerfen?“. Der
  * Umfangs-Hinweis nennt den Vorschlagsordner in einem Satz statt in der amber Liste. ausfuehrungGelaufen liegt seitdem im
  * Blattmodul abnahme-ausfuehrung.js (hier re-exportiert) — kein Importzyklus mit der Vorschlagskarte.
+ * F45 B3b-2a-2 (F-1256): Karte „Darstellung (Render-Nachweis)“ aus abnahme-render.js — „entscheidbar“ nach der qa-Karte, „vorab“ im Block.
  *
  * Reine Render-Funktionen: kein fetch, kein DOM, kein Import schreibender api.js-Funktionen; in Node
  * ohne DOM importierbar. Laden, Kennzeichen und alle POSTs bleiben in views/workflows.js.
@@ -62,6 +63,7 @@
  */
 
 import { ausfuehrungGelaufen } from '../abnahme-ausfuehrung.js'
+import { pruefWertText, renderNachweisKennung, renderRenderNachweis } from './abnahme-render.js'
 import { renderFaehigkeitVorschlaege, trenneVorschlagDateien } from '../faehigkeit-vorschlag-anzeige.js'
 import { renderHarnessImLauf, zaehlZeileText } from '../harness-abgleich-anzeige.js'
 import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
@@ -80,7 +82,6 @@ const AK_URTEILE = new Set(['ERFUELLT', 'NICHT_ERFUELLT', 'NICHT_PRUEFBAR'])
 const SCHWEREN = new Set(['NIEDRIG', 'MITTEL', 'HOCH', 'KRITISCH'])
 const DIMENSIONEN = new Set(['bugs', 'funktion', 'skalierbarkeit', 'wartbarkeit', 'prinzipien', 'sicherheit'])
 const EVIDENZEN = new Set(['confirmed', 'likely', 'needs-validation'])
-const PRUEF_WERTE = new Set(['GRUEN', 'ROT', 'ZEITGRENZE', 'FEHLER'])
 
 /** Nicht-'ok'-Status der Projektionen mit eigenem Text (Inhalt wie bisher, nur übersetzt). */
 const URTEIL_STATUS = new Set(['kein_review_schritt', 'noch_nicht_gelaufen', 'laufakte_fehlt', 'nicht_lesbar', 'fehlgeschlagen', 'nicht_gelaufen_klaerung'])
@@ -117,8 +118,8 @@ export function erlaubteAbnahmeAktionen(workflowStatus) {
   return { ANGENOMMEN: workflowStatus === 'ABGESCHLOSSEN', ANPASSUNG_ANGEFORDERT: ablehnbar, ABGELEHNT: ablehnbar }
 }
 
-// F45 FB-2 (code-reviewer 8): die Regel liegt im Blattmodul abnahme-ausfuehrung.js (kein Importzyklus mit der Vorschlagskarte).
-export { ausfuehrungGelaufen }
+// F45 FB-2 (code-reviewer 8): die Regel liegt im Blattmodul abnahme-ausfuehrung.js (kein Importzyklus mit der Vorschlagskarte); F45 B3b-2a-2: pruefWertText und renderNachweisKennung aus abnahme-render.js (Aufrufer workflows.js unverändert).
+export { ausfuehrungGelaufen, pruefWertText, renderNachweisKennung }
 
 /**
  * Die Lage der Abnahme (Entscheidungen Challenger, F44 WS-4b):
@@ -150,11 +151,6 @@ export function abnahmeLage(abnahme) {
 export function pruefungWiederholbar(abnahme) {
   const pruefung = abnahme.pruefergebnis
   return abnahme.workflowStatus === 'KLAERUNG_ERFORDERLICH' && pruefung?.status === 'ok' && pruefung.ergebnis !== 'GRUEN'
-}
-
-/** @param wert - PruefergebnisWert (src/pruefschritt/types.ts) @returns übersetzter Text (GRUEN → „GRÜN“), unbekannt roh */
-export function pruefWertText(wert) {
-  return wertText(PRUEF_WERTE, 'abnahme.pruefung.wert', wert)
 }
 
 /** @param wert - ISO-Zeitstempel (Serverwert) @returns HTML, formatiert in der aktuellen Sprache */
@@ -571,7 +567,7 @@ export function renderPruefergebnis(workflowId, abnahme) {
   const farbe = projektion.ergebnis === 'GRUEN' ? 'ok' : 'fehler'
   const exit = projektion.exitCode === null || projektion.exitCode === undefined ? t('abnahme.unbekannt') : String(projektion.exitCode)
   const knopf = pruefungWiederholbar(abnahme) ? ` <button type="button" class="button wf-pruefung-wiederholen" data-workflow-id="${escapeHtml(workflowId)}">${tHtml('abnahme.pruefung.wiederholen')}</button>` : ''
-  const ergebnis = `<span class="ablauf-status ${farbe}">${escapeHtml(wertText(PRUEF_WERTE, 'abnahme.pruefung.wert', projektion.ergebnis))}</span>`
+  const ergebnis = `<span class="ablauf-status ${farbe}">${escapeHtml(pruefWertText(projektion.ergebnis))}</span>`
   return `<p class="abnahme-pruefung">${tHtml('abnahme.pruefung.zeile', { exit }, { ergebnis, lauf: `<code>${escapeHtml(projektion.laufId ?? '')}</code>` })}${knopf}</p>`
 }
 
@@ -819,7 +815,7 @@ export function renderAbnahmeSeite(workflowId, abnahme, vorschau = null, harness
     ${oben ? kanal : ''}
     ${renderUmfangHinweis(abnahme.umfang)}
     ${renderFaehigkeitVorschlaege(workflowId, abnahme, { ebene: 2, verwerfenOffen: zusatz.verwerfenOffen ?? null })}
-    ${renderQaKarte(abnahme.qaErgebnis)}
+    ${renderQaKarte(abnahme.qaErgebnis)}${renderRenderNachweis(abnahme.renderNachweis)}
     ${renderSelbstAusprobieren(urteil, vorschau)}
     ${oben ? '' : kanal}
     <section id="abnahme-nachweise" class="entscheiden-karte" aria-labelledby="abnahme-nachweise-titel">
@@ -883,7 +879,7 @@ function renderEntschieden(entscheidung) {
  */
 function renderVorab(workflowId, abnahme, harnessAbgleich) {
   const gelaufen = ausfuehrungGelaufen(abnahme)
-  const ergebnis = gelaufen ? `${renderErgebnisDetails(workflowId, abnahme)}${renderHarnessImLauf(harnessAbgleich, { ebene: 4, aufklappen: false })}` : ''
+  const ergebnis = gelaufen ? `${renderErgebnisDetails(workflowId, abnahme)}${renderRenderNachweis(abnahme.renderNachweis, { ebene: 4, vorab: true })}${renderHarnessImLauf(harnessAbgleich, { ebene: 4, aufklappen: false })}` : ''
   const erlaubt = erlaubteAbnahmeAktionen(abnahme.workflowStatus)
   const stil = { ANGENOMMEN: 'button primary', ANPASSUNG_ANGEFORDERT: 'button', ABGELEHNT: 'button danger' }
   const knoepfe = ABNAHME_AKTIONEN.filter((aktion) => erlaubt[aktion])

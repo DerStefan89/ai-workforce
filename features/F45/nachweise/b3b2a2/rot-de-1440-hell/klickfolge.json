@@ -1,0 +1,67 @@
+{
+  "url": "http://127.0.0.1:4403/#/workflows/router-7b7bf5ea-9325-4c26-b38c-88bcf7a41585",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1600
+  },
+  "farbschema": "light",
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Kartentitel",
+        "selector": "#abnahme-render-titel"
+      },
+      {
+        "name": "Badge",
+        "selector": ".abnahme-render .ablauf-status"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte",
+        "selector": ".abnahme-render"
+      },
+      {
+        "name": "Karte im Block vorab",
+        "selector": ".abnahme-vorab .abnahme-render"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-render .note.amber"
+      },
+      {
+        "name": "Badge grün",
+        "selector": ".abnahme-render .ablauf-status.ok"
+      },
+      {
+        "name": "Badge amber",
+        "selector": ".abnahme-render .ablauf-status.warten"
+      },
+      {
+        "name": "Ausgabe aufgeklappt",
+        "selector": ".abnahme-render details[open]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Render ROT, amber Hinweis, Abnahme möglich — de-1440-hell",
+      "warteAufSelector": {
+        "selector": ".abnahme-render",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-karte.webp"
+    },
+    {
+      "label": "Ausgabe-Ende aufgeklappt",
+      "klick": ".abnahme-render summary",
+      "screenshot": "02-ausgabe.webp"
+    }
+  ]
+}

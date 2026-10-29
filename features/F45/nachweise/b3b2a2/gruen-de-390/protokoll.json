@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Render GRÜN, Karte ohne Hinweis — de-390",
+    "Karte": true,
+    "Karte im Block vorab": false,
+    "Hinweis amber": false,
+    "Badge grün": true,
+    "Badge amber": false,
+    "Ausgabe aufgeklappt": false,
+    "Abnehmen": true,
+    "Kartentitel": "Darstellung (Render-Nachweis)",
+    "Badge": "GRÜN",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]
