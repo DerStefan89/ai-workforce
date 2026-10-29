@@ -573,7 +573,7 @@ import { baueSammlungAntwort, baueScoutSammlungAbgleich, ergaenzeScoutPrompt } f
 import { baueAuftragstext as bauePruefAuftragstext, baueBerichtPruefer, baueInhaltPruefer, bestimmeSubjekt, berichtKurz, erzeugeBericht, ergaenzeSammlung, ergaenzeVorbereitung, gleicherPin, holeSubjekt, leseBerichte, letzterBericht, PRUEF_ZEITGRENZE_MS, pinneSubjekt, pruefeAusnahme, pruefeKoerper, raeumeAuf, raeumeVerwaistePruefordner } from './leitstand/routen-pruefung.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, erkenneAkteRoute, fuehreAkteRouteDurch } from './leitstand/routen-f35.mjs'
-import { projizierePruefergebnis, projiziereRenderNachweis } from './leitstand/abnahme-pruefung.mjs'
+import { ladeQaDarstellung, projizierePruefergebnis, projiziereRenderNachweis } from './leitstand/abnahme-pruefung.mjs'
 import { ermittleAbnahmeStand, findeAusfuehrungsSchritt } from './leitstand/abnahme-stand.mjs'
 import { fuehreIstNachAbnahmeDurch } from './leitstand/ist-nach-abnahme.mjs'
 import { erkennePlanungRoute, fuehrePlanungRouteDurch } from './leitstand/routen-planung.mjs'
@@ -6981,8 +6981,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext, leseEntschiedeneAdrs(laufWurzel))
     } else if (schritt.output_schema === 'ergebnis-qa') {
       // F45 B2b-2b-1 (F-820, Delta D6): Rolleninstruktion mit JSON-Vertrag, AK und Nicht-Ziele des Auftrags — gekoppelt an das
-      // Schema (wie Regel 1q), nicht an die Rolle: ein qa-Schritt ohne Schema bekäme sonst einen Vertrag, den niemand prüft.
-      auftragstext = baueQaAuftragstext(auftragVersion.daten.auftragstext, auftragVersion.daten.akzeptanzkriterien ?? [], auftragVersion.daten.nicht_ziele ?? [])
+      // Schema (wie Regel 1q), nicht an die Rolle: ein qa-Schritt ohne Schema bekäme sonst einen Vertrag, den niemand prüft. F45 B3b-2b: dazu der Render-Nachweis des letzten Ausführungslaufs.
+      auftragstext = baueQaAuftragstext(auftragVersion.daten.auftragstext, auftragVersion.daten.akzeptanzkriterien ?? [], auftragVersion.daten.nicht_ziele ?? [], ladeQaDarstellung(workflowDaten, ladeOptionen, laufWurzel))
     }
 
     // F45 B2a-2 (F-938, F-1071): der Arbeitspaket-Block für architekt und ausfuehrung — einzige Textquelle ist

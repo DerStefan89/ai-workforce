@@ -6821,7 +6821,7 @@ Nachtrag (F45 F-3a-2, 14.10.2026): Anzeige erledigt — Reiter „Plugins aus de
 Nachtrag (F45 F-3b-1, 14.10.2026): Plugins freigeben gebaut (gefilterte Kopie `src/plugin-kopie`, Prüfbericht über die Kopie, Freigabe an Hash und Bericht gebunden, Zuordnung je Rolle nur Ausführung); `init.plugins` bleibt `[]`, Startargumente unverändert. Offen: Plugins im Lauf (F-1090, F45 F-3b-2).
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
-**F-911** · `TECH_DEBT` · P2 · teilweise (Skelett F45 B3b-1, 29.10.2026; Render im Lauf B3b-2a; Rest B3b-2b)
+**F-911** · `TECH_DEBT` · P2 · erledigt (F45 B3b-2b, 29.10.2026)
 Titel: Fremdprojekte haben keine Design-Prüfkette.
 Beschreibung: design-guardian fehlt im Projekt-Skelett und in den Workflow-Vorlagen. impeccable steht auf OFFEN und hat keine `installation_vorlage`. Render-Nachweis und Token-Gate gibt es nur in ai-workforce. Installiert ist nur frontend-design.
 Fundstelle: `vorlagen/projekt-skelett/.claude/agents`, `workflow-vorlagen/*.json`, `ressourcen.json`.
@@ -6829,6 +6829,7 @@ Auswirkung: Oberflächen in Fremdprojekten werden ohne Design-Prüfung gebaut.
 Maßnahme: Fixpaket Arbeitsfähigkeit, B3.
 Status: teilweise (F45 B3b-1, 29.10.2026): Skelett erledigt — Token-/Bewegungs-Gate `scripts/check-design-tokens.mjs` in `npm run check`, Render-Nachweis `npm run check:render`, Design-Referenzen `docs/design/referenzen/`, design-guardian-Beispiel mit Bewegungsregeln und Render-Nachweis als Pflicht (`vorlagen/projekt-skelett/`, Nachweis `features/F45/nachweise/b3b1/`). Offen: design-guardian-Schritt im Lauf (Workflow-Vorlagen) → B3b-2.
 Nachtrag (Challenge B3b-2, 29.10.2026): Der Render-Nachweis im Lauf durch den Kern kommt mit B3b-2a (F-1256). Rest: Bewertung der Darstellung im qa-Schritt statt eines eigenen design-guardian-Schritts (E-B3B2-1 = A) → B3b-2b.
+Status: erledigt (F45 B3b-2b, 29.10.2026): Der qa-Schritt bekommt den Render-Nachweis des letzten Ausführungslaufs als Abschnitt „Darstellung“ (`baueQaAuftragstext`, `src/qa/index.ts`; `ladeQaDarstellung`, `scripts/leitstand/abnahme-pruefung.mjs`): Protokoll, End-Bilder und `docs/design/referenzen/`, jeder rote Punkt ein Befund ≥ HOCH, dieselbe Korrekturrunde. Kein design-guardian-Schritt (E-B3B2-1 = A); Harness-Abgleich: Agent design-guardian ⇒ ersetzt durch qa. Nachweis `features/F45/nachweise/b3b2b/`.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
 
 **F-915** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -9272,13 +9273,13 @@ Maßnahme: Bei Bedarf über `src/projekt-anlegen/nachruesten.ts`.
 Status: offen.
 Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
 
-**F-1268** · `TECH_DEBT` · P2 · offen
+**F-1268** · `TECH_DEBT` · P2 · erledigt (F45 B3b-2b, 29.10.2026)
 Titel: Render-Befunde ohne Folge in der Kette.
 Beschreibung: Ein ROT/ZEITGRENZE/FEHLER des Render-Nachweises hält die Kette nicht an und löst keine Korrekturrunde aus; die Abnahme zeigt nur einen Hinweis.
 Fundstelle: `scripts/leitstand-server.mjs` (Nachlauf), `src/pruefschritt/render.ts`.
 Auswirkung: Mittel — Darstellungsfehler erreichen die Abnahme ohne Korrektur.
 Maßnahme: B3b-2b: Befunde über den qa-Schritt (E-B3B2-1 = A).
-Status: offen.
+Status: erledigt (F45 B3b-2b, 29.10.2026): ROT ⇒ der qa-Schritt macht jeden roten Punkt des Protokolls zum Befund ≥ HOCH; ein Projektfehler ohne Aufnahme (Build) ist ebenfalls ein Befund HOCH. Die Folge ist die jedes qa-Befunds: nur BLOCKIERT hält am qa-Schritt an und kann die Korrekturrunde auslösen; bei BEREIT_NACH_KORREKTUR läuft der Ablauf zu Ende und der Befund steht in der Abnahme (Regel 1q, `src/workflow/index.ts`; Automatik `scripts/leitstand/f35-ws3-adjust-automatik.mjs`) — Rest als Entscheidung Stefans in F-1276 (Prüfpass B3b-2b). ZEITGRENZE/FEHLER bleiben bewusst ohne Befund: ein Testfall „Darstellung“ nicht_pruefbar und der Hinweis in der Abnahme. Die Regeln sind Text im Auftrag des qa-Schritts — DEKLARIERT (Modell-Urteil); belegt im Spike `features/F45/nachweise/b3b2b/spike-qa-darstellung.md` (ROT ⇒ Q1 HOCH).
 Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
 
 **F-1269** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -9290,13 +9291,13 @@ Maßnahme: Neue Prüfschritte mit dem Ist-Aufwand des Musters schätzen.
 Status: offen.
 Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
 
-**F-1270** · `TECH_DEBT` · P3 · offen
+**F-1270** · `TECH_DEBT` · P3 · erledigt (DEKLARIERT, F45 B3b-2b, 29.10.2026)
 Titel: Alter Render-Nachweis bleibt bei fehlendem Chromium.
 Beschreibung: `render-nachweis.mjs` des Skeletts leert `.render-nachweis/` erst nach dem Browserstart — fehlt Chromium, bleiben die Bilder des vorigen Laufs stehen, und ein Prüfer könnte veraltete Bilder lesen.
 Fundstelle: `vorlagen/projekt-skelett/scripts/render-nachweis.mjs` (`main`).
 Auswirkung: Gering heute, mittel ab B3b-2b (qa liest die Bilder).
 Maßnahme: B3b-2b.
-Status: offen.
+Status: erledigt (DEKLARIERT, F45 B3b-2b, 29.10.2026): Das Skelett bleibt unverändert; alte Dateien liegen nicht nur bei ZEITGRENZE/FEHLER, sondern auch bei ROT ohne Aufnahme (fehlendes Chromium/playwright, fehlende render.json, gescheiterter `npm run build &&` — alle Exit 1, Advisor B3). Der qa-Schritt liest deshalb bei ZEITGRENZE/FEHLER nichts unter `.render-nachweis/` und bei ROT nur, wenn das Ausgabe-Ende mit der Abschlusszeile „Render-Nachweis: <n> Ansichten, …“ endet; GRÜN entsteht nur nach dem Leeren; eine Fehlerzeile „Render-Nachweis: <Fehlermeldung>“ (Wurf in `main`) gilt ausdrücklich nicht als Abschlusszeile. Leseregel = Modell-Urteil, nicht belegt für die Nicht-prüfbar-Zweige. Wieder öffnen, wenn R2/F30 einen Befund aus veralteten Bildern zeigt; deterministische Alternative dann: mtime von `protokoll.md` gegen `gestartet_am` (Advisor B3).
 Feature/Run: Entdeckt: Challenge B3b-2, 29.10.2026.
 
 **F-1271** · `TECH_DEBT` · P3 · offen
@@ -9305,7 +9306,7 @@ Beschreibung: Der Kern führt `npm run check:render` nur im Nachlauf eines Ausf�
 Fundstelle: `scripts/leitstand-server.mjs` (Nachlauf, Route `…/pruefung-wiederholen`), `src/pruefschritt/render.ts`.
 Auswirkung: Gering — selten (Prüfung erst rot, dann grün ohne neuen Bau); die Abnahme ist trotzdem möglich.
 Maßnahme: B3b-2b oder bei Bedarf: Render auch nach einer grünen Wiederholung.
-Status: offen.
+Status: offen. Nachtrag (F45 B3b-2b, 29.10.2026): nicht behoben, aber nicht mehr still — trägt das Projekt `render.json` und fehlt der Nachweis zum Bau, meldet der qa-Schritt die Darstellung als nicht prüfbar (`ladeQaDarstellung`, Advisor B4). Render nach „Prüfung wiederholen“ bleibt bei Bedarf.
 Feature/Run: Entdeckt: Plan/Advisor-Pass F45 B3b-2a, 29.10.2026.
 
 **F-1272** · `TECH_DEBT` · P3 · offen
@@ -9314,7 +9315,7 @@ Beschreibung: (qa M3) `renderNachweis` 'fehlt' heißt dreierlei — kein Render 
 Fundstelle: `scripts/leitstand/abnahme-pruefung.mjs`, `src/pruefschritt/render.ts`, `vorlagen/projekt-skelett/scripts/render-nachweis.mjs`, `scripts/leitstand-server.mjs`.
 Auswirkung: Gering — Anzeige und Randfälle; der Kern-Ablauf ist belegt (`features/F45/nachweise/b3b2a/nachweis.md`).
 Maßnahme: N3, N4 mit B3b-2b; M3, N1, N8, N6, N9, cr 7 bei Bedarf. (Nachtrag F45 B3b-2a-2, 29.10.2026, Advisor P3: M3, N1, N8 kamen nicht in die Karte — Auftrag: bei 'fehlt' keine Karte, kein eigener Status, keine Kern-Änderung; nichts aus F-1272 passte ohne Zusatzaufwand.)
-Status: offen.
+Status: offen. Nachtrag (F45 B3b-2b, 29.10.2026): erledigt ist der FEHLER-Text der Karte („Darstellung nicht geprüft — den Grund zeigt das Ausgabe-Ende.“, auch im Block „vorab“, `public/leitstand/views/abnahme-render.js`). M3 ist für den qa-Schritt entschärft (render.json ohne Nachweis ⇒ nicht prüfbar, F-1271-Nachtrag); die Karte zeigt 'fehlt' weiter nicht. N3 (`src/pruefschritt/render.ts`) und N4 (Meldung des Skeletts) passten nicht in B3b-2b (Nicht-Ziel: keine Änderung an render.ts; Skelett unverändert) ⇒ wie die übrigen Punkte bei Bedarf.
 Feature/Run: Entdeckt: QA-/Code-Review-Pass F45 B3b-2a-1, 29.10.2026.
 
 **F-1273** · `TECH_DEBT` · P3 · offen
@@ -9334,3 +9335,30 @@ Auswirkung: Gering — ein zusätzlicher Commit und eine rote CI-Runde.
 Maßnahme: `check-f40-lagebild` in jede Gate-Liste eines Auftrags, der `state/findings.md` ändert.
 Status: offen.
 Feature/Run: Entdeckt: F45 B3b-2a-1 (CI), 29.10.2026.
+
+**F-1275** · `TECH_DEBT` · P3 · offen
+Titel: Karte sagt bei ZEITGRENZE „mit Befunden“, der qa-Schritt „nicht prüfbar“.
+Beschreibung: Seit F45 B3b-2b behandelt der qa-Schritt ZEITGRENZE wie FEHLER (Darstellung nicht prüfbar, keine Bilder); die Karte der Abnahme zeigt bei ZEITGRENZE weiter „Darstellung mit Befunden — …“, weil der Auftrag GRÜN/ROT/ZEITGRENZE unverändert ließ. Advisor B7 schlug denselben Text wie bei FEHLER vor.
+Fundstelle: `public/leitstand/views/abnahme-render.js` (`renderRenderNachweis`), `src/qa/index.ts` (`baueDarstellungsAbschnitt`).
+Auswirkung: Gering — zwei Worte für denselben Zustand; die Abnahme bleibt möglich, das Ausgabe-Ende ist sichtbar.
+Maßnahme: Bei Bedarf: `hinweisFehler`/`hinweisFehlerVorab` auch für ZEITGRENZE (eine Bedingung, Test).
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass F45 B3b-2b, 29.10.2026.
+
+**F-1276** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Roter Punkt der Darstellung erzwingt keine Korrektur.
+Beschreibung: Seit F45 B3b-2b wird jeder rote Punkt des Render-Protokolls ein qa-Befund ≥ HOCH. Halt und Korrekturrunde gibt es aber nur bei Urteil BLOCKIERT; laut qa-Instruktion ist BLOCKIERT für „Nutzer kann das Ergebnis so nicht verwenden“ reserviert, ein Überlauf bei 390 px endet daher oft als BEREIT_NACH_KORREKTUR — der Ablauf läuft zu Ende, der Befund erreicht ohne Korrektur die Abnahme (sichtbar, aber nicht behoben). Der Spike hatte zufällig BLOCKIERT.
+Fundstelle: `src/qa/index.ts` (`baueDarstellungsAbschnitt`, Urteilsregel in `baueQaAuftragstext`), `src/workflow/index.ts` (Regel 1q), `scripts/leitstand/f35-ws3-adjust-automatik.mjs`.
+Auswirkung: Mittel — der Kern von F-1268 („Darstellungsfehler erreichen die Abnahme ohne Korrektur“) bleibt für BEREIT_NACH_KORREKTUR bestehen.
+Maßnahme: Entscheidung Stefan: (A) Regel im qa-Text „ein roter Punkt des Render-Protokolls ⇒ urteil BLOCKIERT“ (eine Zeile, Test) oder (B) so lassen, Beobachtung in R2/F30. Nicht stillschweigend im Code.
+Status: offen.
+Feature/Run: Entdeckt: code-reviewer- und qa-Pass F45 B3b-2b, 29.10.2026.
+
+**F-1277** · `TECH_DEBT` · P3 · offen
+Titel: Karte im Block „vorab“ sagt bei ROT „nicht der Grund für den Halt“.
+Beschreibung: `abnahme.render.hinweisVorab` („Darstellung mit Befunden — sie ist nicht der Grund für den Halt …“) stimmte in B3b-2a. Seit B3b-2b kann der qa-Schritt wegen der Darstellung BLOCKIERT melden und den Ablauf anhalten (z. B. ohne verbleibende Korrekturrunde); dann ist der Satz falsch, genau wenn Stefan entscheidet. Der Auftrag B3b-2b ließ ROT auf der Karte unverändert.
+Fundstelle: `public/leitstand/views/abnahme-render.js` (`renderRenderNachweis`), `public/leitstand/i18n/*.js` (`abnahme.render.hinweisVorab`).
+Auswirkung: Mittel bis gering — irreführender Satz in der Lage „vorab“; die qa-Karte daneben nennt den Befund.
+Maßnahme: Satz umformulieren, etwa „Darstellung mit Befunden — sie kann zum Halt beigetragen haben, siehe Prüfung aus Nutzersicht.“ (vier Sprachen, View-Test); zusammen mit F-1275.
+Status: offen.
+Feature/Run: Entdeckt: qa-Pass F45 B3b-2b, 29.10.2026.

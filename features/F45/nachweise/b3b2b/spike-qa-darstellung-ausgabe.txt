@@ -1,0 +1,86 @@
+protokoll befunde ["/ (mobil-hell): waagerechter Überlauf"]
+exit 0 dauer_ms 90631 stderr 
+init.tools Glob,Grep,Read,StructuredOutput version 2.1.300 modell claude-sonnet-5
+tool_use ["Read <TEMP>…spike-projekt\\index.html","Read <TEMP>…spike-projekt\\style.css","Read .render-nachweis/protokoll.md","Glob .render-nachweis/**/*.png","Read .render-nachweis/start-desktop-hell-400ms.png","Read .render-nachweis/start-mobil-hell.png","StructuredOutput ","StructuredOutput "]
+tool_result mit Bild 2
+subtype success is_error false kosten 0.2163324 turns 9
+structured_output {
+ "urteil": "BLOCKIERT",
+ "befunde": [
+  {
+   "id": "Q1",
+   "schwere": "HOCH",
+   "evidenz": "confirmed",
+   "fundstelle": "Darstellung: / / mobil-hell (Ursache: style.css:7)",
+   "zusammenfassung": "Bei 390 px Breite überläuft die Tabelle waagerecht: 'Kategorie' und 'Betrag' sind abgeschnitten und nur per horizontalem Scrollen erreichbar. Verstößt gegen die CLAUDE.md-Regel 'jede Ansicht funktioniert bei 390 px Breite ohne waagerechtes Scrollen'.",
+   "korrekturrichtung": "Die feste `min-width: 640px` in style.css:7 entfernen oder die Tabelle für schmale Breiten anpassen (z. B. kleinere Innenabstände, Spalten umbrechen lassen statt min-width zu erzwingen).",
+   "beleg": "Render-Nachweis-Protokoll Zeile 12 ('/ (mobil-hell): waagerechter Überlauf') sowie Bild start-mobil-hell.png: Spalte 'Kategorie' wird am rechten Rand abgeschnitten, 'Betrag' ist gar nicht mehr sichtbar."
+  },
+  {
+   "id": "Q2",
+   "schwere": "MITTEL",
+   "evidenz": "confirmed",
+   "fundstelle": "style.css:8",
+   "zusammenfassung": "Die Rahmenfarbe der Tabelle ist mit `#c8c8c8` fest verdrahtet statt über ein `--farbe-*`-Token zu laufen. Verstößt gegen die CLAUDE.md-Regel 'nur Farben aus den Tokens in style.css'.",
+   "korrekturrichtung": "Ein Token z. B. `--farbe-rand: #c8c8c8;` in `:root` ergänzen und in Zeile 8 `border: 1px solid var(--farbe-rand);` verwenden.",
+   "beleg": "style.css:8 — `.buchungen td, .buchungen th { border: 1px solid #c8c8c8; ... }`, während style.css:1 nur `--farbe-text`, `--farbe-flaeche`, `--farbe-akzent` definiert."
+  }
+ ],
+ "testfaelle": [
+  {
+   "name": "AK1: Startseite zeigt Buchungen des Monats als Tabelle (Default)",
+   "schritte": [
+    "index.html öffnen (Zeilen 4-8) und Tabellenstruktur prüfen",
+    "Kopfzeile auf die vier Spalten Datum, Empfänger, Kategorie, Betrag prüfen",
+    "Die drei Buchungszeilen (Stadtwerke, Supermarkt am Platz, Gehalt) auf Datum/Empfänger/Kategorie/Betrag prüfen"
+   ],
+   "erwartet": "Tabelle mit Spalten Datum, Empfänger, Kategorie, Betrag und den Buchungen des Monats ist vorhanden.",
+   "ergebnis": "bestanden"
+  },
+  {
+   "name": "AK1: Leerzustand (keine Buchungen im Monat)",
+   "schritte": [
+    "index.html auf Logik zur Ermittlung der Buchungen des aktuellen Monats durchsuchen"
+   ],
+   "erwartet": "Nicht prüfbar: index.html enthält nur drei fest eingetragene Beispielbuchungen und keine Logik, die Buchungen für einen Monat ermittelt oder einen Leerzustand (0 Buchungen) abbildet — ein Leerzustand lässt sich am statischen Code nicht nachstellen.",
+   "ergebnis": "nicht_pruefbar"
+  },
+  {
+   "name": "Nicht-Ziel: Keine Filter, keine Sortierung",
+   "schritte": [
+    "index.html auf Filter- oder Sortier-Steuerelemente (Formulare, Buttons, Select, onclick/Sortier-Skripte) durchsuchen"
+   ],
+   "erwartet": "Keine Filter- oder Sortierfunktion vorhanden.",
+   "ergebnis": "bestanden"
+  },
+  {
+   "name": "Darstellung: / desktop-hell",
+   "schritte": [
+    "Bild start-desktop-hell-400ms.png (End-Bild) lesen und mit CLAUDE.md-Regeln vergleichen"
+   ],
+   "erwartet": "Tabelle vollständig sichtbar, kein Überlauf, Einblend-Animation nur mit opacity.",
+   "ergebnis": "bestanden"
+  },
+  {
+   "name": "Darstellung: / mobil-hell (390 px)",
+   "schritte": [
+    "Bild start-mobil-hell.png lesen",
+    "Mit Render-Nachweis-Protokoll (Überlauf: true) abgleichen"
+   ],
+   "erwartet": "Tabelle passt bei 390 px ohne waagerechtes Scrollen.",
+   "ergebnis": "durchgefallen"
+  },
+  {
+   "name": "Darstellung: Token-Gate Farben (style.css)",
+   "schritte": [
+    "style.css Zeile für Zeile auf Farbwerte prüfen",
+    "Jeden Farbwert gegen die in :root definierten --farbe-*-Token abgleichen"
+   ],
+   "erwartet": "Alle Farbwerte verwenden --farbe-*-Token statt fester Werte.",
+   "ergebnis": "durchgefallen"
+  }
+ ],
+ "empfehlung": "Nicht abnehmen. Zuerst Q1 (style.css:7, min-width 640px entfernen/anpassen) beheben, damit die Tabelle bei 390 px ohne waagerechtes Scrollen funktioniert, dazu Q2 (Rahmenfarbe auf Token umstellen) beheben, dann den Render-Nachweis erneut ausführen."
+}
+validiereErgebnisQa []
+roter Punkt als Befund >= HOCH Q1 HOCH Darstellung: / / mobil-hell (Ursache: style.css:7)

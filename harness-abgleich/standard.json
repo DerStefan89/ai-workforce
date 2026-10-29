@@ -44,7 +44,7 @@
       "fehlt_im_ablauf": {
         "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
       },
-      "begruendung": "Review und qa sind eigene Workflow-Schritte mit frischem Kontext (Vorlagen standard und hoch; qa seit F45 B2b-2b-2, F-820); der Abgleich bindet diesen Punkt an den Review-Schritt, die Prüfung aus Nutzersicht belegt ihr eigener Eintrag. design-guardian als Schritt erst mit B3."
+      "begruendung": "Review und qa sind eigene Workflow-Schritte mit frischem Kontext (Vorlagen standard und hoch; qa seit F45 B2b-2b-2, F-820); der Abgleich bindet diesen Punkt an den Review-Schritt, die Prüfung aus Nutzersicht belegt ihr eigener Eintrag. Die Darstellung bewertet der qa-Schritt mit dem Render-Nachweis des Kerns (F45 B3b-2b, E-B3B2-1 = A)."
     },
     {
       "art": "dod",
@@ -57,7 +57,7 @@
       "fehlt_im_ablauf": {
         "begruendung": "Kontrolltiefe fast-lane (Router) — bewusst ohne Review; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
       },
-      "begruendung": "Review und qa sind eigene Workflow-Schritte mit frischem Kontext (Vorlagen standard und hoch; qa seit F45 B2b-2b-2, F-820); der Abgleich bindet diesen Punkt an den Review-Schritt, die Prüfung aus Nutzersicht belegt ihr eigener Eintrag. design-guardian als Schritt erst mit B3."
+      "begruendung": "Review und qa sind eigene Workflow-Schritte mit frischem Kontext (Vorlagen standard und hoch; qa seit F45 B2b-2b-2, F-820); der Abgleich bindet diesen Punkt an den Review-Schritt, die Prüfung aus Nutzersicht belegt ihr eigener Eintrag. Die Darstellung bewertet der qa-Schritt mit dem Render-Nachweis des Kerns (F45 B3b-2b, E-B3B2-1 = A)."
     },
     {
       "art": "dod",
@@ -91,50 +91,80 @@
       "art": "dod",
       "name": "dod-be1977f5",
       "text": "[FÜLLUNG, nur UI] Lange Texte zerstören das Layout nicht",
-      "status": "bewusst_nicht",
-      "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B3, E-B2b-2-1 = A; F-1031)."
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "qa"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
+      },
+      "begruendung": "Der Kern führt nach dem Bau den Render-Nachweis aus (F45 B3b-2a-1, auch Zoom 200 %); der qa-Schritt bewertet Protokoll und End-Bilder (F45 B3b-2b, E-B3B2-1 = A). Lange Texte trägt nur, was Zoom 200 % und Überlaufmessung zeigen — der qa-Text hat dazu keine eigene Anweisung. Gilt nur, wenn das Projekt render.json trägt; der Abgleich belegt den gelaufenen qa-Schritt, nicht den Render — ob ein Nachweis vorlag, zeigen die Karte „Darstellung“ der Abnahme bzw. der qa-Testfall „Darstellung“ (nicht prüfbar) (DEKLARIERT)."
     },
     {
       "art": "dod",
       "name": "dod-bef0bed6",
       "text": "[FÜLLUNG, nur UI] Mobile Darstellung berücksichtigt; jeder Container mit max-width hat auch width: 100%",
-      "status": "bewusst_nicht",
-      "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B3, E-B2b-2-1 = A; F-1031)."
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "qa"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
+      },
+      "begruendung": "Render-Nachweis des Kerns mit 390 px und Überlaufmessung (F45 B3b-2a-1); der qa-Schritt macht jeden roten Punkt zum Befund ≥ HOCH (F45 B3b-2b, E-B3B2-1 = A). Gilt nur, wenn das Projekt render.json trägt; der Abgleich belegt den gelaufenen qa-Schritt, nicht den Render — ob ein Nachweis vorlag, zeigen die Karte „Darstellung“ der Abnahme bzw. der qa-Testfall „Darstellung“ (nicht prüfbar) (DEKLARIERT)."
     },
     {
       "art": "dod",
       "name": "dod-6e75626d",
       "text": "[FÜLLUNG, nur UI] Design bleibt treu (Design-Tokens, keine neuen Farben/Schatten ohne Freigabe)",
-      "status": "bewusst_nicht",
-      "begruendung": "UI-Prüfung im Lauf erst mit dem design-guardian-Schritt und dem Render-Nachweis im Lauf (B3, E-B2b-2-1 = A; F-1031)."
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "qa"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
+      },
+      "begruendung": "Der qa-Schritt vergleicht End-Bilder und CSS mit docs/design/referenzen/ und den Design-Regeln des Projekts (Token-Gate) (F45 B3b-2b, E-B3B2-1 = A). Gilt nur, wenn das Projekt render.json trägt; der Abgleich belegt den gelaufenen qa-Schritt, nicht den Render — ob ein Nachweis vorlag, zeigen die Karte „Darstellung“ der Abnahme bzw. der qa-Testfall „Darstellung“ (nicht prüfbar) (DEKLARIERT)."
     },
     {
       "art": "dod",
       "name": "dod-526c5ddb",
       "text": "[FÜLLUNG, nur UI] UI-Workstreams liefern vor Übergabe an Stefan einen Render-Nachweis per `npm run render-nachweis` (Screenshots + Klicktabelle) — ein Reviewer-/QA-Pass allein findet keine real nur im Browser sichtbaren Fehler wie eine überschriebene `[hidden]`-Regel oder eine fehlende `classList`-Mutation (F-622)",
       "status": "bewusst_nicht",
-      "begruendung": "Render-Nachweis im Lauf erst mit B3 (Beleg 5; E-B2b-2-1 = A)."
+      "begruendung": "DoD von ai-workforce selbst (npm run render-nachweis mit Klicktabelle, F-622): ai-workforce trägt keine render.json, der Kern rendert hier nicht, und der Render-Nachweis im Lauf (F45 B3b-2a-1) klickt nicht — die Klickfolgen bleiben Handarbeit vor der Übergabe an Stefan."
     },
     {
       "art": "dod",
       "name": "dod-9f7fb386",
       "text": "[FÜLLUNG, nur UI] Referenzen in `docs/design/referenzen/` gelesen; Skill `frontend-design` genutzt, wenn verfügbar",
       "status": "bewusst_nicht",
-      "begruendung": "Skelett-DoD (F45 B3b-1); im Lauf prüft das erst der design-guardian-Schritt (B3b-2, F-1256)."
+      "begruendung": "Mittel des Builders (Referenzen lesen, Skill frontend-design nutzen) — im Lauf nicht prüfbar; die Treue zu den Referenzen prüft der qa-Schritt am Ergebnis unter dod-6e75626d (F45 B3b-2b)."
     },
     {
       "art": "dod",
       "name": "dod-42d163ec",
       "text": "[FÜLLUNG, nur UI] Bewegung mit Zweck, Dauer/Easing als Tokens, nur `transform`/`opacity`; „Bewegung reduzieren“ schaltet sie ab",
-      "status": "bewusst_nicht",
-      "begruendung": "Skelett-DoD (F45 B3b-1); im Lauf prüft das erst der design-guardian-Schritt (B3b-2, F-1256)."
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "qa"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
+      },
+      "begruendung": "Der Render-Nachweis des Kerns misst laufende Animationen unter „Bewegung reduzieren“ (roter Punkt ⇒ qa-Befund ≥ HOCH); Dauer, Easing und transform/opacity prüft der qa-Schritt im CSS — die End-Bilder zeigen keine Bewegung (F45 B3b-2b, E-B3B2-1 = A). Gilt nur, wenn das Projekt render.json trägt; der Abgleich belegt den gelaufenen qa-Schritt, nicht den Render — ob ein Nachweis vorlag, zeigen die Karte „Darstellung“ der Abnahme bzw. der qa-Testfall „Darstellung“ (nicht prüfbar) (DEKLARIERT)."
     },
     {
       "art": "dod",
       "name": "dod-d2613977",
       "text": "[FÜLLUNG, nur UI] Vor „fertig“ `npm run check:render` grün (`docs/harness/gate-vorlage-node.md`, Abschnitt UI-Projekte)",
-      "status": "bewusst_nicht",
-      "begruendung": "Skelett-DoD (F45 B3b-1); im Lauf führt den Render-Nachweis erst der design-guardian-Schritt aus (B3b-2, F-1256)."
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "qa"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
+      },
+      "begruendung": "Den Render-Nachweis führt der Kern nach einer erfolgreichen Ausführung mit grünem Prüfschritt selbst aus (F45 B3b-2a-1); ein ROT bewertet der qa-Schritt als Befund (F45 B3b-2b, E-B3B2-1 = A). Gilt nur, wenn das Projekt render.json trägt; der Abgleich belegt den gelaufenen qa-Schritt, nicht den Render — ob ein Nachweis vorlag, zeigen die Karte „Darstellung“ der Abnahme bzw. der qa-Testfall „Darstellung“ (nicht prüfbar) (DEKLARIERT)."
     },
     {
       "art": "hook",
@@ -217,8 +247,14 @@
     {
       "art": "agent",
       "name": "design-guardian",
-      "status": "bewusst_nicht",
-      "begruendung": "design-guardian-Schritt mit Render-Nachweis im Lauf erst mit B3 (E-B2b-2-1 = A); Auslöser je Prüfschritt offen (F-1031)."
+      "status": "ersetzt_durch",
+      "schritt": {
+        "rolle": "qa"
+      },
+      "fehlt_im_ablauf": {
+        "begruendung": "Kontrolltiefe fast-lane (Router) ohne qa-Schritt, Abläufe aus der Zeit vor F45 B2b-2b-2 oder eine Reparaturfassung ohne den qa-Schritt; für den Referenzauftrag F30-M1 (E-R-1 = A) nicht zulässig"
+      },
+      "begruendung": "Die Darstellung im Lauf bewertet der qa-Schritt mit dem Render-Nachweis des Kerns (Protokoll, End-Bilder, docs/design/referenzen/ als Eingabe; F45 B3b-2b, E-B3B2-1 = A) — kein eigener design-guardian-Schritt. Verwerfen, wenn R2/F30 flache Design-Befunde oder überladenen qa-Kontext zeigt. Gilt nur, wenn das Projekt render.json trägt; der Abgleich belegt den gelaufenen qa-Schritt, nicht den Render — ob ein Nachweis vorlag, zeigen die Karte „Darstellung“ der Abnahme bzw. der qa-Testfall „Darstellung“ (nicht prüfbar) (DEKLARIERT)."
     },
     {
       "art": "agent",

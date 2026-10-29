@@ -1,0 +1,65 @@
+{
+  "url": "http://127.0.0.1:4404/#/workflows/router-b8e81045-96b5-4fc0-b0e3-8b2308d7de9d",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 3600
+  },
+  "farbschema": "light",
+  "localStorageSetzen": {
+    "leitstand-sprache": "ru"
+  },
+  "screenshotVollseite": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Kartentitel",
+        "selector": "#abnahme-render-titel"
+      },
+      {
+        "name": "Badge",
+        "selector": ".abnahme-render .ablauf-status"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Karte",
+        "selector": ".abnahme-render"
+      },
+      {
+        "name": "Karte im Block vorab",
+        "selector": ".abnahme-vorab .abnahme-render"
+      },
+      {
+        "name": "Hinweis amber",
+        "selector": ".abnahme-render .note.amber"
+      },
+      {
+        "name": "Badge grün",
+        "selector": ".abnahme-render .ablauf-status.ok"
+      },
+      {
+        "name": "Badge amber",
+        "selector": ".abnahme-render .ablauf-status.warten"
+      },
+      {
+        "name": "Ausgabe aufgeklappt",
+        "selector": ".abnahme-render details[open]"
+      },
+      {
+        "name": "Abnehmen",
+        "selector": "#workflow-entscheidung input[type=\"radio\"][value=\"ANGENOMMEN\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Render FEHLER, Hinweis „nicht geprüft“ — ru-390-hell",
+      "warteAufSelector": {
+        "selector": ".abnahme-render",
+        "timeoutMs": 10000
+      },
+      "screenshot": "01-karte.webp"
+    }
+  ]
+}

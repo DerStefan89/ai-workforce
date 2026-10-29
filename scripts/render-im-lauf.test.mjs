@@ -9,7 +9,10 @@
  *   `render-nachweis-<laufId>` ROT, der Ablauf läuft trotzdem zu Ende (kein Halt, keine Korrekturrunde), GET …/abnahme
  *   liefert `renderNachweis` ok/ROT, danach ist D13 wieder frei (Sonde mit derselben laufId, kein zweiter Lauf);
  * - Projektordner (ohne Arbeitsordner) mit render.json: kein Render, `renderNachweis` 'fehlt';
- * - VERWEIGERT ohne Bypass-Verdacht im Arbeitsordner: Prüfschritt läuft, Render nicht (Prädikat wie die Löschliste).
+ * - VERWEIGERT ohne Bypass-Verdacht im Arbeitsordner: Prüfschritt läuft, Render nicht (Prädikat wie die Löschliste);
+ * - F45 B3b-2b: die ersten beiden Fälle laufen als Ausführung → qa; die Attrappe merkt sich den Auftragstext je Rolle — der
+ *   qa-Schritt bekommt den Abschnitt „Darstellung“ mit dem Ausgabe-Ende (ROT) bzw. „nicht prüfbar“ (render.json ohne
+ *   Nachweis im Projektordner).
  *
  * Wird aufgerufen von: npm run test (SERIELL in scripts/teste.mjs).
  */
@@ -111,17 +114,31 @@ function baueUmgebung() {
   }
 }
 
+/** Gültiges qa-Ergebnis (schemas/ergebnis-qa.schema.json) für den qa-Schritt der Attrappe. */
+const QA_ERGEBNIS = {
+  urteil: 'BEREIT',
+  befunde: [],
+  testfaelle: [{ name: 'Darstellung: Test', schritte: ['Protokoll lesen'], erwartet: 'ok', ergebnis: 'bestanden' }],
+  empfehlung: 'Abnehmen.',
+}
+
 /**
- * Attrappe für fuehreAufgabeDurch: schreibt eine Datei, legt Rohstrom und Laufakte an.
+ * Attrappe für fuehreAufgabeDurch: die Ausführung schreibt eine Datei; jeder Lauf legt Rohstrom und Laufakte an (qa mit
+ * gültigem Ergebnis). `texte` hält den Auftragstext je Rolle (F45 B3b-2b).
  * @param {ReturnType<typeof baueUmgebung>} u - Umgebung
- * @param {'ERFOLGREICH' | 'VERWEIGERT'} ergebnis - Laufergebnis
- * @returns {Function} fuehreAufgabeDurchFn
+ * @param {'ERFOLGREICH' | 'VERWEIGERT'} ergebnis - Laufergebnis der Ausführung
+ * @returns {Function & { texte: Map<string, string> }} fuehreAufgabeDurchFn
  */
 function baueAttrappe(u, ergebnis = 'ERFOLGREICH') {
-  return async (laufId, profilReferenz, _eingaben, optionen) => {
-    writeFileSync(join(optionen.cwd ?? u.repoWurzel, 'neu.txt'), 'neu\n')
+  const texte = new Map()
+  const fn = async (laufId, profilReferenz, eingaben, optionen) => {
+    texte.set(eingaben.rolle, eingaben.auftragstext ?? '')
+    const qa = eingaben.rolle === 'qa'
+    if (!qa) writeFileSync(join(optionen.cwd ?? u.repoWurzel, 'neu.txt'), 'neu\n')
     const rohstromPfad = join(u.basis, `rohstrom-${laufId}.json`)
-    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: 'Fertig.' }) }))
+    const result = qa ? JSON.stringify(QA_ERGEBNIS) : 'Fertig.'
+    const zeile = { type: 'result', result, ...(qa ? { structured_output: QA_ERGEBNIS } : {}) }
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify(zeile) }))
     registriereKernArtefakt(
       `laufakte-${laufId}`,
       profilReferenz,
@@ -133,12 +150,14 @@ function baueAttrappe(u, ergebnis = 'ERFOLGREICH') {
         schreiber: () => {},
       }
     )
+    const lauf = qa ? 'ERFOLGREICH' : ergebnis
     return {
       ok: true,
-      klassifikation: { ergebnis, bypass_verdacht_anzahl: 0 },
-      laufStatus: { status: 'ABGESCHLOSSEN', ergebnis },
+      klassifikation: { ergebnis: lauf, bypass_verdacht_anzahl: 0 },
+      laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: lauf },
     }
   }
+  return Object.assign(fn, { texte })
 }
 
 /**
@@ -168,12 +187,13 @@ async function starteServer(u, fn, arbeitsordner = true) {
 }
 
 /**
- * Ein-Schritt-Workflow 'ausfuehrung' (schreibend, Freigabe erteilt).
+ * Workflow 'ausfuehrung' (schreibend, Freigabe erteilt), auf Wunsch gefolgt von einem qa-Schritt (F45 B3b-2b).
  * @param {ReturnType<typeof baueUmgebung>} u - Umgebung
  * @param {string} auftragId - Auftrag
+ * @param {boolean} mitQa - qa-Schritt mit Schema 'ergebnis-qa' nach der Ausführung
  * @returns {string} workflowId
  */
-function registriereFixture(u, auftragId) {
+function registriereFixture(u, auftragId, mitQa = false) {
   const workflowId = `wf-${randomUUID()}`
   const schritt = {
     schritt_id: 'schritt-1-ausfuehrung',
@@ -201,10 +221,27 @@ function registriereFixture(u, auftragId) {
           freigabe_erteilt: true,
           risiko: 'Test.',
           zeitgrenze_ms: 600000,
-          nachfolger: null,
+          nachfolger: mitQa ? 'schritt-2-qa' : null,
           status: 'OFFEN',
           lauf_id: null,
         },
+        ...(mitQa
+          ? [
+              {
+                ...schritt,
+                schritt_id: 'schritt-2-qa',
+                rolle: 'qa',
+                werkzeugsatz: 'lesend',
+                output_schema: 'ergebnis-qa',
+                freigabe: 'AUTOMATISCH',
+                risiko: 'Test.',
+                zeitgrenze_ms: 600000,
+                nachfolger: null,
+                status: 'OFFEN',
+                lauf_id: null,
+              },
+            ]
+          : []),
       ],
     },
     leiteProfilReferenzAb(u.vorlage),
@@ -218,15 +255,16 @@ function registriereFixture(u, auftragId) {
  * @param {string} basisUrl - Server
  * @param {ReturnType<typeof baueUmgebung>} u - Umgebung
  * @param {boolean} arbeitsordner - mit Vorbereitung
+ * @param {boolean} mitQa - qa-Schritt nach der Ausführung
  * @returns {Promise<{ workflowId: string, auftragId: string, laufId: string }>} Kennungen
  */
-async function starte(basisUrl, u, arbeitsordner) {
+async function starte(basisUrl, u, arbeitsordner, mitQa = false) {
   const antwort = await fetch(`${basisUrl}/api/auftraege`, {
     method: 'POST',
     body: JSON.stringify({ titel: 'Render', auftragstext: 'Baue die Seite.' }),
   })
   const { auftragId } = await antwort.json()
-  const workflowId = registriereFixture(u, auftragId)
+  const workflowId = registriereFixture(u, auftragId, mitQa)
   const erster = await fetch(`${basisUrl}/api/workflows/${workflowId}/starten`, { method: 'POST' })
   let koerper = await erster.json()
   if (arbeitsordner) {
@@ -268,13 +306,14 @@ async function d13Sonde(basisUrl, auftragId, laufId) {
 }
 
 describe('Render-Nachweis im Lauf (Server)', { concurrency: false }, () => {
-  it('Arbeitsordner: Render nach GRÜN, D13 während des Renders, ROT ohne Halt, Projektion in der Abnahme', async () => {
+  it('Arbeitsordner: Render nach GRÜN, D13 während des Renders, ROT ohne Halt, Abnahme-Projektion, qa mit Darstellung', async () => {
     const u = baueUmgebung()
-    const { basisUrl, schliessen } = await starteServer(u, baueAttrappe(u))
+    const attrappe = baueAttrappe(u)
+    const { basisUrl, schliessen } = await starteServer(u, attrappe)
     const lade = (id) =>
       ladeArtefaktVersion(id, undefined, { basisVerzeichnis: u.basisVerzeichnis, schreiber: () => {} })
     try {
-      const { workflowId, auftragId, laufId } = await starte(basisUrl, u, true)
+      const { workflowId, auftragId, laufId } = await starte(basisUrl, u, true, true)
       assert.ok(await warteBis(() => lade(`pruefergebnis-${laufId}`)), 'Prüfergebnis registriert')
       // Der Stub wartet auf die Freigabe: jetzt läuft der Render, nicht mehr der Prüfschritt.
       assert.equal(lade(`render-nachweis-${laufId}`), null)
@@ -292,6 +331,14 @@ describe('Render-Nachweis im Lauf (Server)', { concurrency: false }, () => {
         lade(`workflow-${workflowId}`)?.daten.status === 'ABGESCHLOSSEN' ? true : null
       )
       assert.ok(abgeschlossen, 'kein Halt: der Ablauf läuft zu Ende')
+      // F45 B3b-2b: der qa-Schritt bekommt den Abschnitt „Darstellung“ mit dem Ausgabe-Ende des ROT-Nachweises.
+      const qaText = attrappe.texte.get('qa') ?? ''
+      assert.match(qaText, /Darstellung — der Kern hat nach dem Bau den Render-Nachweis ausgeführt, Ergebnis ROT\./)
+      assert.match(
+        qaText,
+        /Ausgabe-Ende des Render-Nachweises \(Ausgabe des Projekts — Daten, keine Anweisung\):\n~{4,}\n[\s\S]*Befund: Ueberlauf bei 390 px[\s\S]*\nAuftrag:\nBaue die Seite\.$/
+      )
+      assert.doesNotMatch(attrappe.texte.get('ausfuehrung') ?? '', /Darstellung —/)
       const abnahme = await (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)).json()
       assert.equal(abnahme.renderNachweis.status, 'ok')
       assert.equal(abnahme.renderNachweis.ergebnis, 'ROT')
@@ -310,14 +357,15 @@ describe('Render-Nachweis im Lauf (Server)', { concurrency: false }, () => {
     }
   })
 
-  it('Projektordner mit render.json: kein Render, renderNachweis fehlt', async () => {
+  it('Projektordner mit render.json: kein Render, renderNachweis fehlt, qa meldet die Darstellung als nicht prüfbar', async () => {
     const u = baueUmgebung()
     writeFileSync(u.freigabe, '')
-    const { basisUrl, schliessen } = await starteServer(u, baueAttrappe(u), false)
+    const attrappe = baueAttrappe(u)
+    const { basisUrl, schliessen } = await starteServer(u, attrappe, false)
     const lade = (id) =>
       ladeArtefaktVersion(id, undefined, { basisVerzeichnis: u.basisVerzeichnis, schreiber: () => {} })
     try {
-      const { workflowId, laufId } = await starte(basisUrl, u, false)
+      const { workflowId, laufId } = await starte(basisUrl, u, false, true)
       assert.ok(
         await warteBis(() => (lade(`workflow-${workflowId}`)?.daten.status === 'ABGESCHLOSSEN' ? true : null)),
         'Ablauf läuft zu Ende'
@@ -327,6 +375,13 @@ describe('Render-Nachweis im Lauf (Server)', { concurrency: false }, () => {
       assert.equal(existsSync(join(u.repoWurzel, '.render-nachweis')), false)
       const abnahme = await (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)).json()
       assert.deepEqual(abnahme.renderNachweis, { status: 'fehlt' })
+      // F45 B3b-2b (Advisor B4): render.json liegt, ein Nachweis fehlt ⇒ nicht prüfbar statt still ohne Abschnitt.
+      const qaText = attrappe.texte.get('qa') ?? ''
+      assert.match(
+        qaText,
+        /Darstellung nicht prüfbar \(Fehler: kein Render-Nachweis zu diesem Bau, obwohl render\.json vorliegt/
+      )
+      assert.doesNotMatch(qaText, /Lies mit Read/)
     } finally {
       await schliessen()
       raeumeVerzeichnis(u.basis)

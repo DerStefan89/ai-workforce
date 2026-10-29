@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Render FEHLER, Hinweis „nicht geprüft“ — de-390",
+    "Karte": true,
+    "Karte im Block vorab": false,
+    "Hinweis amber": true,
+    "Badge grün": false,
+    "Badge amber": true,
+    "Ausgabe aufgeklappt": true,
+    "Abnehmen": true,
+    "Kartentitel": "Darstellung (Render-Nachweis)",
+    "Badge": "FEHLER",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "390/390",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

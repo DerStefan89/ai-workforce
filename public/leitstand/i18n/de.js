@@ -1216,6 +1216,8 @@ export default {
   'abnahme.render.dauer': 'Dauer {sekunden} s',
   'abnahme.render.hinweis': 'Darstellung mit Befunden — Abnahme trotzdem möglich. Sieh dir das Ausgabe-Ende an, bevor du entscheidest.',
   'abnahme.render.hinweisVorab': 'Darstellung mit Befunden — sie ist nicht der Grund für den Halt. Sieh dir das Ausgabe-Ende an, bevor du entscheidest.',
+  'abnahme.render.hinweisFehler': 'Darstellung nicht geprüft — den Grund zeigt das Ausgabe-Ende. Abnahme trotzdem möglich.',
+  'abnahme.render.hinweisFehlerVorab': 'Darstellung nicht geprüft — sie ist nicht der Grund für den Halt. Den Grund zeigt das Ausgabe-Ende.',
   'abnahme.render.ausgabe': 'Ausgabe-Ende',
   'abnahme.render.ausgabeLeer': 'Keine Ausgabe.',
   'abnahme.render.ort': 'Bilder und Protokoll liegen im Arbeitsordner unter {ordner} — solange der Arbeitsordner besteht.',
