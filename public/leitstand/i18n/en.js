@@ -1206,6 +1206,8 @@ export default {
   'abnahme.render.dauer': 'Duration {sekunden} s',
   'abnahme.render.hinweis': 'Rendering with findings — acceptance is still possible. Look at the end of the output before you decide.',
   'abnahme.render.hinweisVorab': 'Rendering with findings — it is not the reason for the stop. Look at the end of the output before you decide.',
+  'abnahme.render.hinweisFehler': 'Rendering not checked — the end of the output shows why. Acceptance is still possible.',
+  'abnahme.render.hinweisFehlerVorab': 'Rendering not checked — it is not the reason for the stop. The end of the output shows why.',
   'abnahme.render.ausgabe': 'End of output',
   'abnahme.render.ausgabeLeer': 'No output.',
   'abnahme.render.ort': 'Images and log are in the working folder under {ordner} — as long as the working folder exists.',

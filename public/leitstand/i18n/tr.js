@@ -1206,6 +1206,8 @@ export default {
   'abnahme.render.dauer': 'Süre {sekunden} sn',
   'abnahme.render.hinweis': 'Görünümde bulgular var — kabul yine de mümkün. Karar vermeden önce çıktının sonuna bak.',
   'abnahme.render.hinweisVorab': 'Görünümde bulgular var — duraklamanın nedeni bu değil. Karar vermeden önce çıktının sonuna bak.',
+  'abnahme.render.hinweisFehler': 'Görünüm kontrol edilmedi — nedenini çıktının sonu gösteriyor. Kabul yine de mümkün.',
+  'abnahme.render.hinweisFehlerVorab': 'Görünüm kontrol edilmedi — duraklamanın nedeni bu değil. Nedenini çıktının sonu gösteriyor.',
   'abnahme.render.ausgabe': 'Çıktının sonu',
   'abnahme.render.ausgabeLeer': 'Çıktı yok.',
   'abnahme.render.ort': 'Görüntüler ve protokol çalışma klasöründe {ordner} altında — çalışma klasörü var olduğu sürece.',

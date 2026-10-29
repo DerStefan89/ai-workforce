@@ -59,8 +59,10 @@ export function renderRenderNachweis(projektion, { ebene = 2, vorab = false } = 
   // Badge in der Farbe seiner Notiz (Advisor H1, Präzedenz design-guardian 1): Befunde sind amber, nicht rot.
   const badge = `<span class="ablauf-status ${gruen ? 'ok' : 'warten'}">${escapeHtml(pruefWertText(projektion.ergebnis))}</span>`
   const sekunden = formatiereZahl(projektion.dauer_ms / 1000, { maximumFractionDigits: 1 })
-  // Literale Schlüssel, damit das i18n-Gate sie sieht (code-reviewer 1).
-  const hinweisText = vorab ? tHtml('abnahme.render.hinweisVorab') : tHtml('abnahme.render.hinweis')
+  // Literale Schlüssel, damit das i18n-Gate sie sieht (code-reviewer 1). FEHLER heißt „nicht geprüft“, nicht „mit
+  // Befunden“ — der qa-Schritt meldet die Darstellung dann als nicht prüfbar (F45 B3b-2b, F-1272).
+  let hinweisText = vorab ? tHtml('abnahme.render.hinweisVorab') : tHtml('abnahme.render.hinweis')
+  if (fehler) hinweisText = vorab ? tHtml('abnahme.render.hinweisFehlerVorab') : tHtml('abnahme.render.hinweisFehler')
   const hinweis = gruen ? '' : `<div class="note amber abnahme-render-hinweis" role="note"><p>${hinweisText}</p></div>`
   // FEHLER heißt meist „nicht ausgeführt“ — dann gibt es keine Bilder, also keinen Ortssatz (qa N1).
   const ort = fehler

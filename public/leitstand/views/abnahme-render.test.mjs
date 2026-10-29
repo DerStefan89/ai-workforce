@@ -2,7 +2,8 @@
  * Datei: public/leitstand/views/abnahme-render.test.mjs
  *
  * Zweck: node:test-Fälle für views/abnahme-render.js (F45 B3b-2a-2, features/F45/plan-b3b2a2.md): Karte „Darstellung
- * (Render-Nachweis)“ — GRÜN ohne Hinweis, ROT/ZEITGRENZE mit `note amber`, FEHLER mit Grund im aufgeklappten Ausgabe-Ende,
+ * (Render-Nachweis)“ — GRÜN ohne Hinweis, ROT/ZEITGRENZE mit `note amber`, FEHLER mit Grund im aufgeklappten Ausgabe-Ende
+ * und eigenem Hinweis „nicht geprüft“ (F45 B3b-2b),
  * 'fehlt' ohne Karte, Escaping der Serverwerte, Kennung für das Poll-Kennzeichen; dazu die Einbindung in die Lagen
  * „entscheidbar“ (nach der qa-Karte, h2) und „vorab“ (h4) von views/workflow-abnahme.js.
  *
@@ -60,12 +61,23 @@ test('ROT und ZEITGRENZE: amber Hinweis „Abnahme trotzdem möglich“, Badge i
   }
 })
 
-test('FEHLER: Grund im aufgeklappten Ausgabe-Ende, Hinweis, kein Ortssatz (keine Bilder, qa N1)', () => {
+test('FEHLER: Grund im aufgeklappten Ausgabe-Ende, Hinweis „nicht geprüft“ (auch vorab), kein Ortssatz (qa N1)', () => {
   const html = renderRenderNachweis(
     nachweis({ ergebnis: 'FEHLER', ausgabe_ende: 'nicht ausgeführt: .render-nachweis/ steht nicht in .gitignore' })
   )
   assert.match(html, /<span class="ablauf-status warten">FEHLER<\/span>/)
-  assert.match(html, /note amber/)
+  // F45 B3b-2b (F-1272): „nicht geprüft“ statt „mit Befunden“ — der qa-Schritt meldet die Darstellung als nicht prüfbar.
+  assert.match(
+    html,
+    /<div class="note amber abnahme-render-hinweis" role="note"><p>Darstellung nicht geprüft — den Grund zeigt das Ausgabe-Ende\. Abnahme trotzdem möglich\./
+  )
+  assert.doesNotMatch(html, /mit Befunden/)
+  const vorab = renderRenderNachweis(nachweis({ ergebnis: 'FEHLER' }), { ebene: 4, vorab: true })
+  assert.match(
+    vorab,
+    /Darstellung nicht geprüft — sie ist nicht der Grund für den Halt\. Den Grund zeigt das Ausgabe-Ende\./
+  )
+  assert.doesNotMatch(vorab, /mit Befunden|Abnahme trotzdem möglich/)
   assert.doesNotMatch(html, /Bilder und Protokoll/)
   assert.match(
     html,

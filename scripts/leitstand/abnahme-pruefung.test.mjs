@@ -4,18 +4,25 @@
  * Zweck: node:test-Fälle für scripts/leitstand/abnahme-pruefung.mjs (F45 B3b-2a-1): die ausgelagerte
  * Prüfergebnis-Projektion (alle vier Status, versionSequenz) und die neue Render-Nachweis-Projektion ('ok' mit
  * gekürztem Ausgabe-Ende, 'fehlt' ohne Schritt, ohne lauf_id, ohne Artefakt, bei ungültigen Daten und wenn das Laden
- * wirft — QA N2).
+ * wirft — QA N2); ladeQaDarstellung (F45 B3b-2b) mit und ohne render.json.
  *
  * Wird aufgerufen von: npm run test (node --test).
  */
 
 import assert from 'node:assert/strict'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { registriereKernArtefakt } from '../../src/lineage-registry/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../../src/startvorlage/index.ts'
 import { wegwerfOrdner } from '../_wegwerf.ts'
-import { AUSGABE_ZEILEN, projizierePruefergebnis, projiziereRenderNachweis } from './abnahme-pruefung.mjs'
+import {
+  AUSGABE_ZEILEN,
+  KEIN_NACHWEIS_TEXT,
+  ladeQaDarstellung,
+  projizierePruefergebnis,
+  projiziereRenderNachweis,
+} from './abnahme-pruefung.mjs'
 
 const ladeOptionen = {
   basisVerzeichnis: join(wegwerfOrdner('abnahme-pruefung'), 'kontrollzustand'),
@@ -96,4 +103,34 @@ test('projiziereRenderNachweis: Laden wirft ⇒ fehlt statt Wurf (QA N2)', () =>
     },
   }
   assert.deepEqual(projiziereRenderNachweis({ lauf_id: 'rn-wurf' }, werfend), { status: 'fehlt' })
+})
+
+test('ladeQaDarstellung (F45 B3b-2b): Nachweis des Ausführungsschritts, ohne Nachweis mit render.json FEHLER, sonst null', () => {
+  const wurzel = wegwerfOrdner('abnahme-pruefung-qa')
+  const workflow = (laufId) => ({
+    schritte: [{ schritt_id: 's-1', rolle: 'ausfuehrung', lauf_id: laufId }, { rolle: 'qa' }],
+  })
+  registriere('render-nachweis-qa-ok', daten({ lauf_id: 'qa-ok', ergebnis: 'ROT', ausgabe_ende: '✗ Überlauf' }))
+  assert.deepEqual(ladeQaDarstellung(workflow('qa-ok'), ladeOptionen, wurzel), {
+    ergebnis: 'ROT',
+    ausgabe_ende: '✗ Überlauf',
+  })
+  // Ohne Nachweis und ohne render.json (Projekt ohne UI, auch ai-workforce selbst): kein Abschnitt.
+  assert.equal(ladeQaDarstellung(workflow('qa-fehlt'), ladeOptionen, wurzel), null)
+  assert.equal(ladeQaDarstellung({ schritte: 'kaputt' }, ladeOptionen, wurzel), null)
+  // Ein Ordner namens render.json zählt nicht (wie renderNachweisFaellig: nur eine Datei).
+  const mitOrdner = wegwerfOrdner('abnahme-pruefung-qa-ordner')
+  mkdirSync(join(mitOrdner, 'render.json'))
+  assert.equal(ladeQaDarstellung(workflow('qa-fehlt'), ladeOptionen, mitOrdner), null)
+  // Mit render.json, aber ohne Nachweis zum Bau (F-1271, Registrierung gescheitert): nicht prüfbar statt still.
+  writeFileSync(join(wurzel, 'render.json'), '{}')
+  assert.deepEqual(ladeQaDarstellung(workflow('qa-fehlt'), ladeOptionen, wurzel), {
+    ergebnis: 'FEHLER',
+    ausgabe_ende: KEIN_NACHWEIS_TEXT,
+  })
+  assert.deepEqual(ladeQaDarstellung(workflow(null), ladeOptionen, wurzel), {
+    ergebnis: 'FEHLER',
+    ausgabe_ende: KEIN_NACHWEIS_TEXT,
+  })
+  assert.equal(ladeQaDarstellung(workflow('qa-ok'), ladeOptionen, wurzel).ergebnis, 'ROT')
 })
