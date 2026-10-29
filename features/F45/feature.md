@@ -189,8 +189,9 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | B5b-3 | fixpaket | R7: Ist nach Abnahme | erledigt | 0,4–0,6 | – | 2026-10-27 | 2026-10-27 | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6); gemergt #387 (Bereinigung W2a: Ist – nach A3, Begonnen = Abgenommen ⇒ 0 AT) |
 | W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen; W2b = W2b-1 umbaufest (#389) + W2b-2 Wegwerf-Ordner/Fristen (#390), beide erledigt; W2c-1 Ratschen + Formatierer (#391), erledigt; W2d Doku-Diät (#392), erledigt; 60 Gates→Tests gestrichen (Pfadfinder) |
 | V1 | workstream | Live-Vorschau des Projekts im Leitstand | erledigt | 0,3–0,5 | – | 2026-10-28 | 2026-10-29 | E-VORSCHAU-1 = A; Abschnitt „Stand V1“; gemergt #393 |
-| V1b | fixpaket | Live-Vorschau in voller Breite | laeuft | 0,1–0,2 | – | 2026-10-29 | – | E-VORSCHAU-2 = A; gebaut (Abschnitt „Stand V1b“), Branch `f45/v1b-vorschau-breit` |
-| B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
+| V1b | fixpaket | Live-Vorschau in voller Breite | erledigt | 0,1–0,2 | – | 2026-10-29 | 2026-10-29 | E-VORSCHAU-2 = A; Abschnitt „Stand V1b“; gemergt #394 |
+| B3a | fixpaket | Qualitätsprinzipien in Skelett und Rollen | laeuft | 0,4–0,6 | – | 2026-10-29 | – | E-W2-1; B3 geteilt (Challenger 29.10.2026); Abschnitt „Stand B3a“, Branch `f45/b3a-qualitaet-skelett` |
+| B3b | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | Inhalt wie bisher B3 (`docs/projekt/fixpaket-f45.md` §3) |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | verworfen | 1–2 | – | – | – | entfällt — E-R-1 = A (Stefan, 25.10.2026): Referenzauftrag = F30-M1 |
 | R2 | design | Brain Stufe 1: Produktzyklus lesend, mit Motion | geplant | 1,5–2 | – | – | – | E-BRAIN-1 = B (Stefan, 25.10.2026); vorher „Motion im Leitstand der Workforce“, 1 |
 | Brain-2 | workstream | Brain Stufe 2: LLM-Wiki, Fragen mit Quelle, Rollen-Kontext | geplant | 1,5–2,5 | – | – | – | E-BRAIN-2 (Stefan, 25.10.2026): nach Brain Stufe 1, vor F30 |
@@ -205,7 +206,7 @@ bekannt, wo es eine Quelle gibt. Art: `workstream` = ungeteilter Baustein oder S
 geteilten Bausteins, `design` = Design- und Motion-Paket. Die Sammelzeile B2b bleibt, weil §3 nicht alle B2b-Teilpakete als
 eigene Zeile führt; sie ist erledigt und ohne Ist, zählt also weder in „Bis M5 fertig“ noch in „Plan gegen Ist“. Ist pflegt bis
 B5b-3 der Challenger nach Abschluss eines Eintrags nach. Reihenfolge der offenen Zeilen seit E-W2-1 (Stefan, 25.10.2026; ersetzt
-E-BRAIN-2): B5b-3 → W2 → V1 → B3 → R2 (Brain Stufe 1) → Brain-2 → Brain-3 → F30; R ist verworfen (E-R-1 = A, Referenzauftrag = F30-M1).
+E-BRAIN-2): B5b-3 → W2 → V1 → B3 (B3a → B3b) → R2 (Brain Stufe 1) → Brain-2 → Brain-3 → F30; R ist verworfen (E-R-1 = A, Referenzauftrag = F30-M1).
 
 Grobschätzungen der alten Scope-Tabelle ohne eigene Zeile hier (wörtlich, Stand vor B5b-1a): F-2b-2 „≈ 1–1,25“; F-3
 „Schätzung fehlt“, Ist „F-3a-1 ≈ 0,5, F-3a-2 ≈ 0,4, F-3b-1 ≈ 0,95 AT (beauftragt 0,5; Grund: Advisor-Auflagen)“; B2b
@@ -437,3 +438,49 @@ E-VORSCHAU-2 ist Stefans Wert, F-1245 nannte „≈ 300 px“ (Rahmen ein- bzw. 
 1 280 px (Stufe ≤ 1060, dg 1, qa 1 — die Chatspalte als Grund trifft nicht zu, der Chat schwebt) und 390 hell ergänzt;
 iframe-Maß mit Rahmen berichtigt (qa 2); Dateikopf nennt die Stufe ≤ 1060 (dg 4); Grenzen oben deklariert (dg 2/3, qa 3–5, 7);
 F-1248 mit Herkunftsmarke, dg A6 als bewusst ohne Maßnahme, Punkt „Frag Jarvis“ ergänzt (qa 6, qa 3).
+
+## Stand B3a
+
+**Auftrag:** B3a „Qualitätsprinzipien ins Projekt-Skelett und in die Rollen“ (Challenger, 29.10.2026; E-W2-1). B3 ist
+geteilt: B3a (dieses Paket) und B3b Design & Motion (Inhalt wie bisher B3). Plan `plan-b3a.md`, Advisor-Pass „Nicht
+freigegeben“ ohne Schnitt (A1 Biome erfasste die JSON-Dateien eines Workforce-Projekts, A2 Agent-Freigabe per Hash, A3
+Begründung der Ausnahmeliste), Plan v2 `plan-b3a-v2.md`, Delta-Advisor „Freigegeben mit Hinweisen“.
+
+**Gebaut:**
+- Skelett `docs/harness/gate-vorlage-node.md` auf Biome: `biome.json` nur Code-Dateien, `vcs.useIgnoreFile`, preset
+  recommended, `noExcessiveCognitiveComplexity` 15 und `noExplicitAny` als Fehler, Formatierer wie die Workforce;
+  `"lint": "biome check --error-on-warnings ."`; `tsconfig.json` `include: ["**/*"]` mit `allowJs`/`checkJs`; benannte
+  Ausnahmen für den mitgelieferten Harness (`.claude/`, Template-Skripte, `check-gates.mjs`/`tests-mit-untergrenze.mjs` →
+  F-1251); `.gitignore` anlegen oder ergänzen; Biome-Version = die der Workforce (DEKLARIERT, versionsfrei); ESLint nur bei
+  nötigen Plugins; CI-Schritt `check:template` → `check` nach Anwendung (Schritt 5, bestand schon).
+- Skelett `scripts/check-dateigroesse.mjs` (neu, nur `node:`): Code-Dateien > 800 Zeilen ⇒ Exit 1, Ausnahmeliste leer
+  („nur mit Begründung“), `node_modules` und Punkt-Ordner (`.git`, `.claude`, `.next` …) in jeder Tiefe,
+  `dist`/`build`/`coverage` an der Wurzel übersprungen; Haupteinstieg über realpath (ein Aufruf über eine Junction war
+  sonst still grün — belegt); vorne in `npm run check`. Test `scripts/skelett-check-dateigroesse.test.mjs` (5 Tests).
+- Pflichtfragen byte-gleich in Workforce und Skelett: architecture-advisor „Muss das existieren?“, „Was ist die
+  einfachste Lösung?“, „Was kann weg?“ (je eine Antwort im Urteil); code-reviewer Checklistenpunkt „Was kann weg?“ mit
+  Datei:Zeilen (gelöschte Zeilen zählen positiv) und Abschnitt im Ausgabeformat. Test in
+  `scripts/check-skelett-herkunft.test.mjs`: qa, code-reviewer und architecture-advisor im Skelett byte-gleich zur Workforce.
+- Skelett-`CLAUDE.md`: „Bestehende Helper“ gilt für jeden neuen Code (Zeile ersetzt, nicht ergänzt); Absatz „Befehle“
+  nennt Formatierer, Komplexitäts- und Dateigrenze. `HERKUNFT.md` nachgezogen.
+- Findings F-1249 (erledigt), F-1250, F-1251, F-1252 (offen); V1b erledigt; `docs/projekt/fixpaket-f45.md` §3 B3 → B3a/B3b.
+- Nachweis `features/F45/nachweise/b3a/probelauf.md` (Wegwerf-Kopie unter os.tmpdir(), Vorlage maschinell gelesen).
+
+**DEKLARIERT/Grenzen:** Bestehende Projekte behalten ihre alte Gate-Vorlage und Agent-Fassung (`kopiereSkelett` und
+Nachrüsten überschreiben nichts); ihre Agents code-reviewer/architecture-advisor gelten dadurch als „abweichend“ und nicht
+freigegeben (Advisor A2, F-1249). Nachrüsten kopiert `check-dateigroesse.mjs` in bestehende Projekte, hängt es aber nicht in
+`check` ein und meldet eine veraltete Gate-Vorlage nicht (F-1252). `vorlagen/` liegt nicht im Biome der Workforce — dass `check-dateigroesse.mjs` Lint, Formatierer und `checkJs`
+besteht, belegt der Probelauf, kein laufendes Gate. Die Pflichtfragen erreichen den Workforce-Lauf nur teilweise (F-1250).
+Der Hinweistext in `src/projekt-anlegen/nachruesten.ts` („vorne“) ist seit `check-dateigroesse` vorne leicht ungenau, die
+Prüfung (`includes`) bleibt richtig (F-1252). Monorepo, `"type": "module"` und `.tsx` sind nicht geprobt.
+
+**Prüfpass:** code-reviewer und qa je „Freigegeben mit Hinweisen“, kein kritischer Befund (der erste Reviewer-Lauf brach am
+Watchdog ab und lief eng begrenzt neu). Eine Korrekturrunde: Haupteinstieg über realpath (cr 1, qa 7), Punkt-Ordner in jeder
+Tiefe übersprungen und Absatz „Was die drei Gates auslassen“ samt Weg für Ausgabe-Ordner und erzeugten Code (qa 3, qa 9,
+cr 3), Symlinks im Dateikopf (cr 4), Tests für `.git`/`.next`/`src/.cache` und Junction-Aufruf (cr 8), doppelte
+`GRENZE`-Zusicherung entfernt (cr „Was kann weg?“), erster Test vor Schritt 5 (qa 1), `.tsx`/`DOM` (qa 2),
+`@types/node@<Hauptversion>` aus `engines` (qa 8), Pflichtfragen präzisiert — Advisor „je neues Element“, „Plan-Teile oder
+bestehender Code, mit Datei:Zeile“, Reviewer „im geprüften Code“ (qa 5, qa 6); Probelauf um (0) leeres Projekt und
+(7d) `.gitignore` ohne git ergänzt und neu gefahren. Nicht geändert: veraltete Einträge in `AUSNAHMEN` (cr 5, Liste leer),
+unlesbare Datei endet fail-closed mit Stacktrace (cr 6), zwei- statt vierstufiges Ergebnis im Reviewer-Ausgabeformat
+(qa 6, Template-Bestand), `cache: 'npm'`/Prüfzeitgrenze/CRLF-Hinweis (qa 10/11). Nachrüsten → F-1252 (qa 4).

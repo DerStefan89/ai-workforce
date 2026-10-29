@@ -9096,3 +9096,39 @@ Auswirkung: Gering — Verständlichkeit in Randfällen; keine Sicherheitswirkun
 Maßnahme: Mit dem nächsten Paket an der Übersicht (Stufe 2 der Vorschau oder B3).
 Status: offen.
 Feature/Run: Entdeckt: F45 V1 (Prüfpass code-reviewer, qa, design-guardian), 28.10.2026; übertragen F45 V1b, 29.10.2026.
+
+**F-1249** · `HARNESS_IMPROVEMENT` · P2 · erledigt (F45 B3a, 29.10.2026)
+Titel: Projekt-Skelett ohne Komplexitätsgrenze, Formatierer und Dateigrenze; Rollen ohne Pflichtfragen.
+Beschreibung: Befund Challenger (main 2f3ef97): `vorlagen/projekt-skelett/docs/harness/gate-vorlage-node.md` richtete ESLint + typescript-eslint ein, ohne Komplexitätsgrenze, Formatierer und Dateigrenze; `tsconfig` prüfte nur `.ts`. `architecture-advisor.md` und `code-reviewer.md` (Workforce und Skelett) hatten keine Pflichtfragen. W2c-1 hatte die Prinzipien nur in der Workforce selbst durchgesetzt (E-W2-1).
+Fundstelle: `vorlagen/projekt-skelett/docs/harness/gate-vorlage-node.md`, `vorlagen/projekt-skelett/package.json`, `.claude/agents/architecture-advisor.md`, `.claude/agents/code-reviewer.md` (beide Orte).
+Auswirkung: Mittel — Fremdprojekte wuchsen ohne die Grenzen, die die Workforce für sich selbst eingeführt hat.
+Maßnahme: Erledigt durch F45 B3a: Gate-Vorlage auf Biome (recommended, Komplexität 15 als Fehler, `noExplicitAny`, Formatierer im Stil der Workforce, `--error-on-warnings`, `checkJs`; Harness-Dateien benannt ausgenommen), harte Dateigrenze `scripts/check-dateigroesse.mjs` (800 Zeilen, ohne Ratsche, vorne in `check`), Pflichtfragen im architecture-advisor („Muss das existieren?“, „Was ist die einfachste Lösung?“, „Was kann weg?“) und im code-reviewer („Was kann weg?“ mit Zeilenangabe), Helfer-Regel in der Skelett-`CLAUDE.md` auf jeden neuen Code verallgemeinert. Nachweis `features/F45/nachweise/b3a/probelauf.md`. Folge (DEKLARIERT, Advisor A2): Die Katalog-Freigabe der Agents hängt am Hash der Workforce-Datei (`katalogFreigaben`, `src/faehigkeiten/index.ts`) — bestehende Projekte mit der alten Fassung von code-reviewer/architecture-advisor gelten als „abweichend“ und nicht freigegeben, bis die neue Fassung im Projekt liegt oder der Inhalt freigegeben wird; neue Projekte sind über die byte-gleiche Skelett-Kopie freigegeben (Test `scripts/check-skelett-herkunft.test.mjs`).
+Status: erledigt (F45 B3a, 29.10.2026).
+Feature/Run: Entdeckt: Challenger (E-W2-1), eingetragen und erledigt F45 B3a, 29.10.2026.
+
+**F-1250** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Pflichtfragen erreichen die Prüfschritte im Workforce-Lauf nur teilweise.
+Beschreibung: Die Pflichtfragen stehen seit F45 B3a in `.claude/agents/architecture-advisor.md` und `code-reviewer.md`. Der Advisor-Schritt im Lauf baut seinen Auftrag selbst (`src/architecture-advisor/index.ts`) und liest die Agent-Datei nicht — „Muss das existieren? / Einfachste Lösung? / Was kann weg?“ kommen dort nicht an. Beim Code-Reviewer erreicht der Checklistenpunkt „Was kann weg?“ den Lauf über die Projektkarte (`leseCheckliste`, Abschnitt Prüfkriterien), der Abschnitt „Was kann weg?“ im Ausgabeformat nicht (Stopp an der nächsten `##`-Überschrift, `src/projektkarte/index.ts`).
+Fundstelle: `src/architecture-advisor/index.ts` (Auftragstext), `src/projektkarte/index.ts` (`leseCheckliste`), Ausgabeschemas `ergebnis-architecture-advisor`/`ergebnis-code-reviewer`.
+Auswirkung: Mittel — im Lauf beantwortet der Advisor die Pflichtfragen nicht verpflichtend; „Was kann weg?“ ist beim Reviewer ein Checklistenpunkt ohne eigenes Ausgabefeld.
+Maßnahme: Pflichtfragen in den Auftrag des Advisor-Schritts (Antwort je Frage im Ergebnis) und ggf. ein Feld „Was kann weg?“ im Reviewer-Ergebnis — Workforce-Code, eigenes Paket.
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass F45 B3a (`features/F45/plan-b3a-v2.md`), 29.10.2026.
+
+**F-1251** · `TECH_DEBT` · P3 · offen
+Titel: Skelett-Skripte `check-gates.mjs` und `tests-mit-untergrenze.mjs` verfehlen die Grenzen der eigenen Gate-Vorlage.
+Beschreibung: Beide sind eigener Skelett-Code aus F45 B1a-2 („lokal neu“ in `vorlagen/projekt-skelett/HERKUNFT.md`), kein Template-Bestand. Unter Biome recommended + Workforce-Formatierer sind sie unformatiert (Import-Ordnung), `check-gates.mjs:205` hat Komplexität > 15; unter `checkJs` melden sie Typfehler (Vorab-Probe B3a: 62 tsc-Fehler im Skelett-Harness, davon ein Teil hier). Die Gate-Vorlage nimmt sie deshalb neben dem Template-Bestand aus.
+Fundstelle: `vorlagen/projekt-skelett/scripts/check-gates.mjs`, `vorlagen/projekt-skelett/scripts/tests-mit-untergrenze.mjs`, Ausnahmeliste in `vorlagen/projekt-skelett/docs/harness/gate-vorlage-node.md`.
+Auswirkung: Gering — die Ausnahme ist benannt; Skelett-Code der Workforce hält aber die eigene Grenze nicht.
+Maßnahme: Beide Dateien formatieren, typisieren und unter Komplexität 15 bringen, dann aus der Ausnahmeliste (biome.json, tsconfig.json der Vorlage) nehmen; Prüfsummen in HERKUNFT.md nachziehen.
+Status: offen.
+Feature/Run: Entdeckt: Advisor-Pass F45 B3a (A3), 29.10.2026.
+
+**F-1252** · `TECH_DEBT` · P3 · offen
+Titel: Nachrüsten verdrahtet die Dateigrenze nicht und meldet eine veraltete Gate-Vorlage nicht.
+Beschreibung: `npm run projekt:nachruesten` kopiert seit F45 B3a `scripts/check-dateigroesse.mjs` in bestehende Projekte, prüft aber nur, ob `check` `check-gates` aufruft (`src/projekt-anlegen/nachruesten.ts:180`) — fehlt `check-dateigroesse` in `check`, bleibt die kopierte Grenze unverdrahtet, ohne Hinweis. Eine ältere `docs/harness/gate-vorlage-node.md` (ESLint-Fassung) gilt als „weicht ab“ und wird nie überschrieben; Projekte, die sie angewendet haben, bekommen Biome mit Komplexitätsgrenze, Formatierer, `vcs` und `--error-on-warnings` nicht und erfahren es nicht. Der Hinweistext Zeile 181 sagt „vorne“, seit B3a steht `check-dateigroesse` vor `check-gates`.
+Fundstelle: `src/projekt-anlegen/nachruesten.ts:180-181`.
+Auswirkung: Gering bis mittel — bestehende Fremdprojekte bleiben ohne die neuen Grenzen, ohne dass es auffällt.
+Maßnahme: Hinweis beim Nachrüsten, wenn `check` `check-dateigroesse` nicht aufruft, und wenn die Gate-Vorlage des Projekts von der Skelett-Fassung abweicht; Hinweistext Zeile 181 berichtigen.
+Status: offen.
+Feature/Run: Entdeckt: QA-Pass F45 B3a (L4), 29.10.2026.

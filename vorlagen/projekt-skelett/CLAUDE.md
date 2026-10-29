@@ -39,9 +39,11 @@ Regel-Gate, Vertragsprüfung), unabhängig vom Projektstack, und bleibt im
 leeren Template grün.
 
 Node/TypeScript: bei der Stack-Entscheidung die Gate-Vorlage
-`docs/harness/gate-vorlage-node.md` anwenden (Lint, Typprüfung, Tests mit
-Untergrenze). Bis dahin ist `npm run check` absichtlich rot —
-`scripts/check-gates.mjs` meldet die Platzhalter.
+`docs/harness/gate-vorlage-node.md` anwenden (Lint mit Formatierer und
+Komplexitätsgrenze, Typprüfung, Tests mit Untergrenze). Bis dahin ist
+`npm run check` absichtlich rot — `scripts/check-gates.mjs` meldet die
+Platzhalter. Code-Dateien über 800 Zeilen macht
+`scripts/check-dateigroesse.mjs` von Anfang an rot.
 
 ---
 
@@ -113,7 +115,7 @@ Aktueller Phasen-Stand & Scope: siehe `docs/STATUS.md`
 
 ## 🔧 Bestehende Helper (NUTZEN, nicht neu schreiben) [FÜLLUNG: Pfade]
 
-Vor dem Schreiben neuer Utility-/Format-/Auth-Funktionen IMMER erst
+Vor neuem Code IMMER erst vorhandene Helfer suchen und nutzen — zuerst
 `lib/utils/`, `lib/data/` und `lib/auth/` (oder die entsprechenden
 Ordner des eigenen Stacks) prüfen.
 
