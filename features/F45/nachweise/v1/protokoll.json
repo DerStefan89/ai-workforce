@@ -1,0 +1,93 @@
+{
+  "erzeugt": "2026-10-28T13:37:10.296Z",
+  "schritte": [
+    {
+      "bild": "de-1440-dunkel-01-vorschau.webp"
+    },
+    {
+      "bild": "de-1440-dunkel-02-ausklapper-offen.webp"
+    },
+    {
+      "bild": "de-1440-hell-01-vorschau.webp"
+    },
+    {
+      "bild": "de-390-dunkel-01-vorschau.webp"
+    },
+    {
+      "bild": "de-390-hell-01-vorschau.webp"
+    },
+    {
+      "bild": "de-1440-200prozent-01-vorschau.webp"
+    },
+    {
+      "bild": "ru-1440-hell-02-ausklapper-offen.webp"
+    },
+    {
+      "bild": "de-1440-hell-02-ausklapper-offen.webp"
+    },
+    {
+      "bild": "de-1440-dunkel-03-start-building.webp"
+    },
+    {
+      "bild": "de-1440-hell-03-start-building.webp"
+    },
+    {
+      "bild": "de-1440-dunkel-04-app-gestoppt.webp"
+    },
+    {
+      "bild": "de-900-05-rahmen-schutz.webp"
+    }
+  ],
+  "belege": {
+    "poll": {
+      "gleich": true,
+      "src": "http://127.0.0.1:51335",
+      "sandbox": "allow-scripts allow-same-origin allow-forms",
+      "wartezeitMs": 7000,
+      "zustandAbrufeSeitStart": 6,
+      "browserAnfragenAnApp": 0,
+      "projektAufrufAbrufe": 0
+    },
+    "ausklapper": {
+      "offen": true,
+      "ariaExpanded": "true",
+      "iframeGleich": true
+    },
+    "neuLaden": {
+      "gleich": true,
+      "browserAnfragenAnApp": 1,
+      "projektAufrufAbrufe": 1
+    },
+    "seitenfehler1440": [],
+    "keinQuerscroll-de-390-dunkel-01-vorschau": true,
+    "keinQuerscroll-de-390-hell-01-vorschau": true,
+    "keinQuerscroll-de-1440-200prozent-01-vorschau": true,
+    "projektwechsel": {
+      "nachWechsel": {
+        "iframe": false,
+        "titel": "Start Building"
+      },
+      "abrufeBeimWechsel": [
+        "/api/projekte/ohne-app/projekt-aufruf"
+      ],
+      "zurueck": {
+        "neuesElement": true,
+        "src": "http://127.0.0.1:51335"
+      },
+      "abrufeGesamt": [
+        "/api/projekte/ohne-app/projekt-aufruf",
+        "/api/projekte/mit-app/projekt-aufruf"
+      ]
+    },
+    "startBuilding": {
+      "iframe": false,
+      "text": "Start Building",
+      "link": true
+    },
+    "appGestoppt": "LIVE-VORSCHAU\nStart Building\n\nHier erscheint die laufende App dieses Projekts, sobald sie erreichbar ist. Der Leitstand startet sie nicht — das machst du selbst.\n\nDie App unter http://127.0.0.1:51335 antwortet nicht — starte sie selbst, dann „Neu laden“.\n\nZu Auftrag & Start\nNeu laden",
+    "rahmenSchutz": {
+      "text": "Der Leitstand kann nicht eingebettet werden. Öffne ihn direkt im Browser.",
+      "shell": false
+    }
+  }
+}

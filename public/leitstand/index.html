@@ -2,6 +2,9 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
+  <!-- F45 V1: nur Frames — die Live-Vorschau bettet eine lokale Projekt-App ein (vorschau-panel.js); kein 'self',
+       der Leitstand selbst wird nie eingebettet (rahmen-schutz.js). Keine weiteren Direktiven. -->
+  <meta http-equiv="Content-Security-Policy" content="frame-src http://localhost:* http://127.0.0.1:*" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leitstand</title>
   <!-- F44 WS-1a: Theme vor dem ersten Rendern setzen (kein Aufblitzen des falschen Themes).

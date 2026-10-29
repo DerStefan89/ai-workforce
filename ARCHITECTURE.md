@@ -116,6 +116,10 @@ Eine Bedien-Grenze für das Modell, keine Sicherheitsgrenze gegen selbst ausgef�
 - Anzeige nur als Text (escaped), täuschende Zeichen maskiert; einziger Schreiber der Kanal-Gruppe ist `public/leitstand/rueckfrage-kanal.js`.
 - Wartegrenze 10 min, Ende spätestens mit dem Lauf; jeder Fehler im Skript endet als Ablehnung, nie als Erlaubnis.
 
+**Live-Vorschau** (F45 V1): Der Leitstand bettet nur die vom Server geprüfte lokale `vorschau_url` ein (iframe-sandbox ohne
+Top-Navigation, meta-CSP nur `frame-src` auf die lokalen Hosts) und startet selbst in keinem Rahmen — ERZWUNGEN (Gate
+f45-v1-vorschau); ein Header-Schutz (`frame-ancestors`) fehlt — DEKLARIERT.
+
 ## 4. Fehlerbehandlung
 
 - Ein Werkzeuglauf hat genau drei terminale Ausgänge: `ERFOLGREICH`, `VERWEIGERT`, `FEHLGESCHLAGEN`. Klassifikationsreihenfolge: ungültige Beobachtungsbasis → `FEHLGESCHLAGEN`; gültige Verweigerung → `VERWEIGERT`; sonst bei erfüllten Erfolgskriterien → `ERFOLGREICH`. Ein allgemeines Erfolgsflag überstimmt nie eine konkrete Verweigerung.

@@ -463,14 +463,14 @@ test('F44 WS-2b: Leerzustand B14 bei leeren Workitems und ohne Roadmap', async (
 test('F44 WS-2b: ein Poll-Tick lädt weder Roadmap noch Workitems nach (nur beim Betreten und Wechsel)', async () => {
   setzeAktivesProjekt({ id: 'projekt-n', name: 'Projekt N' })
   await warte()
-  aufrufe.length = 0
+  assert.ok(aufrufe.splice(0).includes('/api/projekte/projekt-n/projekt-aufruf'), 'F45 V1: der Wechsel prüft die Vorschau (Positivkontrolle; splice leert die Liste)')
   const { pollJetzt } = await import('./zustand.js')
   await pollJetzt()
   await pollJetzt()
   await warte()
   assert.ok(aufrufe.some((u) => u.endsWith('/zustand')), 'der Poll fragt das Aggregat ab')
   assert.deepEqual(
-    aufrufe.filter((u) => u.includes('/roadmap') || u.includes('/workitems')),
+    aufrufe.filter((u) => u.includes('/roadmap') || u.includes('/workitems') || u.includes('/projekt-aufruf')),
     [],
     `Poll löst Nachladen aus: ${aufrufe.join(', ')}`
   )
@@ -500,7 +500,7 @@ test('F-903: kein Leerzustand B14, solange ein Workflow wartet — auch ohne Wor
   assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, true, 'der geführte erste Schritt verdeckt eine wartende Freigabe')
   assert.equal(document.getElementById('uebersicht-inhalt').hidden, false)
   // F46 D1: „Deine nächsten Entscheidungen“ entfällt (→ Karte „Braucht dich“ mit Zahl, #/attention).
-  assert.match(document.getElementById('uebersicht-cockpit').innerHTML, />1 Entscheidung</)
+  assert.match(document.getElementById('uebersicht-cockpit-rechts').innerHTML, />1 Entscheidung</)
 })
 
 test('F-903: kein Leerzustand B14 bei defekter Workflow-Quelle', async () => {
@@ -1004,7 +1004,7 @@ test('F46 D1: Projektakte — Wechsel bei offener Seite lädt mit dem neuen Prä
   assert.match(html, /Nutzer von projekt-pb/)
   assert.doesNotMatch(html, /Nutzer von projekt-pa/, 'späte Antwort des alten Projekts')
   assert.ok(aufrufe.includes('/api/projekte/projekt-pb/projektakte'), `Aufrufe: ${aufrufe.join(', ')}`)
-  assert.match(document.getElementById('uebersicht-cockpit').innerHTML, /Kein eindeutiges Versionsziel/, 'die Übersicht lädt die Projektakte des neuen Projekts ebenfalls')
+  assert.match(document.getElementById('uebersicht-cockpit-links').innerHTML, /Kein eindeutiges Versionsziel/, 'die Übersicht lädt die Projektakte des neuen Projekts ebenfalls')
 })
 
 test('F46 D3 (Prüfpass cr 1, qa 9): eine Abnahme-Entscheidung bei offenem Detail lädt die Abnahme genau einmal nach; ohne Übergang nichts', async () => {

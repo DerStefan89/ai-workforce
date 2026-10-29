@@ -8468,13 +8468,13 @@ Maßnahme: qa 4 und die 409-Form mit B5a-2 entscheiden (Teilwerte additiv, Einf�
 Status: offen. Nachtrag 24.10.2026 (F45 B5a-2, `features/F45/plan-b5a2-v2.md`, Advisor B1): qa 4 im Client entschieden als Weg (b) — das Formular startet bei einer unvollständigen Akte leer und trägt fest den Warnhinweis „Speichern ersetzt diese Abschnitte … bzw. legt fehlende neu an“ mit Link auf die Akte; Gate b5a2 (h) belegt an einer Kopie der echten F45-Akte, dass ein unverändert übernommenes Ziel bytegleich bleibt. Teilwerte (additiv, Server) und der Platz neuer Abschnitte bleiben hier offen (B5b-1). Die 409-Form trennt der Client über den Schlüssel (`hash` bzw. `workflowId`); ein Feld `art` bleibt wünschenswert. Nachtrag 24.10.2026 (F45 B5b-1a, `features/F45/plan-b5b1-v2.md`): Weg (b) bestätigt (Challenger, 24.10.2026); Umbau auf Weg (a) (nur Link), wenn in R Text verloren geht. qa 10 (`**AK1** …` als Kennung) bleibt offen — keine Akten-Bereinigung in B5b-1a, Kandidat B5b-1b.
 Feature/Run: Entdeckt: F45 B5a-1 (Prüfpass code-reviewer, qa), 23.10.2026.
 
-**F-1178** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-1178** · `PROCESS_IMPROVEMENT` · P2 · erledigt (F45 V1)
 Titel: Live-Vorschau des Projekts im Leitstand.
 Beschreibung: Die Produktübersicht lädt im Feld „Rolle im Detail · Builder“ die laufende App des gewählten Projekts über `vorschau_url` (iframe mit `sandbox`, CSP `frame-src` nur die geprüfte localhost-URL, Erreichbarkeit aus der F43-Prüfung, keine neue Route, kein Poll), sonst „Start Building“ mit Weg zu „Auftrag & Start“/Coach; „Neu laden“, „In neuem Tab öffnen“; die App startet Stefan selbst. E-VORSCHAU-1 = A (Stefan, 24.10.2026): eigenes Paket „V1 Vorschau (Stufe 1)“ nach B5b-3, vor B3. Hebt das F43-Nicht-Ziel „keine Vorschau im Leitstand selbst“ auf; „kein Start/Stopp dauerlaufender Prozesse“ bleibt. Stufe 2 (Start/Stopp, Auswahl main/Arbeitsordner) nach R.
-Fundstelle: `features/F43/feature.md` (Nicht-Ziele), Produktübersicht (`public/leitstand/views/projekte-uebersicht.js`).
+Fundstelle: `features/F43/feature.md` (Nicht-Ziele), Produktübersicht (`public/leitstand/views/dashboard.js`, Karte c; vorher irrtümlich `views/projekte-uebersicht.js`).
 Auswirkung: Mittel — Stefan sieht das gebaute Ergebnis heute nur in einem eigenen Tab.
 Maßnahme: F45 V1 Vorschau (Stufe 1), `docs/projekt/fixpaket-f45.md`.
-Status: entschieden, offen.
+Status: erledigt durch F45 V1 (28.10.2026, Branch `f45/v1-live-vorschau`; `features/F45/plan-v1.md`, `plan-v1-v2.md`, `advisor-v1.md`): Karte c der Produktübersicht zeigt die App im iframe (`public/leitstand/vorschau-panel.js`, sandbox ohne Top-Navigation), sonst „Start Building“; „Rolle im Detail“ als Ausklapper unter dem Kreis (Bauauftrag; „Bekommt/Liefert“ entfallen). Abweichungen von der Zeile oben: Platz ist Karte c statt „Rolle im Detail · Builder“; die CSP ist statisch `frame-src http://localhost:* http://127.0.0.1:*` (eine meta-CSP kann keine URL je Projekt nennen; ohne `'self'`, Entscheidung Stefan 28.10.2026), dazu Rahmen-Schutz `public/leitstand/rahmen-schutz.js` (der Leitstand startet nicht in einem Rahmen); Header-Schutz (`frame-ancestors`) nicht gesetzt (Serveränderung, DEKLARIERT). Gate `check-f45-v1-vorschau`, Nachweis `features/F45/nachweise/v1/`. Stufe 2 (Start/Stopp, Auswahl main/Arbeitsordner) bleibt offen, ohne eigenes Finding.
 Feature/Run: Entdeckt: Stefan, 24.10.2026.
 
 **F-1179** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -9051,3 +9051,21 @@ Auswirkung: Mittel — das Register bleibt schwer lesbar; Prioritäten des Besta
 Maßnahme: Vor F30 zusammen mit der P1-Sichtung als eigenes Paket planen; Ergebnis je Eintrag: behalten / Priorität ändern / verwerfen (Entscheidung Stefan).
 Status: offen.
 Feature/Run: Entdeckt: F45 W2d (Challenger-Messung 28.10.2026).
+
+**F-1244** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Archivregel E-K-1 legt nicht fest, ob Kopf- oder Status-Zeile zählt.
+Beschreibung: E-K-1 archiviert Einträge, deren Status mit gelöst, behoben, erledigt oder korrigiert beginnt, sagt aber nicht, ob die Kopfzeile oder die Zeile „Status:“ maßgeblich ist. F45 W2d archivierte nach der Kopfzeile; F-917, F-979, F-1087 und F-1157 trugen „erledigt“ im Kopf, aber einen offenen bzw. teilweisen Status (Restvermerke stehen jetzt nur im Archiv).
+Fundstelle: `state/findings.md` (Kopfsatz, Regel E-K-1), `state/findings-archiv.md` (F-917, F-979, F-1087, F-1157).
+Auswirkung: Gering bis mittel — offene Reste können unbemerkt ins Archiv wandern; das Workboard liest das Archiv nicht (F-1139).
+Maßnahme: E-K-1 präzisieren: die Status-Zeile ist maßgeblich, der Kopf muss zu ihr passen; die vier Einträge in der Sichtung F-1243 prüfen.
+Status: offen.
+Feature/Run: Entdeckt: Challenger nach F45 W2d, eingetragen F45 V1, 28.10.2026.
+
+**F-1245** · `TECH_DEBT` · P3 · offen
+Titel: Restpunkte von F45 V1 (Prüfpass code-reviewer, qa, design-guardian).
+Beschreibung: (qa 5, dg A8) Karte c ist bei 1 440 px nur ≈ 300 px breit — eine Desktop-App erscheint in Handybreite (Ausweg „In neuem Tab öffnen“); Breite/Skalierung ist eine Aufbaufrage an Stefan. (qa 6, O1) Im Leerzustand (keine Workitems, Roadmap, Workflows) steht der geführte erste Schritt statt „Start Building“, das iframe lädt trotzdem verborgen; ebenso läuft es nach dem Betreten im verborgenen `#view-dashboard` weiter. (qa 9, cr K11) Eine App mit `X-Frame-Options`/`frame-ancestors` oder einer Weiterleitung auf einen fremden Host zeigt einen leeren bzw. gesperrten Rahmen ohne Hinweis. (qa 10) „Neu laden“ springt auf die Start-URL der App zurück. (qa 12) Meldet der Server „nicht zulässig“, weil sein Port unbekannt ist, nennt der Hinweis fälschlich den Leitstand-Port. (qa 11) Rollen bleiben `role=tab` mit einem zugeklappt verborgenen `tabpanel`; Karte c hat im Vorschau-Zustand keine Überschrift. (cr K8) Das Lauf-Detail für „In diesem Lauf“ lädt auch bei zugeklapptem Ausklapper. (qa 14) `features/F46/nachweise/d1/erzeuge-nachweis.mjs` erwartet noch die alte Karte „Rolle im Detail“ (h2, sichtbar) — ein erneuter Lauf scheitert. (dg A6) „Zu Auftrag & Start“ ist bewusst kein Primärknopf (Leitprinzip ein Hauptknopf).
+Fundstelle: `public/leitstand/vorschau-panel.js`, `public/leitstand/views/dashboard.js` (`rolleAusklapper`, `ladeAlles`), `public/leitstand/style.css` (`.uebersicht-cockpit`), `features/F46/nachweise/d1/erzeuge-nachweis.mjs`.
+Auswirkung: Gering bis mittel — Nutzwert der Vorschau auf dem Desktop (Breite) und Verständlichkeit in Randfällen; keine Sicherheitswirkung.
+Maßnahme: Breite und Leerzustand mit Stefan entscheiden (Stufe 2 der Vorschau oder B3); übrige mit dem nächsten Paket an der Übersicht.
+Status: offen.
+Feature/Run: Entdeckt: F45 V1 (Prüfpass code-reviewer, qa, design-guardian), 28.10.2026.

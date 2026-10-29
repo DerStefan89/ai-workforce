@@ -7,46 +7,36 @@
  *     Code“ und „+ Eintrag erfassen“ als Baustein „kommt“ (Fixpaket B5 bzw. bis D4).
  *  2. Vier gleich hohe Kopfkarten:
  *     a) Produktmanagement (Einstieg #/produktzyklus) und Ziel dieser Version — Zielsatz aus der
- *        Projektakte (GET …/projektakte, nur wenn eindeutig, sonst „kommt“), Link „Zielgruppe &
- *        Erfolgskriterien“ → #/projektakte.
- *     b) Wer arbeitet gerade: Feature in Arbeit (entwicklung-daten.js waehleFeatureInArbeit) und der
- *        Rollen-Kreis (rollen-kreis.js) aus den Schritten seines Workflows. Ohne Feature in Arbeit,
- *        aber mit einem nicht terminalen Ablauf (Bug, Harness, freier Auftrag) zeigt der Kreis diesen
- *        Ablauf (fokus-daten.js waehleFokusWorkflow) — die frühere „Aktuelle Rolle“ bleibt so sichtbar.
- *     c) Rolle im Detail (Panel des Rollen-Registers): Name, Worker, Bekommt/Liefert als „kommt“
- *        (Fixpaket B2), „In diesem Lauf“ aus der Laufakte-Beobachtung des letzten Laufs der Rolle,
- *        sonst „—“.
- *     d) Fortschritt (Ring x / y abgenommen im aktuellen Meilenstein → #/roadmap) und Braucht dich
- *        (Zahl aus baueEntscheidungen → #/attention).
- *  3. Vier Kennzahlen: In Arbeit, Deine Entscheidung, Abgenommen, Geplant (wie F44 WS-2b).
- *  4. „Der Weg von <Feature>“: Kopf echt, Workstream-Zeitleiste „kommt“ (Fixpaket B2/B5).
+ *        Projektakte (nur wenn eindeutig, sonst „kommt“), Link → #/projektakte.
+ *     b) Wer arbeitet gerade: Feature in Arbeit (waehleFeatureInArbeit) bzw. ein nicht terminaler Ablauf
+ *        ohne Feature (waehleFokusWorkflow) im Rollen-Kreis (rollen-kreis.js); darunter seit F45 V1 der
+ *        Ausklapper „Rolle im Detail“ (Panel des Rollen-Registers: Name, Worker, „In diesem Lauf“ aus der
+ *        Laufakte-Beobachtung, sonst „—“). Ein Klick auf eine Rolle öffnet ihn.
+ *     c) Live-Vorschau (F45 V1, vorschau-panel.js): die App des Projekts im iframe, sonst „Start Building“ —
+ *        eigener Container #uebersicht-vorschau, den render() nie schreibt (das iframe überlebt den Poll).
+ *     d) Fortschritt (Ring → #/roadmap) und Braucht dich (baueEntscheidungen → #/attention).
+ *  3. Vier Kennzahlen: In Arbeit, Deine Entscheidung, Abgenommen, Geplant.
+ *  4. „Der Weg von <Feature>“: Kopf echt, Workstream-Zeitleiste „kommt“.
  *  5. Kacheln Features, Bugs, Harness Improvements mit Anzahl → #/workboard.
- *  6. Arbeitsstand mit Filter Alles · Geplant · In Arbeit · Braucht dich · Abgenommen (das
- *     Status-Kanban aus entwicklung-daten.js baueBoard, je Spalte die ersten Karten).
- *  7. Zuletzt umgesetzt: letztes abgenommenes Feature (aktueller Meilenstein, sonst der jüngste
- *     davor, in Roadmap-Reihenfolge), Workstream-Ring und „Danach“ als „kommt“; darunter die letzte
- *     Ausführung (bisheriges Verhalten, F44 B12).
- *  8. Was steckt dahinter: drei Knöpfe „kommt“ (Code & Änderungen bis D4).
+ *  6. Arbeitsstand mit Filter (Status-Kanban aus baueBoard, je Spalte die ersten Karten).
+ *  7. Zuletzt umgesetzt: letztes abgenommenes Feature in Roadmap-Reihenfolge, Ring und „Danach“ als
+ *     „kommt“; darunter die letzte Ausführung.
+ *  8. Was steckt dahinter: drei Knöpfe „kommt“.
  *  9. Betrieb: Läufe, Workflows, Startfehler als ruhige Zeile.
  * 10. Leerzustand: keine Workitems, keine Roadmap, keine Workflows → geführter erster Schritt.
  *
- * Entfallen (E, abgleich §4.1) und weiter erreichbar: „Deine nächsten Entscheidungen“ (→ Braucht
- * dich, #/attention), „Die Workforce gerade“ (→ Live-Chip), „Wer macht was“ (→ Rollen-Kreis und
- * Rolle im Detail), Entwicklungsstand-Liste (→ #/roadmap), Vision (→ #/projektakte).
- *
- * Datenquellen: das Poll-Aggregat (abonniere, zustand.js), GET …/roadmap, GET …/workitems
- * (ungefiltert), GET …/auftraege (Verknüpfung Workitem ↔ Workflow), die offenen P0/P1-Workitems
- * (attention-daten.js), GET …/projektakte (Zielsatz), die Fokus-Nachträge (fokus-daten.js) und je
- * gewählter Rolle das Lauf-Detail ihres letzten Laufs (Beobachtung).
+ * Datenquellen: das Poll-Aggregat (abonniere, zustand.js), GET …/roadmap, …/workitems, …/auftraege,
+ * die offenen P0/P1-Workitems, GET …/projektakte, die Fokus-Nachträge (fokus-daten.js), je gewählter
+ * Rolle das Lauf-Detail ihres letzten Laufs und GET /api/projekte/<id>/projekt-aufruf (Vorschau).
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initDashboardView beim Bootstrap, vor starteRouter())
  * - public/leitstand/projekt-wechsel.test.mjs (Neuladen beim Projektwechsel)
  *
  * Wichtig:
- * - Roadmap, Workitems, Aufträge, P0/P1 und Projektakte laden beim Betreten (#/dashboard) und bei
- *   jedem Projektwechsel (abonniereProjektWechsel, F-860), je mit eigenem Überholschutz — nie aus
- *   dem Poll. Das Aggregat kommt über abonniere().
+ * - Roadmap, Workitems, Aufträge, P0/P1, Projektakte und Vorschau laden beim Betreten (#/dashboard) und
+ *   bei jedem Projektwechsel (abonniereProjektWechsel, F-860), je mit eigenem Überholschutz — nie aus
+ *   dem Poll; die Vorschau zusätzlich auf „Neu laden“. Das Aggregat kommt über abonniere().
  * - Fokus-Nachträge laden bei wechselnder Workflow-ID oder wenn sich Status, Cursor oder Halt dieses
  *   Workflows im Aggregat ändern (Prüfpass D1 cr 5 — sonst bliebe der Kreis bis zum nächsten Betreten
  *   stehen), beim Betreten und frühestens NACHTRAG_WIEDERHOLEN_MS nach einem Fehlschlag; das
@@ -62,7 +52,7 @@
  *   escaped; alle übrigen Texte über t().
  */
 
-import { holeAuftraegeBegrenzt, holeLaufDetail, holeProjektakte, holeRoadmap, holeWorkitems } from '../api.js'
+import { holeAuftraegeBegrenzt, holeLaufDetail, holeProjektAufruf, holeProjektakte, holeRoadmap, holeWorkitems } from '../api.js'
 import { baueEntscheidungen, filtereAttentionWorkflows, filtereOffeneAbnahmen, holeOffeneP0P1Workitems } from '../attention-daten.js'
 import { baueBoard, baueVerknuepfung, istNichtTerminal, SPALTEN, verknuepfterWorkflow, waehleFeatureInArbeit, workflowPhase } from '../entwicklung-daten.js'
 import { ladeFokusNachtrag, waehleFokusWorkflow, waehleLetztenLauf } from '../fokus-daten.js'
@@ -77,6 +67,7 @@ import { kreisStatus, naechsteKreisRolle, rollenKreisHtml, vorgewaehlteRolle } f
 import { workerName } from '../rollen-anzeige.js'
 import { registriere } from '../router.js'
 import { chipTypVonWorkitem, typChip } from '../typ-chip.js'
+import { erzeugeVorschauPanel } from '../vorschau-panel.js'
 import { abonniere } from '../zustand.js'
 
 /** Letztes Zustands-Aggregat aus dem Poll, oder null vor dem ersten Tick (bzw. nach einem Projektwechsel). */
@@ -109,8 +100,12 @@ const NACHTRAG_WIEDERHOLEN_MS = 30000
 /** Beobachtung je laufId für „In diesem Lauf“: { status: 'laedt' | 'ok' | 'fehler', beobachtung? }. */
 const beobachtungen = new Map()
 
-/** Gewählte Rolle im Rollen-Register, oder null = vorgewählt (erste „jetzt“, sonst Builder). */
+/** Gewählte Rolle im Rollen-Register, oder null = vorgewählt (erste „jetzt“, sonst Builder); detailOffen: Ausklapper offen. */
 let gewaehlteRolle = null
+let detailOffen = false
+
+/** Live-Vorschau in Karte c (F45 V1) — eigener Container, den render() nie schreibt. */
+const vorschau = erzeugeVorschauPanel({ hole: holeProjektAufruf, element: () => document.getElementById('uebersicht-vorschau'), leitstandPort: () => location.port })
 
 /** Filter des Arbeitsstands: 'alles' oder eine der SPALTEN. */
 let arbeitsstandFilter = 'alles'
@@ -125,7 +120,7 @@ const blockCache = new Map()
 const KARTEN_JE_SPALTE_UEBERSICHT = 3
 const KARTEN_GEFILTERT = 12
 
-/** ID des Panels „Rolle im Detail“ (aria-controls der Rollen-Reiter). */
+/** ID des Ausklappers „Rolle im Detail“ (aria-controls der Rollen-Reiter). */
 const ROLLE_PANEL_ID = 'uebersicht-rolle-detail'
 
 /** Pfeil der Vorlage am Zeilenende (dekorativ). */
@@ -431,6 +426,7 @@ function werKarte(l, auswahl) {
   return `<article class="uebersicht-karte uebersicht-wer">
       <span class="eyebrow">${kopf}</span>
       ${rollenKreisHtml({ status: l.kreis, auswahl, panelId: ROLLE_PANEL_ID, mitteHtml: mitte })}
+      ${rolleAusklapper(l, auswahl)}
     </article>`
 }
 
@@ -451,12 +447,12 @@ function inDiesemLauf(schritt) {
 }
 
 /**
- * 2c. Karte Rolle im Detail (Panel des Rollen-Registers).
+ * Ausklapper „Rolle im Detail“ unter dem Kreis (F45 V1; Panel des Rollen-Registers): Name, Worker, Modell, „In diesem Lauf“.
  * @param l - lage()
  * @param auswahl - gewählte Rolle
  * @returns HTML
  */
-function detailKarte(l, auswahl) {
+function rolleAusklapper(l, auswahl) {
   const eintrag = l.kreis[auswahl] ?? { status: 'offen', schritt: null }
   const schritt = eintrag.schritt
   const worker = typeof schritt?.worker === 'string' ? workerName(schritt.worker) : t(`kreis.worker.${auswahl}`)
@@ -468,17 +464,16 @@ function detailKarte(l, auswahl) {
   const links = []
   if (laufId !== null) links.push(textLink(`#/runs/${encodeURIComponent(laufId)}`, t('uebersicht.detail.output')))
   if (l.kreisWorkflow !== null) links.push(textLink(`#/workflows/${encodeURIComponent(l.kreisWorkflow.workflowId)}`, t('uebersicht.rolle.link')))
-  return `<article class="uebersicht-karte uebersicht-detail" id="${ROLLE_PANEL_ID}" role="tabpanel" aria-labelledby="rollen-kreis-tab-${auswahl}" data-status="${eintrag.status}">
-      <span class="eyebrow">${tHtml('uebersicht.detail.eyebrow', { status: t(`kreis.status.${eintrag.status}`) })}</span>
-      <div class="uebersicht-detail-kopf"><h2>${tHtml(`kreis.rolle.${auswahl}`)}</h2><span class="subtle">${escapeHtml(worker)} · ${tHtml(`kreis.aufgabe.${auswahl}`)}</span></div>
-      ${modell}
-      <dl class="uebersicht-detail-liste">
-        <dt>${tHtml('uebersicht.detail.bekommt')}</dt><dd>${kommtBadge()}</dd>
-        <dt>${tHtml('uebersicht.detail.liefert')}</dt><dd>${kommtBadge()}</dd>
-        <dt>${tHtml('uebersicht.detail.lauf')}</dt><dd>${inDiesemLauf(schritt)}</dd>
-      </dl>
-      ${links.length > 0 ? `<div class="uebersicht-detail-links">${links.join('')}</div>` : ''}
-    </article>`
+  const umschalter = tHtml('uebersicht.detail.umschalter', { rolle: t(`kreis.rolle.${auswahl}`) })
+  return `<div class="uebersicht-detail" data-status="${eintrag.status}">
+      <button type="button" class="uebersicht-detail-umschalter" id="${ROLLE_PANEL_ID}-umschalter" data-rolle-umschalter aria-expanded="${detailOffen}" aria-controls="${ROLLE_PANEL_ID}">${umschalter}</button>
+      <div class="uebersicht-detail-inhalt" id="${ROLLE_PANEL_ID}" role="tabpanel" aria-labelledby="rollen-kreis-tab-${auswahl}"${detailOffen ? '' : ' hidden'}>
+        <p class="uebersicht-detail-kopf"><strong>${tHtml(`kreis.rolle.${auswahl}`)}</strong> <span class="subtle">${escapeHtml(worker)} · ${tHtml(`kreis.aufgabe.${auswahl}`)}</span></p>
+        ${modell}
+        <dl class="uebersicht-detail-liste"><dt>${tHtml('uebersicht.detail.lauf')}</dt><dd>${inDiesemLauf(schritt)}</dd></dl>
+        ${links.length > 0 ? `<div class="uebersicht-detail-links">${links.join('')}</div>` : ''}
+      </div>
+    </div>`
 }
 
 /**
@@ -520,16 +515,6 @@ function fortschrittSpalte() {
         ${textLink('#/attention', t('uebersicht.braucht.link'))}
       </article>
     </div>`
-}
-
-/**
- * 2. Die vier Kopfkarten.
- * @param l - lage()
- * @returns HTML
- */
-function cockpitBlock(l) {
-  const auswahl = gewaehlteRolle ?? vorgewaehlteRolle(l.kreis)
-  return `${produktKarte()}${werKarte(l, auswahl)}${detailKarte(l, auswahl)}${fortschrittSpalte()}`
 }
 
 /**
@@ -827,7 +812,7 @@ function geruest() {
   return `<div id="uebersicht-b1">${l}</div>
     <div id="uebersicht-erster-schritt" hidden></div>
     <div id="uebersicht-inhalt">
-      <section class="uebersicht-cockpit" id="uebersicht-cockpit" aria-label="${tHtml('uebersicht.cockpit')}">${l}</section>
+      <section class="uebersicht-cockpit" id="uebersicht-cockpit" aria-label="${tHtml('uebersicht.cockpit')}"><div class="uebersicht-cockpit-teil" id="uebersicht-cockpit-links">${l}</div><article class="uebersicht-karte uebersicht-vorschau" id="uebersicht-vorschau">${l}</article><div class="uebersicht-cockpit-teil" id="uebersicht-cockpit-rechts"></div></section>
       <div id="uebersicht-werte">${l}</div>
       <section class="uebersicht-weg" id="uebersicht-weg">${l}</section>
       <div id="uebersicht-kacheln">${l}</div>
@@ -846,6 +831,7 @@ function setzeGeruest() {
     return
   }
   blockCache.clear()
+  vorschau.vergiss()
   container.innerHTML = geruest()
 }
 
@@ -866,7 +852,8 @@ function render() {
     setzeBlock('uebersicht-erster-schritt', ersterSchrittBlock)
     return
   }
-  setzeBlock('uebersicht-cockpit', () => cockpitBlock(l))
+  setzeBlock('uebersicht-cockpit-links', () => `${produktKarte()}${werKarte(l, gewaehlteRolle ?? vorgewaehlteRolle(l.kreis))}`)
+  setzeBlock('uebersicht-cockpit-rechts', fortschrittSpalte)
   setzeBlock('uebersicht-werte', werteBlock)
   setzeBlock('uebersicht-weg', () => wegBlock(l))
   setzeBlock('uebersicht-kacheln', kachelnBlock)
@@ -939,6 +926,7 @@ function ladeAlles() {
   nachtraege.clear()
   beobachtungen.clear()
   ladeRoadmap()
+  void vorschau.lade(holeAktivesProjekt().id, holeAktivesProjekt().name)
   ladeListe('workitems', () => holeWorkitems(), 'workitems', (liste) => {
     workitems = liste
   })
@@ -970,18 +958,18 @@ function ladeAlles() {
 }
 
 /**
- * Wählt eine Rolle im Rollen-Register und gibt dem Reiter den Fokus zurück (der Block wird neu
- * geschrieben).
+ * Wählt eine Rolle im Rollen-Register, öffnet den Ausklapper und gibt dem Reiter den Fokus zurück.
  * @param rolle - Rollen-ID
  * @param fokus - true, wenn der Reiter danach den Fokus bekommen soll
  */
 function waehleRolle(rolle, fokus) {
   gewaehlteRolle = rolle
+  detailOffen = true
   render()
   if (fokus) document.getElementById(`rollen-kreis-tab-${rolle}`)?.focus()
 }
 
-/** Klick- und Tastatur-Delegation: Rollen-Register, Filter des Arbeitsstands, „Erneut laden“ der Roadmap — ohne Schreibwirkung. */
+/** Klick- und Tastatur-Delegation: Rollen-Register und Ausklapper, Filter, „Erneut laden“ der Roadmap, „Neu laden“ der Vorschau — ohne Schreibwirkung. */
 function initBedienung() {
   const container = document.getElementById('view-dashboard')
   container?.addEventListener('click', (ereignis) => {
@@ -989,6 +977,15 @@ function initBedienung() {
     const reiter = ereignis.target.closest('[data-kreis-rolle]')
     if (reiter !== null) {
       waehleRolle(reiter.getAttribute('data-kreis-rolle'), true)
+      return
+    }
+    if (ereignis.target.closest('[data-vorschau-neu-laden]') !== null) {
+      void vorschau.neuLaden()
+      return
+    }
+    if (ereignis.target.closest('[data-rolle-umschalter]') !== null) {
+      detailOffen = !detailOffen
+      render()
       return
     }
     if (ereignis.target.closest('[data-uebersicht-erneut]') !== null) {
@@ -1029,6 +1026,7 @@ export function initDashboardView() {
   abonniereProjektWechsel(() => {
     letzterZustand = null
     gewaehlteRolle = null
+    detailOffen = false
     setzeGeruest()
     ladeAlles()
   })

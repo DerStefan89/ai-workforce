@@ -186,8 +186,8 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | T | fixpaket | Tests stabil | erledigt | 0,2–0,3 | – | 2026-10-24 | 2026-10-25 | Harness, kein Produktverhalten: schwere Testdateien seriell, Zeitfaktor, Messung (F-1186, F-1154); gemergt #379 (Bereinigung B5b-3, A2: Abgenommen = Merge-Datum, Ist – nach A3) |
 | B5b-2 | fixpaket | Roadmap-Anzeige | erledigt | 1–1,4 | – | 2026-10-25 | 2026-10-25 | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“; gemergt #380 (2a), #381 (2b-1), #382 (2b-2), #384 (2c-1), #385 (2c-2-C); 2c-2-AB gebaut — `erledigt` nach Auftrag Challenger 25.10.2026 („Workstream-Zeile B5b-2 auf erledigt, sofern die Ist-Zelle es zulässt“), abweichend von Advisor `advisor-b5b2c2.md` A1 und Plan v2 A1; Abgenommen = erwartetes Merge-Datum von 2c-2-AB, bei späterem Merge nachziehen; Ist pflegt der Challenger (Zelle erlaubt nur „–“ oder eine Zahl) |
 | B5b-3 | fixpaket | R7: Ist nach Abnahme | erledigt | 0,4–0,6 | – | 2026-10-27 | 2026-10-27 | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6); gemergt #387 (Bereinigung W2a: Ist – nach A3, Begonnen = Abgenommen ⇒ 0 AT) |
-| W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen; W2b = W2b-1 umbaufest (#389) + W2b-2 Wegwerf-Ordner/Fristen (#390), beide erledigt; W2c-1 Ratschen + Formatierer (#391), erledigt; W2d Doku-Diät; 60 Gates→Tests gestrichen (Pfadfinder) |
-| V1 | workstream | Live-Vorschau des Projekts im Leitstand | geplant | 0,3–0,5 | – | – | – | E-VORSCHAU-1 = A |
+| W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen; W2b = W2b-1 umbaufest (#389) + W2b-2 Wegwerf-Ordner/Fristen (#390), beide erledigt; W2c-1 Ratschen + Formatierer (#391), erledigt; W2d Doku-Diät (#392), erledigt; 60 Gates→Tests gestrichen (Pfadfinder) |
+| V1 | workstream | Live-Vorschau des Projekts im Leitstand | laeuft | 0,3–0,5 | – | 2026-10-28 | – | E-VORSCHAU-1 = A; gebaut (Abschnitt „Stand V1“), Branch `f45/v1-live-vorschau` |
 | B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | verworfen | 1–2 | – | – | – | entfällt — E-R-1 = A (Stefan, 25.10.2026): Referenzauftrag = F30-M1 |
 | R2 | design | Brain Stufe 1: Produktzyklus lesend, mit Motion | geplant | 1,5–2 | – | – | – | E-BRAIN-1 = B (Stefan, 25.10.2026); vorher „Motion im Leitstand der Workforce“, 1 |
@@ -343,3 +343,60 @@ check-f21-workboard, -f45-k-kontext, -ratsche, -docs, -rules, -status-akten, -fe
 -f45-b2a1-projektkarte, -f45-b5a1-akte, -f45-b5a2-akte-anzeige, -f45-b5b1a-planung, -f45-b5b1b2-bereinigung, -f15-workflow,
 -f15-automat-real, -f45-b2b3b1b-auswertung, -f45-b2b3b2b1b-r1, -f45-b2b3b2b1a-rest, -f45-b2b3b2a-absicherung,
 -wachstumsbremse-server.
+
+## Stand V1
+
+**Auftrag:** V1 „Live-Vorschau des Projekts im Leitstand (Stufe 1)“ (Challenger, 28.10.2026; E-VORSCHAU-1 = A). Plan `plan-v1.md` →
+Advisor-Pass im frischen Kontext „Nicht freigegeben“, kein Schnitt (`advisor-v1.md`) → `plan-v1-v2.md`. A1/A2 entschieden von
+Stefan (28.10.2026): meta-CSP ohne `'self'` (Abweichung vom Auftragstext) und zusätzlich Rahmen-Schutz; A3 (Ausklapper) und das
+Gate legt der Auftrag fest; A4 über den gekürzten Dateikopf.
+
+**Gebaut:**
+- `public/leitstand/vorschau-panel.js` (neu, mit Test): Karte c der Produktübersicht zeigt die App des gewählten Projekts im
+  iframe auf genau die vom Server geprüfte `vorschau_url` (GET `…/projekt-aufruf`, F43 `pruefeVorschau`; keine neue Route,
+  kein neuer Prüfweg), sandbox `allow-scripts allow-same-origin allow-forms`, „Neu laden“, „In neuem Tab öffnen“
+  (`noopener noreferrer`); sonst „Start Building“ mit Erklärung, Hinweis je Grund (keine URL, nicht erreichbar, nicht
+  zulässig, Prüfung fehlgeschlagen) und „Zu Auftrag & Start“ (`#/projekt`). Die Client-Regel spiegelt die Form der
+  Serverregel und sperrt zusätzlich den eigenen Port. Geschrieben wird nur bei geändertem Zustand; „Neu laden“ lädt das
+  vorhandene iframe neu.
+- `views/dashboard.js` 1 035 → 1 033 Zeilen: Cockpit in Hüllen (`display: contents`) links/rechts und eigener Container
+  `#uebersicht-vorschau`, den `render()` nie schreibt; Prüfung nur in `ladeAlles` (Betreten, Projektwechsel) und auf „Neu
+  laden“. „Rolle im Detail“ als Ausklapper unter dem Kreis (Name, Worker · Aufgabe, Modell, „In diesem Lauf“, Links), Klick
+  oder Pfeiltaste auf eine Rolle öffnet ihn; „Bekommt/Liefert“ entfallen (Auftrag; im Abgleich F46 als „K“ geführt).
+- `public/leitstand/index.html`: meta-CSP `frame-src http://localhost:* http://127.0.0.1:*`. `public/leitstand/rahmen-schutz.js`
+  (neu) als erster Import von `app.js`: im Rahmen ersetzt er den Inhalt durch einen Hinweis und bricht die Auswertung des
+  Modulgraphen ab (kein Poll, kein API-Aufruf).
+- i18n de/en/tr/ru: `vorschau.*`, `rahmen.hinweis`, `uebersicht.detail.umschalter`; entfernt `uebersicht.detail.eyebrow`,
+  `.bekommt`, `.liefert`. „Start Building“ wörtlich in allen vier.
+- Gate `scripts/check-f45-v1-vorschau.mjs` (a)–(e) mit Rotfällen, in `scripts/check-kette.mjs`; ARCHITECTURE.md §3 ein Satz
+  (17 050 Bytes); F-1178 erledigt, F-1244 neu; Zeile V1 in `docs/projekt/fixpaket-f45.md`; Ratsche: drei neue Code-Dateien in
+  `formatiert`, Senkung `dashboard.js`.
+- Nachweis `features/F45/nachweise/v1/` (neutrale Umgebung, Test-App auf freiem Port, 14 WebP, `protokoll.json`): iframe-Element
+  über 7 s (≥ 3 Poll-Ticks) identisch, 0 Browser-Anfragen an die App und 0 Abrufe `…/projekt-aufruf` im Poll; „Neu laden“:
+  gleiches Element, je +1; Projektwechsel im selben Tab über die Projektauswahl: genau ein Abruf mit der neuen id, „Start
+  Building“, zurück ⇒ neues iframe; App gestoppt ⇒ „antwortet nicht“; Leitstand im Rahmen startet nicht; 390 px hell/dunkel
+  und 200 % ohne Querscroll; ru mit offenem Ausklapper.
+
+**DEKLARIERT/Grenzen:** Header-Schutz (`frame-ancestors`, `X-Frame-Options`) nicht gesetzt (Serveränderung, Wachstumsbremse) —
+der Rahmen-Schutz deckt die Weiterleitung einer App auf den Leitstand-Port ab; Gate (d) erkennt keine Aliase oder Umwege; eine
+App mit eigenem `X-Frame-Options` bleibt leer (Ausweg „In neuem Tab öffnen“); das iframe läuft nach dem Betreten im
+verborgenen `#view-dashboard` weiter; im Leerzustand (keine Workitems, Roadmap, Workflows) bleibt der geführte erste Schritt
+statt „Start Building“ (O1). Der Vermerk im F43-Nicht-Ziel mit Verweis auf E-VORSCHAU-1 stand schon (`features/F43/feature.md`),
+unverändert. W2 bleibt `laeuft` (nur W2d erledigt), weil F-1129/F-1130 noch „Maßnahme: W2“ tragen (Advisor 12).
+`loading="lazy"` aus Plan v1 entfallen (ein verborgenes iframe lädt ohnehin, Advisor 13); Schlüssel `vorschau.rahmenTitel`,
+`vorschau.start.link` statt der Namen im Plan. Restpunkte des Prüfpasses: F-1245.
+
+**Prüfpass:** code-reviewer und qa je „Freigegeben mit Hinweisen“, design-guardian „Nicht freigegeben“ (nur kleine Punkte), kein
+kritischer Befund. Eine Korrekturrunde: Knopf-Links ohne Unterstreichung, „Start Building“ oben statt mittig, Umschalter mit Hover
+und größerem Ziel, „Zu Auftrag & Start“ kein zweiter Primärknopf, Stil für den Hinweis des Rahmen-Schutzes (dg A1, A4–A7);
+Abgleich `docs/design/abgleich-f46.md` nachgezogen (dg A2); Nachweis um Projektwechsel im selben Tab, 200 %, 390 hell, ru und
+Ausklapper hell ergänzt, Kommentar berichtigt (cr W1, qa 1, dg A3); „Neu laden“ mit `aria-busy` und Fokus-Rückgabe, Knopf auch im
+Ladezustand (cr K6, qa 3, qa 13); Umschalter ohne mehrdeutiges Status-Wort (cr K7, qa 4); Rahmen-Hinweis in der gespeicherten
+Sprache, Kommentar zu den vorher ausgewerteten Abhängigkeiten präzisiert (cr K5, qa 7); Gate (d) für `render()` so streng wie für
+den abonniere-Rückruf und fail-closed, LF-Normalisierung, (c)-Grenze DEKLARIERT (cr K1–K4); Positivkontrolle im Poll-Test (qa 2);
+Kopf von `api.js` (cr K9).
+
+**Prüfung in der Sitzung (E-PRUEF-2 B):** siehe Bericht V1 — lint, typecheck, `npm run test`, Lagebild `--check`, check-ratsche,
+-f43-projekt-aufrufen, -f45-v1-vorschau, -f21-ws2-workboard-oberflaeche, -f44-i18n, -f46-bestand, -f20-design-tokens,
+-f20-leitstand-shell, -f12-leitstand-ansicht, -docs, -rules, -status-akten, -feature, -akte-meilenstein, -f45-b5b1a-planung,
+-f21-workboard, -contract, -f45-k-kontext.
