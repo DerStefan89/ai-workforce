@@ -10,7 +10,7 @@
  */
 
 import assert from 'node:assert/strict'
-import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, test } from 'node:test'
@@ -63,4 +63,18 @@ test('doppelte Zeile und fehlender Abschnitt → rot', () => {
   const herkunft = join(ohne, 'HERKUNFT.md')
   writeFileSync(herkunft, readFileSync(herkunft, 'utf8').replace('## Prüfsummen', '## Anderes'))
   assert.ok(pruefeSkelettHerkunft(ohne).some((b) => b.includes('Abschnitt „## Prüfsummen“ fehlt')))
+})
+
+test('F45 B3a: freigegebene Katalog-Agents sind im Skelett byte-gleich zur Workforce', () => {
+  // katalogFreigaben (src/faehigkeiten/index.ts) hasht die Agent-Datei der Workforce — weicht die Skelett-Kopie ab,
+  // gilt der Agent in jedem neuen Projekt als „abweichend“ und nicht freigegeben.
+  const repo = join(import.meta.dirname, '..')
+  const katalog = JSON.parse(readFileSync(join(repo, 'ressourcen.json'), 'utf8'))
+  const agents = katalog.ressourcen
+    .filter((r) => r.typ === 'agent' && r.freigabe === 'FREIGEGEBEN' && /^\.claude\/agents\/[^/]+\.md$/.test(r.herkunft?.pfad ?? ''))
+    .map((r) => r.herkunft.pfad)
+    .filter((pfad) => existsSync(join(SKELETT_WURZEL, pfad)))
+    .sort()
+  assert.deepEqual(agents, ['.claude/agents/architecture-advisor.md', '.claude/agents/code-reviewer.md', '.claude/agents/qa.md'])
+  for (const pfad of agents) assert.ok(readFileSync(join(SKELETT_WURZEL, pfad)).equals(readFileSync(join(repo, pfad))), pfad)
 })

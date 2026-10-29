@@ -41,6 +41,17 @@ Herkunft).
 - Lokal neu (B1a-2, nicht im Template): `scripts/check-gates.mjs`
   (Mindest-Gates a–d), `scripts/tests-mit-untergrenze.mjs`,
   `docs/harness/gate-vorlage-node.md`.
+- F45 B3a (29.10.2026, `features/F45/plan-b3a-v2.md`, F-1249):
+  `docs/harness/gate-vorlage-node.md` auf Biome umgestellt (recommended,
+  Komplexität 15, `noExplicitAny`, Formatierer im Stil der Workforce,
+  `checkJs`; Harness-Dateien ausgenommen); `package.json` `check`
+  beginnt mit `node scripts/check-dateigroesse.mjs`; `CLAUDE.md` Absatz
+  „Befehle“ nennt Formatierer, Komplexitätsgrenze und Dateigrenze, „Bestehende
+  Helper“ gilt für jeden neuen Code; `.claude/agents/architecture-advisor.md`
+  (Pflichtfragen) und `code-reviewer.md` („Was kann weg?“) — byte-gleich zur
+  Workforce, sonst gälten sie in neuen Projekten als nicht freigegeben
+  (Test `scripts/check-skelett-herkunft.test.mjs`). Lokal neu:
+  `scripts/check-dateigroesse.mjs` (Dateigrenze 800 Zeilen, ohne Ratsche).
 
 Bereits angelegte Projekte (z. B. haushaltsbuch2) behalten ihre alte
 Fassung, weil `kopiereSkelett` nichts überschreibt. Nachrüsten:
@@ -121,6 +132,12 @@ im neuen Projekt korrigiert werden.
 |---|---|
 | `.gitattributes` | Byte-gleich aus dem Template (`* text=auto eol=lf`). Bedarfsnachweis: Nachweislauf Rückfrage-Kanal 17.10.2026 — mit `core.autocrlf=true` bekam der Arbeitsordner CRLF und E-183 lehnte jeden schreibenden Lauf ab (Kernschutz: `-c core.autocrlf=false -c core.eol=lf` in `src/arbeitsordner/index.ts`). Nachrüsten legt sie nur an, wenn sie fehlt; eine vorhandene, abweichende `.gitattributes` bleibt. Wirkt als verschachtelte `.gitattributes` auch auf `vorlagen/projekt-skelett/**` in ai-workforce selbst — heute gleich der Wurzel-Datei; weicht sie ab, ändern sich die gespeicherten Bytes und damit die Prüfsummen unten. |
 
+### Nachgezogen in F45 B3a (Qualitätsprinzipien)
+
+| Pfad | Begründung |
+|---|---|
+| `scripts/check-dateigroesse.mjs` | Lokal neu: harte Dateigrenze für Code-Dateien (E-W2-1), läuft vorne in `npm run check`, ohne Abhängigkeit. Test: `scripts/skelett-check-dateigroesse.test.mjs`. |
+
 ## Ausgeschlossen (explizit)
 
 - `scout` — gibt es im Template nicht; ai-workforces `.claude/agents/scout.md`
@@ -142,8 +159,8 @@ Advisor-Historie).
 
 | Pfad | SHA-256 | Herkunft |
 |---|---|---|
-| `.claude/agents/architecture-advisor.md` | `2424c036b50b4c714258659b2a162feca78e987617590b8133bf80230a9bc26a` | template |
-| `.claude/agents/code-reviewer.md` | `62c37feb911dcf1045d1b5af6a23606780e7c0d847ab42ce61d3f41e81e9ca93` | template |
+| `.claude/agents/architecture-advisor.md` | `1ee1925b4c0f39e07c4786cfacf3214b311cc1f2c442303d35988649ecb3d1ce` | lokal geändert |
+| `.claude/agents/code-reviewer.md` | `c2d0f75810d0218bf99d441904e2dce3fb9f892e4d8f3ae0fd4fea9c0fc67cdd` | lokal geändert |
 | `.claude/agents/qa.md` | `5aed8133c1084e55839535b9384d3d1afbfce9689e7c585c9b9122570b103874` | template |
 | `.claude/commands/lessons.md` | `5ec433bf46d085dd4d97e4170f8eb74510029e3e07c96398b9d457a49977b4ab` | template |
 | `.claude/hooks/commit-guard.js` | `7bf501e25335aceed7191d3a6903cc171768c5d8904b9db91177cce7c36182cf` | template |
@@ -165,7 +182,7 @@ Advisor-Historie).
 | `.github/workflows/ci.yml` | `f8cc52dd4925bb65dc4fa05f671106410473bd38b2dfdfab2806bdf24d8b5a11` | template |
 | `.worktreeinclude` | `85d4f37b3364e1ba621c7d50e22564d8b9cfb239732fe8bbd64f5820a7d79311` | template |
 | `ARCHITECTURE.md` | `809dc26a10a3e9b51a5d1ca5590dde6ab39da59280bb3203ed3daa3785b0a114` | lokal geändert |
-| `CLAUDE.md` | `8a664e7b44b1fe107aa68a0eb99ba02b4d66200c0c384a17a65d75a77a3fe476` | lokal geändert |
+| `CLAUDE.md` | `90bca5ca50a9b3d6150d420b006a36cd174857c191c2c1611d6aad66f8b15d44` | lokal geändert |
 | `SETUP.md` | `9723241385112779f5a4b573f56b972444cf983e79fd058d4f6d5deca911859c` | template |
 | `docs/STATUS.md` | `c25aa98804a3def29590cd8c8633390bafafaaee45efca87e1fc6f2e00c0c1df` | template |
 | `docs/examples/design-guardian.example.md` | `a7d7ff2a30b9bb096d36c5ca41beed7cc03acef8c9180c0988b24748754872e6` | template |
@@ -178,11 +195,12 @@ Advisor-Historie).
 | `docs/guide/06-DER-PROZESS.md` | `a1db590ebdd70374f30cc45ed1eb60c9c5209248b73d7deeb8a2bb0bb85178e2` | template |
 | `docs/guide/07-TOKEN-SPAREN.md` | `5e9d4f64c05b56f912e9913c5384b719ef7940248136448da5b18cb9c20ff3a6` | template |
 | `docs/guide/08-EIGENES-PROJEKT.md` | `2b58f899a1d00082baac9bc195b385ac020ce5ea44d406424aa4c193a3c9c407` | template |
-| `docs/harness/gate-vorlage-node.md` | `319f8581ad624b990d0469222909c56065a0c8795a2971ceb78a19e1f1bb9644` | lokal neu |
+| `docs/harness/gate-vorlage-node.md` | `7e5edbfa0c00ef63a82ee4d658c4a29e7046367604b80a4ada1ca8d6b48adfc1` | lokal neu |
 | `docs/harness/werkzeug-katalog.md` | `87d18fefc3e469bdbede6a7d366ba759b63372368faefd4e42f93d17aca18dcd` | template |
 | `docs/kommentar-standard.md` | `77b9e43c4b50414c1c50c9c19af27303f5bc1b5e7a2b0a53afd605e6beed75b3` | template |
-| `package.json` | `285ade1470cb1e435381d4b8f2f2bf8387631d53faacdcfea5451efb0c166a15` | lokal geändert |
+| `package.json` | `4ef99df22c56f586126d2095b48ffc280b52e4b1179cfdc75faa99bf173a6c2f` | lokal geändert |
 | `scripts/check-contract.mjs` | `c7b13eee41d9014e8942d0f349244eab4c67300df9f450c56abea227496a285d` | template |
+| `scripts/check-dateigroesse.mjs` | `844cf3cd5a65c9ae153225c4d772cab625d98063ecdc7e218e54e3274e34249a` | lokal neu |
 | `scripts/check-docs.mjs` | `88d76a731120c1f50aff9734ce0ef957f1682e4aeded8ddf45e5a7907a784651` | template |
 | `scripts/check-gates.mjs` | `7c1b7427024ab0d0b912596a7c681b5beac8a6ab034a3ba5fcd6fe8dd9570621` | lokal neu |
 | `scripts/check-rules.mjs` | `ceb6cbff96fff062c4e1ca9d09d880a195d02d2d34b6d442eddd97969e9f5534` | template |

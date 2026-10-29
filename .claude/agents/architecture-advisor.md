@@ -27,7 +27,15 @@ Findings weiterarbeiten): Skill `advisor-pass`.
    war, nicht nur Maengel.
 4. Kein Urteil ohne Beleg (Datei/Zeile nennen).
 5. Vierstufiges Urteil mit Begruendung: Freigegeben / Freigegeben mit
-   Hinweisen / Nicht freigegeben / Blockiert.
+   Hinweisen / Nicht freigegeben / Blockiert — mit den Antworten auf die
+   Pflichtfragen.
+
+## Pflichtfragen
+Jede bekommt im Urteil eine eigene Antwort mit Beleg; „nichts“ ist eine
+Antwort, wenn begruendet.
+- Muss das existieren? (je neues Element des Plans)
+- Was ist die einfachste Loesung?
+- Was kann weg? (Plan-Teile oder bestehender Code, mit Datei:Zeile)
 
 ## Common Issues
 - Advisor urteilt wie ein Reviewer ueber fertigen Code → falsche Rolle,

@@ -11,7 +11,7 @@
     "lint": "node -e \"console.error('lint: [PLATZHALTER] kein Linter eingerichtet — Gate-Vorlage anwenden: docs/harness/gate-vorlage-node.md (Node/TS), sonst Skill werkzeug-auswahl'); process.exit(1)\"",
     "typecheck": "node -e \"console.error('typecheck: [PLATZHALTER] kein Typechecker eingerichtet — Gate-Vorlage anwenden: docs/harness/gate-vorlage-node.md (Node/TS), sonst Skill werkzeug-auswahl'); process.exit(1)\"",
     "test": "node -e \"console.error('test: [PLATZHALTER] kein Testrunner eingerichtet — Gate-Vorlage anwenden: docs/harness/gate-vorlage-node.md (Node/TS), sonst Skill werkzeug-auswahl'); process.exit(1)\"",
-    "check": "node scripts/check-gates.mjs && npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && npm run test",
+    "check": "node scripts/check-dateigroesse.mjs && node scripts/check-gates.mjs && npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && npm run test",
     "check:template": "node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs"
   }
 }

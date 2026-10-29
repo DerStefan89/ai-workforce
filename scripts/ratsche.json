@@ -303,6 +303,7 @@
     "scripts/leitstand/text-auszug.mjs",
     "scripts/projekt-nachruesten.mjs",
     "scripts/projekt-nachruesten.test.mjs",
+    "scripts/skelett-check-dateigroesse.test.mjs",
     "scripts/verify-rename-atomicity.mjs",
     "src/aenderungsuebersicht/types.ts",
     "src/ak-pruefung/ak-pruefung.test.ts",

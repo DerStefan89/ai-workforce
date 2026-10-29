@@ -35,6 +35,11 @@ nicht vor dem Bauen (dafuer architecture-advisor).
 - [ ] Keine offensichtlich unnoetigen Re-Berechnungen/Re-Renders
 - [ ] Keine unnoetigen neuen Abhaengigkeiten eingefuehrt
 
+### Weglassen
+- [ ] Pflichtfrage „Was kann weg?“: Zeilen im geprueften Code angeben
+      (Datei:Zeilen), die geloescht werden koennten — geloeschte Zeilen
+      zaehlen positiv
+
 ## Ausgabeformat
 
 ```
@@ -51,6 +56,9 @@ Datei(en): ...
 
 ## Verbesserungen (sollte behoben werden)
 1. ...
+
+## Was kann weg?
+- Datei:Zeilen — Grund (oder „nichts“ mit Begruendung)
 
 ## Status
 - [ ] Freigegeben / Freigegeben mit Hinweisen / Nicht freigegeben
