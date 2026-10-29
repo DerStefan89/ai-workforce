@@ -1,0 +1,167 @@
+{
+  "erzeugt": "2026-10-29T07:38:57.918Z",
+  "schritte": [
+    {
+      "bild": "de-1440-dunkel-01-vorschau.webp"
+    },
+    {
+      "bild": "de-1440-hell-01-vorschau.webp"
+    },
+    {
+      "bild": "de-1440-dunkel-02-start-building.webp"
+    },
+    {
+      "bild": "de-390-dunkel-01-vorschau.webp"
+    },
+    {
+      "bild": "de-390-hell-01-vorschau.webp"
+    },
+    {
+      "bild": "de-1280-dunkel-03-vorschau.webp"
+    }
+  ],
+  "belege": {
+    "masse1440": {
+      "fortschrittNebenBraucht": false,
+      "cockpit": 1124,
+      "produkt": 353,
+      "wer": 353,
+      "spalte": 353,
+      "vorschau": 1090,
+      "vorschauHoehe": 844,
+      "iframeBreite": 1054,
+      "iframeHoehe": 722,
+      "vorschauUnterKarten": true,
+      "reihenfolgeDom": [
+        "uebersicht-produkt",
+        "uebersicht-wer",
+        "uebersicht-fortschritt",
+        "uebersicht-braucht",
+        "uebersicht-vorschau"
+      ],
+      "keinQuerscroll": true
+    },
+    "app1440": {
+      "tabelleUngekuerzt": true,
+      "scrollWidth": 1052,
+      "clientWidth": 1052
+    },
+    "poll": {
+      "gleich": true,
+      "src": "http://127.0.0.1:50737",
+      "sandbox": "allow-scripts allow-same-origin allow-forms",
+      "wartezeitMs": 7000,
+      "zustandAbrufeSeitStart": 6,
+      "browserAnfragenAnApp": 0,
+      "projektAufrufAbrufe": 0
+    },
+    "seitenfehler1440": [],
+    "masse1440x900": {
+      "fortschrittNebenBraucht": false,
+      "cockpit": 1124,
+      "produkt": 353,
+      "wer": 353,
+      "spalte": 353,
+      "vorschau": 1090,
+      "vorschauHoehe": 754,
+      "iframeBreite": 1054,
+      "iframeHoehe": 632,
+      "vorschauUnterKarten": true,
+      "reihenfolgeDom": [
+        "uebersicht-produkt",
+        "uebersicht-wer",
+        "uebersicht-fortschritt",
+        "uebersicht-braucht",
+        "uebersicht-vorschau"
+      ],
+      "keinQuerscroll": true
+    },
+    "startBuilding": {
+      "fortschrittNebenBraucht": false,
+      "cockpit": 1124,
+      "produkt": 353,
+      "wer": 353,
+      "spalte": 353,
+      "vorschau": 1090,
+      "vorschauHoehe": 262,
+      "iframeBreite": -1,
+      "iframeHoehe": -1,
+      "vorschauUnterKarten": true,
+      "reihenfolgeDom": [
+        "uebersicht-produkt",
+        "uebersicht-wer",
+        "uebersicht-fortschritt",
+        "uebersicht-braucht",
+        "uebersicht-vorschau"
+      ],
+      "keinQuerscroll": true,
+      "iframe": false,
+      "link": true
+    },
+    "masse390dunkel": {
+      "fortschrittNebenBraucht": false,
+      "cockpit": 350,
+      "produkt": 328,
+      "wer": 328,
+      "spalte": 328,
+      "vorschau": 328,
+      "vorschauHoehe": 739,
+      "iframeBreite": 292,
+      "iframeHoehe": 593,
+      "vorschauUnterKarten": true,
+      "reihenfolgeDom": [
+        "uebersicht-produkt",
+        "uebersicht-wer",
+        "uebersicht-fortschritt",
+        "uebersicht-braucht",
+        "uebersicht-vorschau"
+      ],
+      "keinQuerscroll": true
+    },
+    "masse390hell": {
+      "fortschrittNebenBraucht": false,
+      "cockpit": 350,
+      "produkt": 328,
+      "wer": 328,
+      "spalte": 328,
+      "vorschau": 328,
+      "vorschauHoehe": 739,
+      "iframeBreite": 292,
+      "iframeHoehe": 593,
+      "vorschauUnterKarten": true,
+      "reihenfolgeDom": [
+        "uebersicht-produkt",
+        "uebersicht-wer",
+        "uebersicht-fortschritt",
+        "uebersicht-braucht",
+        "uebersicht-vorschau"
+      ],
+      "keinQuerscroll": true
+    },
+    "masse1280": {
+      "fortschrittNebenBraucht": true,
+      "cockpit": 964,
+      "produkt": 614,
+      "wer": 300,
+      "spalte": 930,
+      "vorschau": 930,
+      "vorschauHoehe": 844,
+      "iframeBreite": 894,
+      "iframeHoehe": 722,
+      "vorschauUnterKarten": true,
+      "reihenfolgeDom": [
+        "uebersicht-produkt",
+        "uebersicht-wer",
+        "uebersicht-fortschritt",
+        "uebersicht-braucht",
+        "uebersicht-vorschau"
+      ],
+      "keinQuerscroll": true
+    },
+    "app1280": {
+      "tabelleUngekuerzt": true,
+      "scrollWidth": 892,
+      "clientWidth": 892
+    }
+  }
+}

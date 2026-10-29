@@ -55,6 +55,7 @@ Nach dem Fixpaket arbeitet die Workforce so, wie Stefan heute mit Challenger-Cha
 - **E-B5-1 = A** (Stefan, 23.10.2026) — Planungsdaten (Workstreams mit Schätzung min–max, Ist, Datum; Priorität) liegen in der Feature-Akte (strenger Abschnitt ## Workstreams, Zeile Priorität:); docs/projekt/roadmap.json behält nur die Struktur (Meilenstein → Features, Reihenfolge). Umsetzung B5b-1.
 - **E-B5-2** (Challenger, 23.10.2026) — Akte mit Status ENTWURF darf ohne Meilenstein sein (Noch nicht eingeplant); ab READY_FOR_TECH Pflicht. Umsetzung B5a-1.
 - **E-VORSCHAU-1 = A** (Stefan, 24.10.2026) — Eigenes Paket „V1 Vorschau (Stufe 1)“ nach B5b-3, vor B3: Live-Vorschau des gewählten Projekts in der Produktübersicht über `vorschau_url` (iframe mit sandbox, CSP frame-src nur die geprüfte localhost-URL, keine neue Route, kein Poll); hebt das F43-Nicht-Ziel „keine Vorschau im Leitstand selbst“ auf, „kein Start/Stopp dauerlaufender Prozesse“ bleibt; Stufe 2 nach F30-M1 (Klärung Challenger 25.10.2026, vorher „nach R“). Finding F-1178.
+- **E-VORSCHAU-2 = A** (Stefan, 29.10.2026) — Die Live-Vorschau bekommt eine eigene Zeile in voller Breite direkt unter den Kopfkarten der Produktübersicht (Karte c war bei 1 440 px nur ≈ 280 px breit, eine Desktop-App erschien in Handybreite). Der Leerzustand bleibt: der geführte erste Schritt ersetzt bei einem leeren Produkt die ganze Seite, ein zusätzliches „Start Building“ wäre doppelt. Umsetzung V1b; Finding F-1245.
 - **E-B5-3** (Challenger, Bauauftrag B5b-1, 24.10.2026) — Jede Planungsänderung schreibt eine Zeile unter „## Änderungen“ der Akte (Datum · Felder · Grund), wie B5a-1. Ausnahme nach O5: „Meilenstein → LAEUFT“ in der Bereinigungsliste ohne Änderungszeile in den Akten, der Grund steht in der Commit-Nachricht des Git-Blocks (B5b-1b).
 - **E-B5-5** (Challenger, Bauauftrag B5b-1, 24.10.2026) — Bug-Felder (Nachstellen, Erwartet, Tatsächlich, Ursache, Regressionstest) sind optional: keine Pflicht, keine Rückmigration. Umsetzung B5b-1a (Findings-Parser).
 - **E-B5-6 = B** (Challenger, Bauauftrag B5b-1, 24.10.2026) — „Balken ziehen“ kommt nicht (Teil 2); Umordnen nur über „Anpassen“ mit Begründung.
@@ -187,7 +188,8 @@ Schätzung und Ist stehen seit F45 B5b-1a im Abschnitt „## Workstreams“ (E-B
 | B5b-2 | fixpaket | Roadmap-Anzeige | erledigt | 1–1,4 | – | 2026-10-25 | 2026-10-25 | vorher 0,6–0,75; ergänzt um „Prioritäts-Kanban lesend (E-KANBAN = A, F-917)“; gemergt #380 (2a), #381 (2b-1), #382 (2b-2), #384 (2c-1), #385 (2c-2-C); 2c-2-AB gebaut — `erledigt` nach Auftrag Challenger 25.10.2026 („Workstream-Zeile B5b-2 auf erledigt, sofern die Ist-Zelle es zulässt“), abweichend von Advisor `advisor-b5b2c2.md` A1 und Plan v2 A1; Abgenommen = erwartetes Merge-Datum von 2c-2-AB, bei späterem Merge nachziehen; Ist pflegt der Challenger (Zelle erlaubt nur „–“ oder eine Zahl) |
 | B5b-3 | fixpaket | R7: Ist nach Abnahme | erledigt | 0,4–0,6 | – | 2026-10-27 | 2026-10-27 | vorher 0,3, korrigiert nach dem Advisor-Pass (`advisor-b5b3.md` A6); gemergt #387 (Bereinigung W2a: Ist – nach A3, Begonnen = Abgenommen ⇒ 0 AT) |
 | W2 | workstream | Aufräumpaket | laeuft | 1,8–3,1 | – | 2026-10-27 | – | Schnitt W2a–W2d (Challenger 27.10.2026), Server-Monolith gestrichen; W2b = W2b-1 umbaufest (#389) + W2b-2 Wegwerf-Ordner/Fristen (#390), beide erledigt; W2c-1 Ratschen + Formatierer (#391), erledigt; W2d Doku-Diät (#392), erledigt; 60 Gates→Tests gestrichen (Pfadfinder) |
-| V1 | workstream | Live-Vorschau des Projekts im Leitstand | laeuft | 0,3–0,5 | – | 2026-10-28 | – | E-VORSCHAU-1 = A; gebaut (Abschnitt „Stand V1“), Branch `f45/v1-live-vorschau` |
+| V1 | workstream | Live-Vorschau des Projekts im Leitstand | erledigt | 0,3–0,5 | – | 2026-10-28 | 2026-10-29 | E-VORSCHAU-1 = A; Abschnitt „Stand V1“; gemergt #393 |
+| V1b | fixpaket | Live-Vorschau in voller Breite | laeuft | 0,1–0,2 | – | 2026-10-29 | – | E-VORSCHAU-2 = A; gebaut (Abschnitt „Stand V1b“), Branch `f45/v1b-vorschau-breit` |
 | B3 | design | Design & Motion in Fremdprojekten | geplant | 1,4–1,55 | – | – | – | |
 | R | workstream | Referenzauftrag in einem Fremdprojekt | verworfen | 1–2 | – | – | – | entfällt — E-R-1 = A (Stefan, 25.10.2026): Referenzauftrag = F30-M1 |
 | R2 | design | Brain Stufe 1: Produktzyklus lesend, mit Motion | geplant | 1,5–2 | – | – | – | E-BRAIN-1 = B (Stefan, 25.10.2026); vorher „Motion im Leitstand der Workforce“, 1 |
@@ -400,3 +402,38 @@ Kopf von `api.js` (cr K9).
 -f43-projekt-aufrufen, -f45-v1-vorschau, -f21-ws2-workboard-oberflaeche, -f44-i18n, -f46-bestand, -f20-design-tokens,
 -f20-leitstand-shell, -f12-leitstand-ansicht, -docs, -rules, -status-akten, -feature, -akte-meilenstein, -f45-b5b1a-planung,
 -f21-workboard, -contract, -f45-k-kontext.
+
+## Stand V1b
+
+**Auftrag:** V1b „Live-Vorschau in voller Breite“ (Challenger, 29.10.2026; E-VORSCHAU-2 = A). Nur Layout, Logik von
+`vorschau-panel.js` unverändert. Plan `plan-v1b.md`; kein Advisor-Pass (Struktur von `dashboard.js` unverändert, eine Zeile
+umgestellt).
+
+**Gebaut:**
+- `views/dashboard.js` 1 033 → 1 033 Zeilen: in `geruest()` steht `#uebersicht-vorschau` nach `#uebersicht-cockpit-rechts`
+  (vorher zwischen den Hüllen) — Lese- und Tab-Reihenfolge gleich Sichtreihenfolge; `render()` schreibt weiter nie
+  `#uebersicht-vorschau`, das iframe bleibt über Poll-Renders dasselbe Element. Dateikopf Punkt 2 nachgezogen.
+- `style.css`: Cockpit `minmax(0, 1fr) minmax(300px, 1fr) minmax(0, 1fr)` (a, b, d gleich breit, b mindestens 300 px für den
+  Rollen-Kreis), `.uebersicht-vorschau` über alle Spalten; iframe `height: min(70vh, 720px)`, `min-height: 360px`
+  (720 px ≈ übliches Desktop-App-Fenster, 70vh hält Kopf und Knöpfe der Karte mit dem Rahmen im Fenster, 360 px aus V1);
+  „Start Building“ nach Inhalt hoch, Absätze `max-width: 72ch`; die Regel ≤ 1060 px für `.uebersicht-vorschau` entfällt.
+- `docs/design/abgleich-f46.md` Zeile Karte c; F-1245 erledigt (Breite behoben, Leerzustand bleibt), übrige Punkte wörtlich
+  nach F-1248; F-1246 (Header-Schutz), F-1247 (Pflichtrahmen Commit-Block) neu.
+- Nachweis `features/F45/nachweise/v1b/` (neutrale Umgebung wie V1, Test-App mit fünf Spalten, 6 WebP, `protokoll.json`):
+  1 440 px — Kopfkarten je 353 px, Vorschau 1 090 px, iframe 1 054 × 722 px mit Rahmen (Inhalt 1 052 × 720), Tabelle der App
+  ungekürzt (scrollWidth = clientWidth), iframe über 7 s identisch, 0 Browser-Anfragen an die App und 0 Abrufe
+  `…/projekt-aufruf` im Poll; 1 440 × 900 — iframe 632 px, Karte 754 px (< Fenster); „Start Building“ 262 px hoch; 1 280 px
+  (Container 964 px, Stufe ≤ 1060) — Produkt 614 | Wer 300, Fortschritt und Braucht dich nebeneinander, Vorschau 930 px,
+  Tabelle ungekürzt; 390 px hell und dunkel eine Spalte, Vorschau zuletzt, kein Querscroll.
+
+**DEKLARIERT/Grenzen:** Unter ≈ 515 px Fensterhöhe (etwa 200 % Zoom auf 900 px) greift `min-height: 360px` über 70vh —
+Kartenkopf und Rahmen passen dann nicht mehr ganz in ein Fenster (Untergrenze bewusst aus V1). Das schwebende „Frag Jarvis“
+(und der offene Chat, ein schwebendes Fenster, das den Hauptbereich nicht verengt) liegt jetzt über der rechten unteren Ecke
+der App (F-1248). 200 % Zoom und offener Ausklapper „Rolle im Detail“ sind für V1b nicht neu belegt (nur die Rasterzeile
+geändert; V1-Nachweis). Die leere Fläche in a und d bei hoher Karte b ist Bestand aus V1. Die Breite „≈ 280 px“ in
+E-VORSCHAU-2 ist Stefans Wert, F-1245 nannte „≈ 300 px“ (Rahmen ein- bzw. ausgerechnet).
+
+**Prüfpass:** design-guardian und qa je „Freigegeben mit Hinweisen“, kein kritischer Befund. Eine Korrekturrunde: Nachweis um
+1 280 px (Stufe ≤ 1060, dg 1, qa 1 — die Chatspalte als Grund trifft nicht zu, der Chat schwebt) und 390 hell ergänzt;
+iframe-Maß mit Rahmen berichtigt (qa 2); Dateikopf nennt die Stufe ≤ 1060 (dg 4); Grenzen oben deklariert (dg 2/3, qa 3–5, 7);
+F-1248 mit Herkunftsmarke, dg A6 als bewusst ohne Maßnahme, Punkt „Frag Jarvis“ ergänzt (qa 6, qa 3).
