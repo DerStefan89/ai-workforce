@@ -9170,7 +9170,7 @@ Beschreibung: Im Skelett ist `npm run check:render` eine DoD-Zeile der `CLAUDE.m
 Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md` (DoD), `vorlagen/projekt-skelett/docs/examples/design-guardian.example.md`.
 Auswirkung: Mittel — UI-Änderungen können ohne Render-Nachweis als fertig gemeldet werden.
 Maßnahme: B3b-2: design-guardian-Schritt im Lauf, der den Render-Nachweis ausführt bzw. verlangt — dann deterministisch.
-Status: erledigt (F45 B3b-2a-1, 29.10.2026): Nach einer erfolgreichen Ausführung im Arbeitsordner mit grünem Prüfschritt führt der Kern `npm run check:render` aus, sobald `render.json` in dessen Wurzel liegt (`src/pruefschritt/render.ts`, Artefakt `render-nachweis-<laufId>`, `renderNachweis` in GET …/abnahme; Test `scripts/render-im-lauf.test.mjs`). Karte in der Abnahme: B3b-2a-2; Bewertung der Darstellung: B3b-2b (E-B3B2-1 = A, F-1268).
+Status: erledigt (F45 B3b-2a-1, 29.10.2026): Nach einer erfolgreichen Ausführung im Arbeitsordner mit grünem Prüfschritt führt der Kern `npm run check:render` aus, sobald `render.json` in dessen Wurzel liegt (`src/pruefschritt/render.ts`, Artefakt `render-nachweis-<laufId>`, `renderNachweis` in GET …/abnahme; Test `scripts/render-im-lauf.test.mjs`). Karte in der Abnahme: B3b-2a-2; Bewertung der Darstellung: B3b-2b (E-B3B2-1 = A, F-1268). Nachtrag (F45 B3b-2a-2, 29.10.2026): Anzeige mit B3b-2a-2 — Karte „Darstellung (Render-Nachweis)“ in der Abnahme (`public/leitstand/views/abnahme-render.js`; Lage „entscheidbar“ nach der Prüfung aus Nutzersicht, Lage „vorab“ im Block; Badge, Dauer, Ausgabe-Ende aufklappbar, Ortssatz, amber Hinweis bei ROT/ZEITGRENZE/FEHLER, keine Karte bei 'fehlt'; Nachweis `features/F45/nachweise/b3b2a2/`).
 Feature/Run: Entdeckt: F45 B3b-1, 29.10.2026.
 
 **F-1257** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -9313,6 +9313,24 @@ Titel: Restpunkte von F45 B3b-2a-1 „Render-Nachweis im Lauf“ (QA- und Review
 Beschreibung: (qa M3) `renderNachweis` 'fehlt' heißt dreierlei — kein Render nötig, fällig aber nicht gelaufen (F-1271), Registrierung gescheitert (nur Startfehlerliste); die Karte verschwände dann still. (qa N1) „Abbrechen“ antwortet während des Renders 202, wirkt aber bis zu 180 s nicht (DEKLARIERT in `src/pruefschritt/render.ts`). (qa N3) Ein getrackter `.render-nachweis/` mit später ergänztem `.gitignore`-Eintrag gilt wegen `check-ignore --no-index` als ignoriert; das Skelett überschreibt dann getrackte Dateien nach der Änderungsübersicht. (qa N4) Die Meldung „Ordner dist fehlt — vorher bauen“ des Skeletts nennt die Lösung `"check:render": "npm run build && …"` nicht. (qa N6) Der Wurf von `findeNpmCli` ⇒ FEHLER ist ungetestet; der Servertest belegt unter `npm run` vermutlich nur den `npm_execpath`-Zweig. (qa N8) Während des Renders zeigt der Lauf das letzte Werkzeug des Builders, das Warten bleibt unerklärt. (qa N9) Symlink-Fälle bei render.json (ins Leere ⇒ kein Render, nach außen ⇒ Render) ungetestet. (cr 7) Die 40 Zeilen stehen als Konstante in `scripts/leitstand/abnahme-pruefung.mjs` und als Literal im Server (Halt-Grund). (cr-delta 2) Bleibt das Laden eines `render-nachweis-*` dauerhaft kaputt, schreibt `projiziereRenderNachweis` bei jedem Poll (2 s) eine Fehlerzeile mit Stack.
 Fundstelle: `scripts/leitstand/abnahme-pruefung.mjs`, `src/pruefschritt/render.ts`, `vorlagen/projekt-skelett/scripts/render-nachweis.mjs`, `scripts/leitstand-server.mjs`.
 Auswirkung: Gering — Anzeige und Randfälle; der Kern-Ablauf ist belegt (`features/F45/nachweise/b3b2a/nachweis.md`).
-Maßnahme: M3, N1, N8 mit B3b-2a-2 (Karte: eigener Status oder Hinweis, Fortschritt „Render-Nachweis läuft“); N3, N4 mit B3b-2b; N6, N9, cr 7 bei Bedarf.
+Maßnahme: N3, N4 mit B3b-2b; M3, N1, N8, N6, N9, cr 7 bei Bedarf. (Nachtrag F45 B3b-2a-2, 29.10.2026, Advisor P3: M3, N1, N8 kamen nicht in die Karte — Auftrag: bei 'fehlt' keine Karte, kein eigener Status, keine Kern-Änderung; nichts aus F-1272 passte ohne Zusatzaufwand.)
 Status: offen.
 Feature/Run: Entdeckt: QA-/Code-Review-Pass F45 B3b-2a-1, 29.10.2026.
+
+**F-1273** · `TECH_DEBT` · P3 · offen
+Titel: Build-Ausgabe des Kern-Renders nur deklariert ignoriert.
+Beschreibung: `check:render` mit `npm run build &&` (Gate-Vorlage, K2 = b) schreibt die Build-Ausgabe im Arbeitsordner nach der Änderungsübersicht; erzwungen ist nur `.render-nachweis/` in `.gitignore`.
+Fundstelle: `src/pruefschritt/render.ts` (Vorbedingung check-ignore), `vorlagen/projekt-skelett/docs/harness/gate-vorlage-node.md`.
+Auswirkung: Gering — in Projekten ohne ignorierte Build-Ausgabe erscheint sie in der nächsten Änderungsübersicht bzw. beim Sichern.
+Maßnahme: Bei realem Auftreten prüft der Kern zusätzlich `ordner` aus `render.json` per check-ignore.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, F45 B3b-2a-1 (Rückfrage K2), 29.10.2026.
+
+**F-1274** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Lagebild-Drift bei neuem P1-Finding erst in der CI.
+Beschreibung: Ein Paket, das ein offenes P1-Finding einträgt, muss `docs/projekt/kontext/lagebild.md` mit `node scripts/erzeuge-lagebild.mjs` neu erzeugen; die lokale Gate-Liste des Bauauftrags B3b-2a-1 nannte `check-f40-lagebild` nicht ⇒ CI rot (F-1265), Nachtrag-Commit vor Merge #397.
+Fundstelle: Bauaufträge (Gate-Listen), `scripts/check-f40-lagebild.mjs`.
+Auswirkung: Gering — ein zusätzlicher Commit und eine rote CI-Runde.
+Maßnahme: `check-f40-lagebild` in jede Gate-Liste eines Auftrags, der `state/findings.md` ändert.
+Status: offen.
+Feature/Run: Entdeckt: F45 B3b-2a-1 (CI), 29.10.2026.

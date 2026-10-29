@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Halt nach Review BLOCKIERT, Karte im Block „vorab“ — de-1440-hell",
+    "Karte": true,
+    "Karte im Block vorab": true,
+    "Hinweis amber": true,
+    "Badge grün": false,
+    "Badge amber": true,
+    "Ausgabe aufgeklappt": false,
+    "Abnehmen": false,
+    "Kartentitel": "Darstellung (Render-Nachweis)",
+    "Badge": "ROT",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]

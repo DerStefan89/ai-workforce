@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Render ROT, amber Hinweis, Abnahme möglich — de-1440",
+    "Karte": true,
+    "Karte im Block vorab": false,
+    "Hinweis amber": true,
+    "Badge grün": false,
+    "Badge amber": true,
+    "Ausgabe aufgeklappt": false,
+    "Abnehmen": true,
+    "Kartentitel": "Darstellung (Render-Nachweis)",
+    "Badge": "ROT",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  },
+  {
+    "label": "Ausgabe-Ende aufgeklappt",
+    "Karte": true,
+    "Karte im Block vorab": false,
+    "Hinweis amber": true,
+    "Badge grün": false,
+    "Badge amber": true,
+    "Ausgabe aufgeklappt": true,
+    "Abnehmen": true,
+    "Kartentitel": "Darstellung (Render-Nachweis)",
+    "Badge": "ROT",
+    "waagerechter Überlauf": false,
+    "scrollWidth/clientWidth": "1440/1440",
+    "Seite geladen": true,
+    "Pfadprobe": "sauber"
+  }
+]
