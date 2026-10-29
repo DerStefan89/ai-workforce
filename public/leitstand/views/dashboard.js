@@ -5,7 +5,7 @@
  * (docs/design/abgleich-f46.md §4.1; vorher F44 WS-2b, Vorlage V10). Blöcke von oben nach unten:
  *  1. Kopf: Eyebrow, Projektname, „Aktueller Meilenstein“; „Produkt bearbeiten“, „Architektur &
  *     Code“ und „+ Eintrag erfassen“ als Baustein „kommt“ (Fixpaket B5 bzw. bis D4).
- *  2. Vier gleich hohe Kopfkarten:
+ *  2. Kopfkarten a, b, d in drei Spalten (Container ≤ 1060 px: a | b, d darunter), darunter c in voller Breite (V1b):
  *     a) Produktmanagement (Einstieg #/produktzyklus) und Ziel dieser Version — Zielsatz aus der
  *        Projektakte (nur wenn eindeutig, sonst „kommt“), Link → #/projektakte.
  *     b) Wer arbeitet gerade: Feature in Arbeit (waehleFeatureInArbeit) bzw. ein nicht terminaler Ablauf
@@ -13,7 +13,7 @@
  *        Ausklapper „Rolle im Detail“ (Panel des Rollen-Registers: Name, Worker, „In diesem Lauf“ aus der
  *        Laufakte-Beobachtung, sonst „—“). Ein Klick auf eine Rolle öffnet ihn.
  *     c) Live-Vorschau (F45 V1, vorschau-panel.js): die App des Projekts im iframe, sonst „Start Building“ —
- *        eigener Container #uebersicht-vorschau, den render() nie schreibt (das iframe überlebt den Poll).
+ *        eigener Container #uebersicht-vorschau nach d, den render() nie schreibt (das iframe überlebt den Poll).
  *     d) Fortschritt (Ring → #/roadmap) und Braucht dich (baueEntscheidungen → #/attention).
  *  3. Vier Kennzahlen: In Arbeit, Deine Entscheidung, Abgenommen, Geplant.
  *  4. „Der Weg von <Feature>“: Kopf echt, Workstream-Zeitleiste „kommt“.
@@ -104,7 +104,7 @@ const beobachtungen = new Map()
 let gewaehlteRolle = null
 let detailOffen = false
 
-/** Live-Vorschau in Karte c (F45 V1) — eigener Container, den render() nie schreibt. */
+/** Live-Vorschau in Karte c (F45 V1, volle Breite seit V1b) — eigener Container, den render() nie schreibt. */
 const vorschau = erzeugeVorschauPanel({ hole: holeProjektAufruf, element: () => document.getElementById('uebersicht-vorschau'), leitstandPort: () => location.port })
 
 /** Filter des Arbeitsstands: 'alles' oder eine der SPALTEN. */
@@ -812,7 +812,7 @@ function geruest() {
   return `<div id="uebersicht-b1">${l}</div>
     <div id="uebersicht-erster-schritt" hidden></div>
     <div id="uebersicht-inhalt">
-      <section class="uebersicht-cockpit" id="uebersicht-cockpit" aria-label="${tHtml('uebersicht.cockpit')}"><div class="uebersicht-cockpit-teil" id="uebersicht-cockpit-links">${l}</div><article class="uebersicht-karte uebersicht-vorschau" id="uebersicht-vorschau">${l}</article><div class="uebersicht-cockpit-teil" id="uebersicht-cockpit-rechts"></div></section>
+      <section class="uebersicht-cockpit" id="uebersicht-cockpit" aria-label="${tHtml('uebersicht.cockpit')}"><div class="uebersicht-cockpit-teil" id="uebersicht-cockpit-links">${l}</div><div class="uebersicht-cockpit-teil" id="uebersicht-cockpit-rechts"></div><article class="uebersicht-karte uebersicht-vorschau" id="uebersicht-vorschau">${l}</article></section>
       <div id="uebersicht-werte">${l}</div>
       <section class="uebersicht-weg" id="uebersicht-weg">${l}</section>
       <div id="uebersicht-kacheln">${l}</div>

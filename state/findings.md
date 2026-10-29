@@ -9061,11 +9061,38 @@ Maßnahme: E-K-1 präzisieren: die Status-Zeile ist maßgeblich, der Kopf muss z
 Status: offen.
 Feature/Run: Entdeckt: Challenger nach F45 W2d, eingetragen F45 V1, 28.10.2026.
 
-**F-1245** · `TECH_DEBT` · P3 · offen
+**F-1245** · `TECH_DEBT` · P3 · erledigt (F45 V1b)
 Titel: Restpunkte von F45 V1 (Prüfpass code-reviewer, qa, design-guardian).
 Beschreibung: (qa 5, dg A8) Karte c ist bei 1 440 px nur ≈ 300 px breit — eine Desktop-App erscheint in Handybreite (Ausweg „In neuem Tab öffnen“); Breite/Skalierung ist eine Aufbaufrage an Stefan. (qa 6, O1) Im Leerzustand (keine Workitems, Roadmap, Workflows) steht der geführte erste Schritt statt „Start Building“, das iframe lädt trotzdem verborgen; ebenso läuft es nach dem Betreten im verborgenen `#view-dashboard` weiter. (qa 9, cr K11) Eine App mit `X-Frame-Options`/`frame-ancestors` oder einer Weiterleitung auf einen fremden Host zeigt einen leeren bzw. gesperrten Rahmen ohne Hinweis. (qa 10) „Neu laden“ springt auf die Start-URL der App zurück. (qa 12) Meldet der Server „nicht zulässig“, weil sein Port unbekannt ist, nennt der Hinweis fälschlich den Leitstand-Port. (qa 11) Rollen bleiben `role=tab` mit einem zugeklappt verborgenen `tabpanel`; Karte c hat im Vorschau-Zustand keine Überschrift. (cr K8) Das Lauf-Detail für „In diesem Lauf“ lädt auch bei zugeklapptem Ausklapper. (qa 14) `features/F46/nachweise/d1/erzeuge-nachweis.mjs` erwartet noch die alte Karte „Rolle im Detail“ (h2, sichtbar) — ein erneuter Lauf scheitert. (dg A6) „Zu Auftrag & Start“ ist bewusst kein Primärknopf (Leitprinzip ein Hauptknopf).
 Fundstelle: `public/leitstand/vorschau-panel.js`, `public/leitstand/views/dashboard.js` (`rolleAusklapper`, `ladeAlles`), `public/leitstand/style.css` (`.uebersicht-cockpit`), `features/F46/nachweise/d1/erzeuge-nachweis.mjs`.
 Auswirkung: Gering bis mittel — Nutzwert der Vorschau auf dem Desktop (Breite) und Verständlichkeit in Randfällen; keine Sicherheitswirkung.
 Maßnahme: Breite und Leerzustand mit Stefan entscheiden (Stufe 2 der Vorschau oder B3); übrige mit dem nächsten Paket an der Übersicht.
-Status: offen.
+Status: erledigt (F45 V1b, 29.10.2026). Breite: durch V1b behoben — die Vorschau steht als eigene Zeile in voller Breite unter den Kopfkarten (E-VORSCHAU-2 = A; Nachweis `features/F45/nachweise/v1b/`). Leerzustand: entschieden, bleibt (E-VORSCHAU-2, Stefan 29.10.2026: der geführte erste Schritt ersetzt bei einem leeren Produkt die ganze Seite, ein zusätzliches „Start Building“ wäre doppelt). Die übrigen, nicht entschiedenen Punkte stehen wörtlich übertragen in F-1248 (sonst gingen sie mit dem Archivlauf verloren, vgl. F-1244).
 Feature/Run: Entdeckt: F45 V1 (Prüfpass code-reviewer, qa, design-guardian), 28.10.2026.
+
+**F-1246** · `TECH_DEBT` · P3 · offen
+Titel: Leitstand sendet keinen Header-Schutz gegen Selbsteinbettung.
+Beschreibung: Der Leitstand sendet weder `Content-Security-Policy: frame-ancestors` noch `X-Frame-Options`; der Schutz gegen das Einbetten des Leitstands (etwa wenn eine eingebettete App ihren Rahmen auf den Leitstand-Port umlenkt) ist nur clientseitig (`public/leitstand/rahmen-schutz.js`, F45 V1). In V1 bewusst nicht gesetzt (Serveränderung außerhalb des Umfangs, Wachstumsbremse).
+Fundstelle: `scripts/leitstand-server.mjs` (Antwort-Header der Leitstand-Seiten), `public/leitstand/rahmen-schutz.js`, `scripts/check-f45-v1-vorschau.mjs` (Durchsetzungsgrad).
+Auswirkung: Gering — der Rahmen-Schutz verhindert den Start im Rahmen; ein Header wirkt aber schon vor jedem Skript und auch bei abgeschaltetem JavaScript.
+Maßnahme: `frame-ancestors 'none'` bzw. `X-Frame-Options: DENY` setzen, sobald der Server ohnehin geändert wird; Gate-Vermerk in `check-f45-v1-vorschau` nachziehen.
+Status: offen.
+Feature/Run: Entdeckt: F45 V1 (DEKLARIERT im Gate), eingetragen F45 V1b, 29.10.2026.
+
+**F-1247** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Commit-Blöcke ohne `& { ... }`-Rahmen laufen bei zeilenweisem Einfügen trotz roter Prüfung weiter.
+Beschreibung: Wird ein PowerShell-Commit-Block ohne umschließenden Skriptblock zeilenweise in die Konsole eingefügt, stoppt ein `throw` nach einer roten Prüfung nur die eigene Zeile; die folgenden Zeilen (Staging, Commit, Push) laufen trotzdem.
+Fundstelle: Commit-Blöcke in Berichten und Bauaufträgen (Vorlage für Commit-Blöcke); vgl. die Blockform des Leitstands (F45 B2b-4a-2a, `code-daten.js` `befehlsBlock`).
+Auswirkung: Mittel — eine fehlgeschlagene Branch- oder Pfadprüfung kann einen Commit oder Push nicht verhindern.
+Maßnahme: Pflichtrahmen `& { ... }` (ganzer Block) in die Vorlage für Commit-Blöcke aufnehmen.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, eingetragen F45 V1b, 29.10.2026.
+
+**F-1248** · `TECH_DEBT` · P3 · offen
+Titel: Übrige Restpunkte von F45 V1 (aus F-1245 übertragen).
+Beschreibung: Wörtlich aus F-1245 übernommen, ohne die in V1b erledigten Punkte Breite und Leerzustand: (qa 6, O1) Das iframe lädt im Leerzustand trotzdem verborgen (durch E-VORSCHAU-2 dauerhaft); ebenso läuft es nach dem Betreten im verborgenen `#view-dashboard` weiter. (qa 9, cr K11) Eine App mit `X-Frame-Options`/`frame-ancestors` oder einer Weiterleitung auf einen fremden Host zeigt einen leeren bzw. gesperrten Rahmen ohne Hinweis. (qa 10) „Neu laden“ springt auf die Start-URL der App zurück. (qa 12) Meldet der Server „nicht zulässig“, weil sein Port unbekannt ist, nennt der Hinweis fälschlich den Leitstand-Port. (qa 11) Rollen bleiben `role=tab` mit einem zugeklappt verborgenen `tabpanel`; Karte c hat im Vorschau-Zustand keine Überschrift. (cr K8) Das Lauf-Detail für „In diesem Lauf“ lädt auch bei zugeklapptem Ausklapper. (qa 14) `features/F46/nachweise/d1/erzeuge-nachweis.mjs` erwartet noch die alte Karte „Rolle im Detail“ (h2, sichtbar) — ein erneuter Lauf scheitert. (dg A6) „Zu Auftrag & Start“ ist bewusst kein Primärknopf (Leitprinzip ein Hauptknopf) — Vermerk, keine Maßnahme. Neu aus dem Prüfpass V1b (dg 2, qa 3): Seit die Vorschau die volle Breite nutzt, liegt das schwebende „Frag Jarvis“ (und der offene Chat) über der rechten unteren Ecke der App und kann dort Bedienelemente oder die Scrollleiste der App verdecken.
+Fundstelle: `public/leitstand/vorschau-panel.js`, `public/leitstand/views/dashboard.js` (`rolleAusklapper`, `ladeAlles`), `public/leitstand/style.css` (`.uebersicht-vorschau-rahmen`, Chat-Blase), `features/F46/nachweise/d1/erzeuge-nachweis.mjs`.
+Auswirkung: Gering — Verständlichkeit in Randfällen; keine Sicherheitswirkung.
+Maßnahme: Mit dem nächsten Paket an der Übersicht (Stufe 2 der Vorschau oder B3).
+Status: offen.
+Feature/Run: Entdeckt: F45 V1 (Prüfpass code-reviewer, qa, design-guardian), 28.10.2026; übertragen F45 V1b, 29.10.2026.

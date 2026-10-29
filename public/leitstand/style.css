@@ -5466,10 +5466,11 @@ th {
   outline-offset: 4px;
 }
 
-/* Kopfkarten: Rahmen wie die Vorlage (Fläche --panel), Karten auf --bg. */
+/* Kopfkarten: Rahmen wie die Vorlage (Fläche --panel), Karten auf --bg. F45 V1b (E-VORSCHAU-2 = A): a, b, d in drei
+   Spalten (b mindestens 300 px für den Rollen-Kreis), die Vorschau c als eigene Zeile darunter in voller Breite. */
 #view-dashboard .uebersicht-cockpit {
   display: grid;
-  grid-template-columns: 250px 300px minmax(0, 1fr) 176px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr) minmax(0, 1fr);
   align-items: stretch;
   gap: 16px;
   margin: 18px 0 28px;
@@ -5636,7 +5637,11 @@ th {
   gap: 6px 16px;
 }
 
-/* F45 V1: Karte c — Live-Vorschau bzw. „Start Building“. */
+/* F45 V1: Karte c — Live-Vorschau bzw. „Start Building“; seit V1b eigene Zeile über alle Spalten des Cockpits. */
+#view-dashboard .uebersicht-vorschau {
+  grid-column: 1 / -1;
+}
+
 #view-dashboard .uebersicht-vorschau-kopf {
   display: flex;
   flex-wrap: wrap;
@@ -5658,9 +5663,11 @@ th {
   color: var(--muted);
 }
 
+/* V1b: 720 px ≈ ein übliches Desktop-App-Fenster (HD 1280 × 720); 70vh hält Kopf und Knöpfe der Karte mit dem Rahmen im
+   selben Fenster (keine Scrollfalle); 360 px Untergrenze aus V1 für niedrige Fenster. */
 #view-dashboard .uebersicht-vorschau-rahmen {
-  flex: 1;
   width: 100%;
+  height: min(70vh, 720px);
   min-height: 360px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -5671,6 +5678,11 @@ th {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* V1b: „Start Building“ bleibt in der vollen Zeile kompakt — Höhe nach Inhalt, Zeilenlänge begrenzt. */
+#view-dashboard .uebersicht-vorschau-start p {
+  max-width: 72ch;
 }
 
 /* Knopf-Links ohne Unterstreichung wie im übrigen Bestand (a.button). */
@@ -6470,10 +6482,6 @@ th {
 @container uebersicht (max-width: 1060px) {
   #view-dashboard .uebersicht-cockpit {
     grid-template-columns: minmax(0, 1fr) 300px;
-  }
-
-  #view-dashboard .uebersicht-vorschau {
-    grid-column: 1 / -1;
   }
 
   #view-dashboard .uebersicht-spalte {
